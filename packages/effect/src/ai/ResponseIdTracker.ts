@@ -7,7 +7,7 @@
  * objects were included in each provider response and prepares a shorter prompt
  * when a later call extends the same conversation.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -24,7 +24,7 @@ import * as Prompt from "./Prompt.ts"
  * prompt fragment containing only the new messages after the latest assistant
  * turn.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -44,7 +44,7 @@ export interface PrepareResult {
  * the prompt prefix is fully recognized, and `clearUnsafe` drops all tracked
  * state.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export interface Service {
  * later calls can send only new prompt messages together with the provider's
  * prior response ID.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -80,7 +80,7 @@ export class ResponseIdTracker extends Context.Service<ResponseIdTracker, Servic
  * latest assistant turn only when the existing prompt prefix is fully tracked;
  * otherwise it clears the tracked state and returns `Option.none()`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

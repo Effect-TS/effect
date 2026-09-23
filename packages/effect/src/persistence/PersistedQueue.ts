@@ -11,7 +11,7 @@
  * Delivery is at-least-once: a crash between handler success and the
  * acknowledgement redelivers the element, so handlers must be idempotent.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -39,7 +39,7 @@ import * as Redis from "./Redis.ts"
 /**
  * Runtime type identifier for `PersistedQueue` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export const TypeId: TypeId = "~effect/persistence/PersistedQueue"
 /**
  * Type-level identifier used to brand `PersistedQueue` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ export type TypeId = "~effect/persistence/PersistedQueue"
  * Delivery is at-least-once: a crash between handler success and the
  * acknowledgement redelivers the element, so handlers must be idempotent.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -116,7 +116,7 @@ export interface PersistedQueue<in out A, out R = never> {
 /**
  * Service for constructing named `PersistedQueue` instances from schemas.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -153,7 +153,7 @@ export class PersistedQueueFactory extends Context.Service<
  * `Schedule.upTo({ duration })` caps the summed delays rather than real time
  * since the original failure.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -205,7 +205,7 @@ const retryDelay = Effect.fnUntraced(function*(
  * assigned an id when needed, and acknowledged or retried according to the
  * `take` handler's exit.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -287,7 +287,7 @@ export const makeFactory = Effect.gen(function*() {
 /**
  * Provides `PersistedQueueFactory` using the current `PersistedQueueStore`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -311,7 +311,7 @@ export const layer: Layer.Layer<
  * racing instances are harmless since deletes are idempotent, but the work is
  * redundant.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -343,7 +343,7 @@ export const layerCleanup = (options?: {
 /**
  * Runtime type identifier for `PersistedQueueError`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -352,7 +352,7 @@ export const ErrorTypeId: ErrorTypeId = "~effect/persistence/PersistedQueue/Pers
 /**
  * Type-level identifier used to brand `PersistedQueueError` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -361,7 +361,7 @@ export type ErrorTypeId = "~effect/persistence/PersistedQueue/PersistedQueueErro
 /**
  * Error raised by persisted queue store operations.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -375,7 +375,7 @@ export class PersistedQueueError extends Schema.Error<PersistedQueueError>(
   /**
    * Marks this value as a persisted queue error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
@@ -458,7 +458,7 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  * once `maxAttempts` is exhausted; an interruption releases it without
  * counting the attempt.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -509,7 +509,7 @@ export class PersistedQueueStore extends Context.Service<
  * queue's retry schedule until the configured maximum attempts is reached,
  * after which the element is marked as failed.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -657,7 +657,7 @@ export const layerStoreMemory: Layer.Layer<
  * items with the queue's retry schedule, and moves exhausted items to a failed
  * queue.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1270,7 +1270,7 @@ return removed
 /**
  * Provides a Redis-backed `PersistedQueueStore` using `makeStoreRedis`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1296,7 +1296,7 @@ export const layerStoreRedis: (
  * per-worker locks, refreshes active locks while scoped takes are running, and
  * retries or completes rows according to the processing exit.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2033,7 +2033,7 @@ const sqlMigrations = (tableName: string) =>
 /**
  * Provides a SQL-backed `PersistedQueueStore` using `makeStoreSql`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

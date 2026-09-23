@@ -5,7 +5,7 @@
  * the Prometheus text format. It can also register a pull-based HTTP endpoint,
  * such as `/metrics`, for Prometheus to scrape.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Context from "../Context.ts"
@@ -30,7 +30,7 @@ import * as Metric from "../Metric.ts"
  * mapper("httpRequests") // => "http_requests"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -39,7 +39,7 @@ export type MetricNameMapper = (name: string) => string
 /**
  * Options for formatting metrics.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -58,7 +58,7 @@ export interface FormatOptions {
 /**
  * Options for exporting Prometheus metrics over HTTP.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -101,7 +101,7 @@ export interface HttpOptions extends FormatOptions {
  * Effect.runSync(program) // => [true, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category formatting
  * @since 4.0.0
  */
@@ -122,7 +122,7 @@ export const format: (options?: FormatOptions | undefined) => Effect.Effect<stri
  *
  * @see {@link format} for effectful formatting from the current context
  *
- * @unstable
+ * @stability unstable
  * @category formatting
  * @since 4.0.0
  */
@@ -184,7 +184,7 @@ export const formatUnsafe = (
  * const result = [Layer.isLayer(PrometheusLayer), Layer.isLayer(CustomPrometheusLayer)] // => [true, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

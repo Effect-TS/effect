@@ -8,7 +8,7 @@
  * sessions, seed sessions from prompts, restore exported history, or connect a
  * chat to persistence.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Channel from "../Channel.ts"
@@ -69,7 +69,7 @@ import type * as Tool from "./Tool.ts"
  * ) // => "Quantum computers use quantum states to process information."
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -78,7 +78,7 @@ export const Chat: Context.Service<Chat, Chat> = Context.Service("effect/ai/Chat
 /**
  * Brand type for `Chat`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -87,7 +87,7 @@ export type TypeId = "~effect/ai/Chat"
 /**
  * Brand for `Chat` implementations.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -98,7 +98,7 @@ export const TypeId: TypeId = "~effect/ai/Chat"
  *
  * @see {@link Persisted} for the persistence-backed extension
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -540,7 +540,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
  * await Effect.runPromise(freshChat) // => 0
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -603,7 +603,7 @@ export const empty: Effect.Effect<Chat> = Effect.sync(() => makeUnsafe(Ref.makeU
  * await Effect.runPromise(existingChat) // => 3
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -657,7 +657,7 @@ export const fromPrompt = (prompt: Prompt.RawInput) =>
  * await Effect.runPromise(restoreChat) // => { roles: ["user", "assistant"], text: "The project uses Effect." }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -692,7 +692,7 @@ export const fromExport = (data: unknown): Effect.Effect<
  * await Effect.runPromise(restoreFromJson) // => 1
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -714,7 +714,7 @@ export const fromJson = (data: string): Effect.Effect<
  * Use to represent a missing persisted conversation when lookup by id cannot
  * find stored history.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -733,7 +733,7 @@ export class ChatNotFoundError extends Schema.Error<ChatNotFoundError>(
  * Use to provide the storage operations needed by persisted conversation
  * sessions.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -745,7 +745,7 @@ export class Persistence extends Context.Service<Persistence, Persistence.Servic
 /**
  * Namespace containing the service contract for chat persistence.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Persistence {
@@ -753,7 +753,7 @@ export declare namespace Persistence {
    * Represents the backing persistence for a persisted `Chat`. Allows for
    * creating and retrieving chats that have been saved to a persistence store.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -788,7 +788,7 @@ export declare namespace Persistence {
  * chat history as well as the relevent response parts will be saved to the
  * backing persistence store.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -819,7 +819,7 @@ export interface Persisted extends Chat {
  *
  * @see {@link layerPersisted} for the `Layer`-based constructor
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -982,7 +982,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
  *
  * @see {@link makePersisted} for the effect constructor when building the service directly instead of providing it as a layer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -6,7 +6,7 @@
  * and traces to the same OpenTelemetry Collector, vendor OTLP endpoint, or local
  * development collector.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Duration from "../Duration.ts"
@@ -30,7 +30,7 @@ import * as OtlpTracer from "./OtlpTracer.ts"
  * The layer sends data to `/v1/logs`, `/v1/metrics`, and `/v1/traces` below
  * `baseUrl` and requires an `OtlpSerialization` implementation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -89,7 +89,7 @@ export const layer = (options: {
  * Creates a combined OTLP layer for logs, metrics, and traces from
  * OpenTelemetry configuration.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -126,7 +126,7 @@ export const layerFromConfig = (options?: {
  * Creates the combined OTLP logs, metrics, and traces layer using JSON
  * serialization.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -153,7 +153,7 @@ export const layerJson: (options: {
  * Creates the combined OTLP logs, metrics, and traces layer using protobuf
  * serialization.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

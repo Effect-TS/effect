@@ -8,7 +8,7 @@
  * defines the service tag, the service interface, and a `make` constructor that
  * builds a full tokenizer service from a token-counting function.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -49,7 +49,7 @@ import * as Prompt from "./Prompt.ts"
  * await Effect.runPromise(result) // => 1
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -84,7 +84,7 @@ export class Tokenizer extends Context.Service<Tokenizer, Service>()(
  * const messageCount = (await Effect.runPromise(customTokenizer.truncate("hello world", 1))).content.length // => 1
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -147,7 +147,7 @@ export interface Service {
  * await Effect.runPromise(wordTokenizer.tokenize("hello effect world")) // => [0, 1, 2]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

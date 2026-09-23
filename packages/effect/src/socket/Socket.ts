@@ -8,7 +8,7 @@
  * closes, surfaces as a `SocketError`, so reconnecting is a plain
  * `Effect.retry` around the scoped consume loop.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../Array.ts"
@@ -31,7 +31,7 @@ import * as Stream from "../Stream.ts"
 /**
  * Runtime type identifier attached to `Socket` services.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -40,7 +40,7 @@ export const TypeId = "~effect/socket/Socket"
 /**
  * Returns `true` when a value is a `Socket`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -54,7 +54,7 @@ export const isSocket = (u: unknown): u is Socket => Predicate.hasProperty(u, Ty
  * Use to access or provide the socket implementation used by programs that
  * read and write frames through the Effect environment.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * )
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -119,7 +119,7 @@ export interface Socket {
  * provided. Calling `upgrade()` without an options object uses the adapter's
  * client defaults.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -137,7 +137,7 @@ export interface Reader<A extends Uint8Array | string = Uint8Array | string> {
  * frames, allowing transports to coalesce them into a single flush. Both
  * apply the transport's native backpressure before succeeding.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -156,7 +156,7 @@ export interface Writer {
  * invalid. Missing or incomplete credentials fail the upgrade with a
  * `SocketUpgradeError` when the adapter needs an identity.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -182,7 +182,7 @@ export interface TlsUpgradeOptions {
  * `Socket` for why. A reader that leaves a pull blocked forever will hang any
  * consumer that shuts the socket down by closing that scope.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -207,7 +207,7 @@ const encoder = new TextEncoder()
  * When a pulled batch contains no string frames it is returned as-is, so
  * transports that only emit bytes (TCP) pay no per-chunk cost.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -241,7 +241,7 @@ export const readerBytes = (
  *
  * The `TextDecoder` is created once per acquisition.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -271,7 +271,7 @@ const CloseEventTypeId = "~effect/socket/Socket/CloseEvent"
  * Represents a socket close event value carrying a close code and optional
  * reason.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -279,7 +279,7 @@ export class CloseEvent {
   /**
    * Marks this value as a socket close event for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [CloseEventTypeId]: typeof CloseEventTypeId
@@ -294,7 +294,7 @@ export class CloseEvent {
   /**
    * Formats the close code and optional reason for display.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   toString() {
@@ -305,7 +305,7 @@ export class CloseEvent {
 /**
  * Returns `true` when a value is a `CloseEvent`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -314,7 +314,7 @@ export const isCloseEvent = (u: unknown): u is CloseEvent => Predicate.hasProper
 /**
  * Type-level identifier used to mark `SocketError` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -323,7 +323,7 @@ export type SocketErrorTypeId = "~effect/socket/Socket/SocketError"
 /**
  * Runtime type identifier attached to `SocketError` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -332,7 +332,7 @@ export const SocketErrorTypeId: SocketErrorTypeId = "~effect/socket/Socket/Socke
 /**
  * Returns `true` when a value is a `SocketError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -341,7 +341,7 @@ export const isSocketError = (u: unknown): u is SocketError => Predicate.hasProp
 /**
  * Typed error for failures that occur while reading from a socket.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -352,7 +352,7 @@ export class SocketReadError extends Schema.Error<SocketReadError>("effect/socke
   /**
    * Default message used for socket read failures.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override readonly message = `An error occurred during Read`
@@ -361,7 +361,7 @@ export class SocketReadError extends Schema.Error<SocketReadError>("effect/socke
 /**
  * Typed error for failures that occur while writing to a socket.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -372,7 +372,7 @@ export class SocketWriteError extends Schema.Error<SocketWriteError>("effect/soc
   /**
    * Default message used for socket write failures.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override readonly message = `An error occurred during Write`
@@ -382,7 +382,7 @@ export class SocketWriteError extends Schema.Error<SocketWriteError>("effect/soc
  * Typed error for failures that occur while opening a socket, including
  * unknown open failures and open timeouts.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -394,7 +394,7 @@ export class SocketOpenError extends Schema.Error<SocketOpenError>("effect/socke
   /**
    * Formats timeout and unknown open failures for display.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -407,7 +407,7 @@ export class SocketOpenError extends Schema.Error<SocketOpenError>("effect/socke
 /**
  * Typed error for an unsupported or failed in-place TLS upgrade.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -421,7 +421,7 @@ export class SocketUpgradeError extends Schema.Error<SocketUpgradeError>(
    * An upgrade implementation for transports that cannot wrap the connection
    * with TLS.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly unsupported: Reader["upgrade"] = () =>
@@ -444,7 +444,7 @@ export class SocketUpgradeError extends Schema.Error<SocketUpgradeError>(
  * reader with a `SocketError` wrapping this reason. Consumers that treat a
  * close as normal catch it.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -464,7 +464,7 @@ export class SocketCloseError extends Schema.Error<SocketCloseError>("effect/soc
 /**
  * Schema for all socket-specific error reasons.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -479,7 +479,7 @@ export const SocketErrorReason = Schema.Union([
 /**
  * Union of socket-specific read, write, open, upgrade, and close error reasons.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -494,7 +494,7 @@ export type SocketErrorReason =
  * Tagged error that wraps socket read, write, open, upgrade, and close failures
  * while preserving the underlying reason.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -519,7 +519,7 @@ export class SocketError extends Schema.TaggedError<SocketError>(SocketErrorType
   /**
    * Marks this value as a socket error wrapper for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [SocketErrorTypeId]: SocketErrorTypeId = SocketErrorTypeId
@@ -527,7 +527,7 @@ export class SocketError extends Schema.TaggedError<SocketError>(SocketErrorType
   /**
    * Returns `true` when the value is a `SocketError`.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is SocketError {
@@ -618,7 +618,7 @@ const toChannelWithReader = <A extends Uint8Array | string, IE>(
  * The read side is the socket's pull, so the channel is backpressured
  * end-to-end.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -636,7 +636,7 @@ export const toChannel = <IE = never>(
  * Converts a `Socket` into a bidirectional string `Channel`, decoding binary
  * frames with the optional text encoding.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -673,7 +673,7 @@ export const toChannelString: {
  * Creates a `Socket` to binary `Channel` adapter with a fixed upstream error
  * type.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -692,7 +692,7 @@ export const toChannelWith = <IE = never>() =>
  * Converts a `Socket` into a read-only binary `Stream` backed by the socket's
  * pull, so consumption is backpressured end-to-end.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -705,7 +705,7 @@ export const toStream = (self: Socket): Stream.Stream<Uint8Array, SocketError> =
  * Creates a binary socket `Channel` from the `Socket` service in the
  * environment.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -727,7 +727,7 @@ export const makeChannel = <IE = never>(): Channel.Channel<
  * The socket adapter only reads `data`, `code`, and `reason`; implementations
  * may expose additional fields.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -748,7 +748,7 @@ export interface WebSocketEvent {
  * event-target methods, but are not assignable to `globalThis.WebSocket`
  * because their event payload types are runtime-specific.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -772,7 +772,7 @@ export interface WebSocketLike {
 /**
  * Common options understood by a WebSocket client implementation.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -796,7 +796,7 @@ export interface WebSocketClientOptions {
  * Browser-compatible constructors accept a protocol string or list. Node and
  * Bun constructors additionally accept `WebSocketClientOptions`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -805,7 +805,7 @@ export type WebSocketConstructorOptions = string | Array<string> | WebSocketClie
 /**
  * Context service for the active `WebSocket` instance.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -817,7 +817,7 @@ export class WebSocket extends Context.Service<WebSocket, WebSocketLike>()(
  * Context service for constructing `WebSocket` instances from a URL and
  * optional protocols or platform-specific options.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -829,7 +829,7 @@ export class WebSocketConstructor extends Context.Service<
 /**
  * Layer that provides `WebSocketConstructor` using `globalThis.WebSocket`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -846,7 +846,7 @@ export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> 
  * Creates a `Socket` backed by a `WebSocketConstructor`, dialing the
  * WebSocket for each reader acquisition.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -890,7 +890,7 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  * bytes are exceeded (default unbounded). Message boundaries survive: each
  * pulled batch contains one element per frame.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1137,7 +1137,7 @@ const defaultHighWaterMark = 64 * 1024
  * Creates a binary `Channel` backed by a WebSocket URL, requiring a
  * `WebSocketConstructor` service.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1165,7 +1165,7 @@ export const makeWebSocketChannel = <IE = never>(
  * Layer that provides a `Socket` service backed by a WebSocket URL or URL
  * effect.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -1182,7 +1182,7 @@ export const layerWebSocket: (
  * Readable and writable stream pair used to adapt transform-style streams into
  * a `Socket`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1196,7 +1196,7 @@ export interface InputTransformStream {
  * chunks from the readable side and writing outgoing chunks to the writable
  * stream, encoding strings as UTF-8.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

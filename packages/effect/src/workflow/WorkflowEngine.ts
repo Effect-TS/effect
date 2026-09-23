@@ -7,7 +7,7 @@
  * one workflow run. The in-memory layer is useful for tests and local
  * development.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -32,7 +32,7 @@ import * as Workflow from "./Workflow.ts"
  * executing workflows and coordinating activities, durable deferreds,
  * interrupts, resumes, and clocks.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -224,7 +224,7 @@ export class WorkflowEngine extends Context.Service<
  * suspension and interruption flags, the stored failure cause, and activity
  * coordination state for a single workflow run.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -305,7 +305,7 @@ export class WorkflowInstance extends Context.Service<
 /**
  * Tracks live workflow runs so deferred completions can wake them.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -326,7 +326,7 @@ export interface DeferredState {
 /**
  * Creates deferred state shared by workflow engines.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -371,7 +371,7 @@ export const makeDeferredState = (): DeferredState => {
  * Low-level workflow engine contract that works with encoded payloads and
  * results before `makeUnsafe` adds typed schema decoding and encoding.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -453,7 +453,7 @@ export interface Encoded {
  *
  * The implementation must correctly persist, resume, and encode workflow state.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -653,7 +653,7 @@ const defaultRetrySchedule = Schedule.min([
  * This layer keeps state only in memory and is not suitable for production
  * workflows that require durability.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -7,7 +7,7 @@
  * metrics itself; it gives handlers a typed surface for the telemetry described
  * by `DevToolsSchema`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -30,7 +30,7 @@ const ResponseSchema = Schema.toCodecJson(DevToolsSchema.Response)
  * It exposes a queue of non-ping requests received from the socket and a
  * `send` function for non-pong responses.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export interface Client {
  * requests are answered with `Pong`, and all other requests are delivered
  * through the `Client` passed to the handler.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

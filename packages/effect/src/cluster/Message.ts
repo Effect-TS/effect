@@ -7,7 +7,7 @@
  * acknowledgements, and interrupts. It also provides helpers for local delivery
  * and for encoding or decoding request payloads with matching RPC schemas.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -34,7 +34,7 @@ import type { Snowflake } from "./Snowflake.ts"
  * An incoming message is either a persisted request with an encoded payload or an
  * incoming control envelope.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -47,7 +47,7 @@ export type Incoming<R extends Rpc.Any> = IncomingRequest<R> | IncomingEnvelope
  *
  * It is either a request with a decoded payload or an incoming control envelope.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -61,7 +61,7 @@ export type IncomingLocal<R extends Rpc.Any> = IncomingRequestLocal<R> | Incomin
  * Request messages keep their decoded payload and response callback, while
  * control envelopes are wrapped as incoming envelopes.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -89,7 +89,7 @@ export const incomingLocalFromOutgoing = <R extends Rpc.Any>(self: Outgoing<R>):
  * It carries the last reply that was sent and a callback for persisting encoded
  * replies.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -107,7 +107,7 @@ export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("Incomi
   /**
    * Scope that cancels interruptible, non-persisted requests when closed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly callerScope?: Scope.Scope | undefined
@@ -121,7 +121,7 @@ export class IncomingRequest<R extends Rpc.Any> extends Data.TaggedClass("Incomi
  * It includes dynamic annotations, the last sent reply, and a callback for
  * replying with decoded replies.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -133,7 +133,7 @@ export class IncomingRequestLocal<R extends Rpc.Any> extends Data.TaggedClass("I
   /**
    * Scope that cancels interruptible, non-persisted requests when closed.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly callerScope?: Scope.Scope | undefined
@@ -142,7 +142,7 @@ export class IncomingRequestLocal<R extends Rpc.Any> extends Data.TaggedClass("I
 /**
  * Represents an incoming control envelope carrying an `AckChunk` or `Interrupt`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -158,7 +158,7 @@ export class IncomingEnvelope extends Data.TaggedClass("IncomingEnvelope")<{
  *
  * An outgoing message is either an entity request or a control envelope.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -172,7 +172,7 @@ export type Outgoing<R extends Rpc.Any> = OutgoingRequest<R> | OutgoingEnvelope
  * It carries the service context used for serialization, the last received reply,
  * the reply callback, dynamic annotations, and an optional encoded request cache.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -188,7 +188,7 @@ export class OutgoingRequest<R extends Rpc.Any> extends Data.TaggedClass("Outgoi
    * Cached encoded envelope payload and the codec that produced it. The cache
    * is reused only when the requested codec is the same function.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   public encodedCache?: {
@@ -205,7 +205,7 @@ export class OutgoingRequest<R extends Rpc.Any> extends Data.TaggedClass("Outgoi
  * Use to construct an interrupt envelope for an
  * in-flight request.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -216,7 +216,7 @@ export class OutgoingEnvelope extends Data.TaggedClass("OutgoingEnvelope")<{
   /**
    * Creates an outgoing interrupt envelope for the supplied request.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static interrupt(options: {
@@ -247,7 +247,7 @@ const neverRpc = Rpc.make("Never", {
  * Control envelopes pass through unchanged. Requests are encoded with their RPC
  * payload schema, reusing the cached encoded request when available.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -277,7 +277,7 @@ export const serialize = <Rpc extends Rpc.Any>(
  *
  * Schema encoding failures are converted to `MalformedMessage`.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -297,7 +297,7 @@ export const serializeEnvelope = <Rpc extends Rpc.Any>(
  *
  * The result is a `PartialRequest` suitable for storage or transport.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
@@ -325,7 +325,7 @@ export const serializeRequest = <Rpc extends Rpc.Any>(
  * `OutgoingRequest` so the payload can be decoded with the correct RPC schema and
  * context.
  *
- * @unstable
+ * @stability unstable
  * @category serialization
  * @since 4.0.0
  */

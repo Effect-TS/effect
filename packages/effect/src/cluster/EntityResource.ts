@@ -8,7 +8,7 @@
  * restarts, a generic resource constructor, and a Kubernetes Pod resource
  * helper built on `K8sHttpClient`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -25,7 +25,7 @@ import type { Sharding } from "./Sharding.ts"
 /**
  * Type identifier used to brand `EntityResource` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export const TypeId: TypeId = "~effect/cluster/EntityResource"
 /**
  * Literal type of the `EntityResource` type identifier.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export type TypeId = "~effect/cluster/EntityResource"
  * `get` acquires or reuses the resource in the caller's scope, while `close`
  * invalidates it so its close scope can be released.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -70,7 +70,7 @@ export interface EntityResource<out A, out E = never> {
  *
  * It is not closed during restarts, due to shard movement or node shutdowns.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export class CloseScope extends Context.Service<
  * By default, the `idleTimeToLive` is infinite, meaning the resource will only
  * be released when `close` is called.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -162,7 +162,7 @@ export const make: <A, E, R>(options: {
  * The pod is created and waited on through `K8sHttpClient`, and is kept alive
  * until the resource is closed or its idle time to live expires.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

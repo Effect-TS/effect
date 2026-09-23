@@ -6,7 +6,7 @@
  * reading and updating header values, and redacts configured sensitive headers
  * when values are inspected.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -25,7 +25,7 @@ import type { Mutable } from "../Types.ts"
 /**
  * Runtime type identifier for `Headers` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export const TypeId: unique symbol = Symbol.for("~effect/http/Headers")
 /**
  * Type of the unique symbol used to brand `Headers` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -43,7 +43,7 @@ export type TypeId = typeof TypeId
 /**
  * Returns `true` if the provided value is a `Headers` value.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -56,7 +56,7 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  *
  * `Headers` values also support redaction through the `Redactable` protocol.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -107,7 +107,7 @@ const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
  * Provides an `Equivalence` instance that compares `Headers` by header names
  * and string values.
  *
- * @unstable
+ * @stability unstable
  * @category instances
  * @since 4.0.0
  */
@@ -120,7 +120,7 @@ export const Equivalence: Equ.Equivalence<Headers> = Record.makeEquivalence(Equ.
  *
  * Records may contain string values, string arrays, or `undefined`; arrays are joined with `", "`, and `undefined` values are omitted.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -131,7 +131,7 @@ export type Input =
 /**
  * An empty `Headers` collection.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -144,7 +144,7 @@ export const empty: Headers = Object.create(Proto)
  *
  * Header names are normalized to lowercase. Array values in record input are joined with `", "`, and `undefined` values are omitted.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -176,7 +176,7 @@ export const fromInput: (input?: Input) => Headers = (input) => {
  *
  * This mutates the record's prototype and does not normalize header names; callers must provide the expected lowercase keys.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -190,7 +190,7 @@ export const fromRecordUnsafe = (input: Record.ReadonlyRecord<string, string>): 
  *
  * The lookup lowercases the provided header name.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -209,7 +209,7 @@ export const has: {
  *
  * The lookup lowercases the provided header name and returns `Option.none()` when absent.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -228,7 +228,7 @@ export const get: {
  *
  * The header name is normalized to lowercase.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -251,7 +251,7 @@ export const set: {
  *
  * Input headers are normalized with `fromInput` and override existing headers with the same lowercase name.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -274,7 +274,7 @@ export const setAll: {
  *
  * Headers from the second collection override headers from the first collection with the same name.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -297,7 +297,7 @@ export const merge: {
  *
  * The provided header name is normalized to lowercase before removal.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -320,7 +320,7 @@ export const remove: {
  *
  * Each provided header name is normalized to lowercase before removal.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -345,7 +345,7 @@ export const removeMany: {
  *
  * String keys are normalized to lowercase before matching; regular expressions are tested against the stored header names.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -398,7 +398,7 @@ export const redact: {
  * regular expressions are tested against it. Use to avoid the record copy of
  * `redact` when only a membership check is needed.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -426,7 +426,7 @@ export const isRedactedName = (
  *
  * Defaults include `authorization`, `cookie`, `set-cookie`, and `x-api-key`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

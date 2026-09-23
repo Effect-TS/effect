@@ -8,7 +8,7 @@
  * request conversions and schema decoders for cookies, headers, search
  * parameters, JSON, forms, URL-encoded bodies, and multipart bodies.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "../Array.ts"
@@ -39,7 +39,7 @@ import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
@@ -50,7 +50,7 @@ export {
    * Use to configure the maximum body size accepted while reading server
    * request bodies.
    *
-   * @unstable
+   * @stability unstable
    * @category references
    * @since 4.0.0
    */
@@ -60,7 +60,7 @@ export {
 /**
  * Runtime type identifier for `HttpServerRequest` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -75,7 +75,7 @@ export const TypeId = "~effect/http/HttpServerRequest"
  * multipart accessors, WebSocket upgrade support, and a `modify` method for
  * creating adjusted request views.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -113,7 +113,7 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
  * Use to access the request currently being handled by HTTP server routes and
  * middleware.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -134,7 +134,7 @@ export const HttpServerRequest: Context.Service<HttpServerRequest, HttpServerReq
  * Each key maps to a string value, or to an array when the parameter appears more
  * than once.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -150,7 +150,7 @@ export class ParsedSearchParams extends Context.Service<
  *
  * Repeated parameters are represented as arrays in insertion order.
  *
- * @unstable
+ * @stability unstable
  * @category parsing
  * @since 4.0.0
  */
@@ -179,7 +179,7 @@ export const searchParamsFromURL = (url: URL): ReadonlyRecord<string, string | A
  * The channel reads incoming socket messages and writes byte chunks to the
  * socket, failing if the request cannot be upgraded or the socket fails.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -201,7 +201,7 @@ export const upgradeChannel = <IE = never>(): Channel.Channel<
 /**
  * Decodes a schema from the cookies of the current request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -216,7 +216,7 @@ export const schemaCookies = <A, I extends Readonly<Record<string, string | unde
 /**
  * Decodes a schema from the headers of the current request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export const schemaHeaders = <A, I extends Readonly<Record<string, string | unde
 /**
  * Decodes a schema from the parsed search parameters of the current request.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -254,7 +254,7 @@ export const schemaSearchParams = <
  * The effect can fail if the body cannot be read or parsed, or if schema decoding
  * fails.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -278,7 +278,7 @@ const isMultipart = (request: HttpServerRequest) =>
  * Multipart requests are persisted and decoded as multipart data; other form
  * requests are decoded from URL-encoded body parameters.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -307,7 +307,7 @@ export const schemaBodyForm = <A, I extends Partial<Multipart.Persisted>, RD>(
  * Reads the current request body as URL-encoded parameters and decodes them with
  * the supplied schema.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -332,7 +332,7 @@ export const schemaBodyUrlParams = <
  * The effect requires the services needed to persist multipart files, including a
  * scope, file system, and path service.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -360,7 +360,7 @@ export const schemaBodyMultipart = <A, I extends Partial<Multipart.Persisted>, R
  * URL-encoded requests, the named parameter is decoded as JSON and then decoded
  * with the supplied schema.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -407,7 +407,7 @@ export const schemaBodyFormJson = <A, RD>(
  * If the client request can be converted to an absolute URL, that URL is used as
  * the original URL.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -427,7 +427,7 @@ export const fromClientRequest = (request: HttpClientRequest.HttpClientRequest):
  * The request's current URL is stored without the scheme and host, while the
  * original Web URL remains available as `originalUrl`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -442,7 +442,7 @@ export const fromWeb = (request: globalThis.Request): HttpServerRequest =>
  * The converted request preserves the method, headers, body stream, and a URL
  * derived from the request when possible.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1043,7 +1043,7 @@ const textDecoder = new TextDecoder()
  * protocol is `https` only when `x-forwarded-proto` is `https`; invalid URLs
  * return `Option.none`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1066,7 +1066,7 @@ export const toURL = (self: HttpServerRequest): Option.Option<URL> => {
  * an absolute URL is derived from the request; invalid URLs fail with a
  * `RequestParseError`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1108,7 +1108,7 @@ export const toWebResult = (self: HttpServerRequest, options?: {
  * The current context is used when streaming the request body into the Web
  * request.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

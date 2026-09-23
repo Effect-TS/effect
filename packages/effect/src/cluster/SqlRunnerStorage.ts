@@ -7,7 +7,7 @@
  * optional table prefix, uses advisory locks for PostgreSQL and MySQL when
  * enabled, and provides constructors and layers for the storage service.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -65,7 +65,7 @@ const postgresLockNamespace = (prefix: string): number => {
  * @see {@link layer} for the default SQL-backed storage layer
  * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -779,7 +779,7 @@ export const make = Effect.fnUntraced(function*(options: {
 /**
  * Layer that provides SQL-backed `RunnerStorage` using the default table prefix.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -792,7 +792,7 @@ export const layer: Layer.Layer<
 /**
  * Layer that provides SQL-backed `RunnerStorage` using a custom table prefix.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

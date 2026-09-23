@@ -8,7 +8,7 @@
  * layer connects these responsibilities to runner communication, storage,
  * health checks, configuration, and local resources.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -84,7 +84,7 @@ import * as Snowflake from "./Snowflake.ts"
  * Use to access or provide cluster routing, shard ownership, entity
  * registration, singleton registration, and persisted-work polling.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -1836,7 +1836,7 @@ const make = Effect.gen(function*() {
  *
  * @see {@link Sharding} for the service provided by this layer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

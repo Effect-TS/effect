@@ -1,78 +1,78 @@
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Argument from "./Argument.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as CliConfig from "./CliConfig.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as CliError from "./CliError.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as CliOutput from "./CliOutput.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Command from "./Command.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Completions from "./Completions.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Flag from "./Flag.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as GlobalFlag from "./GlobalFlag.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as HelpDoc from "./HelpDoc.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Param from "./Param.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Primitive from "./Primitive.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Prompt from "./Prompt.ts"

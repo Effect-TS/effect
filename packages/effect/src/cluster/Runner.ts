@@ -5,7 +5,7 @@
  * shard groups that process participates in, and the relative weight used when
  * the sharding service distributes shards across healthy runners.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Equal from "../Equal.ts"
@@ -24,7 +24,7 @@ const TypeId = "~effect/cluster/Runner"
  * Each runner has a unique network `address`, the shard `groups` it participates
  * in, and a relative `weight` used when assigning shards across runners.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -36,7 +36,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Formatter for rendering runner values consistently.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static format = Schema.toFormatter(this)
@@ -44,7 +44,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Marks this value as a cluster runner for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -52,7 +52,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Decodes a runner from its JSON string representation.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly decodeSync = Schema.decodeSync(Schema.fromJsonString(Runner))
@@ -60,7 +60,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Encodes a runner to its JSON string representation.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static readonly encodeSync = Schema.encodeSync(Schema.fromJsonString(Runner))
@@ -68,7 +68,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Formats this runner as a string.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override toString(): string {
@@ -78,7 +78,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Formats this runner for Node.js inspection.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [NodeInspectSymbol](): string {
@@ -88,7 +88,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Compares runners by address and shard-assignment weight.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Equal.symbol](that: Runner): boolean {
@@ -98,7 +98,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
   /**
    * Computes a structural hash from the runner address and shard-assignment weight.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Hash.symbol](): number {
@@ -129,7 +129,7 @@ export class Runner extends Schema.Class<Runner>(TypeId)({
  * @see {@link Runner} for the value created by this helper
  * @see {@link RunnerAddress} for the network address accepted in `props.address`
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

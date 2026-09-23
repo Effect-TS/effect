@@ -9,7 +9,7 @@
  * decoration. This module defines the middleware service keys and helpers used
  * by `HttpApi` declarations.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 /** @effect-diagnostics floatingEffect:skip-file */
@@ -39,7 +39,7 @@ const SecurityTypeId = "~effect/http-api/HttpApiMiddleware/Security"
 /**
  * Returns `true` when an HTTP API middleware service is security middleware.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -60,7 +60,7 @@ type ErrorSchemaFromConstraint<E> = E extends ReadonlyArray<Schema.Constraint> ?
  * a new response effect that may require additional services and fail with the
  * middleware's declared error schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -80,7 +80,7 @@ export type HttpApiMiddleware<Provides, E extends ErrorConstraint, Requires> = (
  * Each property handles the credential decoded for that scheme and wraps the
  * endpoint response effect with the middleware's declared requirements and errors.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -112,7 +112,7 @@ export type HttpApiMiddlewareSecurity<
  * It receives endpoint/group metadata, the outgoing request, and a `next` function
  * for continuing the request pipeline.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -130,7 +130,7 @@ export interface HttpApiMiddlewareClient<_E, CE, R> {
 /**
  * Client-side service marker required when a middleware declares `requiredForClient`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -142,7 +142,7 @@ export interface ForClient<Id> {
 /**
  * Base service key shape for HTTP API middleware services, including provided services, declared error schemas, and client requirements.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -157,7 +157,7 @@ export interface AnyService extends Context.Key<any, any> {
 /**
  * Middleware service key shape for security middleware, including the security schemes handled by the service.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -169,7 +169,7 @@ export interface AnyServiceSecurity extends AnyService {
 /**
  * Type-level identifier carried by middleware services to track provided services, required services, errors, client errors, and client requirements.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -186,7 +186,7 @@ export interface AnyId {
 /**
  * Extracts the services provided by a middleware identifier.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -195,7 +195,7 @@ export type Provides<A> = A extends { readonly [TypeId]: { readonly provides: in
 /**
  * Extracts the services required to run a middleware implementation.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -204,7 +204,7 @@ export type Requires<A> = A extends { readonly [TypeId]: { readonly requires: in
 /**
  * Applies a middleware's service changes to an existing requirement type by removing services it provides and adding services it requires.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export type ApplyServices<A extends AnyId, R> = Exclude<R, Provides<A>> | Requir
 /**
  * Extracts the schema or schema union used for errors declared by a middleware identifier.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -223,7 +223,7 @@ export type ErrorSchema<A> = A extends { readonly [TypeId]: { readonly error: in
 /**
  * Extracts the decoded error type declared by a middleware identifier.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -232,7 +232,7 @@ export type Error<A> = ErrorSchema<A>["Type"]
 /**
  * Extracts the client-side error type for middleware that is required on generated clients.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -247,7 +247,7 @@ export type ClientError<A> = A extends {
 /**
  * Computes the client-side service marker required for middleware that must also run in generated clients.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -261,7 +261,7 @@ export type MiddlewareClient<A> = A extends {
 /**
  * Extracts the schema services required to encode errors declared by a middleware identifier.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export type ErrorServicesEncode<A> = ErrorSchema<A>["EncodingServices"]
 /**
  * Extracts the schema services required to decode errors declared by a middleware identifier.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -284,7 +284,7 @@ export type ErrorServicesDecode<A> = ErrorSchema<A>["DecodingServices"]
  * It combines a `Context.Service` class with the middleware metadata used by
  * endpoints, builders, and generated clients.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export type ServiceClass<
  * required services, provided services, typed error schemas, security schemes,
  * client errors, or a matching client middleware requirement.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -482,7 +482,7 @@ function getError(error: ErrorConstraint | undefined): ReadonlySet<Schema.Top> {
  * const result = [messages, body] // => [["Mapping Body schema error"], "CustomError"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -521,7 +521,7 @@ export const layerSchemaErrorTransform = <Id, E extends ErrorConstraint, Require
  * The layer captures the surrounding services and makes the middleware available
  * through the `ForClient` service marker used by HTTP API clients.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

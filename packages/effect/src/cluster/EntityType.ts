@@ -4,7 +4,7 @@
  * identity: they distinguish one family of entities from another before an
  * individual entity id is considered.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Schema from "../Schema.ts"
@@ -12,7 +12,7 @@ import * as Schema from "../Schema.ts"
 /**
  * Schema for branded string names that identify entity types in the cluster.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -21,7 +21,7 @@ export const EntityType = Schema.String.pipe(Schema.brand("~effect/cluster/Entit
 /**
  * Branded string type representing an entity type name.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -49,7 +49,7 @@ export type EntityType = typeof EntityType.Type
  *
  * @see {@link EntityType} for schema-based decoding, validation, and encoding of entity type names
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

@@ -7,7 +7,7 @@
  * This module only defines the data shapes used to describe help. Rendering
  * that data as terminal text is handled by `CliOutput`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -60,7 +60,7 @@ import type * as Option from "../Option.ts"
  * deployCommandHelp.usage // => "myapp deploy [options] <target>"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -110,7 +110,7 @@ export interface HelpDoc {
 /**
  * Documentation for a command usage example
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -154,7 +154,7 @@ export interface ExampleDoc {
  * const names = [verboseFlag.name, portFlag.name] // => ["verbose", "port"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -223,7 +223,7 @@ export interface FlagDoc {
  * mainCommandHelp.subcommands?.[0].commands.map((command) => command.name) // => ["deploy", "build"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -252,7 +252,7 @@ export interface SubcommandDoc {
 /**
  * Documentation for a grouped subcommand listing
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -306,7 +306,7 @@ export interface SubcommandGroupDoc {
  * copyCommandHelp.args?.map((arg) => arg.name) // => ["source", "files"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

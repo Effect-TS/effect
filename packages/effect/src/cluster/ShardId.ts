@@ -5,7 +5,7 @@
  * schema support, and conversion to and from the `group:id` string form used by
  * routing and storage boundaries.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Equal from "../Equal.ts"
@@ -21,7 +21,7 @@ const TypeId = "~effect/cluster/ShardId"
  * Identifier for a shard within a shard group, with equality, hashing, and primary
  * key behavior based on the `group:id` string form.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export interface ShardId extends Equal.Equal, Hash.Hash, PrimaryKey.PrimaryKey {
 /**
  * Returns `true` when the value carries the `ShardId` runtime marker.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -44,7 +44,7 @@ export const isShardId = (u: unknown): u is ShardId => hasProperty(u, TypeId)
  * Schema for shard identifiers encoded as `{ group, id }` objects and decoded
  * via `make`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -88,7 +88,7 @@ export const ShardId = S.declare(isShardId, {
  * @see {@link toString} for formatting an existing shard id as `group:id`
  * @see {@link fromString} for constructing a cached shard id from the `group:id` string form
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -130,7 +130,7 @@ const ShardIdProto = {
 /**
  * Formats a shard identifier as `group:id`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -148,7 +148,7 @@ export const toString = (shardId: {
  * Throws an `Error` when the string has no colon separator or the id segment is
  * not numeric.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -176,7 +176,7 @@ export function fromStringEncoded(s: string): {
  * Throws an `Error` when the string has no colon separator or the id segment is
  * not numeric.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */

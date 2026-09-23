@@ -7,7 +7,7 @@
  * manage entities, runners, singletons, and sharding update these gauges while
  * the cluster is running.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Metric from "../Metric.ts"
@@ -34,7 +34,7 @@ import * as Metric from "../Metric.ts"
  * @see {@link singletons} for singleton process counts on the current runner
  * @see {@link shards} for shard ownership on the current runner
  *
- * @unstable
+ * @stability unstable
  * @category metrics
  * @since 4.0.0
  */
@@ -44,7 +44,7 @@ export const entities = Metric.gauge("effect_cluster_entities", { bigint: true }
  * Creates a gauge tracking the number of singleton processes currently running on the
  * current runner.
  *
- * @unstable
+ * @stability unstable
  * @category metrics
  * @since 4.0.0
  */
@@ -63,7 +63,7 @@ export const singletons = Metric.gauge("effect_cluster_singletons", { bigint: tr
  *
  * @see {@link runnersHealthy} for the healthy-runner subset
  *
- * @unstable
+ * @stability unstable
  * @category metrics
  * @since 4.0.0
  */
@@ -87,7 +87,7 @@ export const runners = Metric.gauge("effect_cluster_runners", { bigint: true })
  *
  * @see {@link runners} for the total registered-runner gauge
  *
- * @unstable
+ * @stability unstable
  * @category metrics
  * @since 4.0.0
  */
@@ -111,7 +111,7 @@ export const runnersHealthy = Metric.gauge("effect_cluster_runners_healthy", { b
  * This is runner-local, not a cluster-wide shard total. Aggregate per-runner
  * values carefully.
  *
- * @unstable
+ * @stability unstable
  * @category metrics
  * @since 4.0.0
  */

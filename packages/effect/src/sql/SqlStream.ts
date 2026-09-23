@@ -9,7 +9,7 @@
  * `Connection.executeStream`, so callers can process large result sets
  * incrementally instead of materializing every row in memory.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -22,7 +22,7 @@ import * as Stream from "../Stream.ts"
  * Creates a stream from a callback-style producer with pause and resume
  * callbacks that are triggered when the internal queue applies backpressure.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

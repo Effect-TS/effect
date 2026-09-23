@@ -6,7 +6,7 @@
  * runtimes, and Node.js environments where `globalThis.fetch` is available, or
  * anywhere a compatible fetch function can be supplied.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -25,7 +25,7 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
  *
  * Defaults to `globalThis.fetch`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
  *
  * Request-specific method, headers, body, and abort signal are supplied by the client when a request is executed.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -122,7 +122,7 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
  * @see {@link Fetch} for supplying the fetch implementation used by this layer
  * @see {@link RequestInit} for default `RequestInit` options applied before request-specific fields
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

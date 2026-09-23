@@ -1,7 +1,7 @@
 /**
  * Low-level parser for HTTP `multipart/form-data` bodies.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as ByteSize from "../ByteSize.ts"
@@ -11,7 +11,7 @@ import * as internal from "./MultipartParser/internal/multipart.ts"
 /**
  * Metadata describing a multipart form part.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -28,7 +28,7 @@ export interface PartInfo {
 /**
  * An error produced while parsing a multipart body.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -58,7 +58,7 @@ export type MultipartError =
 /**
  * Shared multipart parser configuration.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -74,7 +74,7 @@ export type BaseConfig = {
 /**
  * Multipart parser configuration with event callbacks.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -88,7 +88,7 @@ export type Config = BaseConfig & {
 /**
  * A streaming multipart parser.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export interface Parser {
 /**
  * Creates a streaming multipart parser.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ export const make: (options: Config) => Parser = internal.make
 /**
  * Determines whether a multipart part should be treated as a file.
  *
- * @unstable
+ * @stability unstable
  * @category utilities
  * @since 4.0.0
  */
@@ -118,7 +118,7 @@ export const defaultIsFile: (info: PartInfo) => boolean = internal.defaultIsFile
 /**
  * Decodes a multipart field using its declared character set.
  *
- * @unstable
+ * @stability unstable
  * @category utilities
  * @since 4.0.0
  */

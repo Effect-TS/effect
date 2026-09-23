@@ -6,7 +6,7 @@
  * cached content with `If-None-Match`, or protect writes with preconditions such
  * as `If-Match`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -19,7 +19,7 @@ import type * as Body from "./HttpBody.ts"
 /**
  * Represents an HTTP entity tag, either weak or strong.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -32,7 +32,7 @@ export type Etag = Weak | Strong
  *
  * The `value` is the raw tag value without the surrounding quotes or `W/` prefix.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export interface Weak {
  *
  * The `value` is the raw tag value without the surrounding quotes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -60,7 +60,7 @@ export interface Strong {
 /**
  * Formats an `Etag` as an HTTP header value, including quotes and the `W/` prefix for weak tags.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -76,7 +76,7 @@ export const toString = (self: Etag): string => {
 /**
  * Service for generating ETags from filesystem file information or Web `File`-like metadata.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -115,7 +115,7 @@ const fromFileWeb = (file: Body.HttpBody.FileLike) => {
  * @see {@link layerWeak} for weak metadata-derived ETags when byte-for-byte identity is not required
  * @see {@link Generator} for the service provided by this layer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -133,7 +133,7 @@ export const layer: Layer.Layer<Generator> = Layer.succeed(
 /**
  * Layer that provides a `Generator` which produces weak ETags from file size and modification time metadata.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

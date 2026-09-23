@@ -6,7 +6,7 @@
  * streamed responses and annotates interruptions that came from a remote client
  * closing or cancelling a request.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -24,7 +24,7 @@ const StreamSchemaTypeId = "~effect/rpc/RpcSchema/StreamSchema"
  * Returns `true` when a schema is an RPC stream schema created by
  * `RpcSchema.Stream`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ export function getStreamSchemas(schema: Schema.Constraint): Option.Option<{
  * A schema marker for RPC streaming responses, storing the success element
  * schema and stream error schema used for encoding and decoding stream chunks.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -80,7 +80,7 @@ const schema = Schema.declare(Stream_.isStream)
  * Creates an RPC stream schema from a stream element success schema and stream
  * error schema.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -92,7 +92,7 @@ export function Stream<A extends Schema.Constraint, E extends Schema.Constraint>
  * Annotation that marks interruptions that originate from an RPC client
  * abort.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

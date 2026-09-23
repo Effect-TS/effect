@@ -7,7 +7,7 @@
  * handler, encodes the result, supports preliminary streamed results, and
  * applies the tool's failure mode.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -62,7 +62,7 @@ const TypeId = "~effect/ai/Toolkit" as const
  * Object.keys((await Effect.runPromise(ready)).tools) // => ["SearchDocs", "SummarizeText"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -110,7 +110,7 @@ export interface Toolkit<in out Tools extends Record<string, Tool.Any>> extends
 /**
  * Context provided to tool handlers during execution.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -133,7 +133,7 @@ export interface HandlerContext<Tool extends Tool.Any> {
 /**
  * Represents any `Toolkit` instance, used for generic constraints.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -146,7 +146,7 @@ export interface Any {
  * A utility type which can be used to extract the tool definitions from a
  * toolkit.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -156,7 +156,7 @@ export type Tools<T> = T extends Toolkit<infer Tools> ? Tools : never
  * A utility type which transforms either a record or an array of tools into
  * a record where keys are tool names and values are the tool instances.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -173,7 +173,7 @@ export type ToolsByName<Tools> = Tools extends Record<string, Tool.Any> ?
  * Handlers can return either the tool's custom failure type, an `AiErrorReason`
  * (which will be wrapped in `AiError`), or a full `AiError`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -191,7 +191,7 @@ export type HandlersFrom<Tools extends Record<string, Tool.Any>> = {
 /**
  * A toolkit instance with registered handlers ready for tool execution.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -241,7 +241,7 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
  * A utility type which can be used to extract the tools from a toolkit with
  * handlers.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -287,7 +287,7 @@ export type WithHandlerTools<T> = T extends WithHandler<infer Tools> ? Tools : n
  * await Effect.runPromise(program) // => "handler"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -522,7 +522,7 @@ const resolveInput = <Tools extends ReadonlyArray<Tool.Any>>(
  * Use when you need an empty starting point for building toolkits or a default
  * toolkit value that can be extended with `merge`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -566,7 +566,7 @@ export const empty: Toolkit<{}> = makeProto({})
  * Object.keys((await Effect.runPromise(ready)).tools) // => ["GetCurrentTime", "get_weather"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -577,7 +577,7 @@ export const make = <Tools extends ReadonlyArray<Tool.Any>>(
 /**
  * A utility type which flattens a record type for improved IDE display.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -586,7 +586,7 @@ export type SimplifyRecord<T> = { [K in keyof T]: T[K] } & {}
 /**
  * A utility type which merges a union of tool records into a single record.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -601,7 +601,7 @@ export type MergeRecords<U> = {
  * A utility type which merges the tools from multiple toolkits into a single
  * record.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -645,7 +645,7 @@ export type MergedTools<Toolkits extends ReadonlyArray<Any>> = SimplifyRecord<
  * Object.keys((await Effect.runPromise(ready)).tools) // => ["add", "subtract", "get_time", "get_weather"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

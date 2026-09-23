@@ -1,7 +1,7 @@
 /**
  * Low-level byte search used by the multipart parser.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as internal from "./internal/search.ts"
@@ -9,7 +9,7 @@ import * as internal from "./internal/search.ts"
 /**
  * Creates an incremental byte search for a string boundary.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

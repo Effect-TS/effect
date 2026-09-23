@@ -6,7 +6,7 @@
  * native `URLSearchParams`, then updated, serialized, converted to a `URL`, or
  * decoded with schemas.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -33,7 +33,7 @@ const TypeId = "~effect/http/UrlParams"
  * Parameters are stored as ordered string key-value pairs and can contain multiple
  * values for the same key.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export interface UrlParams extends Pipeable, Inspectable, Iterable<readonly [str
 /**
  * Returns `true` when a value is a `UrlParams` instance.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -59,7 +59,7 @@ export const isUrlParams = (u: unknown): u is UrlParams => hasProperty(u, TypeId
  * Values can be provided as a coercible record, an iterable of key-value pairs, or
  * a native `URLSearchParams` value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -80,14 +80,14 @@ type CoercibleRecordInput = CoercibleRecord & {
  *
  * `undefined` values are skipped when constructing from input.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
 export type Coercible = string | number | bigint | boolean | null | undefined
 
 /**
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -104,7 +104,7 @@ type CoercibleRecordField<A> = A extends Coercible ? A
  * Nested records are rendered using bracket notation, and arrays produce repeated
  * parameters.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -139,7 +139,7 @@ const Proto = {
  *
  * The input pairs are used as-is and are not coerced or normalized.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -157,7 +157,7 @@ export const make = (params: ReadonlyArray<readonly [string, string]>): UrlParam
  * Primitive values are converted to strings, arrays produce repeated parameters,
  * nested records use bracket notation, and `undefined` values are omitted.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -210,7 +210,7 @@ const fromInputNested = (input: Input): Array<[string | Array<string>, any]> => 
  * Two values are equivalent when they contain the same key-value pairs in the same
  * order.
  *
- * @unstable
+ * @stability unstable
  * @category instances
  * @since 4.0.0
  */
@@ -225,7 +225,7 @@ const arrayEquivalence = Arr.makeEquivalence(
 /**
  * An empty `UrlParams` value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -238,7 +238,7 @@ export const empty: UrlParams = make([])
  *
  * Returns an empty array when the key is absent.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -268,7 +268,7 @@ export const getAll: {
  *
  * Returns `Option.none` when the key is absent.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -295,7 +295,7 @@ export const getFirst: {
  *
  * Returns `Option.none` when the key is absent.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -315,7 +315,7 @@ export const getLast: {
  * Existing values for the same key are removed, and the new value is appended to
  * the end.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -337,7 +337,7 @@ export const set: {
  *
  * The result is wrapped in a new `UrlParams` value.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -357,7 +357,7 @@ export const transform: {
  * Keys present in the input replace existing values for those keys, while
  * unmentioned existing parameters are preserved.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -380,7 +380,7 @@ export const setAll: {
 /**
  * Appends a query parameter value without removing existing values for the key.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -400,7 +400,7 @@ export const append: {
  *
  * Existing parameters are preserved.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -412,7 +412,7 @@ export const appendAll: {
 /**
  * Removes all query parameter values for the specified key.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -424,7 +424,7 @@ export const remove: {
 /**
  * Serializes `UrlParams` to a URL query string without a leading question mark.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -449,7 +449,7 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
  * UrlParams.toRecord(urlParams) // => { a: "1", b: "true", c: "string", e: ["1", "2", "3"] }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -478,7 +478,7 @@ export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyA
  * Keys with one value map to a string, and keys with multiple values map to a
  * non-empty readonly array of strings.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

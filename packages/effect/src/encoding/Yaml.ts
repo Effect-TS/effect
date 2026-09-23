@@ -8,7 +8,7 @@
  * multiline flow collections, explicit complex keys, tag/directive processing,
  * recursive aliases, and document streams. Mapping keys are JavaScript strings.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -591,7 +591,7 @@ class YamlParser {
  * The core YAML 1.2 scalar schema is used, so booleans, nulls, and numbers are
  * decoded while date-like values remain strings.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */

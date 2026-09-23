@@ -6,7 +6,7 @@
  * {@link fromLiteral} to obtain a status code from a literal name instead of
  * remembering raw numbers.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -78,7 +78,7 @@ const codeByLiteral = {
 /**
  * Union of literal names for the known HTTP status codes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -96,7 +96,7 @@ export type Literal = keyof typeof codeByLiteral
  * HttpStatus.fromLiteral("Conflict") // => 409
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

@@ -8,7 +8,7 @@
  * layers, a `Config` description for loading values, and helpers for normalizing
  * assigned shard groups.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "../Config.ts"
@@ -24,7 +24,7 @@ import { RunnerAddress } from "./RunnerAddress.ts"
 /**
  * Represents the configuration for the `Sharding` service on a given runner.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -172,7 +172,7 @@ const defaultRunnerAddress = RunnerAddress.make({ host: "localhost", port: 34431
  * shard group, shard count, mailbox settings, polling intervals, and remote
  * serialization simulation.
  *
- * @unstable
+ * @stability unstable
  * @category defaults
  * @since 4.0.0
  */
@@ -228,7 +228,7 @@ export const defaults: ShardingConfig["Service"] = {
  * @see {@link layerDefaults} for a layer with no overrides
  * @see {@link layerFromEnv} for loading configuration from environment variables before applying explicit overrides
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -238,7 +238,7 @@ export const layer = (options?: Partial<ShardingConfig["Service"]>): Layer.Layer
 /**
  * Layer that provides the default `ShardingConfig` values.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -248,7 +248,7 @@ export const layerDefaults: Layer.Layer<ShardingConfig> = layer()
  * Describes how to load `ShardingConfig` values, applying the same
  * defaults used by the in-memory `defaults` object.
  *
- * @unstable
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -366,7 +366,7 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
  * Effect that loads `ShardingConfig` from environment variables using the
  * constant-case config provider.
  *
- * @unstable
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -383,7 +383,7 @@ export const configFromEnv = config.pipe(
  * Layer that loads `ShardingConfig` from environment variables and, when options
  * are provided, overlays those options on top of the loaded values.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -399,7 +399,7 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Service"]> | unde
  * Normalizes the provided `ShardingConfig` to calculate the `available` and
  * `assigned` shard groups.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

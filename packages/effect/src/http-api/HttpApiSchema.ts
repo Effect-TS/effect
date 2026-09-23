@@ -7,7 +7,7 @@
  * can choose response status codes, content types, body codecs, multipart
  * handling, and no-body response behavior.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Sse from "../encoding/Sse.ts"
@@ -55,7 +55,7 @@ export interface WithHeadersAnnotation {
 /**
  * HTTP API body encoding metadata used by payloads and responses.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export type Encoding = PayloadEncoding | ResponseEncoding
 /**
  * HTTP API request payload encoding metadata.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export type PayloadEncoding =
 /**
  * HTTP API response body encoding metadata.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ const StreamSchemaTypeId = "~effect/http-api/HttpApiSchema/Stream"
 /**
  * Common HTTP status code literals accepted by {@link status}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -112,7 +112,7 @@ export type StatusLiteral = HttpStatus.Literal
  * schema. You can pass either a numeric status code (for example, `201`) or a
  * common literal name (for example, `"Created"`).
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -120,13 +120,13 @@ export function status(code: number): {
   <S extends Schema.Top>(self: S): S["Rebuild"]
 }
 /**
- * @unstable
+ * @stability unstable
  */
 export function status(code: StatusLiteral): {
   <S extends Schema.Top>(self: S): S["Rebuild"]
 }
 /**
- * @unstable
+ * @stability unstable
  */
 export function status(code: number | StatusLiteral) {
   const statusCode = typeof code === "string" ? HttpStatus.fromLiteral(code) : code
@@ -139,7 +139,7 @@ export function status(code: number | StatusLiteral) {
  *
  * @see {@link NoContent} for the predefined 204 no content schema.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -148,7 +148,7 @@ export const Empty = (code: number): Schema.Void => Schema.Void.pipe(status(code
 /**
  * Type of the `NoContent` schema, a void schema annotated with HTTP status code 204.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -157,7 +157,7 @@ export interface NoContent extends Schema.Void {}
 /**
  * Schema for empty HTTP responses with status code 204.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -166,7 +166,7 @@ export const NoContent: NoContent = Empty(204)
 /**
  * Type of the `Created` schema, a void schema annotated with HTTP status code 201.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -175,7 +175,7 @@ export interface Created extends Schema.Void {}
 /**
  * Schema for empty HTTP responses with status code 201.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -184,7 +184,7 @@ export const Created: Created = Empty(201)
 /**
  * Type of the `Accepted` schema, a void schema annotated with HTTP status code 202.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -193,7 +193,7 @@ export interface Accepted extends Schema.Void {}
 /**
  * Schema for empty HTTP responses with status code 202.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -202,7 +202,7 @@ export const Accepted: Accepted = Empty(202)
 /**
  * Schema type returned by `asNoContent`, encoding as `void` while decoding to the original schema type.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -219,7 +219,7 @@ export interface asNoContent<S extends Schema.Constraint> extends Schema.decodeT
  * @see {@link NoContent} for a void schema with the status code 204.
  * @see {@link Empty} for creating a void schema with a specific status code.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -244,7 +244,7 @@ type StreamMode = "sse" | "uint8array"
 /**
  * Mode describing whether an SSE stream emits full events or raw data values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export type StreamSseMode = "events" | "data"
  * application event. Endpoint construction rejects event schemas that declare
  * the reserved name statically.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -305,7 +305,7 @@ export interface StreamSse<
 /**
  * Event schema produced when {@link StreamSse} is constructed from a JSON data schema.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -335,7 +335,7 @@ export interface SseEventFromData<Data extends Schema.Constraint> extends
  * server, client, and OpenAPI integrations. It is intentionally separate from
  * the buffered `asUint8Array` response encoding.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -359,7 +359,7 @@ export interface StreamUint8Array extends
 /**
  * Schema for a streaming HTTP API success response.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -370,7 +370,7 @@ const streamSchema = Schema.declare(Stream.isStream)
 /**
  * Creates a Server-Sent Events streaming success response schema.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -412,7 +412,7 @@ export const StreamSse: {
 /**
  * Creates a streaming `Uint8Array` success response schema.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -456,7 +456,7 @@ function defaultStreamContentType(mode: StreamMode): string {
 /**
  * Runtime brand key used to mark `WithHeaders` response schemas.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -465,7 +465,7 @@ export const WithHeadersTypeId = "~effect/http-api/HttpApiSchema/WithHeaders"
 /**
  * Type-level brand identifier used by `WithHeaders`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -474,7 +474,7 @@ export type WithHeadersTypeId = typeof WithHeadersTypeId
 /**
  * Runtime brand key used to mark `WithHeaders` response values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -483,7 +483,7 @@ export const WithHeadersValueTypeId = "~effect/http-api/HttpApiSchema/WithHeader
 /**
  * Type-level brand identifier used by `WithHeaders` response values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -516,7 +516,7 @@ export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
  * - `Rebuild` preserves the brand and both parts, so `.annotate` keeps the
  *   wrapper intact.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -545,7 +545,7 @@ export interface WithHeaders<S extends Schema.Top, H extends Schema.Top> extends
  * `body` is the inner success value. For stream success schemas it is the
  * `Stream` itself, so headers are decided before the body starts streaming.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -590,7 +590,7 @@ const withHeadersValueSchema = Schema.declare(isWithHeadersValue)
  * response.headers // => { "x-total-count": 1 }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -599,14 +599,14 @@ export function WithHeaders<S extends Schema.Top, H extends Schema.Struct.Fields
   headers: H
 ): WithHeaders<S, Schema.Struct<H>>
 /**
- * @unstable
+ * @stability unstable
  */
 export function WithHeaders<S extends Schema.Top, H extends Schema.Top>(
   schema: S,
   headers: H
 ): WithHeaders<S, H>
 /**
- * @unstable
+ * @stability unstable
  */
 export function WithHeaders(
   schema: Schema.Top,
@@ -634,7 +634,7 @@ export function WithHeaders(
  * See {@link WithHeaders} for an example that constructs a schema and its
  * corresponding response value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -664,7 +664,7 @@ export const withHeaders = <A, H>(options: {
  * HttpApiSchema.isWithHeaders(Schema.String) // => false
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -690,7 +690,7 @@ export function rebuildWithHeaders(
  * Schema type returned by `encodeToWithHeaders`, encoding as a `{ body, headers }`
  * pair while decoding to the source schema type.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -758,7 +758,7 @@ export interface encodeToWithHeaders<
  * @see {@link WithHeaders} for the structural wrapper recommended for success
  * responses, including streams.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -798,7 +798,7 @@ export function encodeToWithHeaders<
 /**
  * Runtime brand key used to mark schemas as buffered multipart payloads.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -807,7 +807,7 @@ export const MultipartTypeId = "~effect/http-api/HttpApiSchema/Multipart"
 /**
  * Type-level brand identifier used by `asMultipart`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -816,7 +816,7 @@ export type MultipartTypeId = typeof MultipartTypeId
 /**
  * Schema type returned by `asMultipart` for buffered multipart payloads.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -827,7 +827,7 @@ export interface asMultipart<S extends Schema.Top> extends Schema.brand<S["Rebui
  *
  * @see {@link asMultipartStream} for a multipart stream payload.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -846,7 +846,7 @@ export function asMultipart(options?: Multipart_.withLimits.Options) {
 /**
  * Runtime brand key used to mark schemas as streaming multipart payloads.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -855,7 +855,7 @@ export const MultipartStreamTypeId = "~effect/http-api/HttpApiSchema/MultipartSt
 /**
  * Type-level brand identifier used by `asMultipartStream`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -864,7 +864,7 @@ export type MultipartStreamTypeId = typeof MultipartStreamTypeId
 /**
  * Schema type returned by `asMultipartStream` for streaming multipart payloads.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -875,7 +875,7 @@ export interface asMultipartStream<S extends Schema.Top> extends Schema.brand<S[
  *
  * @see {@link asMultipart} for a buffered multipart payload.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -921,7 +921,7 @@ function defaultContentType(_tag: Encoding["_tag"]): string {
 /**
  * Marks a schema as a JSON payload / response.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -938,7 +938,7 @@ export function asJson(options?: {
  *
  * The schema's encoded side must be a record of strings.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -957,7 +957,7 @@ export function asFormUrlEncoded(options?: {
  *
  * The schema encoded side must be a string.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -975,7 +975,7 @@ export function asText(options?: {
  *
  * The schema encoded side must be a `Uint8Array`.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -993,7 +993,7 @@ export function asUint8Array(options?: {
  * The check succeeds for direct `void` schemas and schemas whose encoded or
  * transformation target is `void`.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */

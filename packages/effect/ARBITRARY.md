@@ -14,7 +14,7 @@ Effect divides the work into three parts:
   it as an input generator with built-in shrinking.
 - `it.prop`, `it.effect.prop`, or `Arbitrary.checkEffect` runs the rule against generated inputs.
 
-The API is available from `effect/Arbitrary` or as the `Arbitrary` export from `effect`. It is marked `@unstable`:
+The API is available from `effect/Arbitrary` or as the `Arbitrary` export from `effect`. It is marked `@stability unstable`:
 names, result types, generation policies, and replay format may still change before this module is promoted.
 
 ## Writing a First Property

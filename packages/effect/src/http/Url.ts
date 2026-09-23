@@ -6,7 +6,7 @@
  * changing credentials, host, path, protocol, query, or hash parts. Query
  * strings can also be read or updated through `UrlParams`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -19,7 +19,7 @@ import * as UrlParams from "./UrlParams.ts"
 /**
  * Error returned when constructing a `URL` fails.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export class UrlError extends Data.TaggedError("UrlError")<{
  *
  * Returns a `Result` that fails with `UrlError` if the URL cannot be constructed.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ const baseUrl = (): string | undefined => {
  * Result.map(relativeParsed, (url) => url.toString()) // => Result.succeed("https://example.com/relative-path")
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -140,7 +140,7 @@ export const fromString: {
  * mutatedUrl.toString() // => "https://user:pass@example.com/"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */
@@ -168,7 +168,7 @@ const immutableURLSetter = <P extends keyof URL, A = never>(property: P): {
 /**
  * Updates the hash fragment of the URL.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -180,7 +180,7 @@ export const setHash: {
 /**
  * Updates the host (domain and port) of the URL.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -192,7 +192,7 @@ export const setHost: {
 /**
  * Updates the domain of the URL without modifying the port.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -204,7 +204,7 @@ export const setHostname: {
 /**
  * Replaces the entire URL string.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -216,7 +216,7 @@ export const setHref: {
 /**
  * Updates the password used for authentication.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -233,7 +233,7 @@ export const setPassword: {
 /**
  * Updates the path of the URL.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -245,7 +245,7 @@ export const setPathname: {
 /**
  * Updates the port of the URL.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -257,7 +257,7 @@ export const setPort: {
 /**
  * Updates the protocol (e.g., `http`, `https`).
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -269,7 +269,7 @@ export const setProtocol: {
 /**
  * Updates the query string of the URL.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -281,7 +281,7 @@ export const setSearch: {
 /**
  * Updates the username used for authentication.
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -315,7 +315,7 @@ export const setUsername: {
  * updatedUrl.toString() // => "https://example.com/?key=value"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category setters
  * @since 4.0.0
  */
@@ -349,7 +349,7 @@ export const setUrlParams: {
  * UrlParams.toString(params) // => "foo=bar"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -377,7 +377,7 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  * changedUrl.toString() // => "https://example.com/?foo=bar&key=value"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */

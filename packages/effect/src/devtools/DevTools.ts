@@ -7,7 +7,7 @@
  * and metric snapshots to an external devtools process. Lower-level socket
  * protocol details live in `DevToolsClient`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Layer from "../Layer.ts"
@@ -17,7 +17,7 @@ import * as DevToolsClient from "./DevToolsClient.ts"
 /**
  * Layer that installs the devtools tracer using an existing `Socket`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -27,7 +27,7 @@ export const layerSocket: Layer.Layer<never, never, Socket.Socket> = DevToolsCli
  * Layer that installs the devtools tracer over a WebSocket connection to the
  * specified URL, defaulting to `ws://localhost:34437`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export const layerWebSocket = (
  * @see {@link layerWebSocket} for installing the devtools tracer with an explicit `WebSocketConstructor` requirement
  * @see {@link layerSocket} for installing the devtools tracer over an existing `Socket` transport
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

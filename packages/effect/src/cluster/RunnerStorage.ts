@@ -7,7 +7,7 @@
  * string-encoded backend interface, an adapter from encoded storage to the typed
  * service, and an in-memory implementation for tests and local use.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { isArrayNonEmpty, type NonEmptyArray } from "../Array.ts"
@@ -25,7 +25,7 @@ import * as ShardId from "./ShardId.ts"
  * Represents a generic interface to the persistent storage required by the
  * cluster.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -86,7 +86,7 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
  * String-encoded runner storage interface used by adapters that persist runner
  * addresses, runners, machine ids, and shard ids outside the in-memory model.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -148,7 +148,7 @@ export interface Encoded {
  * runner addresses, runners, machine ids, and shard ids between typed values and
  * their string or numeric storage forms.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -201,7 +201,7 @@ export const makeEncoded = (encoded: Encoded) =>
  *
  * Runner health and shard acquisition are kept only in process memory.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -238,7 +238,7 @@ export const makeMemory = Effect.gen(function*() {
 /**
  * Layer that provides the in-memory `RunnerStorage` implementation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

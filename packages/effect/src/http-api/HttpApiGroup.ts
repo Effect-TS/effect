@@ -8,7 +8,7 @@
  * groups, adding endpoints, prefixing paths, applying middleware, annotating
  * groups or endpoints, and deriving builder or client types.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -27,7 +27,7 @@ const TypeId = "~effect/http-api/HttpApiGroup"
  * Returns `true` when a value is an `HttpApiGroup`, narrowing the value to the
  * group interface.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ type EndpointMap<Endpoints extends HttpApiEndpoint.Constraint> = {
  *
  * Endpoint implementations can be provided later with `HttpApiBuilder.group`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -139,7 +139,7 @@ export interface HttpApiGroup<
  * id and the group identifier so the relationship between an API and its
  * implemented groups is checked at compile time.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -158,7 +158,7 @@ export interface Service<ApiId extends string, Identifier extends string> {
  * When given an API id and a group or union of groups, this type maps each group
  * to the `Service` identity that must be provided by `HttpApiBuilder.group`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -170,7 +170,7 @@ export type ToService<ApiId extends string, Group extends Constraint> = Group ex
  * A widened `HttpApiGroup` type used when the concrete group identifier,
  * endpoints, and top-level flag are not needed.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -185,7 +185,7 @@ export interface Constraint {
  * A widened group type that preserves concrete runtime properties such as
  * identifier, key, top-level status, endpoints, and annotations.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -194,7 +194,7 @@ export interface Top extends HttpApiGroup<string, HttpApiEndpoint.Top, boolean> 
 /**
  * Selects the group with the specified identifier from a union of groups.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -203,7 +203,7 @@ export type WithIdentifier<Group, Identifier extends string> = Extract<Group, { 
 /**
  * Extracts the identifier literal from an `HttpApiGroup`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -212,7 +212,7 @@ export type Identifier<Group> = Group extends Constraint ? Group["identifier"] :
 /**
  * Extracts the endpoint union contained in an `HttpApiGroup`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -224,7 +224,7 @@ export type Endpoints<Group> = Group extends HttpApiGroup<infer _Identifier, inf
  * Computes the services required to encode error responses for every endpoint in a
  * group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -234,7 +234,7 @@ export type ErrorServicesEncode<Group> = HttpApiEndpoint.ErrorServicesEncode<End
  * Computes the services required to decode error responses for every endpoint in a
  * group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -243,7 +243,7 @@ export type ErrorServicesDecode<Group> = HttpApiEndpoint.ErrorServicesDecode<End
 /**
  * Computes the middleware error union for every endpoint in a group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -253,7 +253,7 @@ export type MiddlewareError<Group> = HttpApiEndpoint.MiddlewareError<Endpoints<G
  * Computes the services provided by middleware attached to any endpoint in a
  * group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -262,7 +262,7 @@ export type MiddlewareProvides<Group> = HttpApiEndpoint.MiddlewareProvides<Endpo
 /**
  * Computes the client-side middleware services required by endpoints in a group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -271,7 +271,7 @@ export type MiddlewareClient<Group> = HttpApiEndpoint.MiddlewareClient<Endpoints
 /**
  * Extracts the runtime services required by middleware attached to the endpoints in an `HttpApiGroup`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -280,7 +280,7 @@ export type MiddlewareServices<Group> = HttpApiEndpoint.MiddlewareServices<Endpo
 /**
  * Extracts the endpoint union from the group with the specified identifier.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -291,7 +291,7 @@ export type EndpointsWithIdentifier<Group extends Constraint, Identifier extends
 /**
  * Computes the schema encoding and decoding services required by clients for all endpoints in a group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -302,7 +302,7 @@ export type ClientServices<Group> = Group extends HttpApiGroup<infer _Identifier
 /**
  * Returns the type of a group after adding the supplied path prefix to each endpoint in the group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -314,7 +314,7 @@ export type AddPrefix<Group, Prefix extends PathInput> = Group extends
 /**
  * Returns the type of a group after applying a middleware identifier to every endpoint in the group.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -408,7 +408,7 @@ const makeProto = <
  * and set `topLevel` when the generated client should expose endpoint methods
  * directly instead of nesting them under the group identifier.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

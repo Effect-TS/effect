@@ -9,7 +9,7 @@
  * reporting from a fixed start time and delta reporting from the previous
  * export.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -60,7 +60,7 @@ import { OtlpSerialization } from "./OtlpSerialization.ts"
  * const result = [Layer.isLayer(metricsLayer), Layer.isLayer(cumulativeLayer)] // => [true, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -76,7 +76,7 @@ export type AggregationTemporality = "cumulative" | "delta"
  * successful export advances the previous-export state, so frequent successful
  * flushes narrow the delta aggregation windows.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -474,7 +474,7 @@ export const make: (options: {
 /**
  * Layer that starts the OTLP metrics exporter created by `make`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -495,7 +495,7 @@ export const layer = (options: {
 /**
  * Creates an OTLP metrics layer from OpenTelemetry configuration.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -548,7 +548,7 @@ export const layerFromConfig = (options?: {
 /**
  * OTLP metrics payload serialized by `OtlpMetrics`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

@@ -7,7 +7,7 @@
  * ping-based checker, and a Kubernetes-based checker that looks at pod readiness
  * for the runner host.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -28,7 +28,7 @@ import * as Runners from "./Runners.ts"
  * still be processing messages. If a Runner is not responsive, then its
  * associated shards can and will be re-assigned to a different Runner.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -47,7 +47,7 @@ export class RunnerHealth extends Context.Service<
  * Use when you need a runner-health layer for tests or local development where
  * active health checks are unnecessary.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -60,7 +60,7 @@ export const layerNoop = Layer.succeed(RunnerHealth, {
  * failed pings on a short schedule and treating a successful ping within the
  * timeout as healthy.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -86,7 +86,7 @@ export const makePing: Effect.Effect<
 /**
  * Layer that pings runners directly to check whether they are healthy.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -104,7 +104,7 @@ export const layerPing: Layer.Layer<
  *
  * If the Kubernetes API check fails, the runner is treated as healthy.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -136,7 +136,7 @@ export const makeK8s = Effect.fnUntraced(function*(options?: {
  *
  * If the Kubernetes API check fails, the runner is treated as healthy.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

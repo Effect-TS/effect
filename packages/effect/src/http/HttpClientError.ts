@@ -7,7 +7,7 @@
  * failures uniformly while still matching on the reason `_tag` for retry
  * policy, logging, metrics, and user-facing messages.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "../Data.ts"
@@ -21,7 +21,7 @@ const TypeId = "~effect/http/HttpClientError"
 /**
  * Returns `true` when a value is an `HttpClientError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -30,7 +30,7 @@ export const isHttpClientError = (u: unknown): u is HttpClientError => hasProper
 /**
  * Error wrapper for HTTP client failures, exposing the failed request and the optional response through its `reason`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export class HttpClientError extends Data.TaggedError("HttpClientError")<{
   /**
    * Marks this value as an HTTP client error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -61,7 +61,7 @@ export class HttpClientError extends Data.TaggedError("HttpClientError")<{
   /**
    * HTTP request associated with the client failure.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get request(): HttpClientRequest.HttpClientRequest {
@@ -71,7 +71,7 @@ export class HttpClientError extends Data.TaggedError("HttpClientError")<{
   /**
    * HTTP response associated with the client failure, when one was received.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get response(): ClientResponse.HttpClientResponse | undefined {
@@ -91,7 +91,7 @@ const formatMessage = (reason: string, description: string | undefined, info: st
 /**
  * Error describing transport-level failures that occur while sending an HTTP request.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -103,7 +103,7 @@ export class TransportError extends Data.TaggedError("TransportError")<{
   /**
    * Formats the request method and URL for transport error messages.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get methodAndUrl() {
@@ -113,7 +113,7 @@ export class TransportError extends Data.TaggedError("TransportError")<{
   /**
    * Builds the transport error message from the optional description and request details.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -124,7 +124,7 @@ export class TransportError extends Data.TaggedError("TransportError")<{
 /**
  * Error describing failures while encoding an HTTP request body.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -136,7 +136,7 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
   /**
    * Formats the request method and URL for request encoding error messages.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get methodAndUrl() {
@@ -146,7 +146,7 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
   /**
    * Builds the request encoding error message from the optional description and request details.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -157,7 +157,7 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
 /**
  * Error describing failures while constructing a URL from an HTTP client request.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -169,7 +169,7 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
   /**
    * Formats the request method and URL for invalid URL error messages.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get methodAndUrl() {
@@ -179,7 +179,7 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
   /**
    * Builds the invalid URL error message from the optional description and request details.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -190,7 +190,7 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
 /**
  * Response error for HTTP responses rejected because of their status code.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -203,7 +203,7 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
   /**
    * Formats the request method and URL for status code error messages.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get methodAndUrl() {
@@ -213,7 +213,7 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
   /**
    * Builds the status code error message from the response status, optional description, and request details.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -225,7 +225,7 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
 /**
  * Response error for failures while decoding an HTTP response body.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -238,7 +238,7 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
   /**
    * Formats the request method and URL for response decoding error messages.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get methodAndUrl() {
@@ -248,7 +248,7 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
   /**
    * Builds the response decoding error message from the response status, optional description, and request details.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -260,7 +260,7 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
 /**
  * Response error for operations that expected a response body but received an empty body.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -273,7 +273,7 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
   /**
    * Formats the request method and URL for empty response body error messages.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get methodAndUrl() {
@@ -283,7 +283,7 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
   /**
    * Builds the empty body error message from the response status, optional description, and request details.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -295,7 +295,7 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
 /**
  * Union of HTTP client errors that occur before a response is available.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -304,7 +304,7 @@ export type RequestError = TransportError | EncodeError | InvalidUrlError
 /**
  * Union of HTTP client errors that include an HTTP response.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -313,7 +313,7 @@ export type ResponseError = StatusCodeError | DecodeError | EmptyBodyError
 /**
  * Union of all specific failure reasons carried by `HttpClientError`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -323,7 +323,7 @@ export type HttpClientErrorReason = RequestError | ResponseError
  * Schema for serializable HTTP client errors, preserving the specific error kind
  * and cause.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -344,7 +344,7 @@ export class HttpClientErrorSchema extends Schema.Error<HttpClientErrorSchema>(T
   /**
    * Builds the serializable schema representation for an HTTP client error.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static fromHttpClientError(error: HttpClientError): HttpClientErrorSchema {

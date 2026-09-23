@@ -7,7 +7,7 @@
  * client-only socket runner layer for processes that need cluster clients
  * without starting a runner server or receiving shard assignments.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -61,7 +61,7 @@ const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E,
  * @see {@link layerClientOnly} for the socket runner layer that only provides clients and does not receive shard assignments
  * @see {@link Runners.RpcClientProtocol} for the outgoing runner client protocol required by this layer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -89,7 +89,7 @@ export const layer: Layer.Layer<
  * Use to join a socket-based cluster as a client-only participant that can send
  * messages without hosting shards.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

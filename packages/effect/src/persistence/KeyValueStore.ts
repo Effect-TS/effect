@@ -8,7 +8,7 @@
  * storage, error values, and layers for memory, filesystem, Web Storage, and
  * SQL-backed stores.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -33,7 +33,7 @@ const TypeId = "~effect/persistence/KeyValueStore" as const
 /**
  * Effectful key/value store service for string and binary values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -104,7 +104,7 @@ export interface KeyValueStore {
  * Primitive operations are required, while helpers such as `has`, `isEmpty`,
  * and `modify` can be supplied to override the defaults.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -144,7 +144,7 @@ export type MakeOptions = Partial<KeyValueStore> & {
  * Implementation callbacks for adapting a string-only backing store into a
  * `KeyValueStore`.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -181,7 +181,7 @@ const ErrorTypeId = "~effect/persistence/KeyValueStore/KeyValueStoreError" as co
  * Error raised by key/value store operations, including the failed method,
  * optional key, message, and cause.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -194,7 +194,7 @@ export class KeyValueStoreError extends Data.TaggedError("KeyValueStoreError")<{
   /**
    * Marks this value as a key-value store error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ErrorTypeId]: typeof ErrorTypeId = ErrorTypeId
@@ -208,7 +208,7 @@ export class KeyValueStoreError extends Data.TaggedError("KeyValueStoreError")<{
  * Use to access or provide the persistence store used for lightweight durable
  * state.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -225,7 +225,7 @@ export const KeyValueStore: Context.Service<
  * Default implementations are derived for `has`, `isEmpty`, `modify`, and
  * `modifyUint8Array` unless they are provided in the options.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export const make = (options: MakeOptions): KeyValueStore =>
  * `Uint8Array` values are stored as base64 strings. `getUint8Array` decodes
  * base64 values and falls back to UTF-8 encoding for non-base64 strings.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -300,7 +300,7 @@ export const makeStringOnly = (
  * Returns a view of a `KeyValueStore` that prepends the given prefix to every
  * key.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -321,7 +321,7 @@ export const prefix: {
 /**
  * Provides a process-local in-memory `KeyValueStore` backed by a `Map`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -359,7 +359,7 @@ export const layerMemory: Layer.Layer<KeyValueStore> = Layer.sync(KeyValueStore)
  * `clear` removes the directory recursively, so it must not be shared with
  * unrelated data.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -481,7 +481,7 @@ export const layerFileSystem = (
 /**
  * Options for configuring the SQL-backed `KeyValueStore` layer.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -502,7 +502,7 @@ export interface LayerSqlOptions {
  * The layer creates the configured table if it does not exist and stores both
  * string and binary values through the current `SqlClient`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -715,7 +715,7 @@ const SchemaStoreTypeId = "~effect/persistence/KeyValueStore/SchemaStore" as con
 /**
  * Schema-aware view of a `KeyValueStore` that stores values as encoded JSON.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -777,7 +777,7 @@ export interface SchemaStore<S extends Schema.Constraint> {
 /**
  * Adapts a `KeyValueStore` into a `SchemaStore` using the schema's JSON codec.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -835,7 +835,7 @@ export const toSchemaStore = <S extends Schema.Constraint>(self: KeyValueStore, 
  * This layer uses the Web Storage API:
  * https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

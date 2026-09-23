@@ -4,7 +4,7 @@
  * hashing, Node.js inspection, and a stable primary key formatted from the host
  * and port.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Equal from "../Equal.ts"
@@ -24,7 +24,7 @@ const TypeId = "~effect/cluster/RunnerAddress"
  * Use to represent the host and port that identify a runner in cluster routing,
  * registration, and health checks.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -35,7 +35,7 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
   /**
    * Marks this value as a cluster runner address for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId;
@@ -43,7 +43,7 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
   /**
    * Compares runner addresses by host and port.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Equal.symbol](that: RunnerAddress): boolean {
@@ -53,7 +53,7 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
   /**
    * Computes a structural hash from the host and port.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Hash.symbol]() {
@@ -63,7 +63,7 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
   /**
    * Stable primary key used to identify the runner address.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [PrimaryKey.symbol](): string {
@@ -73,7 +73,7 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
   /**
    * Formats the runner address with its host and port.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override toString(): string {
@@ -83,7 +83,7 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
   /**
    * Formats the runner address for Node.js inspection.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [NodeInspectSymbol](): string {
@@ -113,7 +113,7 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
  *
  * @see {@link RunnerAddress} for the constructed address type and its equality, hashing, primary-key, and formatting behavior
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

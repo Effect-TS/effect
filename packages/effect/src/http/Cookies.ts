@@ -7,7 +7,7 @@
  * `Set-Cookie` headers, and provides helpers for adding, removing, merging, and
  * expiring cookies.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "../Data.ts"
@@ -27,7 +27,7 @@ const TypeId = "~effect/http/Cookies"
 /**
  * Returns `true` when a value is a `Cookies` collection.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -36,7 +36,7 @@ export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, 
 /**
  * Immutable collection of HTTP cookies keyed by cookie name.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ const CookieTypeId = "~effect/http/Cookies/Cookie"
  * HTTP cookie value with its decoded value, encoded value, and optional cookie
  * attributes such as domain, path, expiration, security, and same-site settings.
  *
- * @unstable
+ * @stability unstable
  * @category cookies
  * @since 4.0.0
  */
@@ -76,7 +76,7 @@ export interface Cookie extends Inspectable.Inspectable {
 /**
  * Returns `true` when a value is a `Cookie`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -88,7 +88,7 @@ const CookieErrorTypeId = "~effect/http/Cookies/CookieError"
  * Error reason describing why cookie construction failed, such as invalid name,
  * value, domain, path, or infinite max-age.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ export class CookiesErrorReason extends Data.Error<{
  *
  * Inspect `reason` to determine the specific validation failure.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -119,7 +119,7 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
   /**
    * Creates a cookie error from a reason tag and optional cause.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static fromReason(reason: CookiesError["reason"]["_tag"], cause?: unknown): CookiesError {
@@ -129,7 +129,7 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
   /**
    * Marks this value as a cookie validation error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [CookieErrorTypeId] = CookieErrorTypeId
@@ -137,7 +137,7 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
   /**
    * Uses the concrete cookie error reason as the public message.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -148,7 +148,7 @@ export class CookiesError extends Data.TaggedError("CookiesError")<{
 /**
  * Checks whether a value is a `CookiesError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -171,7 +171,7 @@ const Proto: Omit<Cookies, "cookies"> = {
 /**
  * Creates a `Cookies` collection from an existing readonly record of cookies keyed by cookie name.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -184,7 +184,7 @@ export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie
 /**
  * Create a Cookies object from an Iterable
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -199,7 +199,7 @@ export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
 /**
  * Create a Cookies object from a set of Set-Cookie headers
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -350,7 +350,7 @@ function parseSetCookie(header: string): Cookie | undefined {
 /**
  * An empty Cookies object
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -359,7 +359,7 @@ export const empty: Cookies = fromIterable([])
 /**
  * Returns `true` when the `Cookies` collection contains no cookies.
  *
- * @unstable
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -392,7 +392,7 @@ const CookieProto = {
  *
  * Returns a `CookiesError` in the `Result` failure channel when validation fails.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -440,7 +440,7 @@ function validateCookie(
 /**
  * Create a new cookie, throwing an error if invalid
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -453,7 +453,7 @@ export const makeCookieUnsafe = (
 /**
  * Adds a cookie to a Cookies object
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -473,7 +473,7 @@ export const setCookie: {
 /**
  * Adds multiple cookies to a Cookies object
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -491,7 +491,7 @@ export const setAllCookie: {
 /**
  * Combines two Cookies objects, removing duplicates from the first
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -507,7 +507,7 @@ export const merge: {
 /**
  * Removes a cookie by name
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -519,7 +519,7 @@ export const remove: {
 /**
  * Gets a cookie from a Cookies object safely.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -539,7 +539,7 @@ export const get: {
  *
  * Returns `Option.none()` when the cookie is not present.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -558,7 +558,7 @@ export const getValue: {
  *
  * The cookie fields are validated first; invalid input returns a `CookiesError` in the `Result` failure channel.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -586,7 +586,7 @@ export const set: {
 /**
  * Creates and adds a cookie by name and value, throwing if the cookie fields are invalid.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -619,7 +619,7 @@ export const setUnsafe: {
  *
  * Returns a `CookiesError` in the `Result` failure channel when the name or options are invalid.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -650,7 +650,7 @@ export const expireCookie: {
 /**
  * Adds an expired cookie to a Cookies object, throwing an error if invalid
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -685,7 +685,7 @@ export const expireCookieUnsafe: {
  *
  * If any tuple is invalid, returns the first `CookiesError` and leaves the original collection unchanged.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -718,7 +718,7 @@ export const setAll: {
 /**
  * Adds multiple cookies to a Cookies object, throwing an error if invalid
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -740,7 +740,7 @@ export const setAllUnsafe: {
  *
  * Adapted from https://github.com/fastify/fastify-cookie under MIT License
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -821,7 +821,7 @@ export function serializeCookie(self: Cookie): string {
 /**
  * Serializes a `Cookies` object into a Cookie header.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -831,7 +831,7 @@ export const toCookieHeader = (self: Cookies): string =>
 /**
  * Converts a `Cookies` collection to a record of decoded cookie values keyed by cookie name.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -848,7 +848,7 @@ export const toRecord = (self: Cookies): Record<string, string> => {
 /**
  * Serializes a `Cookies` collection into an array of `Set-Cookie` header values.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -861,7 +861,7 @@ export const toSetCookieHeaders = (self: Cookies): Array<string> => Object.value
  *
  * Adapted from https://github.com/fastify/fastify-cookie under MIT License
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */

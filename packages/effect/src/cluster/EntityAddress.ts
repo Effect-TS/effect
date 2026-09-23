@@ -4,7 +4,7 @@
  * messages, persisted envelopes, workflow executions, and entity managers can
  * agree on the same routing target.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Equal from "../Equal.ts"
@@ -19,7 +19,7 @@ const TypeId = "~effect/cluster/EntityAddress"
 /**
  * Represents the unique address of an entity within the cluster.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -31,7 +31,7 @@ export class EntityAddress extends Schema.Class<EntityAddress>(TypeId)({
   /**
    * Marks this value as a cluster entity address for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -39,7 +39,7 @@ export class EntityAddress extends Schema.Class<EntityAddress>(TypeId)({
   /**
    * Formats the entity type, entity id, and shard id as a readable address.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override toString() {
@@ -49,7 +49,7 @@ export class EntityAddress extends Schema.Class<EntityAddress>(TypeId)({
   /**
    * Compares entity addresses by entity type, entity id, and shard id.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Equal.symbol](that: EntityAddress): boolean {
@@ -60,7 +60,7 @@ export class EntityAddress extends Schema.Class<EntityAddress>(TypeId)({
   /**
    * Computes a structural hash from the entity type, entity id, and shard id.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Hash.symbol]() {
@@ -89,7 +89,7 @@ export class EntityAddress extends Schema.Class<EntityAddress>(TypeId)({
  * @see {@link EntityAddress} for the equality, hashing, and string formatting behavior of constructed addresses
  * @see {@link ShardId} for the shard identifier included in the address
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

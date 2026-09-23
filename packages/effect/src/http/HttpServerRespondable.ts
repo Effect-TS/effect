@@ -6,7 +6,7 @@
  * This module detects those values and converts them to `HttpServerResponse`
  * values, with fallback handling for schema errors and missing values.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -20,7 +20,7 @@ import * as Response from "./HttpServerResponse.ts"
  * Protocol key used by values that can render themselves as
  * `HttpServerResponse` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export const symbol = "~effect/http/HttpServerRespondable"
  * Implement the protocol method to describe the response that should be sent for
  * the value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export interface Respondable {
 /**
  * Returns `true` when the supplied value implements the `Respondable` protocol.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ const notFound = Response.empty({ status: 404 })
  * If the value is already an HTTP server response it is returned directly; errors
  * from the response conversion are converted to defects.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -82,7 +82,7 @@ export const toResponse = (self: Respondable): Effect.Effect<HttpServerResponse>
  * `HttpServerResponse` and `Respondable` values are used directly, schema errors
  * become `400` responses, and no-such-element errors become `404` responses.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -108,7 +108,7 @@ export const toResponseOrElse = (u: unknown, orElse: HttpServerResponse): Effect
  *
  * Only `HttpServerResponse` and `Respondable` values receive special handling.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */

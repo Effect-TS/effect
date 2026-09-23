@@ -1,7 +1,7 @@
 /**
  * Low-level parser for multipart header blocks.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as internal from "./internal/headers.ts"
@@ -9,7 +9,7 @@ import * as internal from "./internal/headers.ts"
 /**
  * The reason a multipart header block could not be parsed.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -22,7 +22,7 @@ export type FailureReason =
 /**
  * Indicates that the parser needs more input.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -33,7 +33,7 @@ export interface Continue {
 /**
  * A multipart header parsing failure.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -46,7 +46,7 @@ export interface Failure {
 /**
  * A successfully parsed multipart header block.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -59,7 +59,7 @@ export interface Headers {
 /**
  * The result of parsing a multipart header block.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -68,7 +68,7 @@ export type ReturnValue = Continue | Failure | Headers
 /**
  * Creates an incremental multipart header parser.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

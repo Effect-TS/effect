@@ -6,7 +6,7 @@
  * requirements from any effectful interpolations, which lets response helpers
  * assemble dynamic text without losing type information.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -17,7 +17,7 @@ import * as Stream from "../Stream.ts"
 /**
  * Primitive value that can be interpolated into an HTTP template.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -31,7 +31,7 @@ export type PrimitiveValue = string | number | bigint | boolean | null | undefin
  * Arrays are rendered by converting each element to a string and concatenating the
  * results.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -45,7 +45,7 @@ export type Primitive = PrimitiveValue | ReadonlyArray<PrimitiveValue>
  * Interpolations can be primitive values, optional primitive values, or effects
  * that produce primitive values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export type Interpolated =
  * In addition to normal interpolations, stream interpolations can emit primitive
  * values over time.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -71,7 +71,7 @@ export type InterpolatedWithStream = Interpolated | Stream.Stream<Primitive, any
 /**
  * Namespace containing type-level helpers for template interpolations.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Interpolated {
@@ -82,7 +82,7 @@ export declare namespace Interpolated {
    *
    * Plain values and `Option` interpolations contribute no context.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -99,7 +99,7 @@ export declare namespace Interpolated {
    *
    * Plain values and `Option` interpolations contribute no error type.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -118,7 +118,7 @@ export declare namespace Interpolated {
  * Primitive and `Option` interpolations are rendered immediately. Effect
  * interpolations are evaluated and rendered before the final string is produced.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -180,7 +180,7 @@ export function make<A extends ReadonlyArray<Interpolated>>(
  * evaluated as stream chunks, and stream interpolations are flattened into the
  * output.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

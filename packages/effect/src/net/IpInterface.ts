@@ -1,7 +1,7 @@
 /**
  * IPv4 and IPv6 interface addresses that preserve host bits alongside a prefix length.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Equal from "../Equal.ts"
@@ -19,7 +19,7 @@ const TypeId = "~effect/net/IpInterface" as const
  * that computes different address bits must widen to the IPv4 or IPv6 family,
  * or validate the resulting address before treating it as refined.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -35,7 +35,7 @@ export interface IpInterface<out A extends NetAddress.IpAddress = NetAddress.IpA
 /**
  * An IPv4 host address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -44,7 +44,7 @@ export type Ipv4Interface = IpInterface<NetAddress.Ipv4Address>
 /**
  * An IPv6 host address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export type Ipv6Interface = IpInterface<NetAddress.Ipv6Address>
 /**
  * Companion types for parsing IP interface addresses.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace IpInterface {
@@ -61,7 +61,7 @@ export declare namespace IpInterface {
    * Controls whether the input must contain an explicit prefix. Prefixes are
    * optional by default and use the address width when omitted.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -73,7 +73,7 @@ export declare namespace IpInterface {
 /**
  * Returns `true` when a value is an IPv4 interface address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export const isIpv4Interface = (u: unknown): u is Ipv4Interface =>
 /**
  * Returns `true` when a value is an IPv6 interface address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -93,7 +93,7 @@ export const isIpv6Interface = (u: unknown): u is Ipv6Interface =>
 /**
  * Returns `true` when a value is an IP interface address.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ const interfaceError = (input: unknown, message: string): Result.Result<never, N
 /**
  * Creates an interface address while preserving all address bits.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -171,7 +171,7 @@ const parseAddressWithPrefix = (
  *
  * A missing prefix defaults to 32. Use `prefix: "required"` to require one.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -193,7 +193,7 @@ export const ipv4FromString = (
  *
  * A missing prefix defaults to 128. Use `prefix: "required"` to require one.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -216,7 +216,7 @@ export const ipv6FromString = (
  * A missing prefix defaults to the address width. Use `prefix: "required"` to
  * require one.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -234,7 +234,7 @@ export const fromString = (
 /**
  * Creates a trusted interface address, throwing when its prefix length is invalid.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -244,7 +244,7 @@ export const makeUnsafe = <A extends NetAddress.IpAddress>(address: A, prefixLen
 /**
  * Parses a trusted interface address, throwing on failure.
  *
- * @unstable
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -254,7 +254,7 @@ export const fromStringUnsafe = (input: string, options?: IpInterface.ParseOptio
 /**
  * Formats an interface address using canonical address text and its decimal prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */

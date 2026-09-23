@@ -8,7 +8,7 @@
  * non-empty row list, the first row, an optional first row, or discarding the
  * SQL result for side-effect-only statements.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -28,7 +28,7 @@ import * as Schema from "../Schema.ts"
  *
  * @see {@link findNonEmpty} for queries where an empty result is a failure
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -61,7 +61,7 @@ export const findAll = <Req extends Schema.Constraint, Res extends Schema.Constr
  *
  * @see {@link findAll} for queries where an empty result should return an empty array
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -99,13 +99,13 @@ const void_ = <Req extends Schema.Constraint, E, R>(
     )
 }
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
    * Runs a sql query with a request schema and discard the result.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -116,7 +116,7 @@ export {
  * Builds a query function that encodes the request, decodes the first result
  * row, and fails with `NoSuchElementError` when no rows are returned.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -150,7 +150,7 @@ export const findOne = <Req extends Schema.Constraint, Res extends Schema.Constr
  * Builds a query function that encodes the request, decodes the first result row
  * as `Option.some`, and returns `Option.none` when no rows are returned.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

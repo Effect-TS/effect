@@ -7,7 +7,7 @@
  * variadic arguments, schema validation, transformations, defaults, config
  * fallbacks, and prompts for missing values.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Config from "../Config.ts"
@@ -33,7 +33,7 @@ import type * as Primitive from "./Primitive.ts"
  *
  * For booleans, use `Flag.Boolean` or `Argument.Literals` with "true" and "false".
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -55,7 +55,7 @@ export interface Argument<A> extends Param.Param<typeof Param.argumentKind, A> {
  * filename.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ export const String = (name: string): Argument<string> => Param.String(Param.arg
  * count.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -92,7 +92,7 @@ export const Int = (name: string): Argument<number> => Param.Int(Param.argumentK
  * const kinds = [inputFile.kind, outputFile.kind] // => ["argument", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -112,7 +112,7 @@ export const File = (name: string, options?: {
  * workspace.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -132,7 +132,7 @@ export const Directory = (name: string, options?: {
  * ratio.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -150,7 +150,7 @@ export const Finite = (name: string): Argument<number> => Param.Finite(Param.arg
  * startDate.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -168,7 +168,7 @@ export const Date = (name: string): Argument<globalThis.Date> => Param.Date(Para
  * environment.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -189,7 +189,7 @@ export const Literals = <const Choices extends ReadonlyArray<string>>(
  * configPath.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -210,7 +210,7 @@ export const Path = (name: string, options?: {
  * secret.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -228,7 +228,7 @@ export const Redacted = (name: string): Argument<Redacted_.Redacted<string>> => 
  * config.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -252,7 +252,7 @@ export const FileText = (name: string): Argument<string> => Param.FileText(Param
  * config.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -279,7 +279,7 @@ export const FileParse = (
  * config.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -301,7 +301,7 @@ export const FileSchema = <A>(
  * noArg.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -323,7 +323,7 @@ export const Never: Argument<never> = Param.Never(Param.argumentKind)
  * optionalVersion.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -343,7 +343,7 @@ export const optional = <A>(arg: Argument<A>): Argument<Option.Option<A>> => Par
  * filename.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -364,7 +364,7 @@ export const withDescription: {
  * port.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -393,7 +393,7 @@ export const withDefault: {
  * repository.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -416,7 +416,7 @@ export const withFallbackConfig: {
  * filename.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -449,7 +449,7 @@ export const withFallbackPrompt: {
  * const kinds = [anyFiles.kind, atLeastOneFile.kind, limitedFiles.kind] // => ["argument", "argument", "argument"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -475,7 +475,7 @@ export const variadic: {
  * port.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -530,7 +530,7 @@ export const map: {
  * value // => "notes.txt"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -588,7 +588,7 @@ export const mapEffect: {
  * value // => { enabled: true }
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -616,7 +616,7 @@ export const mapTryCatch: {
  * files.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -637,7 +637,7 @@ export const atLeast: {
  * files.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -658,7 +658,7 @@ export const atMost: {
  * files.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -682,7 +682,7 @@ export const between: {
  * input.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -712,7 +712,7 @@ export const withSchema: {
  * logLevel.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -744,7 +744,7 @@ export const ChoiceWithValue = <const Choices extends ReadonlyArray<readonly [st
  * port.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category metadata
  * @since 4.0.0
  */
@@ -770,7 +770,7 @@ export const withMetavar: {
  * positiveInt.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -802,7 +802,7 @@ export const filter: {
  * positiveInt.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -829,7 +829,7 @@ export const filterMap: {
  * value.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -853,7 +853,7 @@ export const orElse: {
  * source.kind // => "argument"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

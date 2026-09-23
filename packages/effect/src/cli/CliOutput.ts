@@ -7,7 +7,7 @@
  * for custom formatters, and the default formatter with configurable color
  * support.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -47,7 +47,7 @@ import type { HelpDoc } from "./HelpDoc.ts"
  * await Effect.runPromise(program) // => "myapp (1.0.0)"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -90,7 +90,7 @@ export interface Formatter {
    * const sectionsPresent = [helpText.includes("DESCRIPTION"), helpText.includes("FLAGS")] // => [true, true]
    * ```
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly formatHelpDoc: (doc: HelpDoc) => string
@@ -114,7 +114,7 @@ export interface Formatter {
    * errorMessage // => "Unknown flag '--invalid'"
    * ```
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly formatCliError: (error: CliError.CliError) => string
@@ -144,7 +144,7 @@ export interface Formatter {
    * plainError // => "\nERROR\n  Value must be positive"
    * ```
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly formatError: (error: CliError.CliError) => string
@@ -170,7 +170,7 @@ export interface Formatter {
    * plainVersion // => "my-awesome-tool v1.2.3"
    * ```
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly formatVersion: (name: string, version: string) => string
@@ -198,7 +198,7 @@ export interface Formatter {
    * const optionsPresent = [output.includes("--foo"), output.includes("--required")] // => [true, true]
    * ```
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly formatErrors: (errors: ReadonlyArray<CliError.CliError>) => string
@@ -228,7 +228,7 @@ export interface Formatter {
  * )) // => "my-cli v2.1.0"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -261,7 +261,7 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  * await Effect.runPromise(program) // => "my-cli v1.0.0"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -301,7 +301,7 @@ const escapeControlCharacters = (text: string): string =>
  * autoFormatter.formatVersion("my-tool", "1.2.3").includes("1.2.3") // => true
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

@@ -8,7 +8,7 @@
  * frames; its row shapes are presence masks instead of field id lists. Encoded
  * results are arena-backed views; see {@link toCodec} for ownership details.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -45,7 +45,7 @@ import * as SchemaTransformation from "../SchemaTransformation.ts"
  * uses positional layouts and an 8-byte layout hash for smaller frames, but
  * requires peers to use the same schema definition.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export interface Options {
   /**
    * Uses a compact positional layout with a schema fingerprint.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly fingerprint?: boolean | undefined
@@ -62,7 +62,7 @@ export interface Options {
 /**
  * The codec type returned by {@link toCodec}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -105,7 +105,7 @@ const directFingerprintCodecCache = new WeakMap<Schema.Constraint, toCodec<any>>
  * const person = Schema.decodeUnknownSync(codec)(bytes)
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -263,7 +263,7 @@ function concatFrames(frames: ReadonlyArray<Uint8Array<ArrayBuffer>>): Uint8Arra
 /**
  * A stateful frame parser for concatenated {@link toCodec} outputs.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -271,28 +271,28 @@ export interface Parser<T> {
   /**
    * Feeds another chunk into the parser and returns any completed values.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   feed(chunk: Uint8Array): Effect.Effect<ReadonlyArray<T>, Schema.SchemaError>
   /**
    * Feeds another chunk into the parser synchronously.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   feedSync(chunk: Uint8Array): ReadonlyArray<T>
   /**
    * Finishes parsing and fails if an incomplete frame remains.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   end: Effect.Effect<void, Schema.SchemaError>
   /**
    * Finishes parsing synchronously and throws for an incomplete frame.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   endSync(): void
@@ -306,7 +306,7 @@ export interface Parser<T> {
  * Values completed before a failure remain observable. After a failure, the
  * parser rejects further calls. Use `maxFrameSize` to limit buffered frames.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -335,7 +335,7 @@ export function parser<S extends Schema.Constraint>(
 /**
  * Options for the connection-scoped pair, {@link encoder} and {@link parser}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -351,7 +351,7 @@ export interface StreamOptions {
    * Both ends have to set it. A schema the binary layer does not fully
    * validate on its own cannot use it, and asking for it throws.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly dictionary?: boolean | undefined
@@ -370,7 +370,7 @@ function requireDictionary(exact: boolean, options: StreamOptions | undefined): 
  * dictionary that the matching {@link parser} rebuilds as it reads them, so the
  * two have to be created from the same schema and the same options.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -418,7 +418,7 @@ export function encoder<S extends Schema.Constraint>(
 /**
  * The writer returned by {@link encoder}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -636,7 +636,7 @@ function makeParser<T>(
  * `Schema.SchemaError`, matching {@link toCodec}. `maxFrameSize` only applies
  * to {@link decode} and is ignored here.
  *
- * @unstable
+ * @stability unstable
  * @category channels
  * @since 4.0.0
  */
@@ -694,7 +694,7 @@ export const encode = <S extends Schema.Constraint>(
  * framed value, which supports async transformations and decoding services.
  * Failures are `Schema.SchemaError`, matching {@link toCodec}.
  *
- * @unstable
+ * @stability unstable
  * @category channels
  * @since 4.0.0
  */
@@ -803,7 +803,7 @@ export const decode = <S extends Schema.Constraint>(
  * Values sent to the wrapped channel are encoded with `inputSchema` as binary
  * frames; bytes received from it are decoded with `outputSchema`.
  *
- * @unstable
+ * @stability unstable
  * @category channels
  * @since 4.0.0
  */
@@ -908,7 +908,7 @@ export const duplex: {
  * })
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category annotations
  * @since 4.0.0
  */

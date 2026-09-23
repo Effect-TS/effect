@@ -9,7 +9,7 @@
  * with lazy `decodeEffect` and constructor fallback; JIT, AOT, and manual
  * installations may supply `makeEffect` and optional synchronous fast paths.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Effect from "../Effect.ts"
@@ -21,7 +21,7 @@ import type * as SchemaIssue from "../SchemaIssue.ts"
 /**
  * The result returned by {@link Decode} or {@link Make} when the fast path fails.
  *
- * @unstable
+ * @stability unstable
  * @category symbols
  * @since 4.0.0
  */
@@ -33,7 +33,7 @@ export const invalid = CompilerRegistry.invalid
  * is produced. Parents omit optional fields or report missing required keys;
  * public root adapters reject it rather than returning it to callers.
  *
- * @unstable
+ * @stability unstable
  * @category symbols
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ export const missing = InternalParser.missing
  * It must honor the supplied parse options; public `Schema.is` and
  * `SchemaParser.is` use the defaults.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -79,7 +79,7 @@ export interface Is {
  * the detailed decoder and discard its failure: decoding would run `decodeEffect`
  * again after `invalid`. User checks may themselves construct issues.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -103,7 +103,7 @@ export interface Decode {
  * replayed safely. The operation must honor the supplied parse options and
  * propagate {@link missing} when no value is produced.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -122,7 +122,7 @@ export interface Make {
  * after `decode` returns `invalid`. The implementation can also be interpreted;
  * invoking `decodeEffect` does not imply a switch from compiled to interpreted parsing.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -133,7 +133,7 @@ export interface DecodeEffect {
 /**
  * A complete constructor that returns detailed Schema issues on failure.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -171,7 +171,7 @@ export interface MakeEffect {
  * Runtime options apply to construction too; Union candidate selection preserves
  * the constructor's conservative handling of absent discriminants.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -209,7 +209,7 @@ export interface CompiledDecoder {
  * the old operation into the new entry. An installed `make` can still handle
  * synchronous successes. Already captured constructors keep their entry.
  *
- * @unstable
+ * @stability unstable
  * @category registry
  * @since 4.0.0
  */

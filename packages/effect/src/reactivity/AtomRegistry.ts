@@ -7,7 +7,7 @@
  * different values in different registries. Serializable atom values can also be
  * preloaded before the first read.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -29,7 +29,7 @@ import type * as Atom from "./Atom.ts"
 /**
  * The literal type used to identify `AtomRegistry` services and values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -38,7 +38,7 @@ export type TypeId = "~effect/reactivity/AtomRegistry"
 /**
  * The runtime type id used to identify `AtomRegistry` services and values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -47,7 +47,7 @@ export const TypeId: TypeId = "~effect/reactivity/AtomRegistry"
 /**
  * Returns `true` when the value has the `AtomRegistry` type id.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export const isAtomRegistry = (u: unknown): u is AtomRegistry => hasProperty(u, 
  * It also manages scheduler configuration, serializable preloaded values, and node
  * addition/removal callbacks.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -95,7 +95,7 @@ export interface AtomRegistry {
  * Nodes expose the current value, parent and child dependency links, listener set,
  * and current lifecycle state.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -117,7 +117,7 @@ export interface Node<A> {
  * configure timeout bucket resolution, and set a default idle time-to-live for
  * unused atoms.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -144,7 +144,7 @@ export const make = (
  * Use to access or provide the registry that stores atom values,
  * dependencies, subscriptions, and disposal state for a reactive lifetime.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -158,7 +158,7 @@ export const AtomRegistry = Context.Service<AtomRegistry>(TypeId)
  *
  * The registry is disposed when the layer scope is finalized.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -184,7 +184,7 @@ export const layerOptions = (options?: {
 /**
  * The default layer that provides a fresh `AtomRegistry`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -202,7 +202,7 @@ export const layer: Layer.Layer<AtomRegistry> = layerOptions()
  * The stream emits the current value immediately, emits subsequent changes, and
  * unsubscribes from the registry when the stream scope closes.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -233,7 +233,7 @@ export const toStream: {
  * Initial results are skipped, failures fail the stream with their cause, and
  * duplicate stream values are dropped with `Stream.changes`.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -260,7 +260,7 @@ export const toStreamResult: {
  * The effect waits for the result to leave `Initial`, and also waits through
  * waiting results when `suspendOnWaiting` is enabled.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -301,7 +301,7 @@ export const getResult: {
  * The atom is subscribed with a no-op listener and the subscription is released
  * when the scope finalizer runs.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

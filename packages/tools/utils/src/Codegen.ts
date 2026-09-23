@@ -5,7 +5,7 @@
  * find files annotated with `@barrel` comments and rewrite the generated export
  * section beneath each annotation. The generator resolves matching modules
  * relative to each annotated barrel file, copies each module's top-level
- * `@since` tag into a minimal JSDoc block, and copies `@unstable` unless the module
+ * `@since` tag into a minimal JSDoc block, and copies `@stability` unless the module
  * lives under `internal/` or its header is `@internal`. Export paths are normalized
  * so the produced TypeScript is stable across platforms.
  *
@@ -68,7 +68,7 @@ const parseAnnotation = (line: string): string | undefined => {
 
 interface ModuleMetadata {
   readonly since: string
-  readonly unstable: boolean
+  readonly stability: "unstable" | "experimental" | undefined
 }
 
 const extractModuleMetadata = (file: string, content: string): Effect.Effect<ModuleMetadata, BarrelCodegenError> => {
@@ -103,16 +103,21 @@ const extractModuleMetadata = (file: string, content: string): Effect.Effect<Mod
   }
   return Effect.succeed({
     since,
-    unstable: !isInternalModule(file, block) && /^\s*\*\s*@unstable\s*$/m.test(block)
+    stability: isInternalModule(file, block) ?
+      undefined :
+      /^\s*\*\s*@stability\s+(unstable|experimental)\s*$/m.exec(block)?.[1] as
+        | "unstable"
+        | "experimental"
+        | undefined
   })
 }
 
 const isInternalModule = (file: string, block: string): boolean =>
   file.split(/[/\\]/).includes("internal") || /^\s*\*\s*@internal\s*$/m.test(block)
 
-const renderExportJSDoc = ({ since, unstable }: ModuleMetadata): string =>
+const renderExportJSDoc = ({ since, stability }: ModuleMetadata): string =>
   `/**
-${unstable ? " * @unstable\n" : ""} * @since ${since}
+${stability ? ` * @stability ${stability}\n` : ""} * @since ${since}
  */`
 
 /**

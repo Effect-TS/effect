@@ -8,7 +8,7 @@
  * decryption. This module defines the RPC handlers, server layer, storage
  * contract, and in-memory storage layer for that encrypted server path.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -37,7 +37,7 @@ import * as EventLogServer from "./EventLogServer.ts"
  * change streams read encrypted entries from storage and encode them for the
  * remote protocol.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -116,7 +116,7 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
  * @see {@link Storage} for the storage service required by this layer
  * @see {@link layerStorageMemory} for the process-local in-memory storage layer
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Rp
 /**
  * Schema for encrypted entries persisted by the encrypted event-log server.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -141,7 +141,7 @@ export class PersistedEntry extends Schema.Class<PersistedEntry>(
   /**
    * String representation of the encrypted entry id.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get entryIdString(): string {
@@ -163,7 +163,7 @@ export class PersistedEntry extends Schema.Class<PersistedEntry>(
  * persists encrypted entries, and streams encrypted changes for a public key and
  * store id.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -193,7 +193,7 @@ export class Storage extends Context.Service<Storage, {
  * Data, session authentication bindings, and streams are process-local and are
  * released with the surrounding scope.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -270,7 +270,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
 /**
  * Provides encrypted server `Storage` using the in-memory implementation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

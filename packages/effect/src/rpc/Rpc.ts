@@ -8,7 +8,7 @@
  * constructors, type helpers for deriving client and handler shapes, exit
  * schemas, and handler wrappers for special execution modes.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "../Cause.ts"
@@ -35,7 +35,7 @@ const TypeId = "~effect/rpc/Rpc"
 /**
  * Returns `true` when the value is an `Rpc` definition.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -49,7 +49,7 @@ export const isRpc = (u: unknown): u is Rpc<any, any, any> => Predicate.hasPrope
  * Defect schemas decode and encode without services and can be constructed from
  * `null`, `undefined`, or an object value.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -69,7 +69,7 @@ export interface DefectSchema extends Schema.Top {
  * An RPC is identified by a tag and carries payload, success, error, defect,
  * middleware, and annotation metadata used by RPC clients and servers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -185,7 +185,7 @@ export interface Rpc<
  * It stores the client id and request annotations that handlers can read or
  * extend.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export class ServerClient {
  * The handler receives the decoded request plus client, request id, headers,
  * and RPC metadata, and returns either an effectful result or a stream result.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -233,7 +233,7 @@ export interface Handler<Tag extends string> {
  * An erased RPC definition that preserves the common runtime metadata shared by
  * all RPCs.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -248,7 +248,7 @@ export interface Any extends Pipeable {
  * An erased RPC definition with all schema, middleware, annotation, and service
  * metadata available.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -268,7 +268,7 @@ export interface AnyWithProps extends Pipeable {
 /**
  * Extracts the tag string from an `Rpc`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -285,7 +285,7 @@ export type Tag<R> = R extends Rpc<
 /**
  * Extracts the success schema from an `Rpc`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -302,7 +302,7 @@ export type SuccessSchema<R> = R extends Rpc<
 /**
  * Extracts the decoded success value type from an `Rpc`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -311,7 +311,7 @@ export type Success<R> = SuccessSchema<R>["Type"]
 /**
  * Extracts the encoded success value type from an `Rpc`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export type SuccessEncoded<R> = R extends Rpc<
  * For streaming RPCs, this is the stream element schema; otherwise it is the
  * RPC success schema.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -347,7 +347,7 @@ export type SuccessExitSchema<R> = SuccessSchema<R> extends RpcSchema.Stream<inf
  * For streaming RPCs, the immediate exit success is `void` because stream
  * elements are delivered separately.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -358,7 +358,7 @@ export type SuccessExit<R> = Success<R> extends infer T ? T extends Stream<infer
  * Extracts the decoded stream element type from a streaming RPC, or `never` for
  * non-streaming RPCs.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -368,7 +368,7 @@ export type SuccessChunk<R> = Success<R> extends Stream<infer _A, infer _E, infe
  * Extracts the RPC error schema, including error schemas contributed by
  * middleware.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -386,7 +386,7 @@ export type ErrorSchema<R> = R extends Rpc<
  * Extracts the decoded error value type from an `Rpc`, including middleware
  * errors.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -400,7 +400,7 @@ export type Error<R> = Schema.Schema.Type<ErrorSchema<R>>
  * For streaming RPCs, this includes both the stream error schema and the RPC
  * error schema; otherwise it is the RPC error schema.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -414,7 +414,7 @@ export type ErrorExitSchema<R> = SuccessSchema<R> extends RpcSchema.Stream<infer
  *
  * For streaming RPCs, this includes both stream errors and RPC errors.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -424,7 +424,7 @@ export type ErrorExit<R> = Success<R> extends Stream<infer _A, infer _E, infer _
  * The `Exit` type produced for an RPC, using the RPC's exit success and exit
  * error types.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -434,7 +434,7 @@ export type Exit<R> = Exit_<SuccessExit<R>, ErrorExit<R>>
  * Extracts the payload constructor input type accepted by the RPC payload
  * schema.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -451,7 +451,7 @@ export type PayloadConstructor<R> = R extends Rpc<
 /**
  * Extracts the decoded payload type from an `Rpc`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -469,7 +469,7 @@ export type Payload<R> = R extends Rpc<
  * Extracts all schema services required to encode or decode an RPC's payload,
  * success, error, and middleware error schemas.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -499,7 +499,7 @@ export type Services<R> = R extends Rpc<
  * This includes payload encoding services and success, error, and middleware
  * error decoding services.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -525,7 +525,7 @@ export type ServicesClient<R> = R extends Rpc<
  * This includes payload decoding services and success, error, and middleware
  * error encoding services.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -546,7 +546,7 @@ export type ServicesServer<R> = R extends Rpc<
 /**
  * Extracts the service identifiers for middleware attached to an `Rpc`.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -564,7 +564,7 @@ export type Middleware<R> = R extends Rpc<
  * Extracts client-side middleware service requirements for middleware marked as
  * required on the client.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -583,7 +583,7 @@ export type MiddlewareClient<R> = R extends Rpc<
  * Returns an RPC type with an additional error schema unioned into its error
  * channel.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -608,7 +608,7 @@ export type AddError<R extends Any, Error extends Schema.Top> = R extends Rpc<
  * Returns an RPC type with additional middleware and the corresponding
  * middleware service requirements applied.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -632,7 +632,7 @@ export type AddMiddleware<R extends Any, Middleware extends RpcMiddleware.AnySer
 /**
  * Converts an RPC definition into the corresponding `Handler` type.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -654,7 +654,7 @@ export type ToHandler<R extends Any> = R extends Rpc<
  * The function receives the decoded payload and request metadata, and returns
  * the RPC result shape, optionally wrapped with `Wrapper` options.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -672,7 +672,7 @@ export type ToHandlerFn<Current extends Any, R = any> = (
  * Returns `true` when the RPC with the specified tag has a streaming success
  * schema, or `never` otherwise.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -689,7 +689,7 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
 /**
  * Extracts the RPC with the specified tag from an RPC union.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -707,7 +707,7 @@ export type ExtractTag<R extends Any, Tag extends string> = R extends Rpc<
  * Extracts the services provided by middleware on the RPC with the specified
  * tag.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -724,7 +724,7 @@ export type ExtractProvides<R extends Any, Tag extends string> = R extends Rpc<
 /**
  * Extracts the service requirements of the RPC with the specified tag.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -742,7 +742,7 @@ export type ExtractRequires<R extends Any, Tag extends string> = R extends Rpc<
  * Removes the services provided by middleware for the specified RPC tag from an
  * environment type.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -760,7 +760,7 @@ export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
  * RPCs return an effect that succeeds with the success value or a deferred
  * success value.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -793,7 +793,7 @@ export type ResultFrom<R extends Any, Services> = R extends Rpc<
  * Returns an RPC type with the specified string prefix added to its tag while
  * preserving its payload, success, error, middleware, and requirements.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -934,7 +934,7 @@ const makeProto = <
  * schema to `Schema.Never`. `primaryKey` creates a payload class with a
  * primary key derived from the payload value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1035,7 +1035,7 @@ export const make = <
  * const result = [listAllRpc._tag, Schema.isSchema(listAllRpc.successSchema)] // => ["listAll", true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1089,7 +1089,7 @@ export const custom = <Def extends Custom>(
  * A custom constructor receives the original success, error, and defect schemas
  * and returns transformed output schemas through `out`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1103,14 +1103,14 @@ export interface Custom {
 /**
  * Helper types for defining RPC custom constructors.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Custom {
   /**
    * The transformed schemas produced by a custom RPC constructor.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -1127,7 +1127,7 @@ export declare namespace Custom {
    * The default custom-constructor output shape for arbitrary success and error
    * schemas.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -1137,7 +1137,7 @@ export declare namespace Custom {
    * Applies a custom constructor definition to concrete success and error
    * schemas and returns its transformed output schema type.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -1162,7 +1162,7 @@ const exitSchemaCache = new WeakMap<Any, Schema.Exit<Schema.Top, Schema.Top, Def
  * stream error schema for streaming RPCs. Streaming RPCs use `Schema.Void` for
  * the exit success value. The schema is cached per RPC definition.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1204,7 +1204,7 @@ const WrapperTypeId = "~effect/rpc/Rpc/Wrapper"
  * `fork` requests concurrent execution, and `uninterruptible` requests
  * uninterruptible execution.
  *
- * @unstable
+ * @stability unstable
  * @category wrapping
  * @since 4.0.0
  */
@@ -1219,7 +1219,7 @@ export interface Wrapper<A> {
  * A value that may be returned directly or wrapped with RPC server execution
  * options.
  *
- * @unstable
+ * @stability unstable
  * @category wrapping
  * @since 4.0.0
  */
@@ -1228,7 +1228,7 @@ export type WrapperOr<A> = A | Wrapper<A>
 /**
  * Returns `true` when the value is an RPC `Wrapper`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -1242,7 +1242,7 @@ export const isWrapper = (u: object): u is Wrapper<any> => WrapperTypeId in u
  * When the value is already wrapped, unspecified options are inherited from the
  * existing wrapper.
  *
- * @unstable
+ * @stability unstable
  * @category wrapping
  * @since 4.0.0
  */
@@ -1269,7 +1269,7 @@ export const wrap = (options: {
  * Returns the wrapped response value when the input is an RPC `Wrapper`, or the
  * input itself when it is already unwrapped.
  *
- * @unstable
+ * @stability unstable
  * @category wrapping
  * @since 4.0.0
  */
@@ -1279,7 +1279,7 @@ export const unwrap = <A extends object>(value: WrapperOr<A>): A => isWrapper(va
  * Maps the value inside an RPC wrapper, preserving wrapper options such as
  * `fork` and `uninterruptible`; unwrapped values are mapped directly.
  *
- * @unstable
+ * @stability unstable
  * @category wrapping
  * @since 4.0.0
  */
@@ -1294,7 +1294,7 @@ export const wrapMap = <A extends object, B extends object>(self: WrapperOr<A>, 
  * Wraps a response Effect or Stream so the RPC server executes it concurrently
  * regardless of the server concurrency setting.
  *
- * @unstable
+ * @stability unstable
  * @category wrapping
  * @since 4.0.0
  */
@@ -1303,7 +1303,7 @@ export const fork: <A extends object>(value: A) => Wrapper<A> = wrap({ fork: tru
 /**
  * Wraps a response Effect or Stream so the RPC server runs it in an uninterruptible region.
  *
- * @unstable
+ * @stability unstable
  * @category wrapping
  * @since 4.0.0
  */

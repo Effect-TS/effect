@@ -7,7 +7,7 @@
  * provides helpers for describing Lua scripts, loading them once, and running
  * them later by their cached Redis id.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cache from "../Cache.ts"
@@ -26,7 +26,7 @@ import * as Scope from "../Scope.ts"
 /**
  * A message received from a Redis pub/sub channel.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -39,7 +39,7 @@ export interface RedisMessage {
  * Service for sending Redis commands, subscribing to channels, and evaluating
  * cached Lua scripts.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ export class Redis extends Context.Service<Redis, {
  * Lua scripts are loaded through `SCRIPT LOAD`, cached, and then invoked with
  * `EVALSHA`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -145,7 +145,7 @@ const ErrorTypeId: ErrorTypeId = "~effect/persistence/Redis/RedisError"
 /**
  * Error raised by Redis command or script execution.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -156,7 +156,7 @@ export class RedisError extends Schema.Error<RedisError>(ErrorTypeId)({
   /**
    * Marks this value as a Redis persistence error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
@@ -173,7 +173,7 @@ const ScriptTypeId: ScriptTypeId = "~effect/persistence/Redis/Script"
  * It defines the Lua source, parameter-to-argument mapping, Redis key count,
  * and result type used by `Redis.eval`.
  *
- * @unstable
+ * @stability unstable
  * @category scripting
  * @since 4.0.0
  */
@@ -224,7 +224,7 @@ const ScriptProto = {
  * The result type defaults to `void` and can be refined with
  * `withReturnType`.
  *
- * @unstable
+ * @stability unstable
  * @category scripting
  * @since 4.0.0
  */

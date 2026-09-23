@@ -7,7 +7,7 @@
  * service interface, default generator, configurable custom generator, and layer
  * for providing the service.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -51,7 +51,7 @@ import * as Random from "../Random.ts"
  * await Effect.runPromise(program) // => "id-1"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -85,7 +85,7 @@ export class IdGenerator extends Context.Service<IdGenerator, Service>()(
  * await Effect.runPromise(program) // => "custom_1"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -113,7 +113,7 @@ export interface Service {
  * const result = [toolCallOptions.prefix, toolCallOptions.size] // => ["tool", 8]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -193,7 +193,7 @@ const makeGenerator = ({
  * const result = [id.startsWith("id_"), id.length] // => [true, 19]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -249,7 +249,7 @@ export const defaultIdGenerator: Service = {
  * error.message // => 'The separator "A" must not be part of the alphabet "ABC123".'
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -303,7 +303,7 @@ export const make = Effect.fnUntraced(function*({
  * const result = [toolCallId.startsWith("tool_call_"), toolCallId.length] // => [true, 22]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

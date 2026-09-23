@@ -8,7 +8,7 @@
  * untrusted network. The unencrypted constructor is intended for trusted
  * transports or tests.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cache from "../Cache.ts"
@@ -54,7 +54,7 @@ import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecret
  * It can write local entries to the remote, stream remote changes from a sequence
  * number, and run effects only after the supplied identity has authenticated.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -79,7 +79,7 @@ export class EventLogRemote extends Context.Service<EventLogRemote, {
  * Error raised by `EventLogRemote` operations, recording the failed method and
  * underlying cause.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -90,7 +90,7 @@ export class EventLogRemoteError extends Data.TaggedError("EventLogRemoteError")
   /**
    * Returns `true` when the value is an `EventLogRemoteError`.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is EventLogRemoteError {
@@ -132,7 +132,7 @@ const makeAuthenticate = Effect.fnUntraced(function*(options: {
  * Use to provide the RPC client used by remote event-log replicas to
  * authenticate, write entries, and subscribe to changes.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -160,7 +160,7 @@ export class EventLogRemoteClient extends Context.Service<
  * responses by re-authenticating, chunks large writes, and registers itself with
  * the `Registry` for the current scope.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -311,7 +311,7 @@ class IdentityService extends Context.Service<Identity, Identity["Service"]>()(
  * Creates an `EventLogRemote` that encrypts outgoing entries and decrypts
  * incoming changes with `EventLogEncryption`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -347,7 +347,7 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
 /**
  * Creates an `EventLogRemote` that sends and receives plaintext entry payloads.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -369,7 +369,7 @@ export const makeUnencrypted: Effect.Effect<
  * Provides an encrypted `EventLogRemote` using the remote RPC client and the
  * default Web Crypto encryption layer.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -385,7 +385,7 @@ export const layerEncrypted: Layer.Layer<
 /**
  * Provides an unencrypted `EventLogRemote` using the remote RPC client.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

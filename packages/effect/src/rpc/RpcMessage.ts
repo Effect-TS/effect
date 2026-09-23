@@ -8,7 +8,7 @@
  * streaming, acknowledgement, interrupt, keepalive, and defect signals as the
  * built-in HTTP, socket, worker, and test transports.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -21,7 +21,7 @@ import type { RpcClientError } from "./RpcClientError.ts"
 /**
  * Decoded messages that can be sent from an RPC client to a server.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -30,7 +30,7 @@ export type FromClient<A extends Rpc.Any> = Request<A> | Ack | Interrupt | Eof
 /**
  * Transport-encoded messages that can be sent from an RPC client to a server.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -40,7 +40,7 @@ export type FromClientEncoded = RequestEncoded | AckEncoded | InterruptEncoded |
  * A branded request identifier used to correlate RPC requests, responses,
  * chunks, acknowledgements, and interrupts.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -49,7 +49,7 @@ export type RequestId = Branded<string | number, "~effect/rpc/RpcMessage/Request
 /**
  * Converts a bigint or string request id into the branded `RequestId` type.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -64,7 +64,7 @@ export const RequestId = (id: string | number): RequestId => id as RequestId
  * Requests flow in both directions: servers use them for server-originated
  * requests and, with `isNotification` set, for server notifications.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -84,7 +84,7 @@ export interface RequestEncoded {
  * The decoded RPC request envelope for an RPC union, carrying a branded request
  * id, typed RPC tag, decoded payload, headers, and optional trace context.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -102,7 +102,7 @@ export interface Request<A extends Rpc.Any> {
 /**
  * A decoded acknowledgement for a streamed RPC response chunk.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -115,7 +115,7 @@ export interface Ack {
  * A decoded request to interrupt an in-flight RPC, carrying the request id and
  * interrupting fiber ids.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -128,7 +128,7 @@ export interface Interrupt {
 /**
  * The transport-encoded acknowledgement for a streamed RPC response chunk.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -140,7 +140,7 @@ export interface AckEncoded {
 /**
  * The transport-encoded request to interrupt an in-flight RPC.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -153,7 +153,7 @@ export interface InterruptEncoded {
  * A client-to-server message indicating that the client has finished sending
  * input for the current connection or request batch.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -165,7 +165,7 @@ export interface Eof {
  * A client-to-server keepalive message used by protocols that monitor
  * connection liveness.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -176,7 +176,7 @@ export interface Ping {
 /**
  * Represents the reusable `Eof` message value.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -185,7 +185,7 @@ export const constEof: Eof = { _tag: "Eof" }
 /**
  * Represents the reusable `Ping` message value.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -194,7 +194,7 @@ export const constPing: Ping = { _tag: "Ping" }
 /**
  * Decoded messages that can be sent from an RPC server to a client.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -207,7 +207,7 @@ export type FromServer<A extends Rpc.Any> =
 /**
  * Transport-encoded messages that can be sent from an RPC server to a client.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export type FromServerEncoded =
 /**
  * The brand identifier used by the `ResponseId` type.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export const ResponseIdTypeId = "~effect/rpc/RpcMessage/ResponseId"
 /**
  * The literal type of the `ResponseId` brand identifier.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -240,7 +240,7 @@ export type ResponseIdTypeId = typeof ResponseIdTypeId
 /**
  * A branded numeric identifier for server responses.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -250,7 +250,7 @@ export type ResponseId = Branded<number, ResponseIdTypeId>
  * The transport-encoded response message containing a non-empty batch of stream
  * chunk values for a request.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -264,7 +264,7 @@ export interface ResponseChunkEncoded {
  * The decoded response message containing a non-empty batch of stream chunk
  * values for a specific client and request.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -279,7 +279,7 @@ export interface ResponseChunk<A extends Rpc.Any> {
  * The transport representation of an RPC `Exit`, encoding success values or a
  * failure cause made of failures, defects, and interrupts.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -306,7 +306,7 @@ export type ExitEncoded<A, E> = {
  * The transport-encoded terminal response for a request, carrying the encoded
  * `Exit`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -320,7 +320,7 @@ export interface ResponseExitEncoded {
  * A server-to-client protocol message reporting a client protocol error to all
  * affected in-flight requests.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export interface ClientProtocolError {
  * The decoded terminal response for a request, carrying the typed `Rpc.Exit`
  * for the RPC.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -348,7 +348,7 @@ export interface ResponseExit<A extends Rpc.Any> {
  * The transport-encoded server defect message used for protocol-level defects
  * that affect the client connection.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -370,7 +370,7 @@ export interface ResponseDefectEncoded {
  * protocols. Serializations whose `codecFor` returns bytes must encode the
  * complete RPC exit before placing it in the response envelope instead.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -397,7 +397,7 @@ export const ResponseExitDieEncoded = (options: {
  * Encode the defect with `protocol.codecFor(Schema.Defect())` before wrapping
  * it, because the codec that fills the defect hole belongs to the protocol.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -409,7 +409,7 @@ export const ResponseDefectEncoded = (encodedDefect: unknown): ResponseDefectEnc
 /**
  * The decoded server defect message for a client connection.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -422,7 +422,7 @@ export interface ResponseDefect {
 /**
  * A server message indicating that the client connection has ended.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -434,7 +434,7 @@ export interface ClientEnd {
 /**
  * A server-to-client keepalive response to a `Ping` message.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -464,7 +464,7 @@ const RequestEncodedSchema = Schema.Struct({
  * encoded as bytes. `ClientProtocolError` is excluded because clients create
  * it locally rather than receiving it from a server.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -500,7 +500,7 @@ export const EncodedSchema = Schema.Union([
 /**
  * Represents the reusable `Pong` message value.
  *
- * @unstable
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -509,7 +509,7 @@ export const constPong: Pong = { _tag: "Pong" }
 /**
  * Checks if the response type is terminal.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */

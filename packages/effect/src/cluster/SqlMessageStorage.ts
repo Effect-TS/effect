@@ -13,7 +13,7 @@
  * composed keys of any length are supported; shorter keys are stored as
  * plaintext, byte-compatible with rows written by previous versions.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 // eslint-disable effect/no-bigint-literals
@@ -62,7 +62,7 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  *
  * @see {@link make} for the decoded `MessageStorage` constructor
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -773,7 +773,7 @@ export const makeEncoded: (options?: {
  * Creates a SQL-backed `MessageStorage` implementation, running its migrations
  * and using the optional table prefix.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -811,7 +811,7 @@ export const make: (options?: {
  * @see {@link layerWith} for the same SQL storage layer with a custom table prefix
  * @see {@link make} for the lower-level service constructor that uses an existing `Snowflake.Generator`
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -826,7 +826,7 @@ export const layer: Layer.Layer<
 /**
  * Layer that provides SQL-backed `MessageStorage` using a custom table prefix.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

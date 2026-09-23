@@ -7,7 +7,7 @@
  * resume operations, so callers can start a workflow or resume a suspended run
  * by `executionId` without importing the workflow handler directly.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -50,7 +50,7 @@ import type * as Workflow from "./Workflow.ts"
  * const result = [MyRpcs.requests.size, Layer.isLayer(ApiLayer)] // => [3, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -88,7 +88,7 @@ export const toRpcGroup = <
  * Maps each workflow to the RPC definitions generated for execute, discard,
  * and resume operations.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -139,7 +139,7 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
  * const result = [Object.keys(MyApi.groups.workflows.endpoints).length, Layer.isLayer(ApiLayer)] // => [3, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -179,7 +179,7 @@ const tagToPath = (tag: string): string =>
  * Maps each workflow to the HTTP API endpoints generated for execute,
  * discard, and resume operations.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

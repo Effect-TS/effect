@@ -6,7 +6,7 @@
  * creates the table when needed, detects duplicate ids, treats concurrent runs
  * as locked, and can dump the schema after successful migrations.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -24,7 +24,7 @@ import type { SqlError } from "./SqlError.ts"
  * Options for running SQL migrations, including the migration loader, optional
  * schema dump directory, and migrations table name.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -38,7 +38,7 @@ export interface MigratorOptions<R = never> {
  * Effect that resolves the available migrations for the migrator or fails with a
  * `MigrationError`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export type Loader<R = never> = Effect.Effect<
  * Tuple produced by a migration loader, containing the migration id, migration
  * name, and an effect that loads the migration implementation.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -66,7 +66,7 @@ export type ResolvedMigration = readonly [
  * Metadata for a migration recorded in the migrations table, including its id,
  * name, and creation timestamp.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -79,7 +79,7 @@ export interface Migration {
 /**
  * Error raised while loading, validating, locking, or running SQL migrations.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * migrations in a transaction, and optionally dumps the schema after successful
  * migrations.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -338,7 +338,7 @@ const isConstraintConflict = (error: SqlError): boolean =>
  * parsing files named `<id>_<name>.js`, `<id>_<name>.ts`,
  * `<id>_<name>.mjs`, or `<id>_<name>.mts` and sorting migrations by id.
  *
- * @unstable
+ * @stability unstable
  * @category loaders
  * @since 4.0.0
  */
@@ -364,7 +364,7 @@ export const fromGlob = (
  * as `_<id>_<name>Js`, `_<id>_<name>Ts`, `_<id>_<name>Mjs`, or
  * `_<id>_<name>Mts` and sorting migrations by id.
  *
- * @unstable
+ * @stability unstable
  * @category loaders
  * @since 4.0.0
  */
@@ -387,7 +387,7 @@ export const fromBabelGlob = (migrations: Record<string, any>): Loader =>
  * Creates a migration loader from a record of migration effects keyed by
  * `<id>_<name>`, sorted by migration id.
  *
- * @unstable
+ * @stability unstable
  * @category loaders
  * @since 4.0.0
  */
@@ -418,7 +418,7 @@ export const fromRecord = (migrations: Record<string, Effect.Effect<void, unknow
  * `NodePath.layer`; the core `Path.layer` uses POSIX semantics and does not
  * preserve Windows drive-letter paths.
  *
- * @unstable
+ * @stability unstable
  * @category loaders
  * @since 4.0.0
  */

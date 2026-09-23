@@ -6,7 +6,7 @@
  * in-memory activity, and schedules longer sleeps through the `WorkflowEngine`
  * before awaiting the durable deferred tied to the clock.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -23,7 +23,7 @@ const TypeId = "~effect/workflow/DurableClock"
  * Represents a durable workflow timer with a name, duration, and deferred
  * completed when the timer wakes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -38,7 +38,7 @@ export interface DurableClock {
  * Creates a durable clock definition and its associated deferred wake-up
  * signal.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -67,7 +67,7 @@ const InstanceTag = Context.Service<
  * Waits inside a workflow, using an in-memory activity for durations at or
  * below the threshold and scheduling a durable clock for longer durations.
  *
- * @unstable
+ * @stability unstable
  * @category delays & timeouts
  * @since 4.0.0
  */

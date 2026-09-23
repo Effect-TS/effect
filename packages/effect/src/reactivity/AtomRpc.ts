@@ -7,7 +7,7 @@
  * reactivity keys after success. Query atoms can also use request headers,
  * time-to-live settings, and serialization keys for hydration.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -38,7 +38,7 @@ import * as Reactivity from "./Reactivity.ts"
  * It exposes the RPC client, an atom runtime, mutation helpers that return `AtomResultFn`s, and query helpers that
  * return atoms or pull atoms for RPC results.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -128,7 +128,7 @@ declare global {
  * The options provide the RPC group, protocol layer, tracing options, request id generation, optional custom client
  * effect, and runtime factory used by the query and mutation helpers.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

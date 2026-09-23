@@ -8,7 +8,7 @@
  * clients, layer builders for registering handlers, and services that expose
  * the current entity address while a request is being handled.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -67,7 +67,7 @@ const TypeId = "~effect/cluster/Entity"
  * An entity defines how ids map to shard groups, exposes a sharded client, and
  * can be registered as a layer using RPC handlers or a mailbox queue.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -210,7 +210,7 @@ export interface Entity<
  * Type alias for any cluster `Entity`, regardless of entity type or RPC
  * protocol.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -225,7 +225,7 @@ export type Any = Entity<string, Rpc.Any>
  * Each handler receives the entity request envelope for that RPC and returns the
  * RPC result or a supported RPC wrapper.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -242,7 +242,7 @@ export type HandlersFrom<Rpc extends Rpc.Any> = {
  *
  * The check is based on the internal entity type identifier.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -410,7 +410,7 @@ const Proto = {
  * Creates a new `Entity` of the specified `type` which will accept messages
  * that adhere to the provided `RpcGroup`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -453,7 +453,7 @@ export const fromRpcGroup = <const Type extends string, Rpcs extends Rpc.Any>(
  *
  * @see {@link fromRpcGroup} for creating an entity from an existing `RpcGroup`
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -477,7 +477,7 @@ export const make = <const Type extends string, Rpcs extends ReadonlyArray<Rpc.A
  * Use to read the current entity identity and shard address from entity
  * handlers and keep-alive logic.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -494,7 +494,7 @@ export class CurrentAddress extends Context.Service<
  * Use to read the runner address associated with the current entity handler
  * registration.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -511,7 +511,7 @@ export class CurrentRunnerAddress extends Context.Service<
  * Use when you use it to complete an entity request by succeeding, failing, failing with a
  * cause, or supplying an explicit `Exit`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -540,7 +540,7 @@ export interface Replier<Rpcs extends Rpc.Any> {
 /**
  * Helper types used by the `Replier` API.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Replier {
@@ -552,7 +552,7 @@ export declare namespace Replier {
    * For streaming RPCs this may be either a stream of success chunks or a dequeue
    * of success chunks. For non-streaming RPCs it is the RPC success value.
    *
-   * @unstable
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -569,7 +569,7 @@ export declare namespace Replier {
  * It includes the underlying request envelope plus the last stream reply chunk
  * that was sent, allowing handlers to resume chunk sequencing after a restart.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -581,7 +581,7 @@ export class Request<Rpc extends Rpc.Any> extends Data.Class<
   /**
    * Most recent success chunk value sent by the entity, when one exists.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get lastSentChunkValue(): Option.Option<Rpc.SuccessChunk<Rpc>> {
@@ -591,7 +591,7 @@ export class Request<Rpc extends Rpc.Any> extends Data.Class<
   /**
    * Sequence number to use for the entity's next outgoing success chunk.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   get nextSequence(): number {
@@ -612,7 +612,7 @@ const shardingTag = Context.Service<Sharding, Sharding["Service"]>("effect/clust
  * The returned function creates a no-serialization RPC client for each entity ID,
  * using a test sharding service instead of the cluster transport.
  *
- * @unstable
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -724,7 +724,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
  * When enabled it sends the internal keep-alive RPC for the current address; when
  * disabled it releases the keep-alive latch if one is present.
  *
- * @unstable
+ * @stability unstable
  * @category keep alive
  * @since 4.0.0
  */
@@ -781,7 +781,7 @@ export const keepAlive: (
  * The RPC is marked as persisted and uninterruptible so the keep-alive signal
  * survives normal entity restarts.
  *
- * @unstable
+ * @stability unstable
  * @category keep alive
  * @since 4.0.0
  */
@@ -797,7 +797,7 @@ export const KeepAliveRpc = Rpc.make("Cluster/Entity/keepAlive")
  * `keepAlive` closes the latch when keep-alive is active and opens it again when
  * the resource no longer needs to keep the entity alive.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

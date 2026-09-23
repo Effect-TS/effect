@@ -1,5 +1,5 @@
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -26,37 +26,37 @@ export * as EncodingError from "./EncodingError.ts"
 export * as Hex from "./Hex.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Ini from "./Ini.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Ndjson from "./Ndjson.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as SchemaBinary from "./SchemaBinary.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Sse from "./Sse.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Toml from "./Toml.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Yaml from "./Yaml.ts"

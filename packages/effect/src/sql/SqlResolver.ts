@@ -8,7 +8,7 @@
  * grouped, id-based, and side-effect-only resolver constructors, and keeps
  * batches separated by the active SQL transaction connection.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -31,7 +31,7 @@ import { ResultLengthMismatch } from "./SqlError.ts"
  * Request type used by SQL request resolvers, carrying the input payload
  * together with the resolver's result, error, and environment types.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -56,7 +56,7 @@ const SqlRequestProto = {
  * Runs a payload as a `SqlRequest` through a request resolver, either directly
  * with a payload and resolver or curried by resolver.
  *
- * @unstable
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -80,7 +80,7 @@ export const request: {
  * Constructs a `SqlRequest` from a payload. Equality and hashing are based on
  * the payload so equal requests can be batched and deduplicated.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export const SqlRequest = <In, A, E, R>(payload: In): SqlRequest<In, A, E, R> =>
  * requests in order, so the length of the results must match the length of the
  * requests.
  *
- * @unstable
+ * @stability unstable
  * @category resolvers
  * @since 4.0.0
  */
@@ -150,7 +150,7 @@ export const ordered = <Req extends Schema.Constraint, Res extends Schema.Constr
  * rows, groups decoded results by matching request and result keys, and fails a
  * request with `NoSuchElementError` when no result group exists.
  *
- * @unstable
+ * @stability unstable
  * @category resolvers
  * @since 4.0.0
  */
@@ -221,7 +221,7 @@ export const grouped = <Req extends Schema.Constraint, Res extends Schema.Constr
  * results, completes each matching request using `ResultId`, and fails missing
  * ids with `NoSuchElementError`.
  *
- * @unstable
+ * @stability unstable
  * @category resolvers
  * @since 4.0.0
  */
@@ -321,13 +321,13 @@ const void_ = <Req extends Schema.Constraint, _, E, R>(
   })
 
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
    * Create a resolver that performs side effects.
    *
-   * @unstable
+   * @stability unstable
    * @category resolvers
    * @since 4.0.0
    */

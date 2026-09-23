@@ -4,7 +4,7 @@
  * generation, while keeping the value distinct from an ordinary `number` in
  * TypeScript APIs.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Schema from "../Schema.ts"
@@ -12,7 +12,7 @@ import * as Schema from "../Schema.ts"
 /**
  * Schema for branded integer machine identifiers used by the cluster.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -26,7 +26,7 @@ export const MachineId = Schema.Int.pipe(
 /**
  * Branded integer type representing a cluster machine ID.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -51,7 +51,7 @@ export type MachineId = typeof MachineId.Type
  *
  * @see {@link MachineId} for the schema that validates branded integer machine identifiers
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

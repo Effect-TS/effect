@@ -9,6 +9,53 @@ interface SourceFileWithParseDiagnostics extends ts.SourceFile {
   readonly parseDiagnostics: ReadonlyArray<ts.Diagnostic>
 }
 
+const stabilityResult = (tag: string) => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-stability-"))
+  try {
+    fs.mkdirSync(path.join(cwd, "src"))
+    fs.writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext", target: "ES2022" },
+        include: ["src/**/*.ts"]
+      })
+    )
+    fs.writeFileSync(
+      path.join(cwd, "package.json"),
+      JSON.stringify({
+        name: "@effect/sample",
+        type: "module",
+        exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
+      })
+    )
+    fs.writeFileSync(path.join(cwd, "src/index.ts"), "export * as Foo from \"./Foo.ts\"\n")
+    fs.writeFileSync(
+      path.join(cwd, "src/Foo.ts"),
+      `/**
+ * Creates a value.
+ *
+ * ${tag}
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeValue = () => 1
+`
+    )
+    const model = extractJSDocsSync({
+      cwd,
+      tsconfig: "tsconfig.json",
+      include: ["src/**/*.ts"],
+      output: ".data/jsdocs.json"
+    })
+    return {
+      diagnostics: model.files.flatMap((file) => file.diagnostics.map((diagnostic) => diagnostic.code)),
+      stability: model.apis.find((api) => api.apiFqn === "@effect/sample/Foo.makeValue")?.tags.stability
+    }
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true })
+  }
+}
+
 const signatureParseDiagnostics = (signature: string): ReadonlyArray<string> =>
   (ts.createSourceFile(
     "signature.ts",
@@ -37,11 +84,33 @@ describe("jsdocs", () => {
     const result = parseJSDoc(`/**
  * Creates an unstable value.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 1.0.0
  */`)
     assert.strictEqual(result._tag, "Success")
+  })
+
+  it("accepts experimental declarations", () => {
+    assert.deepStrictEqual(stabilityResult("@stability experimental"), {
+      diagnostics: [],
+      stability: "experimental"
+    })
+  })
+
+  it("rejects unknown stability values", () => {
+    assert.deepStrictEqual(stabilityResult("@stability bogus").diagnostics, ["invalid-stability"])
+    assert.deepStrictEqual(stabilityResult("@stability stable").diagnostics, ["invalid-stability"])
+  })
+
+  it("rejects duplicate stability tags", () => {
+    assert.deepStrictEqual(stabilityResult("@stability unstable\n * @stability unstable").diagnostics, [
+      "duplicate-tag"
+    ])
+  })
+
+  it("rejects legacy unstable tags", () => {
+    assert.deepStrictEqual(stabilityResult("@unstable").diagnostics, ["forbidden-tag"])
   })
 
   it("accepts doctest metadata on TypeScript fences", () => {
@@ -137,7 +206,7 @@ export const makeValue = () => 1
       output: ".data/jsdocs.json"
     }
     const model = extractJSDocsSync(options)
-    assert.strictEqual(model.version, 2)
+    assert.strictEqual(model.version, 3)
     assert.strictEqual(model.files.length, 1)
     assert.strictEqual(model.files[0]?.declarations[0]?.name, "makeValue")
     assert.strictEqual(model.apis[0]?.apiFqn, "@effect/sample/Foo.makeValue")
@@ -1063,7 +1132,7 @@ export const Tuple = Array
     }])
   })
 
-  it("accepts @unstable on module, member, and namespace docs", () => {
+  it("accepts @stability unstable on module, member, and namespace docs", () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
     fs.mkdirSync(path.join(cwd, "src"), { recursive: true })
     fs.writeFileSync(
@@ -1100,7 +1169,7 @@ export interface Marker {
       `/**
  * Sample module.
  *
- * @unstable
+ * @stability unstable
  * @since 1.0.0
  */
 import type { Marker } from "./Imported.ts"
@@ -1115,7 +1184,7 @@ export interface Box {
   /**
    * The boxed text.
    *
-   * @unstable
+   * @stability unstable
    * @since 1.0.0
    */
   readonly value: Marker["id"]
@@ -1131,7 +1200,7 @@ export interface Box {
 /**
  * Groups boxed types.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 1.0.0
  */
@@ -1139,7 +1208,7 @@ export declare namespace Group {
   /**
    * A grouped item.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 1.0.0
    */
@@ -1184,23 +1253,23 @@ export declare namespace StableGroup {
       output: ".data/jsdocs.json"
     })
     const foo = model.files.find((file) => file.file.endsWith("src/Foo.ts"))
-    const unstableByName = Object.fromEntries(
+    const stabilityByName = Object.fromEntries(
       model.apis
         .filter((api) => api.moduleName === "@effect/sample/Foo")
-        .map((api) => [api.apiFqn, api.tags.unstable])
+        .map((api) => [api.apiFqn, api.tags.stability])
     )
 
     assert.deepStrictEqual(foo?.diagnostics ?? [], [])
-    assert.match(foo?.moduleJSDoc?.raw ?? "", /@unstable/)
-    assert.deepStrictEqual(unstableByName, {
-      "@effect/sample/Foo.Box": false,
-      "@effect/sample/Foo.Box.value": true,
-      "@effect/sample/Foo.Box.label": false,
-      "@effect/sample/Foo.Group": true,
-      "@effect/sample/Foo.Group.Item": true,
-      "@effect/sample/Foo.Group.StableItem": false,
-      "@effect/sample/Foo.StableGroup": false,
-      "@effect/sample/Foo.StableGroup.Item": false
+    assert.match(foo?.moduleJSDoc?.raw ?? "", /@stability unstable/)
+    assert.deepStrictEqual(stabilityByName, {
+      "@effect/sample/Foo.Box": "stable",
+      "@effect/sample/Foo.Box.value": "unstable",
+      "@effect/sample/Foo.Box.label": "stable",
+      "@effect/sample/Foo.Group": "unstable",
+      "@effect/sample/Foo.Group.Item": "unstable",
+      "@effect/sample/Foo.Group.StableItem": "stable",
+      "@effect/sample/Foo.StableGroup": "stable",
+      "@effect/sample/Foo.StableGroup.Item": "stable"
     })
   })
 })

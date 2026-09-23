@@ -7,7 +7,7 @@
  * dialect-specific tables for the server remote id, per-store sequence state,
  * plaintext entries, and session authentication bindings.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -33,7 +33,7 @@ import * as EventLogServerUnencrypted from "./EventLogServerUnencrypted.ts"
  * entries, and session authentication bindings, then persists and streams
  * plaintext remote entries.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -445,7 +445,7 @@ export const makeStorage = (options?: {
 /**
  * Provides unencrypted server `Storage` using the SQL-backed implementation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

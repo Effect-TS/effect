@@ -6,7 +6,7 @@
  * hello/authenticate session handshake, remote calls for writes and changes,
  * and message formats for encrypted or plaintext journal entries.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../Array.ts"
@@ -25,7 +25,7 @@ import { EncryptedEntry, EncryptedRemoteEntry } from "./EventLogEncryption.ts"
 /**
  * Type-level identifier used to brand event-log store ids.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export type StoreIdTypeId = "effect/eventlog/EventLog/StoreId"
 /**
  * Runtime brand identifier for event-log store ids.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -43,7 +43,7 @@ export const StoreIdTypeId: StoreIdTypeId = "effect/eventlog/EventLog/StoreId"
 /**
  * Branded string identifying a logical event-log store.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export type StoreId = string & Brand<StoreIdTypeId>
 /**
  * Schema for branded event-log store ids.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -66,7 +66,7 @@ export const StoreId = Schema.String.pipe(Schema.brand(StoreIdTypeId))
  * It records the request tag, optional identity and store information, a protocol
  * error code, and a human-readable message.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -82,7 +82,7 @@ export class EventLogProtocolError extends Schema.TaggedError<EventLogProtocolEr
   /**
    * Returns `true` when the value is an `EventLogProtocolError`.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is EventLogProtocolError {
@@ -94,7 +94,7 @@ export class EventLogProtocolError extends Schema.TaggedError<EventLogProtocolEr
  * RPC middleware that authenticates event-log requests and provides the client
  * `Identity` to authenticated handlers.
  *
- * @unstable
+ * @stability unstable
  * @category middleware
  * @since 4.0.0
  */
@@ -112,7 +112,7 @@ export class EventLogAuthentication extends RpcMiddleware.Service<EventLogAuthen
  * It contains the server remote id and a challenge that must be signed by the
  * client.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -124,7 +124,7 @@ export class HelloResponse extends Schema.Class<HelloResponse>("effect/eventlog/
 /**
  * RPC used to start an event-log remote session and receive a `HelloResponse`.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -137,7 +137,7 @@ export class HelloRpc extends Rpc.make("EventLog.Hello", {
  * Ed25519 signing public key, signature over the session challenge payload, and
  * algorithm name.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -151,7 +151,7 @@ export class Authenticate extends Schema.Class<Authenticate>("effect/eventlog/Ev
 /**
  * RPC used to authenticate a remote event-log session after `HelloRpc`.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -163,7 +163,7 @@ export class AuthenticateRpc extends Rpc.make("EventLog.Authenticate", {
 /**
  * Represents an entire encoded event-log payload in one transport frame.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -181,7 +181,7 @@ export class SingleMessage
  * Use to divide data into chunks and `join` to reassemble all chunks with
  * the same id once every part has arrived.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -209,7 +209,7 @@ export class ChunkedMessage
   /**
    * Splits binary event-log message data into numbered chunks.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static split(id: number, data: Uint8Array): NonEmptyReadonlyArray<ChunkedMessage> {
@@ -230,7 +230,7 @@ export class ChunkedMessage
   /**
    * Reassembles all chunks for a message id into the original binary payload.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static join(
@@ -274,7 +274,7 @@ export class ChunkedMessage
 /**
  * RPC used to send one chunk of a large encoded write payload.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -291,7 +291,7 @@ export class WriteChunkedRpc extends Rpc.make("EventLog.WriteChunked", {
  * It includes the client public key, target store id, and encrypted entries
  * with their AES-GCM initialization vectors.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -311,7 +311,7 @@ export class WriteEntries extends Schema.Class<WriteEntries>("effect/eventlog/Ev
 /**
  * Schema for plaintext event-log write payloads sent to a remote store.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export class WriteEntriesUnencrypted
 /**
  * RPC used to send an encoded write payload that fits in one message.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -353,7 +353,7 @@ export class WriteSingleRpc extends Rpc.make("EventLog.WriteSingle", {
  * Responses are encoded as either `SingleMessage` values or `ChunkedMessage`
  * parts.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -379,7 +379,7 @@ export class ChangesRpc extends Rpc.make("EventLog.Changes", {
  * RPC group containing the event-log remote handshake, authentication, write, and
  * changes endpoints.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */

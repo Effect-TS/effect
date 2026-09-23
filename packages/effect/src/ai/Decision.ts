@@ -5,7 +5,7 @@
  *
  * @see {@link make} for building a definition from an input schema and decisions
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Schema from "../Schema.ts"
@@ -13,7 +13,7 @@ import type * as Schema from "../Schema.ts"
 /**
  * Brand type for decision definitions.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -22,7 +22,7 @@ export type TypeId = "~effect/ai/Decision"
 /**
  * Brand for decision definitions.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -35,7 +35,7 @@ export const TypeId: TypeId = "~effect/ai/Decision"
  * @see {@link classify} for the constructor
  * @see {@link ClassifyAnswer} for the answer produced by this decision
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export interface Classify<Label extends string> {
  * @see {@link rate} for the constructor
  * @see {@link RateAnswer} for the answer produced by this decision
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -70,7 +70,7 @@ export interface Rate<Level extends string> {
  * @see {@link probability} for the constructor
  * @see {@link ProbabilityAnswer} for the answer produced by this decision
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -86,7 +86,7 @@ export interface Probability {
 /**
  * Union of every decision kind.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -97,7 +97,7 @@ export type Any = Classify<string> | Rate<string> | Probability
  * `label` is chosen by the provider and need not have the highest probability.
  * `confidence` is an optional, provider-defined measure in `[0, 1]`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -114,7 +114,7 @@ export interface ClassifyAnswer<Label extends string> {
  * with the highest probability, choosing the first criteria entry on ties.
  * `confidence` is an optional, provider-defined measure in `[0, 1]`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -128,7 +128,7 @@ export interface RateAnswer<Level extends string> {
 /**
  * Answer to a {@link Probability} decision.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -139,7 +139,7 @@ export interface ProbabilityAnswer {
 /**
  * Answer type for a single decision.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -151,7 +151,7 @@ export type Answer<D extends Any> = D extends Classify<infer Label> ? ClassifyAn
 /**
  * Answers keyed by decision name.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -164,7 +164,7 @@ export type Answers<Decisions extends Record<string, Any>> = {
  *
  * @see {@link make} for the constructor
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -196,7 +196,7 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
  * @see {@link rate} for an ordered scale
  * @see {@link probability} for a single yes or no likelihood
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export const classify = <Label extends string>(options: {
  *
  * @see {@link classify} for unordered labels
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -282,7 +282,7 @@ export const rate = <const Level extends string>(options: {
  *
  * @see {@link classify} for more than two outcomes
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -332,7 +332,7 @@ export const probability = (options: {
  *
  * @see {@link Definition} for the returned shape
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

@@ -6,7 +6,7 @@
  * page containing the OpenAPI document produced from the supplied `HttpApi` and
  * boots Scalar in the browser.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -23,7 +23,7 @@ import * as OpenApi from "./OpenApi.ts"
 /**
  * Theme preset identifier accepted by the Scalar API reference UI.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -49,7 +49,7 @@ export type ScalarThemeId =
  * This configuration follows Scalar's API reference configuration:
  * https://github.com/scalar/scalar/blob/main/documentation/configuration.md
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -209,7 +209,7 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
  * The route serves the OpenAPI specification generated from the API at the
  * configured path, defaulting to `/docs`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -241,7 +241,7 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
  * configured path, defaulting to `/docs`; `version` selects the Scalar package
  * version loaded from the CDN.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

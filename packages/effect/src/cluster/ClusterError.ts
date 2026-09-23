@@ -6,7 +6,7 @@
  * envelope boundaries. Cluster clients, runners, and storage adapters use these
  * shared error values to report failures through typed Effect errors.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -23,7 +23,7 @@ const TypeId = "~effect/cluster/ClusterError"
  * Represents an error that occurs when a Runner receives a message for an entity
  * that is not assigned to the receiving runner.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -36,7 +36,7 @@ export class EntityNotAssignedToRunner
   /**
    * Marks this value as a cluster error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -44,7 +44,7 @@ export class EntityNotAssignedToRunner
   /**
    * Returns `true` when the value is an `EntityNotAssignedToRunner` error.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is EntityNotAssignedToRunner {
@@ -61,7 +61,7 @@ export class EntityNotAssignedToRunner
  * `cause` carries the underlying failure. `refail` maps encode and decode
  * failures into `MalformedMessage` values.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -72,7 +72,7 @@ export class MalformedMessage extends Schema.Error<MalformedMessage>(`${TypeId}/
   /**
    * Marks this value as a cluster error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -80,7 +80,7 @@ export class MalformedMessage extends Schema.Error<MalformedMessage>(`${TypeId}/
   /**
    * Returns `true` when the value is a `MalformedMessage` error.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is MalformedMessage {
@@ -90,7 +90,7 @@ export class MalformedMessage extends Schema.Error<MalformedMessage>(`${TypeId}/
   /**
    * Maps failures from the supplied effect into `MalformedMessage` errors.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static refail: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<
@@ -104,7 +104,7 @@ export class MalformedMessage extends Schema.Error<MalformedMessage>(`${TypeId}/
  * Represents an error that occurs when a message fails to be persisted into
  * cluster's mailbox storage.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -115,7 +115,7 @@ export class PersistenceError extends Schema.Error<PersistenceError>(`${TypeId}/
   /**
    * Marks this value as a cluster error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -123,7 +123,7 @@ export class PersistenceError extends Schema.Error<PersistenceError>(`${TypeId}/
   /**
    * Maps failures from the supplied effect into `PersistenceError` values.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static refail<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, PersistenceError, R> {
@@ -135,7 +135,7 @@ export class PersistenceError extends Schema.Error<PersistenceError>(`${TypeId}/
  * Represents an error that occurs when a Runner is not registered with the shard
  * manager.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -146,7 +146,7 @@ export class RunnerNotRegistered extends Schema.Error<RunnerNotRegistered>(`${Ty
   /**
    * Marks this value as a cluster error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -155,7 +155,7 @@ export class RunnerNotRegistered extends Schema.Error<RunnerNotRegistered>(`${Ty
 /**
  * Represents an error that occurs when a Runner is unresponsive.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -166,7 +166,7 @@ export class RunnerUnavailable extends Schema.Error<RunnerUnavailable>(`${TypeId
   /**
    * Marks this value as a cluster error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -174,7 +174,7 @@ export class RunnerUnavailable extends Schema.Error<RunnerUnavailable>(`${TypeId
   /**
    * Returns `true` when the value is a `RunnerUnavailable` error.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is RunnerUnavailable {
@@ -196,7 +196,7 @@ export class RunnerUnavailable extends Schema.Error<RunnerUnavailable>(`${TypeId
  * Volatile requests fail immediately. Persisted or durable messages are retried
  * or resumed from storage when the mailbox is full.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -207,7 +207,7 @@ export class MailboxFull extends Schema.Error<MailboxFull>(`${TypeId}/MailboxFul
   /**
    * Marks this value as a cluster error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -215,7 +215,7 @@ export class MailboxFull extends Schema.Error<MailboxFull>(`${TypeId}/MailboxFul
   /**
    * Returns `true` when the value is a `MailboxFull` error.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is MailboxFull {
@@ -231,7 +231,7 @@ export class MailboxFull extends Schema.Error<MailboxFull>(`${TypeId}/MailboxFul
  *
  * Carries the `address` and `envelopeId` for the affected request envelope.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -245,7 +245,7 @@ export class AlreadyProcessingMessage
   /**
    * Marks this value as a cluster error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
@@ -253,7 +253,7 @@ export class AlreadyProcessingMessage
   /**
    * Returns `true` when the value is an `AlreadyProcessingMessage` error.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   static is(u: unknown): u is AlreadyProcessingMessage {

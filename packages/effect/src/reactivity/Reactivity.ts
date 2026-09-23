@@ -7,7 +7,7 @@
  * change. The service can also batch invalidations so handlers run after the
  * batch completes.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -25,7 +25,7 @@ import * as Stream from "../Stream.ts"
 /**
  * Brand type for `Reactivity`.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export type TypeId = "~effect/reactivity/Reactivity"
 /**
  * Brand for `Reactivity` implementations.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -43,7 +43,7 @@ export const TypeId: TypeId = "~effect/reactivity/Reactivity"
 /**
  * Registers handlers and reruns queries when their keys are invalidated.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -75,7 +75,7 @@ export interface Reactivity {
 /**
  * Service key for reactive invalidation.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -89,7 +89,7 @@ export const Reactivity: Context.Service<Reactivity, Reactivity> = Context.Servi
  * The service tracks handlers by hashed keys and runs the registered handlers when
  * matching keys are invalidated.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -241,7 +241,7 @@ class PendingInvalidation extends Context.Service<PendingInvalidation, Set<strin
  *
  * If the effect fails, the keys are not invalidated.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -266,7 +266,7 @@ export const mutation: {
  * The returned queue receives the initial result and each later result after the
  * keys are invalidated. The registration is removed when the current scope closes.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -294,7 +294,7 @@ export const query: {
  *
  * The effect runs initially and reruns whenever the keys are invalidated.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -323,7 +323,7 @@ export const stream: {
  * Registered queries for matching keys are rerun immediately, or collected until
  * the enclosing reactivity batch completes.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -334,7 +334,7 @@ export const invalidate = (
 /**
  * The default layer that provides an in-memory `Reactivity` service.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

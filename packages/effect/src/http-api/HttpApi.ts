@@ -6,7 +6,7 @@
  * metadata. The same description can be used by server builders, generated
  * clients, URL builders, OpenAPI generation, and reflection tools.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -28,7 +28,7 @@ const TypeId = "~effect/http-api/HttpApi"
 /**
  * Returns `true` when a value is an `HttpApi`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -50,7 +50,7 @@ type GroupMap<Groups> = {
  * Use when endpoint implementations can be provided with `HttpApiBuilder.group`, and the
  * completed API can be registered with `HttpApiBuilder.layer`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -121,7 +121,7 @@ export interface HttpApi<
 /**
  * An `HttpApi` value with its identifier and group types erased.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -133,7 +133,7 @@ export interface Constraint {
  * An `HttpApi` with broad identifier and group types while retaining the concrete
  * runtime properties used by implementation helpers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -228,7 +228,7 @@ const makeProto = <Id extends string, Groups extends HttpApiGroup.Constraint>(
  * `addHttpApi`, provide endpoint implementations with `HttpApiBuilder.group`,
  * and register the API with `HttpApiBuilder.layer`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -247,7 +247,7 @@ export const make = <const Id extends string>(identifier: Id): HttpApi<Id, never
  * The callbacks receive each group or endpoint with merged annotations, endpoint
  * middleware, and response schemas grouped by HTTP status.
  *
- * @unstable
+ * @stability unstable
  * @category reflection
  * @since 4.0.0
  */
@@ -337,7 +337,7 @@ const extractResponseContent = (
  * Adds additional schemas to components/schemas.
  * The provided schemas must have a `identifier` annotation.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -359,7 +359,7 @@ export class AdditionalSchemas extends Context.Service<
  * undeclared headers such as `content-type`. Annotate the API before passing it
  * to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

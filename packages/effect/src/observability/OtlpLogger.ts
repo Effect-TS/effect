@@ -6,7 +6,7 @@
  * includes log levels, messages, annotations, causes, fiber ids, optional log
  * spans, and current trace/span ids when they are present.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -38,7 +38,7 @@ import { OtlpSerialization } from "./OtlpSerialization.ts"
  * through the OTLP exporter, and requires `Scope` so pending records can be
  * flushed on shutdown.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -104,7 +104,7 @@ export const make: (
  *
  * By default the OTLP logger is merged with any existing loggers.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -129,7 +129,7 @@ export const layer = (options: {
 /**
  * Creates an OTLP logs layer from OpenTelemetry configuration.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -182,7 +182,7 @@ export const layerFromConfig = (options?: {
 /**
  * OTLP logs payload serialized by `OtlpLogger`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

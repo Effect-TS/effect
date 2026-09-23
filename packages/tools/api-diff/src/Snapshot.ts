@@ -564,12 +564,15 @@ const documentation = (symbol: ts.Symbol, checker: ts.TypeChecker): Documentatio
     ])
   )
   const summary = ts.displayPartsToString(symbol.getDocumentationComment(checker)).trim()
+  const stability = tags.get("stability")
   return {
     summary: summary === "" ? undefined : summary,
     deprecated: tags.get("deprecated"),
     since: tags.get("since"),
     category: tags.get("category"),
-    stability: tags.has("unstable") ? "unstable" : "stable"
+    stability: tags.has("unstable") ? "unstable" : stability === "experimental" || stability === "unstable"
+      ? stability
+      : "stable"
   }
 }
 

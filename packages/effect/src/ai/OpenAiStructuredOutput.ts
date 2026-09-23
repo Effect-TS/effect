@@ -7,7 +7,7 @@
  * application type. Unsupported constraints can be omitted from the provider
  * schema and remain enforced by the returned codec.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as JsonSchema from "../JsonSchema.ts"
@@ -53,7 +53,7 @@ import * as InternalStructuredOutput from "./internal/structured-output.ts"
  * - Compatibility targets standard OpenAI models. Fine-tuned models support a
  *   smaller JSON Schema subset.
  *
- * @unstable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */

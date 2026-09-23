@@ -9,7 +9,7 @@
  * services and layers needed to authorize requests, map stores, persist entries,
  * and install the plaintext server.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -52,7 +52,7 @@ import * as EventLogServer from "./EventLogServer.ts"
  * Use to access or provide the server service that handles plaintext
  * event-log writes.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -76,7 +76,7 @@ export class EventLogServerUnencrypted extends Context.Service<EventLogServerUne
  * Creates a typed server-side write function for events in the supplied
  * `EventLogSchema`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -107,7 +107,7 @@ export const makeWrite = <Groups extends EventGroup.Any>(
  * for conflicts, run through registered handlers, and persisted; change streams
  * include compacted backlog entries when compactors are registered.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -241,7 +241,7 @@ export const layerRpcHandlers: Layer.Layer<
 /**
  * Error raised by unencrypted server storage and store mapping operations.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -256,7 +256,7 @@ export class EventLogServerStoreError extends Data.TaggedError("EventLogServerSt
  * Error raised when unencrypted server authorization rejects an identity or store
  * operation.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -276,7 +276,7 @@ export class EventLogServerAuthError extends Data.TaggedError("EventLogServerAut
  * Use to provide authorization checks for plaintext event-log writes, reads,
  * and identity authentication.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -304,7 +304,7 @@ export class EventLogServerAuthorization extends Context.Service<EventLogServerA
  * Use to map client-visible store identifiers to server storage identifiers
  * before authorizing or serving unencrypted event-log requests.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -338,7 +338,7 @@ const toStoreNotFoundError = (options: {
  * Provides a `StoreMapping` that accepts only one configured store id and fails
  * all other store ids as not found.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -369,7 +369,7 @@ export const layerStoreMappingStatic = (options: {
  * allocates remote sequence numbers, persists entries, streams changes, and
  * exposes a transaction boundary.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -502,7 +502,7 @@ const toCompactedRemoteEntries = (options: {
  * entries when the replacement count can be mapped back to increasing remote
  * sequence numbers; otherwise the original entries are kept.
  *
- * @unstable
+ * @stability unstable
  * @category compaction
  * @since 4.0.0
  */
@@ -575,7 +575,7 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
  * in memory, publishes live changes, and serializes transactions with a
  * semaphore.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -683,7 +683,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
 /**
  * Provides unencrypted server `Storage` using the in-memory implementation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -713,7 +713,7 @@ export const layerStorageMemory: Layer.Layer<Storage> = Layer.effect(Storage)(ma
  * @see {@link makeWrite} for the accessor that retrieves the typed server-side write function from the service environment
  * @see {@link layerServer} for the layer form that provides this service together with an event-log `Registry`
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -782,7 +782,7 @@ export const make = Effect.gen(function*() {
  * Use to provide the unencrypted event-log server service together with the
  * registry needed by event handlers.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -821,7 +821,7 @@ export const layerServer: Layer.Layer<
  * @see {@link layerRpcHandlers} for wiring the unencrypted RPC handlers directly
  * @see {@link layerServer} for constructing the server service and event-log registry without RPC handlers
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -847,7 +847,7 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
  * Builds the unencrypted event-log server handlers without installing an
  * `RpcServer.Protocol` implementation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

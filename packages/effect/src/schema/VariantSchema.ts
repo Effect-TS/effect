@@ -6,7 +6,7 @@
  * those definitions it can create schema classes, unions, extracted struct
  * schemas, and helpers for changing fields across variants.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Brand } from "../Brand.ts"
@@ -21,7 +21,7 @@ import * as Struct_ from "../Struct.ts"
 /**
  * Runtime type identifier attached to variant schema structs.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ const defaultCacheSymbol = Symbol.for(`${TypeId}/defaultCache`)
  * Pipeable container of schema fields that can be extracted into per-variant
  * `Schema.Struct` schemas.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -53,7 +53,7 @@ export interface Struct<in out A extends Field.Fields> extends Pipeable {
 /**
  * Returns `true` when a value is a variant schema struct.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -62,14 +62,14 @@ export const isStruct = (u: unknown): u is Struct<any> => Predicate.hasProperty(
 /**
  * Type-level helpers for variant schema structs.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Struct {
   /**
    * Minimal structural type for any variant schema struct.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -79,7 +79,7 @@ export declare namespace Struct {
    * Field map accepted by a variant struct, where each property may be a schema, a
    * variant field, a nested struct, or `undefined`.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -95,7 +95,7 @@ export declare namespace Struct {
    * Type-level validation that every variant field in a struct only uses variants
    * from the configured variant set.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -111,7 +111,7 @@ const FieldTypeId = "~effect/schema/VariantSchema/Field"
 /**
  * Pipeable collection of variant-specific schemas for a single logical field.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -123,7 +123,7 @@ export interface Field<in out A extends Field.Config> extends Pipeable {
 /**
  * Returns `true` when a value is a variant schema field.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -132,14 +132,14 @@ export const isField = (u: unknown): u is Field<any> => Predicate.hasProperty(u,
 /**
  * Type-level helpers for variant schema fields.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Field {
   /**
    * Minimal structural type for any variant schema field.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -148,7 +148,7 @@ export declare namespace Field {
   /**
    * Map from variant name to the schema used for a field in that variant.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -160,7 +160,7 @@ export declare namespace Field {
    * Variant field configuration restricted to an optional subset of the supplied
    * variant keys.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -172,7 +172,7 @@ export declare namespace Field {
    * Field map whose properties may be schemas, variant fields, nested structs, or
    * `undefined`.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -189,7 +189,7 @@ export declare namespace Field {
  * Computes the `Schema.Struct` field map for a variant by selecting matching
  * field schemas and recursively extracting nested structs.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -209,7 +209,7 @@ export type ExtractFields<V extends string, Fields extends Struct.Fields, IsDefa
  * Computes the schema type produced by extracting a single variant from a variant
  * schema struct.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -279,7 +279,7 @@ const extract: {
 /**
  * Returns the original field definitions stored on a variant schema struct.
  *
- * @unstable
+ * @stability unstable
  * @category accessors
  * @since 4.0.0
  */
@@ -289,7 +289,7 @@ export const fields = <A extends Struct<any>>(self: A): A[typeof TypeId] => self
  * Schema class type returned by variant class constructors, combining the default
  * variant schema with access to the original variant fields.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -329,7 +329,7 @@ type MissingSelfGeneric<Params extends string = ""> =
 /**
  * Union schema over the default schemas of a list of variant schema structs.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -345,14 +345,14 @@ export interface Union<Members extends ReadonlyArray<Struct<any>>, Default exten
 /**
  * Type-level helpers for unions of variant schema structs.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Union {
   /**
    * Computes a union schema for each variant from a list of variant schema structs.
    *
-   * @unstable
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -369,7 +369,7 @@ export declare namespace Union {
  * Creates a variant schema toolkit for a fixed set of variant names and a default
  * variant.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -547,7 +547,7 @@ export const make = <
 /**
  * Marks a value as an explicit override for an `Overrideable` schema default.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -557,7 +557,7 @@ export const Override = <A>(value: A): A & Brand<"Override"> => value as any
  * Schema type whose constructor can use an effectful default unless a value is
  * explicitly branded with `Override`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -586,7 +586,7 @@ export interface Overrideable<S extends Schema.Top & Schema.WithoutConstructorDe
  * Wraps a schema with an effectful constructor default while allowing explicit
  * values to be marked with `Override`.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

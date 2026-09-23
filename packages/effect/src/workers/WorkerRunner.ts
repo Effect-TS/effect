@@ -6,7 +6,7 @@
  * module also defines the small platform message shape and the
  * `WorkerRunnerPlatform` service that starts a platform-specific runner.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -18,7 +18,7 @@ import type { WorkerError } from "./WorkerError.ts"
  * Platform-neutral worker runner that receives inbound messages by port ID,
  * sends outbound messages, and optionally exposes disconnect notifications.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -43,7 +43,7 @@ export interface WorkerRunner<O = unknown, I = unknown> {
  * Wire protocol message used by worker platforms: a request carrying input or a
  * close signal.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -52,7 +52,7 @@ export type PlatformMessage<I> = readonly [request: 0, I] | readonly [close: 1]
 /**
  * Context service that starts a platform-specific `WorkerRunner`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

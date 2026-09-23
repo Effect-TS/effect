@@ -1,7 +1,7 @@
 /**
  * A radix-tree HTTP router used by the unstable HTTP routing modules.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as internal from "./FindMyWay/internal/router.ts"
@@ -33,7 +33,7 @@ import * as internal from "./FindMyWay/internal/router.ts"
 /**
  * Configuration for router path matching.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -47,7 +47,7 @@ export interface RouterConfig {
 /**
  * Route path accepted by the router.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -56,7 +56,7 @@ export type PathInput = `/${string}` | "*"
 /**
  * Mutable router used to register and resolve route handlers.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -70,7 +70,7 @@ export interface Router<A> {
 /**
  * Result of a successful route lookup.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -83,7 +83,7 @@ export interface FindResult<A> {
 /**
  * Creates an empty mutable router.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

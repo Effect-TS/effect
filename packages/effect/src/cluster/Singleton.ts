@@ -6,7 +6,7 @@
  * sharding starts the effect; when ownership moves or the layer scope closes,
  * the running fiber is interrupted and the registration is removed.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -41,7 +41,7 @@ import { Sharding } from "./Sharding.ts"
  *
  * @see {@link Sharding} for the lower-level service that registers singletons and manages shard ownership
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

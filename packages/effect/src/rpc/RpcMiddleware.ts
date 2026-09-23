@@ -7,7 +7,7 @@
  * implementation, the schema for server-visible failures, the client-only error
  * type, and whether generated clients must require the matching client layer.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -24,7 +24,7 @@ import type { Request, RequestId } from "./RpcMessage.ts"
 /**
  * The literal type id used to identify RPC middleware service classes.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -33,7 +33,7 @@ export type TypeId = "~effect/rpc/RpcMiddleware"
 /**
  * The runtime type id used to attach and inspect RPC middleware metadata.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -44,7 +44,7 @@ export const TypeId: TypeId = "~effect/rpc/RpcMiddleware"
  * access to request metadata and translating provided services into required
  * services.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -65,7 +65,7 @@ export interface RpcMiddleware<Provides, E, Requires> {
  * Marker success type used by RPC middleware to represent successful completion
  * without exposing the handler's concrete success value.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -77,7 +77,7 @@ export interface SuccessValue {
  * The client-side RPC middleware function shape, allowing outgoing requests to
  * be inspected or modified before calling `next`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -93,7 +93,7 @@ export interface RpcMiddlewareClient<E, CE, R> {
  * Marker service requirement indicating that a middleware has a client-side
  * implementation available for an RPC client.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -106,7 +106,7 @@ export interface ForClient<Id> {
  * An erased server-side RPC middleware function, useful when the concrete
  * provided services, errors, and requirements are not needed.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export interface Any {
  * A type-level carrier for RPC middleware metadata, including provided
  * services, required services, error schema, and client error type.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -144,7 +144,7 @@ export interface AnyId {
  * The `Context.Service` class shape created for an RPC middleware, including
  * its error schema, service metadata, and client-side requirement marker.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -174,7 +174,7 @@ export interface ServiceClass<
 /**
  * Extracts the services provided by an RPC middleware.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -183,7 +183,7 @@ export type Provides<A> = A extends { readonly [TypeId]: { readonly provides: in
 /**
  * Extracts the services required by an RPC middleware.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -193,7 +193,7 @@ export type Requires<A> = A extends { readonly [TypeId]: { readonly requires: in
  * Applies a middleware's service transformation to an RPC environment by
  * removing services the middleware provides and adding services it requires.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -202,7 +202,7 @@ export type ApplyServices<A, R> = Exclude<R, Provides<A>> | Requires<A>
 /**
  * Extracts the error schema associated with an RPC middleware.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export type ErrorSchema<A> = A extends { readonly [TypeId]: { readonly error: in
 /**
  * Extracts the decoded error type produced by an RPC middleware.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export type Error<A> = ErrorSchema<A>["Type"]
 /**
  * Extracts the encoding services required by a middleware's error schema.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export type ErrorServicesEncode<A> = ErrorSchema<A>["EncodingServices"]
 /**
  * Extracts the decoding services required by a middleware's error schema.
  *
- * @unstable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -240,7 +240,7 @@ export type ErrorServicesDecode<A> = ErrorSchema<A>["DecodingServices"]
 /**
  * An erased RPC middleware context key carrying middleware metadata.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -255,7 +255,7 @@ export interface AnyService extends Context.Key<any, any> {
  * An erased RPC middleware context key whose service value is a server-side
  * middleware function.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -271,7 +271,7 @@ export interface AnyServiceWithProps extends Context.Key<any, RpcMiddleware<any,
  * requirements, provided services, error schema, and client-side requirement
  * metadata.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -340,7 +340,7 @@ export const Service = <
  * capturing the layer's environment and merging it into each middleware
  * invocation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

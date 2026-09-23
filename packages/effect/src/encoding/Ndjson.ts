@@ -5,7 +5,7 @@
  * for byte streams, string streams, and schema-checked records, so streaming
  * code can read or write one JSON record at a time.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -29,7 +29,7 @@ const encoder = new TextEncoder()
  * The `kind` field identifies whether the failure happened while packing or
  * unpacking, and `cause` preserves the original error.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -40,7 +40,7 @@ export class NdjsonError extends Data.TaggedError("NdjsonError")<{
   /**
    * Marks this value as an NDJSON encoding or decoding error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [NdjsonErrorTypeId] = NdjsonErrorTypeId
@@ -48,7 +48,7 @@ export class NdjsonError extends Data.TaggedError("NdjsonError")<{
   /**
    * Uses the failed NDJSON operation as the public message.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   override get message() {
@@ -59,7 +59,7 @@ export class NdjsonError extends Data.TaggedError("NdjsonError")<{
 /**
  * Checks whether a value is an `NdjsonError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ export const isNdjsonError = (u: unknown): u is NdjsonError => Predicate.hasProp
  * Each input item is `JSON.stringify`-encoded, separated by newlines, and the
  * output chunk ends with a trailing newline.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -106,7 +106,7 @@ export const encodeString = <IE = never, Done = unknown>(): Channel.Channel<
 /**
  * Creates a channel that encodes chunks of values as UTF-8 NDJSON bytes.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -127,7 +127,7 @@ export const encode = <IE = never, Done = unknown>(): Channel.Channel<
  * Values are first encoded with the schema and then written as UTF-8
  * newline-delimited JSON.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -152,7 +152,7 @@ export const encodeSchema = <S extends Schema.Constraint>(
  * Values are first encoded with the schema and then written as newline-delimited
  * JSON strings.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -186,7 +186,7 @@ export const encodeSchemaString = <S extends Schema.Constraint>(
  * Set `ignoreEmptyLines` to skip blank lines before calling `JSON.parse`;
  * otherwise blank lines are parsed and fail as invalid JSON.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const decodeString = <IE = never, Done = unknown>(options?: {
  * Lines may span input chunks, and `ignoreEmptyLines` controls whether blank
  * lines are skipped before JSON parsing.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -247,7 +247,7 @@ export const decode = <IE = never, Done = unknown>(options?: {
  * The channel decodes UTF-8 bytes, parses each NDJSON line, and then decodes
  * each parsed value with the schema.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -274,7 +274,7 @@ export const decodeSchema = <S extends Schema.Constraint>(
  * The channel parses each line as JSON and then decodes each parsed value with
  * the schema.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -301,7 +301,7 @@ export const decodeSchemaString = <S extends Schema.Constraint>(
  * Outgoing values are written as UTF-8 NDJSON bytes, and incoming bytes are
  * parsed as NDJSON values.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -384,7 +384,7 @@ export const duplex: {
  * Outgoing values are written as NDJSON strings, and incoming strings are parsed
  * as NDJSON values.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -468,7 +468,7 @@ export const duplexString: {
  * Values sent to the wrapped channel are encoded with `inputSchema`; bytes
  * received from it are parsed as NDJSON and decoded with `outputSchema`.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -556,7 +556,7 @@ export const duplexSchema: {
  * Values sent to the wrapped channel are encoded with `inputSchema`; strings
  * received from it are parsed as NDJSON and decoded with `outputSchema`.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

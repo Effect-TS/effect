@@ -7,7 +7,7 @@
  * downloads, byte ranges, or Web `File`-like values without constructing the
  * response body by hand.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as ByteSize from "../ByteSize.ts"
@@ -29,7 +29,7 @@ import * as Mime from "./Mime.ts"
 /**
  * Service for platform-specific HTTP response helpers, including file-backed server responses.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -57,7 +57,7 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
 /**
  * Creates an `HttpPlatform` service from platform-specific file response constructors, using `FileSystem` and `Etag.Generator`.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -182,7 +182,7 @@ const fileResponseNumber = (value: bigint, field: string): Effect.Effect<number,
  * headers such as `etag` and `last-modified`. Missing content types are inferred
  * from the file extension.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -257,7 +257,7 @@ const mimeType = (path: string): string => Option.getOrElse(Mime.getType(path), 
 /**
  * Content codings that HTTP response compression can apply.
  *
- * @unstable
+ * @stability unstable
  * @category compression
  * @since 4.0.0
  */
@@ -271,7 +271,7 @@ export type CompressionAlgorithm = "gzip" | "deflate" | "br" | "zstd"
  * The `level` scale depends on the algorithm. Platforms without a level knob,
  * such as the Web `CompressionStream` implementation, ignore it.
  *
- * @unstable
+ * @stability unstable
  * @category compression
  * @since 4.0.0
  */
@@ -293,7 +293,7 @@ export interface CompressionOptions {
  * known in advance. The `make` wrapper owns the `Content-Encoding` and `Vary`
  * headers.
  *
- * @unstable
+ * @stability unstable
  * @category compression
  * @since 4.0.0
  */
@@ -316,7 +316,7 @@ export interface Compression {
  * formats such as Bun's `"brotli"` and `"zstd"` are usable. `CompressionStream`
  * has no compression level knob, so `CompressionOptions.level` does not apply.
  *
- * @unstable
+ * @stability unstable
  * @category compression
  * @since 4.0.0
  */
@@ -333,7 +333,7 @@ export const compressionTransformWeb: (
  * All supported bodies are transformed as streams. The `Content-Length`
  * header is dropped in every case.
  *
- * @unstable
+ * @stability unstable
  * @category compression
  * @since 4.0.0
  */

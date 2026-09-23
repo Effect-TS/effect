@@ -7,7 +7,7 @@
  * `ChildProcessSpawner` service to start the process and returns a
  * `ChildProcessHandle`.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -27,7 +27,7 @@ const TypeId = "~effect/process/ChildProcess"
 /**
  * A command that can be built using `make`, combined using `pipeTo`, and executed using `exec` or `spawn`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -38,7 +38,7 @@ export type Command =
 /**
  * A standard command with pre-parsed command and arguments.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -59,7 +59,7 @@ export interface StandardCommand extends
  * A pipeline of commands where the output of one is piped to the input of the
  * next.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -86,7 +86,7 @@ export interface PipedCommand extends
  * - `"all"`: Pipe both stdout and stderr interleaved
  * - `` `fd${number}` ``: Pipe from a custom file descriptor (e.g., `"fd3"`)
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export type PipeFromOption = "stdout" | "stderr" | "all" | `fd${number}`
  * - `"stdin"`: Pipe to stdin of the destination (default)
  * - `` `fd${number}` ``: Pipe to a custom file descriptor (e.g., `"fd3"`)
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -121,7 +121,7 @@ export type PipeToOption = "stdin" | `fd${number}`
  * const result = [pipeline._tag, pipeline.options.from] // => ["PipedCommand", "stderr"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -152,7 +152,7 @@ export interface PipeOptions {
 /**
  * Input type for child process stdin.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -166,7 +166,7 @@ export type CommandInput =
 /**
  * Output type for child process stdout/stderr.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -180,7 +180,7 @@ export type CommandOutput =
 /**
  * A signal that can be sent to a child process.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -226,7 +226,7 @@ export type Signal =
 /**
  * The encoding format to use for binary data.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -247,7 +247,7 @@ export type Encoding =
 /**
  * Options that can be used to control how a child process is terminated.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -272,7 +272,7 @@ export interface KillOptions {
 /**
  * Configuration for the child process standard input stream.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -305,7 +305,7 @@ export interface StdinConfig {
 /**
  * Configuration for the child process standard output stream.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -329,7 +329,7 @@ export interface StdoutConfig {
 /**
  * Configuration for the child process standard error stream.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -353,7 +353,7 @@ export interface StderrConfig {
 /**
  * Configuration for additional file descriptors to expose to the child process.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -388,7 +388,7 @@ export type AdditionalFdConfig =
 /**
  * Options for command execution.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -515,7 +515,7 @@ export interface CommandOptions extends KillOptions {
 /**
  * Valid template expression item types.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -524,7 +524,7 @@ export type TemplateExpressionItem = string | number | boolean
 /**
  * Template expression type for interpolated values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -547,7 +547,7 @@ const Proto = {
 /**
  * Checks whether a value is a `Command`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -556,7 +556,7 @@ export const isCommand = (u: unknown): u is Command => Predicate.hasProperty(u, 
 /**
  * Checks whether a command is a `StandardCommand`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -565,7 +565,7 @@ export const isStandardCommand = (command: Command): command is StandardCommand 
 /**
  * Checks whether a command is a `PipedCommand`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -625,7 +625,7 @@ const makePipedCommand = (
  * const result = [cmd1.command, cmd2.options.cwd, cmd3.args[0]] // => ["echo", "/tmp", "status"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -716,7 +716,7 @@ export const make: {
  * result // => ["PipedCommand", "stderr", "all"]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -751,7 +751,7 @@ export const pipeTo: {
  * result // => "time echo"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -817,7 +817,7 @@ const applyPrefix = (self: Command, prefixSpec: PrefixSpec): Command => {
  * const result = cmd._tag === "StandardCommand" && cmd.options.cwd // => "/tmp"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -857,7 +857,7 @@ export const setCwd: {
  * const result = cmd._tag === "StandardCommand" && cmd.options.env?.NODE_ENV // => "test"
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -892,7 +892,7 @@ const isTemplateString = (u: unknown): u is TemplateStringsArray =>
  * Parses an fd name like "fd3" to its numeric index.
  * Returns undefined if the name is invalid.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -906,7 +906,7 @@ export const parseFdName = (name: string): number | undefined => {
 /**
  * Create an fd name from its numeric index.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

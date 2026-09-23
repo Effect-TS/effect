@@ -5,7 +5,7 @@
  * send, receive, and unknown worker failures, a schema union for those reasons,
  * and a guard for recognizing worker errors at runtime.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import { hasProperty } from "../Predicate.ts"
@@ -16,7 +16,7 @@ const TypeId = "~effect/workers/WorkerError" as const
 /**
  * Type-level identifier used to brand `WorkerError` values.
  *
- * @unstable
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -25,7 +25,7 @@ export type TypeId = typeof TypeId
 /**
  * Returns `true` when a value is a `WorkerError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -34,7 +34,7 @@ export const isWorkerError = (u: unknown): u is WorkerError => hasProperty(u, Ty
 /**
  * Worker error reason for failures while spawning or setting up a worker.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -49,7 +49,7 @@ export class WorkerSpawnError extends Schema.Error<WorkerSpawnError>(
 /**
  * Worker error reason for failures while sending a message to a worker.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -65,7 +65,7 @@ export class WorkerSendError extends Schema.Error<WorkerSendError>(
  * Worker error reason for failures while receiving or handling a message from a
  * worker.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -80,7 +80,7 @@ export class WorkerReceiveError extends Schema.Error<WorkerReceiveError>(
 /**
  * Worker error reason for an unclassified worker failure.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -95,7 +95,7 @@ export class WorkerUnknownError extends Schema.Error<WorkerUnknownError>(
 /**
  * Union of the specific failure reasons that can be wrapped by a `WorkerError`.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -108,7 +108,7 @@ export type WorkerErrorReason =
 /**
  * Schema for decoding and encoding all supported worker error reason variants.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -128,7 +128,7 @@ export const WorkerErrorReason: Schema.Union<[
  * Error raised by worker APIs, wrapping a specific `WorkerErrorReason` and
  * exposing its message and cause.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -148,7 +148,7 @@ export class WorkerError extends Schema.Error<WorkerError>(TypeId)({
   /**
    * Marks this value as a worker error for runtime guards.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   readonly [TypeId]: TypeId = TypeId

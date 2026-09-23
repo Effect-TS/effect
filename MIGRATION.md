@@ -39,10 +39,13 @@ These packages must be bumped to matching v4 beta versions alongside `effect`.
 
 ### Unstable Module System
 
-v4 includes **unstable modules** under `effect/*` import paths. These modules
-may receive breaking changes in minor releases even though their paths no
-longer contain an `unstable` segment. Their API documentation is marked with
-`@unstable`; unmarked modules follow strict semver.
+v4 includes **unstable modules** under `effect/*` import paths. Their paths no
+longer contain an `unstable` segment, but their API documentation is marked
+with `@stability unstable`.
+
+`@stability unstable` means an API may receive breaking changes in minor
+releases. `@stability experimental` means it may receive breaking changes
+across patch versions. APIs without a stability tag follow strict semver.
 
 Imports using `effect/unstable/<module>` must drop the `unstable` segment.
 For example, replace `effect/unstable/http` with `effect/http` and

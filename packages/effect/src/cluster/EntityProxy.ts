@@ -7,7 +7,7 @@
  * original payload and success schema, adds cluster client errors, and creates
  * a discard variant for fire-and-forget delivery.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as HttpApiEndpoint from "../http-api/HttpApiEndpoint.ts"
@@ -59,7 +59,7 @@ const requestErrors = [
  * const result = [MyRpcs.requests.size, Layer.isLayer(RpcServerLayer)] // => [2, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -103,7 +103,7 @@ export const toRpcGroup = <Type extends string, Rpcs extends Rpc.Any>(
  * whose payload includes `entityId`, and whose errors include cluster client
  * errors.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -188,7 +188,7 @@ const entityIdPath = {
  * const result = [Object.keys(MyApi.groups.counter.endpoints).length, Layer.isLayer(ApiLayer)] // => [2, true]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -236,7 +236,7 @@ const tagToPath = (tag: string): string =>
  * discard endpoint at `/<tag>/:entityId/discard`, including cluster client
  * errors.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

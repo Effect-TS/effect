@@ -8,7 +8,7 @@
  * sequence numbers, and streams changes. Clients remain responsible for
  * encrypting writes and decrypting reads.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "../Effect.ts"
@@ -33,7 +33,7 @@ import * as EventLogServerEncrypted from "./EventLogServerEncrypted.ts"
  * entries in dialect-specific tables, creating per-identity/store entry tables as
  * needed.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -308,7 +308,7 @@ const decodeSessionAuthBindings = (
 /**
  * Provides encrypted server `Storage` using the SQL-backed implementation.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -326,7 +326,7 @@ export const layerStorage = (options?: {
  * Provides SQL-backed encrypted server `Storage` and supplies the default Web
  * Crypto `EventLogEncryption` layer.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

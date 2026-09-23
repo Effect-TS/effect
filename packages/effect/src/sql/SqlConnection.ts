@@ -7,7 +7,7 @@
  * results. This module also defines the scoped connection acquirer type, the
  * connection service tag, and the generic row shape.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -21,7 +21,7 @@ import type { SqlError } from "./SqlError.ts"
  * transformed rows, raw results, streams, value arrays, or unprepared
  * statements.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -68,7 +68,7 @@ export interface Connection {
  * Scoped effect that acquires a `Connection`, may fail with `SqlError`, and
  * requires a `Scope` for release.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -85,7 +85,7 @@ export type Acquirer = Effect<Connection, SqlError, Scope>
  * still goes through the `Acquirer`, whose lease has to outlive the effect
  * that starts it.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -96,7 +96,7 @@ export type Borrower = <A, E, R>(
 /**
  * Service tag for a low-level SQL `Connection`.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -105,7 +105,7 @@ export const Connection = Context.Service<Connection>("effect/sql/SqlConnection"
 /**
  * Generic SQL row shape mapping column names to unknown values.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

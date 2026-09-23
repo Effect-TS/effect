@@ -7,7 +7,7 @@
  * helpers for updating requests, body encoders for common payloads, and
  * conversions to and from Web `Request` values.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as ByteSize from "../ByteSize.ts"
@@ -39,7 +39,7 @@ const TypeId = "~effect/http/HttpClientRequest"
 /**
  * Returns `true` when a value is an `HttpClientRequest`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export const isHttpClientRequest = (u: unknown): u is HttpClientRequest => hasPr
 /**
  * Immutable model of an outgoing HTTP client request, including its method, URL components, headers, and body.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -65,7 +65,7 @@ export interface HttpClientRequest extends Inspectable.Inspectable, Pipeable {
 /**
  * Options for constructing or modifying an `HttpClientRequest`.
  *
- * @unstable
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -83,14 +83,14 @@ export interface Options {
 /**
  * Namespace containing option types associated with `HttpClientRequest` construction.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Options {
   /**
    * Request options that omit the method and URL for helpers that already receive those values separately.
    *
-   * @unstable
+   * @stability unstable
    * @category options
    * @since 4.0.0
    */
@@ -119,7 +119,7 @@ const Proto = {
 /**
  * Constructs an `HttpClientRequest` from fully normalized request components.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -144,7 +144,7 @@ export function makeWith(
 /**
  * An empty `GET` request with no URL, query parameters, hash, headers, or body.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -160,7 +160,7 @@ export const empty: HttpClientRequest = makeWith(
 /**
  * Creates a request constructor for the specified HTTP method.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -180,7 +180,7 @@ export const make = <M extends HttpMethod>(
 /**
  * Creates a `GET` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -189,7 +189,7 @@ export const get: (url: string | URL, options?: Options.NoUrl) => HttpClientRequ
 /**
  * Creates a `QUERY` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -198,7 +198,7 @@ export const query: (url: string | URL, options?: Options.NoUrl) => HttpClientRe
 /**
  * Creates a `POST` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -207,7 +207,7 @@ export const post: (url: string | URL, options?: Options.NoUrl) => HttpClientReq
 /**
  * Creates a `PATCH` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -216,7 +216,7 @@ export const patch: (url: string | URL, options?: Options.NoUrl) => HttpClientRe
 /**
  * Creates a `PUT` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -225,13 +225,13 @@ export const put: (url: string | URL, options?: Options.NoUrl) => HttpClientRequ
 const del: (url: string | URL, options?: Options.NoUrl) => HttpClientRequest = make("DELETE")
 
 /**
- * @unstable
+ * @stability unstable
  */
 export {
   /**
    * Creates a `DELETE` request for the specified URL.
    *
-   * @unstable
+   * @stability unstable
    * @category constructors
    * @since 4.0.0
    */
@@ -241,7 +241,7 @@ export {
 /**
  * Creates a `HEAD` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -250,7 +250,7 @@ export const head: (url: string | URL, options?: Options.NoUrl) => HttpClientReq
 /**
  * Creates an `OPTIONS` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -259,7 +259,7 @@ export const options: (url: string | URL, options?: Options.NoUrl) => HttpClient
 /**
  * Creates a `TRACE` request for the specified URL.
  *
- * @unstable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -268,7 +268,7 @@ export const trace: (url: string | URL, options?: Options.NoUrl) => HttpClientRe
 /**
  * Applies request options to an `HttpClientRequest`, returning a new request.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -309,7 +309,7 @@ export const modify: {
 /**
  * Sets the HTTP method on a request, returning a new request.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -325,7 +325,7 @@ export const setMethod: {
 /**
  * Sets a single request header, replacing any existing value for that header.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -345,7 +345,7 @@ export const setHeader: {
 /**
  * Sets multiple request headers from an input collection, replacing existing values with matching names.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -365,7 +365,7 @@ export const setHeaders: {
 /**
  * Transforms the request headers with the provided function, returning a new request.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -385,7 +385,7 @@ export const updateHeaders: {
 /**
  * Removes a single request header by name, returning a new request.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -400,7 +400,7 @@ export const removeHeader: {
 /**
  * Sets the `Authorization` header using HTTP Basic authentication credentials.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -427,7 +427,7 @@ export const basicAuth: {
 /**
  * Sets the `Authorization` header using a bearer token.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -443,7 +443,7 @@ export const bearerToken: {
 /**
  * Sets the `Accept` header to the specified media type.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -455,7 +455,7 @@ export const accept: {
 /**
  * Sets the `Accept` header to `application/json`.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -464,7 +464,7 @@ export const acceptJson: (self: HttpClientRequest) => HttpClientRequest = accept
 /**
  * Sets the request URL. When given a `URL`, its search parameters and hash are extracted into the request's structured fields.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -500,7 +500,7 @@ export const setUrl: {
 /**
  * Prepends a URL segment to the request URL, inserting or trimming one slash as needed.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -522,7 +522,7 @@ export const prependUrl: {
 /**
  * Appends a URL segment to the request URL, inserting or trimming one slash as needed.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -556,7 +556,7 @@ const joinSegments = (first: string, second: string): string => {
 /**
  * Updates the request URL by applying a function to the current URL string.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -576,7 +576,7 @@ export const updateUrl: {
 /**
  * Sets one query parameter, replacing existing values for that parameter name.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -596,7 +596,7 @@ export const setUrlParam: {
 /**
  * Sets query parameters from an input collection, replacing existing values for matching names.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -616,7 +616,7 @@ export const setUrlParams: {
 /**
  * Appends one query parameter value without removing existing values for the same name.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -636,7 +636,7 @@ export const appendUrlParam: {
 /**
  * Appends query parameters from an input collection without removing existing values for matching names.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -656,7 +656,7 @@ export const appendUrlParams: {
 /**
  * Sets the URL fragment on a request without the leading `#`.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -676,7 +676,7 @@ export const setHash: {
 /**
  * Removes the URL fragment from a request.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -693,7 +693,7 @@ export const removeHash = (self: HttpClientRequest): HttpClientRequest =>
 /**
  * Sets the request body and updates `Content-Type` and `Content-Length` headers from the body metadata when available.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -714,7 +714,7 @@ export const setBody: {
 /**
  * Sets a `Uint8Array` request body with an optional content type.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -730,7 +730,7 @@ export const bodyUint8Array: {
 /**
  * Sets a text request body with an optional content type.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -746,7 +746,7 @@ export const bodyText: {
 /**
  * Encodes a value as a JSON request body and sets it on the request, failing with `HttpBodyError` if encoding fails.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -771,7 +771,7 @@ export const bodyJson: {
  *
  * JSON encoding may throw instead of failing in the Effect error channel.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -783,7 +783,7 @@ export const bodyJsonUnsafe: {
 /**
  * Creates a schema-based JSON body encoder that sets the encoded value on a request.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -815,7 +815,7 @@ export const schemaBodyJson = <S extends Schema.Constraint>(
 /**
  * Sets an `application/x-www-form-urlencoded` request body from URL parameter input.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -831,7 +831,7 @@ export const bodyUrlParams: {
 /**
  * Sets a `FormData` request body.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -843,7 +843,7 @@ export const bodyFormData: {
 /**
  * Creates a `FormData` request body from record-style entries and sets it on the request.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -859,7 +859,7 @@ export const bodyFormDataRecord: {
 /**
  * Sets a streaming `Uint8Array` request body with optional content type and content length metadata.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -896,7 +896,7 @@ export const bodyStream: {
  * `PlatformError` / `BadArgument`. Larger sizes, offsets, and byte counts are valid when the final length is
  * representable as a safe integer. The request's Content-Length header contains that exact length.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -941,7 +941,7 @@ export const bodyFile: {
 /**
  * Builds a `URL` from the request URL, query parameters, and hash, returning `Option.none()` if the URL is invalid.
  *
- * @unstable
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -956,7 +956,7 @@ export function toUrl(self: HttpClientRequest): Option.Option<URL> {
 /**
  * Converts a Web `Request` into an `HttpClientRequest`, preserving method, URL, headers, and supported request bodies.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -983,7 +983,7 @@ const fromWebBody = (request: globalThis.Request, method: HttpMethod): HttpBody.
 /**
  * Converts an `HttpClientRequest` safely to a Web `Request` as a `Result`, failing when the request URL is invalid.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -1041,7 +1041,7 @@ const isReadableStream = (u: unknown): u is ReadableStream<Uint8Array> =>
 /**
  * Converts an `HttpClientRequest` to a Web `Request`, failing with `UrlError` when the request URL is invalid.
  *
- * @unstable
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

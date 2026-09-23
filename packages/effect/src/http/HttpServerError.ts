@@ -8,7 +8,7 @@
  * for turning failed causes or exits into HTTP responses and an annotation for
  * interrupts caused by client aborts.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "../Cause.ts"
@@ -35,7 +35,7 @@ const TypeId = "~effect/http/HttpServerError"
  * response, and can be converted to an HTTP response through the `Respondable`
  * protocol.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -87,7 +87,7 @@ export class HttpServerError extends Data.TaggedError("HttpServerError")<{
  *
  * When converted to a response it produces an empty `400` response.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -99,7 +99,7 @@ export class RequestParseError extends Data.TaggedError("RequestParseError")<{
   /**
    * Converts the request error into a `400 Bad Request` response.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Respondable.symbol]() {
@@ -123,7 +123,7 @@ export class RequestParseError extends Data.TaggedError("RequestParseError")<{
  * When converted to a response it produces an empty `404` response, and it is
  * ignored by the error reporter.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -154,7 +154,7 @@ export class RouteNotFound extends Data.TaggedError("RouteNotFound")<{
  *
  * When converted to a response it produces an empty `500` response.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -166,7 +166,7 @@ export class InternalError extends Data.TaggedError("InternalError")<{
   /**
    * Converts the server error into a `500 Internal Server Error` response.
    *
-   * @unstable
+   * @stability unstable
    * @since 4.0.0
    */
   [Respondable.symbol]() {
@@ -185,7 +185,7 @@ export class InternalError extends Data.TaggedError("InternalError")<{
 /**
  * Returns `true` when the supplied value is an `HttpServerError`.
  *
- * @unstable
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -199,7 +199,7 @@ export const isHttpServerError = (u: unknown): u is HttpServerError => hasProper
  * It carries the request and response involved in the failure. When converted to
  * a response it produces an empty `500` response.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -226,7 +226,7 @@ export class ResponseError extends Data.TaggedError("ResponseError")<{
 /**
  * Union of errors that are tied directly to an incoming server request.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -235,7 +235,7 @@ export type RequestError = RequestParseError | RouteNotFound | InternalError
 /**
  * Reason carried by an `HttpServerError`, either a request-level error or a response-level error.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -244,7 +244,7 @@ export type HttpServerErrorReason = RequestError | ResponseError
 /**
  * Error wrapping a low-level failure from the HTTP server implementation.
  *
- * @unstable
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -261,7 +261,7 @@ export class ServeError extends Data.TaggedError("ServeError")<{
  * `causeResponse` uses this annotation to map a pure client abort to a `499`
  * response instead of a server abort response.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -290,7 +290,7 @@ const formatRequestMessage = (reason: string, description: string | undefined, i
  * are already `HttpServerResponse` values are used directly, and pure interrupts
  * produce either `499` for client aborts or `503` for server aborts.
  *
- * @unstable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */
@@ -348,7 +348,7 @@ export const causeResponse = <E>(
  * response is used and removed from the remaining cause. Otherwise the response
  * defaults to `500`.
  *
- * @unstable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */
@@ -378,7 +378,7 @@ const serverAbortError = Effect.succeed(Response.empty({ status: 503 }))
  * Extracts the response from a successful handler exit, or derives a response
  * from the failure cause.
  *
- * @unstable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */

@@ -6,7 +6,7 @@
  * authenticated `EventLog.Identity` to later requests, accept single or chunked
  * writes, and stream changes back as single or chunked messages.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -44,7 +44,7 @@ import * as EventLogSessionAuth from "./EventLogSessionAuth.ts"
  *
  * Requests without an identity fail with a forbidden `EventLogProtocolError`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -72,7 +72,7 @@ export const layerAuthMiddleware: Layer.Layer<
  * chunked writes, delegates write and change handling to the supplied callbacks,
  * and frames large change payloads into chunks.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -241,7 +241,7 @@ export const layerRpcHandlers = (options: {
  * Use to keep per-client chunk assembly state while handling chunked event-log
  * writes.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -258,7 +258,7 @@ export class ChunkedMessageState extends Context.Reference<
 /**
  * Annotation containing the public keys authenticated on an RPC connection.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

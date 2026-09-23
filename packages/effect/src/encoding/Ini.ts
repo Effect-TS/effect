@@ -4,7 +4,7 @@
  * This module contains the decoding surface used by Effect's CLI without
  * pulling in the complete `ini` package.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -89,7 +89,7 @@ const unquote = (input: string | undefined): string => {
  * in `[]` become arrays, and the scalar values `true`, `false`, and `null` are
  * decoded. Other scalar values remain strings.
  *
- * @unstable
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */

@@ -6,7 +6,7 @@
  * hashes byte data and creates event-log identities, so remote replication can
  * use storage or transport that should not see plaintext event data.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -23,7 +23,7 @@ import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecret
  * Schema for an encrypted journal entry paired with its initialization vector
  * and the id of the original entry.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -37,7 +37,7 @@ export const EncryptedEntry = Schema.Struct({
  * Type of an encrypted remote entry, including its remote sequence number,
  * initialization vector, entry id, and encrypted entry bytes.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -46,7 +46,7 @@ export interface EncryptedRemoteEntry extends Schema.Schema.Type<typeof Encrypte
 /**
  * Schema for encrypted entries exchanged with a remote event-log server.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -74,7 +74,7 @@ const toBufferSource = (data: Uint8Array): ArrayBufferView<ArrayBuffer> => new U
  * Use to provide cryptographic operations required by encrypted event-log
  * replication.
  *
- * @unstable
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -101,7 +101,7 @@ export class EventLogEncryption extends Context.Service<EventLogEncryption, {
  * Creates an `EventLogEncryption` service backed by the Web Crypto `SubtleCrypto`
  * APIs from the supplied `Crypto` implementation.
  *
- * @unstable
+ * @stability unstable
  * @category encryption
  * @since 4.0.0
  */
@@ -165,7 +165,7 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
 /**
  * Provides `EventLogEncryption` using `globalThis.crypto`.
  *
- * @unstable
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

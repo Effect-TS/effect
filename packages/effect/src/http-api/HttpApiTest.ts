@@ -6,7 +6,7 @@
  * but they do not start an HTTP server. This is useful for focused handler
  * tests, schema round trips, middleware behavior, and typed client calls.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
@@ -37,7 +37,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
  * Handlers for the selected groups are taken from the environment; unselected
  * groups are wired with placeholder handlers that fail if called.
  *
- * @unstable
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */

@@ -11447,7 +11447,7 @@ const netAddressFromString = <S extends declare<any>, E extends { readonly messa
 /**
  * Type-level representation of {@link MacAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11458,7 +11458,7 @@ export interface MacAddress extends declare<NetAddress_.MacAddress> {
 /**
  * Schema for already-constructed MAC address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11469,7 +11469,7 @@ export const MacAddress: MacAddress = declare(NetAddress_.isMacAddress, {
 /**
  * Type-level representation of {@link MacAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11480,7 +11480,7 @@ export interface MacAddressFromString extends decodeTo<MacAddress, String> {
 /**
  * Schema for MAC addresses encoded as canonical colon-separated hexadecimal strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11494,7 +11494,7 @@ export const MacAddressFromString: MacAddressFromString = netAddressFromString(
 /**
  * Type-level representation of {@link Ipv4Address}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11505,7 +11505,7 @@ export interface Ipv4Address extends declare<NetAddress_.Ipv4Address> {
 /**
  * Schema for already-constructed IPv4 address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11516,7 +11516,7 @@ export const Ipv4Address: Ipv4Address = declare(NetAddress_.isIpv4Address, {
 /**
  * Type-level representation of {@link Ipv4AddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11527,7 +11527,7 @@ export interface Ipv4AddressFromString extends decodeTo<Ipv4Address, String> {
 /**
  * Schema for IPv4 addresses encoded as canonical dotted-decimal strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11541,7 +11541,7 @@ export const Ipv4AddressFromString: Ipv4AddressFromString = netAddressFromString
 /**
  * Type-level representation of {@link Ipv6Address}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11552,7 +11552,7 @@ export interface Ipv6Address extends declare<NetAddress_.Ipv6Address> {
 /**
  * Schema for already-constructed IPv6 address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11563,7 +11563,7 @@ export const Ipv6Address: Ipv6Address = declare(NetAddress_.isIpv6Address, {
 /**
  * Type-level representation of {@link Ipv6AddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11574,7 +11574,7 @@ export interface Ipv6AddressFromString extends decodeTo<Ipv6Address, String> {
 /**
  * Schema for IPv6 addresses encoded as canonical strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11588,7 +11588,7 @@ export const Ipv6AddressFromString: Ipv6AddressFromString = netAddressFromString
 /**
  * Type-level representation of {@link IpAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11599,7 +11599,7 @@ export interface IpAddress extends declare<NetAddress_.IpAddress> {
 /**
  * Schema for already-constructed IPv4 or IPv6 address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11610,7 +11610,7 @@ export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
 /**
  * Type-level representation of {@link IpAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11621,7 +11621,7 @@ export interface IpAddressFromString extends decodeTo<IpAddress, String> {
 /**
  * Schema for IP addresses encoded as canonical numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11642,7 +11642,7 @@ const netAddressRefinement = <S extends Constraint, T extends S["Type"]>(
 /**
  * Type-level representation of {@link IpMulticastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11653,7 +11653,7 @@ export interface IpMulticastAddress extends refine<NetAddress_.MulticastAddress<
 /**
  * Schema for already-constructed multicast IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11667,7 +11667,7 @@ export const IpMulticastAddress: IpMulticastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpMulticastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11691,7 +11691,7 @@ export interface IpMulticastAddressFromString
  * assert.isTrue(NetAddress.isMulticast(address))
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11705,7 +11705,7 @@ export const IpMulticastAddressFromString: IpMulticastAddressFromString = netAdd
 /**
  * Type-level representation of {@link MacMulticastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11716,7 +11716,7 @@ export interface MacMulticastAddress extends refine<NetAddress_.MulticastAddress
 /**
  * Schema for already-constructed multicast MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11730,7 +11730,7 @@ export const MacMulticastAddress: MacMulticastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link MacMulticastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11743,7 +11743,7 @@ export interface MacMulticastAddressFromString
 /**
  * Schema for multicast MAC addresses encoded as canonical strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11757,7 +11757,7 @@ export const MacMulticastAddressFromString: MacMulticastAddressFromString = netA
 /**
  * Type-level representation of {@link IpUnicastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11768,7 +11768,7 @@ export interface IpUnicastAddress extends refine<NetAddress_.UnicastAddress<NetA
 /**
  * Schema for already-constructed syntactic unicast IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11782,7 +11782,7 @@ export const IpUnicastAddress: IpUnicastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpUnicastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11795,7 +11795,7 @@ export interface IpUnicastAddressFromString
 /**
  * Schema for syntactic unicast IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11809,7 +11809,7 @@ export const IpUnicastAddressFromString: IpUnicastAddressFromString = netAddress
 /**
  * Type-level representation of {@link MacUnicastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11820,7 +11820,7 @@ export interface MacUnicastAddress extends refine<NetAddress_.UnicastAddress<Net
 /**
  * Schema for already-constructed unicast MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11834,7 +11834,7 @@ export const MacUnicastAddress: MacUnicastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link MacUnicastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11847,7 +11847,7 @@ export interface MacUnicastAddressFromString
 /**
  * Schema for unicast MAC addresses encoded as canonical strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11861,7 +11861,7 @@ export const MacUnicastAddressFromString: MacUnicastAddressFromString = netAddre
 /**
  * Type-level representation of {@link Ipv4BroadcastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11874,7 +11874,7 @@ export interface Ipv4BroadcastAddress
 /**
  * Schema for the already-constructed IPv4 limited broadcast address.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11888,7 +11888,7 @@ export const Ipv4BroadcastAddress: Ipv4BroadcastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link Ipv4BroadcastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11901,7 +11901,7 @@ export interface Ipv4BroadcastAddressFromString
 /**
  * Schema for the IPv4 limited broadcast address encoded as a string.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11915,7 +11915,7 @@ export const Ipv4BroadcastAddressFromString: Ipv4BroadcastAddressFromString = ne
 /**
  * Type-level representation of {@link MacBroadcastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11926,7 +11926,7 @@ export interface MacBroadcastAddress extends refine<NetAddress_.BroadcastAddress
 /**
  * Schema for the already-constructed MAC all-ones broadcast address.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11940,7 +11940,7 @@ export const MacBroadcastAddress: MacBroadcastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link MacBroadcastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11953,7 +11953,7 @@ export interface MacBroadcastAddressFromString
 /**
  * Schema for the MAC all-ones broadcast address encoded as a string.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11967,7 +11967,7 @@ export const MacBroadcastAddressFromString: MacBroadcastAddressFromString = netA
 /**
  * Type-level representation of {@link IpLoopbackAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11978,7 +11978,7 @@ export interface IpLoopbackAddress extends refine<NetAddress_.LoopbackAddress<Ne
 /**
  * Schema for already-constructed loopback IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11992,7 +11992,7 @@ export const IpLoopbackAddress: IpLoopbackAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpLoopbackAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12005,7 +12005,7 @@ export interface IpLoopbackAddressFromString
 /**
  * Schema for loopback IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12019,7 +12019,7 @@ export const IpLoopbackAddressFromString: IpLoopbackAddressFromString = netAddre
 /**
  * Type-level representation of {@link IpLinkLocalAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12030,7 +12030,7 @@ export interface IpLinkLocalAddress extends refine<NetAddress_.LinkLocalAddress<
 /**
  * Schema for already-constructed link-local IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12044,7 +12044,7 @@ export const IpLinkLocalAddress: IpLinkLocalAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpLinkLocalAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12057,7 +12057,7 @@ export interface IpLinkLocalAddressFromString
 /**
  * Schema for link-local IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12071,7 +12071,7 @@ export const IpLinkLocalAddressFromString: IpLinkLocalAddressFromString = netAdd
 /**
  * Type-level representation of {@link IpUnspecifiedAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12082,7 +12082,7 @@ export interface IpUnspecifiedAddress extends refine<NetAddress_.UnspecifiedAddr
 /**
  * Schema for already-constructed unspecified IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12096,7 +12096,7 @@ export const IpUnspecifiedAddress: IpUnspecifiedAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpUnspecifiedAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12109,7 +12109,7 @@ export interface IpUnspecifiedAddressFromString
 /**
  * Schema for unspecified IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12123,7 +12123,7 @@ export const IpUnspecifiedAddressFromString: IpUnspecifiedAddressFromString = ne
 /**
  * Type-level representation of {@link Ipv4PrivateAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12134,7 +12134,7 @@ export interface Ipv4PrivateAddress extends refine<NetAddress_.PrivateAddress<Ne
 /**
  * Schema for already-constructed RFC 1918 private-use addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12148,7 +12148,7 @@ export const Ipv4PrivateAddress: Ipv4PrivateAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link Ipv4PrivateAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12161,7 +12161,7 @@ export interface Ipv4PrivateAddressFromString
 /**
  * Schema for RFC 1918 private-use addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12175,7 +12175,7 @@ export const Ipv4PrivateAddressFromString: Ipv4PrivateAddressFromString = netAdd
 /**
  * Type-level representation of {@link Ipv6UniqueLocalAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12188,7 +12188,7 @@ export interface Ipv6UniqueLocalAddress
 /**
  * Schema for already-constructed IPv6 unique-local addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12202,7 +12202,7 @@ export const Ipv6UniqueLocalAddress: Ipv6UniqueLocalAddress = netAddressRefineme
 /**
  * Type-level representation of {@link Ipv6UniqueLocalAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12215,7 +12215,7 @@ export interface Ipv6UniqueLocalAddressFromString
 /**
  * Schema for IPv6 unique-local addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12229,7 +12229,7 @@ export const Ipv6UniqueLocalAddressFromString: Ipv6UniqueLocalAddressFromString 
 /**
  * Type-level representation of {@link MacLocallyAdministeredAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12242,7 +12242,7 @@ export interface MacLocallyAdministeredAddress
 /**
  * Schema for already-constructed locally administered MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12256,7 +12256,7 @@ export const MacLocallyAdministeredAddress: MacLocallyAdministeredAddress = netA
 /**
  * Type-level representation of {@link MacLocallyAdministeredAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12269,7 +12269,7 @@ export interface MacLocallyAdministeredAddressFromString
 /**
  * Schema for locally administered MAC addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12283,7 +12283,7 @@ export const MacLocallyAdministeredAddressFromString: MacLocallyAdministeredAddr
 /**
  * Type-level representation of {@link MacUniversallyAdministeredAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12296,7 +12296,7 @@ export interface MacUniversallyAdministeredAddress
 /**
  * Schema for already-constructed universally administered MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12310,7 +12310,7 @@ export const MacUniversallyAdministeredAddress: MacUniversallyAdministeredAddres
 /**
  * Type-level representation of {@link MacUniversallyAdministeredAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12323,7 +12323,7 @@ export interface MacUniversallyAdministeredAddressFromString
 /**
  * Schema for universally administered MAC addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12338,7 +12338,7 @@ export const MacUniversallyAdministeredAddressFromString: MacUniversallyAdminist
 /**
  * Type-level representation of {@link Ipv4Interface}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12349,7 +12349,7 @@ export interface Ipv4Interface extends declare<IpInterface_.Ipv4Interface> {
 /**
  * Schema for already-constructed IPv4 interface address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12360,7 +12360,7 @@ export const Ipv4Interface: Ipv4Interface = declare(IpInterface_.isIpv4Interface
 /**
  * Type-level representation of {@link Ipv4InterfaceFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12371,7 +12371,7 @@ export interface Ipv4InterfaceFromString extends decodeTo<Ipv4Interface, String>
 /**
  * Schema for IPv4 interface addresses encoded as an address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12385,7 +12385,7 @@ export const Ipv4InterfaceFromString: Ipv4InterfaceFromString = netAddressFromSt
 /**
  * Type-level representation of {@link Ipv6Interface}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12396,7 +12396,7 @@ export interface Ipv6Interface extends declare<IpInterface_.Ipv6Interface> {
 /**
  * Schema for already-constructed IPv6 interface address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12407,7 +12407,7 @@ export const Ipv6Interface: Ipv6Interface = declare(IpInterface_.isIpv6Interface
 /**
  * Type-level representation of {@link Ipv6InterfaceFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12418,7 +12418,7 @@ export interface Ipv6InterfaceFromString extends decodeTo<Ipv6Interface, String>
 /**
  * Schema for IPv6 interface addresses encoded as an address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12432,7 +12432,7 @@ export const Ipv6InterfaceFromString: Ipv6InterfaceFromString = netAddressFromSt
 /**
  * Type-level representation of {@link IpInterface}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12443,7 +12443,7 @@ export interface IpInterface extends declare<IpInterface_.IpInterface> {
 /**
  * Schema for already-constructed IPv4 or IPv6 interface address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12454,7 +12454,7 @@ export const IpInterface: IpInterface = declare(IpInterface_.isIpInterface, {
 /**
  * Type-level representation of {@link IpInterfaceFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12465,7 +12465,7 @@ export interface IpInterfaceFromString extends decodeTo<IpInterface, String> {
 /**
  * Schema for IPv4 or IPv6 interface addresses encoded as an address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12479,7 +12479,7 @@ export const IpInterfaceFromString: IpInterfaceFromString = netAddressFromString
 /**
  * Type-level representation of {@link Ipv4Network}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12490,7 +12490,7 @@ export interface Ipv4Network extends declare<IpNetwork_.Ipv4Network> {
 /**
  * Schema for already-constructed canonical IPv4 network prefixes.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12501,7 +12501,7 @@ export const Ipv4Network: Ipv4Network = declare(IpNetwork_.isIpv4Network, {
 /**
  * Type-level representation of {@link Ipv4NetworkFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12512,7 +12512,7 @@ export interface Ipv4NetworkFromString extends decodeTo<Ipv4Network, String> {
 /**
  * Schema for canonical IPv4 network prefixes encoded in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12526,7 +12526,7 @@ export const Ipv4NetworkFromString: Ipv4NetworkFromString = netAddressFromString
 /**
  * Type-level representation of {@link Ipv6Network}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12537,7 +12537,7 @@ export interface Ipv6Network extends declare<IpNetwork_.Ipv6Network> {
 /**
  * Schema for already-constructed canonical IPv6 network prefixes.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12548,7 +12548,7 @@ export const Ipv6Network: Ipv6Network = declare(IpNetwork_.isIpv6Network, {
 /**
  * Type-level representation of {@link Ipv6NetworkFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12559,7 +12559,7 @@ export interface Ipv6NetworkFromString extends decodeTo<Ipv6Network, String> {
 /**
  * Schema for canonical IPv6 network prefixes encoded in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12573,7 +12573,7 @@ export const Ipv6NetworkFromString: Ipv6NetworkFromString = netAddressFromString
 /**
  * Type-level representation of {@link IpNetwork}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12584,7 +12584,7 @@ export interface IpNetwork extends declare<IpNetwork_.IpNetwork> {
 /**
  * Schema for already-constructed canonical IPv4 or IPv6 network prefixes.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12595,7 +12595,7 @@ export const IpNetwork: IpNetwork = declare(IpNetwork_.isIpNetwork, {
 /**
  * Type-level representation of {@link IpNetworkFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12606,7 +12606,7 @@ export interface IpNetworkFromString extends decodeTo<IpNetwork, String> {
 /**
  * Schema for canonical IPv4 or IPv6 network prefixes encoded in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12620,7 +12620,7 @@ export const IpNetworkFromString: IpNetworkFromString = netAddressFromString(
 /**
  * Type-level representation of {@link InetAddressV4}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12631,7 +12631,7 @@ export interface InetAddressV4 extends declare<NetAddress_.InetAddressV4> {
 /**
  * Schema for already-constructed resolved IPv4 internet addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12642,7 +12642,7 @@ export const InetAddressV4: InetAddressV4 = declare(NetAddress_.isInetAddressV4,
 /**
  * Type-level representation of {@link InetAddressV6}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12653,7 +12653,7 @@ export interface InetAddressV6 extends declare<NetAddress_.InetAddressV6> {
 /**
  * Schema for already-constructed resolved IPv6 internet addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12664,7 +12664,7 @@ export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6,
 /**
  * Type-level representation of {@link InetAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12675,7 +12675,7 @@ export interface InetAddress extends declare<NetAddress_.InetAddress> {
 /**
  * Schema for already-constructed resolved internet addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12686,7 +12686,7 @@ export const InetAddress: InetAddress = declare(NetAddress_.isInetAddress, {
 /**
  * Type-level representation of {@link InetAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12697,7 +12697,7 @@ export interface InetAddressFromString extends decodeTo<InetAddress, String> {
 /**
  * Schema for resolved internet addresses encoded as numeric socket strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12711,7 +12711,7 @@ export const InetAddressFromString: InetAddressFromString = netAddressFromString
 /**
  * Type-level representation of {@link UnixPathAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12722,7 +12722,7 @@ export interface UnixPathAddress extends declare<NetAddress_.UnixPathAddress> {
 /**
  * Schema for already-constructed Unix-domain filesystem addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12734,7 +12734,7 @@ export const UnixPathAddress: UnixPathAddress = declare(
 /**
  * Type-level representation of {@link UnixPathAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12745,7 +12745,7 @@ export interface UnixPathAddressFromString extends decodeTo<UnixPathAddress, Str
 /**
  * Schema for Unix-domain filesystem addresses encoded as opaque path strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12760,7 +12760,7 @@ export const UnixPathAddressFromString: UnixPathAddressFromString = String.pipe(
 /**
  * Type-level representation of {@link SocketAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12771,7 +12771,7 @@ export interface SocketAddress extends declare<NetAddress_.SocketAddress> {
 /**
  * Schema for already-constructed portable concrete socket addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13756,7 +13756,7 @@ export function OptionFromNullishOr<S extends Constraint>(
 /**
  * Type-level representation of {@link Cookie}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13767,7 +13767,7 @@ export interface Cookie extends declare<Cookies_.Cookie> {
 /**
  * Schema for HTTP cookie values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13790,7 +13790,7 @@ export const Cookie: Cookie = declare(
 /**
  * Type-level representation of {@link Cookies}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13811,7 +13811,7 @@ export interface Cookies extends
  * JSON encoding uses `Set-Cookie` header strings, while isomorphic encoding uses
  * a readonly record of cookie values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13850,7 +13850,7 @@ export const Cookies: Cookies = declare(
 /**
  * Type-level representation of {@link RecordFromCookies}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13862,7 +13862,7 @@ export interface RecordFromCookies extends decodeTo<$Record<String, String>, Coo
  * Schema that decodes HTTP cookies into a record of decoded string values keyed
  * by cookie name.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13882,7 +13882,7 @@ export const RecordFromCookies: RecordFromCookies = Cookies.pipe(
 /**
  * Type-level representation of {@link Headers}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13897,7 +13897,7 @@ export interface Headers extends declare<Headers_.Headers, { readonly [x: string
  *
  * Decoding normalizes header names; encoding returns a plain record.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13929,7 +13929,7 @@ export const Headers: Headers = declare(
 /**
  * Type-level representation of {@link UrlParams}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13949,7 +13949,7 @@ export interface UrlParams extends
  *
  * The encoded representation is an array of string key-value tuples.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13981,7 +13981,7 @@ export const UrlParams: UrlParams = declare(
 /**
  * Type-level representation of {@link JsonFromUrlParamsField}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -14013,7 +14013,7 @@ export interface JsonFromUrlParamsField extends decodeTo<fromJsonString<Unknown>
  * const result = [decoded.some, decoded.number] // => ["bar", 42]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -14038,7 +14038,7 @@ export const JsonFromUrlParamsField = (
 /**
  * Type-level representation of {@link RecordFromUrlParams}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -14081,7 +14081,7 @@ export interface RecordFromUrlParams extends
  * const result = [decoded.some, decoded.number] // => ["value", 42]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

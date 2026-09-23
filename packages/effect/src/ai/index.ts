@@ -1,126 +1,126 @@
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as AiError from "./AiError.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as AnthropicStructuredOutput from "./AnthropicStructuredOutput.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Chat from "./Chat.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Decision from "./Decision.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as DecisionModel from "./DecisionModel.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as EmbeddingModel from "./EmbeddingModel.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as IdGenerator from "./IdGenerator.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as LanguageModel from "./LanguageModel.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as McpProtocol from "./McpProtocol.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as McpSchema from "./McpSchema.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as McpServer from "./McpServer.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Model from "./Model.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OpenAiStructuredOutput from "./OpenAiStructuredOutput.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Prompt from "./Prompt.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Response from "./Response.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as ResponseIdTracker from "./ResponseIdTracker.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Telemetry from "./Telemetry.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Tokenizer from "./Tokenizer.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Tool from "./Tool.ts"
 
 /**
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Toolkit from "./Toolkit.ts"

@@ -1,7 +1,7 @@
 /**
  * Defines the MCP protocol implementations that an `McpServer` can support.
  *
- * @unstable
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Effect from "../Effect.ts"
@@ -20,7 +20,7 @@ import type * as McpSchema from "./McpSchema.ts"
 /**
  * The MCP protocol versions implemented by this release.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -29,7 +29,7 @@ export type ProtocolVersion = "2024-11-05" | "2025-03-26" | "2025-06-18" | "2025
 /**
  * MCP protocol versions that use initialization and server-managed sessions.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -38,7 +38,7 @@ export type StatefulProtocolVersion = Exclude<ProtocolVersion, "2026-07-28">
 /**
  * Payload codecs used by a protocol adapter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -50,7 +50,7 @@ export interface PayloadCodecs {
 /**
  * A notification projected into a protocol-specific payload.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -62,7 +62,7 @@ export interface ProjectedNotification {
 /**
  * The operations required from an RPC group after its RPC union is erased.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -73,7 +73,7 @@ export interface ErasedRpcGroup<RpcType extends Rpc.Any = Rpc.Any> {
 /**
  * The additional operation required from the complete client RPC group.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -84,7 +84,7 @@ export interface ErasedClientRpcGroup extends ErasedRpcGroup {
 /**
  * Transport behavior declared by an MCP runtime descriptor.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -100,7 +100,7 @@ export interface TransportPolicy {
 /**
  * Request information decoded by a stateless MCP runtime.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -114,7 +114,7 @@ export interface StatelessRuntimeProfile {
 /**
  * Stateful lifecycle runtime declaration carried by a protocol adapter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -126,7 +126,7 @@ export interface StatefulRuntimeDescriptor {
 /**
  * Stateless lifecycle runtime declaration carried by a protocol adapter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -141,7 +141,7 @@ export interface StatelessRuntimeDescriptor {
 /**
  * Lifecycle runtime declaration carried by a protocol adapter.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -150,7 +150,7 @@ export type RuntimeDescriptor = StatefulRuntimeDescriptor | StatelessRuntimeDesc
 /**
  * The operational shape shared by protocol adapters.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -183,7 +183,7 @@ export interface AnyProtocolAdapter<
 /**
  * An MCP protocol adapter that can be supplied to `McpServer`.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -204,7 +204,7 @@ export interface ProtocolAdapter<
  * advertises change-notification capabilities and `subscriptions/listen`
  * delivers the requested notifications over the long-lived response.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export const v2026_07_28: ProtocolAdapter<"2026-07-28", StatelessRuntimeDescript
 /**
  * The MCP 2025-11-25 protocol implementation.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const v2025_11_25: ProtocolAdapter<"2025-11-25", StatefulRuntimeDescripto
 /**
  * The MCP 2025-06-18 protocol implementation.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export const v2025_06_18: ProtocolAdapter<"2025-06-18", StatefulRuntimeDescripto
 /**
  * The MCP 2025-03-26 protocol implementation.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
@@ -247,7 +247,7 @@ export const v2025_03_26: ProtocolAdapter<"2025-03-26", StatefulRuntimeDescripto
  * compatibility transport; it does not implement the historical two-endpoint
  * HTTP+SSE transport.
  *
- * @unstable
+ * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
