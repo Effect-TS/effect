@@ -617,8 +617,8 @@ describe("NetAddress", () => {
     })
 
     it("constructs scoped native IPv6 addresses from numeric and named zones", () => {
-      const scopeIds = new Map([["eth0", 7]])
-      for (const host of ["fe80::1%7", "fe80::1%eth0"]) {
+      const scopeIds = new Map([["eth0", 7], ["eth0.100", 5]] as const)
+      for (const host of ["fe80::1%7", "fe80::1%eth0", "fe80::1%eth0.100"]) {
         const actual = NetAddress.inetAddressFromNativeUnsafe(host, 4567, scopeIds)
         assert.deepStrictEqual(actual, success(NetAddress.inetAddressFromHostString(host, 4567, scopeIds)))
         assert.isTrue(Object.isFrozen(actual))
