@@ -21,8 +21,7 @@ const CloseableTypeId = effect.ScopeCloseableTypeId
 /**
  * A `Scope` represents a context where resources can be acquired and
  * automatically cleaned up when the scope is closed. Scopes can use
- * either sequential or parallel finalization strategies. A scope created with
- * `fork` keeps a reference to the scope it was forked from in `parent`.
+ * either sequential or parallel finalization strategies.
  *
  * **Example** (Managing scoped resources)
  *
@@ -77,10 +76,8 @@ export interface Closeable extends Scope {
 }
 
 /**
- * The `State` namespace contains the concrete states of a scope: `Empty`
- * with no finalizers currently registered, `Open` with at least one
- * registered finalizer, and `Closed` with the exit value used to close the
- * scope.
+ * Scope states: `Empty` has no finalizers, `Open` has at least one, and
+ * `Closed` holds the exit value.
  *
  * **Example** (Checking scope states)
  *
@@ -105,9 +102,8 @@ export declare namespace State {
    *
    * **Details**
    *
-   * Adding a finalizer transitions the scope to `Open`, and removing the last
-   * finalizer returns it to `Empty`. Closing an empty scope transitions
-   * directly to `Closed` without producing a finalizer effect.
+   * Adding a finalizer moves it to `Open`; removing the last one returns it
+   * to `Empty`.
    *
    * **Example** (Inspecting an empty scope state)
    *
