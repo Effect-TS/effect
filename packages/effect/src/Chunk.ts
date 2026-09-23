@@ -20,6 +20,7 @@ import * as Hash from "./Hash.ts"
 import type { TypeLambda } from "./HKT.ts"
 import { type Inspectable, NodeInspectSymbol, toJson } from "./Inspectable.ts"
 import * as Count from "./internal/count.ts"
+import { hashCache } from "./internal/hash.ts"
 import type { NonEmptyIterable } from "./NonEmptyIterable.ts"
 import type { Option } from "./Option.ts"
 import * as O from "./Option.ts"
@@ -205,7 +206,9 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
     return isChunk(that) && _equivalence(this, that)
   },
   [Hash.symbol]<A>(this: Chunk<A>): number {
-    return Hash.array(toReadonlyArray(this))
+    const h = sequenceHash(this)
+    sequenceHashes.set(this, h)
+    return Hash.optimize(Hash.combine(h, this.length))
   },
   [Symbol.iterator]<A>(this: Chunk<A>): Iterator<A> {
     switch (this.backing._tag) {
@@ -222,6 +225,50 @@ const ChunkProto: Omit<Chunk<unknown>, "backing" | "depth" | "left" | "length" |
   },
   pipe<A>(this: Chunk<A>) {
     return pipeArguments(this, arguments)
+  }
+}
+
+const sequenceBase = 0x9e3779b1 | 0
+
+const basePower = (n: number): number => {
+  let result = 1
+  let base = sequenceBase
+  for (; n > 0; n >>>= 1) {
+    if (n & 1) result = Math.imul(result, base)
+    base = Math.imul(base, base)
+  }
+  return result
+}
+
+const elementTerm = (element: unknown): number => Hash.combine(sequenceBase, Hash.hash(element))
+
+const arrayHash = <A>(array: ReadonlyArray<A>, from: number, to: number): number => {
+  let h = 0
+  for (let i = from; i < to; i++) {
+    h = (Math.imul(h, sequenceBase) + elementTerm(array[i])) | 0
+  }
+  return h
+}
+
+const sequenceHashes = new WeakMap<Chunk<unknown>, number>()
+
+const sequenceHash = <A>(self: Chunk<A>): number => {
+  if (hashCache.has(self)) {
+    const cached = sequenceHashes.get(self)
+    if (cached !== undefined) return cached
+  }
+  const backing = self.backing
+  switch (backing._tag) {
+    case "IEmpty":
+      return 0
+    case "ISingleton":
+      return elementTerm(backing.a)
+    case "IArray":
+      return arrayHash(backing.array, 0, backing.array.length)
+    case "IConcat":
+      return (Math.imul(sequenceHash(self.left), basePower(self.right.length)) + sequenceHash(self.right)) | 0
+    case "ISlice":
+      return arrayHash(toReadonlyArray_(backing.chunk), backing.offset, backing.offset + backing.length)
   }
 }
 

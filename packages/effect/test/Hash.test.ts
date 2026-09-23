@@ -188,6 +188,61 @@ describe("Hash", () => {
       }
     })
 
+    it("hashes a Chunk independently of how it was built", () => {
+      const grouped = (values: ReadonlyArray<unknown>): Chunk.Chunk<unknown> => {
+        if (values.length <= 2) return Chunk.fromIterable(values)
+        const cut = 1 + random(values.length - 1)
+        return Chunk.appendAll(grouped(values.slice(0, cut)), grouped(values.slice(cut)))
+      }
+      for (let run = 0; run < 300; run++) {
+        const values = range(random(60)).map(randomKey)
+        const flat = Chunk.fromIterable(values)
+        const from = random(values.length + 1)
+        const to = from + random(values.length - from + 1)
+        const slice = Chunk.fromIterable(values.slice(from, to))
+        const variants = [
+          [values.reduce<Chunk.Chunk<unknown>>(Chunk.append, Chunk.empty()), flat],
+          [
+            values.reduceRight<Chunk.Chunk<unknown>>((chunk, value) => Chunk.prepend(chunk, value), Chunk.empty()),
+            flat
+          ],
+          [grouped(values), flat],
+          [Chunk.drop(Chunk.take(Chunk.fromIterable(["first", ...values, "last"]), values.length + 1), 1), flat],
+          [Chunk.take(Chunk.drop(grouped(values), from), to - from), slice],
+          [Chunk.drop(Chunk.take(grouped(values), to), from), slice]
+        ] as const
+        for (const [chunk, expected] of variants) {
+          assert.isTrue(Equal.equals(chunk, expected), `run ${run}`)
+          assert.strictEqual(Hash.hash(chunk), Hash.hash(expected), `run ${run}`)
+        }
+      }
+    })
+
+    it("reuses a Chunk half's hash only when the program hashed that half", () => {
+      const array = [1, 2, 3]
+      const chunk = Chunk.fromArrayUnsafe(array)
+      Hash.hash(Chunk.appendAll(chunk, Chunk.make(4, 5)))
+      array[0] = 999
+      const next = Chunk.appendAll(chunk, Chunk.make(6, 7))
+      assert.isTrue(Equal.equals(next, Chunk.make(999, 2, 3, 6, 7)), "mutated array")
+      assert.isTrue(HashSet.has(HashSet.make(Chunk.make(999, 2, 3, 6, 7)), next), "mutated array in a HashSet")
+
+      const date = new Date(0)
+      const withDate = Chunk.make(date, 1)
+      Hash.hash(Chunk.appendAll(withDate, Chunk.make(2, 3)))
+      date.setTime(1000)
+      assert.isTrue(
+        Equal.equals(Chunk.appendAll(withDate, Chunk.make(4, 5)), Chunk.make(new Date(1000), 1, 4, 5)),
+        "mutated Date"
+      )
+    })
+
+    it("does not add own keys to a hashed Chunk", () => {
+      const chunk = Chunk.make(1, 2)
+      Hash.hash(chunk)
+      assert.deepStrictEqual(chunk, Chunk.make(1, 2))
+    })
+
     it("hashes a HashMap like a fresh build after persistent and in-place edits", () => {
       for (let run = 0; run < 100; run++) {
         let map = HashMap.empty<unknown, number>()
@@ -272,6 +327,19 @@ describe("Hash", () => {
       const first = make()
       const second = make()
       Hash.hash(first.map)
+      assert.strictEqual(Hash.hash(first.holder), Hash.hash(second.holder))
+    })
+
+    it("does not cache a Chunk hash computed from a circular sentinel", () => {
+      const make = () => {
+        const holder: { chunk?: unknown; tag: number } = { tag: 1 }
+        const chunk = Chunk.make({ holder })
+        holder.chunk = chunk
+        return { holder, chunk }
+      }
+      const first = make()
+      const second = make()
+      Hash.hash(first.chunk)
       assert.strictEqual(Hash.hash(first.holder), Hash.hash(second.holder))
     })
 
