@@ -197,6 +197,79 @@ describe("DatagramSocket native handle", () => {
       handles[0]!.packet("next")
       assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
     })))
+
+  it.effect("removes a promoted waiter when it is interrupted", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture()
+      const reader = yield* socket.reader
+      const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const promoted = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const last = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(first)
+      yield* Fiber.interrupt(promoted)
+      handles[0]!.packet("for last")
+      assert.deepStrictEqual(texts(yield* Fiber.join(last)), ["for last"])
+      handles[0]!.packet("not swallowed")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["not swallowed"])
+    })))
+
+  it.effect("keeps FIFO order when a waiting pull is promoted", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture()
+      const reader = yield* socket.reader
+      const cancelled = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const second = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(cancelled)
+      const third = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const handle = handles[0]!
+      handle.packet("first")
+      assert.deepStrictEqual(texts(yield* Fiber.join(first)), ["first"])
+      assert.isUndefined(second.pollUnsafe())
+      assert.isUndefined(third.pollUnsafe())
+      handle.packet("second")
+      assert.deepStrictEqual(texts(yield* Fiber.join(second)), ["second"])
+      handle.packet("third")
+      assert.deepStrictEqual(texts(yield* Fiber.join(third)), ["third"])
+    })))
+
+  it.effect("slides fresh payloads and sender addresses without mutating returned datagrams", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture({ capacity: 2, strategy: "sliding" })
+      const reader = yield* socket.reader
+      const handle = handles[0]!
+      handle.packet("retained", "127.0.0.1", 1001)
+      const [retained] = yield* reader.pull
+      const cachedAddress = retained.address
+      handle.packet("evicted", "127.0.0.2", 1002)
+      handle.packet("middle", "127.0.0.3", 1003)
+      handle.packet("new", "127.0.0.4", 1004)
+      const batch = yield* reader.pull
+      assert.deepStrictEqual(texts(batch), ["middle", "new"])
+      assert.strictEqual(batch[0].address.port, 1003)
+      assert.strictEqual(batch[1].address.port, 1004)
+      assert.strictEqual(NetAddress.formatNativeHost(batch[0].address, new Map()), "127.0.0.3")
+      assert.strictEqual(NetAddress.formatNativeHost(batch[1].address, new Map()), "127.0.0.4")
+      assert.strictEqual(reader.dropped(), 1)
+      // Force later overflow after the batch has escaped the queue, too.
+      handle.packet("old", "127.0.0.5", 1005)
+      handle.packet("later", "127.0.0.6", 1006)
+      handle.packet("latest", "127.0.0.7", 1007)
+      assert.deepStrictEqual(texts(batch), ["middle", "new"])
+      assert.strictEqual(batch[0].address.port, 1003)
+      assert.strictEqual(batch[1].address.port, 1004)
+      assert.deepStrictEqual(texts([retained]), ["retained"])
+      assert.strictEqual(retained.address, cachedAddress)
+      assert.strictEqual(retained.address.port, 1001)
+      assert.deepStrictEqual(texts(yield* reader.pull), ["later", "latest"])
+    })))
   for (const strategy of ["dropping", "sliding"] as const) {
     it.effect(`overflow using ${strategy}`, () =>
       Effect.scoped(Effect.gen(function*() {
