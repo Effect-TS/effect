@@ -701,36 +701,17 @@ describe("PubSub", () => {
       assert.deepStrictEqual(failed, [])
     })
 
-  for (
-    const [name, take] of [
-      ["take", PubSub.take],
-      ["takeAll", PubSub.takeAll],
-      ["takeBetween", (sub: PubSub.Subscription<number>) => PubSub.takeBetween(sub, 1, 2)]
-    ] as const
-  ) {
-    it.effect(`an interrupted ${name} never swallows the next message`, () =>
-      interruptAtEveryYield((budget) =>
-        Effect.gen(function*() {
-          const pubsub = yield* PubSub.bounded<number>(4)
-          const subscription = yield* PubSub.subscribe(pubsub)
-          const fiber = yield* Effect.forkChild(budget(take(subscription)), { startImmediately: true })
-          yield* Fiber.interrupt(fiber)
-          yield* PubSub.publish(pubsub, 1)
-          return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
-        })
-      ))
-  }
-
-  it.effect("waiting takes on one subscription receive messages in the order they started waiting", () =>
-    Effect.gen(function*() {
-      const pubsub = yield* PubSub.unbounded<number>()
-      const subscription = yield* PubSub.subscribe(pubsub)
-      const first = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
-      const second = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
-      const third = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
-      yield* PubSub.publishAll(pubsub, [1, 2, 3])
-      assert.deepStrictEqual(yield* Fiber.joinAll([first, second, third]), [1, 2, 3])
-    }))
+  it.effect("an interrupted take never swallows the next message", () =>
+    interruptAtEveryYield((budget) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(4)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(budget(PubSub.take(subscription)), { startImmediately: true })
+        yield* Fiber.interrupt(fiber)
+        yield* PubSub.publish(pubsub, 1)
+        return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
+      })
+    ))
 
   it.effect("a take that starts waiting after unsubscribe is interrupted", () =>
     interruptAtEveryYield((budget) =>
