@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce allocations in `Effect.match`, `Effect.matchCause` and `Effect.option`.
+Stop allocating closures on every `Effect.match` and `Effect.matchCause` call.

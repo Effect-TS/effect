@@ -1474,7 +1474,7 @@ const evaluateCont = function(this: any, fiber: FiberImpl): Primitive {
 }
 
 interface PrimitiveCtor<Args extends Array<any>> {
-  new<A = any, E = any, R = any>(...args: Args): Primitive & Effect.Effect<A, E, R>
+  new(...args: Args): Primitive & Effect.Effect<any, any, any>
   prototype: any
 }
 
@@ -3598,48 +3598,44 @@ const OnSuccessAndFailureImpl = function(
 } as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, onSuccess: any, onFailure: any]>
 OnSuccessAndFailureImpl.prototype = OnSuccessAndFailureProto
 
-const MatchImpl = function(
-  this: any,
-  self: Effect.Effect<any, any, any>,
-  onSuccess: any,
-  onFailure: any,
-  payload: MatchHandlers
-) {
-  this[args] = self
-  this[contA] = onSuccess
-  this[contE] = onFailure
-  this.payload = payload
-} as unknown as PrimitiveCtor<
-  [self: Effect.Effect<any, any, any>, onSuccess: any, onFailure: any, payload: MatchHandlers]
->
-MatchImpl.prototype = OnSuccessAndFailureProto
-
-interface MatchHandlers {
-  readonly onFailure: (input: any) => any
-  readonly onSuccess: (value: any) => any
+// `match` and `matchCause` keep the caller's handlers object as the frame's
+// payload and call it from the prototype, so no closure is built per call.
+const matchSuccess = function(this: any, value: any) {
+  const handlers = this.payload
+  return succeed(continuationMarksStack ? handlers.onSuccess(value) : internalCall(() => handlers.onSuccess(value)))
 }
-
-const matchSuccessCont = function(this: { readonly payload: MatchHandlers }, value: any) {
+const makeMatch = (
+  op: string,
+  onFailure: (this: any, cause: Cause.Cause<any>) => Effect.Effect<any, any, any>
+) => {
+  const Proto = makePrimitiveProto({
+    op,
+    [evaluate]: evaluateCont,
+    [contA]: matchSuccess,
+    [contE]: onFailure
+  })
+  const MatchImpl = function(this: any, self: Effect.Effect<any, any, any>, handlers: any) {
+    this[args] = self
+    this.payload = handlers
+  } as unknown as {
+    new(self: Effect.Effect<any, any, any>, handlers: any): Effect.Effect<any, never, any>
+    prototype: any
+  }
+  MatchImpl.prototype = Proto
+  return MatchImpl
+}
+const MatchImpl = makeMatch("Match", function(cause) {
+  const fail = cause.reasons.find(isFailReason)
+  if (fail === undefined) return failCause(cause)
   const handlers = this.payload
   return succeed(
-    continuationMarksStack ? handlers.onSuccess(value) : internalCall(() => handlers.onSuccess(value))
+    continuationMarksStack ? handlers.onFailure(fail.error) : internalCall(() => handlers.onFailure(fail.error))
   )
-}
-const matchCauseFailureCont = function(this: { readonly payload: MatchHandlers }, cause: Cause.Cause<any>) {
+})
+const MatchCauseImpl = makeMatch("MatchCause", function(cause) {
   const handlers = this.payload
-  return succeed(
-    continuationMarksStack ? handlers.onFailure(cause) : internalCall(() => handlers.onFailure(cause))
-  )
-}
-const matchFailureCont = function(this: { readonly payload: MatchHandlers }, cause: Cause.Cause<any>) {
-  const failure = cause.reasons.find(isFailReason)
-  if (failure === undefined) return failCause(cause)
-  const handlers = this.payload
-  const error = failure.error
-  return succeed(
-    continuationMarksStack ? handlers.onFailure(error) : internalCall(() => handlers.onFailure(error))
-  )
-}
+  return succeed(continuationMarksStack ? handlers.onFailure(cause) : internalCall(() => handlers.onFailure(cause)))
+})
 
 /** @internal */
 export const matchCause: {
@@ -3662,8 +3658,7 @@ export const matchCause: {
       readonly onFailure: (cause: Cause.Cause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
-  ): Effect.Effect<A2 | A3, never, R> =>
-    new MatchImpl<A2 | A3, never, R>(self, matchSuccessCont, matchCauseFailureCont, options)
+  ): Effect.Effect<A2 | A3, never, R> => new MatchCauseImpl(self, options)
 )
 
 /** @internal */
@@ -3722,8 +3717,7 @@ export const match: {
       readonly onFailure: (error: E) => A2
       readonly onSuccess: (value: A) => A3
     }
-  ): Effect.Effect<A2 | A3, never, R> =>
-    new MatchImpl<A2 | A3, never, R>(self, matchSuccessCont, matchFailureCont, options)
+  ): Effect.Effect<A2 | A3, never, R> => new MatchImpl(self, options)
 )
 
 /** @internal */
