@@ -192,7 +192,7 @@ export const makeValue = () => 1
       output: ".data/jsdocs.json"
     }
     const model = extractJSDocsSync(options)
-    assert.strictEqual(model.version, 2)
+    assert.strictEqual(model.version, 3)
     assert.strictEqual(model.files.length, 1)
     assert.strictEqual(model.files[0]?.declarations[0]?.name, "makeValue")
     assert.strictEqual(model.apis[0]?.apiFqn, "@effect/sample/Foo.makeValue")
@@ -1239,23 +1239,23 @@ export declare namespace StableGroup {
       output: ".data/jsdocs.json"
     })
     const foo = model.files.find((file) => file.file.endsWith("src/Foo.ts"))
-    const unstableByName = Object.fromEntries(
+    const stabilityByName = Object.fromEntries(
       model.apis
         .filter((api) => api.moduleName === "@effect/sample/Foo")
-        .map((api) => [api.apiFqn, api.tags.unstable])
+        .map((api) => [api.apiFqn, api.tags.stability])
     )
 
     assert.deepStrictEqual(foo?.diagnostics ?? [], [])
     assert.match(foo?.moduleJSDoc?.raw ?? "", /@stability unstable/)
-    assert.deepStrictEqual(unstableByName, {
-      "@effect/sample/Foo.Box": false,
-      "@effect/sample/Foo.Box.value": true,
-      "@effect/sample/Foo.Box.label": false,
-      "@effect/sample/Foo.Group": true,
-      "@effect/sample/Foo.Group.Item": true,
-      "@effect/sample/Foo.Group.StableItem": false,
-      "@effect/sample/Foo.StableGroup": false,
-      "@effect/sample/Foo.StableGroup.Item": false
+    assert.deepStrictEqual(stabilityByName, {
+      "@effect/sample/Foo.Box": "stable",
+      "@effect/sample/Foo.Box.value": "unstable",
+      "@effect/sample/Foo.Box.label": "stable",
+      "@effect/sample/Foo.Group": "unstable",
+      "@effect/sample/Foo.Group.Item": "unstable",
+      "@effect/sample/Foo.Group.StableItem": "stable",
+      "@effect/sample/Foo.StableGroup": "stable",
+      "@effect/sample/Foo.StableGroup.Item": "stable"
     })
   })
 })
