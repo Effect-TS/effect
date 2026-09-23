@@ -1984,6 +1984,20 @@ describe("Effect", () => {
   })
 
   describe("interruption", () => {
+    it("a map callback that interrupts its own fiber skips the next map", () => {
+      let ran = false
+      const exit = Effect.runSyncExit(
+        Effect.sync(() => 0).pipe(
+          Effect.map(() => Fiber.getCurrent()!.interruptUnsafe()),
+          Effect.map(() => {
+            ran = true
+          })
+        )
+      )
+      assert.isFalse(ran)
+      assert.isTrue(Exit.hasInterrupts(exit))
+    })
+
     it.effect("sync forever is interruptible", () =>
       Effect.gen(function*() {
         const fiber = yield* pipe(Effect.succeed(1), Effect.forever, Effect.forkChild)
@@ -2580,6 +2594,12 @@ describe("Effect", () => {
       return loop.pipe(
         Effect.timeoutOption(50)
       )
+    })
+
+    it("lazily nested map continuations", () => {
+      const loop = (n: number): Effect.Effect<number> =>
+        n === 0 ? Effect.succeed(0) : Effect.map(Effect.suspend(() => loop(n - 1)), (n) => n + 1)
+      assert.strictEqual(Effect.runSync(loop(100_000)), 100_000)
     })
   })
 
