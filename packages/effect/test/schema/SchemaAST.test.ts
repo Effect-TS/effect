@@ -1,7 +1,16 @@
-import { Effect, Schema, SchemaAST, SchemaGetter, SchemaTransformation } from "effect"
+import {
+  Effect,
+  Result,
+  Schema,
+  SchemaAST,
+  SchemaGetter,
+  SchemaIssue,
+  SchemaParser,
+  SchemaTransformation
+} from "effect"
 import { runInNewContext } from "node:vm"
 import { describe, it } from "vitest"
-import { deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
+import { assertTrue, deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaAST", () => {
   it("stores constructor defaults directly in the context", () => {
@@ -497,6 +506,37 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
     })
 
+    it("should reuse the candidates of a runtime type without literals", () => {
+      const schema = Schema.NullOr(Schema.Struct({ a: Schema.Number }))
+      const ast = schema.ast
+      const candidates = SchemaAST.getCandidates({ a: 1 }, ast.types)
+      deepStrictEqual(candidates, [ast.types[0]])
+      strictEqual(SchemaAST.getCandidates({ b: 2 }, ast.types), candidates)
+      Reflect.set(candidates, candidates.length, ast.types[1])
+      deepStrictEqual(SchemaAST.getCandidates({ a: 1 }, ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates(null, ast.types), [ast.types[1]])
+    })
+
+    it("should reuse non-discriminated candidates of a tagged union", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.tag("a"), a: Schema.String }),
+        Schema.Struct({ b: Schema.Number }),
+        Schema.String,
+        Schema.Literal(1)
+      ])
+      const ast = schema.ast
+      const strings = SchemaAST.getCandidates("x", ast.types)
+      deepStrictEqual(strings, [ast.types[2]])
+      strictEqual(SchemaAST.getCandidates("y", ast.types), strings)
+      deepStrictEqual(SchemaAST.getCandidates(2, ast.types), [ast.types[3]])
+      const objects = SchemaAST.getCandidates({ _tag: "c" }, ast.types)
+      deepStrictEqual(objects, [ast.types[1]])
+      strictEqual(SchemaAST.getCandidates({ _tag: "d" }, ast.types), objects)
+      Reflect.set(objects, objects.length, ast.types[0])
+      deepStrictEqual(SchemaAST.getCandidates({ _tag: "c" }, ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates({ _tag: "a" }, ast.types), [ast.types[0], ast.types[1]])
+    })
+
     it("should handle candidates with different sentinel keys", () => {
       const schema = Schema.Union([
         Schema.Struct({
@@ -587,6 +627,36 @@ describe("SchemaAST", () => {
       // A missing sentinel key does not exclude: the member still owes the error.
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0], ast.types[1]])
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: undefined }, ast.types, true), ast.types)
+    })
+  })
+
+  describe("union decoding", () => {
+    const assertDecode = (schema: Schema.Codec<any, any>, input: unknown, expected: unknown) => {
+      for (const errors of ["first", "all"] as const) {
+        const result = SchemaParser.decodeUnknownResult(schema, { errors })(input)
+        assertTrue(Result.isSuccess(result))
+        deepStrictEqual(result.success, expected)
+      }
+    }
+
+    const assertDecodeFailure = (schema: Schema.Codec<any, any>, input: unknown, expected: string) => {
+      for (const errors of ["first", "all"] as const) {
+        const result = SchemaParser.decodeUnknownResult(schema, { errors })(input)
+        assertTrue(Result.isFailure(result))
+        strictEqual(SchemaIssue.defaultFormatter(result.failure), expected)
+      }
+    }
+
+    it("a union whose literals follow its non-literal members", () => {
+      const schema = Schema.Union([
+        Schema.String.check(Schema.isMinLength(3)),
+        Schema.Number,
+        Schema.Literal("a")
+      ])
+      assertDecode(schema, "a", "a")
+      assertDecode(schema, "abc", "abc")
+      assertDecodeFailure(schema, "ab", `Expected a value with a length of at least 3`)
+      assertDecodeFailure(schema, true, `Expected string | number | "a"`)
     })
   })
 
