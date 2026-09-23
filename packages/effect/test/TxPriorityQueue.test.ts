@@ -205,7 +205,7 @@ describe("TxPriorityQueue", () => {
     it.effect("offerAll preserves the order of equal existing and incoming priorities", () =>
       Effect.tx(Effect.gen(function*() {
         const order: Order.Order<readonly [number, string]> = ([a], [b]) => Order.Number(a, b)
-        const pq = yield* TxPriorityQueue.fromIterable(order, [[2, "old-b"], [1, "old-a"]] as const)
+        const pq = yield* TxPriorityQueue.fromIterable<readonly [number, string]>(order, [[2, "old-b"], [1, "old-a"]])
         yield* TxPriorityQueue.offerAll(pq, [[2, "new-b"], [1, "new-a"], [2, "new-c"]] as const)
         assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [
           [1, "old-a"],
