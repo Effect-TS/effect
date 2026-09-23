@@ -272,13 +272,16 @@ export interface NativeHandle {
   readonly scopeIds?: ReadonlyMap<string, number> | undefined
   readonly peer?: NativeAddress | undefined
   readonly connected?: boolean | undefined
-  readonly send: (payload: Uint8Array, destination?: NativeAddress) => Effect.Effect<void, DatagramSocketError>
+  readonly send: (
+    payload: Uint8Array,
+    destination: NativeAddress | undefined,
+    done: (error?: DatagramSocketError) => void
+  ) => void
   readonly sendMany: (
-    datagrams: NonEmptyReadonlyArray<{
-      readonly payload: Uint8Array
-      readonly destination?: NativeAddress | undefined
-    }>
-  ) => Effect.Effect<void, DatagramSocketError>
+    payloads: ReadonlyArray<Uint8Array>,
+    destinations: ReadonlyArray<NativeAddress | undefined>,
+    done: (error?: DatagramSocketError, index?: number) => void
+  ) => void
   readonly joinMulticast: <A extends NetAddress.IpAddress>(options: {
     readonly group: NetAddress.MulticastAddress<A>
     readonly interface?: NetAddress.MulticastInterface<A> | undefined
