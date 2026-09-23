@@ -40,6 +40,8 @@ export const model = (
 
 /**
  * Creates a decision service that requires full choice and score distributions.
+ * Distributions within the rounding error of two decimal places per outcome are
+ * normalized to sum to 1.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
  *
  * @category constructors
@@ -94,15 +96,17 @@ export const make = Effect.fnUntraced(function*(options: {
             })
           })
         }
+        const decision = decisions[key]
         if (answer.type === "choice") {
           answers[key] = {
             _tag: "Classify",
             label: answer.choice,
-            probabilities: answer.probabilities,
+            probabilities: decision?._tag === "Classify"
+              ? normalizeProbabilities(answer.probabilities, Object.keys(decision.criteria))
+              : answer.probabilities,
             confidence: answer.confidence
           }
         } else {
-          const decision = decisions[key]
           const probabilities: Record<string, number> = Object.create(null)
           if (decision?._tag === "Rate") {
             for (const [index, label] of decision.criteria.entries()) {
@@ -112,7 +116,12 @@ export const make = Effect.fnUntraced(function*(options: {
               }
             }
           }
-          answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
+          answers[key] = {
+            _tag: "Rate",
+            rating: answer.score,
+            probabilities: normalizeProbabilities(probabilities, decision?._tag === "Rate" ? decision.criteria : []),
+            confidence: answer.confidence
+          }
         }
       }
       return {
@@ -122,6 +131,30 @@ export const make = Effect.fnUntraced(function*(options: {
     })
   })
 })
+
+const normalizeProbabilities = (
+  probabilities: Readonly<Record<string, number>>,
+  labels: ReadonlyArray<string>
+): Readonly<Record<string, number>> => {
+  let total = 0
+  for (const label of labels) {
+    const value = probabilities[label]
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      return probabilities
+    }
+    total += value
+  }
+  const difference = Math.abs(total - 1)
+  // Allow half a hundredth per outcome for provider rounding, plus floating-point tolerance.
+  if (total === 0 || difference <= 1e-6 || difference > 0.005 * labels.length + 1e-6) {
+    return probabilities
+  }
+  const normalized: Record<string, number> = Object.create(null)
+  for (const label of labels) {
+    normalized[label] = probabilities[label] / total
+  }
+  return normalized
+}
 
 /**
  * Provides a decision model using the OpenRouter client service.

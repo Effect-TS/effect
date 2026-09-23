@@ -493,6 +493,81 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(usage.outputTokens, 48)
     }))
 
+  it.effect.each([
+    { name: "without extra keys", extra: {} },
+    { name: "with extra keys", extra: { ignored: 1 } }
+  ])("normalizes rounded choice and score distributions $name", ({ extra }) =>
+    Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            ...decisionsResponse,
+            answers: {
+              ...decisionsResponse.answers,
+              department: {
+                ...decisionsResponse.answers.department,
+                probabilities: { sales: 0.02, billing: 0.93, technical: 0.04, ...extra }
+              },
+              frustration: {
+                ...decisionsResponse.answers.frustration,
+                probabilities: { "0": 0.05, "1": 0.31, "2": 0.65, ...extra }
+              }
+            }
+          }))
+        ))
+      )
+
+      assert.strictEqual(answers.department.label, "billing")
+      assert.strictEqual(answers.department.confidence, 0.596)
+      assert.closeTo(answers.department.probabilities.billing, 0.93 / 0.99, 1e-12)
+      assert.closeTo(answers.department.probabilities.technical, 0.04 / 0.99, 1e-12)
+      assert.closeTo(answers.department.probabilities.sales, 0.02 / 0.99, 1e-12)
+      assert.strictEqual(answers.frustration.rating, 1.6)
+      assert.strictEqual(answers.frustration.label, "Very angry, strong language")
+      assert.strictEqual(answers.frustration.confidence, 0.78)
+      assert.closeTo(answers.frustration.probabilities["Calm, just stating facts"], 0.05 / 1.01, 1e-12)
+      assert.closeTo(answers.frustration.probabilities["Frustrated but civil"], 0.31 / 1.01, 1e-12)
+      assert.closeTo(answers.frustration.probabilities["Very angry, strong language"], 0.65 / 1.01, 1e-12)
+      assert.strictEqual(answers.urgent.probability, 0.999)
+    }))
+
+  for (const key of ["department", "frustration"] as const) {
+    for (
+      const [name, values] of [
+        ["missing outcome", [0.5, 0.49]],
+        ["negative probability", [-0.01, 0.5, 0.5]],
+        ["probability above one", [1.01, 0, 0]],
+        ["zero total", [0, 0, 0]],
+        ["total outside the rounding allowance", [0.48, 0.25, 0.25]]
+      ] as const
+    ) {
+      it.effect(`${key} rejects a ${name} instead of normalizing it`, () =>
+        Effect.gen(function*() {
+          const labels = key === "department" ? ["billing", "technical", "sales"] : ["0", "1", "2"]
+          const error = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
+            Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+            Effect.provide(makeClientLayer((request) =>
+              Effect.succeed(jsonResponse(request, {
+                ...decisionsResponse,
+                answers: {
+                  ...decisionsResponse.answers,
+                  [key]: {
+                    ...decisionsResponse.answers[key],
+                    probabilities: Object.fromEntries(values.map((value, index) => [labels[index], value]))
+                  }
+                }
+              }))
+            )),
+            Effect.flip
+          )
+
+          assert.strictEqual(error.module, "DecisionModel")
+          assert.strictEqual(error.reason._tag, "InvalidOutputError")
+        }))
+    }
+  }
+
   it.effect("encodes an explicitly undefined optional input field as JSON null", () =>
     Effect.gen(function*() {
       const requests: Array<HttpClientRequest.HttpClientRequest> = []
