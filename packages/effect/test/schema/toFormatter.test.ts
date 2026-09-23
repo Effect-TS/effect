@@ -251,6 +251,57 @@ describe("toFormatter", () => {
     strictEqual(format(["head", "tail", 1, true, "last"]), `["head", "tail", 1, true, "last"]`)
   })
 
+  describe("rest elements", () => {
+    // Pairwise distinct, so a rest element read at the wrong index is observable.
+    const Tagged = (label: string) =>
+      Schema.String.pipe(Schema.overrideToFormatter(() => (s: string) => `${label}:${s}`))
+    const A = Tagged("A")
+    const B = Tagged("B")
+    const C = Tagged("C")
+    const D = Tagged("D")
+
+    it("no rest element", () => {
+      const format = Schema.toFormatter(Schema.Tuple([A, Schema.optionalKey(B)]))
+      strictEqual(format(["x", "y"]), `[A:x, B:y]`)
+      strictEqual(format(["x"]), `[A:x]`)
+    })
+
+    it("rest element only", () => {
+      const format = Schema.toFormatter(Schema.Array(A))
+      strictEqual(format([]), `[]`)
+      strictEqual(format(["x"]), `[A:x]`)
+      strictEqual(format(["x", "y", "z"]), `[A:x, A:y, A:z]`)
+    })
+
+    it("leading element and a rest element, no trailing elements", () => {
+      const format = Schema.toFormatter(Schema.TupleWithRest(Schema.Tuple([A]), [B]))
+      strictEqual(format(["x"]), `[A:x]`)
+      strictEqual(format(["x", "y"]), `[A:x, B:y]`)
+      strictEqual(format(["x", "y", "z"]), `[A:x, B:y, B:z]`)
+    })
+
+    it("one trailing element after the rest element", () => {
+      const format = Schema.toFormatter(Schema.TupleWithRest(Schema.Tuple([A]), [B, C]))
+      strictEqual(format(["x", "z"]), `[A:x, C:z]`)
+      strictEqual(format(["x", "y", "z"]), `[A:x, B:y, C:z]`)
+      strictEqual(format(["x", "y1", "y2", "z"]), `[A:x, B:y1, B:y2, C:z]`)
+    })
+
+    it("two trailing elements after the rest element", () => {
+      const format = Schema.toFormatter(Schema.TupleWithRest(Schema.Tuple([A]), [B, C, D]))
+      strictEqual(format(["x", "c", "d"]), `[A:x, C:c, D:d]`)
+      strictEqual(format(["x", "y", "c", "d"]), `[A:x, B:y, C:c, D:d]`)
+      strictEqual(format(["x", "y1", "y2", "c", "d"]), `[A:x, B:y1, B:y2, C:c, D:d]`)
+    })
+
+    it("transformation in the rest element", () => {
+      const format = Schema.toFormatter(Schema.TupleWithRest(Schema.Tuple([A]), [Schema.NumberFromString, C]))
+      strictEqual(format(["x", "z"]), `[A:x, C:z]`)
+      strictEqual(format(["x", 1, "z"]), `[A:x, 1, C:z]`)
+      strictEqual(format(["x", 1, 2, "z"]), `[A:x, 1, 2, C:z]`)
+    })
+  })
+
   describe("Struct", () => {
     it("empty", () => {
       const format = Schema.toFormatter(Schema.Struct({}))
