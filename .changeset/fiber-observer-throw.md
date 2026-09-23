@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix a throwing fiber observer stopping the other observers and escaping into an unrelated fiber.
+Report throwing fiber observers without skipping other observers or failing the fiber that completed them.

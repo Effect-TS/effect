@@ -521,6 +521,12 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
+const reportObserverError = (error: unknown): void => {
+  queueMicrotask(() => {
+    throw error
+  })
+}
+
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
@@ -576,7 +582,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
   addObserver(cb: (exit: Exit.Exit<A, E>) => void): () => void {
     if (this._exit) {
-      cb(this._exit)
+      try {
+        cb(this._exit)
+      } catch (error) {
+        reportObserverError(error)
+      }
       return constVoid
     }
     if (this._observers === undefined) {
@@ -641,9 +651,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     try {
       this.cache.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
     } catch (error) {
-      queueMicrotask(() => {
-        throw error
-      })
+      reportObserverError(error)
     }
     if (this._parent) {
       this._parent._children?.delete(this)
@@ -656,9 +664,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         try {
           observers[i](exit)
         } catch (error) {
-          queueMicrotask(() => {
-            throw error
-          })
+          reportObserverError(error)
         }
       }
     }
