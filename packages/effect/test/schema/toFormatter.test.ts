@@ -265,6 +265,14 @@ describe("toFormatter", () => {
       strictEqual(format(["x", "y", "z"]), `[A:x, B:y, C:z]`)
       strictEqual(format(["x", "y1", "y2", "z"]), `[A:x, B:y1, B:y2, C:z]`)
     })
+
+    it("multiple trailing elements after the rest element", () => {
+      const D = Tagged("D")
+      const format = Schema.toFormatter(Schema.TupleWithRest(Schema.Tuple([A]), [B, C, D]))
+      strictEqual(format(["x", "z", "w"]), `[A:x, C:z, D:w]`)
+      strictEqual(format(["x", "y", "z", "w"]), `[A:x, B:y, C:z, D:w]`)
+      strictEqual(format(["x", "y1", "y2", "z", "w"]), `[A:x, B:y1, B:y2, C:z, D:w]`)
+    })
   })
 
   describe("Struct", () => {

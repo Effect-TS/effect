@@ -131,6 +131,17 @@ describe("toEquivalence", () => {
       assertTrue(equivalence([2, 3, 6, 5], [4, 6, 9, 10]))
       assertFalse(equivalence([2, 3, 6, 5], [4, 6, 10, 10]))
     })
+
+    it("multiple trailing elements after the rest element", () => {
+      const equivalence = Schema.toEquivalence(
+        Schema.TupleWithRest(Schema.Tuple([Mod(2)]), [Mod(3), Mod(5), Mod(7)])
+      )
+      assertTrue(equivalence([2, 5, 7], [4, 10, 14]))
+      assertFalse(equivalence([2, 5, 7], [4, 7, 14]))
+      assertFalse(equivalence([2, 5, 7], [4, 10, 9]))
+      assertTrue(equivalence([2, 3, 5, 7], [4, 6, 10, 14]))
+      assertFalse(equivalence([2, 3, 5, 7], [4, 7, 10, 14]))
+    })
   })
 
   describe("Struct", () => {
