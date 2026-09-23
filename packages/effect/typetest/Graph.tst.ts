@@ -264,7 +264,10 @@ describe("Graph", () => {
     const allPairs = hole<Graph.AllPairsResult<number>>()
 
     expect(path.edges).type.toBe<Array<Graph.EdgeIndex>>()
-    expect(allPairs.edges).type.toBe<Map<Graph.NodeIndex, Map<Graph.NodeIndex, Array<Graph.EdgeIndex>>>>()
+    expect(allPairs.distance).type.toBe<(source: Graph.NodeIndex, target: Graph.NodeIndex) => number>()
+    expect(allPairs.path).type.toBe<
+      (source: Graph.NodeIndex, target: Graph.NodeIndex) => Option.Option<Graph.PathResult<number>>
+    >()
   })
 
   it("edge and degree queries", () => {

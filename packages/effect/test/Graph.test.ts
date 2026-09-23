@@ -1831,10 +1831,8 @@ describe("Graph", () => {
       assertPath(Graph.astar(astar)(graph), expected)
       assertPath(Graph.bellmanFord(dijkstra)(graph), bellmanFord)
       const all = Graph.floydWarshall((edge: number) => edge)(graph)
-      assert.strictEqual(all.distances.get(0)?.get(3), 2)
-      assert.deepStrictEqual(all.paths.get(0)?.get(3), expected.path)
-      assert.deepStrictEqual(all.edges.get(0)?.get(3), expected.edges)
-      assert.deepStrictEqual(all.costs.get(0)?.get(3), expected.costs)
+      assert.strictEqual(all.distance(0, 3), 2)
+      assertPath(all.path(0, 3), expected)
     })
 
     it("preserves parallel edges for topological and weighted algorithms", () => {
@@ -1924,10 +1922,8 @@ describe("Graph", () => {
         assertPath(Graph.astar(candidate, { source: 2, target: 5, cost: (edge) => edge, heuristic: () => 0 }), expected)
         assertPath(Graph.bellmanFord(candidate, { source: 2, target: 5, cost: (edge) => edge }), expected)
         const all = Graph.floydWarshall(candidate, (edge) => edge)
-        assert.strictEqual(all.distances.get(2)?.get(5), 1)
-        assert.deepStrictEqual(all.paths.get(2)?.get(5), [2, 5])
-        assert.deepStrictEqual(all.edges.get(2)?.get(5), [3])
-        assert.deepStrictEqual(all.costs.get(2)?.get(5), [1])
+        assert.strictEqual(all.distance(2, 5), 1)
+        assertPath(all.path(2, 5), expected)
       }
     })
 
@@ -1939,14 +1935,14 @@ describe("Graph", () => {
       assertPath(Graph.astar(graph, { source: 0, target: 0, cost: (edge) => edge, heuristic: () => 0 }), expected)
       assertPath(Graph.bellmanFord(graph, { source: 0, target: 0, cost: (edge) => edge }), expected)
       const all = Graph.floydWarshall(graph, (edge) => edge)
-      assert.strictEqual(all.distances.get(0)?.get(1), Infinity)
-      assert.strictEqual(all.paths.get(0)?.get(1), null)
-      assert.deepStrictEqual(all.edges.get(0)?.get(1), [])
-      assert.deepStrictEqual(all.costs.get(0)?.get(1), [])
-      assert.strictEqual(all.distances.get(0)?.get(0), 0)
-      assert.deepStrictEqual(all.paths.get(0)?.get(0), [0])
-      assert.deepStrictEqual(all.edges.get(0)?.get(0), [])
-      assert.deepStrictEqual(all.costs.get(0)?.get(0), [])
+      assert.strictEqual(all.distance(0, 1), Infinity)
+      assert.deepStrictEqual(all.path(0, 1), Option.none())
+      assert.strictEqual(all.distance(0, 0), 0)
+      assertPath(all.path(0, 0), expected)
+      assert.strictEqual(all.distance(0, 9), Infinity)
+      assert.deepStrictEqual(all.path(0, 9), Option.none())
+      assert.strictEqual(all.distance(9, 0), Infinity)
+      assert.deepStrictEqual(all.path(9, 0), Option.none())
     })
 
     it("uses negative Bellman-Ford edges in shortest paths", () => {
@@ -1993,10 +1989,8 @@ describe("Graph", () => {
         [0, 2, { weight: 10 }]
       ])
       const result = Graph.floydWarshall(graph, (edge) => edge === null ? 1 : edge.weight)
-      assert.strictEqual(result.distances.get(0)?.get(2), 2)
-      assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 1, 2])
-      assert.deepStrictEqual(result.edges.get(0)?.get(2), [0, 1])
-      assert.deepStrictEqual(result.costs.get(0)?.get(2), [null, null])
+      assert.strictEqual(result.distance(0, 2), 2)
+      assertPath(result.path(0, 2), { path: [0, 1, 2], edges: [0, 1], distance: 2, costs: [null, null] })
     })
 
     it("treats positive Infinity as unreachable in every shortest-path algorithm", () => {
@@ -2008,10 +2002,8 @@ describe("Graph", () => {
       )
       assert.deepStrictEqual(Graph.bellmanFord(graph, { source: 0, target: 1, cost: (edge) => edge }), Option.none())
       const all = Graph.floydWarshall(graph, (edge) => edge)
-      assert.strictEqual(all.distances.get(0)?.get(1), Infinity)
-      assert.strictEqual(all.paths.get(0)?.get(1), null)
-      assert.deepStrictEqual(all.edges.get(0)?.get(1), [])
-      assert.deepStrictEqual(all.costs.get(0)?.get(1), [])
+      assert.strictEqual(all.distance(0, 1), Infinity)
+      assert.deepStrictEqual(all.path(0, 1), Option.none())
     })
 
     it("reports relevant Bellman-Ford and Floyd-Warshall negative cycles", () => {
@@ -2131,10 +2123,8 @@ describe("Graph", () => {
       assertPath(Graph.astar(graph, { source: 0, target: 2, cost: (edge) => edge, heuristic: () => 0 }), expected)
       assertPath(Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edge) => edge }), expected)
       const all = Graph.floydWarshall(graph, (edge) => edge)
-      assert.strictEqual(all.distances.get(0)?.get(2), 2)
-      assert.deepStrictEqual(all.paths.get(0)?.get(2), [0, 1, 2])
-      assert.deepStrictEqual(all.edges.get(0)?.get(2), [0, 1])
-      assert.deepStrictEqual(all.costs.get(0)?.get(2), [1, 1])
+      assert.strictEqual(all.distance(0, 2), 2)
+      assertPath(all.path(0, 2), expected)
     })
   })
 

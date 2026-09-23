@@ -6418,18 +6418,22 @@ export const dijkstra: {
  *
  * **Details**
  *
- * Contains distance, node-path, edge-index-path, and edge-data maps keyed by
- * source and target node indices. Unreachable pairs have distance `Infinity`,
- * path `null`, and empty edge and cost arrays.
+ * `distance` returns the shortest distance between two nodes, or `Infinity`
+ * when the target is unreachable. `path` returns the node path, edge indices,
+ * distance and edge data for a pair, or `Option.none()` when the target is
+ * unreachable.
+ *
+ * **Gotchas**
+ *
+ * A node index that is not in the graph is reported as unreachable rather than
+ * throwing. Each `path` call builds fresh arrays.
  *
  * @category models
  * @since 3.18.0
  */
 export interface AllPairsResult<E> {
-  readonly distances: Map<NodeIndex, Map<NodeIndex, number>>
-  readonly paths: Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>
-  readonly edges: Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>
-  readonly costs: Map<NodeIndex, Map<NodeIndex, Array<E>>>
+  readonly distance: (source: NodeIndex, target: NodeIndex) => number
+  readonly path: (source: NodeIndex, target: NodeIndex) => Option.Option<PathResult<E>>
 }
 
 /**
@@ -6443,9 +6447,10 @@ export interface AllPairsResult<E> {
  *
  * **Details**
  *
- * Computes distances, reconstructed node paths, and edge-data paths for every
- * source and target pair in O(V^3) time. Negative edge weights are allowed, and
- * `Infinity` behaves like an impassable edge.
+ * Computes the shortest distance between every source and target pair in
+ * O(V^3) time and returns lookups over the result. Node paths, edge indices and
+ * edge data are reconstructed when a pair is asked for. Negative edge weights
+ * are allowed, and `Infinity` behaves like an impassable edge.
  *
  * **Gotchas**
  *
@@ -6456,7 +6461,7 @@ export interface AllPairsResult<E> {
  * **Example** (Finding all-pairs shortest paths)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
@@ -6468,8 +6473,9 @@ export interface AllPairsResult<E> {
  * })
  *
  * const result = Graph.floydWarshall(graph, (edgeData) => edgeData)
- * const shortest = { distance: result.distances.get(0)?.get(2), path: result.paths.get(0)?.get(2) }
- * shortest // => { distance: 5, path: [0, 1, 2] }
+ *
+ * result.distance(0, 2) // => 5
+ * Option.map(result.path(0, 2), ({ distance, path }) => [distance, path] as const) // => Option.some([5, [0, 1, 2]])
  * ```
  *
  * @see {@link dijkstra} for one query with non-negative edge costs
@@ -6562,59 +6568,42 @@ export const floydWarshall: {
     }
   }
 
-  const distances = new Map<NodeIndex, Map<NodeIndex, number>>()
-  const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
-  const edgePaths = new Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>()
-  const costs = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
-  for (let i = 0; i < size; i++) {
-    const source = cache.nodeIds[i]
-    const distanceRow = new Map<NodeIndex, number>()
-    const pathRow = new Map<NodeIndex, Array<NodeIndex> | null>()
-    const edgePathRow = new Map<NodeIndex, Array<EdgeIndex>>()
-    const costRow = new Map<NodeIndex, Array<E>>()
-    distances.set(source, distanceRow)
-    paths.set(source, pathRow)
-    edgePaths.set(source, edgePathRow)
-    costs.set(source, costRow)
-
-    for (let j = 0; j < size; j++) {
-      const target = cache.nodeIds[j]
-      const distance = distancesMatrix[i * size + j]
-      distanceRow.set(target, distance)
-      if (i === j) {
-        pathRow.set(target, [source])
-        edgePathRow.set(target, [])
-        costRow.set(target, [])
-      } else if (distance === Infinity) {
-        pathRow.set(target, null)
-        edgePathRow.set(target, [])
-        costRow.set(target, [])
-      } else {
-        const path = [source]
-        const pathEdges: Array<EdgeIndex> = []
-        const pathCosts: Array<E> = []
-        let current = i
-        while (current !== j) {
-          const next = nextMatrix[current * size + j]
-          if (next === -1) {
-            break
-          }
-          const edge = edgeMatrix[current * size + next]
-          if (edge !== -1) {
-            pathEdges.push(edgeIds[edge])
-            pathCosts.push(edges[edge].data)
-          }
-          current = next
-          path.push(cache.nodeIds[current])
-        }
-        pathRow.set(target, path)
-        edgePathRow.set(target, pathEdges)
-        costRow.set(target, pathCosts)
+  return {
+    distance: (source, target) => {
+      const i = csr.getNodeIndex(cache, source)
+      const j = csr.getNodeIndex(cache, target)
+      return i === undefined || j === undefined ? Infinity : distancesMatrix[i * size + j]
+    },
+    path: (source, target) => {
+      const i = csr.getNodeIndex(cache, source)
+      const j = csr.getNodeIndex(cache, target)
+      if (i === undefined || j === undefined) {
+        return Option.none()
       }
+      const distance = distancesMatrix[i * size + j]
+      if (distance === Infinity) {
+        return Option.none()
+      }
+      const path = [cache.nodeIds[i]]
+      const pathEdges: Array<EdgeIndex> = []
+      const pathCosts: Array<E> = []
+      let current = i
+      while (current !== j) {
+        const next = nextMatrix[current * size + j]
+        if (next === -1) {
+          break
+        }
+        const edge = edgeMatrix[current * size + next]
+        if (edge !== -1) {
+          pathEdges.push(edgeIds[edge])
+          pathCosts.push(edges[edge].data)
+        }
+        current = next
+        path.push(cache.nodeIds[current])
+      }
+      return Option.some({ path, edges: pathEdges, distance, costs: pathCosts })
     }
   }
-
-  return { distances, paths, edges: edgePaths, costs }
 })
 
 /**
