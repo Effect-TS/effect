@@ -1408,12 +1408,7 @@ export const takeBetween: {
   min = Count.normalize(min)
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
-    takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(
-      awaitTake(self, () =>
-        self.messages.length >= Math.min(min, self.capacity || 1) ||
-        (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)),
-      takeBetween(self, 1, max)
-    )
+    takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(awaitTake(self), takeBetween(self, 1, max))
   )
 })
 
@@ -2088,8 +2083,8 @@ const awaitTake = <A, E>(
     if (self.state._tag === "Done") {
       return resume(self.state.exit)
     }
-    // The availability check in the caller may have yielded before this callback ran.
-    // Recheck here, without yielding between the check and registering the taker.
+    // The caller's check may have yielded before this callback ran, so recheck
+    // here, where nothing can slip in between the check and registering.
     if (isReady()) {
       return resume(internalEffect.exitVoid)
     }

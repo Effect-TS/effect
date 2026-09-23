@@ -170,11 +170,11 @@ describe("Queue", () => {
     }))
 
   const lostWakeupCases: ReadonlyArray<readonly [string, (queue: Queue.Queue<number>) => Effect.Effect<unknown>]> = [
-    ["take", (queue: Queue.Queue<number>) => Queue.take(queue)],
-    ["takeN", (queue: Queue.Queue<number>) => Queue.takeN(queue, 1)],
-    ["takeAll", (queue: Queue.Queue<number>) => Queue.takeAll(queue)],
-    ["takeBetween", (queue: Queue.Queue<number>) => Queue.takeBetween(queue, 1, 5)],
-    ["peek", (queue: Queue.Queue<number>) => Queue.peek(queue)]
+    ["take", Queue.take],
+    ["takeN", (queue) => Queue.takeN(queue, 1)],
+    ["takeAll", Queue.takeAll],
+    ["takeBetween", (queue) => Queue.takeBetween(queue, 1, 5)],
+    ["peek", Queue.peek]
   ]
   for (const [name, receive] of lostWakeupCases) {
     it.effect(`${name} does not miss an offer during the check-to-registration yield`, () =>
@@ -192,9 +192,8 @@ describe("Queue", () => {
         const size = yield* Queue.size(queue)
         yield* Queue.shutdown(queue)
         assert.deepStrictEqual(offerer.pollUnsafe(), Exit.succeed(true))
-        // On the affected revision the offer succeeded, but its message remains
-        // in the queue while the taker is suspended with no future wakeup.
-        if (exit === undefined) assert.strictEqual(size, 1)
+        // Without the fix the taker stays suspended with no future wakeup, and
+        // the offered message remains in the queue.
         assert.deepStrictEqual(exit, Exit.succeed(name === "take" || name === "peek" ? 1 : [1]))
         assert.strictEqual(size, name === "peek" ? 1 : 0)
       }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)))
