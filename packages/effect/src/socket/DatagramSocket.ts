@@ -40,6 +40,9 @@ import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
+import { constVoid } from "../Function.ts"
+import { args, contA, contAll, evaluate, exitSucceed, makePrimitive, type Primitive } from "../internal/core.ts"
+import type { FiberImpl } from "../internal/effect.ts"
 import * as Latch from "../Latch.ts"
 import * as NetAddress from "../net/NetAddress.ts"
 import * as Schema from "../Schema.ts"
@@ -622,17 +625,12 @@ class ReaderState {
   dropped = 0
   // the sticky error as a failed exit, shared by every pull and write after it
   failure: Failure | undefined = undefined
-  // parked pulls, oldest first: the oldest sits in the slot and the rest wait
-  // in `waiters`, so a single consumer never touches the array
-  waiter: Resume<NonEmptyReadonlyArray<Datagram>> | undefined = undefined
-  waiterFiber: Fiber.Fiber<unknown, unknown> | undefined = undefined
-  waiters: Array<Resume<NonEmptyReadonlyArray<Datagram>>> = []
-  waiterFibers: Array<Fiber.Fiber<unknown, unknown>> = []
-  // shared by every parked pull; it runs on the interrupted fiber
-  readonly cancel: Effect.Effect<void> = Effect.withFiber((fiber) => {
-    this.removeWaiter(fiber)
-    return Effect.void
-  })
+  // fibers parked in `pull`, oldest first: the oldest sits in the slot and
+  // the rest wait in `waiters`, so a single consumer never touches the array
+  waiter: FiberImpl | undefined = undefined
+  waiters: Array<FiberImpl> = []
+  // pushed on a parked fiber's stack, shared by every park
+  readonly unpark: Primitive = unpark(this)
   handle: NativeHandle | undefined = undefined
   closed = false
   #address: NetAddress.InetAddress | undefined = undefined
@@ -682,9 +680,9 @@ class ReaderState {
   }
 
   wake(datagram: DatagramImpl) {
-    const waiter = this.waiter!
+    const fiber = this.waiter!
     this.promoteWaiter()
-    waiter(Effect.succeed([datagram]))
+    fiber.evaluate(exitSucceed([datagram]) as any)
   }
 
   overflow(payload: Uint8Array, host: string, port: number) {
@@ -712,32 +710,20 @@ class ReaderState {
     return batch as unknown as NonEmptyReadonlyArray<Datagram>
   }
 
-  park(resume: Resume<NonEmptyReadonlyArray<Datagram>>, fiber: Fiber.Fiber<unknown, unknown>) {
-    if (this.waiter === undefined) {
-      this.waiter = resume
-      this.waiterFiber = fiber
-    } else {
-      this.waiters.push(resume)
-      this.waiterFibers.push(fiber)
-    }
+  park(fiber: FiberImpl) {
+    if (this.waiter === undefined) this.waiter = fiber
+    else this.waiters.push(fiber)
   }
 
   promoteWaiter() {
-    if (this.waiters.length === 0) {
-      this.waiter = undefined
-      this.waiterFiber = undefined
-    } else {
-      this.waiter = this.waiters.shift()
-      this.waiterFiber = this.waiterFibers.shift()
-    }
+    this.waiter = this.waiters.length === 0 ? undefined : this.waiters.shift()
   }
 
-  removeWaiter(fiber: Fiber.Fiber<unknown, unknown>) {
-    if (this.waiterFiber === fiber) return this.promoteWaiter()
-    const index = this.waiterFibers.indexOf(fiber)
-    if (index === -1) return
-    this.waiters.splice(index, 1)
-    this.waiterFibers.splice(index, 1)
+  removeWaiter(fiber: FiberImpl) {
+    if (this.waiter === fiber) return this.promoteWaiter()
+    if (this.waiters.length === 0) return
+    const index = this.waiters.indexOf(fiber)
+    if (index !== -1) this.waiters.splice(index, 1)
   }
 
   fail(error: DatagramSocketError) {
@@ -751,11 +737,9 @@ class ReaderState {
     if (waiter === undefined) return
     const waiters = this.waiters
     this.waiter = undefined
-    this.waiterFiber = undefined
     this.waiters = []
-    this.waiterFibers = []
-    waiter(failure)
-    for (let i = 0; i < waiters.length; i++) waiters[i](failure)
+    waiter.evaluate(failure as any)
+    for (let i = 0; i < waiters.length; i++) waiters[i].evaluate(failure as any)
   }
 
   close() {
@@ -835,13 +819,36 @@ class ReaderState {
   }
 }
 
+// `pull` without `Effect.callback`: a parked fiber is its own waiter, and a
+// packet resumes it inline with `fiber.evaluate`, like `Effect.yieldNow`
+const pull: (state: ReaderState) => Reader["pull"] = makePrimitive({
+  op: "DatagramSocketPull",
+  [evaluate](fiber) {
+    const state: ReaderState = this[args]
+    if (state.buffer.length !== 0) {
+      const batch = state.take()
+      const cont = fiber.getCont(contA)
+      return cont ? cont[contA](batch, fiber) : fiber.yieldWith(exitSucceed(batch))
+    }
+    if (state.failure !== undefined) return state.failure
+    state.park(fiber)
+    fiber._stack.push(state.unpark)
+    return fiber.yieldWith(constVoid)
+  }
+})
+
+// Popped on every path out of a park, as `Effect.uninterruptible`'s frame is.
+// `contAll` runs even when an interruption skips `contE`, so an interrupted
+// fiber always leaves the waiters; after a wake it finds nothing to remove.
+const unpark: (state: ReaderState) => Primitive = makePrimitive({
+  op: "DatagramSocketUnpark",
+  [contAll](fiber) {
+    this[args].removeWaiter(fiber)
+  }
+})
+
 const makeReader = (state: ReaderState): Reader => ({
-  pull: Effect.callback((resume) => {
-    if (state.buffer.length !== 0) return resume(Effect.succeed(state.take()))
-    if (state.failure !== undefined) return resume(state.failure)
-    state.park(resume, Fiber.getCurrent()!)
-    return state.cancel
-  }),
+  pull: pull(state),
   get address() {
     return state.address
   },
