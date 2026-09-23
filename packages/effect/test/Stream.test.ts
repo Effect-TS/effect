@@ -24,6 +24,7 @@ import {
   References,
   Result,
   Schedule,
+  Scheduler,
   Schema,
   Scope,
   Sink,
@@ -1417,6 +1418,64 @@ describe("Stream", () => {
       }))
   })
 
+  describe("concat", () => {
+    class CountingScheduler extends Scheduler.MixedScheduler {
+      ops = 0
+      override shouldYield() {
+        this.ops++
+        return false
+      }
+    }
+
+    it.effect("work per part does not grow with the length of a chain", () =>
+      Effect.gen(function*() {
+        const countOps = (n: number, nest: "left" | "right") => {
+          let stream: Stream.Stream<number> = Stream.make(0)
+          for (let i = 1; i < n; i++) {
+            stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
+          }
+          const scheduler = new CountingScheduler("sync")
+          return Stream.runDrain(stream).pipe(
+            Effect.provideService(Scheduler.Scheduler, scheduler),
+            Effect.map(() => scheduler.ops)
+          )
+        }
+        for (const nest of ["left", "right"] as const) {
+          const small = yield* countOps(1_000, nest)
+          const large = yield* countOps(2_000, nest)
+          assertTrue(small > 1_000, `${nest}: operations were counted`)
+          assertTrue(large / small < 2.5, `${nest}: doubling the chain multiplied the work by ${large / small}`)
+        }
+      }))
+
+    it.effect("runs nested chains in order, closing each part before the next starts", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const part = (name: string) =>
+          Stream.fromEffect(Effect.sync(() => {
+            log.push(`start ${name}`)
+            return name
+          })).pipe(Stream.ensuring(Effect.sync(() => log.push(`end ${name}`))))
+        const stream = Stream.concat(
+          Stream.concat(part("a"), Stream.concat(part("b"), part("c"))),
+          Stream.concat(part("d"), part("e"))
+        )
+        const expectedLog = ["a", "b", "c", "d", "e"].flatMap((name) => [`start ${name}`, `end ${name}`])
+        for (const run of ["first run", "second run"]) {
+          log.length = 0
+          deepStrictEqual(yield* Stream.runCollect(stream), ["a", "b", "c", "d", "e"], run)
+          deepStrictEqual(log, expectedLog, run)
+        }
+      }))
+
+    it.effect("runs a copy of a chain with its own channel", () =>
+      Effect.gen(function*() {
+        const chain = Stream.concat(Stream.make("a"), Stream.make("b"))
+        const copy: Stream.Stream<string> = { ...chain, channel: Stream.make("copy").channel }
+        deepStrictEqual(yield* Stream.runCollect(Stream.concat(copy, Stream.make("z"))), ["copy", "z"])
+      }))
+  })
+
   describe("flattening", () => {
     it.effect("flatten supports dropping parens in pipe", () =>
       Effect.gen(function*() {
@@ -1565,6 +1624,27 @@ describe("Stream", () => {
       "fails promptly and interrupts slow inner streams when the outer stream fails",
       () => testOuterFailure("flatMap", "slow")
     )
+  })
+
+  describe("mapEffect with concurrency", () => {
+    for (const unordered of [false, true]) {
+      it.effect(`fails when the mapping function throws (unordered: ${unordered})`, () =>
+        Effect.gen(function*() {
+          const boom = new Error("boom")
+          const fiber = yield* Stream.make(1, 2).pipe(
+            Stream.mapEffect((n) => {
+              if (n === 1) return Effect.never
+              throw boom
+            }, { concurrency: 2, unordered }),
+            Stream.runDrain,
+            Effect.timeoutOption("1 second"),
+            Effect.exit,
+            Effect.forkChild
+          )
+          yield* TestClock.adjust("1 second")
+          assertExitFailure(yield* Fiber.join(fiber), Cause.die(boom))
+        }))
+    }
   })
 
   describe("switchMap", () => {

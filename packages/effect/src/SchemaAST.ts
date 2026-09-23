@@ -501,6 +501,11 @@ export interface ParseOptions {
    * to structs, records, and structs with rest. Values must satisfy every
    * applicable index signature. Empty structs keep their non-nullish behavior.
    *
+   * An excess property is an enumerable own property that is not covered by a
+   * declared property or an index signature. Non-enumerable own properties,
+   * such as `Error#stack`, are ignored unless explicitly declared by the
+   * schema. Index signatures likewise select only enumerable own properties.
+   *
    * @default "ignore"
    */
   readonly onExcessProperty?: "ignore" | "error" | undefined
@@ -2529,7 +2534,7 @@ export function getIndexSignatureKeys(
         return (stringKeys ??= Object.keys(input)).filter((k) => parameter.matchKey(k, options) !== undefined)
       case "Symbol":
         return (symbolKeys ??= Object.getOwnPropertySymbols(input)).filter((k) =>
-          parameter.matchKey(k, options) !== undefined
+          Object.prototype.propertyIsEnumerable.call(input, k) && parameter.matchKey(k, options) !== undefined
         )
       case "Union":
         return [...new Set(parameter.types.flatMap(go))]
@@ -2935,10 +2940,12 @@ export const Objects: new(
             for (const key of keys) coveredKeys.add(key)
           }
         }
+        // Only enumerable own properties can be excess. Declared fields are
+        // parsed separately, regardless of their enumerability.
         const inputKeys = Reflect.ownKeys(record)
         for (let i = 0; i < inputKeys.length; i++) {
           const key = inputKeys[i]
-          if (!coveredKeys.has(key)) {
+          if (!coveredKeys.has(key) && Object.prototype.propertyIsEnumerable.call(record, key)) {
             // key is unexpected
             const unexpected = new SchemaIssue.UnexpectedKey(ast, record[key], options)
             const issue = new SchemaIssue.Pointer([key], unexpected)

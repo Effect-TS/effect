@@ -57,6 +57,13 @@ Compare Effect `HEAD` with the working tree:
 pnpm runtimeperf-compare schema/object-32-valid-effect
 ```
 
+Measure excess-property checking and symbol enumeration in interpreted and JIT parsers:
+
+```sh
+pnpm runtimeperf-compare schema-excess-properties
+pnpm runtimeperf-compare schema-excess-properties --family jit
+```
+
 Compare explicit refs:
 
 ```sh

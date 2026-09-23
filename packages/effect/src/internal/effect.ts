@@ -3942,15 +3942,26 @@ export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>
   const state = self.state
   self.state = closed
   if (state.finalizer !== undefined) {
-    return state.finalizer(exit_)
+    return runFinalizer(state.finalizer, exit_)
   }
   const finalizers = state.finalizers
   if (finalizers === undefined || finalizers.size === 0) {
     return
   } else if (finalizers.size === 1) {
-    return finalizers.values().next().value!(exit_)
+    return runFinalizer(finalizers.values().next().value!, exit_)
   }
   return scopeCloseFinalizers(self, finalizers, exit_)
+}
+
+const runFinalizer = (
+  finalizer: (exit: Exit.Exit<any, any>) => Effect.Effect<unknown>,
+  exit_: Exit.Exit<any, any>
+): Effect.Effect<unknown> => {
+  try {
+    return finalizer(exit_)
+  } catch (defect) {
+    return exitDie(defect)
+  }
 }
 
 const combineFinalizerCause = <A, E, XE, XR>(
@@ -3971,9 +3982,9 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   for (let i = arr.length - 1; i >= 0; i--) {
     const finalizer = arr[i]
     if (self.strategy === "sequential") {
-      exits.push(yield* exit(finalizer(exit_)))
+      exits.push(yield* exit(runFinalizer(finalizer, exit_)))
     } else {
-      fibers.push(forkUnsafe(parent, finalizer(exit_), true, true, "inherit"))
+      fibers.push(forkUnsafe(parent, runFinalizer(finalizer, exit_), true, true, "inherit"))
     }
   }
   if (fibers.length > 0) {
@@ -5955,7 +5966,7 @@ export const makeSpanUnsafe = <XA, XE>(
   name: string,
   options: Tracer.SpanOptionsNoTrace | undefined
 ) => {
-  const disablePropagation = !fiber.getRef(TracerEnabled) ||
+  const disablePropagation = !fiber.cache.tracerEnabled ||
     (options?.annotations && Context.get(options.annotations, Tracer.DisablePropagation))
   const parent = options?.parent !== undefined
     ? Option.some(options.parent)
@@ -5976,7 +5987,8 @@ export const makeSpanUnsafe = <XA, XE>(
       )
     })
   } else {
-    const tracer = fiber.getRef(Tracer.Tracer)
+    // The cache stores only explicit tracer overrides; absent references use the default.
+    const tracer = fiber.cache.tracer ?? Tracer.nativeTracer
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
     const annotationsFromEnv = fiber.getRef(TracerSpanAnnotations)
