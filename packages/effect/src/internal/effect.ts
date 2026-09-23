@@ -3598,6 +3598,45 @@ const OnSuccessAndFailureImpl = function(
 } as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, onSuccess: any, onFailure: any]>
 OnSuccessAndFailureImpl.prototype = OnSuccessAndFailureProto
 
+// `match` and `matchCause` keep the caller's handlers object as the frame's
+// payload and call it from the prototype, so no closure is built per call.
+const matchSuccess = function(this: any, value: any) {
+  const handlers = this.payload
+  return succeed(continuationMarksStack ? handlers.onSuccess(value) : internalCall(() => handlers.onSuccess(value)))
+}
+const makeMatch = (
+  op: string,
+  onFailure: (this: any, cause: Cause.Cause<any>) => Effect.Effect<any, any, any>
+) => {
+  const Proto = makePrimitiveProto({
+    op,
+    [evaluate]: evaluateCont,
+    [contA]: matchSuccess,
+    [contE]: onFailure
+  })
+  const MatchImpl = function(this: any, self: Effect.Effect<any, any, any>, handlers: any) {
+    this[args] = self
+    this.payload = handlers
+  } as unknown as {
+    new(self: Effect.Effect<any, any, any>, handlers: any): Effect.Effect<any, never, any>
+    prototype: any
+  }
+  MatchImpl.prototype = Proto
+  return MatchImpl
+}
+const MatchImpl = makeMatch("Match", function(cause) {
+  const fail = cause.reasons.find(isFailReason)
+  if (fail === undefined) return failCause(cause)
+  const handlers = this.payload
+  return succeed(
+    continuationMarksStack ? handlers.onFailure(fail.error) : internalCall(() => handlers.onFailure(fail.error))
+  )
+})
+const MatchCauseImpl = makeMatch("MatchCause", function(cause) {
+  const handlers = this.payload
+  return succeed(continuationMarksStack ? handlers.onFailure(cause) : internalCall(() => handlers.onFailure(cause)))
+})
+
 /** @internal */
 export const matchCause: {
   <E, A2, A, A3>(options: {
@@ -3619,17 +3658,7 @@ export const matchCause: {
       readonly onFailure: (cause: Cause.Cause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
-  ): Effect.Effect<A2 | A3, never, R> =>
-    matchCauseEffect(self, {
-      onFailure: (cause) =>
-        continuationMarksStack
-          ? succeed(options.onFailure(cause))
-          : sync(() => options.onFailure(cause)),
-      onSuccess: (value) =>
-        continuationMarksStack
-          ? succeed(options.onSuccess(value))
-          : sync(() => options.onSuccess(value))
-    })
+  ): Effect.Effect<A2 | A3, never, R> => new MatchCauseImpl(self, options)
 )
 
 /** @internal */
@@ -3688,21 +3717,7 @@ export const match: {
       readonly onFailure: (error: E) => A2
       readonly onSuccess: (value: A) => A3
     }
-  ): Effect.Effect<A2 | A3, never, R> =>
-    matchCauseEffect(self, {
-      onFailure: (cause) => {
-        const fail = cause.reasons.find(isFailReason)
-        return fail
-          ? continuationMarksStack
-            ? succeed(options.onFailure(fail.error))
-            : sync(() => options.onFailure(fail.error))
-          : failCause(cause as Cause.Cause<never>)
-      },
-      onSuccess: (value) =>
-        continuationMarksStack
-          ? succeed(options.onSuccess(value))
-          : sync(() => options.onSuccess(value))
-    })
+  ): Effect.Effect<A2 | A3, never, R> => new MatchImpl(self, options)
 )
 
 /** @internal */
