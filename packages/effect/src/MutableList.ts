@@ -461,7 +461,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
       if (chunk.mutable) chunk.array[chunk.offset] = undefined as any
       chunk.offset++
       if (index === n) {
-        self.head = chunk
+        self.head = chunk.offset === chunk.array.length && chunk.next ? chunk.next : chunk
         self.length -= n
         if (self.length === 0) clear(self)
         else compactHead(self)

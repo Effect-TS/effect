@@ -218,6 +218,17 @@ describe("Queue", () => {
       yield* Queue.offerAll(takeBetweenQueue, [2, 3])
       assert.deepStrictEqual(yield* Fiber.await(takeN), Exit.succeed([1, 2, 3]))
       assert.deepStrictEqual(yield* Fiber.await(takeBetween), Exit.succeed([1, 2, 3]))
+  it.effect("takeN ending at an offerAll boundary keeps the next message", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      yield* Queue.offerAll(queue, [1, 2])
+      yield* Queue.offerAll(queue, [3])
+      assert.deepStrictEqual(yield* Queue.takeN(queue, 2), [1, 2])
+      assert.strictEqual(yield* Queue.peek(queue), 3)
+      assert.strictEqual(yield* Queue.take(queue), 3)
+      yield* Queue.offer(queue, 99)
+      assert.strictEqual(yield* Queue.take(queue), 99)
+      assert.strictEqual(yield* Queue.size(queue), 0)
     }))
 
   it.effect("takeN and takeBetween normalize element counts before waiting", () =>
