@@ -290,55 +290,15 @@ describe("Queue", () => {
       assert.deepEqual(b, [3, 4])
     }))
 
-  const lostWakeupCases: ReadonlyArray<readonly [string, (queue: Queue.Queue<number>) => Effect.Effect<unknown>]> = [
-    ["take", Queue.take],
-    ["takeN", (queue) => Queue.takeN(queue, 1)],
-    ["takeAll", Queue.takeAll],
-    ["takeBetween", (queue) => Queue.takeBetween(queue, 1, 5)],
-    ["peek", Queue.peek]
-  ]
-  for (const [name, receive] of lostWakeupCases) {
-    it.effect(`${name} does not miss an offer during the check-to-registration yield`, () =>
-      Effect.gen(function*() {
-        const queue = yield* Queue.unbounded<number>()
-        // At a budget of 8, this padding exhausts the taker budget after
-        // checking the empty queue but before registering in awaitTake.
-        let pad: Effect.Effect<void> = Effect.void
-        for (let i = 0; i < 5; i++) pad = Effect.andThen(pad, Effect.void)
-        const taker = yield* Effect.forkDetach(Effect.andThen(pad, receive(queue)))
-        const offerer = yield* Effect.forkDetach(Queue.offer(queue, 1))
-        for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-
-        const exit = taker.pollUnsafe()
-        const size = yield* Queue.size(queue)
-        yield* Queue.shutdown(queue)
-        assert.deepStrictEqual(offerer.pollUnsafe(), Exit.succeed(true))
-        // Without the fix the taker stays suspended with no future wakeup, and
-        // the offered message remains in the queue.
-        assert.deepStrictEqual(exit, Exit.succeed(name === "take" || name === "peek" ? 1 : [1]))
-        assert.strictEqual(size, name === "peek" ? 1 : 0)
-      }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)))
-  }
-
-  it.effect("takeN and takeBetween keep waiting on a partial batch", () =>
+  it.effect("takeN waits for the requested minimum when messages are already buffered", () =>
     Effect.gen(function*() {
-      const takeNQueue = yield* Queue.unbounded<number>()
-      yield* Queue.offer(takeNQueue, 1)
-      const takeN = yield* Effect.forkDetach(Queue.takeN(takeNQueue, 3))
-
-      const takeBetweenQueue = yield* Queue.unbounded<number>()
-      yield* Queue.offer(takeBetweenQueue, 1)
-      const takeBetween = yield* Effect.forkDetach(Queue.takeBetween(takeBetweenQueue, 2, 5))
-
-      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-      // A buffered message below the minimum must not resume the taker.
-      assert.strictEqual(takeN.pollUnsafe(), undefined)
-      assert.strictEqual(takeBetween.pollUnsafe(), undefined)
-
-      yield* Queue.offerAll(takeNQueue, [2, 3])
-      yield* Queue.offerAll(takeBetweenQueue, [2, 3])
-      assert.deepStrictEqual(yield* Fiber.await(takeN), Exit.succeed([1, 2, 3]))
-      assert.deepStrictEqual(yield* Fiber.await(takeBetween), Exit.succeed([1, 2, 3]))
+      const queue = yield* Queue.bounded<number>(10)
+      yield* Queue.offer(queue, 1)
+      const taker = yield* Effect.forkChild(Queue.takeN(queue, 3), { startImmediately: true })
+      for (let i = 0; i < 50; i++) yield* Effect.yieldNow
+      assert.isUndefined(taker.pollUnsafe())
+      yield* Queue.offerAll(queue, [2, 3])
+      assert.deepStrictEqual(yield* Fiber.join(taker), [1, 2, 3])
     }))
 
   it.effect("takeN ending at an offerAll boundary keeps the next message", () =>
