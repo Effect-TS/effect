@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Decode and encode arrays and tuples without running a generator.
+Avoid generator allocation when decoding or encoding arrays and tuples.
