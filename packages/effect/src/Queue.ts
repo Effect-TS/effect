@@ -1408,8 +1408,12 @@ export const takeBetween: {
   min = Count.normalize(min)
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
-    takeBetweenUnsafe(self, min, max) ??
-      internalEffect.andThen(awaitTake(self, () => canTake(self, min)), takeBetween(self, 1, max))
+    takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(
+      awaitTake(self, () =>
+        self.messages.length >= Math.min(min, self.capacity || 1) ||
+        (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)),
+      takeBetween(self, 1, max)
+    )
   )
 })
 
@@ -2074,12 +2078,12 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
   return false
 }
 
-// Whether a take of at least `min` messages could complete right now.
-const canTake = <A, E>(self: Dequeue<A, E>, min: number) =>
-  self.messages.length >= Math.min(min, self.capacity || 1) ||
-  (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
-
-const awaitTake = <A, E>(self: Dequeue<A, E>, isReady: () => boolean = () => canTake(self, 1)) =>
+const awaitTake = <A, E>(
+  self: Dequeue<A, E>,
+  isReady: () => boolean = () =>
+    self.messages.length > 0 ||
+    (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
+) =>
   internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") {
       return resume(self.state.exit)
