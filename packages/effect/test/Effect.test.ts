@@ -1984,6 +1984,21 @@ describe("Effect", () => {
   })
 
   describe("interruption", () => {
+    it("a map step that interrupts its own fiber stops the chain at the next step", () => {
+      const ran: Array<number> = []
+      let effect: Effect.Effect<number> = Effect.sync(() => 0)
+      for (let i = 1; i <= 10; i++) {
+        effect = Effect.map(effect, (n) => {
+          ran.push(i)
+          if (i === 5) Fiber.getCurrent()!.interruptUnsafe()
+          return n + 1
+        })
+      }
+      const exit = Effect.runSyncExit(effect)
+      assert.deepStrictEqual(ran, [1, 2, 3, 4, 5])
+      assert.isTrue(Exit.hasInterrupts(exit))
+    })
+
     it.effect("sync forever is interruptible", () =>
       Effect.gen(function*() {
         const fiber = yield* pipe(Effect.succeed(1), Effect.forever, Effect.forkChild)
