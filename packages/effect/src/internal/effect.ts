@@ -5009,6 +5009,18 @@ export const iterateEager = <S, A>() =>
   const onItem = options.onItem
   const step = options.step
 
+  const resumeSequential = (
+    state: S,
+    items: ReadonlyArray<A>,
+    index: number,
+    end: number,
+    effect: Effect.Effect<X, E, R>
+  ): Effect.Effect<void, E | E2, R> =>
+    flatMap(
+      exit(effect),
+      (itemExit) => step(state, items[index], itemExit, index) ?? runSequential(state, items, index + 1, end) ?? void_
+    )
+
   const runSequential = (
     state: S,
     items: ReadonlyArray<A>,
@@ -5019,10 +5031,7 @@ export const iterateEager = <S, A>() =>
       const item = items[index]
       const effect = onItem(state, item, index)
       if (!effectIsExit(effect)) {
-        return flatMap(
-          exit(effect),
-          (itemExit) => step(state, item, itemExit, index) ?? runSequential(state, items, index + 1, end) ?? void_
-        )
+        return resumeSequential(state, items, index, end, effect)
       }
       const terminal = step(state, item, effect, index)
       if (terminal) return terminal._tag === "Failure" ? terminal : undefined
