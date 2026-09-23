@@ -2,4 +2,4 @@
 "@effect/ai-openrouter": patch
 ---
 
-Normalize rounded choice and score probabilities in OpenRouter decisions so successful responses do not fail distribution validation.
+Accept rounded probabilities in OpenRouter choice and score decisions when the total is within 0.01 of 1, plus floating-point tolerance. Larger discrepancies still fail validation regardless of the number of outcomes.

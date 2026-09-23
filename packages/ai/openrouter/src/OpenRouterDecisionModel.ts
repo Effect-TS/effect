@@ -40,8 +40,8 @@ export const model = (
 
 /**
  * Creates a decision service that requires full choice and score distributions.
- * Distributions within the rounding error of two decimal places per outcome are
- * normalized to sum to 1.
+ * Normalizes distributions whose totals differ from 1 by at most 0.01, allowing
+ * an additional 1e-6 for floating-point error. Already-valid distributions are preserved.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
  *
  * @category constructors
@@ -145,8 +145,8 @@ const normalizeProbabilities = (
     total += value
   }
   const difference = Math.abs(total - 1)
-  // Allow half a hundredth per outcome for provider rounding, plus floating-point tolerance.
-  if (total === 0 || difference <= 1e-6 || difference > 0.005 * labels.length + 1e-6) {
+  // Bound total rounding drift independently of the number of outcomes.
+  if (difference <= 1e-6 || difference > 0.01 + 1e-6) {
     return probabilities
   }
   const normalized: Record<string, number> = Object.create(null)

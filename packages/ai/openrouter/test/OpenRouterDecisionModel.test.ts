@@ -539,7 +539,8 @@ describe("OpenRouterDecisionModel", () => {
         ["negative probability", [-0.01, 0.5, 0.5]],
         ["probability above one", [1.01, 0, 0]],
         ["zero total", [0, 0, 0]],
-        ["total outside the rounding allowance", [0.48, 0.25, 0.25]]
+        ["total below the rounding allowance", [0.49, 0.25, 0.24999]],
+        ["total above the rounding allowance", [0.51, 0.25, 0.25001]]
       ] as const
     ) {
       it.effect(`${key} rejects a ${name} instead of normalizing it`, () =>
@@ -567,6 +568,39 @@ describe("OpenRouterDecisionModel", () => {
         }))
     }
   }
+
+  it.effect("rejects large distribution errors even with many outcomes", () =>
+    Effect.gen(function*() {
+      const labels = Array.from({ length: 100 }, (_, index) => String(index))
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: {
+          category: Decision.classify({
+            instructions: "Choose a category",
+            criteria: Object.fromEntries(labels.map((label) => [label, label]))
+          })
+        }
+      })
+      const error = yield* DecisionModel.decide(definition, { input: "Help" }).pipe(
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            ...decisionsResponse,
+            answers: {
+              category: {
+                type: "choice",
+                choice: "0",
+                probabilities: Object.fromEntries(labels.map((label) => [label, 0.006]))
+              }
+            }
+          }))
+        )),
+        Effect.flip
+      )
+
+      assert.strictEqual(error.module, "DecisionModel")
+      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+    }))
 
   it.effect("encodes an explicitly undefined optional input field as JSON null", () =>
     Effect.gen(function*() {
