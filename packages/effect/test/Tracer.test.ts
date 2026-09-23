@@ -557,6 +557,7 @@ describe("Tracer", () => {
           Tracer.Tracer,
           recordingTracer(names)
         )
+        yield* Effect.withSpan(Effect.void, "restored")
         deepStrictEqual(names, ["after"], "only spans made after the tracer is provided reach it")
       }))
 
@@ -572,7 +573,7 @@ describe("Tracer", () => {
               Tracer.Tracer,
               recordingTracer(inner)
             ))
-            yield* Fiber.await(fiber)
+            yield* Fiber.join(fiber)
           }),
           Tracer.Tracer,
           recordingTracer(outer)
@@ -592,6 +593,25 @@ describe("Tracer", () => {
           kinds.push(span.spanId === "noop" ? "noop" : "real")
         }
         deepStrictEqual(kinds, ["real", "noop", "real", "noop"], "each region sees its own tracing flag")
+      }))
+
+    it.effect("updates the cached tracer after merging and omitting a context", () =>
+      Effect.gen(function*() {
+        const outer: Array<string> = []
+        const inner: Array<string> = []
+        const context = Context.merge(
+          Context.make(Tracer.Tracer, recordingTracer(outer)),
+          Context.make(Tracer.Tracer, recordingTracer(inner))
+        )
+
+        yield* Effect.withSpan(Effect.void, "merged").pipe(Effect.provide(context))
+        const span = yield* Effect.currentSpan.pipe(
+          Effect.withSpan("omitted"),
+          Effect.provide(Context.omit(Tracer.Tracer)(context))
+        )
+        assert.instanceOf(span, Tracer.NativeSpan)
+        deepStrictEqual(outer, [])
+        deepStrictEqual(inner, ["merged"])
       }))
   })
 })
