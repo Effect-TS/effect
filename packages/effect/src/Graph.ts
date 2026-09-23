@@ -3338,43 +3338,25 @@ const getUniqueDirectedNeighbors = <N, E>(
   nodeIndex: NodeIndex,
   direction: Direction
 ): Array<NodeIndex> => {
-  const result = getDirectedNeighbors(graph, nodeIndex, direction)
-  if (result.length < 2) {
-    return result
+  // getDirectedNeighbors returns a fresh array, so duplicates are compacted in place
+  const neighbors = getDirectedNeighbors(graph, nodeIndex, direction)
+  const seen = neighbors.length > ScanDegreeLimit ? new Set<NodeIndex>() : undefined
+  let length = 0
+  for (let i = 0; i < neighbors.length; i++) {
+    const neighbor = neighbors[i]
+    if (seen === undefined ? includesBefore(neighbors, length, neighbor) : seen.has(neighbor)) continue
+    seen?.add(neighbor)
+    neighbors[length++] = neighbor
   }
-  let seen: Set<NodeIndex> | undefined
-  if (result.length > ScanDegreeLimit) {
-    seen = new Set()
-    seen.add(result[0])
-  }
-  for (let read = 1; read < result.length; read++) {
-    if (!alreadySeen(result, read, seen, result[read])) continue
-    let write = read
-    for (read++; read < result.length; read++) {
-      if (!alreadySeen(result, write, seen, result[read])) {
-        result[write++] = result[read]
-      }
-    }
-    result.length = write
-    return result
-  }
-  return result
+  neighbors.length = length
+  return neighbors
 }
 
 const ScanDegreeLimit = 32
 
-const alreadySeen = (
-  result: ReadonlyArray<NodeIndex>,
-  end: number,
-  seen: Set<NodeIndex> | undefined,
-  neighbor: NodeIndex
-): boolean => {
-  if (seen !== undefined) {
-    const size = seen.size
-    return seen.add(neighbor).size === size
-  }
+const includesBefore = (neighbors: ReadonlyArray<NodeIndex>, end: number, neighbor: NodeIndex): boolean => {
   for (let i = 0; i < end; i++) {
-    if (result[i] === neighbor) return true
+    if (neighbors[i] === neighbor) return true
   }
   return false
 }
