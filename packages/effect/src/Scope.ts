@@ -514,7 +514,7 @@ export const close: <A, E>(self: Closeable, exit: Exit<A, E>) => Effect<void> = 
  * @category unsafe
  * @since 4.0.0
  */
-export const closeUnsafe: <A, E>(self: Scope, exit_: Exit<A, E>) => Effect<void, never, never> | undefined =
+export const closeUnsafe: <A, E>(self: Closeable, exit_: Exit<A, E>) => Effect<void, never, never> | undefined =
   effect.scopeCloseUnsafe
 
 /**
