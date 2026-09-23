@@ -3241,24 +3241,34 @@ const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutDon
   fromTransform((upstream, scope) =>
     Effect.sync(() => {
       let currentPull: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> | undefined
-      let forkedScope = Scope.forkUnsafe(scope)
-      const makePull: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> = Effect.flatMap(
-        Effect.suspend(() => toTransform(self)(upstream, forkedScope)),
-        (pull) => {
-          const pullUntilDone: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> = Pull.catchDone(pull, (done) =>
-            // pulling again before the next run has started resumes from here
-            currentPull = Scope.close(forkedScope, Exit.void).pipe(
-              Effect.flatMap(() => onDone(done as OutDone, scope)),
-              Pull.catchDone((done2) => currentPull = Cause.done(done2 as OutDone2)),
-              Effect.flatMap(() => {
-                forkedScope = Scope.forkUnsafe(scope)
-                return makePull
-              })
-            ))
-          return currentPull = pullUntilDone
-        }
-      )
-      return Effect.suspend(() => currentPull ?? makePull)
+      const makePull = (runScope: Scope.Scope): Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> =>
+        Effect.flatMap(
+          toTransform(self)(upstream, runScope),
+          (pull) => {
+            const pullUntilDone: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> = Pull.catchDone(pull, (done) =>
+              Effect.suspend(() => {
+                // A failed close or schedule step must not start another repetition.
+                const transition = Scope.close(runScope, Exit.void).pipe(
+                  Effect.flatMap(() => onDone(done as OutDone, scope)),
+                  Pull.catchDone((done2) =>
+                    currentPull = Cause.done(done2 as OutDone2)
+                  ),
+                  Effect.flatMap(() => {
+                    const nextScope = Scope.forkUnsafe(scope)
+                    return currentPull = makePull(nextScope)
+                  }),
+                  Effect.onError((cause) =>
+                    Effect.sync(() => {
+                      currentPull = Effect.failCause(cause)
+                    })
+                  )
+                )
+                return currentPull = transition
+              }))
+            return currentPull = pullUntilDone
+          }
+        )
+      return Effect.suspend(() => currentPull ?? (currentPull = makePull(Scope.forkUnsafe(scope))))
     })
   )
 
