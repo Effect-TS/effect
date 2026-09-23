@@ -22,6 +22,7 @@ import {
   Schedule,
   Scheduler,
   Scope,
+  Tracer,
   TxRef
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
@@ -675,6 +676,52 @@ describe("Effect", () => {
         assert.strictEqual(result, 1)
         return result + this.b
       }).pipe(Effect.runPromise).then((_) => assert.deepStrictEqual(_, 3)))
+
+    it("keeps every iterator result intact", () => {
+      const effect = Effect.succeed(1)
+      const iterator = effect[Symbol.iterator]()
+      const yielded = iterator.next()
+      const returned = iterator.next(2)
+      const again = iterator.next(3)
+      assert.isFalse(yielded.done)
+      assert.strictEqual(yielded.value, effect)
+      assert.strictEqual(JSON.stringify(returned), "{\"value\":2,\"done\":true}")
+      assert.strictEqual(JSON.stringify(again), "{\"value\":3,\"done\":true}")
+      assert.notStrictEqual(returned, again)
+    })
+
+    it("evaluates one operation per yielded effect", () => {
+      let operations = 0
+      const tracer = Tracer.make({
+        span: (options) => new Tracer.NativeSpan(options),
+        context: (primitive, fiber) => {
+          operations++
+          return primitive["~effect/Effect/evaluate"](fiber)
+        }
+      })
+      const count = (effect: Effect.Effect<unknown>) => {
+        operations = 0
+        Effect.runSync(Effect.withTracer(effect, tracer))
+        return operations
+      }
+      const yields = (n: number) =>
+        Effect.gen(function*() {
+          for (let i = 0; i < n; i++) {
+            yield* Effect.sync(() => i)
+            yield* Effect.succeed(i)
+          }
+        })
+      const traced = Effect.fn(function*(n: number) {
+        return yield* yields(n)
+      })
+      const spanned = Effect.fn("spanned")(function*(n: number) {
+        return yield* traced(n)
+      })
+      assert.deepStrictEqual(
+        [count(yields(0)), count(yields(1)), count(yields(10)), count(traced(10)), count(spanned(10))],
+        [3, 4, 13, 18, 29]
+      )
+    })
   })
 
   describe("forEach", () => {
