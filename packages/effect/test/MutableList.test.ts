@@ -68,11 +68,12 @@ describe("MutableList", () => {
   it("takeN advances past a drained append bucket but not a partially drained bucket", () => {
     const list = MutableList.make<number>()
     MutableList.append(list, 1)
-    MutableList.appendAll(list, [2, 3])
+    MutableList.appendAll(list, [2, 3, 4])
 
     deepStrictEqual(MutableList.takeN(list, 1), [1])
-    deepStrictEqual(MutableList.takeN(list, 1), [2])
-    deepStrictEqual(MutableList.takeAll(list), [3])
+    strictEqual(MutableList.take(list), 2)
+    deepStrictEqual(MutableList.takeN(list, 1), [3])
+    strictEqual(MutableList.take(list), 4)
     strictEqual(list.length, 0)
   })
 
