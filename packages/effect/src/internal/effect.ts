@@ -530,7 +530,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     context: Context.Context<never>,
     interruptible: boolean = true
   ) {
-    this[FiberTypeId] = fiberVariance as any
     this.setContext(context)
     this.id = ++fiberIdStore.id
     this.currentOpCount = 0
@@ -547,26 +546,28 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
-  readonly [FiberTypeId]: Fiber.Fiber.Variance<A, E>
+  get [FiberTypeId](): Fiber.Fiber.Variance<A, E> {
+    return fiberVariance
+  }
 
-  readonly id: number
-  interruptible: boolean
-  currentOpCount: number
-  readonly _stack: Array<Primitive>
-  _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
-  _exit: Exit.Exit<A, E> | undefined
-  _children: Set<FiberImpl<any, any>> | undefined
-  _interruptedCause: Cause.Cause<never> | undefined
-  _yielded: Exit.Exit<any, any> | (() => void) | undefined
-  _running: boolean
-  _deferredInterrupt: boolean
-  _parent: FiberImpl<any, any> | undefined
+  declare readonly id: number
+  declare interruptible: boolean
+  declare currentOpCount: number
+  declare readonly _stack: Array<Primitive>
+  declare _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
+  declare _exit: Exit.Exit<A, E> | undefined
+  declare _children: Set<FiberImpl<any, any>> | undefined
+  declare _interruptedCause: Cause.Cause<never> | undefined
+  declare _yielded: Exit.Exit<any, any> | (() => void) | undefined
+  declare _running: boolean
+  declare _deferredInterrupt: boolean
+  declare _parent: FiberImpl<any, any> | undefined
 
   // set in setContext
-  context!: Context.Context<never>
-  cache!: Fiber.Fiber.Cache
+  declare context: Context.Context<never>
+  declare cache: Fiber.Fiber.Cache
 
-  _dispatcher: Scheduler.SchedulerDispatcher | undefined = undefined
+  declare _dispatcher: Scheduler.SchedulerDispatcher | undefined
   get currentDispatcher(): Scheduler.SchedulerDispatcher {
     return this._dispatcher ??= this.cache.scheduler.makeDispatcher()
   }
@@ -584,12 +585,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else {
       this._observers.push(cb)
     }
-    return () => {
-      if (this._exit || this._observers === undefined) return
-      const index = this._observers.indexOf(cb)
-      if (index >= 0) {
-        this._observers.splice(index, 1)
-      }
+    return () => this.removeObserver(cb)
+  }
+  removeObserver(cb: (exit: Exit.Exit<A, E>) => void): void {
+    if (this._exit || this._observers === undefined) return
+    const index = this._observers.indexOf(cb)
+    if (index >= 0) {
+      this._observers.splice(index, 1)
     }
   }
   interruptUnsafe(fiberId?: number | undefined, annotations?: Context.Context<never> | undefined): void {
@@ -750,7 +752,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
-    if (this.cache !== undefined && this.cache.scheduler !== cache.scheduler) {
+    if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
     this.cache = cache
@@ -866,6 +868,9 @@ export const fiberJoin = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<A, E> =>
   })
 }
 
+const usesFiberObservers = (fiber: Fiber.Fiber<any, any>): fiber is FiberImpl =>
+  fiber instanceof FiberImpl && fiber.addObserver === FiberImpl.prototype.addObserver
+
 /** @internal */
 export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A): Effect.Effect<
   Arr.ReadonlyArray.With<A, A extends Iterable<Fiber.Fiber<infer _A, infer _E>> ? _A : never>,
@@ -875,27 +880,43 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
     const fibers = Array.from(self)
     if (fibers.length === 0) return resume(succeed(Arr.empty() as any))
     const out = new Array<any>(fibers.length) as Arr.NonEmptyArray<any>
-    const cancels = Arr.empty<() => void>()
+    const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
+    let cancels: Array<() => void> | undefined = undefined
+    const stopObserving = () => {
+      let next = 0
+      for (let i = 0; i < observers.length; i++) {
+        const fiber = fibers[i]
+        if (usesFiberObservers(fiber)) fiber.removeObserver(observers[i])
+        else if (cancels !== undefined) cancels[next++]()
+      }
+    }
     let done = 0
     let failed = false
     for (let i = 0; i < fibers.length; i++) {
       if (failed) break
-      cancels.push(fibers[i].addObserver((exit) => {
+      const observer = (exit: Exit.Exit<any, any>) => {
         done++
         if (exit._tag === "Failure") {
           failed = true
-          cancels.forEach((cancel) => cancel())
+          stopObserving()
           return resume(exit as any)
         }
         out[i] = exit.value
         if (done === fibers.length) {
           resume(succeed(out))
         }
-      }))
+      }
+      const fiber = fibers[i]
+      const cancel = fiber.addObserver(observer)
+      observers.push(observer)
+      if (!usesFiberObservers(fiber)) {
+        cancels ??= []
+        cancels.push(cancel)
+      }
     }
     return sync(() => {
       failed = true
-      cancels.forEach((cancel) => cancel())
+      stopObserving()
     })
   })
 
@@ -1156,11 +1177,10 @@ const callbackOptions: <A, E = never, R = never>(
   const Proto = makePrimitiveProto({
     op: "Async",
     [evaluate](this: any, fiber) {
-      const register = internalCall(() => this.register.bind(fiber.cache.scheduler))
       let resumed = false
       let yielded: boolean | Primitive = false
       const controller = this.withSignal ? new AbortController() : undefined
-      const onCancel = register((effect: Effect.Effect<any, any, any>) => {
+      const onCancel = this.register.call(fiber.cache.scheduler, (effect: Effect.Effect<any, any, any>) => {
         if (resumed) return
         resumed = true
         if (yielded) {
