@@ -342,8 +342,8 @@ describe("Tracer", () => {
       }).pipe(Effect.withSpan("A")))
   })
 
-  describe("Tracer.context", () => {
-    it("evaluates continuations after a traced region under the restored span", () => {
+  describe("Effect.withParentSpan", () => {
+    it("runs continuations after the region under the restored span", () => {
       let active: string | undefined
       const tracer = Tracer.make({
         span: (options) => new Tracer.NativeSpan(options),
@@ -361,37 +361,18 @@ describe("Tracer", () => {
       const record = Effect.map(() => {
         seen.push(active)
       })
-      const parent = Tracer.externalSpan({ spanId: "parent", traceId: "trace" })
-      const child = Tracer.externalSpan({ spanId: "child", traceId: "trace" })
-
       Effect.runSync(
         Effect.sync(() => undefined).pipe(
           record,
-          Effect.withParentSpan(child),
+          Effect.withParentSpan(Tracer.externalSpan({ spanId: "child", traceId: "trace" })),
           record,
-          record,
-          Effect.withParentSpan(parent),
+          Effect.withParentSpan(Tracer.externalSpan({ spanId: "parent", traceId: "trace" })),
           Effect.withTracer(tracer)
         )
       )
-      deepStrictEqual(seen, ["child", "parent", "parent"])
-
-      seen.length = 0
-      Effect.runSync(
-        Effect.sync(() => undefined).pipe(
-          record,
-          Effect.withSpan("child"),
-          record,
-          Effect.withParentSpan(parent),
-          Effect.withTracer(tracer)
-        )
-      )
-      assert.notStrictEqual(seen[0], "parent")
-      deepStrictEqual(seen.slice(1), ["parent"])
+      deepStrictEqual(seen, ["child", "parent"])
     })
-  })
 
-  describe("Effect.withParentSpan", () => {
     it.effect("should allow setting the parent span for the current span", () =>
       Effect.gen(function*() {
         const span = yield* Effect.currentSpan

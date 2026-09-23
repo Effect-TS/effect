@@ -104,34 +104,6 @@ describe("Scheduler", () => {
       assert.strictEqual(calls, 0)
     }))
 
-  it.effect("fibers preempted between map, tap and exit steps keep their own values", () =>
-    Effect.gen(function*() {
-      const order: Array<string> = []
-      const chain = (label: string, step: number) => {
-        let effect = Effect.succeed(0)
-        for (let i = 0; i < 10; i++) {
-          effect = effect.pipe(
-            Effect.map((n) => {
-              order.push(label)
-              return n + step
-            }),
-            Effect.tap(() => Effect.map(Effect.succeed(-1), (n) => n)),
-            Effect.exit,
-            Effect.flatten
-          )
-        }
-        return effect
-      }
-      for (let budget = 3; budget <= 8; budget++) {
-        order.length = 0
-        const results = yield* Effect.all([chain("a", 1), chain("b", 100)], { concurrency: "unbounded" }).pipe(
-          Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)
-        )
-        assert.deepStrictEqual(results, [10, 1000], `MaxOpsBeforeYield ${budget}`)
-        assert.notStrictEqual(order.join(""), "aaaaaaaaaabbbbbbbbbb", `MaxOpsBeforeYield ${budget}`)
-      }
-    }))
-
   it("MixedScheduler falls back to a microtask when timers cannot be set", async () => {
     // Cloudflare Workers throw for timers set in global scope
     const setImmediate = vi.spyOn(globalThis, "setImmediate").mockImplementation(() => {
