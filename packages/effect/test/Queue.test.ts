@@ -169,6 +169,38 @@ describe("Queue", () => {
       assert.deepEqual(b, [3, 4])
     }))
 
+  for (
+    const [name, receive] of [
+      ["take", (queue: Queue.Queue<number>) => Queue.take(queue)],
+      ["takeN", (queue: Queue.Queue<number>) => Queue.takeN(queue, 1)],
+      ["takeAll", (queue: Queue.Queue<number>) => Queue.takeAll(queue)],
+      ["takeBetween", (queue: Queue.Queue<number>) => Queue.takeBetween(queue, 1, 5)],
+      ["peek", (queue: Queue.Queue<number>) => Queue.peek(queue)]
+    ] as const
+  ) {
+    it.effect(`${name} does not miss an offer during the check-to-registration yield`, () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        // At a budget of 8, this padding exhausts the taker budget after
+        // checking the empty queue but before registering in awaitTake.
+        let pad: Effect.Effect<void> = Effect.void
+        for (let i = 0; i < 5; i++) pad = Effect.andThen(pad, Effect.void)
+        const taker = yield* Effect.forkDetach(Effect.andThen(pad, receive(queue)))
+        const offerer = yield* Effect.forkDetach(Queue.offer(queue, 1))
+        for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+
+        const exit = taker.pollUnsafe()
+        const size = yield* Queue.size(queue)
+        yield* Queue.shutdown(queue)
+        assert.deepStrictEqual(offerer.pollUnsafe(), Exit.succeed(true))
+        // On the affected revision the offer succeeded, but its message remains
+        // in the queue while the taker is suspended with no future wakeup.
+        if (exit === undefined) assert.strictEqual(size, 1)
+        assert.deepStrictEqual(exit, Exit.succeed(name === "take" || name === "peek" ? 1 : [1]))
+        assert.strictEqual(size, name === "peek" ? 1 : 0)
+      }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)))
+  }
+
   it.effect("takeN and takeBetween normalize element counts before waiting", () =>
     Effect.gen(function*() {
       const takeNQueue = yield* Queue.unbounded<number>()
