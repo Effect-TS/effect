@@ -1378,6 +1378,26 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
   Result.getOrThrow(inetAddressFromIpString(address, port))
 
 /**
+ * Creates an internet address from a trusted native numeric host and port.
+ * Named IPv6 zones are resolved using the supplied interface-to-scope map.
+ * Inputs must already be known to come from a native socket address.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const inetAddressFromNativeUnsafe = (
+  host: string,
+  port: number,
+  scopeIds?: ReadonlyMap<string, number>
+): InetAddress => {
+  void host
+  void port
+  void scopeIds
+  throw new Error("not implemented")
+}
+
+/**
  * Parses an unbracketed numeric host and port, resolving named IPv6 zones using
  * a supplied map of interface names to numeric scope IDs.
  *
