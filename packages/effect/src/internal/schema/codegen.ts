@@ -94,8 +94,6 @@ const getEmission = (
   }
 }
 
-const canEmit = (ast: SchemaAST.AST, depth = 0): boolean => getEmission(ast, depth) !== "unsupported"
-
 const isMakeSafe = (
   ast: SchemaAST.AST,
   depth = 0,
@@ -181,7 +179,6 @@ const constant = (emitter: Emitter, value: unknown, reference: string): string =
 }
 
 const needsPresenceCheck = (ast: SchemaAST.AST): boolean => {
-  if (!canEmit(ast)) return true
   switch (ast._tag) {
     case "Undefined":
     case "Void":
