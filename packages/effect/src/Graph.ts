@@ -3338,28 +3338,23 @@ const getUniqueDirectedNeighbors = <N, E>(
   nodeIndex: NodeIndex,
   direction: Direction
 ): Array<NodeIndex> => {
-  // getDirectedNeighbors returns a fresh array, so duplicates are compacted in place
   const neighbors = getDirectedNeighbors(graph, nodeIndex, direction)
-  const seen = neighbors.length > ScanDegreeLimit ? new Set<NodeIndex>() : undefined
+  if (neighbors.length > ScanDegreeLimit) {
+    return Array.from(new Set(neighbors))
+  }
+  // getDirectedNeighbors returns a fresh array, so duplicates are compacted in place
   let length = 0
   for (let i = 0; i < neighbors.length; i++) {
     const neighbor = neighbors[i]
-    if (seen === undefined ? includesBefore(neighbors, length, neighbor) : seen.has(neighbor)) continue
-    seen?.add(neighbor)
-    neighbors[length++] = neighbor
+    let j = 0
+    while (j < length && neighbors[j] !== neighbor) j++
+    if (j === length) neighbors[length++] = neighbor
   }
   neighbors.length = length
   return neighbors
 }
 
 const ScanDegreeLimit = 32
-
-const includesBefore = (neighbors: ReadonlyArray<NodeIndex>, end: number, neighbor: NodeIndex): boolean => {
-  for (let i = 0; i < end; i++) {
-    if (neighbors[i] === neighbor) return true
-  }
-  return false
-}
 
 /**
  * Returns the neighboring node indices for a node.
@@ -7361,12 +7356,7 @@ export const allShortestPaths: {
           previous[neighbor] = [{ node: currentNode, edge }]
           denseMinHeapPush(queue, neighbor, nextDistance, sequence++)
         } else if (nextDistance === known && nextDistance !== Infinity) {
-          const predecessors = previous[neighbor]
-          if (predecessors === undefined) {
-            previous[neighbor] = [{ node: currentNode, edge }]
-          } else {
-            predecessors.push({ node: currentNode, edge })
-          }
+          ;(previous[neighbor] ??= []).push({ node: currentNode, edge })
         }
       }
     }
