@@ -675,6 +675,54 @@ describe("SchemaParser", () => {
   })
 
   describe("asserts", () => {
+    it("should return for valid input and throw a schema error for invalid input", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
+
+      SchemaParser.asserts(schema, { a: "a", b: "b" })
+
+      throws(() => SchemaParser.asserts(schema, { a: 1, b: 2 }), (e) => {
+        assertSchemaIssueError(e, `Expected string\n  at ["a"]`)
+      })
+    })
+
+    it("should use the default parse options", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
+
+      // `errors: "all"` would report both keys
+      throws(() => SchemaParser.asserts(schema, { a: 1, b: 2 }), (e) => {
+        assertSchemaIssueError(e, `Expected string\n  at ["a"]`)
+      })
+
+      // `onExcessProperty: "error"` would reject the excess key
+      SchemaParser.asserts(schema, { a: "a", b: "b", c: 1 })
+    })
+
+    it("should assert the type side of the schema", () => {
+      const schema = Schema.Struct({ a: Schema.FiniteFromString })
+
+      SchemaParser.asserts(schema, { a: 1 })
+
+      throws(() => SchemaParser.asserts(schema, { a: "1" }), (e) => {
+        assertSchemaIssueError(e, `Expected number\n  at ["a"]`)
+      })
+    })
+
+    it("should behave the same on repeated and interleaved calls", () => {
+      const schema1 = Schema.Struct({ a: Schema.String })
+      const schema2 = Schema.String.check(Schema.isMinLength(3))
+
+      for (let i = 0; i < 3; i++) {
+        SchemaParser.asserts(schema1, { a: "a" })
+        SchemaParser.asserts(schema2, "abc")
+        throws(() => SchemaParser.asserts(schema1, { a: 1 }), (e) => {
+          assertSchemaIssueError(e, `Expected string\n  at ["a"]`)
+        })
+        throws(() => SchemaParser.asserts(schema2, "ab"), (e) => {
+          assertSchemaIssueError(e, `Expected a value with a length of at least 3`)
+        })
+      }
+    })
+
     it("should throw an error when the cause is not an Issue", () => {
       const schema = Schema.declareConstructor<string>()(
         [],
