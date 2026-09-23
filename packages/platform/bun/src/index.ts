@@ -27,6 +27,11 @@ export * as BunCrypto from "./BunCrypto.ts"
 /**
  * @since 4.0.0
  */
+export * as BunDatagramSocket from "./BunDatagramSocket.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as BunFileSystem from "./BunFileSystem.ts"
 
 /**
