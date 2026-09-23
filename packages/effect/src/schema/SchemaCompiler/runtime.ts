@@ -216,7 +216,9 @@ const hasExcessProperties = (
   for (const index of ast.indexSignatures) {
     for (const key of SchemaAST.getIndexSignatureKeys(input, index.parameter, options)) covered.add(key)
   }
-  return Reflect.ownKeys(input).some((key) => !covered.has(key))
+  return Reflect.ownKeys(input).some((key) =>
+    !covered.has(key) && Object.prototype.propertyIsEnumerable.call(input, key)
+  )
 }
 
 const invalidType = (ast: SchemaAST.AST, input: unknown, options: SchemaAST.ParseOptions) =>

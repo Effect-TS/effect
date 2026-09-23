@@ -501,6 +501,11 @@ export interface ParseOptions {
    * to structs, records, and structs with rest. Values must satisfy every
    * applicable index signature. Empty structs keep their non-nullish behavior.
    *
+   * Only enumerable own properties are considered. Non-enumerable own
+   * properties, such as `Error#stack`, are runtime internals rather than data,
+   * so they are neither decoded nor reported as excess, including when
+   * encoding class instances.
+   *
    * @default "ignore"
    */
   readonly onExcessProperty?: "ignore" | "error" | undefined
@@ -2529,7 +2534,7 @@ export function getIndexSignatureKeys(
         return (stringKeys ??= Object.keys(input)).filter((k) => parameter.matchKey(k, options) !== undefined)
       case "Symbol":
         return (symbolKeys ??= Object.getOwnPropertySymbols(input)).filter((k) =>
-          parameter.matchKey(k, options) !== undefined
+          Object.prototype.propertyIsEnumerable.call(input, k) && parameter.matchKey(k, options) !== undefined
         )
       case "Union":
         return [...new Set(parameter.types.flatMap(go))]
@@ -2935,10 +2940,12 @@ export const Objects: new(
             for (const key of keys) coveredKeys.add(key)
           }
         }
+        // Non-enumerable own properties (`Error#stack`, class internals) are
+        // runtime bookkeeping, not data.
         const inputKeys = Reflect.ownKeys(record)
         for (let i = 0; i < inputKeys.length; i++) {
           const key = inputKeys[i]
-          if (!coveredKeys.has(key)) {
+          if (!coveredKeys.has(key) && Object.prototype.propertyIsEnumerable.call(record, key)) {
             // key is unexpected
             const unexpected = new SchemaIssue.UnexpectedKey(ast, record[key], options)
             const issue = new SchemaIssue.Pointer([key], unexpected)
