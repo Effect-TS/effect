@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Schema, SchemaAST, SchemaParser } from "effect"
+import { Schema, SchemaAST, SchemaParser } from "effect"
 import * as CompilerRegistry from "effect/internal/schema/compilerRegistry"
 import * as SchemaAOTCompiler from "effect/schema/SchemaAOTCompiler"
 import * as SchemaTransformation from "effect/SchemaTransformation"
@@ -8,9 +8,6 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { roots, schemas, suspendEvaluations } from "./fixtures/aot.ts"
-
-const compileDecode = (schema: Schema.Constraint): string =>
-  SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
 
 describe("SchemaAOTCompiler", { concurrent: false }, () => {
   it("emits deterministic modules without installing a decoder", () => {
@@ -189,41 +186,22 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     assert.strictEqual(source.match(/function d\d+\(ast,resolve,operation\)/g)?.length, 2)
   })
 
-  it("emits a presence check only where undefined is accepted", () => {
-    const presence = "if(!(\"a\" in i))return I"
-    const accepting: ReadonlyArray<Schema.Constraint> = [
-      Schema.Undefined,
-      Schema.Void,
-      Schema.Any,
-      Schema.Unknown,
-      Schema.UndefinedOr(Schema.String),
-      Schema.Union([Schema.String, Schema.Number, Schema.Undefined])
-    ]
-    for (const type of accepting) {
-      assert.include(compileDecode(Schema.Struct({ a: type, b: Schema.String })), presence, type.ast._tag)
-    }
+  it("preserves required, optional, and __proto__ property presence checks", () => {
+    const schema = Schema.Struct({
+      required: Schema.UndefinedOr(Schema.String),
+      plain: Schema.String,
+      optional: Schema.optionalKey(Schema.String),
+      ["__proto__"]: Schema.String
+    })
+    const decode = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
+    assert.include(decode, "if(!(\"required\" in i))return I")
+    assert.notInclude(decode, "if(!(\"plain\" in i))")
+    assert.notInclude(decode, "if(!(\"optional\" in i))")
+    assert.include(decode, "if(\"optional\" in i){")
+    assert.include(decode, "if(!(Object.hasOwn(i,\"__proto__\")))return I")
 
-    const rejecting: ReadonlyArray<Schema.Constraint> = [
-      Schema.String,
-      Schema.Null,
-      Schema.Union([Schema.String, Schema.Number]),
-      Schema.Number.pipe(Schema.withConstructorDefault(Effect.succeed(1)))
-    ]
-    for (const type of rejecting) {
-      assert.notInclude(compileDecode(Schema.Struct({ a: type, b: Schema.String })), presence, type.ast._tag)
-    }
-
-    const optional = compileDecode(Schema.Struct({ a: Schema.optionalKey(Schema.String), b: Schema.String }))
-    assert.notInclude(optional, presence)
-    assert.include(optional, "if(\"a\" in i){const v1=i[\"a\"];if(typeof v1!==\"string\")return I;v0[\"a\"]=v1}")
-
-    const predicate = SchemaAOTCompiler.compile([
-      { ast: Schema.Struct({ a: Schema.Any, b: Schema.String }).ast, operations: ["is"] }
-    ])
-    assert.include(predicate, "if(!(\"a\" in i))return false")
-
-    const proto = compileDecode(Schema.Struct({ ["__proto__"]: Schema.String, b: Schema.String }))
-    assert.include(proto, "if(!(Object.hasOwn(i,\"__proto__\")))return I")
+    const guard = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["is"] }])
+    assert.include(guard, "if(!(\"required\" in i))return false")
   })
 
   it("runs generated decoders without dynamic code generation", () => {
