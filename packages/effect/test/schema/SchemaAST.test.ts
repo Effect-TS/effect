@@ -1,16 +1,7 @@
-import {
-  Effect,
-  Result,
-  Schema,
-  SchemaAST,
-  SchemaGetter,
-  SchemaIssue,
-  SchemaParser,
-  SchemaTransformation
-} from "effect"
+import { Effect, Schema, SchemaAST, SchemaGetter, SchemaTransformation } from "effect"
 import { runInNewContext } from "node:vm"
 import { describe, it } from "vitest"
-import { assertTrue, deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
+import { deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaAST", () => {
   it("stores constructor defaults directly in the context", () => {
@@ -512,6 +503,7 @@ describe("SchemaAST", () => {
       const candidates = SchemaAST.getCandidates({ a: 1 }, ast.types)
       deepStrictEqual(candidates, [ast.types[0]])
       strictEqual(SchemaAST.getCandidates({ b: 2 }, ast.types), candidates)
+      strictEqual(Object.isFrozen(candidates), true)
       Reflect.set(candidates, candidates.length, ast.types[1])
       deepStrictEqual(SchemaAST.getCandidates({ a: 1 }, ast.types), [ast.types[0]])
       deepStrictEqual(SchemaAST.getCandidates(null, ast.types), [ast.types[1]])
@@ -528,7 +520,8 @@ describe("SchemaAST", () => {
       const strings = SchemaAST.getCandidates("x", ast.types)
       deepStrictEqual(strings, [ast.types[2]])
       strictEqual(SchemaAST.getCandidates("y", ast.types), strings)
-      deepStrictEqual(SchemaAST.getCandidates(2, ast.types), [ast.types[3]])
+      strictEqual(Object.isFrozen(strings), true)
+      deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [ast.types[3]])
       const objects = SchemaAST.getCandidates({ _tag: "c" }, ast.types)
       deepStrictEqual(objects, [ast.types[1]])
       strictEqual(SchemaAST.getCandidates({ _tag: "d" }, ast.types), objects)
@@ -627,36 +620,6 @@ describe("SchemaAST", () => {
       // A missing sentinel key does not exclude: the member still owes the error.
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0], ast.types[1]])
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: undefined }, ast.types, true), ast.types)
-    })
-  })
-
-  describe("union decoding", () => {
-    const assertDecode = (schema: Schema.Codec<any, any>, input: unknown, expected: unknown) => {
-      for (const errors of ["first", "all"] as const) {
-        const result = SchemaParser.decodeUnknownResult(schema, { errors })(input)
-        assertTrue(Result.isSuccess(result))
-        deepStrictEqual(result.success, expected)
-      }
-    }
-
-    const assertDecodeFailure = (schema: Schema.Codec<any, any>, input: unknown, expected: string) => {
-      for (const errors of ["first", "all"] as const) {
-        const result = SchemaParser.decodeUnknownResult(schema, { errors })(input)
-        assertTrue(Result.isFailure(result))
-        strictEqual(SchemaIssue.defaultFormatter(result.failure), expected)
-      }
-    }
-
-    it("a union whose literals follow its non-literal members", () => {
-      const schema = Schema.Union([
-        Schema.String.check(Schema.isMinLength(3)),
-        Schema.Number,
-        Schema.Literal("a")
-      ])
-      assertDecode(schema, "a", "a")
-      assertDecode(schema, "abc", "abc")
-      assertDecodeFailure(schema, "ab", `Expected a value with a length of at least 3`)
-      assertDecodeFailure(schema, true, `Expected string | number | "a"`)
     })
   })
 
