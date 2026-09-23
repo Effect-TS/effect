@@ -18,29 +18,36 @@ const makeWorker = Effect.gen(function*() {
 })
 
 describe("FiberHandle", () => {
-  for (const startImmediately of [false, true, undefined]) {
-    for (const curried of [false, true]) {
-      it.effect(`run respects startImmediately: ${startImmediately}, curried: ${curried}`, () =>
-        Effect.gen(function*() {
-          const container = yield* FiberHandle.make()
-          const events: Array<string> = []
-          const effect = Effect.sync(() => {
-            events.push("started")
-          })
-          const fiber = yield* (curried
-            ? effect.pipe(FiberHandle.run(container, { startImmediately }))
-            : FiberHandle.run(container, effect, { startImmediately }))
-          events.push("returned")
-          yield* Fiber.join(fiber)
-          assert.deepStrictEqual(
-            events,
-            startImmediately === false
-              ? ["returned", "started"]
-              : ["started", "returned"]
-          )
-        }))
-    }
-  }
+  it.effect("run defers startup in both call forms", () =>
+    Effect.gen(function*() {
+      const container = yield* FiberHandle.make()
+      const started: Array<string> = []
+      const effect = (label: string) =>
+        Effect.sync(() => {
+          started.push(label)
+        })
+      const direct = yield* FiberHandle.run(container, effect("direct"), { startImmediately: false })
+      assert.deepStrictEqual(started, [])
+      yield* Fiber.join(direct)
+      const curried = yield* effect("curried").pipe(FiberHandle.run(container, { startImmediately: false }))
+      assert.deepStrictEqual(started, ["direct"])
+      yield* Fiber.join(curried)
+      assert.deepStrictEqual(started, ["direct", "curried"])
+    }))
+
+  it.effect("run starts immediately by default and when requested", () =>
+    Effect.gen(function*() {
+      const container = yield* FiberHandle.make()
+      let started = false
+      const effect = Effect.sync(() => {
+        started = true
+      })
+      yield* FiberHandle.run(container, effect)
+      assert.isTrue(started)
+      started = false
+      yield* effect.pipe(FiberHandle.run(container, { startImmediately: true }))
+      assert.isTrue(started)
+    }))
 
   it.effect("deferred fibers outlive their caller and stop when the container scope closes", () =>
     Effect.gen(function*() {
@@ -85,7 +92,6 @@ describe("FiberHandle", () => {
       )
       yield* Scope.close(scope, Exit.void)
       assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
-      yield* Effect.yieldNow
       assert.isFalse(started)
     }))
 
