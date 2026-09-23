@@ -185,14 +185,14 @@ describe("layer", () => {
     })
   })
 
-  describe("next to Vitest fixtures", () => {
+  describe("anonymous layer next to a Vitest fixture", () => {
     const withValue = it.extend("value", () => 1)
 
     layer(Foo.layer)((it) => {
-      it.effect("runs its own tests", () => Effect.void)
+      it.effect("provides its context", () => Effect.map(Foo, (foo) => expect(foo).toEqual("foo")))
     })
 
-    withValue("leaves fixture tests in the same suite working", ({ value }) => {
+    withValue("runs the fixture test", ({ value }) => {
       expect(value).toEqual(1)
     })
   })
