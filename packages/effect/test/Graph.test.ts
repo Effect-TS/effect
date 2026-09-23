@@ -1145,6 +1145,12 @@ describe("Graph", () => {
       assert.deepStrictEqual(Graph.successors(graph, 0.5), [])
     })
 
+    it("deduplicates high-degree neighbors in first-edge occurrence order", () => {
+      const targets = Array.from({ length: 34 }, (_, i) => i + 1)
+      const graph = directed([0, ...targets], [2, 1, ...targets, 1].map((target) => [0, target, null] as const))
+      assert.deepStrictEqual(Graph.neighbors(graph, 0), [2, 1, ...targets.slice(2)])
+    })
+
     it("handles undirected orientation, self-loops, parallel edges, and degree", () => {
       const graph = undirected(["A", "B"], [[1, 0, 1], [0, 1, 2], [0, 0, 3]])
       assert.deepStrictEqual(Graph.neighbors(graph, 0), [1, 0])
@@ -1401,6 +1407,12 @@ describe("Graph", () => {
         [0, 2],
         [1, 1],
         [2, 0],
+        [3, 2]
+      ])
+      assert.deepStrictEqual(Array.from(Graph.unweightedDistances(graph, 0, { direction: "undirected" })), [
+        [0, 0],
+        [1, 1],
+        [2, 2],
         [3, 2]
       ])
       assert.strictEqual(Graph.hasPath(graph, 0, 2), true)
