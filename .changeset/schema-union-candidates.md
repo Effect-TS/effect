@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce the time and allocations of decoding a union with many members.
+Reuse frozen candidate lists for Schema unions without literal members, avoiding a per-decode allocation and candidate-list rebuild.

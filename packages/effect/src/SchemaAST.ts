@@ -3448,7 +3448,8 @@ function makeIndex(types: ReadonlyArray<AST>): CandidateIndex {
 
   const getMembers = (type: Type): Array<AST> => (otherwise?.[type] ?? emptyCandidates).map((i) => types[i])
   const fallbacks: { [K in Type]?: ReadonlyArray<AST> } = {}
-  const getFallback = (type: Type): ReadonlyArray<AST> => fallbacks[type] ??= Object.freeze(getMembers(type))
+  const getFallback = (type: Type): ReadonlyArray<AST> =>
+    fallbacks[type] ??= otherwise?.[type] ? Object.freeze(getMembers(type)) : emptyCandidates
 
   if (onlyLiterals && literalCandidates) {
     literalCandidates.forEach(Object.freeze)
