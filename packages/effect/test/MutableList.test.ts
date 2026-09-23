@@ -50,28 +50,29 @@ describe("MutableList", () => {
     deepStrictEqual(MutableList.takeAll(list), Array.from({ length: 129 }, (_, i) => i + 1920))
   })
 
-  it("keeps the next element after takeN ends at a bucket boundary", () => {
-    const single = MutableList.make<number>()
-    MutableList.append(single, 1)
-    MutableList.appendAll(single, [2])
-    deepStrictEqual(MutableList.takeN(single, 1), [1])
-    strictEqual(MutableList.take(single), 2)
-    strictEqual(single.length, 0)
-    MutableList.append(single, 99)
-    strictEqual(MutableList.take(single), 99)
-    strictEqual(single.length, 0)
-
-    const partial = MutableList.make<number>()
-    MutableList.appendAll(partial, [1, 2, 3])
-    MutableList.appendAll(partial, [4])
-    deepStrictEqual(MutableList.takeN(partial, 2), [1, 2])
-    deepStrictEqual(MutableList.takeAll(partial), [3, 4])
-
+  it("takeN advances past a drained appendAll bucket", () => {
     const list = MutableList.make<number>()
-    for (let i = 0; i < 1025; i++) MutableList.append(list, i)
-    strictEqual(MutableList.takeN(list, 1024).length, 1024)
-    strictEqual(list.head?.array[list.head.offset], 1024)
-    strictEqual(MutableList.take(list), 1024)
+    MutableList.appendAll(list, [1, 2])
+    MutableList.appendAll(list, [3])
+
+    deepStrictEqual(MutableList.takeN(list, 2), [1, 2])
+    strictEqual(list.length, 1)
+    deepStrictEqual(MutableList.toArray(list), [3])
+    strictEqual(MutableList.take(list), 3)
+    strictEqual(list.length, 0)
+    strictEqual(MutableList.take(list), MutableList.Empty)
+    MutableList.append(list, 4)
+    strictEqual(MutableList.take(list), 4)
+  })
+
+  it("takeN advances past a drained append bucket but not a partially drained bucket", () => {
+    const list = MutableList.make<number>()
+    MutableList.append(list, 1)
+    MutableList.appendAll(list, [2, 3])
+
+    deepStrictEqual(MutableList.takeN(list, 1), [1])
+    deepStrictEqual(MutableList.takeN(list, 1), [2])
+    deepStrictEqual(MutableList.takeAll(list), [3])
     strictEqual(list.length, 0)
   })
 

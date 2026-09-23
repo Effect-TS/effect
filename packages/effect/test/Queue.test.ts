@@ -224,6 +224,7 @@ describe("Queue", () => {
       yield* Queue.offerAll(queue, [1, 2])
       yield* Queue.offerAll(queue, [3])
       assert.deepStrictEqual(yield* Queue.takeN(queue, 2), [1, 2])
+      assert.strictEqual(yield* Queue.size(queue), 1)
       assert.strictEqual(yield* Queue.peek(queue), 3)
       assert.strictEqual(yield* Queue.take(queue), 3)
       yield* Queue.offer(queue, 99)
