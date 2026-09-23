@@ -1408,7 +1408,12 @@ export const takeBetween: {
   min = Count.normalize(min)
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
-    takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(awaitTake(self), takeBetween(self, 1, max))
+    takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(
+      awaitTake(self, () =>
+        self.messages.length >= Math.min(min, self.capacity || 1) ||
+        (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)),
+      takeBetween(self, 1, max)
+    )
   )
 })
 
