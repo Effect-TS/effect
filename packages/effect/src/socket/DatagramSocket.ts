@@ -43,7 +43,7 @@ import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import * as NetAddress from "../net/NetAddress.ts"
 import * as Schema from "../Schema.ts"
-import * as Scope from "../Scope.ts"
+import type * as Scope from "../Scope.ts"
 
 /**
  * Runtime type identifier attached to `DatagramSocket` services.
@@ -504,69 +504,43 @@ export const fromNativeHandle = (
   }
   const sliding = options?.strategy === "sliding"
   const onError = options?.onError
+  // open while a reader may be acquired; closed while one holds the socket
+  const free = Latch.makeUnsafe(true)
+  // open while a reader is current, so writes can go out
   const latch = Latch.makeUnsafe(false)
   let current: ReaderState | undefined
-  let readerOpen = false
-  const readerWaiters = new Set<() => void>()
 
-  const waitForReader = Effect.callback<void>((resume) => {
-    if (!readerOpen) return resume(Effect.void)
-    const wake = () => {
-      readerWaiters.delete(wake)
-      resume(Effect.void)
-    }
-    readerWaiters.add(wake)
-    return Effect.sync(() => {
-      readerWaiters.delete(wake)
+  // acquisition failed or was interrupted while `open` was still running
+  const abandon = (state: ReaderState, opening: Fiber.Fiber<NativeHandle, DatagramSocketError>) => {
+    state.close()
+    // keep ownership until the orphaned open settles, then close its handle
+    opening.addObserver((exit) => {
+      if (exit._tag === "Success") exit.value.close()
+      free.openUnsafe()
     })
-  })
-
-  const takeReader = (
-    restore: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  ): Effect.Effect<void> =>
-    Effect.suspend(() => {
-      if (readerOpen) return Effect.flatMap(restore(waitForReader), () => takeReader(restore))
-      readerOpen = true
-      return Effect.void
-    })
-
-  const releaseReader = () => {
-    readerOpen = false
-    // every waiter re-checks, so an interrupted waiter can't strand the rest
-    for (const wake of Array.from(readerWaiters)) wake()
   }
 
   const release = (state: ReaderState) => {
-    if (state.closed) return
     state.close()
-    if (current === state) {
-      current = undefined
-      latch.closeUnsafe()
-    }
-    if (state.handle === undefined && state.opening !== undefined) {
-      // keep ownership until the orphaned open settles, then close its handle
-      state.opening.addObserver((exit) => {
-        if (exit._tag === "Success") exit.value.close()
-        releaseReader()
-      })
-    } else {
-      releaseReader()
-    }
+    current = undefined
+    latch.closeUnsafe()
+    free.openUnsafe()
   }
 
   const reader: DatagramSocket["reader"] = Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
-      const scope = yield* Effect.scope
-      yield* takeReader(restore)
+      while (!free.closeUnsafe()) yield* restore(free.await)
       const state = new ReaderState(capacity, sliding, onError)
-      yield* Scope.addFinalizer(scope, Effect.sync(() => release(state)))
-      const handle = yield* openHandle(open, state, restore).pipe(
-        Effect.onError(() => Effect.sync(() => release(state)))
+      // `open` may not be cancellable (Node's `lookup`), so it runs in its own
+      // fiber and is never interrupted. Interruption only stops the wait, and
+      // `abandon` closes a handle that arrives later.
+      const opening = yield* Effect.forkDetach(open(state.events), { startImmediately: true })
+      state.handle = yield* restore(Fiber.join(opening)).pipe(
+        Effect.onError(() => Effect.sync(() => abandon(state, opening)))
       )
-      state.handle = handle
-      if (handle.scopeIds !== undefined) state.scopeIds = handle.scopeIds
       current = state
       latch.openUnsafe()
+      yield* Effect.addFinalizer(() => Effect.sync(() => release(state)))
       return state.reader
     })
   )
@@ -589,22 +563,8 @@ export const fromNativeHandle = (
   return make({ reader, writer })
 }
 
-const openHandle = (
-  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError>,
-  state: ReaderState,
-  restore: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-): Effect.Effect<NativeHandle, DatagramSocketError> =>
-  // `open` may not be cancellable (Node's `lookup`), so it runs in its own
-  // fiber and is never interrupted. Interruption only stops the wait, and
-  // `release` closes a handle that arrives later.
-  Effect.flatMap(Effect.forkDetach(open(state.events), { startImmediately: true }), (fiber) => {
-    const exit = fiber.pollUnsafe()
-    if (exit !== undefined) return exit
-    state.opening = fiber
-    return restore(Fiber.join(fiber))
-  })
-
 const encoder = new TextEncoder()
+const encode = (payload: Uint8Array | string) => typeof payload === "string" ? encoder.encode(payload) : payload
 const emptyScopeIds: ReadonlyMap<string, number> = new Map()
 
 const closedError = () => new DatagramSocketError({ reason: new DatagramSocketClosedError() })
@@ -634,6 +594,7 @@ class DatagramImpl implements Datagram, NativeAddress {
 
 type Destination = NetAddress.InetAddress | DatagramImpl | undefined
 type Resume<A> = (effect: Effect.Effect<A, DatagramSocketError>) => void
+type Failure = Effect.Effect<never, DatagramSocketError>
 
 const targetOf = (datagram: OutgoingDatagram): Destination =>
   datagram instanceof DatagramImpl ? datagram : datagram.address as Destination
@@ -647,12 +608,11 @@ class ReaderState {
   buffer: Array<DatagramImpl | undefined> = []
   head = 0
   dropped = 0
-  error: DatagramSocketError | undefined = undefined
+  // the sticky error as a failed exit, shared by every pull and write after it
+  failure: Failure | undefined = undefined
   // parked pulls, oldest first
   waiters: Array<Resume<NonEmptyReadonlyArray<Datagram>>> = []
   handle: NativeHandle | undefined = undefined
-  opening: Fiber.Fiber<NativeHandle, DatagramSocketError> | undefined = undefined
-  scopeIds: ReadonlyMap<string, number> = emptyScopeIds
   closed = false
   #address: NetAddress.InetAddress | undefined = undefined
   #lastTarget: NetAddress.InetAddress | undefined = undefined
@@ -677,6 +637,11 @@ class ReaderState {
     this.reader = makeReader(this)
   }
 
+  // packets can arrive before the handle does, so they read this lazily
+  get scopeIds(): ReadonlyMap<string, number> {
+    return this.handle?.scopeIds ?? emptyScopeIds
+  }
+
   get address(): NetAddress.InetAddress {
     if (this.#address === undefined) {
       const { host, port } = this.handle!.address
@@ -686,7 +651,7 @@ class ReaderState {
   }
 
   push(payload: Uint8Array, host: string, port: number) {
-    if (this.closed || this.error !== undefined) return
+    if (this.failure !== undefined) return
     if (this.waiters.length !== 0) {
       // a parked pull implies an empty queue
       this.waiters.shift()!(Effect.succeed([new DatagramImpl(payload, host, port, this)]))
@@ -716,68 +681,57 @@ class ReaderState {
   }
 
   fail(error: DatagramSocketError) {
-    if (this.closed || this.error !== undefined) return
-    this.error = error
-    this.failWaiters(error)
+    if (this.failure !== undefined) return
+    this.failure = Effect.fail(error)
+    this.failWaiters(this.failure)
   }
 
-  failWaiters(error: DatagramSocketError) {
+  failWaiters(failure: Failure) {
     if (this.waiters.length === 0) return
     const waiters = this.waiters
     this.waiters = []
-    const exit = Effect.fail(error)
-    for (let i = 0; i < waiters.length; i++) waiters[i](exit)
+    for (let i = 0; i < waiters.length; i++) waiters[i](failure)
   }
 
   close() {
     this.closed = true
     this.buffer = []
     this.head = 0
-    this.error = closedError()
-    this.failWaiters(this.error)
+    this.failure = Effect.fail(closedError())
+    this.failWaiters(this.failure)
     this.handle?.close()
   }
 
   write(datagram: OutgoingDatagram, resume: Resume<void>) {
-    if (this.error !== undefined) return resume(Effect.fail(this.error))
-    const handle = this.handle!
+    if (this.failure !== undefined) return resume(this.failure)
     // a received datagram passed whole is echoed to its sender
     const target = targetOf(datagram)
-    const destination = this.destination(handle, target)
+    const destination = this.destination(target)
     if (destination instanceof DatagramSocketError) return resume(Effect.fail(destination))
-    const payload = typeof datagram.payload === "string" ? encoder.encode(datagram.payload) : datagram.payload
-    try {
-      handle.send(payload, destination, (error) => {
-        resume(error === undefined ? Effect.void : Effect.fail(this.withAddress(error, handle, target)))
-      })
-    } catch (defect) {
-      resume(Effect.die(defect))
-    }
+    this.handle!.send(encode(datagram.payload), destination, (error) => {
+      resume(error === undefined ? Effect.void : Effect.fail(this.withAddress(error, target)))
+    })
   }
 
   writeAll(datagrams: NonEmptyReadonlyArray<OutgoingDatagram>, resume: Resume<void>) {
-    if (this.error !== undefined) return resume(Effect.fail(this.error))
-    const handle = this.handle!
+    if (this.failure !== undefined) return resume(this.failure)
     const payloads = new Array<Uint8Array>(datagrams.length)
     const destinations = new Array<NativeAddress | undefined>(datagrams.length)
     for (let i = 0; i < datagrams.length; i++) {
       const datagram = datagrams[i]
-      const destination = this.destination(handle, targetOf(datagram))
+      const destination = this.destination(targetOf(datagram))
       if (destination instanceof DatagramSocketError) return resume(Effect.fail(destination))
-      payloads[i] = typeof datagram.payload === "string" ? encoder.encode(datagram.payload) : datagram.payload
+      payloads[i] = encode(datagram.payload)
       destinations[i] = destination
     }
-    try {
-      handle.sendMany(payloads, destinations, (error, index) => {
-        if (error === undefined) return resume(Effect.void)
-        resume(Effect.fail(index === undefined ? error : this.withAddress(error, handle, targetOf(datagrams[index]!))))
-      })
-    } catch (defect) {
-      resume(Effect.die(defect))
-    }
+    this.handle!.sendMany(payloads, destinations, (error, index) => {
+      if (error === undefined) return resume(Effect.void)
+      resume(Effect.fail(index === undefined ? error : this.withAddress(error, targetOf(datagrams[index]!))))
+    })
   }
 
-  destination(handle: NativeHandle, target: Destination): NativeAddress | undefined | DatagramSocketError {
+  destination(target: Destination): NativeAddress | undefined | DatagramSocketError {
+    const handle = this.handle!
     if (target === undefined) {
       if (handle.connected || handle.peer !== undefined) return handle.peer
       return writeError("DatagramSocket write has no destination and the socket has no peer")
@@ -791,32 +745,35 @@ class ReaderState {
     return destination
   }
 
-  withAddress(error: DatagramSocketError, handle: NativeHandle, target: Destination): DatagramSocketError {
+  withAddress(error: DatagramSocketError, target: Destination): DatagramSocketError {
     const reason = error.reason
     if (reason._tag !== "DatagramSocketWriteError" || reason.address !== undefined) return error
-    let address: NetAddress.InetAddress | undefined
-    try {
-      address = target instanceof DatagramImpl
-        ? target.address
-        : target !== undefined
-        ? target
-        : handle.peer !== undefined
-        ? NetAddress.inetAddressFromNativeUnsafe(handle.peer.host, handle.peer.port, this.scopeIds)
-        : undefined
-    } catch {
-      // an unknown IPv6 zone leaves the address out
-    }
+    const address = this.addressOf(target)
     if (address === undefined) return error
     return new DatagramSocketError({
       reason: new DatagramSocketWriteError({ kind: reason.kind, address, cause: reason.cause })
     })
+  }
+
+  addressOf(target: Destination): NetAddress.InetAddress | undefined {
+    try {
+      if (target instanceof DatagramImpl) return target.address
+      if (target !== undefined) return target
+      const peer = this.handle!.peer
+      return peer === undefined
+        ? undefined
+        : NetAddress.inetAddressFromNativeUnsafe(peer.host, peer.port, this.scopeIds)
+    } catch {
+      // an unknown IPv6 zone leaves the address out
+      return undefined
+    }
   }
 }
 
 const makeReader = (state: ReaderState): Reader => ({
   pull: Effect.callback((resume) => {
     if (state.buffer.length > state.head) return resume(Effect.succeed(state.take()))
-    if (state.error !== undefined) return resume(Effect.fail(state.error))
+    if (state.failure !== undefined) return resume(state.failure)
     state.waiters.push(resume)
     return Effect.sync(() => {
       const index = state.waiters.indexOf(resume)
@@ -829,7 +786,7 @@ const makeReader = (state: ReaderState): Reader => ({
   dropped: () => state.dropped,
   joinMulticast: (options) =>
     Effect.suspend(() => {
-      if (state.error !== undefined) return Effect.fail(state.error)
+      if (state.failure !== undefined) return state.failure
       return Effect.acquireRelease(
         state.handle!.joinMulticast(options),
         (leave) => state.closed ? Effect.void : Effect.ignoreCause(leave())
