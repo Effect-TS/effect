@@ -2597,8 +2597,12 @@ describe("Atom", { concurrent: false }, () => {
     })
 
     it("does not run a hydrated effect until invalidated", () => {
+      let reads = 0
       let runs = 0
-      const atom = counterRuntime.atom(Effect.sync(() => ++runs)).pipe(
+      const atom = Atom.make(() => {
+        reads++
+        return Effect.sync(() => ++runs)
+      }).pipe(
         Atom.withReactivity(["counter"]),
         Atom.serializable({
           key: "hydrated-effect",
@@ -2622,12 +2626,111 @@ describe("Atom", { concurrent: false }, () => {
       r.mount(atom)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(reads, 1)
       assert.strictEqual(runs, 0)
 
       r.set(fn, void 0)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(reads, 2)
       assert.strictEqual(runs, 1)
+    })
+
+    it("preserves hydration when an async runtime resolves until refresh", async () => {
+      const Service = Context.Service<number>("Atom.test/HydratedRuntime")
+      const runtime = Atom.runtime(Layer.effect(Service, Effect.sleep(5).pipe(Effect.as(1))))
+      let runs = 0
+      const atom = runtime.atom(Effect.sync(() => ++runs)).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({
+          key: "hydrated-async-runtime",
+          schema: AsyncResult.Schema({ success: Schema.Number })
+        }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      Hydration.hydrate(r, [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "hydrated-async-runtime",
+        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
+        dehydratedAt: 0
+      }])
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+      await vitest.advanceTimersByTimeAsync(5)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+
+      r.refresh(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+      r.dispose()
+    })
+
+    it("does not start a hydrated synchronous stream until refresh", () => {
+      let runs = 0
+      const atom = Atom.make(Stream.fromEffect(Effect.sync(() => ++runs))).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({
+          key: "hydrated-stream",
+          schema: AsyncResult.Schema({ success: Schema.Number })
+        }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      Hydration.hydrate(r, [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "hydrated-stream",
+        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
+        dehydratedAt: 0
+      }])
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+
+      r.refresh(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+      r.dispose()
+    })
+
+    it("ends hydration after a synchronous setSelf build", () => {
+      let builds = 0
+      let runs = 0
+      const atom = Atom.make((get) => {
+        if (++builds === 1) {
+          get.setSelf(AsyncResult.success(10))
+          return AsyncResult.success(10)
+        }
+        return Effect.sync(() => ++runs)
+      }).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({
+          key: "hydrated-set-self",
+          schema: AsyncResult.Schema({ success: Schema.Number })
+        }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      Hydration.hydrate(r, [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "hydrated-set-self",
+        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
+        dehydratedAt: 0
+      }])
+      r.mount(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(builds, 1)
+      assert.strictEqual(runs, 0)
+
+      r.refresh(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(builds, 2)
+      assert.strictEqual(runs, 1)
+      r.dispose()
     })
   })
 
