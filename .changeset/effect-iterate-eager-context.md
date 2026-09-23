@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce per-item allocations when decoding and encoding structs and arrays in code V8 has not yet optimized.
+Avoid allocating a closure context for each struct property and array element during sequential Schema traversal.
