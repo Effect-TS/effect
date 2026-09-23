@@ -388,6 +388,9 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates("c", ast.types), [ast.types[2]])
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
       deepStrictEqual(SchemaAST.getCandidates(undefined, ast.types), [])
+
+      const reversed = Schema.Union([Schema.String, Schema.Literal("b")]).ast
+      deepStrictEqual(SchemaAST.getCandidates("c", reversed.types), [reversed.types[0]])
     })
 
     it("Literals", () => {
@@ -504,8 +507,6 @@ describe("SchemaAST", () => {
       deepStrictEqual(candidates, [ast.types[0]])
       strictEqual(SchemaAST.getCandidates({ b: 2 }, ast.types), candidates)
       strictEqual(Object.isFrozen(candidates), true)
-      Reflect.set(candidates, candidates.length, ast.types[1])
-      deepStrictEqual(SchemaAST.getCandidates({ a: 1 }, ast.types), [ast.types[0]])
       deepStrictEqual(SchemaAST.getCandidates(null, ast.types), [ast.types[1]])
     })
 
@@ -525,8 +526,7 @@ describe("SchemaAST", () => {
       const objects = SchemaAST.getCandidates({ _tag: "c" }, ast.types)
       deepStrictEqual(objects, [ast.types[1]])
       strictEqual(SchemaAST.getCandidates({ _tag: "d" }, ast.types), objects)
-      Reflect.set(objects, objects.length, ast.types[0])
-      deepStrictEqual(SchemaAST.getCandidates({ _tag: "c" }, ast.types), [ast.types[1]])
+      strictEqual(Object.isFrozen(objects), true)
       deepStrictEqual(SchemaAST.getCandidates({ _tag: "a" }, ast.types), [ast.types[0], ast.types[1]])
     })
 
