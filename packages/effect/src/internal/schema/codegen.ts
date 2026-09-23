@@ -314,7 +314,8 @@ const emitIndexes = (
   statements: Array<string>,
   emitter: Emitter,
   operation: Operation,
-  path: string
+  path: string,
+  indexKeys: string
 ): void => {
   const fixedKeys = output === undefined || ast.propertySignatures.length === 0
     ? undefined
@@ -331,7 +332,7 @@ const emitIndexes = (
     const key = variable(emitter)
     const parameter = signature.parameter
     statements.push(
-      `const ${keys}=${
+      `const ${keys}=${indexKeys}?.[${signatureIndex}]??${
         parameter._tag === "String" && parameter.checks === undefined
           ? `Object.keys(${input})`
           : `G(${input},${constant(emitter, parameter, `${signaturePath}.parameter`)},o)`
@@ -524,12 +525,22 @@ const emitBase = (
       statements.push(
         `if(typeof ${input}!=="object"||${input}===null||Array.isArray(${input}))return ${invalid}`
       )
+      // Strict parsing collects index keys before reading any declared fields,
+      // just like the interpreter. Reuse that snapshot when decoding the indexes.
+      const object = constant(emitter, ast, path)
+      const strict = `o!==D&&o.onExcessProperty==="error"`
+      const indexKeys = ast.indexSignatures.length > 0 ? variable(emitter) : undefined
+      if (indexKeys !== undefined) {
+        statements.push(
+          `const ${indexKeys}=${strict}?${object}.indexSignatures.map(p=>G(${input},p.parameter,o)):void 0`
+        )
+      }
       statements.push(
-        `if(o!==D&&o.onExcessProperty==="error"&&E(${constant(emitter, ast, path)},${input},o))return ${invalid}`
+        `if(${indexKeys ?? strict}&&E(${object},${input},${indexKeys ?? "void 0"}))return ${invalid}`
       )
+      const output = needsValue ? variable(emitter) : undefined
       const hasOptional = ast.propertySignatures.some((property) => isOptional(property.type))
-      if (needsValue && ast.propertySignatures.length > 0 && !hasOptional) {
-        const output = variable(emitter)
+      if (output !== undefined && ast.propertySignatures.length > 0 && !hasOptional) {
         const properties = ast.propertySignatures.map((property, index) => {
           const propertyPath = `${path}.propertySignatures[${index}]`
           const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
@@ -542,30 +553,28 @@ const emitBase = (
           return `${outputKey}:${emit(property.type, value, statements, emitter, operation, `${propertyPath}.type`)}`
         })
         statements.push(`const ${output}={${properties.join(",")}}`)
-        if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, operation, path)
-        return output
+      } else {
+        if (output !== undefined) statements.push(`const ${output}={}`)
+        for (let propertyIndex = 0; propertyIndex < ast.propertySignatures.length; propertyIndex++) {
+          const property = ast.propertySignatures[propertyIndex]
+          const propertyPath = `${path}.propertySignatures[${propertyIndex}]`
+          const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
+          const value = variable(emitter)
+          const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
+          const decoded = emit(property.type, value, propertyStatements, emitter, operation, `${propertyPath}.type`)
+          if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
+          statements.push(
+            isOptional(property.type)
+              ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
+              : `${
+                propertyNeedsPresenceCheck(property.name, property.type)
+                  ? `if(!(${propertyPresence(input, key, property.name)}))return ${invalid};`
+                  : ""
+              }${propertyStatements.join(";")}`
+          )
+        }
       }
-      const output = needsValue ? variable(emitter) : undefined
-      if (output !== undefined) statements.push(`const ${output}={}`)
-      for (let propertyIndex = 0; propertyIndex < ast.propertySignatures.length; propertyIndex++) {
-        const property = ast.propertySignatures[propertyIndex]
-        const propertyPath = `${path}.propertySignatures[${propertyIndex}]`
-        const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
-        const value = variable(emitter)
-        const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
-        const decoded = emit(property.type, value, propertyStatements, emitter, operation, `${propertyPath}.type`)
-        if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
-        statements.push(
-          isOptional(property.type)
-            ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
-            : `${
-              propertyNeedsPresenceCheck(property.name, property.type)
-                ? `if(!(${propertyPresence(input, key, property.name)}))return ${invalid};`
-                : ""
-            }${propertyStatements.join(";")}`
-        )
-      }
-      if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, operation, path)
+      if (indexKeys !== undefined) emitIndexes(ast, input, output, statements, emitter, operation, path, indexKeys)
       return output ?? input
     }
     case "Union": {
