@@ -1242,29 +1242,27 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
     return Effect.succeed(as)
   })
 
-const pollForItem = <A>(self: Subscription<A>) => {
-  const deferred = Deferred.makeUnsafe<A>()
-  let set = self.subscribers.get(self.subscription)
-  if (!set) {
-    set = new Set()
-    self.subscribers.set(self.subscription, set)
-  }
-  set.add(self.pollers)
-  MutableList.append(self.pollers, deferred)
-  self.strategy.completePollersUnsafe(
-    self.pubsub,
-    self.subscribers,
-    self.subscription,
-    self.pollers
-  )
-  return Effect.onInterrupt(
-    Deferred.await(deferred),
-    () => {
-      MutableList.remove(self.pollers, deferred)
-      return Effect.void
+const pollForItem = <A>(self: Subscription<A>) =>
+  Effect.callback<A>((resume) => {
+    if (self.shutdownFlag.current) return resume(Effect.interrupt)
+    const deferred = Deferred.makeUnsafe<A>()
+    let set = self.subscribers.get(self.subscription)
+    if (!set) {
+      set = new Set()
+      self.subscribers.set(self.subscription, set)
     }
-  )
-}
+    set.add(self.pollers)
+    MutableList.append(self.pollers, deferred)
+    self.strategy.completePollersUnsafe(
+      self.pubsub,
+      self.subscribers,
+      self.subscription,
+      self.pollers
+    )
+    if (deferred.effect) return resume(deferred.effect)
+    deferred.resumes = [resume]
+    return Effect.sync(() => MutableList.remove(self.pollers, deferred))
+  })
 
 /**
  * Takes up to the specified number of messages from the subscription without
@@ -2410,17 +2408,18 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
-    return Effect.suspend(() => {
+    return Effect.callback<boolean>((resume) => {
       const deferred = Deferred.makeUnsafe<boolean>()
       this.offerUnsafe(elements, deferred)
       this.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
       this.completeSubscribersUnsafe(pubsub, subscribers)
-      return (MutableRef.get(isShutdown) ? Effect.interrupt : Deferred.await(deferred)).pipe(
-        Effect.onInterrupt(() => {
-          this.removeUnsafe(deferred)
-          return Effect.void
-        })
-      )
+      if (MutableRef.get(isShutdown)) {
+        this.removeUnsafe(deferred)
+        return resume(Effect.interrupt)
+      }
+      if (deferred.effect) return resume(deferred.effect)
+      deferred.resumes = [resume]
+      return Effect.sync(() => this.removeUnsafe(deferred))
     })
   }
 
