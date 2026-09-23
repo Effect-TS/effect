@@ -6,13 +6,21 @@ import * as NetAddress from "effect/net/NetAddress"
 import * as Result from "effect/Result"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
 import * as Dgram from "node:dgram"
-import * as Dns from "node:dns"
+import type * as Dns from "node:dns"
 import { vi } from "vitest"
+
+// Keep the call record outside vi.fn: Vitest clears mock histories when
+// concurrent tests start, including while this test is awaiting datagrams.
+const lookupCalls = vi.hoisted(() => [] as Array<string>)
 
 // The adapter resolves hostnames itself with `node:dns` `lookup`
 vi.mock("node:dns", async (importOriginal) => {
   const original = await importOriginal<typeof Dns>()
   const lookup = vi.fn(original.lookup)
+  lookup.mockImplementation((...args) => {
+    lookupCalls.push(args[0])
+    Reflect.apply(original.lookup, original, args)
+  })
   return { ...original, lookup, default: { ...original, lookup } }
 })
 
@@ -139,8 +147,7 @@ describe("NodeDatagramSocket", () => {
 
   it.live("resolves a hostname peer once per reader", () =>
     Effect.gen(function*() {
-      const lookup = vi.mocked(Dns.lookup)
-      const lookups = () => lookup.mock.calls.filter(([hostname]) => hostname === "localhost").length
+      const lookups = () => lookupCalls.filter((hostname) => hostname === "localhost").length
       const before = lookups()
       const server = yield* open({ bind: loopback })
       const client = yield* open({ peer: { address: "localhost", port: server.reader.address.port } })
