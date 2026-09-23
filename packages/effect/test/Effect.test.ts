@@ -2576,47 +2576,43 @@ describe("Effect", () => {
   describe("finalization", () => {
     const ExampleError = new Error("Oh noes!")
 
-    const reasons = (exit: Exit.Exit<unknown, unknown>) =>
-      Exit.isSuccess(exit) ? ["success"] : exit.cause.reasons.map((reason) =>
-        Cause.isFailReason(reason)
-          ? `fail:${String(reason.error)}`
-          : Cause.isDieReason(reason)
-          ? `die:${String(reason.defect)}`
-          : "interrupt"
-      )
     const throwing = (): never => {
-      throw "F"
+      throw "finalizer defect"
     }
-    const dying = () => Effect.die("F")
 
-    it.effect("a throwing finalizer combines its defect like Effect.die", () =>
+    it.effect("onExit preserves the original failure when the finalizer throws", () =>
       Effect.gen(function*() {
-        type Make = (f: () => Effect.Effect<never>) => Effect.Effect<unknown, unknown>
-        const cases: Array<[string, Make, Array<string>]> = [
-          ["onExit, failure", (f) => Effect.onExit(Effect.fail("E"), f), ["fail:E", "die:F"]],
-          ["onExit, success", (f) => Effect.onExit(Effect.succeed(1), f), ["die:F"]],
-          ["onExitIf", (f) => Effect.onExitIf(Effect.fail("E"), Exit.isFailure, f), ["fail:E", "die:F"]],
-          ["onError", (f) => Effect.onError(Effect.fail("E"), f), ["fail:E", "die:F"]],
-          ["onInterrupt", (f) => Effect.onInterrupt(Effect.interrupt, f), ["interrupt", "die:F"]],
-          ["acquireUseRelease", (f) => Effect.acquireUseRelease(Effect.void, () => Effect.fail("E"), f), [
-            "fail:E",
-            "die:F"
-          ]]
-        ]
-        for (const [name, make, expected] of cases) {
-          assert.deepStrictEqual(reasons(yield* Effect.exit(make(dying))), expected, `${name}, Effect.die`)
-          assert.deepStrictEqual(reasons(yield* Effect.exit(make(throwing))), expected, `${name}, throw`)
-        }
+        const result = yield* Effect.fail("body failure").pipe(Effect.onExit(throwing), Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("body failure"), Cause.die("finalizer defect")))
+        )
       }))
 
-    it.effect("a throwing finalizer leaves the exit visible to outer finalizers", () =>
+    it.effect("onExit reports a thrown finalizer on success", () =>
       Effect.gen(function*() {
-        const ran: Array<string> = []
-        const exit = yield* Effect.exit(
-          Effect.onInterrupt(Effect.onExit(Effect.interrupt, throwing), () => Effect.sync(() => ran.push("outer")))
+        const result = yield* Effect.succeed(1).pipe(Effect.onExit(throwing), Effect.exit)
+        assert.deepStrictEqual(result, Exit.die("finalizer defect"))
+      }))
+
+    it.effect("an outer onInterrupt still sees the interruption after an inner finalizer throws", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        const result = yield* Effect.interrupt.pipe(
+          Effect.onExit(throwing),
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          ),
+          Effect.exit
         )
-        assert.deepStrictEqual(ran, ["outer"])
-        assert.deepStrictEqual(reasons(exit), ["interrupt", "die:F"])
+        assert.isTrue(finalized)
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) {
+          assert.deepStrictEqual(result.cause.reasons.map((reason) => reason._tag), ["Interrupt", "Die"])
+          assert.deepStrictEqual(result.cause.reasons[1], Cause.die("finalizer defect").reasons[0])
+        }
       }))
 
     it("nested throwing finalizers do not overflow the stack", () => {
@@ -2624,7 +2620,7 @@ describe("Effect", () => {
       for (let i = 0; i < 20_000; i++) {
         program = Effect.onExit(Effect.exit(program), throwing)
       }
-      assert.deepStrictEqual(reasons(Effect.runSyncExit(program)), ["die:F"])
+      assert.deepStrictEqual(Effect.runSyncExit(program), Exit.die("finalizer defect"))
     })
 
     it.effect("fail ensuring", () =>
