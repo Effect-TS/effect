@@ -501,10 +501,10 @@ export interface ParseOptions {
    * to structs, records, and structs with rest. Values must satisfy every
    * applicable index signature. Empty structs keep their non-nullish behavior.
    *
-   * Only enumerable own properties are considered. Non-enumerable own
-   * properties, such as `Error#stack`, are runtime internals rather than data,
-   * so they are neither decoded nor reported as excess, including when
-   * encoding class instances.
+   * An excess property is an enumerable own property that is not covered by a
+   * declared property or an index signature. Non-enumerable own properties,
+   * such as `Error#stack`, are ignored unless explicitly declared by the
+   * schema. Index signatures likewise select only enumerable own properties.
    *
    * @default "ignore"
    */
@@ -2940,8 +2940,8 @@ export const Objects: new(
             for (const key of keys) coveredKeys.add(key)
           }
         }
-        // Non-enumerable own properties (`Error#stack`, class internals) are
-        // runtime bookkeeping, not data.
+        // Only enumerable own properties can be excess. Declared fields are
+        // parsed separately, regardless of their enumerability.
         const inputKeys = Reflect.ownKeys(record)
         for (let i = 0; i < inputKeys.length; i++) {
           const key = inputKeys[i]

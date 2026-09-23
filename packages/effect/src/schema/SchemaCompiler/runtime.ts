@@ -208,13 +208,16 @@ const check = (
 const hasExcessProperties = (
   ast: SchemaAST.Objects,
   input: Record<PropertyKey, unknown>,
-  options: SchemaAST.ParseOptions
+  options: SchemaAST.ParseOptions,
+  indexKeys?: Array<ReadonlyArray<PropertyKey>>
 ): boolean => {
   const covered = new Set<PropertyKey>(
     ast.propertySignatures.map((p) => typeof p.name === "number" ? String(p.name) : p.name)
   )
   for (const index of ast.indexSignatures) {
-    for (const key of SchemaAST.getIndexSignatureKeys(input, index.parameter, options)) covered.add(key)
+    const keys = SchemaAST.getIndexSignatureKeys(input, index.parameter, options)
+    indexKeys?.push(keys)
+    for (const key of keys) covered.add(key)
   }
   return Reflect.ownKeys(input).some((key) =>
     !covered.has(key) && Object.prototype.propertyIsEnumerable.call(input, key)

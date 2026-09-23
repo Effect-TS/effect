@@ -314,7 +314,8 @@ const emitIndexes = (
   statements: Array<string>,
   emitter: Emitter,
   operation: Operation,
-  path: string
+  path: string,
+  indexKeys: string
 ): void => {
   const fixedKeys = output === undefined || ast.propertySignatures.length === 0
     ? undefined
@@ -331,7 +332,7 @@ const emitIndexes = (
     const key = variable(emitter)
     const parameter = signature.parameter
     statements.push(
-      `const ${keys}=${
+      `const ${keys}=${indexKeys}?.[${signatureIndex}]??${
         parameter._tag === "String" && parameter.checks === undefined
           ? `Object.keys(${input})`
           : `G(${input},${constant(emitter, parameter, `${signaturePath}.parameter`)},o)`
@@ -524,8 +525,14 @@ const emitBase = (
       statements.push(
         `if(typeof ${input}!=="object"||${input}===null||Array.isArray(${input}))return ${invalid}`
       )
+      // Strict parsing collects index keys before reading any declared fields,
+      // just like the interpreter. Reuse that snapshot when decoding the indexes.
+      const indexKeys = ast.indexSignatures.length > 0 ? variable(emitter) : undefined
+      if (indexKeys !== undefined) statements.push(`let ${indexKeys}`)
       statements.push(
-        `if(o!==D&&o.onExcessProperty==="error"&&E(${constant(emitter, ast, path)},${input},o))return ${invalid}`
+        `if(o!==D&&o.onExcessProperty==="error"&&E(${constant(emitter, ast, path)},${input},o${
+          indexKeys === undefined ? "" : `,${indexKeys}=[]`
+        }))return ${invalid}`
       )
       const hasOptional = ast.propertySignatures.some((property) => isOptional(property.type))
       if (needsValue && ast.propertySignatures.length > 0 && !hasOptional) {
@@ -542,7 +549,7 @@ const emitBase = (
           return `${outputKey}:${emit(property.type, value, statements, emitter, operation, `${propertyPath}.type`)}`
         })
         statements.push(`const ${output}={${properties.join(",")}}`)
-        if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, operation, path)
+        if (indexKeys !== undefined) emitIndexes(ast, input, output, statements, emitter, operation, path, indexKeys)
         return output
       }
       const output = needsValue ? variable(emitter) : undefined
@@ -565,7 +572,7 @@ const emitBase = (
             }${propertyStatements.join(";")}`
         )
       }
-      if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, operation, path)
+      if (indexKeys !== undefined) emitIndexes(ast, input, output, statements, emitter, operation, path, indexKeys)
       return output ?? input
     }
     case "Union": {

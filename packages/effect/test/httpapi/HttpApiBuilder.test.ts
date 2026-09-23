@@ -188,6 +188,13 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
 
       const rejected = yield* respond(`{"decision":"approve","extra":true}`)
       assert.strictEqual(rejected._tag, "Failure")
+      if (rejected._tag === "Success") {
+        return assert.fail("Expected payload decoding to fail")
+      }
+      const error = Cause.squash(rejected.cause)
+      assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+      assert.strictEqual(error.kind, "Payload")
+      assert.strictEqual(error.cause.message, `Expected no excess property\n  at ["extra"]`)
     }))
 })
 
