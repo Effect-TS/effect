@@ -9,7 +9,7 @@ interface SourceFileWithParseDiagnostics extends ts.SourceFile {
   readonly parseDiagnostics: ReadonlyArray<ts.Diagnostic>
 }
 
-const stabilityDiagnostics = (tag: string): ReadonlyArray<string> => {
+const stabilityResult = (tag: string) => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-stability-"))
   try {
     fs.mkdirSync(path.join(cwd, "src"))
@@ -41,12 +41,16 @@ const stabilityDiagnostics = (tag: string): ReadonlyArray<string> => {
 export const makeValue = () => 1
 `
     )
-    return extractJSDocsSync({
+    const model = extractJSDocsSync({
       cwd,
       tsconfig: "tsconfig.json",
       include: ["src/**/*.ts"],
       output: ".data/jsdocs.json"
-    }).files.flatMap((file) => file.diagnostics.map((diagnostic) => diagnostic.code))
+    })
+    return {
+      diagnostics: model.files.flatMap((file) => file.diagnostics.map((diagnostic) => diagnostic.code)),
+      stability: model.apis.find((api) => api.apiFqn === "@effect/sample/Foo.makeValue")?.tags.stability
+    }
   } finally {
     fs.rmSync(cwd, { recursive: true, force: true })
   }
@@ -87,16 +91,26 @@ describe("jsdocs", () => {
     assert.strictEqual(result._tag, "Success")
   })
 
-  it("rejects stability values other than unstable", () => {
-    assert.deepStrictEqual(stabilityDiagnostics("@stability stable"), ["invalid-stability"])
+  it("accepts experimental declarations", () => {
+    assert.deepStrictEqual(stabilityResult("@stability experimental"), {
+      diagnostics: [],
+      stability: "experimental"
+    })
+  })
+
+  it("rejects unknown stability values", () => {
+    assert.deepStrictEqual(stabilityResult("@stability bogus").diagnostics, ["invalid-stability"])
+    assert.deepStrictEqual(stabilityResult("@stability stable").diagnostics, ["invalid-stability"])
   })
 
   it("rejects duplicate stability tags", () => {
-    assert.deepStrictEqual(stabilityDiagnostics("@stability unstable\n * @stability unstable"), ["duplicate-tag"])
+    assert.deepStrictEqual(stabilityResult("@stability unstable\n * @stability unstable").diagnostics, [
+      "duplicate-tag"
+    ])
   })
 
   it("rejects legacy unstable tags", () => {
-    assert.deepStrictEqual(stabilityDiagnostics("@unstable"), ["forbidden-tag"])
+    assert.deepStrictEqual(stabilityResult("@unstable").diagnostics, ["forbidden-tag"])
   })
 
   it("accepts doctest metadata on TypeScript fences", () => {

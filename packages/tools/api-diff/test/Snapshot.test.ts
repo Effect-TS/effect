@@ -56,6 +56,8 @@ describe("canonical snapshot", () => {
       yield* writeFixturePackage(root, {
         "Stability.d.ts": `/** @stability unstable */
 export declare const current: string
+/** @stability experimental */
+export declare const experimental: string
 /** @unstable */
 export declare const legacy: string
 /** A stable declaration. */
@@ -72,7 +74,12 @@ export declare const stable: string
         entity.path.join("."),
         entity.documentation.stability
       ]))
-      assert.deepStrictEqual(stability, { current: "unstable", legacy: "unstable", stable: "stable" })
+      assert.deepStrictEqual(stability, {
+        current: "unstable",
+        experimental: "experimental",
+        legacy: "unstable",
+        stable: "stable"
+      })
     }).pipe(Effect.provide(MainLayer)))
 
   it.effect("extracts declarations, overloads, namespaces, re-exports, and canonical types deterministically", () =>
