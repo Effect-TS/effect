@@ -9,6 +9,49 @@ interface SourceFileWithParseDiagnostics extends ts.SourceFile {
   readonly parseDiagnostics: ReadonlyArray<ts.Diagnostic>
 }
 
+const stabilityDiagnostics = (tag: string): ReadonlyArray<string> => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-stability-"))
+  try {
+    fs.mkdirSync(path.join(cwd, "src"))
+    fs.writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext", target: "ES2022" },
+        include: ["src/**/*.ts"]
+      })
+    )
+    fs.writeFileSync(
+      path.join(cwd, "package.json"),
+      JSON.stringify({
+        name: "@effect/sample",
+        type: "module",
+        exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
+      })
+    )
+    fs.writeFileSync(path.join(cwd, "src/index.ts"), "export * as Foo from \"./Foo.ts\"\n")
+    fs.writeFileSync(
+      path.join(cwd, "src/Foo.ts"),
+      `/**
+ * Creates a value.
+ *
+ * ${tag}
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeValue = () => 1
+`
+    )
+    return extractJSDocsSync({
+      cwd,
+      tsconfig: "tsconfig.json",
+      include: ["src/**/*.ts"],
+      output: ".data/jsdocs.json"
+    }).files.flatMap((file) => file.diagnostics.map((diagnostic) => diagnostic.code))
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true })
+  }
+}
+
 const signatureParseDiagnostics = (signature: string): ReadonlyArray<string> =>
   (ts.createSourceFile(
     "signature.ts",
@@ -42,6 +85,18 @@ describe("jsdocs", () => {
  * @since 1.0.0
  */`)
     assert.strictEqual(result._tag, "Success")
+  })
+
+  it("rejects stability values other than unstable", () => {
+    assert.deepStrictEqual(stabilityDiagnostics("@stability stable"), ["invalid-stability"])
+  })
+
+  it("rejects duplicate stability tags", () => {
+    assert.deepStrictEqual(stabilityDiagnostics("@stability unstable\n * @stability unstable"), ["duplicate-tag"])
+  })
+
+  it("rejects legacy unstable tags", () => {
+    assert.deepStrictEqual(stabilityDiagnostics("@unstable"), ["forbidden-tag"])
   })
 
   it("accepts doctest metadata on TypeScript fences", () => {
