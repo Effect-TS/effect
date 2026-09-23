@@ -449,8 +449,9 @@ const constInterruptedFiber = (function() {
 })()
 
 /**
- * Forks an Effect and add the forked fiber to the FiberSet.
- * When the fiber completes, it will be removed from the FiberSet.
+ * Forks an Effect and adds the fiber to the FiberSet. The fiber is removed
+ * when it completes. Set `startImmediately: false` to defer startup. By default,
+ * the effect starts immediately.
  *
  * **Example** (Forking effects into a set)
  *

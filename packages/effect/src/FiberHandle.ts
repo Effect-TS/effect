@@ -552,6 +552,8 @@ const constInterruptedFiber = (function() {
  * The handle manages only one fiber: running a new effect interrupts the
  * previous fiber unless `onlyIfMissing` is set. When the managed fiber
  * completes, it is removed from the handle.
+ * Set `startImmediately: false` to defer startup. By default, the effect starts
+ * immediately.
  *
  * **Example** (Running an effect in a fiber handle)
  *

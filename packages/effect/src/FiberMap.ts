@@ -733,6 +733,8 @@ const constInterruptedFiber = (function() {
  *
  * When the fiber completes, it is removed from the map. If the key already has
  * a fiber, the previous fiber is interrupted unless `onlyIfMissing` is set.
+ * Set `startImmediately: false` to defer startup. By default, the effect starts
+ * immediately.
  *
  * **Example** (Forking effects into a map)
  *
