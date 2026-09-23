@@ -48,6 +48,8 @@ function recur(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Equivalenc
       const elements = ast.elements.map((e, i) => recur(e, [...path, i]))
       const len = ast.elements.length
       const rest = ast.rest.map((r, i) => recur(r, [...path, len + i]))
+      const [head, ...tail] = rest
+      const tailLength = tail.length
       return Equivalence.make((a, b) => {
         if (!Array.isArray(a) || !Array.isArray(b)) {
           return false
@@ -69,8 +71,7 @@ function recur(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Equivalenc
         // handle rest element
         // ---------------------------------------------
         if (rest.length > 0) {
-          const [head, ...tail] = rest
-          for (; i < len - tail.length; i++) {
+          for (; i < len - tailLength; i++) {
             if (!head(a[i], b[i])) {
               return false
             }
@@ -78,7 +79,7 @@ function recur(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Equivalenc
           // ---------------------------------------------
           // handle post rest elements
           // ---------------------------------------------
-          for (let j = 0; j < tail.length; j++) {
+          for (let j = 0; j < tailLength; j++) {
             if (!tail[j](a[i + j], b[i + j])) {
               return false
             }

@@ -159,6 +159,8 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
       case "Arrays": {
         const elements = ast.elements.map((element) => recur(element))
         const rest = ast.rest.map(recur)
+        const [head, ...tail] = rest
+        const tailLength = tail.length
         return (value) => {
           const out: Array<string> = []
           let i = 0
@@ -172,11 +174,10 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
             }
           }
           if (rest.length > 0) {
-            const [head, ...tail] = rest
-            for (; i < value.length - tail.length; i++) {
+            for (; i < value.length - tailLength; i++) {
               out.push(head(value[i]))
             }
-            for (let j = 0; j < tail.length; j++) {
+            for (let j = 0; j < tailLength; j++) {
               out.push(tail[j](value[i + j]))
             }
           }

@@ -374,8 +374,9 @@ const formatOptions: Intl.DateTimeFormatOptions = {
 
 const zoneMakeIntl = (format: Intl.DateTimeFormat): DateTime.TimeZone.Named => {
   const zoneId = format.resolvedOptions().timeZone
-  if (validZoneCache.has(zoneId)) {
-    return validZoneCache.get(zoneId)!
+  const cached = validZoneCache.get(zoneId)
+  if (cached !== undefined) {
+    return cached
   }
   const zone = Object.create(ProtoTimeZoneNamed)
   zone.id = zoneId
@@ -386,16 +387,19 @@ const zoneMakeIntl = (format: Intl.DateTimeFormat): DateTime.TimeZone.Named => {
 
 /** @internal */
 export const zoneMakeNamedUnsafe = (zoneId: string): DateTime.TimeZone.Named => {
-  if (validZoneCache.has(zoneId)) {
-    return validZoneCache.get(zoneId)!
+  const cached = validZoneCache.get(zoneId)
+  if (cached !== undefined) {
+    return cached
   }
   try {
-    return zoneMakeIntl(
+    const zone = zoneMakeIntl(
       new Intl.DateTimeFormat("en-US", {
         ...formatOptions,
         timeZone: zoneId
       })
     )
+    validZoneCache.set(zoneId, zone)
+    return zone
   } catch {
     throw new IllegalArgumentError(`Invalid time zone: ${zoneId}`)
   }

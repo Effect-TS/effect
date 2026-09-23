@@ -285,13 +285,16 @@ export const prependAll = <A>(self: MutableList<A>, messages: Iterable<A>): void
  * @since 4.0.0
  */
 export const prependAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArray<A>, mutable = false): void => {
+  if (messages.length === 0) {
+    return
+  }
   self.head = {
     array: messages as Array<A>,
     mutable,
     offset: 0,
     next: self.head
   }
-  if (!self.tail && messages.length > 0) self.tail = self.head
+  if (!self.tail) self.tail = self.head
   self.length += self.head.array.length
 }
 

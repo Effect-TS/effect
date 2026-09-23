@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, SchemaParser } from "effect"
+import { Schema, SchemaAST, SchemaParser } from "effect"
 import * as CompilerRegistry from "effect/internal/schema/compilerRegistry"
 import * as SchemaAOTCompiler from "effect/schema/SchemaAOTCompiler"
 import * as SchemaTransformation from "effect/SchemaTransformation"
@@ -82,6 +82,47 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
       assert.isUndefined(entry.make)
       assert.strictEqual(SchemaParser.is(schema)({ value: "a" }), true)
       assert.deepStrictEqual(SchemaParser.make(schema)({ value: "a" }), { value: "a" })
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("honors enumerable excess checking directly in generated operations", async () => {
+    const visible = Symbol("visible")
+    const hidden = Symbol("hidden")
+    const schema = Schema.StructWithRest(Schema.Struct({ fixed: Schema.optionalKey(Schema.String) }), [
+      Schema.Record(Schema.TemplateLiteral(["field-", Schema.Number]), Schema.Number),
+      Schema.Record(Schema.Symbol, Schema.Number)
+    ])
+    const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-excess-test-", import.meta.url)))
+    try {
+      const file = join(directory, "decode.mjs")
+      writeFileSync(file, SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode", "is"] }]))
+      const generated = await import(pathToFileURL(file).href)
+      generated.install([schema.ast])
+      const { decode, is } = CompilerRegistry.resolve(schema.ast)
+      assert.ok(decode, "Expected a compiled decoder")
+      assert.ok(is, "Expected a compiled type guard")
+      const strict = { onExcessProperty: "error" } as const
+      const expected = { "field-1": 1, [visible]: 2 }
+      const input = Object.defineProperties({ ...expected }, {
+        fixed: { value: "declared", enumerable: false },
+        "field-2": { value: "invalid", enumerable: false },
+        [hidden]: {
+          enumerable: false,
+          get() {
+            throw new Error("Non-enumerable properties must not be read")
+          }
+        }
+      })
+      for (const options of [SchemaAST.defaultParseOptions, strict]) {
+        assert.deepStrictEqual(decode(input, options), { ...expected, fixed: "declared" })
+        assert.isTrue(is(input, options))
+        assert.strictEqual(decode({ [visible]: "invalid" }, options), CompilerRegistry.invalid)
+      }
+      assert.strictEqual(decode({ ...expected, extra: 1 }, strict), CompilerRegistry.invalid)
+      assert.isFalse(is({ ...expected, extra: 1 }, strict))
+      assert.deepStrictEqual(decode({}, strict), {})
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }

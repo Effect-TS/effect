@@ -139,6 +139,63 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
       assert.notInclude(message, "lastName")
       assert.include(yield* payloadError(api, { firstName: "Ada", lastName: "Lovelace", extra: true }), "extra")
     }))
+
+  it.effect("error responses stay encodable under strict excess options", () =>
+    Effect.gen(function*() {
+      class ReviewNotFound extends Schema.TaggedError<ReviewNotFound>()(
+        "ReviewNotFound",
+        { candidateId: Schema.String },
+        { httpApiStatus: 404 }
+      ) {}
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.post("review", "/review", {
+            payload: Schema.toCodecJson(Schema.Struct({ decision: Schema.Literals(["approve", "reject"]) })),
+            success: Schema.toCodecJson(Schema.Struct({ reviewed: Schema.Boolean })),
+            error: [ReviewNotFound]
+          })
+        )
+      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      const handler = yield* HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(api).pipe(
+          Layer.provide(
+            HttpApiBuilder.group(api, "test", (handlers) =>
+              handlers.handle("review", () =>
+                Effect.fail(new ReviewNotFound({ candidateId: "candidate-1" }))))
+          )
+        )
+      )
+      const respond = (body: string) =>
+        handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(
+              new Request("http://localhost/review", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body
+              })
+            )
+          ),
+          Effect.exit
+        )
+
+      const failure = yield* respond(`{"decision":"approve"}`)
+      if (failure._tag === "Failure") {
+        return assert.fail("Expected the error response to be encodable")
+      }
+      assert.strictEqual(failure.value.status, 404)
+
+      const rejected = yield* respond(`{"decision":"approve","extra":true}`)
+      assert.strictEqual(rejected._tag, "Failure")
+      if (rejected._tag === "Success") {
+        return assert.fail("Expected payload decoding to fail")
+      }
+      const error = Cause.squash(rejected.cause)
+      assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+      assert.strictEqual(error.kind, "Payload")
+      assert.strictEqual(error.cause.message, `Expected no excess property\n  at ["extra"]`)
+    }))
 })
 
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {
