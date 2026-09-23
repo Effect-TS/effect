@@ -9,12 +9,17 @@ import { vi } from "vitest"
 let closeCalls = 0
 let connectImmediately = false
 const commandCalls: Array<Record<string, unknown>> = []
+const insertCalls: Array<Record<string, unknown>> = []
+let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
 vi.mock("@clickhouse/client", () => ({
   createClient: () => ({
     ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
     query: () => new Promise(() => {}),
-    insert: () => new Promise(() => {}),
+    insert: (options: Record<string, unknown>) => {
+      insertCalls.push(options)
+      return insertImpl ? insertImpl(options) : new Promise(() => {})
+    },
     command: (options: Record<string, unknown>) => {
       commandCalls.push(options)
       return Promise.resolve({})
@@ -106,4 +111,21 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ))
+
+  it.effect("passes column selection to insertQuery", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      insertCalls.length = 0
+      insertImpl = () => Promise.resolve({ executed: true, query_id: "" })
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+
+      yield* client.insertQuery({ table: "people", values: [{ name: "Alice" }], columns: ["name"] })
+      yield* client.insertQuery({ table: "people", values: [{ name: "Bob" }], columns: { except: ["id"] } })
+
+      assert.strictEqual(insertCalls.length, 2)
+      assert.strictEqual(insertCalls[0].table, "people")
+      assert.strictEqual(insertCalls[0].format, "JSONEachRow")
+      assert.deepStrictEqual(insertCalls[0].columns, ["name"])
+      assert.deepStrictEqual(insertCalls[1].columns, { except: ["id"] })
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
