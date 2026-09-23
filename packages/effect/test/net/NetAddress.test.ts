@@ -587,40 +587,55 @@ describe("NetAddress", () => {
 
     it("constructs frozen native IPv4 and IPv6 addresses matching checked parsing", () => {
       for (const host of ["0.0.0.0", "127.0.0.1", "192.0.2.128", "255.255.255.255"]) {
-        const actual = NetAddress.inetAddressFromNativeUnsafe(host, 4567)
-        assert.deepStrictEqual(actual, success(NetAddress.inetAddressFromIpString(host, 4567)))
-        assert.isTrue(Object.isFrozen(actual))
-        assert.isTrue(Object.isFrozen(actual.address))
+        for (const port of [0, 4567, 65535]) {
+          const actual = NetAddress.inetAddressFromNativeUnsafe(host, port)
+          assert.deepStrictEqual(actual, success(NetAddress.inetAddressFromIpString(host, port)))
+          assert.isTrue(Object.isFrozen(actual))
+          assert.isTrue(Object.isFrozen(actual.address))
+        }
       }
       for (
         const host of [
           "::",
           "::1",
+          "fe80::",
+          "1::",
           "2001:db8::1",
           "2001:db8:0:1::abcd",
           "2001:0db8:0000:0000:0000:0000:0000:0001",
+          "::192.0.2.128",
           "::ffff:192.0.2.128"
         ]
       ) {
-        const actual = NetAddress.inetAddressFromNativeUnsafe(host, 0)
-        assert.deepStrictEqual(actual, success(NetAddress.inetAddressFromIpString(host, 0)))
-        assert.isTrue(Object.isFrozen(actual))
-        assert.isTrue(Object.isFrozen(actual.address))
+        for (const port of [0, 4567, 65535]) {
+          const actual = NetAddress.inetAddressFromNativeUnsafe(host, port)
+          assert.deepStrictEqual(actual, success(NetAddress.inetAddressFromIpString(host, port)))
+          assert.isTrue(Object.isFrozen(actual))
+          assert.isTrue(Object.isFrozen(actual.address))
+        }
       }
     })
 
     it("constructs scoped native IPv6 addresses from numeric and named zones", () => {
       const scopeIds = new Map([["eth0", 7]])
-      const expectedIp = success(NetAddress.ipv6FromString("fe80::1"))
-      const expected = success(NetAddress.inetAddressV6(expectedIp, 4567, { scopeId: 7 }))
       for (const host of ["fe80::1%7", "fe80::1%eth0"]) {
         const actual = NetAddress.inetAddressFromNativeUnsafe(host, 4567, scopeIds)
-        assert.deepStrictEqual(actual, expected)
-        assert.deepStrictEqual(actual.address, success(NetAddress.inetAddressFromIpString("fe80::1", 4567)).address)
+        assert.deepStrictEqual(actual, success(NetAddress.inetAddressFromHostString(host, 4567, scopeIds)))
         assert.isTrue(Object.isFrozen(actual))
         assert.isTrue(Object.isFrozen(actual.address))
       }
-      assert.deepStrictEqual(NetAddress.inetAddressFromNativeUnsafe("fe80::1%7", 4567), expected)
+      assert.deepStrictEqual(
+        NetAddress.inetAddressFromNativeUnsafe("fe80::1%7", 4567),
+        success(NetAddress.inetAddressFromHostString("fe80::1%7", 4567))
+      )
+    })
+
+    it("throws for a named IPv6 zone missing from the scope map", () => {
+      const host = "fe80::1%eth1"
+      failure(NetAddress.inetAddressFromHostString(host, 4567, new Map([["eth0", 7]])))
+      assert.throws(() => NetAddress.inetAddressFromNativeUnsafe(host, 4567, new Map([["eth0", 7]])))
+      failure(NetAddress.inetAddressFromHostString(host, 4567))
+      assert.throws(() => NetAddress.inetAddressFromNativeUnsafe(host, 4567))
     })
 
     it("formats separate socket hosts while preserving IPv6 scope", () => {
