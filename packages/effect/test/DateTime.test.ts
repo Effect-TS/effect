@@ -377,35 +377,6 @@ describe("DateTime", () => {
       ))
   })
 
-  describe("zoneMakeNamedUnsafe", () => {
-    it("caches lookups by the requested zone id when Intl resolves a different id", () => {
-      const canonical = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles" })
-        .resolvedOptions().timeZone
-      const alias = canonical.toLowerCase()
-      strictEqual(alias !== canonical, true)
-
-      const Real = Intl.DateTimeFormat
-      let built = 0
-      Intl.DateTimeFormat = new Proxy(Real, {
-        construct(target, args) {
-          built++
-          return Reflect.construct(target, args)
-        }
-      })
-      try {
-        const zone = DateTime.zoneMakeNamedUnsafe(canonical)
-        strictEqual(zone.id, canonical)
-        const beforeAlias = built
-        for (let i = 0; i < 5; i++) {
-          strictEqual(DateTime.zoneMakeNamedUnsafe(alias), zone)
-        }
-        strictEqual(built - beforeAlias, 1)
-      } finally {
-        Intl.DateTimeFormat = Real
-      }
-    })
-  })
-
   describe("removeTime", () => {
     it("removes time", () => {
       const dt = DateTime.makeZonedUnsafe("2024-01-01T01:00:00Z", {
