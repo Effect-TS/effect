@@ -218,6 +218,8 @@ describe("Queue", () => {
       yield* Queue.offerAll(takeBetweenQueue, [2, 3])
       assert.deepStrictEqual(yield* Fiber.await(takeN), Exit.succeed([1, 2, 3]))
       assert.deepStrictEqual(yield* Fiber.await(takeBetween), Exit.succeed([1, 2, 3]))
+    }))
+
   it.effect("takeN ending at an offerAll boundary keeps the next message", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()

@@ -1577,7 +1577,7 @@ describe("Stream", () => {
         const closesScope = Stream.fromChannel(
           Channel.fromTransform((upstream, scope) =>
             Effect.andThen(
-              Scope.close(scope, Exit.void),
+              Scope.closeUnsafe(scope, Exit.void) ?? Effect.void,
               Channel.toTransform(Stream.toChannel(Stream.make(0)))(upstream, scope)
             )
           )
