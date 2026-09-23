@@ -2165,7 +2165,8 @@ const mapEffectConcurrent = <
         yield* semaphore.take(1).pipe(
           Effect.flatMap(() => pull),
           Effect.flatMap((value) => {
-            trackFiber(runFork(handle(f(value, i++))))
+            const index = i++
+            trackFiber(runFork(handle(Effect.suspend(() => f(value, index)))))
             return Effect.void
           }),
           Effect.forever({ disableYield: true }),
@@ -2203,7 +2204,8 @@ const mapEffectConcurrent = <
         yield* pull.pipe(
           Effect.flatMap((value) => {
             if (errorCause) return Effect.failCause(errorCause)
-            const fiber = runFork(f(value, i++))
+            const index = i++
+            const fiber = runFork(Effect.suspend(() => f(value, index)))
             trackFiber(fiber)
             fiber.addObserver(onExit)
             return Queue.offer(effects, Fiber.join(fiber))
