@@ -14,3 +14,14 @@ describe("Scope.close", () => {
     expect(Scope.close).type.not.toBeCallableWith(scope, Exit.void)
   })
 })
+
+describe("Scope.closeUnsafe", () => {
+  it("accepts a closeable scope", () => {
+    expect(Scope.closeUnsafe(closeable, Exit.void)).type.toBe<Effect.Effect<void, never, never> | undefined>()
+    expect(Scope.closeUnsafe).type.toBeCallableWith(closeable, Exit.void)
+  })
+
+  it("rejects a scope that is not known to be closeable", () => {
+    expect(Scope.closeUnsafe).type.not.toBeCallableWith(scope, Exit.void)
+  })
+})
