@@ -84,22 +84,35 @@ const makeTxPriorityQueue = <A>(ref: TxRef.TxRef<Chunk<A>>, ord: Order<A>): TxPr
   return self
 }
 
-const insertSorted = <A>(chunk: Chunk<A>, value: A, ord: Order<A>): Chunk<A> => {
-  const arr = C.toArray(chunk) as Array<A>
-  let lo = 0
-  let hi = arr.length
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1
-    if (ord(arr[mid], value) <= 0) {
-      lo = mid + 1
-    } else {
-      hi = mid
+const insertSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>): Chunk<A> => {
+  const arr = C.toReadonlyArray(chunk)
+  const out = Array(arr.length + values.length) as Array<A>
+  let i = 0
+  let k = 0
+  for (let j = 0; j < values.length; j++) {
+    const value = values[j]
+    const step = Math.ceil((arr.length - i) / (values.length - j))
+    let lo = i
+    let hi = Math.min(arr.length, i + step)
+    while (hi < arr.length && ord(arr[hi - 1], value) <= 0) {
+      lo = hi
+      hi = Math.min(arr.length, hi + step)
     }
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (ord(arr[mid], value) <= 0) {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    const shift = k - i
+    for (; i < lo; i++) out[i + shift] = arr[i]
+    k = lo + shift
+    out[k++] = value
   }
-  const out = Array(arr.length + 1) as Array<A>
-  for (let i = 0; i < lo; i++) out[i] = arr[i]
-  out[lo] = value
-  for (let i = lo; i < arr.length; i++) out[i + 1] = arr[i]
+  const shift = k - i
+  for (; i < arr.length; i++) out[i + shift] = arr[i]
   return C.fromIterable(out)
 }
 
@@ -338,7 +351,7 @@ export const offer: {
 } = dual(
   2,
   <A>(self: TxPriorityQueue<A>, value: A): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => insertSorted(chunk, value, self.ord))
+    TxRef.update(self.ref, (chunk) => insertSorted(chunk, [value], self.ord))
 )
 
 /**
@@ -367,10 +380,7 @@ export const offerAll: {
 } = dual(
   2,
   <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => {
-      const arr = [...C.toArray(chunk), ...values].sort((a, b) => self.ord(a, b))
-      return C.fromIterable(arr)
-    })
+    TxRef.update(self.ref, (chunk) => insertSorted(chunk, Array.from(values).sort((a, b) => self.ord(a, b)), self.ord))
 )
 
 /**

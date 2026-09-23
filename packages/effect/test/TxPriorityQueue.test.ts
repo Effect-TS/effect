@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Option, Order, TxPriorityQueue } from "effect"
 
+const byKey: Order.Order<readonly [number, string]> = ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)
+
 describe("TxPriorityQueue", () => {
   describe("constructors", () => {
     it.effect("empty creates an empty queue", () =>
@@ -133,6 +135,53 @@ describe("TxPriorityQueue", () => {
         yield* TxPriorityQueue.offerAll(pq, [3, 1, 2])
         const all = yield* TxPriorityQueue.toArray(pq)
         assert.deepStrictEqual(all, [1, 2, 3])
+      })))
+
+    it.effect("offerAll keeps existing elements first on ties and new ones in input order", () =>
+      Effect.tx(Effect.gen(function*() {
+        const pq = yield* TxPriorityQueue.fromIterable(byKey, [[1, "a"], [2, "b"], [1, "c"], [3, "d"]])
+        yield* TxPriorityQueue.offerAll(pq, [[2, "e"], [1, "f"], [3, "g"], [0, "h"], [1, "i"]])
+        const all = yield* TxPriorityQueue.toArray(pq)
+        assert.deepStrictEqual(all.map(([, id]) => id).join(""), "hacfibedg")
+      })))
+
+    it.effect("offerAll with an empty queue or no values", () =>
+      Effect.tx(Effect.gen(function*() {
+        const pq = yield* TxPriorityQueue.empty<number>(Order.Number)
+        yield* TxPriorityQueue.offerAll(pq, [])
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [])
+        yield* TxPriorityQueue.offerAll(pq, new Set([2, 1]))
+        yield* TxPriorityQueue.offerAll(pq, [])
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [1, 2])
+      })))
+
+    it.effect("offer, offerAll and take match a stable sort under many ties", () =>
+      Effect.tx(Effect.gen(function*() {
+        let seed = 1
+        const next = (n: number) => (seed = (seed * 1103515245 + 12345) % 2147483648) % n
+        let id = 0
+        const entry = (): readonly [number, string] => [next(4), String(id++)]
+        const pq = yield* TxPriorityQueue.empty(byKey)
+        let model: Array<readonly [number, string]> = []
+        for (let step = 0; step < 400; step++) {
+          const op = next(4)
+          if (op === 0) {
+            const value = entry()
+            yield* TxPriorityQueue.offer(pq, value)
+            model = [...model, value].sort(byKey)
+          } else if (op === 1) {
+            const values = Array.from({ length: next(3) === 0 ? 300 : next(6) }, entry)
+            yield* TxPriorityQueue.offerAll(pq, values)
+            model = [...model, ...values].sort(byKey)
+          } else {
+            assert.deepStrictEqual(
+              yield* TxPriorityQueue.takeOption(pq),
+              model.length > 0 ? Option.some(model[0]) : Option.none()
+            )
+            model = model.slice(1)
+          }
+          assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), model)
+        }
       })))
   })
 
