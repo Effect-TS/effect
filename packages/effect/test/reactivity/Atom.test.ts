@@ -1874,7 +1874,7 @@ describe("Atom", { concurrent: false }, () => {
     unmount()
   })
 
-  test(`swr revalidates on stale remount when enabled`, async () => {
+  test(`swr revalidates after a stale remount returns`, async () => {
     const r = AtomRegistry.make()
     let runs = 0
     const base = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
@@ -1893,9 +1893,46 @@ describe("Atom", { concurrent: false }, () => {
     const unmount2 = r.mount(atom)
     result = r.get(atom)
     assert(AsyncResult.isSuccess(result))
+    assert.strictEqual(result.value, 1)
+    assert.strictEqual(runs, 1)
+
+    await Effect.runPromise(Effect.yieldNow)
+    result = r.get(atom)
+    assert(AsyncResult.isSuccess(result))
     assert.strictEqual(result.value, 2)
     assert.strictEqual(runs, 2)
     unmount2()
+  })
+
+  test(`swr cancels queued revalidation when disposed`, async () => {
+    const r = AtomRegistry.make()
+    let runs = 0
+    const base = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+    const atom = base.pipe(Atom.swr({ staleTime: 100 }))
+    r.get(base)
+    await vitest.advanceTimersByTimeAsync(101)
+
+    r.mount(atom)
+    r.dispose()
+    await Effect.runPromise(Effect.yieldNow)
+
+    assert.strictEqual(runs, 1)
+  })
+
+  test(`swr skips queued revalidation when the source becomes fresh`, async () => {
+    const r = AtomRegistry.make()
+    let runs = 0
+    const base = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+    const atom = base.pipe(Atom.swr({ staleTime: 100 }))
+    r.get(base)
+    await vitest.advanceTimersByTimeAsync(101)
+
+    const unmount = r.mount(atom)
+    r.refresh(base)
+    await Effect.runPromise(Effect.yieldNow)
+
+    assert.strictEqual(runs, 2)
+    unmount()
   })
 
   test(`swr does not revalidate on fresh remount when enabled`, async () => {

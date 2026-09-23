@@ -1933,7 +1933,17 @@ export const swr: {
         return current
       }
       if (shouldRevalidateSWR(current, staleTime)) {
-        get.refresh(self)
+        let active = true
+        const dispatcher = get.registry.schedulerAsync.makeDispatcher()
+        get.addFinalizer(() => {
+          active = false
+          dispatcher.flush()
+        })
+        dispatcher.scheduleTask(() => {
+          if (active && shouldRevalidateSWR(get.once(self), staleTime)) {
+            get.refresh(self)
+          }
+        }, 0)
       }
       return current
     }, { initialValueTarget: self })
