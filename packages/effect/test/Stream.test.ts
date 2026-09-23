@@ -5556,6 +5556,15 @@ describe("Stream", () => {
         assert.deepStrictEqual(result, [[1, 2, 3], [1, 2, 3]])
       }))
 
+    it.effect("ends a subscriber whose end a full dropping buffer would have dropped", () =>
+      Effect.gen(function*() {
+        const [stream] = yield* Stream.broadcastN(Stream.make(1, 2, 3), { n: 1, capacity: 1, strategy: "dropping" })
+        // Let the upstream fill the single slot and end before the subscriber pulls.
+        yield* Effect.yieldNow
+
+        deepStrictEqual(yield* Stream.runCollect(stream), [1, 2, 3])
+      }))
+
     it.effect("propagates failures to all downstream streams", () =>
       Effect.gen(function*() {
         const [left, right] = yield* Stream.fail("boom").pipe(

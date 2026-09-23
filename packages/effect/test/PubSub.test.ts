@@ -832,6 +832,26 @@ describe("PubSub", () => {
         assert.deepStrictEqual(yield* PubSub.takeBetween(subscription, 3, 3), [2, 3, 0])
       }))
 
+    it.effect("rejects a suspended backpressured publish instead of delivering it after the final message", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(1)
+        const fast = yield* PubSub.subscribe(pubsub)
+        const slow = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        // The buffer stays full until the slow subscriber takes 1, so this
+        // publish suspends.
+        const publisher = yield* Effect.forkChild(PubSub.publish(pubsub, 2), { startImmediately: true })
+        assert.strictEqual(yield* PubSub.take(fast), 1)
+
+        yield* PubSub.end(pubsub, 0)
+
+        assert.strictEqual(yield* PubSub.take(fast), 0)
+        assert.strictEqual(yield* PubSub.take(slow), 1)
+        assert.isFalse(yield* Fiber.join(publisher))
+        assert.strictEqual(yield* PubSub.take(fast), 0)
+        assert.strictEqual(yield* PubSub.take(slow), 0)
+      }))
+
     it.effect("shutdown still interrupts subscribers", () =>
       Effect.gen(function*() {
         const pubsub = yield* PubSub.unbounded<number>()
