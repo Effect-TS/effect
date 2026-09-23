@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertExitFailure, assertFailure, assertTrue } from "@effect/vitest/utils"
-import { Cause, Data, Deferred, pipe, Ref } from "effect"
+import { Cause, Data, Deferred, Duration, pipe, Ref } from "effect"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -24,6 +24,63 @@ describe("Channel", () => {
           Channel.runCollect
         )
         assert.deepStrictEqual(result, [[0, undefined], [1, 0], [2, 1], [3, 2]])
+      }))
+
+    it.effect("repeat does not step the schedule or reacquire after a finalizer fails", () =>
+      Effect.gen(function*() {
+        let acquisitions = 0
+        let steps = 0
+        const source = Channel.acquireUseRelease(
+          Effect.sync(() => ++acquisitions),
+          () => Channel.succeed(1),
+          () => Effect.fail("release failed")
+        )
+        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: number) =>
+          Effect.sync(() => {
+            steps++
+            return [steps, Duration.zero] as const
+          })
+        ))
+        const result = yield* Effect.result(Channel.runDrain(Channel.repeat(source, schedule)))
+        assertFailure(result, "release failed")
+        assert.strictEqual(acquisitions, 1)
+        assert.strictEqual(steps, 0)
+      }))
+
+    it.effect("repeat does not replay a suspended schedule step on interruption", () =>
+      Effect.gen(function*() {
+        const inStep = yield* Latch.make(false)
+        let acquisitions = 0
+        let releases = 0
+        let steps = 0
+        let stepInterruptions = 0
+        const source = Channel.acquireUseRelease(
+          Effect.sync(() => ++acquisitions),
+          () => Channel.succeed(1),
+          () =>
+            Effect.sync(() => {
+              releases++
+            })
+        )
+        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: number) =>
+          Effect.sync(() => {
+            steps++
+          }).pipe(
+            Effect.andThen(inStep.open),
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                stepInterruptions++
+              })
+            )
+          )
+        ))
+        const fiber = yield* Effect.forkChild(Channel.runDrain(Channel.repeat(source, schedule)))
+        yield* Fiber.interrupt(fiber).pipe(inStep.whenOpen)
+        assert.strictEqual(acquisitions, 1)
+        assert.strictEqual(releases, 1)
+        assert.strictEqual(steps, 1)
+        assert.strictEqual(stepInterruptions, 1)
       }))
 
     for (const kind of ["repeat", "forever"] as const) {
