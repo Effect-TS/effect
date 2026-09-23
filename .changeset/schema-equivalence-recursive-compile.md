@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce the memory and time cost of comparing deeply nested values with `Schema.toEquivalence`.
+Memoize recursive `Schema.toEquivalence` compilation and remove unused path tracking, reducing work and retained memory for deeply nested values.
