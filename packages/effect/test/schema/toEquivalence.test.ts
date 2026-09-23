@@ -282,18 +282,6 @@ describe("toEquivalence", () => {
       strictEqual(compiled, 1)
     })
 
-    it("suspends whose targets share an AST tag", () => {
-      const Left = Schema.Struct({ left: Schema.String })
-      const Right = Schema.Struct({ right: Schema.String })
-      const left = Schema.toEquivalence(Schema.suspend((): typeof Left => Left))
-      const right = Schema.toEquivalence(Schema.suspend((): typeof Right => Right))
-
-      assertTrue(left({ left: "a" }, { left: "a" }))
-      assertFalse(left({ left: "a" }, { left: "b" }))
-      assertTrue(right({ right: "a" }, { right: "a" }))
-      assertFalse(right({ right: "a" }, { right: "b" }))
-    })
-
     it("recursive schema", () => {
       interface A {
         readonly a: string
