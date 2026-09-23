@@ -68,6 +68,38 @@ const systemOneResponse = {
 }
 
 describe("TypeSafeDecisionModel", () => {
+  it.effect("accepts rounded choice probabilities that total 0.99", () =>
+    Effect.gen(function*() {
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: {
+          neutral3: Decision.classify({
+            instructions: "Choose a sentiment",
+            criteria: { negative: "Negative", neutral: "Neutral", positive: "Positive" }
+          })
+        }
+      })
+      const { answers } = yield* DecisionModel.decide(definition, { input: "It is fine" }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            model: "jev-latest",
+            answers: {
+              neutral3: {
+                type: "choice",
+                choice: "neutral",
+                probabilities: { negative: 0.02, neutral: 0.93, positive: 0.04 },
+                confidence: 0.93
+              }
+            },
+            usage: { input_tokens: 10, output_tokens: 5 }
+          }))
+        ))
+      )
+
+      assert.strictEqual(answers.neutral3.label, "neutral")
+    }))
+
   it.effect("omits absent probability criteria from the encoded question", () =>
     Effect.gen(function*() {
       const definition = Decision.make({
