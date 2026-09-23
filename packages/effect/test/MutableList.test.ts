@@ -23,6 +23,33 @@ describe("MutableList", () => {
     strictEqual(MutableList.take(list), 3)
   })
 
+  it("bounds the retained slots of a list that never fully drains", () => {
+    const takes: Array<[batch: number, take: (list: MutableList.MutableList<number>) => void]> = [
+      [1, (list) => MutableList.take(list)],
+      [7, (list) => MutableList.takeN(list, 7)],
+      [3, (list) => MutableList.takeNVoid(list, 3)]
+    ]
+    for (const [batch, take] of takes) {
+      const list = MutableList.make<number>()
+      MutableList.append(list, -1)
+      for (let i = 0; i < 10_000; i++) {
+        for (let j = 0; j < batch; j++) MutableList.append(list, i * batch + j)
+        take(list)
+      }
+      const slots = list.head!.array.length
+      strictEqual(slots <= 2048, true, `retained ${slots} slots for one element`)
+      deepStrictEqual(MutableList.takeAll(list), [10_000 * batch - 1])
+    }
+  })
+
+  it("keeps later buckets intact when consuming a large prefix", () => {
+    const list = MutableList.make<number>()
+    for (let i = 0; i < 2048; i++) MutableList.append(list, i)
+    MutableList.appendAll(list, [2048])
+    MutableList.takeNVoid(list, 1920)
+    deepStrictEqual(MutableList.takeAll(list), Array.from({ length: 129 }, (_, i) => i + 1920))
+  })
+
   it("preserves a prepended element when appending to the list", () => {
     const list = MutableList.make<number>()
     MutableList.prepend(list, 1)
@@ -115,6 +142,20 @@ describe("MutableList", () => {
 
     deepStrictEqual(MutableList.toArrayN(list, 2), [2, 4])
     strictEqual(list.length, 2)
+  })
+
+  it("filter passes list indices to the predicate across offsets and buckets", () => {
+    const list = MutableList.make<number>()
+    MutableList.appendAll(list, [0, 1, 2])
+    MutableList.appendAll(list, [3, 4])
+    MutableList.take(list)
+    const indices: Array<number> = []
+    MutableList.filter(list, (_, i) => {
+      indices.push(i)
+      return i % 2 === 0
+    })
+    deepStrictEqual(indices, [0, 1, 2, 3])
+    deepStrictEqual(MutableList.toArray(list), [1, 3])
   })
 
   it("filter restores the empty list state when no values match", () => {
