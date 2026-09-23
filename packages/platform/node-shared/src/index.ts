@@ -27,6 +27,12 @@ export * as NodeCrypto from "./NodeCrypto.ts"
  * @stability unstable
  * @since 4.0.0
  */
+export * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as NodeFileSystem from "./NodeFileSystem.ts"
 
 /**
