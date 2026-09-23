@@ -2324,6 +2324,17 @@ describe("Stream", () => {
         deepStrictEqual(second, [1])
       }))
 
+    it.effect("ends a consumer that starts after the shared upstream has ended", () =>
+      Effect.gen(function*() {
+        const sharedStream = yield* Stream.share(Stream.make(1, 2, 3), {
+          capacity: 16,
+          idleTimeToLive: "1 minute"
+        })
+        yield* Stream.runDrain(sharedStream)
+
+        deepStrictEqual(yield* Stream.runCollect(sharedStream), [])
+      }))
+
     it.effect("parallel", () =>
       Effect.gen(function*() {
         const sharedStream = yield* Stream.fromSchedule(Schedule.spaced("1 seconds")).pipe(
@@ -5500,6 +5511,24 @@ describe("Stream", () => {
         )
         deepStrictEqual(result1, result2)
       })))
+  })
+
+  describe("broadcast", () => {
+    it.effect("ends a subscriber that subscribes after the upstream has ended", () =>
+      Effect.gen(function*() {
+        const stream = yield* Stream.broadcast(Stream.fromArrays([1], [2], [3]), { capacity: 8, replay: 2 })
+        yield* Stream.runDrain(stream)
+
+        deepStrictEqual(yield* Stream.runCollect(stream), [2, 3])
+      }))
+
+    it.effect("fails a subscriber that subscribes after the upstream has failed", () =>
+      Effect.gen(function*() {
+        const stream = yield* Stream.broadcast(Stream.fail("boom"), { capacity: 8 })
+        yield* Effect.exit(Stream.runDrain(stream))
+
+        deepStrictEqual(yield* Effect.exit(Stream.runCollect(stream)), Exit.fail("boom"))
+      }))
   })
 
   describe("broadcastN", () => {

@@ -779,6 +779,69 @@ describe("PubSub", () => {
 
       assert.strictEqual(yield* PubSub.publishAll(pubsub, [1, 2, 3]), false)
     }))
+
+  describe("end", () => {
+    it.effect("delivers buffered messages before the final message and rejects later publishes", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(4)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publishAll(pubsub, [1, 2])
+
+        assert.isTrue(yield* PubSub.end(pubsub, 0))
+        assert.isFalse(yield* PubSub.end(pubsub, -1))
+        assert.isFalse(yield* PubSub.publish(pubsub, 3))
+        assert.isFalse(yield* PubSub.publishAll(pubsub, [3]))
+        assert.isFalse(PubSub.publishUnsafe(pubsub, 3))
+
+        assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [1, 2])
+        assert.strictEqual(yield* PubSub.take(subscription), 0)
+        assert.strictEqual(yield* PubSub.take(subscription), 0)
+        assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [0])
+      }))
+
+    it.effect("wakes a suspended take", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
+
+        yield* PubSub.end(pubsub, 0)
+
+        assert.strictEqual(yield* Fiber.join(fiber), 0)
+      }))
+
+    it.effect("is not dropped by a full dropping PubSub", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.dropping<number>(1)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+
+        yield* PubSub.end(pubsub, 0)
+
+        assert.strictEqual(yield* PubSub.take(subscription), 1)
+        assert.strictEqual(yield* PubSub.take(subscription), 0)
+      }))
+
+    it.effect("late subscribers receive the replayed messages and then the final message", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 2 })
+        yield* PubSub.publishAll(pubsub, [1, 2, 3])
+        yield* PubSub.end(pubsub, 0)
+
+        const subscription = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(yield* PubSub.takeBetween(subscription, 3, 3), [2, 3, 0])
+      }))
+
+    it.effect("shutdown still interrupts subscribers", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.end(pubsub, 0)
+        yield* PubSub.shutdown(pubsub)
+
+        assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(PubSub.take(subscription))))
+      }))
+  })
 })
 
 const retains = (root: object, target: object): boolean => {
