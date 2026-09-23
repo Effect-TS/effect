@@ -188,6 +188,39 @@ describe("compiler regression contracts", () => {
       }
     }))
 
+  it.effect("resumes sequential array and struct traversals after mixed eager and suspended children", () =>
+    Effect.gen(function*() {
+      const calls: Array<string> = []
+      const child = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformEffect((value) => {
+          calls.push(value)
+          const result = value.toUpperCase()
+          return value === "b" || value === "d" ? Effect.yieldNow.pipe(Effect.as(result)) : Effect.succeed(result)
+        }),
+        encode: SchemaGetter.passthrough()
+      }))
+      const array = Schema.Array(child)
+      const struct = Schema.Struct({ a: child, b: child, c: child, d: child, e: child })
+      const input = ["a", "b", "c", "d", "e"]
+      for (const compiled of [false, true]) {
+        if (compiled) {
+          SchemaJITCompiler.enable(array.ast)
+          SchemaJITCompiler.enable(struct.ast)
+        }
+        for (const options of [undefined, { errors: "all" }] as const) {
+          calls.length = 0
+          deepStrictEqual(yield* SchemaParser.decodeUnknownEffect(array)(input, options), ["A", "B", "C", "D", "E"])
+          deepStrictEqual(calls, input)
+          calls.length = 0
+          deepStrictEqual(
+            yield* SchemaParser.decodeUnknownEffect(struct)({ a: "a", b: "b", c: "c", d: "d", e: "e" }, options),
+            { a: "A", b: "B", c: "C", d: "D", e: "E" }
+          )
+          deepStrictEqual(calls, input)
+        }
+      }
+    }))
+
   it("calls installed operations with options without inspecting extra function properties", () => {
     const schema = Schema.Struct({ value: Schema.String })
     const seen: Array<SchemaAST.ParseOptions> = []
