@@ -3752,6 +3752,88 @@ describe("Effect", () => {
 
           assert.deepStrictEqual(yield* Fiber.join(joined), Option.some(1))
         }))
+
+      it.effect("commits wake the waiters of refs they write, not refs they read", () =>
+        Effect.gen(function*() {
+          const gate = TxRef.makeUnsafe(0)
+          const other = TxRef.makeUnsafe(0)
+          let runs = 0
+          const waiters = yield* Effect.forEach([1, 2, 3], () =>
+            Effect.tx(Effect.gen(function*() {
+              runs++
+              const value = yield* TxRef.get(gate)
+              if (value === 0) return yield* Effect.txRetry
+              return value
+            })).pipe(Effect.forkChild({ startImmediately: true })))
+          const settle = Effect.repeat(Effect.yieldNow, { times: 10 })
+
+          for (let i = 1; i <= 5; i++) {
+            yield* Effect.tx(Effect.gen(function*() {
+              yield* TxRef.get(gate)
+              yield* TxRef.set(other, i)
+            }))
+            yield* settle
+          }
+          assert.strictEqual(runs, 3, "a commit that only read the ref reran its waiters")
+
+          yield* Effect.tx(TxRef.set(gate, 0))
+          yield* settle
+          assert.strictEqual(runs, 6, "a write of the value the ref held did not wake its waiters")
+
+          yield* Effect.tx(TxRef.set(gate, 1))
+          assert.deepStrictEqual(yield* Fiber.joinAll(waiters), [1, 1, 1])
+        }))
+
+      it.effect("a write of -0 over 0 is published and wakes its waiters", () =>
+        Effect.gen(function*() {
+          const zero = TxRef.makeUnsafe(0)
+          const negativeZero = yield* Effect.tx(Effect.gen(function*() {
+            const value = yield* TxRef.get(zero)
+            if (Object.is(value, 0)) return yield* Effect.txRetry
+            return 1 / value
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Effect.tx(TxRef.set(zero, -0))
+
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.deepStrictEqual(negativeZero.pollUnsafe(), Exit.succeed(-Infinity), "-0 over 0 never woke its waiter")
+        }))
+
+      it.effect("a write of the value a ref holds does not conflict with its readers", () =>
+        Effect.gen(function*() {
+          const x = TxRef.makeUnsafe(0)
+          const y = TxRef.makeUnsafe(0)
+          let writes = 0
+          const writer = yield* Effect.forkChild(Effect.gen(function*() {
+            for (; writes < 100; writes++) {
+              yield* Effect.tx(TxRef.update(x, (value) => value))
+              yield* Effect.yieldNow
+            }
+          }))
+          let runs = 0
+          yield* Effect.tx(Effect.gen(function*() {
+            runs++
+            const value = yield* TxRef.get(x)
+            yield* Effect.yieldNow
+            yield* TxRef.set(y, value + 1)
+          }))
+          assert.isBelow(writes, 100, "the reader only committed after the writer stopped")
+          assert.strictEqual(runs, 1)
+          yield* Fiber.join(writer)
+        }))
+
+      it.effect("commits values written through the transaction journal", () =>
+        Effect.gen(function*() {
+          const read = TxRef.makeUnsafe(0)
+          const added = TxRef.makeUnsafe(0)
+          yield* Effect.tx(Effect.gen(function*() {
+            yield* TxRef.get(read)
+            const { journal } = yield* Effect.Transaction
+            for (const entry of journal.values()) entry.value = 42
+            journal.set(added, { version: added.version, value: 7 })
+          }))
+          assert.strictEqual(read.value, 42)
+          assert.strictEqual(added.value, 7)
+        }))
     })
   })
 
