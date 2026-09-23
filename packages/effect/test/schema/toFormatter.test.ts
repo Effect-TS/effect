@@ -364,6 +364,27 @@ describe("toFormatter", () => {
   })
 
   describe("suspend", () => {
+    it("compiles a recursive schema once", () => {
+      interface Tree {
+        readonly a: number
+        readonly as: ReadonlyArray<Tree>
+      }
+      let compiled = 0
+      const Tree = Schema.Struct({
+        a: Schema.Number.pipe(Schema.overrideToFormatter(() => {
+          compiled++
+          return String
+        })),
+        as: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
+      })
+      const format = Schema.toFormatter(Tree)
+      strictEqual(
+        format({ a: 1, as: [{ a: 2, as: [{ a: 3, as: [] }] }] }),
+        `{ "a": 1, "as": [{ "a": 2, "as": [{ "a": 3, "as": [] }] }] }`
+      )
+      strictEqual(compiled, 1)
+    })
+
     it("Tuple", () => {
       const Rec = Schema.suspend((): Schema.Codec<unknown> => schema)
       const schema = Schema.Tuple([

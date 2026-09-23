@@ -36,9 +36,19 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
     | ((ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Formatter<any>) => Formatter<any> | undefined)
     | undefined
 }): Formatter<T> {
+  const compiled = new Map<SchemaAST.AST, Formatter<any>>()
   return recur(ast)
 
   function recur(ast: SchemaAST.AST): Formatter<any> {
+    let formatter = compiled.get(ast)
+    if (formatter === undefined) {
+      formatter = compile(ast)
+      compiled.set(ast, formatter)
+    }
+    return formatter
+  }
+
+  function compile(ast: SchemaAST.AST): Formatter<any> {
     const annotation = InternalAnnotations.resolve(ast)?.["toFormatter"]
     if (typeof annotation === "function") {
       return annotation(SchemaAST.isDeclaration(ast) ? ast.typeParameters.map(recur) : [])
