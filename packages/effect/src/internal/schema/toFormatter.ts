@@ -31,12 +31,14 @@ function causeToFormatter<E>(error: Formatter<E>, defect: Formatter<unknown>) {
 }
 
 /** @internal */
-export function toFormatter<T>(ast: SchemaAST.AST, options?: {
+export function toFormatter<T>(root: SchemaAST.AST, options?: {
   readonly onBefore?:
     | ((ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Formatter<any>) => Formatter<any> | undefined)
     | undefined
 }): Formatter<T> {
-  return recur(ast)
+  let shared: Map<SchemaAST.AST, Formatter<any> | undefined> | undefined
+  let rootFormatter: Formatter<any> | undefined
+  return rootFormatter = recur(root)
 
   function recur(ast: SchemaAST.AST): Formatter<any> {
     const annotation = InternalAnnotations.resolve(ast)?.["toFormatter"]
@@ -222,8 +224,18 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
         }
       }
       case "Suspend": {
-        let formatter: Formatter<any>
-        return (value) => (formatter ??= recur(ast.thunk()))(value)
+        let formatter: Formatter<any> | undefined
+        return (value) => {
+          if (formatter === undefined) {
+            const target = ast.thunk()
+            if (options?.onBefore !== undefined) formatter = recur(target)
+            else {
+              shared ??= new Map<SchemaAST.AST, Formatter<any> | undefined>().set(root, rootFormatter)
+              shared.set(target, formatter = shared.get(target) ?? recur(target))
+            }
+          }
+          return formatter(value)
+        }
       }
     }
   }
