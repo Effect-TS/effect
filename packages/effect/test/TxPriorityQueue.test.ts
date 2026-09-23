@@ -183,6 +183,38 @@ describe("TxPriorityQueue", () => {
           assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), model)
         }
       })))
+
+    it.effect("offerAll does not compare every queued element for one new value", () =>
+      Effect.tx(Effect.gen(function*() {
+        let comparisons = 0
+        const order: Order.Order<number> = (a, b) => {
+          comparisons++
+          return Order.Number(a, b)
+        }
+        const pq = yield* TxPriorityQueue.fromIterable(order, Array.from({ length: 128 }, (_, i) => i * 2))
+        comparisons = 0
+        yield* TxPriorityQueue.offerAll(pq, [127])
+        assert.isBelow(comparisons, 32)
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [
+          ...Array.from({ length: 64 }, (_, i) => i * 2),
+          127,
+          ...Array.from({ length: 64 }, (_, i) => (i + 64) * 2)
+        ])
+      })))
+
+    it.effect("offerAll preserves the order of equal existing and incoming priorities", () =>
+      Effect.tx(Effect.gen(function*() {
+        const order: Order.Order<readonly [number, string]> = ([a], [b]) => Order.Number(a, b)
+        const pq = yield* TxPriorityQueue.fromIterable(order, [[2, "old-b"], [1, "old-a"]] as const)
+        yield* TxPriorityQueue.offerAll(pq, [[2, "new-b"], [1, "new-a"], [2, "new-c"]] as const)
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [
+          [1, "old-a"],
+          [1, "new-a"],
+          [2, "old-b"],
+          [2, "new-b"],
+          [2, "new-c"]
+        ])
+      })))
   })
 
   describe("filtering", () => {
