@@ -567,7 +567,7 @@ function makeEffect<A, E>(
   uninterruptible = false
 ): AsyncResult.AsyncResult<A, E> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
-  if (previous._tag === "Some" && ctx.hydrating) {
+  if (previous._tag === "Some" && Registry.isHydrating(ctx)) {
     return previous.value
   }
   const scope = Scope.makeUnsafe()
@@ -899,6 +899,9 @@ function makeStream<A, E>(
   services = Context.empty()
 ): AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError>>()
+  if (previous._tag === "Some" && Registry.isHydrating(ctx)) {
+    return previous.value
+  }
   services = Context.add(services, AtomRegistry, ctx.registry)
 
   const run = Effect.scopedWith((scope) =>

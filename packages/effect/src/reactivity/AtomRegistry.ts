@@ -615,6 +615,7 @@ class NodeImpl<A> {
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
   hydrating = false
+  hydrationPending = false
 
   parents = new Set<NodeImpl<any>>()
   previousParents: Set<NodeImpl<any>> | undefined
@@ -650,13 +651,12 @@ class NodeImpl<A> {
       this.building = false
       if ((this.state & NodeFlags.waitingForValue) !== 0) {
         if (this.preserveInitialValueOnBuild) {
-          this.preserveInitialValueOnBuild = false
-          this.hydrating = false
           this.state = NodeState.valid
         } else {
           this.setValue(value)
         }
       }
+      this.preserveInitialValueOnBuild = false
 
       if (this.previousParents) {
         const parents = this.previousParents
@@ -682,6 +682,7 @@ class NodeImpl<A> {
 
   setHydratedValue(value: A): void {
     this.hydrating = (this.state & NodeFlags.initialized) === 0
+    this.hydrationPending = this.hydrating
     this.setInitialValue(value)
   }
 
@@ -760,6 +761,9 @@ class NodeImpl<A> {
   }
 
   invalidate(): void {
+    if (!this.hydrationPending) {
+      this.hydrating = false
+    }
     if (this.building && batchState.phase === BatchPhase.collect) {
       this.invalidatedDuringBuild = true
     }
@@ -868,6 +872,13 @@ interface Lifetime<A> extends Atom.AtomContext {
   finalizers: Array<() => void> | undefined
   disposed: boolean
   readonly dispose: () => void
+}
+
+export const isHydrating = (ctx: Atom.AtomContext): boolean => {
+  const node = (ctx as Lifetime<any>).node
+  if (node === undefined) return ctx.hydrating
+  node.hydrationPending = false
+  return node.hydrating
 }
 
 const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn"> = {
@@ -1001,6 +1012,8 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
 
   setSelf<A>(this: Lifetime<any>, a: A): void {
     if (this.disposed) return
+    this.node.hydrating = false
+    this.node.hydrationPending = false
     this.node.setValue(a as any)
   },
 
