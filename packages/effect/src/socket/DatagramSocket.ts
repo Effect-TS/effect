@@ -677,7 +677,8 @@ class ReaderState {
     if (this.buffer.length >= this.capacity) return this.overflow(payload, host, port)
     const datagram = new DatagramImpl(payload, host, port, this)
     if (this.waiter !== undefined) return this.wake(datagram)
-    this.buffer.push(datagram)
+    const buffer = this.buffer
+    buffer[buffer.length] = datagram
   }
 
   wake(datagram: DatagramImpl) {
