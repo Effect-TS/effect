@@ -91,13 +91,8 @@ const insertSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A
   let k = 0
   for (let j = 0; j < values.length; j++) {
     const value = values[j]
-    const step = Math.ceil((arr.length - i) / (values.length - j))
     let lo = i
-    let hi = Math.min(arr.length, i + step)
-    while (hi < arr.length && ord(arr[hi - 1], value) <= 0) {
-      lo = hi
-      hi = Math.min(arr.length, hi + step)
-    }
+    let hi = arr.length
     while (lo < hi) {
       const mid = (lo + hi) >>> 1
       if (ord(arr[mid], value) <= 0) {
@@ -106,13 +101,10 @@ const insertSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A
         hi = mid
       }
     }
-    const shift = k - i
-    for (; i < lo; i++) out[i + shift] = arr[i]
-    k = lo + shift
+    for (; i < lo; i++) out[k++] = arr[i]
     out[k++] = value
   }
-  const shift = k - i
-  for (; i < arr.length; i++) out[i + shift] = arr[i]
+  for (; i < arr.length; i++) out[k++] = arr[i]
   return C.fromIterable(out)
 }
 
