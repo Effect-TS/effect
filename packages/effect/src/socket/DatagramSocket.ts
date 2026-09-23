@@ -580,9 +580,9 @@ const writeError = (message: string, address?: NetAddress.InetAddress) =>
 
 // Also a `NativeAddress`, so the reply path passes the record itself
 class DatagramImpl implements Datagram, NativeAddress {
-  readonly payload: Uint8Array
-  readonly host: string
-  readonly port: number
+  payload: Uint8Array
+  host: string
+  port: number
   readonly owner: ReaderState
   #address: NetAddress.InetAddress | undefined
   constructor(payload: Uint8Array, host: string, port: number, owner: ReaderState) {
@@ -593,6 +593,13 @@ class DatagramImpl implements Datagram, NativeAddress {
   }
   get address(): NetAddress.InetAddress {
     return this.#address ??= NetAddress.inetAddressFromNativeUnsafe(this.host, this.port, this.owner.scopeIds)
+  }
+  // only for a queued record, which no pull has returned yet
+  reuse(payload: Uint8Array, host: string, port: number) {
+    this.payload = payload
+    this.host = host
+    this.port = port
+    this.#address = undefined
   }
 }
 
@@ -608,14 +615,24 @@ class ReaderState {
   readonly sliding: boolean
   readonly events: NativeEvents
   readonly reader: Reader
-  // queued packets are buffer[head..]; `head` only moves under "sliding"
-  buffer: Array<DatagramImpl | undefined> = []
+  // queued packets, oldest first from `head`. `head` only moves under
+  // "sliding" once the buffer is full, when it becomes a ring
+  buffer: Array<DatagramImpl> = []
   head = 0
   dropped = 0
   // the sticky error as a failed exit, shared by every pull and write after it
   failure: Failure | undefined = undefined
-  // parked pulls, oldest first
+  // parked pulls, oldest first: the oldest sits in the slot and the rest wait
+  // in `waiters`, so a single consumer never touches the array
+  waiter: Resume<NonEmptyReadonlyArray<Datagram>> | undefined = undefined
+  waiterFiber: Fiber.Fiber<unknown, unknown> | undefined = undefined
   waiters: Array<Resume<NonEmptyReadonlyArray<Datagram>>> = []
+  waiterFibers: Array<Fiber.Fiber<unknown, unknown>> = []
+  // shared by every parked pull; it runs on the interrupted fiber
+  readonly cancel: Effect.Effect<void> = Effect.withFiber((fiber) => {
+    this.removeWaiter(fiber)
+    return Effect.void
+  })
   handle: NativeHandle | undefined = undefined
   closed = false
   #address: NetAddress.InetAddress | undefined = undefined
@@ -656,36 +673,70 @@ class ReaderState {
 
   push(payload: Uint8Array, host: string, port: number) {
     if (this.failure !== undefined) return
-    if (this.waiters.length !== 0) {
-      // a parked pull implies an empty queue
-      this.waiters.shift()!(Effect.succeed([new DatagramImpl(payload, host, port, this)]))
-      return
-    }
-    if (this.buffer.length - this.head >= this.capacity) {
-      this.dropped++
-      if (!this.sliding) return
-      this.buffer[this.head++] = undefined
-      // amortized O(1): compact once per `capacity` drops
-      if (this.head >= this.capacity) this.compact()
-    }
-    this.buffer.push(new DatagramImpl(payload, host, port, this))
+    // a parked pull implies an empty queue, so it never overflows
+    if (this.buffer.length >= this.capacity) return this.overflow(payload, host, port)
+    const datagram = new DatagramImpl(payload, host, port, this)
+    if (this.waiter !== undefined) return this.wake(datagram)
+    this.buffer.push(datagram)
   }
 
-  compact() {
-    // a plain loop: `copyWithin` takes V8's generic path, several times slower
+  wake(datagram: DatagramImpl) {
+    const waiter = this.waiter!
+    this.promoteWaiter()
+    waiter(Effect.succeed([datagram]))
+  }
+
+  overflow(payload: Uint8Array, host: string, port: number) {
+    this.dropped++
+    if (!this.sliding) return
+    // the oldest record becomes the newest in the same ring slot
     const buffer = this.buffer
     const head = this.head
-    const length = buffer.length - head
-    for (let i = 0; i < length; i++) buffer[i] = buffer[i + head]
-    buffer.length = length
-    this.head = 0
+    buffer[head].reuse(payload, host, port)
+    this.head = head + 1 === buffer.length ? 0 : head + 1
   }
 
   take(): NonEmptyReadonlyArray<Datagram> {
-    if (this.head > 0) this.compact()
-    const batch = this.buffer
+    const buffer = this.buffer
+    const head = this.head
     this.buffer = []
+    if (head === 0) return buffer as unknown as NonEmptyReadonlyArray<Datagram>
+    this.head = 0
+    const length = buffer.length
+    // unroll the ring, oldest first
+    const batch = new Array<DatagramImpl>(length)
+    let j = 0
+    for (let i = head; i < length; i++) batch[j++] = buffer[i]
+    for (let i = 0; i < head; i++) batch[j++] = buffer[i]
     return batch as unknown as NonEmptyReadonlyArray<Datagram>
+  }
+
+  park(resume: Resume<NonEmptyReadonlyArray<Datagram>>, fiber: Fiber.Fiber<unknown, unknown>) {
+    if (this.waiter === undefined) {
+      this.waiter = resume
+      this.waiterFiber = fiber
+    } else {
+      this.waiters.push(resume)
+      this.waiterFibers.push(fiber)
+    }
+  }
+
+  promoteWaiter() {
+    if (this.waiters.length === 0) {
+      this.waiter = undefined
+      this.waiterFiber = undefined
+    } else {
+      this.waiter = this.waiters.shift()
+      this.waiterFiber = this.waiterFibers.shift()
+    }
+  }
+
+  removeWaiter(fiber: Fiber.Fiber<unknown, unknown>) {
+    if (this.waiterFiber === fiber) return this.promoteWaiter()
+    const index = this.waiterFibers.indexOf(fiber)
+    if (index === -1) return
+    this.waiters.splice(index, 1)
+    this.waiterFibers.splice(index, 1)
   }
 
   fail(error: DatagramSocketError) {
@@ -695,9 +746,14 @@ class ReaderState {
   }
 
   failWaiters(failure: Failure) {
-    if (this.waiters.length === 0) return
+    const waiter = this.waiter
+    if (waiter === undefined) return
     const waiters = this.waiters
+    this.waiter = undefined
+    this.waiterFiber = undefined
     this.waiters = []
+    this.waiterFibers = []
+    waiter(failure)
     for (let i = 0; i < waiters.length; i++) waiters[i](failure)
   }
 
@@ -780,13 +836,10 @@ class ReaderState {
 
 const makeReader = (state: ReaderState): Reader => ({
   pull: Effect.callback((resume) => {
-    if (state.buffer.length > state.head) return resume(Effect.succeed(state.take()))
+    if (state.buffer.length !== 0) return resume(Effect.succeed(state.take()))
     if (state.failure !== undefined) return resume(state.failure)
-    state.waiters.push(resume)
-    return Effect.sync(() => {
-      const index = state.waiters.indexOf(resume)
-      if (index !== -1) state.waiters.splice(index, 1)
-    })
+    state.park(resume, Fiber.getCurrent()!)
+    return state.cancel
   }),
   get address() {
     return state.address
