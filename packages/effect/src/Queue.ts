@@ -776,6 +776,9 @@ export const offerAll: {
     const remaining = offerAllUnsafe(self as Queue<A, E>, messages)
     if (remaining.length === 0) {
       return resume(core.exitSucceed([]))
+    } else if (self.state._tag !== "Open") {
+      // Iterating messages may have shut down the queue.
+      return resume(internalEffect.succeed(remaining))
     } else if (self.strategy === "dropping") {
       return resume(internalEffect.succeed(remaining))
     }
