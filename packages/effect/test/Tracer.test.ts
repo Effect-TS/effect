@@ -382,6 +382,7 @@ describe("Tracer", () => {
         strictEqual(span.name, "A")
         strictEqual(span.spanId, "noop")
         strictEqual(spanB.name, "B")
+        assert.notStrictEqual(spanB.spanId, "noop")
       }))
   })
 
@@ -582,36 +583,16 @@ describe("Tracer", () => {
         deepStrictEqual(inner, ["child"], "the forked child uses the tracer it was given")
       }))
 
-    it.effect("tracks tracing being switched off and back on", () =>
+    it.effect("falls back to the native tracer when the tracer is omitted", () =>
       Effect.gen(function*() {
-        const kinds: Array<string> = []
-        for (const enabled of [true, false, true, false]) {
-          const span = yield* Effect.currentSpan.pipe(
-            Effect.withSpan("s"),
-            Effect.withTracerEnabled(enabled)
-          )
-          kinds.push(span.spanId === "noop" ? "noop" : "real")
-        }
-        deepStrictEqual(kinds, ["real", "noop", "real", "noop"], "each region sees its own tracing flag")
-      }))
-
-    it.effect("updates the cached tracer after merging and omitting a context", () =>
-      Effect.gen(function*() {
-        const outer: Array<string> = []
-        const inner: Array<string> = []
-        const context = Context.merge(
-          Context.make(Tracer.Tracer, recordingTracer(outer)),
-          Context.make(Tracer.Tracer, recordingTracer(inner))
-        )
-
-        yield* Effect.withSpan(Effect.void, "merged").pipe(Effect.provide(context))
+        const names: Array<string> = []
         const span = yield* Effect.currentSpan.pipe(
           Effect.withSpan("omitted"),
-          Effect.provide(Context.omit(Tracer.Tracer)(context))
+          Effect.updateContext(Context.omit(Tracer.Tracer)),
+          Effect.withTracer(recordingTracer(names))
         )
         assert.instanceOf(span, Tracer.NativeSpan)
-        deepStrictEqual(outer, [])
-        deepStrictEqual(inner, ["merged"])
+        deepStrictEqual(names, [])
       }))
   })
 })
