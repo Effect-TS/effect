@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce allocations when comparing or formatting tuples with a rest element.
+Split compiled tuple rest elements once per schema instead of on every equivalence or formatter call.
