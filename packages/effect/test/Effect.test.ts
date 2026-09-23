@@ -675,6 +675,16 @@ describe("Effect", () => {
         assert.strictEqual(result, 1)
         return result + this.b
       }).pipe(Effect.runPromise).then((_) => assert.deepStrictEqual(_, 3)))
+
+    it("iterator yields the effect once, then completes with the sent value", () => {
+      const effect = Effect.succeed(1)
+      const iterator = effect[Symbol.iterator]()
+      const yielded = iterator.next()
+      const returned = iterator.next(2)
+      assert.deepStrictEqual({ ...yielded }, { value: effect, done: false })
+      assert.deepStrictEqual({ ...returned }, { value: 2, done: true })
+      assert.deepStrictEqual({ ...iterator.next(3) }, { value: 3, done: true })
+    })
   })
 
   describe("forEach", () => {
@@ -3817,6 +3827,20 @@ describe("Effect", () => {
       assert.strictEqual(traced.length, 2)
       assert.strictEqual(named.length, 3)
       assert.strictEqual(untraced.length, 2)
+    })
+
+    it.effect("should reuse the definition frame across calls", () => {
+      const fn = Effect.fn("traced")(function*() {
+        return (yield* References.CurrentStackFrame)!
+      })
+      return Effect.gen(function*() {
+        const first = yield* fn()
+        const second = yield* fn()
+        assert.strictEqual(first.parent?.name, "traced (definition)")
+        assert.include(first.parent?.stack(), "Effect.test.ts")
+        assert.strictEqual(first.parent?.stack(), second.parent?.stack())
+        assert.notStrictEqual(first.stack(), second.stack())
+      })
     })
   })
 
