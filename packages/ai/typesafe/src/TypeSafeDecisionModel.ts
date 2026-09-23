@@ -30,8 +30,8 @@ export const model = (
   AiModel.make("typesafe", model, layer({ model }))
 
 /**
- * Builds a decision service. Provider values are preserved without normalization;
- * DecisionModel validates distributions and derives rating labels.
+ * Builds a decision service. Small distribution rounding drift is corrected
+ * before DecisionModel validates answers and derives rating labels.
  *
  * @category constructors
  * @since 4.0.0
@@ -66,7 +66,10 @@ export const make = Effect.fnUntraced(
               answers[key] = {
                 _tag: "Classify",
                 label: answer.choice,
-                probabilities: answer.probabilities,
+                probabilities: DecisionModel.normalizeRoundedProbabilities(
+                  decision._tag === "Classify" ? Object.keys(decision.criteria) : [],
+                  answer.probabilities
+                ),
                 confidence: answer.confidence
               }
               break
@@ -77,7 +80,12 @@ export const make = Effect.fnUntraced(
                 const probability = answer.probabilities[String(index)]
                 if (probability !== undefined) probabilities[levels[index]] = probability
               }
-              answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
+              answers[key] = {
+                _tag: "Rate",
+                rating: answer.score,
+                probabilities: DecisionModel.normalizeRoundedProbabilities(levels, probabilities),
+                confidence: answer.confidence
+              }
               break
             }
             case "noul":

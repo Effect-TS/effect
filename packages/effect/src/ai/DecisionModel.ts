@@ -194,6 +194,32 @@ const isFiniteNumber = (value: unknown): value is number => Predicate.isNumber(v
 
 const isUnitInterval = (value: unknown): value is number => isFiniteNumber(value) && value >= 0 && value <= 1
 
+/**
+ * Corrects small sum drift from independently rounded, two-decimal provider
+ * probabilities. Providers must opt in; validation remains strict by default.
+ * Only the requested labels participate in the sum, as in validation.
+ *
+ * @unstable
+ * @category utilities
+ * @since 4.0.0
+ */
+export const normalizeRoundedProbabilities = (
+  labels: ReadonlyArray<string>,
+  probabilities: Readonly<Record<string, number>>
+): Readonly<Record<string, number>> => {
+  let total = 0
+  for (const label of labels) {
+    const value = probabilities[label]
+    if (!isUnitInterval(value)) return probabilities
+    total += value
+  }
+  const drift = Math.abs(total - 1)
+  if (total === 0 || drift <= 1e-6 || drift > labels.length * 0.005 + 1e-12) return probabilities
+  const normalized: Record<string, number> = Object.create(null)
+  for (const label of labels) normalized[label] = probabilities[label] / total
+  return normalized
+}
+
 const validateDistribution = (
   key: string,
   labels: ReadonlyArray<string>,

@@ -98,6 +98,28 @@ describe("TypeSafeDecisionModel", () => {
       )
 
       assert.strictEqual(answers.neutral3.label, "neutral")
+      assert.closeTo(Object.values(answers.neutral3.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
+    }))
+
+  it.effect("normalizes rounded score probabilities", () =>
+    Effect.gen(function*() {
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: { score: Decision.rate({ instructions: "Rate", criteria: ["low", "mid", "high"] }) }
+      })
+      const { answers } = yield* DecisionModel.decide(definition, { input: "test" }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            model: "jev-latest",
+            answers: {
+              score: { type: "score", score: 1, probabilities: { "0": 0.1, "1": 0.7, "2": 0.19 }, confidence: 0.7 }
+            },
+            usage: { input_tokens: 1, output_tokens: 1 }
+          }))
+        ))
+      )
+      assert.closeTo(Object.values(answers.score.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
     }))
 
   it.effect("omits absent probability criteria from the encoded question", () =>
