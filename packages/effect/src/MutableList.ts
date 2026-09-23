@@ -159,6 +159,17 @@ export const make = <A>(): MutableList<A> => ({
   length: 0
 })
 
+const compactHead = <A>(self: MutableList<A>, bucket: MutableList.Bucket<A>): void => {
+  if (bucket === self.tail && bucket.mutable && (bucket.array.length - bucket.offset) * 8 <= bucket.offset) {
+    self.head = self.tail = {
+      array: bucket.array.slice(bucket.offset),
+      mutable: true,
+      offset: 0,
+      next: undefined
+    }
+  }
+}
+
 const emptyBucket = <A = never>(): MutableList.Bucket<A> => ({
   array: [],
   mutable: true,
@@ -446,6 +457,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
         self.head = chunk
         self.length -= n
         if (self.length === 0) clear(self)
+        else if (self.head.offset >= 1024) compactHead(self, self.head)
         return array
       }
     }
@@ -493,6 +505,7 @@ export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
       chunk.offset += n - count
       self.head = chunk
       self.length -= n
+      if (chunk.offset >= 1024) compactHead(self, chunk)
       return
     }
     count += size
@@ -556,6 +569,8 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
     } else {
       clear(self)
     }
+  } else if ((self.head.offset & 1023) === 0) {
+    compactHead(self, self.head)
   }
   return message
 }

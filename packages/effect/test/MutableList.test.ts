@@ -21,6 +21,56 @@ describe("MutableList", () => {
     strictEqual(list.tail, undefined)
     MutableList.appendAll(list, [3])
     strictEqual(MutableList.take(list), 3)
+  const takeOne = [
+    (list: MutableList.MutableList<number>) => MutableList.take(list),
+    (list: MutableList.MutableList<number>) => MutableList.takeN(list, 1),
+    (list: MutableList.MutableList<number>) => MutableList.takeNVoid(list, 1)
+  ]
+
+  it("bounds the retained slots of a list that never fully drains", () => {
+    for (const take of takeOne) {
+      const list = MutableList.make<number>()
+      MutableList.append(list, 0)
+      for (let i = 1; i < 10_000; i++) {
+        MutableList.append(list, i)
+        take(list)
+      }
+      let slots = 0
+      for (let bucket = list.head; bucket; bucket = bucket.next) slots += bucket.array.length
+      strictEqual(slots <= 2048, true, `retained ${slots} slots for one element`)
+      deepStrictEqual(MutableList.takeAll(list), [9_999])
+    }
+
+    for (const [live, slots] of [[128, 128], [129, 1153]]) {
+      const edge = MutableList.make<number>()
+      for (let i = 0; i < 1024 + live; i++) MutableList.append(edge, i)
+      for (let i = 0; i < 1024; i++) MutableList.take(edge)
+      strictEqual(edge.head?.array.length, slots)
+    }
+
+    const chained = MutableList.make<number>()
+    MutableList.appendAll(chained, new Set(Array.from({ length: 2048 }, (_, i) => i)))
+    MutableList.appendAll(chained, [2048])
+    MutableList.takeNVoid(chained, 1920)
+    deepStrictEqual(MutableList.takeAll(chained), Array.from({ length: 129 }, (_, i) => i + 1920))
+  })
+
+  it("copies at most one element per eight it takes while draining a burst", () => {
+    for (const take of takeOne) {
+      const n = 1 << 16
+      const list = MutableList.make<number>()
+      for (let i = 0; i < n; i++) MutableList.append(list, i)
+      let array = list.head?.array
+      let copied = 0
+      while (list.length > 0) {
+        take(list)
+        if (list.head !== undefined && list.head.array !== array) {
+          array = list.head.array
+          copied += array.length
+        }
+      }
+      strictEqual(copied * 8 <= n, true, `copied ${copied} elements while taking ${n}`)
+    }
   })
 
   it("preserves a prepended element when appending to the list", () => {
