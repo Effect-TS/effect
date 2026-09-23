@@ -615,7 +615,6 @@ class NodeImpl<A> {
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
   hydrating = false
-  hydrationPending = false
   pendingRuntime: Atom.Atom<any> | undefined
 
   parents = new Set<NodeImpl<any>>()
@@ -683,9 +682,12 @@ class NodeImpl<A> {
 
   setHydratedValue(value: A): void {
     this.hydrating = (this.state & NodeFlags.initialized) === 0
-    this.hydrationPending = this.hydrating
-    this.pendingRuntime = undefined
     this.setInitialValue(value)
+  }
+
+  endHydration(): void {
+    this.hydrating = false
+    this.pendingRuntime = undefined
   }
 
   setInitialValue(value: A): void {
@@ -764,9 +766,7 @@ class NodeImpl<A> {
 
   invalidate(parent?: NodeImpl<any>): void {
     if (parent === undefined || parent.atom !== this.pendingRuntime) {
-      this.hydrating = false
-      this.hydrationPending = false
-      this.pendingRuntime = undefined
+      this.endHydration()
     }
     if (this.building && batchState.phase === BatchPhase.collect) {
       this.invalidatedDuringBuild = true
@@ -881,15 +881,15 @@ interface Lifetime<A> extends Atom.AtomContext {
 /** @internal */
 export const consumeHydration = (ctx: Atom.AtomContext): boolean => {
   const node = (ctx as Lifetime<any>).node
-  node.hydrationPending = false
-  node.pendingRuntime = undefined
-  return node.hydrating
+  const hydrating = node.hydrating
+  node.endHydration()
+  return hydrating
 }
 
 /** @internal */
 export const pendingHydrationRuntime = (ctx: Atom.AtomContext, runtime: Atom.Atom<any>): void => {
   const node = (ctx as Lifetime<any>).node
-  if (node?.hydrationPending) {
+  if (node.hydrating) {
     node.pendingRuntime = runtime
   }
 }
@@ -1021,9 +1021,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
 
   setSelf<A>(this: Lifetime<any>, a: A): void {
     if (this.disposed) return
-    this.node.hydrating = false
-    this.node.hydrationPending = false
-    this.node.pendingRuntime = undefined
+    this.node.endHydration()
     this.node.setValue(a as any)
   },
 

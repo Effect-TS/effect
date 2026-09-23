@@ -2566,6 +2566,36 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(rebuilds, 2)
     })
 
+    const hydrate = (r: AtomRegistry.AtomRegistry, key: string, value: unknown) => {
+      const state: Array<Hydration.DehydratedAtomValue> = [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key,
+        value,
+        dehydratedAt: 0
+      }]
+      Hydration.hydrate(r, state)
+    }
+    const success = (value: number) => ({ _tag: "Success", value, waiting: false, timestamp: 0 })
+    const resultSchema = AsyncResult.Schema({ success: Schema.Number })
+    const mutation = counterRuntime.fn(
+      Effect.fn(function*() {
+      }),
+      { reactivityKeys: ["counter"] }
+    )
+    // Hydrates and mounts an effect atom whose runtime resolves after 5ms
+    const mountHydratedRuntimeAtom = (r: AtomRegistry.AtomRegistry) => {
+      const runtime = Atom.runtime(Layer.effectDiscard(Effect.sleep(5)))
+      const runs = { count: 0 }
+      const atom = runtime.atom(Effect.sync(() => ++runs.count)).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+      return { atom, runs }
+    }
+
     it("tracks dependencies after hydrating a wrapped atom", () => {
       const dependency = Atom.make(1).pipe(Atom.keepAlive)
       let reads = 0
@@ -2574,17 +2604,11 @@ describe("Atom", { concurrent: false }, () => {
         return get(dependency) * 2
       }).pipe(
         Atom.withReactivity(["counter"]),
-        Atom.serializable({ key: "hydrated-dependency", schema: Schema.Number }),
+        Atom.serializable({ key: "hydrated", schema: Schema.Number }),
         Atom.keepAlive
       )
       const r = AtomRegistry.make()
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-dependency",
-        value: 10,
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
+      hydrate(r, "hydrated", 10)
       r.mount(atom)
 
       assert.strictEqual(r.get(atom), 10)
@@ -2604,32 +2628,18 @@ describe("Atom", { concurrent: false }, () => {
         return Effect.sync(() => ++runs)
       }).pipe(
         Atom.withReactivity(["counter"]),
-        Atom.serializable({
-          key: "hydrated-effect",
-          schema: AsyncResult.Schema({ success: Schema.Number })
-        }),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
         Atom.keepAlive
       )
       const r = AtomRegistry.make()
-      const fn = counterRuntime.fn(
-        Effect.fn(function*() {
-        }),
-        { reactivityKeys: ["counter"] }
-      )
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-effect",
-        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
+      hydrate(r, "hydrated", success(10))
       r.mount(atom)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
       assert.strictEqual(reads, 1)
       assert.strictEqual(runs, 0)
 
-      r.set(fn, void 0)
+      r.set(mutation, void 0)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
       assert.strictEqual(reads, 2)
@@ -2637,105 +2647,46 @@ describe("Atom", { concurrent: false }, () => {
     })
 
     it("preserves hydration when an async runtime resolves until refresh", async () => {
-      const Service = Context.Service<number>("Atom.test/HydratedRuntime")
-      const runtime = Atom.runtime(Layer.effect(Service, Effect.sleep(5).pipe(Effect.as(1))))
-      let runs = 0
-      const atom = runtime.atom(Effect.sync(() => ++runs)).pipe(
-        Atom.withReactivity(["counter"]),
-        Atom.serializable({
-          key: "hydrated-async-runtime",
-          schema: AsyncResult.Schema({ success: Schema.Number })
-        }),
-        Atom.keepAlive
-      )
       const r = AtomRegistry.make()
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-async-runtime",
-        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
-      r.mount(atom)
+      const { atom, runs } = mountHydratedRuntimeAtom(r)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
-      assert.strictEqual(runs, 0)
+      assert.strictEqual(runs.count, 0)
       await vitest.advanceTimersByTimeAsync(5)
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
-      assert.strictEqual(runs, 0)
+      assert.strictEqual(runs.count, 0)
 
       r.refresh(atom)
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
-      assert.strictEqual(runs, 1)
+      assert.strictEqual(runs.count, 1)
       r.dispose()
     })
 
     it("runs a refreshed hydrated effect after its async runtime resolves", async () => {
-      const Service = Context.Service<number>("Atom.test/HydratedRuntimeRefresh")
-      const runtime = Atom.runtime(Layer.effect(Service, Effect.sleep(5).pipe(Effect.as(1))))
-      let runs = 0
-      const atom = runtime.atom(Effect.sync(() => ++runs)).pipe(
-        Atom.withReactivity(["counter"]),
-        Atom.serializable({
-          key: "hydrated-async-refresh",
-          schema: AsyncResult.Schema({ success: Schema.Number })
-        }),
-        Atom.keepAlive
-      )
       const r = AtomRegistry.make()
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-async-refresh",
-        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
-      r.mount(atom)
+      const { atom, runs } = mountHydratedRuntimeAtom(r)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
-      assert.strictEqual(runs, 0)
+      assert.strictEqual(runs.count, 0)
       r.refresh(atom)
       await vitest.advanceTimersByTimeAsync(5)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
-      assert.strictEqual(runs, 1)
+      assert.strictEqual(runs.count, 1)
       r.dispose()
     })
 
     it("runs a hydrated effect after a matching mutation while its runtime loads", async () => {
-      const Service = Context.Service<number>("Atom.test/HydratedRuntimeMutation")
-      const runtime = Atom.runtime(Layer.effect(Service, Effect.sleep(5).pipe(Effect.as(1))))
-      let runs = 0
-      const atom = runtime.atom(Effect.sync(() => ++runs)).pipe(
-        Atom.withReactivity(["counter"]),
-        Atom.serializable({
-          key: "hydrated-async-mutation",
-          schema: AsyncResult.Schema({ success: Schema.Number })
-        }),
-        Atom.keepAlive
-      )
-      const mutation = counterRuntime.fn(
-        Effect.fn(function*() {
-        }),
-        { reactivityKeys: ["counter"] }
-      )
       const r = AtomRegistry.make()
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-async-mutation",
-        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
-      r.mount(atom)
+      const { atom, runs } = mountHydratedRuntimeAtom(r)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
-      assert.strictEqual(runs, 0)
+      assert.strictEqual(runs.count, 0)
       r.set(mutation, void 0)
       await vitest.advanceTimersByTimeAsync(5)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
-      assert.strictEqual(runs, 1)
+      assert.strictEqual(runs.count, 1)
       r.dispose()
     })
 
@@ -2746,20 +2697,11 @@ describe("Atom", { concurrent: false }, () => {
         get(ready) ? Effect.sync(() => ++runs) : AsyncResult.initial(true) as unknown as Effect.Effect<number>
       ).pipe(
         Atom.withReactivity(["counter"]),
-        Atom.serializable({
-          key: "hydrated-ready-dependency",
-          schema: AsyncResult.Schema({ success: Schema.Number })
-        }),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
         Atom.keepAlive
       )
       const r = AtomRegistry.make()
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-ready-dependency",
-        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
+      hydrate(r, "hydrated", success(10))
       r.mount(atom)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
@@ -2775,20 +2717,11 @@ describe("Atom", { concurrent: false }, () => {
       let runs = 0
       const atom = Atom.make(Stream.fromEffect(Effect.sync(() => ++runs))).pipe(
         Atom.withReactivity(["counter"]),
-        Atom.serializable({
-          key: "hydrated-stream",
-          schema: AsyncResult.Schema({ success: Schema.Number })
-        }),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
         Atom.keepAlive
       )
       const r = AtomRegistry.make()
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-stream",
-        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
+      hydrate(r, "hydrated", success(10))
       r.mount(atom)
 
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
@@ -2811,20 +2744,11 @@ describe("Atom", { concurrent: false }, () => {
         return Effect.sync(() => ++runs)
       }).pipe(
         Atom.withReactivity(["counter"]),
-        Atom.serializable({
-          key: "hydrated-set-self",
-          schema: AsyncResult.Schema({ success: Schema.Number })
-        }),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
         Atom.keepAlive
       )
       const r = AtomRegistry.make()
-      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "hydrated-set-self",
-        value: { _tag: "Success", value: 10, waiting: false, timestamp: 0 },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(r, dehydratedState)
+      hydrate(r, "hydrated", success(10))
       r.mount(atom)
       assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
       assert.strictEqual(builds, 1)
