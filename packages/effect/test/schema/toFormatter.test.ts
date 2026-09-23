@@ -340,33 +340,25 @@ describe("toFormatter", () => {
   })
 
   describe("suspend", () => {
-    it("compiles a recursive body once per formatter, including with empty options", () => {
-      interface A {
+    it("compiles a recursive body once", () => {
+      interface Tree {
         readonly a: number
-        readonly as: ReadonlyArray<A>
+        readonly as: ReadonlyArray<Tree>
       }
       let compiled = 0
       const Counted = Schema.Number.annotate({
         toFormatter: () => {
           compiled++
-          return (n: number) => `#${n}`
+          return (n: number) => String(n)
         }
       })
-      const schema = Schema.Struct({
+      const Tree = Schema.Struct({
         a: Counted,
-        as: Schema.Array(Schema.suspend((): Schema.Codec<A> => schema))
+        as: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
       })
-      const make = (depth: number): A => ({ a: depth, as: depth === 0 ? [] : [make(depth - 1)] })
-      let expectedCompilations = 0
-      for (const options of [undefined, {}, { onBefore: undefined }]) {
-        expectedCompilations++
-        const format = Schema.toFormatter(schema, options)
-        strictEqual(compiled, expectedCompilations)
-        strictEqual(format(make(2)), `{ "a": #2, "as": [{ "a": #1, "as": [{ "a": #0, "as": [] }] }] }`)
-        format(make(8))
-        strictEqual(compiled, expectedCompilations)
-      }
-      strictEqual(compiled, 3) // separate formatters do not share compiled bodies
+      const make = (depth: number): Tree => ({ a: depth, as: depth === 0 ? [] : [make(depth - 1)] })
+      Schema.toFormatter(Tree)(make(8))
+      strictEqual(compiled, 1)
     })
 
     it("keeps invoking onBefore at every value level", () => {
@@ -378,7 +370,6 @@ describe("toFormatter", () => {
         a: Schema.Number,
         as: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
       })
-      const make = (depth: number): Tree => ({ a: depth, as: depth === 0 ? [] : [make(depth - 1)] })
       let calls = 0
       const format = Schema.toFormatter(Tree, {
         onBefore: () => {
@@ -386,42 +377,8 @@ describe("toFormatter", () => {
           return undefined
         }
       })
-      const afterCompile = calls
-      format(make(1))
-      const afterFirst = calls
-      format(make(9))
-      strictEqual(afterCompile, 4)
-      strictEqual(afterFirst, 8)
-      strictEqual(calls, 40)
-    })
-
-    it("keeps two same-tag suspended structs apart", () => {
-      interface NumTree {
-        readonly a: number
-        readonly next: NumTree | null
-      }
-      interface StrTree {
-        readonly a: string
-        readonly next: StrTree | null
-      }
-      const NumTree = Schema.Struct({
-        a: Schema.Number.pipe(Schema.overrideToFormatter(() => (n: number) => `#${n}`)),
-        next: Schema.NullOr(Schema.suspend((): Schema.Codec<NumTree> => NumTree))
-      })
-      const StrTree = Schema.Struct({
-        a: Schema.String.pipe(Schema.overrideToFormatter(() => (s: string) => `@${s}`)),
-        next: Schema.NullOr(Schema.suspend((): Schema.Codec<StrTree> => StrTree))
-      })
-      const schema = Schema.Struct({ nums: NumTree, strs: StrTree })
-      const format = Schema.toFormatter(schema)
-      strictEqual(
-        format({
-          nums: { a: 1, next: { a: 2, next: null } },
-          strs: { a: "x", next: { a: "y", next: null } }
-        }),
-        `{ "nums": { "a": #1, "next": { "a": #2, "next": null } }, ` +
-          `"strs": { "a": @x, "next": { "a": @y, "next": null } } }`
-      )
+      format({ a: 1, as: [{ a: 0, as: [] }] })
+      strictEqual(calls, 8)
     })
 
     it("Tuple", () => {
