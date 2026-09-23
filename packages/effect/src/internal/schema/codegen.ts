@@ -527,16 +527,20 @@ const emitBase = (
       )
       // Strict parsing collects index keys before reading any declared fields,
       // just like the interpreter. Reuse that snapshot when decoding the indexes.
+      const object = constant(emitter, ast, path)
+      const strict = `o!==D&&o.onExcessProperty==="error"`
       const indexKeys = ast.indexSignatures.length > 0 ? variable(emitter) : undefined
-      if (indexKeys !== undefined) statements.push(`let ${indexKeys}`)
+      if (indexKeys !== undefined) {
+        statements.push(
+          `const ${indexKeys}=${strict}?${object}.indexSignatures.map(p=>G(${input},p.parameter,o)):void 0`
+        )
+      }
       statements.push(
-        `if(o!==D&&o.onExcessProperty==="error"&&E(${constant(emitter, ast, path)},${input},o${
-          indexKeys === undefined ? "" : `,${indexKeys}=[]`
-        }))return ${invalid}`
+        `if(${indexKeys ?? strict}&&E(${object},${input},${indexKeys ?? "void 0"}))return ${invalid}`
       )
+      const output = needsValue ? variable(emitter) : undefined
       const hasOptional = ast.propertySignatures.some((property) => isOptional(property.type))
-      if (needsValue && ast.propertySignatures.length > 0 && !hasOptional) {
-        const output = variable(emitter)
+      if (output !== undefined && ast.propertySignatures.length > 0 && !hasOptional) {
         const properties = ast.propertySignatures.map((property, index) => {
           const propertyPath = `${path}.propertySignatures[${index}]`
           const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
@@ -549,28 +553,26 @@ const emitBase = (
           return `${outputKey}:${emit(property.type, value, statements, emitter, operation, `${propertyPath}.type`)}`
         })
         statements.push(`const ${output}={${properties.join(",")}}`)
-        if (indexKeys !== undefined) emitIndexes(ast, input, output, statements, emitter, operation, path, indexKeys)
-        return output
-      }
-      const output = needsValue ? variable(emitter) : undefined
-      if (output !== undefined) statements.push(`const ${output}={}`)
-      for (let propertyIndex = 0; propertyIndex < ast.propertySignatures.length; propertyIndex++) {
-        const property = ast.propertySignatures[propertyIndex]
-        const propertyPath = `${path}.propertySignatures[${propertyIndex}]`
-        const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
-        const value = variable(emitter)
-        const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
-        const decoded = emit(property.type, value, propertyStatements, emitter, operation, `${propertyPath}.type`)
-        if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
-        statements.push(
-          isOptional(property.type)
-            ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
-            : `${
-              propertyNeedsPresenceCheck(property.name, property.type)
-                ? `if(!(${propertyPresence(input, key, property.name)}))return ${invalid};`
-                : ""
-            }${propertyStatements.join(";")}`
-        )
+      } else {
+        if (output !== undefined) statements.push(`const ${output}={}`)
+        for (let propertyIndex = 0; propertyIndex < ast.propertySignatures.length; propertyIndex++) {
+          const property = ast.propertySignatures[propertyIndex]
+          const propertyPath = `${path}.propertySignatures[${propertyIndex}]`
+          const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
+          const value = variable(emitter)
+          const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
+          const decoded = emit(property.type, value, propertyStatements, emitter, operation, `${propertyPath}.type`)
+          if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
+          statements.push(
+            isOptional(property.type)
+              ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
+              : `${
+                propertyNeedsPresenceCheck(property.name, property.type)
+                  ? `if(!(${propertyPresence(input, key, property.name)}))return ${invalid};`
+                  : ""
+              }${propertyStatements.join(";")}`
+          )
+        }
       }
       if (indexKeys !== undefined) emitIndexes(ast, input, output, statements, emitter, operation, path, indexKeys)
       return output ?? input
