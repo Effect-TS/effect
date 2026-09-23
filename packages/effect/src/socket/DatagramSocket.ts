@@ -43,7 +43,7 @@ import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import * as NetAddress from "../net/NetAddress.ts"
 import * as Schema from "../Schema.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 
 /**
  * Runtime type identifier attached to `DatagramSocket` services.
@@ -482,6 +482,9 @@ export class DatagramSocketError
  * settled, so two native sockets never exist at once. An adopted `acquire`
  * must therefore finish in bounded time.
  *
+ * `open` runs in the reader's scope, so an adopted `acquire` can register
+ * finalizers that run when the reader closes.
+ *
  * Concurrent pulls are served in the order they started waiting.
  *
  * `onError` receives errors with no write left to fail. It runs
@@ -495,8 +498,8 @@ export class DatagramSocketError
  * @since 4.0.0
  */
 export const fromNativeHandle = (
-  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError>,
-  options?: ReceiveBufferOptions & { readonly onError?: (error: DatagramSocketError) => void }
+  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError, Scope.Scope>,
+  options?: ReceiveBufferOptions & { readonly onError?: ((error: DatagramSocketError) => void) | undefined }
 ): DatagramSocket => {
   const capacity = options?.capacity ?? 1024
   if (!Number.isSafeInteger(capacity) || capacity < 1) {
@@ -530,11 +533,12 @@ export const fromNativeHandle = (
   const reader: DatagramSocket["reader"] = Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
       while (!free.closeUnsafe()) yield* restore(free.await)
+      const scope = yield* Effect.scope
       const state = new ReaderState(capacity, sliding, onError)
       // `open` may not be cancellable (Node's `lookup`), so it runs in its own
       // fiber and is never interrupted. Interruption only stops the wait, and
       // `abandon` closes a handle that arrives later.
-      const opening = yield* Effect.forkDetach(open(state.events), { startImmediately: true })
+      const opening = yield* Effect.forkDetach(Scope.provide(open(state.events), scope), { startImmediately: true })
       state.handle = yield* restore(Fiber.join(opening)).pipe(
         Effect.onError(() => Effect.sync(() => abandon(state, opening)))
       )
