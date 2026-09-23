@@ -300,34 +300,14 @@ export const causeMap: {
 )
 
 /** @internal */
-export const causePartition = <E>(
-  self: Cause.Cause<E>
-): {
-  readonly Fail: ReadonlyArray<Cause.Fail<E>>
-  readonly Die: ReadonlyArray<Cause.Die>
-  readonly Interrupt: ReadonlyArray<Cause.Interrupt>
-} => {
-  const obj = {
-    Fail: [] as Array<Cause.Fail<E>>,
-    Die: [] as Array<Cause.Die>,
-    Interrupt: [] as Array<Cause.Interrupt>
-  }
-  for (let i = 0; i < self.reasons.length; i++) {
-    obj[self.reasons[i]._tag].push(self.reasons[i] as any)
-  }
-  return obj
-}
-
-/** @internal */
 export const causeSquash = <E>(self: Cause.Cause<E>): unknown => {
-  const partitioned = causePartition(self)
-  if (partitioned.Fail.length > 0) {
-    return partitioned.Fail[0].error
-  } else if (partitioned.Die.length > 0) {
-    return partitioned.Die[0].defect
-  } else if (partitioned.Interrupt.length > 0) {
-    return new globalThis.Error("All fibers interrupted without error")
+  let die: Cause.Die | undefined
+  for (const reason of self.reasons) {
+    if (reason._tag === "Fail") return reason.error
+    if (reason._tag === "Die") die ??= reason
   }
+  if (die !== undefined) return die.defect
+  if (self.reasons.length > 0) return new globalThis.Error("All fibers interrupted without error")
   return new globalThis.Error("Empty cause")
 }
 
