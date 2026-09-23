@@ -6,6 +6,7 @@ import * as Fiber from "effect/Fiber"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Scope from "effect/Scope"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
+import { TestClock } from "effect/testing"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 const address = NetAddress.inetAddressFromNativeUnsafe("127.0.0.1", 1234)
@@ -167,14 +168,16 @@ describe("DatagramSocket native handle", () => {
       assert.include(JSON.stringify(yield* Fiber.join(second)), "DatagramSocketClosedError")
     }))
 
-  it.effect("fails every parked pull with the same sticky error", () =>
+  it.effect("fails the slot and queued waiters with the same terminal read error", () =>
     Effect.scoped(Effect.gen(function*() {
       const { socket, handles } = fixture()
       const reader = yield* socket.reader
       const first = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
+      assert.isUndefined(first.pollUnsafe(), "the first pull occupies the waiter slot")
       const second = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
+      assert.isUndefined(second.pollUnsafe(), "the second pull waits behind the slot")
       const error = failure()
       handles[0]!.error(error)
       yield* Effect.yieldNow
@@ -184,6 +187,7 @@ describe("DatagramSocket native handle", () => {
       const b = yield* Fiber.join(second)
       assert.isTrue(Exit.isFailure(a))
       assert.deepStrictEqual(a, b)
+      assert.deepStrictEqual(yield* Effect.exit(reader.pull), a)
       assert.include(JSON.stringify(a), "DatagramSocketReadError")
     })))
 
@@ -194,6 +198,93 @@ describe("DatagramSocket native handle", () => {
       const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
       yield* Fiber.interrupt(first)
+      handles[0]!.packet("next")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
+    })))
+
+  it.effect("delivers to a masked parked pull before applying its interruption", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture()
+      const reader = yield* socket.reader
+      const received: Array<string> = []
+      const waiting = yield* Effect.uninterruptible(Effect.gen(function*() {
+        received.push(...texts(yield* reader.pull))
+      })).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      waiting.interruptUnsafe()
+      assert.isUndefined(waiting.pollUnsafe(), "a masked pull must remain parked")
+      handles[0]!.packet("masked")
+      const exit = yield* Fiber.await(waiting)
+      assert.deepStrictEqual(received, ["masked"])
+      assert.isTrue(Exit.hasInterrupts(exit))
+      handles[0]!.packet("next")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
+    })))
+
+  it.effect("removes a waiter after a deferred self-interrupt", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture()
+      const reader = yield* socket.reader
+      const interrupted = yield* Effect.gen(function*() {
+        Fiber.getCurrent()!.interruptUnsafe()
+        yield* reader.pull
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(interrupted)))
+      handles[0]!.packet("next")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
+    })))
+
+  it.effect("cleans up pulls lost to timeout and race", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture()
+      const reader = yield* socket.reader
+      let timeoutStarted = false
+      const timeoutFiber = yield* Effect.exit(Effect.timeout(
+        Effect.gen(function*() {
+          timeoutStarted = true
+          return yield* reader.pull
+        }),
+        10
+      )).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      assert.isTrue(timeoutStarted)
+      yield* TestClock.adjust(10)
+      const timedOut = yield* Fiber.join(timeoutFiber)
+      assert.isTrue(Exit.isFailure(timedOut))
+      handles[0]!.packet("after timeout")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["after timeout"])
+      const winner = yield* Deferred.make<string>()
+      let raceStarted = false
+      const raced = yield* Effect.race(
+        Effect.gen(function*() {
+          raceStarted = true
+          return yield* reader.pull
+        }),
+        Deferred.await(winner)
+      ).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isTrue(raceStarted)
+      assert.isUndefined(raced.pollUnsafe())
+      yield* Deferred.succeed(winner, "winner")
+      assert.strictEqual(yield* Fiber.join(raced), "winner")
+      handles[0]!.packet("after losers")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["after losers"])
+    })))
+
+  it.effect("resumes a parked pull inside a tracing span", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture()
+      const reader = yield* socket.reader
+      const waiting = yield* reader.pull.pipe(
+        Effect.withSpan("datagram parked pull"),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(waiting.pollUnsafe())
+      handles[0]!.packet("traced")
+      assert.deepStrictEqual(texts(yield* Fiber.join(waiting)), ["traced"])
       handles[0]!.packet("next")
       assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
     })))
