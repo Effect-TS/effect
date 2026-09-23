@@ -2321,7 +2321,6 @@ export const Arrays: new(
 
     const finish = (state: ArrayParserState): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       const { input, len, options } = state
-      // handle excess indexes
       if (ast.rest.length === 0 && len > elementLen) {
         for (let i = elementLen; i < len; i++) {
           const unexpected = new SchemaIssue.UnexpectedKey(ast, input[i], options)
@@ -2362,8 +2361,7 @@ export const Arrays: new(
         : parseArrayConcurrent(state, input, { concurrency, end })
       if (!eff) return finish(state)
       if (effectIsExit(eff)) return Effect.flatMapEager(eff, () => finish(state))
-      // The first execution resumes the suspended traversal; later executions
-      // parse again from scratch, as the generator this replaced did.
+      // Reparse on later runs to avoid reusing mutable traversal state.
       let first = true
       return Effect.suspend(() => {
         if (!first) return parse(input, options)

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Avoid generator allocation when decoding or encoding arrays and tuples.
+Skip generator allocation for synchronous array and tuple parsing.
