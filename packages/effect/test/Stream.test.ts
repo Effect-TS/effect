@@ -1436,9 +1436,9 @@ describe("Stream", () => {
             for (let i = 1; i < n; i++) {
               stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
             }
-            return Effect.map(
-              Effect.provideService(Stream.runDrain(stream), Scheduler.Scheduler, scheduler),
-              () => ops
+            return Stream.runDrain(stream).pipe(
+              Effect.provideService(Scheduler.Scheduler, scheduler),
+              Effect.map(() => ops)
             )
           })
         for (const nest of ["left", "right"] as const) {
@@ -1449,11 +1449,24 @@ describe("Stream", () => {
         }
       }))
 
-    it.effect("runs the same chain twice", () =>
+    it.effect("runs nested chains in order, closing each part before the next starts", () =>
       Effect.gen(function*() {
-        const stream = Stream.concat(Stream.make(0), Stream.make(1))
-        deepStrictEqual(yield* Stream.runCollect(stream), [0, 1], "first run")
-        deepStrictEqual(yield* Stream.runCollect(stream), [0, 1], "second run")
+        const log: Array<string> = []
+        const part = (name: string) =>
+          Stream.fromEffect(Effect.sync(() => {
+            log.push(`start ${name}`)
+            return name
+          })).pipe(Stream.ensuring(Effect.sync(() => log.push(`end ${name}`))))
+        const stream = Stream.concat(
+          Stream.concat(part("a"), Stream.concat(part("b"), part("c"))),
+          Stream.concat(part("d"), part("e"))
+        )
+        const expectedLog = ["a", "b", "c", "d", "e"].flatMap((name) => [`start ${name}`, `end ${name}`])
+        for (const run of ["first run", "second run"]) {
+          log.length = 0
+          deepStrictEqual(yield* Stream.runCollect(stream), ["a", "b", "c", "d", "e"], run)
+          deepStrictEqual(log, expectedLog, run)
+        }
       }))
 
     it.effect("runs a copy of a chain with its own channel", () =>
