@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `TxRef` losing a write of `-0` over `0`, and stop rerunning waiting transactions when a commit only reads their refs.
+Wake STM retry waiters for explicit `TxRef` writes, including equal-value writes, without waking them for reads. Preserve distinct `0` and `-0` values when committing.
