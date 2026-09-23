@@ -315,6 +315,34 @@ it.effect("run with scope", () =>
   }))
 ```
 
+## Using Vitest Fixtures
+
+To use [Vitest fixtures](https://vitest.dev/guide/test-context#extend-test-context) in Effect tests, pass a test extended with `test.extend` to `makeMethods`. It returns the same helpers as `it`, and each test receives the fixtures it destructures from its context.
+
+**Example** (Sharing a Database Across a Test File)
+
+```ts
+import { assert, makeMethods, test } from "@effect/vitest"
+import { PGlite } from "@electric-sql/pglite"
+import { Effect } from "effect"
+
+const it = makeMethods(
+  test.extend("db", { scope: "file" }, async ({}, { onCleanup }) => {
+    const db = await PGlite.create()
+    onCleanup(() => db.close())
+    return db
+  })
+)
+
+it.effect("runs a query", ({ db }) =>
+  Effect.gen(function*() {
+    const result = yield* Effect.promise(() => db.query("select 1 as one"))
+    assert.deepStrictEqual(result.rows, [{ one: 1 }])
+  }))
+```
+
+Destructure the fixtures a test uses: Vitest reads those names to decide what to set up, and rejects `(ctx) =>` once any fixture is defined. `it.effect.each` passes the context after the test case, and property tests don't receive fixtures. Build `makeMethods` from `test`, not from the test a `describe` callback receives, which is bound to that suite.
+
 ## Writing Tests with `it.flakyTest`
 
 `it.flakyTest` is a utility designed to manage tests that may not succeed consistently on the first attempt. These tests, often referred to as "flaky," can fail due to factors like timing issues, external dependencies, or randomness. `it.flakyTest` allows for retrying these tests until they pass or a specified timeout is reached.
