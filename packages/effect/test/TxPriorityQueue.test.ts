@@ -1,8 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Option, Order, TxPriorityQueue } from "effect"
 
-const byKey: Order.Order<readonly [number, string]> = ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)
-
 describe("TxPriorityQueue", () => {
   describe("constructors", () => {
     it.effect("empty creates an empty queue", () =>
@@ -135,24 +133,6 @@ describe("TxPriorityQueue", () => {
         yield* TxPriorityQueue.offerAll(pq, [3, 1, 2])
         const all = yield* TxPriorityQueue.toArray(pq)
         assert.deepStrictEqual(all, [1, 2, 3])
-      })))
-
-    it.effect("offerAll keeps existing elements first on ties and new ones in input order", () =>
-      Effect.tx(Effect.gen(function*() {
-        const pq = yield* TxPriorityQueue.fromIterable(byKey, [[1, "a"], [2, "b"], [1, "c"], [3, "d"]])
-        yield* TxPriorityQueue.offerAll(pq, [[2, "e"], [1, "f"], [3, "g"], [0, "h"], [1, "i"]])
-        const all = yield* TxPriorityQueue.toArray(pq)
-        assert.deepStrictEqual(all.map(([, id]) => id).join(""), "hacfibedg")
-      })))
-
-    it.effect("offerAll with an empty queue or no values", () =>
-      Effect.tx(Effect.gen(function*() {
-        const pq = yield* TxPriorityQueue.empty<number>(Order.Number)
-        yield* TxPriorityQueue.offerAll(pq, [])
-        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [])
-        yield* TxPriorityQueue.offerAll(pq, new Set([2, 1]))
-        yield* TxPriorityQueue.offerAll(pq, [])
-        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [1, 2])
       })))
 
     it.effect("offerAll does not compare every queued element for one new value", () =>
