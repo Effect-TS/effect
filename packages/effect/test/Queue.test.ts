@@ -4,7 +4,9 @@ import * as Scheduler from "effect/Scheduler"
 
 describe("Queue", () => {
   describe("waiter registration after a yield", () => {
-    // Force a yield between the initial attempt and waiter registration.
+    // A small MaxOpsBeforeYield budget forces a yield between the initial
+    // attempt and waiter registration, so sweeping it moves the peer's
+    // wake-up through every step in between.
     const checkBudgets = (run: (budget: number) => Effect.Effect<boolean>) =>
       Effect.gen(function*() {
         for (let budget = 3; budget <= 8; budget++) {
@@ -14,78 +16,44 @@ describe("Queue", () => {
 
     const completed = (fiber: Fiber.Fiber<unknown, unknown>) =>
       Effect.gen(function*() {
-        for (let i = 0; i < 200; i++) yield* Effect.yieldNow
+        for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
         const done = fiber.pollUnsafe() !== undefined
         yield* Fiber.interrupt(fiber)
         return done
       })
 
-    it.effect("take does not park beside a message", () =>
+    // Fork `wait` with a yield budget, then `wake` it from this fiber.
+    const wakesAfterYield = (
+      make: Effect.Effect<Queue.Queue<number>>,
+      wait: (queue: Queue.Queue<number>) => Effect.Effect<unknown>,
+      wake: (queue: Queue.Queue<number>) => Effect.Effect<unknown>
+    ) =>
       checkBudgets((budget) =>
         Effect.gen(function*() {
-          const queue = yield* Queue.unbounded<number>()
-          const taker = yield* Effect.forkChild(
-            Effect.provideService(Queue.take(queue), Scheduler.MaxOpsBeforeYield, budget),
+          const queue = yield* make
+          const fiber = yield* Effect.forkChild(
+            Effect.provideService(wait(queue), Scheduler.MaxOpsBeforeYield, budget),
             { startImmediately: true }
           )
-          yield* Queue.offer(queue, 1)
-          return yield* completed(taker)
+          yield* wake(queue)
+          return yield* completed(fiber)
         })
-      ))
+      )
 
-    it.effect("peek does not park beside a message", () =>
-      checkBudgets((budget) =>
-        Effect.gen(function*() {
-          const queue = yield* Queue.unbounded<number>()
-          const peeker = yield* Effect.forkChild(
-            Effect.provideService(Queue.peek(queue), Scheduler.MaxOpsBeforeYield, budget),
-            { startImmediately: true }
-          )
-          yield* Queue.offer(queue, 1)
-          return yield* completed(peeker)
-        })
-      ))
+    const full = Effect.tap(Queue.bounded<number>(1), (queue) => Queue.offer(queue, 0))
+    const offerOne = (queue: Queue.Queue<number>) => Queue.offer(queue, 1)
 
-    it.effect("offerAll does not park beside available capacity", () =>
-      checkBudgets((budget) =>
-        Effect.gen(function*() {
-          const queue = yield* Queue.bounded<number>(1)
-          yield* Queue.offer(queue, 0)
-          const offerer = yield* Effect.forkChild(
-            Effect.provideService(Queue.offerAll(queue, [1]), Scheduler.MaxOpsBeforeYield, budget),
-            { startImmediately: true }
-          )
-          yield* Queue.take(queue)
-          return yield* completed(offerer)
-        })
-      ))
+    it.effect("take does not park beside a message", () => wakesAfterYield(Queue.unbounded(), Queue.take, offerOne))
 
-    it.effect("offer does not park beside available capacity", () =>
-      checkBudgets((budget) =>
-        Effect.gen(function*() {
-          const queue = yield* Queue.bounded<number>(1)
-          yield* Queue.offer(queue, 0)
-          const offerer = yield* Effect.forkChild(
-            Effect.provideService(Queue.offer(queue, 1), Scheduler.MaxOpsBeforeYield, budget),
-            { startImmediately: true }
-          )
-          yield* Queue.take(queue)
-          return yield* completed(offerer)
-        })
-      ))
+    it.effect("peek does not park beside a message", () => wakesAfterYield(Queue.unbounded(), Queue.peek, offerOne))
 
     it.effect("takeN does not park beside a message", () =>
-      checkBudgets((budget) =>
-        Effect.gen(function*() {
-          const queue = yield* Queue.unbounded<number>()
-          const taker = yield* Effect.forkChild(
-            Effect.provideService(Queue.takeN(queue, 1), Scheduler.MaxOpsBeforeYield, budget),
-            { startImmediately: true }
-          )
-          yield* Queue.offer(queue, 1)
-          return yield* completed(taker)
-        })
-      ))
+      wakesAfterYield(Queue.unbounded(), (queue) => Queue.takeN(queue, 1), offerOne))
+
+    it.effect("offer does not park beside available capacity", () => wakesAfterYield(full, offerOne, Queue.take))
+
+    it.effect("offerAll does not park beside available capacity", () =>
+      wakesAfterYield(full, (queue) => Queue.offerAll(queue, [1]), Queue.take))
 
     it.effect("zero-capacity offer and take can rendezvous", () =>
       checkBudgets((budget) =>
@@ -103,6 +71,9 @@ describe("Queue", () => {
       ))
   })
 
+  // Guards the flat retry in awaitTake: a wake-up resumes with void and the
+  // take retries outside the callback, so a stolen wake-up must not leave a
+  // frame behind on the fiber stack.
   it.effect("stolen wake-ups do not accumulate taker continuation frames", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
