@@ -868,9 +868,6 @@ export const fiberJoin = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<A, E> =>
   })
 }
 
-const usesFiberObservers = (fiber: Fiber.Fiber<any, any>): fiber is FiberImpl =>
-  fiber instanceof FiberImpl && fiber.addObserver === FiberImpl.prototype.addObserver
-
 /** @internal */
 export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A): Effect.Effect<
   Arr.ReadonlyArray.With<A, A extends Iterable<Fiber.Fiber<infer _A, infer _E>> ? _A : never>,
@@ -883,11 +880,10 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
     const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
     let cancels: Array<() => void> | undefined = undefined
     const stopObserving = () => {
-      let next = 0
       for (let i = 0; i < observers.length; i++) {
-        const fiber = fibers[i]
-        if (usesFiberObservers(fiber)) fiber.removeObserver(observers[i])
-        else if (cancels !== undefined) cancels[next++]()
+        const cancel = cancels?.[i]
+        if (cancel !== undefined) cancel()
+        else (fibers[i] as FiberImpl).removeObserver(observers[i])
       }
     }
     let done = 0
@@ -907,11 +903,13 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
         }
       }
       const fiber = fibers[i]
-      const cancel = fiber.addObserver(observer)
+      const addObserver = fiber.addObserver
+      const nativeObserver = fiber instanceof FiberImpl && addObserver === FiberImpl.prototype.addObserver
+      const cancel = addObserver.call(fiber, observer)
       observers.push(observer)
-      if (!usesFiberObservers(fiber)) {
+      if (!nativeObserver) {
         cancels ??= []
-        cancels.push(cancel)
+        cancels[i] = cancel
       }
     }
     return sync(() => {
