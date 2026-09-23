@@ -63,20 +63,34 @@ describe("SchemaParser", () => {
       }
     }
 
-    it.effect("runs every element again when an array decode is run again", () =>
-      Effect.gen(function*() {
-        const calls: Array<string> = []
-        const getter = SchemaGetter.transformEffect<string, string>((value) => {
-          calls.push(value)
-          return Effect.suspend(() => Effect.succeed(value))
-        })
-        const schema = Schema.Array(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
-        const decode = SchemaParser.decodeUnknownEffect(schema)(["a", "b"])
-        const first = yield* decode
-        const second = yield* decode
-        deepStrictEqual(calls, ["a", "b", "a", "b"])
-        assertTrue(first !== second)
-      }))
+    for (const { input, make, name } of cases.filter(({ name }) => name === "Array" || name === "Tuple")) {
+      for (const operation of ["decode", "encode"] as const) {
+        it.effect(
+          name + " " + operation + " reruns asynchronous children without reusing output",
+          () =>
+            Effect.gen(function*() {
+              const calls: Array<string> = []
+              const getter = SchemaGetter.transformEffect<string, string>((value) =>
+                Effect.sync(() => {
+                  calls.push(value)
+                  return value
+                })
+              )
+              const schema = make(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
+              const parse = operation === "decode"
+                ? SchemaParser.decodeUnknownEffect(schema)
+                : SchemaParser.encodeUnknownEffect(schema)
+              const effect = parse(input)
+              const first = yield* effect
+              const second = yield* effect
+              deepStrictEqual(first, input)
+              deepStrictEqual(second, input)
+              deepStrictEqual(calls, ["a", "b", "a", "b"])
+              assertTrue(first !== second)
+            })
+        )
+      }
+    }
   })
 
   describe("product concurrency", () => {
