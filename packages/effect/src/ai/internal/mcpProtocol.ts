@@ -79,7 +79,8 @@ export const profileFromClient = (
  * @internal
  */
 export const invocationFromClient = (
-  request: PublicMcpSchema.McpServerClient["Service"]
+  request: PublicMcpSchema.McpServerClient["Service"],
+  structuredContentPolicy?: McpCore.StructuredContentPolicy
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: profileFromClient(request),
@@ -90,14 +91,16 @@ export const invocationFromClient = (
     clientInfo: request.clientInfo,
     requestMetadata: request.requestMetadata
   }),
-  serverClient: request
+  serverClient: request,
+  structuredContentPolicy
 })
 
 /**
  * @internal
  */
 export const invocationFromRequestContext = (
-  request: PublicMcpSchema.McpRequestContext["Service"]
+  request: PublicMcpSchema.McpRequestContext["Service"],
+  structuredContentPolicy?: McpCore.StructuredContentPolicy
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: {
@@ -106,7 +109,8 @@ export const invocationFromRequestContext = (
     clientInfo: request.clientInfo,
     requestMetadata: request.requestMetadata
   },
-  requestContext: request
+  requestContext: request,
+  structuredContentPolicy
 })
 
 /**

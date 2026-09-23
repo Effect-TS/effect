@@ -289,7 +289,7 @@ export const protocol = McpProtocol.make({
         const request = yield* PublicMcpSchema.McpServerClient
         const result = yield* core.tools.call(
           { ...call, arguments: call.arguments ?? {} },
-          McpProtocol.invocationFromClient(request)
+          McpProtocol.invocationFromClient(request, "object")
         ).pipe(
           Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)

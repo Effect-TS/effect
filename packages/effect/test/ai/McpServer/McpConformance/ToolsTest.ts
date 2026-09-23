@@ -164,7 +164,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             )
 
             assert.strictEqual(result.isError, false)
-            assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("called") }])
+            assert.deepStrictEqual(result.content, [{
+              type: "text",
+              text: protocol.protocolVersion === "2026-07-28" ? JSON.stringify("called") : "called"
+            }])
           }))
 
         it.effect("MUST reject an unknown tool name with a protocol error", () =>
@@ -206,7 +209,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               Effect.flatMap((message) => decodeCallTool(message.result))
             )
 
-            assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("text") }])
+            assert.deepStrictEqual(result.content, [{
+              type: "text",
+              text: protocol.protocolVersion === "2026-07-28" ? JSON.stringify("text") : "text"
+            }])
           }))
         it.effect("SCHEMA returns image content", () =>
           Effect.gen(function*() {

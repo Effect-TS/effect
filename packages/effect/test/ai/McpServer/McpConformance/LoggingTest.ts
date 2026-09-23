@@ -231,7 +231,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             const result = yield* test.decodeResult(response).pipe(
               Effect.flatMap((message) => Schema.decodeUnknownEffect(McpSchema.CallToolResult)(message.result))
             )
-            assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("Debug") }])
+            assert.deepStrictEqual(result.content, [{ type: "text", text: "Debug" }])
           }))
         it.effect("SHOULD send notifications at the selected level and higher", () =>
           Effect.gen(function*() {

@@ -61,6 +61,11 @@ const PublicFailureTool = Tool.make("PublicFailureTool", {
   failure: Schema.ErrorInstance()
 })
 
+const StringFailureTool = Tool.make("StringFailureTool", {
+  success: Schema.String,
+  failure: Schema.String
+})
+
 const StructuredFailureTool = Tool.make("StructuredFailureTool", {
   success: Schema.Struct({ answer: Schema.String }),
   failure: Schema.Struct({
@@ -105,6 +110,7 @@ const TestToolkit = Toolkit.make(
   OptionalStringTool,
   StrictObjectTool,
   PublicFailureTool,
+  StringFailureTool,
   StructuredFailureTool,
   InternalAiErrorTool,
   DefectTool,
@@ -129,6 +135,7 @@ const testToolkitHandlers = TestToolkit.of({
   OptionalStringTool: ({ signature }) => Effect.succeed(signature ?? "omitted"),
   StrictObjectTool: ({ config }) => Effect.succeed(config.value.toFixed(0)),
   PublicFailureTool: () => Effect.fail(publicFailure),
+  StringFailureTool: () => Effect.fail("failed"),
   StructuredFailureTool: () => Effect.fail({ reason: "busy", retryAfter: 5 }),
   InternalAiErrorTool: () => Effect.fail(internalAiError),
   DefectTool: () => Effect.die(privateDefect),
@@ -1467,6 +1474,7 @@ describe("McpServer", () => {
           arguments: { value: "ok", typo: true }
         }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
 
+        assert.strictEqual(result.structuredContent, "ok")
         assert.strictEqual(toolResultText(result), JSON.stringify("ok"))
       }))
 
@@ -1553,7 +1561,7 @@ describe("McpServer", () => {
           arguments: { config: { value: "1" } }
         })
         assert.isTrue(handlerInvoked)
-        assert.strictEqual(toolResultText(result), JSON.stringify("1"))
+        assert.strictEqual(toolResultText(result), "1")
       }))
 
     it.effect("dies on strict raw JSON Schema tools before registering any tools", () =>
@@ -1697,7 +1705,7 @@ describe("McpServer", () => {
           result,
           new McpSchema.CallToolResult({
             isError: false,
-            content: [{ type: "text", text: JSON.stringify("omitted") }]
+            content: [{ type: "text", text: "omitted" }]
           })
         )
       }))
@@ -1791,6 +1799,16 @@ describe("McpServer", () => {
         }])
         assert.deepStrictEqual(reported, [])
         assert.deepStrictEqual(logged, [])
+      }))
+
+    it.effect("keeps declared string failures JSON-encoded", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+        const result = yield* client["tools/call"]({ name: "StringFailureTool" })
+
+        assert.isTrue(result.isError)
+        assert.isUndefined(result.structuredContent)
+        assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("failed") }])
       }))
 
     it.effect("scrubs and records serialization failures in declared non-Error failures", () =>

@@ -713,8 +713,7 @@ const textResult = (message: JsonRpcResponse): string => {
     Schema.NonEmptyArray(Schema.Record(Schema.String, Schema.Unknown))
   )(content)
   assert.strictEqual(first.type, "text")
-  const text = Schema.decodeUnknownSync(Schema.String)(first.text)
-  return JSON.parse(text)
+  return Schema.decodeUnknownSync(Schema.String)(first.text)
 }
 
 describe("McpServer protocol adapters", () => {
@@ -1002,7 +1001,9 @@ describe("McpServer protocol adapters", () => {
       )
 
       assert.isNull(modernResponse.headers.get("Mcp-Session-Id"))
-      assert.strictEqual(textResult(modern), JSON.stringify({ sampling: {} }))
+      const capabilityText = JSON.stringify({ sampling: {} })
+      assert.strictEqual(resultOf(modern).structuredContent, capabilityText)
+      assert.strictEqual(textResult(modern), JSON.stringify(capabilityText))
       assert.strictEqual(
         textResult(yield* legacy.request("tools/call", { name: "capability" })),
         JSON.stringify({ roots: {} })
@@ -1539,7 +1540,7 @@ describe("McpServer protocol adapters", () => {
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
 
-      for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
+      for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const tools = listedTools(yield* client.request("tools/list"))
         for (const name of ["shared", "json-array", "union-result"]) {
@@ -1552,6 +1553,15 @@ describe("McpServer protocol adapters", () => {
           const result = resultOf(yield* client.request("tools/call", { name }))
           assert.notProperty(result, "structuredContent")
         }
+        const text = "| package | version |\n| effect | \"4.0\" |"
+        const stringResult = resultOf(
+          yield* client.request("tools/call", {
+            name: "validated",
+            arguments: { value: text }
+          })
+        )
+        assert.deepStrictEqual(stringResult.content, [{ type: "text", text }])
+        assert.notProperty(stringResult, "structuredContent")
       }
 
       const listResponse = yield* fixture.post(
@@ -1608,6 +1618,7 @@ describe("McpServer protocol adapters", () => {
         )
       )
       assert.strictEqual(callResult.structuredContent, "shared-result")
+      assert.deepStrictEqual(callResult.content, [{ type: "text", text: JSON.stringify("shared-result") }])
 
       const arrayCallResponse = yield* fixture.post(
         modernRequest(44, "tools/call", { name: "json-array", arguments: {} }),
