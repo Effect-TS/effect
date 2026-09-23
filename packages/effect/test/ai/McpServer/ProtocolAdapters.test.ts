@@ -1460,30 +1460,35 @@ describe("McpServer protocol adapters", () => {
       }))
   }
 
-  it.effect("should project the exact descriptor shape when listing tools for each revision", () =>
+  it.effect("should preserve tool titles and hints when listing tools for each revision", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
-      const currentClient = yield* initialize(fixture.post, "2025-06-18")
       const oldClient = yield* initialize(fixture.post, "2024-11-05")
 
-      const currentTools = listedTools(yield* currentClient.request("tools/list"))
       const oldTools = listedTools(yield* oldClient.request("tools/list"))
-      const currentShared = currentTools.find((tool) => tool.name === "shared")
       const oldShared = oldTools.find((tool) => tool.name === "shared")
 
-      assert.isDefined(currentShared)
       assert.isDefined(oldShared)
-      assert.strictEqual(currentShared.title, "Shared tool title")
-      assert.deepStrictEqual(currentShared.annotations, {
-        readOnlyHint: false,
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: true
-      })
       assert.notProperty(oldShared, "title")
       assert.notProperty(oldShared, "annotations")
       assert.notProperty(oldShared, "_meta")
       assert.notProperty(oldShared, "outputSchema")
+
+      for (const protocolVersion of ["2025-06-18", "2025-11-25"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const shared = listedTools(yield* client.request("tools/list"))
+          .find((tool) => tool.name === "shared")
+
+        assert.isDefined(shared)
+        assert.strictEqual(shared.title, "Shared tool title")
+        assert.deepStrictEqual(shared.annotations, {
+          title: "Shared tool title",
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: false,
+          openWorldHint: true
+        })
+      }
     }))
 
   it.effect("should project outputSchema only when the protocol revision supports it", () =>

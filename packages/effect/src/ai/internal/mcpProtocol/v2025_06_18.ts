@@ -275,6 +275,7 @@ export const protocol = McpProtocol.make({
               annotations: tool.annotations === undefined
                 ? undefined
                 : McpSchema.ToolAnnotations.make({
+                  title: tool.annotations.title,
                   readOnlyHint: tool.annotations.readOnlyHint,
                   destructiveHint: tool.annotations.destructiveHint,
                   idempotentHint: tool.annotations.idempotentHint,
