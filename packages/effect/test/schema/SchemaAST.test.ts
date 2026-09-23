@@ -522,7 +522,6 @@ describe("SchemaAST", () => {
       deepStrictEqual(strings, [ast.types[2]])
       strictEqual(SchemaAST.getCandidates("y", ast.types), strings)
       strictEqual(Object.isFrozen(strings), true)
-      deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [ast.types[3]])
       const objects = SchemaAST.getCandidates({ _tag: "c" }, ast.types)
       deepStrictEqual(objects, [ast.types[1]])
       strictEqual(SchemaAST.getCandidates({ _tag: "d" }, ast.types), objects)

@@ -3402,10 +3402,10 @@ const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
   key === "__proto__" ? Object.hasOwn(input, key) : key in input
 
-const getIndex = (types: ReadonlyArray<AST>): CandidateIndex => candidateIndexCache.get(types) ?? makeIndex(types)
+function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
+  let index = candidateIndexCache.get(types)
+  if (index) return index
 
-function makeIndex(types: ReadonlyArray<AST>): CandidateIndex {
-  let index: CandidateIndex
   let bySentinel: SentinelIndex | undefined
   let sentinelCandidateCount = 0
   let otherwise: { [K in Type]?: Array<number> } | undefined
@@ -3446,10 +3446,10 @@ function makeIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
   }
 
-  const getMembers = (type: Type): Array<AST> => (otherwise?.[type] ?? emptyCandidates).map((i) => types[i])
+  // Non-discriminated members are grouped by runtime type once and reused by every decode.
   const fallbacks: { [K in Type]?: ReadonlyArray<AST> } = {}
   const getFallback = (type: Type): ReadonlyArray<AST> =>
-    fallbacks[type] ??= otherwise?.[type] ? Object.freeze(getMembers(type)) : emptyCandidates
+    fallbacks[type] ??= Object.freeze((otherwise?.[type] ?? emptyCandidates).map((i) => types[i]))
 
   if (onlyLiterals && literalCandidates) {
     literalCandidates.forEach(Object.freeze)
@@ -3535,8 +3535,8 @@ function makeIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
   } else {
     index = (input) => {
-      const runtimeType = getRuntimeType(input)
-      return literalCandidates ? getMembers(runtimeType).filter(filterLiterals(input)) : getFallback(runtimeType)
+      const fallback = getFallback(getRuntimeType(input))
+      return literalCandidates ? fallback.filter(filterLiterals(input)) : fallback
     }
   }
 
