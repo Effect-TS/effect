@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reuse frozen candidate lists for Schema unions without literal members, avoiding a per-decode allocation and candidate-list rebuild.
+Reuse frozen runtime-type fallback candidate lists for Schema unions, including tagged unions with literal members. Fallback paths no longer rebuild the same list on each decode.
