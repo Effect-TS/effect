@@ -3075,7 +3075,6 @@ export const Objects: new(
           if (terminal) return terminal
         }
       } catch (error) {
-        // `Effect.fnUntracedEager` turns a synchronous throw into a defect
         return Effect.die(error)
       }
       return InternalParser.succeed(out)
