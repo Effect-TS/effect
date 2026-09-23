@@ -123,9 +123,17 @@ export interface ParsedModuleJSDoc {
   readonly range: readonly [number, number]
 }
 
+/**
+ * Stability of a documented public API. Untagged APIs are stable.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type JSDocStability = "stable" | "unstable" | "experimental"
+
 interface ParsedModuleTags {
   readonly since: string
-  readonly unstable: boolean
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -139,7 +147,7 @@ interface ParsedModuleTags {
 export interface ParsedDeclarationTags {
   readonly category: string
   readonly since: string
-  readonly unstable: boolean
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -153,7 +161,7 @@ export interface ParsedDeclarationTags {
 export interface ParsedNamespaceTags {
   readonly category: string | null
   readonly since: string
-  readonly unstable: boolean
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -166,7 +174,7 @@ export interface ParsedNamespaceTags {
  */
 export interface ParsedMemberTags {
   readonly since: string | null
-  readonly unstable: boolean
+  readonly stability: JSDocStability
   readonly default: string | null
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
@@ -358,7 +366,7 @@ export interface JSDocApiSeeTag {
 export interface JSDocApiTags {
   readonly category: string | null
   readonly since: string | null
-  readonly unstable: boolean
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly default: string | null
 }
@@ -1522,7 +1530,9 @@ function buildTags(
   if (stability !== undefined && stability !== "unstable" && stability !== "experimental") {
     diagnostics.push(diagnostic("invalid-stability", "@stability must have the value unstable or experimental"))
   }
-  const unstable = stability === "unstable"
+  const resolvedStability: JSDocStability = stability === "unstable" || stability === "experimental"
+    ? stability
+    : "stable"
   if (deprecated === "") diagnostics.push(diagnostic("empty-tag", "@deprecated must include a message"))
   const since = values.get("since")?.[0] ?? null
   if ((scope === "declaration" || scope === "namespace" || scope === "namespace-declaration") && since === null) {
@@ -1547,25 +1557,34 @@ function buildTags(
     if (diagnostics.length > 0 || category === null || since === null) {
       return { _tag: "Failure", error: { diagnostics } }
     }
-    return { _tag: "Success", value: { category, since, unstable, deprecated, see: see.map(parseSeeTag) } }
+    return {
+      _tag: "Success",
+      value: { category, since, stability: resolvedStability, deprecated, see: see.map(parseSeeTag) }
+    }
   }
 
   if (scope === "member") {
     const defaultValue = values.get("default")?.[0] ?? null
     if (defaultValue === "") diagnostics.push(diagnostic("empty-tag", "@default must include a value"))
     if (diagnostics.length > 0) return { _tag: "Failure", error: { diagnostics } }
-    return { _tag: "Success", value: { since, unstable, default: defaultValue, deprecated, see: see.map(parseSeeTag) } }
+    return {
+      _tag: "Success",
+      value: { since, stability: resolvedStability, default: defaultValue, deprecated, see: see.map(parseSeeTag) }
+    }
   }
 
   if (scope === "module") {
     if (diagnostics.length > 0 || since === null) return { _tag: "Failure", error: { diagnostics } }
-    return { _tag: "Success", value: { since, unstable, deprecated, see: see.map(parseSeeTag) } }
+    return { _tag: "Success", value: { since, stability: resolvedStability, deprecated, see: see.map(parseSeeTag) } }
   }
 
   const category = values.get("category")?.[0] ?? null
   if (category === "") diagnostics.push(diagnostic("empty-tag", "@category must include a value"))
   if (diagnostics.length > 0 || since === null) return { _tag: "Failure", error: { diagnostics } }
-  return { _tag: "Success", value: { category, since, unstable, deprecated, see: see.map(parseSeeTag) } }
+  return {
+    _tag: "Success",
+    value: { category, since, stability: resolvedStability, deprecated, see: see.map(parseSeeTag) }
+  }
 }
 
 function formatDiagnostic(diagnostic: ts.Diagnostic): string {
@@ -1848,7 +1867,7 @@ export interface JSDocModelFile extends ParsedJSDocFile {
  * @since 4.0.0
  */
 export interface JSDocModel {
-  readonly version: 2
+  readonly version: 3
   readonly generatedBy: "@effect/jsdocs"
   readonly generatedAt: string
   readonly inputHash?: string
@@ -1982,7 +2001,7 @@ function apiTags(
   return {
     category: "category" in tags ? tags.category : null,
     since: tags.since,
-    unstable: tags.unstable,
+    stability: tags.stability,
     deprecated: tags.deprecated,
     default: "default" in tags ? tags.default : null
   }
@@ -2407,7 +2426,7 @@ function moduleSeeTags(
     ? tags.value as ParsedModuleTags
     : {
       since: "0.0.0",
-      unstable: false,
+      stability: "stable",
       deprecated: null,
       see: block.tags.filter((tag) => tag.name === "see" && tag.value.trim() !== "").map((tag) =>
         parseSeeTag(tag.value.trim())
@@ -3467,7 +3486,7 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
     cwd
   })
   return {
-    version: 2,
+    version: 3,
     generatedBy: "@effect/jsdocs",
     generatedAt: new Date().toISOString(),
     inputHash: computeJSDocInputHash(options),
@@ -3507,7 +3526,7 @@ export function readJSDocModel(filename: string): Result<JSDocModel, string> {
   if (!fs.existsSync(filename)) return { _tag: "Failure", error: "missing" }
   try {
     const parsed = JSON.parse(fs.readFileSync(filename, "utf8")) as JSDocModel
-    if (parsed.version !== 2) return { _tag: "Failure", error: "Unsupported jsdocs model version" }
+    if (parsed.version !== 3) return { _tag: "Failure", error: "Unsupported jsdocs model version" }
     if (!Array.isArray(parsed.files)) return { _tag: "Failure", error: "Invalid jsdocs model: files must be an array" }
     if (!Array.isArray(parsed.apis)) return { _tag: "Failure", error: "Invalid jsdocs model: apis must be an array" }
     return { _tag: "Success", value: parsed }
