@@ -4,6 +4,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
 import * as Socket from "effect/socket/Socket"
+import * as SocketServer from "effect/socket/SocketServer"
 import * as Stream from "effect/Stream"
 
 type EventType = "open" | "message" | "error" | "close"
@@ -215,5 +216,23 @@ describe("Socket", () => {
 
         assert.deepStrictEqual(exit, Exit.fail(writeError))
       }))
+  })
+})
+
+describe("SocketServer", () => {
+  describe("isSocketServerError", () => {
+    it("recognizes a socket server error", () => {
+      const error = new SocketServer.SocketServerError({
+        reason: new SocketServer.SocketServerOpenError({ cause: new Error("boom") })
+      })
+
+      assert.isTrue(SocketServer.isSocketServerError(error))
+      assert.isFalse(
+        SocketServer.isSocketServerError(
+          new Socket.SocketError({ reason: new Socket.SocketOpenError({ kind: "Unknown", cause: new Error("boom") }) })
+        )
+      )
+      assert.isFalse(SocketServer.isSocketServerError({ _tag: "SocketServerError" }))
+    })
   })
 })
