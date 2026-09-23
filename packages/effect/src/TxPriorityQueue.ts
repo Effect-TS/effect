@@ -84,36 +84,38 @@ const makeTxPriorityQueue = <A>(ref: TxRef.TxRef<Chunk<A>>, ord: Order<A>): TxPr
   return self
 }
 
+/**
+ * Merges the sorted `values` into the sorted `chunk`. Existing elements stay
+ * ahead of equal incoming ones, and incoming ties keep their input order.
+ *
+ * Each insertion point is found by galloping forward from the previous one and
+ * then bisecting, so a value that lands close to the last one costs only a few
+ * comparisons.
+ */
 const mergeSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>): Chunk<A> => {
   const arr = C.toReadonlyArray(chunk)
-  const out = Array(arr.length + values.length) as Array<A>
+  const out: Array<A> = []
   let i = 0
-  let k = 0
-  for (let j = 0; j < values.length; j++) {
-    const value = values[j]
+  for (const value of values) {
     let lo = i
-    if (lo < arr.length && ord(arr[lo], value) <= 0) {
-      lo++
-      let step = 1
-      while (lo < arr.length && ord(arr[lo], value) <= 0) {
-        lo += step
-        step *= 2
-      }
-      let hi = Math.min(lo, arr.length)
-      lo = Math.max(i + 1, lo - step / 2)
-      while (lo < hi) {
-        const mid = (lo + hi) >>> 1
-        if (ord(arr[mid], value) <= 0) {
-          lo = mid + 1
-        } else {
-          hi = mid
-        }
+    let hi = i
+    for (let step = 1; hi < arr.length && ord(arr[hi], value) <= 0; step *= 2) {
+      lo = hi + 1
+      hi += step
+    }
+    hi = Math.min(hi, arr.length)
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (ord(arr[mid], value) <= 0) {
+        lo = mid + 1
+      } else {
+        hi = mid
       }
     }
-    for (; i < lo; i++) out[k++] = arr[i]
-    out[k++] = value
+    for (; i < lo; i++) out.push(arr[i])
+    out.push(value)
   }
-  for (; i < arr.length; i++) out[k++] = arr[i]
+  for (; i < arr.length; i++) out.push(arr[i])
   return C.fromIterable(out)
 }
 
@@ -381,7 +383,7 @@ export const offerAll: {
 } = dual(
   2,
   <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => mergeSorted(chunk, Array.from(values).sort((a, b) => self.ord(a, b)), self.ord))
+    TxRef.update(self.ref, (chunk) => mergeSorted(chunk, Array.from(values).sort(self.ord), self.ord))
 )
 
 /**
