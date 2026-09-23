@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Speed up schema compilation for nested schemas, most noticeably when they contain parts that cannot be compiled.
+Speed up Schema code generation for nested schemas, especially when a child cannot be generated.
