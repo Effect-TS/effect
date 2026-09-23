@@ -723,4 +723,101 @@ describe("Queue", () => {
       assert.deepStrictEqual(producerExit, Exit.succeed([]))
       assert.deepStrictEqual(done, Exit.void)
     }))
+
+  // A small op budget makes the victim fiber yield at each point between
+  // checking the queue and registering to wait. Whatever lands in that window
+  // must still answer it: no taker parks beside a message, and no offer parks
+  // beside free capacity. (With a budget below 3 a fiber yields again before
+  // making progress.) Each run lets the fibers settle for a bounded number of
+  // yields, so a stuck fiber fails the run instead of hanging the test.
+  describe("a check and its wait are one step", () => {
+    const atEveryBudget = (
+      test: (budget: <A, E>(effect: Effect.Effect<A, E>) => Effect.Effect<A, E>) => Effect.Effect<boolean>
+    ) =>
+      Effect.gen(function*() {
+        const failed: Array<number> = []
+        for (let ops = 3; ops <= 64; ops++) {
+          const ok = yield* test((effect) => Effect.provideService(effect, Scheduler.MaxOpsBeforeYield, ops))
+          if (!ok) failed.push(ops)
+        }
+        assert.deepStrictEqual(failed, [])
+      })
+    const settle = Effect.gen(function*() {
+      for (let i = 0; i < 200; i++) yield* Effect.yieldNow
+    })
+    const completes = <A, E>(fiber: Fiber.Fiber<A, E>) =>
+      Effect.gen(function*() {
+        yield* settle
+        const done = fiber.pollUnsafe() !== undefined
+        yield* Fiber.interrupt(fiber)
+        return done
+      })
+
+    const takers: ReadonlyArray<readonly [string, (queue: Queue.Dequeue<number>) => Effect.Effect<unknown>]> = [
+      ["take", Queue.take],
+      ["takeBetween", (queue) => Queue.takeBetween(queue, 1, 5)],
+      ["takeAll", Queue.takeAll],
+      ["peek", Queue.peek]
+    ]
+    for (const [name, takeFrom] of takers) {
+      it.effect(`${name} is woken by a message offered before it waits`, () =>
+        atEveryBudget((budget) =>
+          Effect.gen(function*() {
+            const queue = yield* Queue.unbounded<number>()
+            const taker = yield* Effect.forkChild(budget(takeFrom(queue)), { startImmediately: true })
+            yield* Queue.offer(queue, 1)
+            return yield* completes(taker)
+          })
+        ))
+    }
+
+    const offerers: ReadonlyArray<readonly [string, (queue: Queue.Enqueue<number>) => Effect.Effect<unknown>]> = [
+      ["offer", (queue) => Queue.offer(queue, 1)],
+      ["offerAll", (queue) => Queue.offerAll(queue, [1])]
+    ]
+    for (const [name, offerTo] of offerers) {
+      it.effect(`${name} is admitted by capacity freed before it waits`, () =>
+        atEveryBudget((budget) =>
+          Effect.gen(function*() {
+            const queue = yield* Queue.bounded<number>(1)
+            yield* Queue.offer(queue, 0)
+            const offerer = yield* Effect.forkChild(budget(offerTo(queue)), { startImmediately: true })
+            yield* Queue.take(queue)
+            return yield* completes(offerer)
+          })
+        ))
+
+      it.effect(`${name} on a zero-capacity queue meets a taker that arrives before it waits`, () =>
+        atEveryBudget((budget) =>
+          Effect.gen(function*() {
+            const queue = yield* Queue.bounded<number>(0)
+            const offerer = yield* Effect.forkChild(budget(offerTo(queue)), { startImmediately: true })
+            const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+            return (yield* completes(offerer)) && (yield* completes(taker))
+          })
+        ))
+    }
+
+    it.effect("an interrupted take leaves no taker for a zero-capacity offer to hand off to", () =>
+      atEveryBudget((budget) =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.bounded<number>(0)
+          const taker = yield* Effect.forkChild(budget(Queue.take(queue)), { startImmediately: true })
+          yield* Fiber.interrupt(taker)
+          const offerer = yield* Effect.forkChild(Queue.offer(queue, 1), { startImmediately: true })
+          const waits = !(yield* completes(offerer))
+          return waits && Queue.sizeUnsafe(queue) === 0
+        })
+      ))
+
+    it.effect("a take on a zero-capacity queue meets an offer that arrives before it waits", () =>
+      atEveryBudget((budget) =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.bounded<number>(0)
+          const taker = yield* Effect.forkChild(budget(Queue.take(queue)), { startImmediately: true })
+          const offerer = yield* Effect.forkChild(Queue.offer(queue, 1), { startImmediately: true })
+          return (yield* completes(taker)) && (yield* completes(offerer))
+        })
+      ))
+  })
 })
