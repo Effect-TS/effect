@@ -48,7 +48,6 @@ function recur(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Equivalenc
       const elements = ast.elements.map((e, i) => recur(e, [...path, i]))
       const len = ast.elements.length
       const rest = ast.rest.map((r, i) => recur(r, [...path, len + i]))
-      // The rest element and the elements after it are fixed per schema, not per value.
       const [head, ...tail] = rest
       const tailLength = tail.length
       return Equivalence.make((a, b) => {

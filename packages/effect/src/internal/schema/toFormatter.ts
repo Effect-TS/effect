@@ -149,7 +149,6 @@ export function toFormatter<T>(ast: SchemaAST.AST, options?: {
       case "Arrays": {
         const elements = ast.elements.map((element) => recur(element))
         const rest = ast.rest.map(recur)
-        // The rest element and the elements after it are fixed per schema, not per value.
         const [head, ...tail] = rest
         const tailLength = tail.length
         return (value) => {
