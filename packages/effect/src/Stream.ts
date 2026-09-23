@@ -2876,32 +2876,28 @@ export const concat: {
 } = dual(
   2,
   <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A | A2, E | E2, R | R2> => {
-    const stream = fromChannel(Channel.flatMap(concatLeaves<A | A2, E | E2, R | R2>(self, that), identity))
+    const stream = fromChannel(
+      Channel.flatten(Channel.fromIterator(() => concatChannels<A | A2, E | E2, R | R2>(self, that)))
+    )
     concatParts.set(stream, [self, that])
     return stream
   }
 )
 
-// The operands of each `concat` result, so a chain can be run as one layer
+// The operands of each `concat` result, so a chain of `concat` calls can run as
+// a single layer instead of one layer per call
 const concatParts = new WeakMap<Stream<any, any, any>, readonly [Stream<any, any, any>, Stream<any, any, any>]>()
 
-// Emits the channel of each non-`concat` part of a chain in order, expanding
-// nested `concat` operands onto a stack that is created for each run
-const concatLeaves = <A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) =>
-  Channel.fromPull(Effect.sync(() => {
-    const stack: Array<Stream<A, E, R>> = [that, self]
-    return Effect.suspend(() => {
-      let stream = stack.pop()
-      if (stream === undefined) return Cause.done()
-      let parts = concatParts.get(stream)
-      while (parts !== undefined) {
-        stack.push(parts[1])
-        stream = parts[0]
-        parts = concatParts.get(stream)
-      }
-      return Effect.succeed(stream.channel)
-    })
-  }))
+// Yields the channel of each non-`concat` stream in a chain, in order
+function* concatChannels<A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) {
+  const stack = [that, self]
+  while (stack.length > 0) {
+    const stream = stack.pop()!
+    const parts = concatParts.get(stream)
+    if (parts === undefined) yield stream.channel
+    else stack.push(parts[1], parts[0])
+  }
+}
 
 /**
  * Prepends the values from the provided iterable before the stream's elements.

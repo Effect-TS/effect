@@ -1419,28 +1419,27 @@ describe("Stream", () => {
   })
 
   describe("concat", () => {
+    class CountingScheduler extends Scheduler.MixedScheduler {
+      ops = 0
+      override shouldYield() {
+        this.ops++
+        return false
+      }
+    }
+
     it.effect("work per part does not grow with the length of a chain", () =>
       Effect.gen(function*() {
-        const countOps = (n: number, nest: "left" | "right") =>
-          Effect.suspend(() => {
-            let ops = 0
-            const scheduler: Scheduler.Scheduler = {
-              executionMode: "sync",
-              makeDispatcher: () => new Scheduler.MixedScheduler("sync").makeDispatcher(),
-              shouldYield: () => {
-                ops++
-                return false
-              }
-            }
-            let stream: Stream.Stream<number> = Stream.make(0)
-            for (let i = 1; i < n; i++) {
-              stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
-            }
-            return Stream.runDrain(stream).pipe(
-              Effect.provideService(Scheduler.Scheduler, scheduler),
-              Effect.map(() => ops)
-            )
-          })
+        const countOps = (n: number, nest: "left" | "right") => {
+          let stream: Stream.Stream<number> = Stream.make(0)
+          for (let i = 1; i < n; i++) {
+            stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
+          }
+          const scheduler = new CountingScheduler("sync")
+          return Stream.runDrain(stream).pipe(
+            Effect.provideService(Scheduler.Scheduler, scheduler),
+            Effect.map(() => scheduler.ops)
+          )
+        }
         for (const nest of ["left", "right"] as const) {
           const small = yield* countOps(1_000, nest)
           const large = yield* countOps(2_000, nest)
