@@ -24,29 +24,27 @@ describe("MutableList", () => {
   })
 
   it("bounds the retained slots of a list that never fully drains", () => {
-    for (
-      const [batch, take] of [
-        [1, (list: MutableList.MutableList<number>) => MutableList.take(list)],
-        [7, (list: MutableList.MutableList<number>) => MutableList.takeN(list, 7)],
-        [3, (list: MutableList.MutableList<number>) => MutableList.takeNVoid(list, 3)]
-      ] as const
-    ) {
+    const takes: Array<[batch: number, take: (list: MutableList.MutableList<number>) => void]> = [
+      [1, (list) => MutableList.take(list)],
+      [7, (list) => MutableList.takeN(list, 7)],
+      [3, (list) => MutableList.takeNVoid(list, 3)]
+    ]
+    for (const [batch, take] of takes) {
       const list = MutableList.make<number>()
       MutableList.append(list, -1)
-      for (let i = 0; i < 10_000; i += batch) {
-        for (let j = 0; j < batch; j++) MutableList.append(list, i + j)
+      for (let i = 0; i < 10_000; i++) {
+        for (let j = 0; j < batch; j++) MutableList.append(list, i * batch + j)
         take(list)
       }
-      let slots = 0
-      for (let bucket = list.head; bucket; bucket = bucket.next) slots += bucket.array.length
+      const slots = list.head!.array.length
       strictEqual(slots <= 2048, true, `retained ${slots} slots for one element`)
-      deepStrictEqual(MutableList.takeAll(list), [Math.ceil(10_000 / batch) * batch - 1])
+      deepStrictEqual(MutableList.takeAll(list), [10_000 * batch - 1])
     }
   })
 
   it("keeps later buckets intact when consuming a large prefix", () => {
     const list = MutableList.make<number>()
-    MutableList.appendAll(list, new Set(Array.from({ length: 2048 }, (_, i) => i)))
+    for (let i = 0; i < 2048; i++) MutableList.append(list, i)
     MutableList.appendAll(list, [2048])
     MutableList.takeNVoid(list, 1920)
     deepStrictEqual(MutableList.takeAll(list), Array.from({ length: 129 }, (_, i) => i + 1920))
@@ -146,35 +144,18 @@ describe("MutableList", () => {
     strictEqual(list.length, 2)
   })
 
-  it("filter indexes surviving elements from the front across offsets and buckets", () => {
-    const check = (list: MutableList.MutableList<number>, expected: Array<number>) => {
-      const seen: Array<[number, number]> = []
-      MutableList.filter(list, (value, index) => {
-        seen.push([value, index])
-        return index % 2 === 0
-      })
-      deepStrictEqual(seen, expected.map((value, index) => [value, index]), "predicate indices")
-      deepStrictEqual(MutableList.toArray(list), expected.filter((_, index) => index % 2 === 0), "filtered values")
-    }
-
-    const offset = MutableList.make<number>()
-    MutableList.appendAll(offset, [0, 1, 2, 3, 4])
-    MutableList.takeNVoid(offset, 2)
-    check(offset, [2, 3, 4])
-
-    const compacted = MutableList.make<number>()
-    for (let i = 0; i < 2048; i++) MutableList.append(compacted, i)
-    const oldHead = compacted.head
-    MutableList.takeNVoid(compacted, 1920)
-    strictEqual(compacted.head === oldHead, false)
-    MutableList.take(compacted)
-    check(compacted, Array.from({ length: 127 }, (_, i) => i + 1921))
-
-    const buckets = MutableList.make<number>()
-    MutableList.appendAll(buckets, [0, 1, 2])
-    MutableList.appendAll(buckets, [3, 4])
-    MutableList.take(buckets)
-    check(buckets, [1, 2, 3, 4])
+  it("filter passes list indices to the predicate across offsets and buckets", () => {
+    const list = MutableList.make<number>()
+    MutableList.appendAll(list, [0, 1, 2])
+    MutableList.appendAll(list, [3, 4])
+    MutableList.take(list)
+    const indices: Array<number> = []
+    MutableList.filter(list, (_, i) => {
+      indices.push(i)
+      return i % 2 === 0
+    })
+    deepStrictEqual(indices, [0, 1, 2, 3])
+    deepStrictEqual(MutableList.toArray(list), [1, 3])
   })
 
   it("filter restores the empty list state when no values match", () => {

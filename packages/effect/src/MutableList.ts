@@ -159,11 +159,17 @@ export const make = <A>(): MutableList<A> => ({
   length: 0
 })
 
-// Only the mutable tail can grow while earlier values are consumed.
-const compactHead = <A>(self: MutableList<A>, bucket: MutableList.Bucket<A>): void => {
-  if (bucket === self.tail && bucket.mutable && (bucket.array.length - bucket.offset) * 8 <= bucket.offset) {
+// A mutable tail bucket grows with every append while takes only advance its
+// offset, so a list that never drains keeps every slot it ever used. Copy the
+// live values into a fresh bucket once consumed slots dominate.
+const compactHead = <A>(self: MutableList<A>): void => {
+  const head = self.head!
+  if (
+    head.offset >= 1024 && head === self.tail && head.mutable &&
+    (head.array.length - head.offset) * 8 <= head.offset
+  ) {
     self.head = self.tail = {
-      array: bucket.array.slice(bucket.offset),
+      array: head.array.slice(head.offset),
       mutable: true,
       offset: 0,
       next: undefined
@@ -458,7 +464,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
         self.head = chunk
         self.length -= n
         if (self.length === 0) clear(self)
-        else if (self.head.offset >= 1024) compactHead(self, self.head)
+        else compactHead(self)
         return array
       }
     }
@@ -506,7 +512,7 @@ export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
       chunk.offset += n - count
       self.head = chunk
       self.length -= n
-      if (chunk.offset >= 1024) compactHead(self, chunk)
+      compactHead(self)
       return
     }
     count += size
@@ -570,8 +576,8 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
     } else {
       clear(self)
     }
-  } else if ((self.head.offset & 1023) === 0) {
-    compactHead(self, self.head)
+  } else {
+    compactHead(self)
   }
   return message
 }

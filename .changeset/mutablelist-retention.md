@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Release consumed slots in growing `MutableList` buckets and pass current list indices to `filter` predicates.
+Release consumed slots in a growing `MutableList` bucket, and pass list indices rather than bucket offsets to `MutableList.filter` predicates.
