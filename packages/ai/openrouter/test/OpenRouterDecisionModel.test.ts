@@ -98,14 +98,15 @@ describe("OpenRouterDecisionModel", () => {
       )
 
       assert.strictEqual(answers.neutral3.label, "neutral")
-      assert.closeTo(Object.values(answers.neutral3.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
+      assert.deepStrictEqual(answers.neutral3.probabilities, { negative: 0.02, neutral: 0.93, positive: 0.04 })
     }))
 
   for (
     const [name, probabilities, succeeds] of [
       ["extra provider key", { a: 0.5, b: 0.5, extra: 0.01 }, true],
-      ["drift outside two-decimal rounding", { a: 0.49, b: 0.49 }, false],
+      ["accepts distribution outside two-decimal rounding unchanged", { a: 0.49, b: 0.49 }, true],
       ["out-of-range probability", { a: 1.01, b: -0.02 }, false],
+      ["all-zero distribution", { a: 0, b: 0 }, false],
       ["eight rounded labels", { a: 0.12, b: 0.12, c: 0.12, d: 0.12, e: 0.12, f: 0.12, g: 0.12, h: 0.13 }, true]
     ] as const
   ) {
@@ -137,11 +138,8 @@ describe("OpenRouterDecisionModel", () => {
         if (succeeds) {
           assert.isTrue(Result.isSuccess(result))
           if (Result.isSuccess(result)) {
-            assert.closeTo(
-              Object.values(result.success.answers.choice.probabilities).reduce((sum, value) => sum + value, 0),
-              1,
-              1e-6
-            )
+            const { extra: _extra, ...requested } = probabilities
+            assert.deepStrictEqual(result.success.answers.choice.probabilities, requested)
           }
         } else {
           assert.isTrue(Result.isFailure(result))
@@ -150,7 +148,7 @@ describe("OpenRouterDecisionModel", () => {
       }))
   }
 
-  it.effect("normalizes rounded score probabilities", () =>
+  it.effect("preserves rounded score probabilities", () =>
     Effect.gen(function*() {
       const definition = Decision.make({
         input: Schema.String,
@@ -168,7 +166,7 @@ describe("OpenRouterDecisionModel", () => {
           }))
         ))
       )
-      assert.closeTo(Object.values(answers.score.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
+      assert.deepStrictEqual(answers.score.probabilities, { low: 0.1, mid: 0.7, high: 0.19 })
     }))
 
   it.effect("omits absent probability criteria from the encoded question", () =>

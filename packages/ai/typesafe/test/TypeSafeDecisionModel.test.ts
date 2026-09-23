@@ -98,10 +98,10 @@ describe("TypeSafeDecisionModel", () => {
       )
 
       assert.strictEqual(answers.neutral3.label, "neutral")
-      assert.closeTo(Object.values(answers.neutral3.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
+      assert.deepStrictEqual(answers.neutral3.probabilities, { negative: 0.02, neutral: 0.93, positive: 0.04 })
     }))
 
-  it.effect("normalizes rounded score probabilities", () =>
+  it.effect("preserves rounded score probabilities", () =>
     Effect.gen(function*() {
       const definition = Decision.make({
         input: Schema.String,
@@ -119,8 +119,54 @@ describe("TypeSafeDecisionModel", () => {
           }))
         ))
       )
-      assert.closeTo(Object.values(answers.score.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
+      assert.deepStrictEqual(answers.score.probabilities, { low: 0.1, mid: 0.7, high: 0.19 })
     }))
+
+  it.effect("accepts a distribution outside two-decimal rounding unchanged", () =>
+    Effect.gen(function*() {
+      const definition = Decision.make({
+        input: Schema.String,
+        decisions: { choice: Decision.classify({ instructions: "Pick", criteria: { a: "A", b: "B" } }) }
+      })
+      const { answers } = yield* DecisionModel.decide(definition, { input: "test" }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            model: "jev-latest",
+            answers: { choice: { type: "choice", choice: "a", probabilities: { a: 0.49, b: 0.49 }, confidence: 0.5 } }
+          }))
+        ))
+      )
+      assert.deepStrictEqual(answers.choice.probabilities, { a: 0.49, b: 0.49 })
+    }))
+
+  for (
+    const [name, probabilities] of [
+      ["out-of-range", { a: 1.01, b: -0.02 }],
+      ["all-zero", { a: 0, b: 0 }],
+      ["missing label", { a: 0.5 }],
+      ["non-finite", { a: Infinity, b: 0.5 }]
+    ] as const
+  ) {
+    it.effect("rejects " + name + " choice probabilities", () =>
+      Effect.gen(function*() {
+        const definition = Decision.make({
+          input: Schema.String,
+          decisions: { choice: Decision.classify({ instructions: "Pick", criteria: { a: "A", b: "B" } }) }
+        })
+        const error = yield* DecisionModel.decide(definition, { input: "test" }).pipe(
+          Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+          Effect.provide(makeClientLayer((request) =>
+            Effect.succeed(jsonResponse(request, {
+              model: "jev-latest",
+              answers: { choice: { type: "choice", choice: "a", probabilities, confidence: 0.5 } }
+            }))
+          )),
+          Effect.flip
+        )
+        assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+  }
 
   it.effect("omits absent probability criteria from the encoded question", () =>
     Effect.gen(function*() {
