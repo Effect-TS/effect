@@ -98,10 +98,10 @@ describe("TypeSafeDecisionModel", () => {
       )
 
       assert.strictEqual(answers.neutral3.label, "neutral")
-      assert.deepStrictEqual(answers.neutral3.probabilities, { negative: 0.02, neutral: 0.93, positive: 0.04 })
+      assert.closeTo(Object.values(answers.neutral3.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
     }))
 
-  it.effect("preserves rounded score probabilities", () =>
+  it.effect("normalizes rounded score probabilities", () =>
     Effect.gen(function*() {
       const definition = Decision.make({
         input: Schema.String,
@@ -119,25 +119,26 @@ describe("TypeSafeDecisionModel", () => {
           }))
         ))
       )
-      assert.deepStrictEqual(answers.score.probabilities, { low: 0.1, mid: 0.7, high: 0.19 })
+      assert.closeTo(Object.values(answers.score.probabilities).reduce((sum, value) => sum + value, 0), 1, 1e-6)
     }))
 
-  it.effect("accepts a distribution outside two-decimal rounding unchanged", () =>
+  it.effect("rejects a distribution outside two-decimal rounding", () =>
     Effect.gen(function*() {
       const definition = Decision.make({
         input: Schema.String,
         decisions: { choice: Decision.classify({ instructions: "Pick", criteria: { a: "A", b: "B" } }) }
       })
-      const { answers } = yield* DecisionModel.decide(definition, { input: "test" }).pipe(
+      const error = yield* DecisionModel.decide(definition, { input: "test" }).pipe(
         Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
         Effect.provide(makeClientLayer((request) =>
           Effect.succeed(jsonResponse(request, {
             model: "jev-latest",
             answers: { choice: { type: "choice", choice: "a", probabilities: { a: 0.49, b: 0.49 }, confidence: 0.5 } }
           }))
-        ))
+        )),
+        Effect.flip
       )
-      assert.deepStrictEqual(answers.choice.probabilities, { a: 0.49, b: 0.49 })
+      assert.strictEqual(error.reason._tag, "InvalidOutputError")
     }))
 
   for (
