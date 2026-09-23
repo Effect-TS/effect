@@ -194,10 +194,18 @@ const isFiniteNumber = (value: unknown): value is number => Predicate.isNumber(v
 
 const isUnitInterval = (value: unknown): value is number => isFiniteNumber(value) && value >= 0 && value <= 1
 
+const sumTolerance = 1e-6
+
+/**
+ * `roundingError` is the largest error a provider's rounding adds to a single
+ * probability (half a unit of its last decimal place). Distributions that sum
+ * to 1 within `labels.length * roundingError` are rescaled to sum to 1.
+ */
 const validateDistribution = (
   key: string,
   labels: ReadonlyArray<string>,
-  answer: Record<string, unknown>
+  answer: Record<string, unknown>,
+  roundingError: number
 ): Record<string, number> | AiError.AiError => {
   const raw = answer.probabilities
   if (!Predicate.isObject(raw)) {
@@ -213,8 +221,12 @@ const validateDistribution = (
     probabilities[label] = value
     total += value
   }
-  if (Math.abs(total - 1) > 1e-6) {
+  const drift = Math.abs(total - 1)
+  if (total === 0 || drift > labels.length * roundingError + sumTolerance) {
     return invalidOutput(`Provider returned probabilities that do not sum to 1 for decision "${key}"`)
+  }
+  if (drift > sumTolerance) {
+    for (const label of labels) probabilities[label] /= total
   }
   return probabilities
 }
@@ -234,7 +246,8 @@ const validateConfidence = (
 const validateAnswer = (
   key: string,
   decision: Decision.Any,
-  answer: unknown
+  answer: unknown,
+  roundingError: number
 ): Decision.Answer<Decision.Any> | AiError.AiError => {
   if (!Predicate.isObject(answer)) {
     return invalidOutput(`Provider returned no answer for decision "${key}"`)
@@ -254,7 +267,7 @@ const validateAnswer = (
       if (AiError.isAiError(confidence)) {
         return confidence
       }
-      const probabilities = validateDistribution(key, labels, answer)
+      const probabilities = validateDistribution(key, labels, answer, roundingError)
       if (AiError.isAiError(probabilities)) {
         return probabilities
       }
@@ -269,7 +282,7 @@ const validateAnswer = (
       if (AiError.isAiError(confidence)) {
         return confidence
       }
-      const probabilities = validateDistribution(key, levels, answer)
+      const probabilities = validateDistribution(key, levels, answer, roundingError)
       if (AiError.isAiError(probabilities)) {
         return probabilities
       }
@@ -292,11 +305,12 @@ const validateAnswer = (
 
 const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
   decisions: Decisions,
-  answers: Readonly<Record<string, ProviderAnswer>>
+  answers: Readonly<Record<string, ProviderAnswer>>,
+  roundingError: number
 ): Effect.Effect<Decision.Answers<Decisions>, AiError.AiError> => {
   const validated: Record<string, Decision.Answer<Decision.Any>> = Object.create(null)
   for (const key of Object.keys(decisions)) {
-    const answer = validateAnswer(key, decisions[key], answers[key])
+    const answer = validateAnswer(key, decisions[key], answers[key], roundingError)
     if (AiError.isAiError(answer)) {
       return Effect.fail(answer)
     }
@@ -312,6 +326,11 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * in `[0, criteria.length - 1]`. Invalid answers fail with
  * `AiError.InvalidOutputError`; encoding failures use `AiError.InvalidUserInputError`.
  *
+ * Providers that round each probability to `probabilityPrecision` decimal
+ * places may return distributions whose sum drifts from 1 by up to half a unit
+ * of the last place per label. Setting `probabilityPrecision` accepts that
+ * drift and rescales the distribution to sum to 1; larger drift still fails.
+ *
  * @see {@link DecisionModel} for the service shape returned by this constructor
  * @see {@link ProviderOptions} for the input passed to the provider implementation
  * @see {@link ProviderResponse} for the provider response contract consumed by this constructor
@@ -322,9 +341,11 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  */
 export const make = (params: {
   readonly decide: (options: ProviderOptions) => Effect.Effect<ProviderResponse, AiError.AiError>
+  readonly probabilityPrecision?: number | undefined
 }): Effect.Effect<DecisionModel> =>
-  Effect.sync(() =>
-    DecisionModel.of({
+  Effect.sync(() => {
+    const roundingError = params.probabilityPrecision === undefined ? 0 : 0.5 * 10 ** -params.probabilityPrecision
+    return DecisionModel.of({
       [TypeId]: TypeId,
       decide: <Input extends Schema.Constraint, Decisions extends Record<string, Decision.Any>>(
         definition: Decision.Definition<Input, Decisions>,
@@ -341,7 +362,7 @@ export const make = (params: {
           Effect.flatMap((state) => params.decide({ state, decisions: definition.decisions })),
           Effect.flatMap((response) =>
             Effect.map(
-              validateAnswers(definition.decisions, response.answers),
+              validateAnswers(definition.decisions, response.answers, roundingError),
               (answers): DecideResponse<Decisions> => ({
                 answers,
                 usage: new DecisionUsage({
@@ -354,7 +375,7 @@ export const make = (params: {
           (effect) => Effect.withSpan(effect, "DecisionModel.decide", { captureStackTrace: false })
         )
     })
-  )
+  })
 
 /**
  * Answers a decision definition using the current `DecisionModel` service.

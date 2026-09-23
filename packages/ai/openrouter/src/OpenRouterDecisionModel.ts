@@ -41,6 +41,7 @@ export const model = (
 /**
  * Creates a decision service that requires full choice and score distributions.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
+ * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
  * @category constructors
  * @since 4.0.0
@@ -54,6 +55,7 @@ export const make = Effect.fnUntraced(function*(options: {
     Effect.succeed({ ...options.config, ...Context.getOrUndefined(services, Config) })
   )
   return yield* DecisionModel.make({
+    probabilityPrecision: 2,
     decide: Effect.fnUntraced(function*({ state, decisions }) {
       if (state === null || typeof state === "number" || typeof state === "boolean") {
         return yield* AiError.make({
