@@ -33,6 +33,12 @@ export * as BunCrypto from "./BunCrypto.ts"
  * @stability unstable
  * @since 4.0.0
  */
+export * as BunDatagramSocket from "./BunDatagramSocket.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as BunFileSystem from "./BunFileSystem.ts"
 
 /**
