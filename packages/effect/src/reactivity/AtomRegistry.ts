@@ -616,7 +616,7 @@ class NodeImpl<A> {
   preserveInitialValueOnBuild = false
   hydrating = false
   hydrationPending = false
-  pendingRuntime: NodeImpl<any> | undefined
+  pendingRuntime: Atom.Atom<any> | undefined
 
   parents = new Set<NodeImpl<any>>()
   previousParents: Set<NodeImpl<any>> | undefined
@@ -763,7 +763,7 @@ class NodeImpl<A> {
   }
 
   invalidate(parent?: NodeImpl<any>): void {
-    if (!this.hydrationPending || parent !== this.pendingRuntime || parent === undefined) {
+    if (parent === undefined || parent.atom !== this.pendingRuntime) {
       this.hydrating = false
       this.hydrationPending = false
       this.pendingRuntime = undefined
@@ -878,9 +878,9 @@ interface Lifetime<A> extends Atom.AtomContext {
   readonly dispose: () => void
 }
 
-export const isHydrating = (ctx: Atom.AtomContext): boolean => {
+/** @internal */
+export const consumeHydration = (ctx: Atom.AtomContext): boolean => {
   const node = (ctx as Lifetime<any>).node
-  if (node === undefined) return ctx.hydrating
   node.hydrationPending = false
   node.pendingRuntime = undefined
   return node.hydrating
@@ -890,17 +890,13 @@ export const isHydrating = (ctx: Atom.AtomContext): boolean => {
 export const pendingHydrationRuntime = (ctx: Atom.AtomContext, runtime: Atom.Atom<any>): void => {
   const node = (ctx as Lifetime<any>).node
   if (node?.hydrationPending) {
-    node.pendingRuntime = node.registry.ensureNode(runtime)
+    node.pendingRuntime = runtime
   }
 }
 
 const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn"> = {
   get registry(): RegistryImpl {
     return (this as Lifetime<any>).node.registry
-  },
-
-  get hydrating(): boolean {
-    return (this as Lifetime<any>).node.hydrating
   },
 
   addFinalizer(this: Lifetime<any>, f: () => void): void {
