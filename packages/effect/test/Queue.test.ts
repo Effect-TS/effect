@@ -60,6 +60,33 @@ describe("Queue", () => {
         })
       ))
 
+    it.effect("offer does not park beside available capacity", () =>
+      checkBudgets((budget) =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.bounded<number>(1)
+          yield* Queue.offer(queue, 0)
+          const offerer = yield* Effect.forkChild(
+            Effect.provideService(Queue.offer(queue, 1), Scheduler.MaxOpsBeforeYield, budget),
+            { startImmediately: true }
+          )
+          yield* Queue.take(queue)
+          return yield* completed(offerer)
+        })
+      ))
+
+    it.effect("takeN does not park beside a message", () =>
+      checkBudgets((budget) =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.unbounded<number>()
+          const taker = yield* Effect.forkChild(
+            Effect.provideService(Queue.takeN(queue, 1), Scheduler.MaxOpsBeforeYield, budget),
+            { startImmediately: true }
+          )
+          yield* Queue.offer(queue, 1)
+          return yield* completed(taker)
+        })
+      ))
+
     it.effect("zero-capacity offer and take can rendezvous", () =>
       checkBudgets((budget) =>
         Effect.gen(function*() {
@@ -75,6 +102,27 @@ describe("Queue", () => {
         })
       ))
   })
+
+  it.effect("stolen wake-ups do not accumulate taker continuation frames", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      yield* Effect.yieldNow
+      const stackLength = () => (taker as unknown as { readonly _stack: ReadonlyArray<unknown> })._stack.length
+      const initial = stackLength()
+      assert.isUndefined(taker.pollUnsafe())
+
+      for (let i = 0; i < 64; i++) {
+        assert.isTrue(Queue.offerUnsafe(queue, i))
+        assert.isDefined(Queue.takeUnsafe(queue))
+        yield* Effect.yieldNow
+      }
+      assert.isUndefined(taker.pollUnsafe())
+      assert.isAtMost(stackLength(), initial + 2)
+
+      yield* Queue.offer(queue, 64)
+      assert.strictEqual(yield* Fiber.join(taker), 64)
+    }))
 
   it.effect("isEnqueue type guard", () =>
     Effect.gen(function*() {
