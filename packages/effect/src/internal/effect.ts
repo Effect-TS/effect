@@ -874,16 +874,13 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
   A extends Iterable<Fiber.Fiber<infer _A, infer _E>> ? _E : never
 > =>
   callback((resume) => {
-    const fibers = Array.from(self)
+    const fibers = Array.from(self) as Array<FiberImpl>
     if (fibers.length === 0) return resume(succeed(Arr.empty() as any))
     const out = new Array<any>(fibers.length) as Arr.NonEmptyArray<any>
     const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
-    let cancels: Array<() => void> | undefined = undefined
-    const stopObserving = () => {
+    const removeObservers = () => {
       for (let i = 0; i < observers.length; i++) {
-        const cancel = cancels?.[i]
-        if (cancel !== undefined) cancel()
-        else (fibers[i] as FiberImpl).removeObserver(observers[i])
+        fibers[i].removeObserver(observers[i])
       }
     }
     let done = 0
@@ -894,7 +891,7 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
         done++
         if (exit._tag === "Failure") {
           failed = true
-          stopObserving()
+          removeObservers()
           return resume(exit as any)
         }
         out[i] = exit.value
@@ -902,19 +899,12 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
           resume(succeed(out))
         }
       }
-      const fiber = fibers[i]
-      const addObserver = fiber.addObserver
-      const nativeObserver = fiber instanceof FiberImpl && addObserver === FiberImpl.prototype.addObserver
-      const cancel = addObserver.call(fiber, observer)
       observers.push(observer)
-      if (!nativeObserver) {
-        cancels ??= []
-        cancels[i] = cancel
-      }
+      fibers[i].addObserver(observer)
     }
     return sync(() => {
       failed = true
-      stopObserving()
+      removeObservers()
     })
   })
 

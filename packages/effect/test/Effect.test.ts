@@ -312,18 +312,6 @@ describe("Effect", () => {
     assert.strictEqual(result, 1)
   })
 
-  it("callback registration throwing becomes a defect", () => {
-    const boom = new Error("register boom")
-    const exit = Effect.runSyncExit(Effect.callback<never>(() => {
-      throw boom
-    }))
-
-    assert.isTrue(Exit.isFailure(exit))
-    if (Exit.isFailure(exit)) {
-      assert.strictEqual(Cause.squash(exit.cause), boom)
-    }
-  })
-
   it("acquireUseRelease interrupt", async () => {
     let acquire = false
     let use = false

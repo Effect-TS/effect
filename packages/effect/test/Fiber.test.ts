@@ -54,49 +54,13 @@ describe("Fiber", () => {
     it.effect("cleans up observers on interruption", () =>
       Effect.gen(function*() {
         const fiber = yield* Effect.forkChild(Effect.never)
-        let cleaned = 0
-        const tracked = new Proxy(fiber, {
-          get(target, property, receiver) {
-            if (property !== "addObserver") return Reflect.get(target, property, receiver)
-            return (observer: Parameters<typeof target.addObserver>[0]) => {
-              const cancel = target.addObserver(observer)
-              return () => {
-                cleaned++
-                cancel()
-              }
-            }
-          }
-        })
-        const joinFiber = yield* Fiber.joinAll([tracked]).pipe(
-          Effect.forkChild({ startImmediately: true })
-        )
+        const observers = () =>
+          (fiber as unknown as { readonly _observers: ReadonlyArray<unknown> | undefined })._observers?.length ?? 0
+        const before = observers()
+        const joinFiber = yield* Fiber.joinAll([fiber]).pipe(Effect.forkChild({ startImmediately: true }))
+        assert.strictEqual(observers(), before + 1)
         yield* Fiber.interrupt(joinFiber)
-        assert.strictEqual(cleaned, 1)
-      }))
-
-    it.effect("uses the cancel returned at registration even if addObserver changes", () =>
-      Effect.gen(function*() {
-        const fiber = yield* Effect.forkChild(Effect.never)
-        let cleaned = 0
-        let override = true
-        const tracked = new Proxy(fiber, {
-          get(target, property, receiver) {
-            if (property !== "addObserver" || !override) return Reflect.get(target, property, receiver)
-            return (observer: Parameters<typeof target.addObserver>[0]) => {
-              const cancel = target.addObserver(observer)
-              return () => {
-                cleaned++
-                cancel()
-              }
-            }
-          }
-        })
-        const joinFiber = yield* Fiber.joinAll([tracked]).pipe(
-          Effect.forkChild({ startImmediately: true })
-        )
-        override = false
-        yield* Fiber.interrupt(joinFiber)
-        assert.strictEqual(cleaned, 1)
+        assert.strictEqual(observers(), before)
       }))
   })
 
