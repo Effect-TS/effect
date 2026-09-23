@@ -146,6 +146,37 @@ describe("MutableList", () => {
     strictEqual(list.length, 2)
   })
 
+  it("filter indexes surviving elements from the front across offsets and buckets", () => {
+    const check = (list: MutableList.MutableList<number>, expected: Array<number>) => {
+      const seen: Array<[number, number]> = []
+      MutableList.filter(list, (value, index) => {
+        seen.push([value, index])
+        return index % 2 === 0
+      })
+      deepStrictEqual(seen, expected.map((value, index) => [value, index]), "predicate indices")
+      deepStrictEqual(MutableList.toArray(list), expected.filter((_, index) => index % 2 === 0), "filtered values")
+    }
+
+    const offset = MutableList.make<number>()
+    MutableList.appendAll(offset, [0, 1, 2, 3, 4])
+    MutableList.takeNVoid(offset, 2)
+    check(offset, [2, 3, 4])
+
+    const compacted = MutableList.make<number>()
+    for (let i = 0; i < 2048; i++) MutableList.append(compacted, i)
+    const oldHead = compacted.head
+    MutableList.takeNVoid(compacted, 1920)
+    strictEqual(compacted.head === oldHead, false)
+    MutableList.take(compacted)
+    check(compacted, Array.from({ length: 127 }, (_, i) => i + 1921))
+
+    const buckets = MutableList.make<number>()
+    MutableList.appendAll(buckets, [0, 1, 2])
+    MutableList.appendAll(buckets, [3, 4])
+    MutableList.take(buckets)
+    check(buckets, [1, 2, 3, 4])
+  })
+
   it("filter restores the empty list state when no values match", () => {
     const list = MutableList.make<number>()
     MutableList.append(list, 1)
