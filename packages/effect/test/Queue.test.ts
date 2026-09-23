@@ -169,15 +169,14 @@ describe("Queue", () => {
       assert.deepEqual(b, [3, 4])
     }))
 
-  for (
-    const [name, receive] of [
-      ["take", (queue: Queue.Queue<number>) => Queue.take(queue)],
-      ["takeN", (queue: Queue.Queue<number>) => Queue.takeN(queue, 1)],
-      ["takeAll", (queue: Queue.Queue<number>) => Queue.takeAll(queue)],
-      ["takeBetween", (queue: Queue.Queue<number>) => Queue.takeBetween(queue, 1, 5)],
-      ["peek", (queue: Queue.Queue<number>) => Queue.peek(queue)]
-    ] as const
-  ) {
+  const lostWakeupCases: ReadonlyArray<readonly [string, (queue: Queue.Queue<number>) => Effect.Effect<unknown>]> = [
+    ["take", (queue: Queue.Queue<number>) => Queue.take(queue)],
+    ["takeN", (queue: Queue.Queue<number>) => Queue.takeN(queue, 1)],
+    ["takeAll", (queue: Queue.Queue<number>) => Queue.takeAll(queue)],
+    ["takeBetween", (queue: Queue.Queue<number>) => Queue.takeBetween(queue, 1, 5)],
+    ["peek", (queue: Queue.Queue<number>) => Queue.peek(queue)]
+  ]
+  for (const [name, receive] of lostWakeupCases) {
     it.effect(`${name} does not miss an offer during the check-to-registration yield`, () =>
       Effect.gen(function*() {
         const queue = yield* Queue.unbounded<number>()
