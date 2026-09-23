@@ -3221,47 +3221,37 @@ export const repeat: {
       let meta = Schedule.CurrentMetadata.defaultValue()
       return repeatLoop(
         provideServiceEffect(self, Schedule.CurrentMetadata, Effect.sync(() => meta)),
-        (done, scope) =>
+        (done) =>
           step(done).pipe(
             Effect.map((meta_) => {
               meta = meta_
             }),
-            Pull.catchDone(() => Cause.done(done)),
-            Scope.provide(scope)
+            Pull.catchDone(() => Cause.done(done))
           )
       )
     }),
     unwrap
   ))
 
-const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutDone2, E, R>(
+const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, E, OutDone2, R>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-  onDone: (done: OutDone, scope: Scope.Scope) => Pull.Pull<void, E, OutDone2, R>
+  onDone: (done: OutDone) => Pull.Pull<void, E, OutDone2, R>
 ): Channel<OutElem, OutErr | E, OutDone2, InElem, InErr, InDone, Env | R> =>
   fromTransform((upstream, scope) =>
     Effect.sync(() => {
       let currentPull: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> | undefined
-      const makePull = (runScope: Scope.Scope): Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> =>
-        Effect.flatMap(
-          toTransform(self)(upstream, runScope),
-          (pull) => {
-            const pullUntilDone: Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> = Pull.catchDone(pull, (done) =>
-              Effect.suspend(() => {
-                // A failed close or schedule step must not start another repetition.
-                const transition = Scope.close(runScope, Exit.void).pipe(
-                  Effect.flatMap(() => onDone(done as OutDone, scope)),
-                  Effect.matchCauseEffect({
-                    onFailure: (cause) =>
-                      currentPull = Effect.failCause(cause),
-                    onSuccess: () => currentPull = makePull(Scope.forkUnsafe(scope))
-                  })
-                )
-                return currentPull = transition
-              }))
-            return currentPull = pullUntilDone
-          }
-        )
-      return Effect.suspend(() => currentPull ?? (currentPull = makePull(Scope.forkUnsafe(scope))))
+      const makePull = (): Pull.Pull<OutElem, OutErr | E, OutDone2, Env | R> => {
+        const runScope = Scope.forkUnsafe(scope)
+        return Effect.flatMap(toTransform(self)(upstream, runScope), (pull) => {
+          currentPull = Pull.catchDone(pull, (done) =>
+            Scope.close(runScope, Exit.void).pipe(
+              Effect.flatMap(() => onDone(done as OutDone)),
+              Effect.flatMap(makePull)
+            ))
+          return currentPull
+        })
+      }
+      return Effect.suspend(() => currentPull ?? makePull())
     })
   )
 
@@ -3273,9 +3263,7 @@ const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutDon
  */
 export const forever = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
-): Channel<OutElem, OutErr, never, InElem, InErr, InDone, Env> => repeatLoop(self, constVoidEffect)
-
-const constVoidEffect = constant(Effect.void)
+): Channel<OutElem, OutErr, never, InElem, InErr, InDone, Env> => repeatLoop(self, () => Effect.void)
 
 /**
  * Runs a schedule step for each output element while preserving the emitted

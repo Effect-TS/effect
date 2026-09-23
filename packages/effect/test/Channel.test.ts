@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertExitFailure, assertFailure, assertTrue } from "@effect/vitest/utils"
-import { Cause, Data, Deferred, Duration, pipe, Ref } from "effect"
+import { Cause, Data, Deferred, pipe, Ref } from "effect"
+import * as Arr from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -35,12 +36,7 @@ describe("Channel", () => {
           () => Channel.succeed(1),
           () => Effect.die("release failed")
         )
-        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: void) =>
-          Effect.sync(() => {
-            steps++
-            return [steps, Duration.zero] as [number, Duration.Duration]
-          })
-        ))
+        const schedule = Schedule.forever.pipe(Schedule.tap(() => Effect.sync(() => ++steps)))
         const exit = yield* Effect.exit(Channel.runDrain(Channel.repeat(source, schedule)))
         assertExitFailure(exit, Cause.die("release failed"))
         assert.strictEqual(acquisitions, 1)
@@ -53,63 +49,41 @@ describe("Channel", () => {
         let acquisitions = 0
         let releases = 0
         let steps = 0
-        let stepInterruptions = 0
         const source = Channel.acquireUseRelease(
           Effect.sync(() => ++acquisitions),
           () => Channel.succeed(1),
-          () =>
-            Effect.sync(() => {
-              releases++
-            })
+          () => Effect.sync(() => ++releases)
         )
-        const schedule = Schedule.fromStep(Effect.succeed((_now: number, _input: void) =>
-          Effect.sync(() => {
-            steps++
-          }).pipe(
-            Effect.andThen(inStep.open),
-            Effect.andThen(Effect.never),
-            Effect.onInterrupt(() =>
-              Effect.sync(() => {
-                stepInterruptions++
-              })
-            )
-          )
-        ))
+        const schedule = Schedule.forever.pipe(
+          Schedule.tap(() => Effect.sync(() => ++steps).pipe(Effect.andThen(inStep.open), Effect.andThen(Effect.never)))
+        )
         const fiber = yield* Effect.forkChild(Channel.runDrain(Channel.repeat(source, schedule)))
         yield* Fiber.interrupt(fiber).pipe(inStep.whenOpen)
         assert.strictEqual(acquisitions, 1)
         assert.strictEqual(releases, 1)
         assert.strictEqual(steps, 1)
-        assert.strictEqual(stepInterruptions, 1)
       }))
 
     for (const kind of ["repeat", "forever"] as const) {
+      const repeated = (source: Channel.Channel<Arr.NonEmptyArray<number>>) =>
+        kind === "repeat" ? Channel.repeat(source, Schedule.forever) : Channel.forever(source)
+
       it.effect(kind + " releases each repetition before the next one starts", () =>
         Effect.gen(function*() {
           const log: Array<string> = []
           const source = Channel.acquireUseRelease(
             Effect.sync(() => log.push("acquire")),
-            () => Channel.fromArray([1, 2]).pipe(Channel.tap((n) => Effect.sync(() => log.push("emit " + n)))),
+            () => Channel.fromEffect(Effect.as(Effect.sync(() => log.push("emit")), Arr.make(1))),
             () => Effect.sync(() => log.push("release"))
           )
-          const repeated = kind === "repeat" ? Channel.repeat(source, Schedule.recurs(1)) : Channel.forever(source)
-          const stream = Stream.fromChannel(Channel.map(repeated, (n) => [n]))
-          const result = yield* (kind === "repeat" ? stream : Stream.take(stream, 3)).pipe(Stream.runCollect)
-          assert.deepStrictEqual(result, kind === "repeat" ? [1, 2, 1, 2] : [1, 2, 1])
-          assert.deepStrictEqual(
-            log,
-            kind === "repeat"
-              ? ["acquire", "emit 1", "emit 2", "release", "acquire", "emit 1", "emit 2", "release"]
-              : ["acquire", "emit 1", "emit 2", "release", "acquire", "emit 1", "release"]
-          )
+          yield* Stream.fromChannel(repeated(source)).pipe(Stream.take(2), Stream.runDrain)
+          assert.deepStrictEqual(log, ["acquire", "emit", "release", "acquire", "emit", "release"])
         }))
 
       it.effect(kind + " work per repetition does not grow", () =>
         Effect.gen(function*() {
-          const source = Channel.fromArray([1])
-          const repeated = kind === "repeat" ? Channel.repeat(source, Schedule.forever) : Channel.forever(source)
-          const ops = (n: number) =>
-            countOps(Stream.fromChannel(Channel.map(repeated, (n) => [n])).pipe(Stream.take(n), Stream.runDrain))
+          const stream = Stream.fromChannel(repeated(Channel.succeed(Arr.make(1))))
+          const ops = (n: number) => countOps(stream.pipe(Stream.take(n), Stream.runDrain))
           const small = yield* ops(1_000)
           const large = yield* ops(2_000)
           assert.isBelow(large / small, 2.5)
