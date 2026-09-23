@@ -208,7 +208,18 @@ export type UniversallyAdministeredAddress<A extends MacAddress = MacAddress> = 
   typeof UniversallyAdministeredTypeId
 >
 
-const getBytes = (self: IpAddress | MacAddress): Uint8Array => (self as any).bytes
+// IPv4 addresses store one unsigned 32-bit number and IPv6 addresses store four
+// unsigned 32-bit words, most significant first. Allocating a typed array per
+// address is expensive on some runtimes, notably Deno.
+const ipv4Value = (self: Ipv4Address): number => (self as any).value
+interface Ipv6Words {
+  readonly w0: number
+  readonly w1: number
+  readonly w2: number
+  readonly w3: number
+}
+const ipv6Words = (self: Ipv6Address): Ipv6Words => self as any
+const getMacBytes = (self: MacAddress): Uint8Array => (self as any).bytes
 
 /**
  * A resolved IPv4 internet address and port.
@@ -491,10 +502,10 @@ const Ipv4Proto = {
   _tag: "Ipv4Address",
   [TypeId]: TypeId,
   [Equal.symbol](this: Ipv4Address, that: Equal.Equal): boolean {
-    return isIpv4Address(that) && bytesEqual(getBytes(this), getBytes(that))
+    return isIpv4Address(that) && ipv4Value(this) === ipv4Value(that)
   },
   [Hash.symbol](this: Ipv4Address): number {
-    return hashBytes("Ipv4Address", getBytes(this))
+    return Hash.optimize(Hash.combine(ipv4HashSeed, ipv4Value(this) | 0))
   },
   toString(this: Ipv4Address): string {
     return formatIp(this)
@@ -511,10 +522,17 @@ const Ipv6Proto = {
   _tag: "Ipv6Address",
   [TypeId]: TypeId,
   [Equal.symbol](this: Ipv6Address, that: Equal.Equal): boolean {
-    return isIpv6Address(that) && bytesEqual(getBytes(this), getBytes(that))
+    if (!isIpv6Address(that)) return false
+    const self = ipv6Words(this)
+    const other = ipv6Words(that)
+    return self.w0 === other.w0 && self.w1 === other.w1 && self.w2 === other.w2 && self.w3 === other.w3
   },
   [Hash.symbol](this: Ipv6Address): number {
-    return hashBytes("Ipv6Address", getBytes(this))
+    const self = ipv6Words(this)
+    let h = Hash.combine(ipv6HashSeed, self.w0 | 0)
+    h = Hash.combine(h, self.w1 | 0)
+    h = Hash.combine(h, self.w2 | 0)
+    return Hash.optimize(Hash.combine(h, self.w3 | 0))
   },
   toString(this: Ipv6Address): string {
     return formatIp(this)
@@ -531,10 +549,10 @@ const MacProto = {
   _tag: "MacAddress",
   [TypeId]: TypeId,
   [Equal.symbol](this: MacAddress, that: Equal.Equal): boolean {
-    return isMacAddress(that) && bytesEqual(getBytes(this), getBytes(that))
+    return isMacAddress(that) && bytesEqual(getMacBytes(this), getMacBytes(that))
   },
   [Hash.symbol](this: MacAddress): number {
-    return hashBytes("MacAddress", getBytes(this))
+    return Hash.combine(macHashSeed, Hash.array(getMacBytes(this)))
   },
   toString(this: MacAddress): string {
     return formatMacAddress(this)
@@ -555,19 +573,36 @@ const bytesEqual = (self: Uint8Array, that: Uint8Array): boolean => {
   return true
 }
 
-const hashBytes = (tag: string, bytes: Uint8Array): number => {
-  return Hash.combine(Hash.string(tag), Hash.array(bytes))
-}
+const ipv4HashSeed = Hash.string("Ipv4Address")
+const ipv6HashSeed = Hash.string("Ipv6Address")
+const macHashSeed = Hash.string("MacAddress")
 
-const makeIpv4 = (bytes: Uint8Array): Ipv4Address => {
-  const self = Object.assign(Object.create(Ipv4Proto), { bytes: new Uint8Array(bytes) })
+const makeIpv4 = (value: number): Ipv4Address => {
+  const self = Object.create(Ipv4Proto)
+  self.value = value >>> 0
   return Object.freeze(self)
 }
 
-const makeIpv6 = (bytes: Uint8Array): Ipv6Address => {
-  const self = Object.assign(Object.create(Ipv6Proto), { bytes: new Uint8Array(bytes) })
+const makeIpv6 = (w0: number, w1: number, w2: number, w3: number): Ipv6Address => {
+  const self = Object.create(Ipv6Proto)
+  self.w0 = w0 >>> 0
+  self.w1 = w1 >>> 0
+  self.w2 = w2 >>> 0
+  self.w3 = w3 >>> 0
   return Object.freeze(self)
 }
+
+const packOctets = (a: number, b: number, c: number, d: number): number => ((a << 24) | (b << 16) | (c << 8) | d) >>> 0
+
+const packBytes = (bytes: Uint8Array, offset: number): number =>
+  packOctets(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3])
+
+const wordToOctets = (word: number): readonly [number, number, number, number] => [
+  word >>> 24,
+  (word >>> 16) & 0xff,
+  (word >>> 8) & 0xff,
+  word & 0xff
+]
 
 const makeMac = (bytes: Uint8Array): MacAddress => {
   const self = Object.assign(Object.create(MacProto), { bytes: new Uint8Array(bytes) })
@@ -581,7 +616,7 @@ const makeMac = (bytes: Uint8Array): MacAddress => {
  * @category unsafe
  * @since 4.0.0
  */
-export const ipv4FromBytesUnsafe = (bytes: Uint8Array): Ipv4Address => makeIpv4(bytes)
+export const ipv4FromBytesUnsafe = (bytes: Uint8Array): Ipv4Address => makeIpv4(packBytes(bytes, 0))
 
 /**
  * Creates an IPv6 address from trusted network-order bytes without validation.
@@ -590,7 +625,8 @@ export const ipv4FromBytesUnsafe = (bytes: Uint8Array): Ipv4Address => makeIpv4(
  * @category unsafe
  * @since 4.0.0
  */
-export const ipv6FromBytesUnsafe = (bytes: Uint8Array): Ipv6Address => makeIpv6(bytes)
+export const ipv6FromBytesUnsafe = (bytes: Uint8Array): Ipv6Address =>
+  makeIpv6(packBytes(bytes, 0), packBytes(bytes, 4), packBytes(bytes, 8), packBytes(bytes, 12))
 
 /**
  * The IPv4 loopback address `127.0.0.1`.
@@ -599,7 +635,7 @@ export const ipv6FromBytesUnsafe = (bytes: Uint8Array): Ipv6Address => makeIpv6(
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Loopback: Ipv4Address = makeIpv4(new Uint8Array([127, 0, 0, 1]))
+export const ipv4Loopback: Ipv4Address = makeIpv4(0x7f000001)
 
 /**
  * The IPv6 loopback address `::1`.
@@ -608,9 +644,7 @@ export const ipv4Loopback: Ipv4Address = makeIpv4(new Uint8Array([127, 0, 0, 1])
  * @category constants
  * @since 4.0.0
  */
-export const ipv6Loopback: Ipv6Address = makeIpv6(
-  new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
-)
+export const ipv6Loopback: Ipv6Address = makeIpv6(0, 0, 0, 1)
 
 /**
  * The unspecified IPv4 address `0.0.0.0`.
@@ -619,7 +653,7 @@ export const ipv6Loopback: Ipv6Address = makeIpv6(
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Unspecified: Ipv4Address = makeIpv4(new Uint8Array(4))
+export const ipv4Unspecified: Ipv4Address = makeIpv4(0)
 
 /**
  * The unspecified IPv6 address `::`.
@@ -628,7 +662,7 @@ export const ipv4Unspecified: Ipv4Address = makeIpv4(new Uint8Array(4))
  * @category constants
  * @since 4.0.0
  */
-export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
+export const ipv6Unspecified: Ipv6Address = makeIpv6(0, 0, 0, 0)
 
 /**
  * The IPv4 broadcast address `255.255.255.255`.
@@ -637,7 +671,7 @@ export const ipv6Unspecified: Ipv6Address = makeIpv6(new Uint8Array(16))
  * @category constants
  * @since 4.0.0
  */
-export const ipv4Broadcast: Ipv4Address = makeIpv4(new Uint8Array([255, 255, 255, 255]))
+export const ipv4Broadcast: Ipv4Address = makeIpv4(0xffffffff)
 
 const addressError = (input: unknown, message: string): Result.Result<never, NetAddressError> =>
   Result.fail(new NetAddressError({ input, message }))
@@ -655,7 +689,7 @@ export const ipv4FromOctets = (
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError(octets, "octets must be integers from 0 through 255")
   }
-  return Result.succeed(makeIpv4(new Uint8Array(octets)))
+  return Result.succeed(makeIpv4(packOctets(octets[0], octets[1], octets[2], octets[3])))
 }
 
 /**
@@ -671,12 +705,12 @@ export const ipv6FromSegments = (
   if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
     return addressError(segments, "segments must be integers from 0 through 65535")
   }
-  const bytes = new Uint8Array(16)
-  for (let index = 0; index < 8; index++) {
-    bytes[index * 2] = segments[index] >> 8
-    bytes[index * 2 + 1] = segments[index]
-  }
-  return Result.succeed(makeIpv6(bytes))
+  return Result.succeed(makeIpv6(
+    segments[0] * 0x10000 + segments[1],
+    segments[2] * 0x10000 + segments[3],
+    segments[4] * 0x10000 + segments[5],
+    segments[6] * 0x10000 + segments[7]
+  ))
 }
 
 /**
@@ -762,8 +796,8 @@ const parseIpv6Segments = (input: string): Result.Result<ReadonlyArray<number>, 
       return addressError(input, "embedded IPv4 syntax must be trailing")
     }
     const parsed = Result.map(ipv4FromString(trailing), (address) => {
-      const octets = ipv4ToOctets(address)
-      return [octets[0] * 256 + octets[1], octets[2] * 256 + octets[3]]
+      const value = ipv4Value(address)
+      return [value >>> 16, value & 0xffff]
     })
     if (Result.isFailure(parsed)) return parsed
     embedded = parsed.success
@@ -848,10 +882,8 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
  * @category getters
  * @since 4.0.0
  */
-export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, number, number] => {
-  const bytes = getBytes(self)
-  return [bytes[0], bytes[1], bytes[2], bytes[3]]
-}
+export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, number, number] =>
+  wordToOctets(ipv4Value(self))
 
 /**
  * Returns the eight numeric segments of an IPv6 address in a fresh tuple.
@@ -863,12 +895,8 @@ export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, numbe
 export const ipv6ToSegments = (
   self: Ipv6Address
 ): readonly [number, number, number, number, number, number, number, number] => {
-  const bytes = getBytes(self)
-  const output = Array<number>(8)
-  for (let index = 0; index < 8; index++) {
-    output[index] = bytes[index * 2] * 256 + bytes[index * 2 + 1]
-  }
-  return output as any
+  const { w0, w1, w2, w3 } = ipv6Words(self)
+  return [w0 >>> 16, w0 & 0xffff, w1 >>> 16, w1 & 0xffff, w2 >>> 16, w2 & 0xffff, w3 >>> 16, w3 & 0xffff]
 }
 
 /**
@@ -880,7 +908,10 @@ export const ipv6ToSegments = (
  */
 export const ipv6ToOctets = (
   self: Ipv6Address
-): ReadonlyArray<number> => Array.from(getBytes(self))
+): ReadonlyArray<number> => {
+  const { w0, w1, w2, w3 } = ipv6Words(self)
+  return [...wordToOctets(w0), ...wordToOctets(w1), ...wordToOctets(w2), ...wordToOctets(w3)]
+}
 
 /**
  * Returns the six numeric octets of a MAC address in a fresh tuple.
@@ -892,7 +923,7 @@ export const ipv6ToOctets = (
 export const macAddressToOctets = (
   self: MacAddress
 ): readonly [number, number, number, number, number, number] => {
-  const bytes = getBytes(self)
+  const bytes = getMacBytes(self)
   return [bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]]
 }
 
@@ -904,7 +935,7 @@ export const macAddressToOctets = (
  * @since 4.0.0
  */
 export const formatMacAddress = (self: MacAddress): string =>
-  Array.from(getBytes(self), (byte) => byte.toString(16).padStart(2, "0")).join(":")
+  Array.from(getMacBytes(self), (byte) => byte.toString(16).padStart(2, "0")).join(":")
 
 /**
  * Returns `true` when the MAC address is the all-ones broadcast address.
@@ -914,7 +945,7 @@ export const formatMacAddress = (self: MacAddress): string =>
  * @since 4.0.0
  */
 export const isMacBroadcast = <A extends MacAddress>(self: A): self is BroadcastAddress<A> =>
-  getBytes(self).every((byte) => byte === 0xff)
+  getMacBytes(self).every((byte) => byte === 0xff)
 
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit set.
@@ -924,7 +955,7 @@ export const isMacBroadcast = <A extends MacAddress>(self: A): self is Broadcast
  * @since 4.0.0
  */
 export const isMacMulticast = <A extends MacAddress>(self: A): self is MulticastAddress<A> =>
-  (getBytes(self)[0] & 1) !== 0
+  (getMacBytes(self)[0] & 1) !== 0
 
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit clear.
@@ -933,7 +964,8 @@ export const isMacMulticast = <A extends MacAddress>(self: A): self is Multicast
  * @category predicates
  * @since 4.0.0
  */
-export const isMacUnicast = <A extends MacAddress>(self: A): self is UnicastAddress<A> => (getBytes(self)[0] & 1) === 0
+export const isMacUnicast = <A extends MacAddress>(self: A): self is UnicastAddress<A> =>
+  (getMacBytes(self)[0] & 1) === 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit set.
@@ -944,7 +976,7 @@ export const isMacUnicast = <A extends MacAddress>(self: A): self is UnicastAddr
  */
 export const isMacLocallyAdministered = <A extends MacAddress>(
   self: A
-): self is LocallyAdministeredAddress<A> => (getBytes(self)[0] & 2) !== 0
+): self is LocallyAdministeredAddress<A> => (getMacBytes(self)[0] & 2) !== 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit clear.
@@ -955,7 +987,7 @@ export const isMacLocallyAdministered = <A extends MacAddress>(
  */
 export const isMacUniversallyAdministered = <A extends MacAddress>(
   self: A
-): self is UniversallyAdministeredAddress<A> => (getBytes(self)[0] & 2) === 0
+): self is UniversallyAdministeredAddress<A> => (getMacBytes(self)[0] & 2) === 0
 
 /**
  * Folds an IP address by its numeric version.
@@ -1018,8 +1050,11 @@ export const formatIp = (self: IpAddress): string => {
  * @category predicates
  * @since 4.0.0
  */
-export const isUnspecified = <A extends IpAddress>(self: A): self is UnspecifiedAddress<A> =>
-  getBytes(self).every((byte) => byte === 0)
+export const isUnspecified = <A extends IpAddress>(self: A): self is UnspecifiedAddress<A> => {
+  if (isIpv4Address(self)) return ipv4Value(self) === 0
+  const { w0, w1, w2, w3 } = ipv6Words(self)
+  return w0 === 0 && w1 === 0 && w2 === 0 && w3 === 0
+}
 
 /**
  * Returns `true` for IPv4 `127.0.0.0/8` or IPv6 `::1`.
@@ -1029,12 +1064,9 @@ export const isUnspecified = <A extends IpAddress>(self: A): self is Unspecified
  * @since 4.0.0
  */
 export const isLoopback = <A extends IpAddress>(self: A): self is LoopbackAddress<A> => {
-  if (isIpv4Address(self)) return getBytes(self)[0] === 127
-  const bytes = getBytes(self)
-  for (let index = 0; index < 15; index++) {
-    if (bytes[index] !== 0) return false
-  }
-  return bytes[15] === 1
+  if (isIpv4Address(self)) return (ipv4Value(self) >>> 24) === 127
+  const { w0, w1, w2, w3 } = ipv6Words(self)
+  return w0 === 0 && w1 === 0 && w2 === 0 && w3 === 1
 }
 
 /**
@@ -1068,8 +1100,8 @@ export const isLoopback = <A extends IpAddress>(self: A): self is LoopbackAddres
  */
 export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is MulticastAddress<A> => {
   if (isMacAddress(self)) return isMacMulticast(self)
-  if (isIpv4Address(self)) return (getBytes(self)[0] >> 4) === 0xe
-  return getBytes(self)[0] === 0xff
+  if (isIpv4Address(self)) return (ipv4Value(self) >>> 28) === 0xe
+  return (ipv6Words(self).w0 >>> 24) === 0xff
 }
 
 /**
@@ -1087,7 +1119,7 @@ export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is 
  * @since 4.0.0
  */
 export const isBroadcast = <A extends Ipv4Address | MacAddress>(self: A): self is BroadcastAddress<A> =>
-  isMacAddress(self) ? isMacBroadcast(self) : getBytes(self).every((byte) => byte === 0xff)
+  isMacAddress(self) ? isMacBroadcast(self) : ipv4Value(self) === 0xffffffff
 
 /**
  * Returns `true` when an address is syntactically unicast.
@@ -1116,12 +1148,8 @@ export const isUnicast = <A extends IpAddress | MacAddress>(self: A): self is Un
  * @since 4.0.0
  */
 export const isLinkLocal = <A extends IpAddress>(self: A): self is LinkLocalAddress<A> => {
-  if (isIpv4Address(self)) {
-    const bytes = getBytes(self)
-    return bytes[0] === 0xa9 && bytes[1] === 0xfe
-  }
-  const bytes = getBytes(self)
-  return bytes[0] === 0xfe && (bytes[1] & 0xc0) === 0x80
+  if (isIpv4Address(self)) return (ipv4Value(self) >>> 16) === 0xa9fe
+  return ((ipv6Words(self).w0 >>> 16) & 0xffc0) === 0xfe80
 }
 
 /**
@@ -1132,9 +1160,8 @@ export const isLinkLocal = <A extends IpAddress>(self: A): self is LinkLocalAddr
  * @since 4.0.0
  */
 export const isPrivate = <A extends Ipv4Address>(self: A): self is PrivateAddress<A> => {
-  const bytes = getBytes(self)
-  return bytes[0] === 10 || (bytes[0] === 172 && (bytes[1] & 0xf0) === 16) ||
-    (bytes[0] === 192 && bytes[1] === 168)
+  const value = ipv4Value(self)
+  return (value >>> 24) === 10 || ((value >>> 16) & 0xfff0) === 0xac10 || (value >>> 16) === 0xc0a8
 }
 
 /**
@@ -1145,7 +1172,7 @@ export const isPrivate = <A extends Ipv4Address>(self: A): self is PrivateAddres
  * @since 4.0.0
  */
 export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is UniqueLocalAddress<A> =>
-  (getBytes(self)[0] & 0xfe) === 0xfc
+  ((ipv6Words(self).w0 >>> 24) & 0xfe) === 0xfc
 
 /**
  * Returns `true` when an IPv6 address is in the `::ffff:0:0/96` mapped range.
@@ -1155,11 +1182,8 @@ export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is UniqueLoc
  * @since 4.0.0
  */
 export const isIpv4Mapped = (self: Ipv6Address): boolean => {
-  const bytes = getBytes(self)
-  for (let index = 0; index < 10; index++) {
-    if (bytes[index] !== 0) return false
-  }
-  return bytes[10] === 0xff && bytes[11] === 0xff
+  const { w0, w1, w2 } = ipv6Words(self)
+  return w0 === 0 && w1 === 0 && w2 === 0xffff
 }
 
 /**
@@ -1169,13 +1193,7 @@ export const isIpv4Mapped = (self: Ipv6Address): boolean => {
  * @category converting
  * @since 4.0.0
  */
-export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => {
-  const bytes = new Uint8Array(16)
-  bytes[10] = 0xff
-  bytes[11] = 0xff
-  bytes.set(getBytes(self), 12)
-  return makeIpv6(bytes)
-}
+export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => makeIpv6(0, 0, 0xffff, ipv4Value(self))
 
 /**
  * Extracts the IPv4 value from an IPv4-mapped IPv6 address.
@@ -1185,7 +1203,7 @@ export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => {
  * @since 4.0.0
  */
 export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
-  isIpv4Mapped(self) ? Option.some(makeIpv4(getBytes(self).slice(12))) : Option.none()
+  isIpv4Mapped(self) ? Option.some(makeIpv4(ipv6Words(self).w3)) : Option.none()
 
 /**
  * Converts IPv4-mapped IPv6 addresses to IPv4, including the IP component of internet addresses.
