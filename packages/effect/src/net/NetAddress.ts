@@ -1436,7 +1436,8 @@ export const inetAddressFromNativeUnsafe = (
       for (let j = i; j < end; j++) {
         if (host.charCodeAt(j) === 58) remaining++
       }
-      if (host.indexOf(".", i) !== -1) remaining++
+      const dot = host.indexOf(".", i)
+      if (dot !== -1 && dot < end) remaining++
       segment = 8 - remaining
     }
     const start = i
