@@ -2646,6 +2646,32 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(runs, 1)
     })
 
+    it("runs a hydrated effect on the first write to any atom", () => {
+      const unrelated = Atom.make(0).pipe(Atom.keepAlive)
+      let runs = 0
+      const atom = Atom.make(Effect.sync(() => ++runs)).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+
+      r.set(unrelated, 1)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+
+      r.set(unrelated, 2)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+    })
+
     it("does not run a hydrated effect until invalidated", () => {
       let reads = 0
       let runs = 0
