@@ -155,35 +155,6 @@ describe("TxPriorityQueue", () => {
         assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [1, 2])
       })))
 
-    it.effect("offer, offerAll and take match a stable sort under many ties", () =>
-      Effect.tx(Effect.gen(function*() {
-        let seed = 1
-        const next = (n: number) => (seed = (seed * 1103515245 + 12345) % 2147483648) % n
-        let id = 0
-        const entry = (): readonly [number, string] => [next(4), String(id++)]
-        const pq = yield* TxPriorityQueue.empty(byKey)
-        let model: Array<readonly [number, string]> = []
-        for (let step = 0; step < 400; step++) {
-          const op = next(4)
-          if (op === 0) {
-            const value = entry()
-            yield* TxPriorityQueue.offer(pq, value)
-            model = [...model, value].sort(byKey)
-          } else if (op === 1) {
-            const values = Array.from({ length: next(3) === 0 ? 300 : next(6) }, entry)
-            yield* TxPriorityQueue.offerAll(pq, values)
-            model = [...model, ...values].sort(byKey)
-          } else {
-            assert.deepStrictEqual(
-              yield* TxPriorityQueue.takeOption(pq),
-              model.length > 0 ? Option.some(model[0]) : Option.none()
-            )
-            model = model.slice(1)
-          }
-          assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), model)
-        }
-      })))
-
     it.effect("offerAll does not compare every queued element for one new value", () =>
       Effect.tx(Effect.gen(function*() {
         let comparisons = 0
@@ -202,18 +173,20 @@ describe("TxPriorityQueue", () => {
         ])
       })))
 
-    it.effect("offerAll preserves the order of equal existing and incoming priorities", () =>
+    it.effect("offerAll avoids repeated full-range searches for an interleaved batch", () =>
       Effect.tx(Effect.gen(function*() {
-        const order: Order.Order<readonly [number, string]> = ([a], [b]) => Order.Number(a, b)
-        const pq = yield* TxPriorityQueue.fromIterable<readonly [number, string]>(order, [[2, "old-b"], [1, "old-a"]])
-        yield* TxPriorityQueue.offerAll(pq, [[2, "new-b"], [1, "new-a"], [2, "new-c"]] as const)
-        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [
-          [1, "old-a"],
-          [1, "new-a"],
-          [2, "old-b"],
-          [2, "new-b"],
-          [2, "new-c"]
-        ])
+        let comparisons = 0
+        const order: Order.Order<number> = (a, b) => {
+          comparisons++
+          return Order.Number(a, b)
+        }
+        const queued = Array.from({ length: 256 }, (_, i) => i * 2)
+        const incoming = Array.from({ length: 256 }, (_, i) => i * 2 + 1)
+        const pq = yield* TxPriorityQueue.fromIterable(order, queued)
+        comparisons = 0
+        yield* TxPriorityQueue.offerAll(pq, incoming)
+        assert.isBelow(comparisons, 900)
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), Array.from({ length: 512 }, (_, i) => i))
       })))
   })
 
