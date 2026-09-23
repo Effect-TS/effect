@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Stop copying every service of a large context when a context built on it looks up only a few of them.
+Delay copying a derived Context's base until it has been read at least as many times as its size (with a minimum of eight), avoiding full copies for short-lived contexts.

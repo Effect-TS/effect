@@ -487,6 +487,8 @@ interface Overlay {
 }
 
 const MaxDepth = 8
+// Keep small bases cheap to read; larger bases are worth copying only after
+// enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
 
 const makeImpl = <Services>(
