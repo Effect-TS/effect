@@ -149,6 +149,24 @@ describe("Context", () => {
     strictEqual(added.baseHits, 0)
   })
 
+  it("does not copy a large base for a few reads", () => {
+    const keys = Array.from({ length: 32 }, (_, i) => Context.Service<number>(`ContextTest/Large${i}`))
+    const base = Context.makeUnsafe(new Map(keys.map((key, i) => [key.key, i])))
+    const context = Context.add(base, A, -1)
+    const impl = context as any
+
+    for (let i = 0; i < 31; i++) {
+      strictEqual(Context.getUnsafe(context, keys[i]), i)
+    }
+    strictEqual(impl._flat, undefined)
+    strictEqual(impl.base, base.mapUnsafe)
+
+    strictEqual(Context.getUnsafe(context, keys[31]), 31)
+    assertTrue(impl._flat instanceof Map)
+    strictEqual(impl.overlay, undefined)
+    deepStrictEqual([...context.mapUnsafe.keys()], [...keys.map((key) => key.key), A.key])
+  })
+
   it("supports the ReadonlyMap surface through mapUnsafe", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const visited: Array<[string, number]> = []
