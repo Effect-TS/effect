@@ -4960,6 +4960,8 @@ const forEachSequential = <A, B, E, R>(
     let index = 0
     const iterate = iterable[Symbol.iterator]
     if (iterate === arrayIterator && Array.isArray(iterable)) {
+      // The built-in array iterator reads length and the indexed value on each step.
+      // This fast path assumes ArrayIteratorPrototype.next has not been replaced.
       const items: ReadonlyArray<A> = iterable
       return as(
         whileLoop({
