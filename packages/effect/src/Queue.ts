@@ -1412,7 +1412,10 @@ export const takeBetween: {
 } = dual(3, <A, E>(self: Dequeue<A, E>, min: number, max: number): Effect<Array<A>, E> => {
   min = Count.normalize(min)
   max = Count.normalize(max)
-  return internalEffect.suspend(() => takeBetweenUnsafe(self, min, max) ?? takeBetweenOrWait(self, min, max))
+  return internalEffect.suspend(() =>
+    takeBetweenUnsafe(self, min, max) ??
+      internalEffect.andThen(awaitTake(self, canTake(self)), takeBetween(self, 1, max))
+  )
 })
 
 /**
@@ -1455,7 +1458,7 @@ export const takeBetween: {
  * @since 2.0.0
  */
 export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
-  internalEffect.suspend(() => takeUnsafe(self) ?? takeOrWait(self))
+  internalEffect.suspend(() => takeUnsafe(self) ?? internalEffect.andThen(awaitTake(self, canTake(self)), take(self)))
 
 /**
  * Attempts to take one item from the queue without waiting.
@@ -1530,18 +1533,17 @@ export const poll = <A, E>(self: Dequeue<A, E>): Effect<Option.Option<A>> =>
  * @category taking
  * @since 4.0.0
  */
-export const peek = <A, E>(self: Dequeue<A, E>): Effect<A, E> => {
-  const effect: Effect<A, E> = internalEffect.callback<A, E>((resume) => {
+export const peek = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
+  internalEffect.suspend(() => {
     if (self.state._tag === "Done") {
-      return resume(self.state.exit)
+      return self.state.exit
     }
     if (self.messages.length > 0 && self.messages.head) {
-      return resume(internalEffect.succeed(self.messages.head.array[self.messages.head.offset]))
+      return internalEffect.succeed(self.messages.head.array[self.messages.head.offset])
     }
-    return waitToTake(self, resume, effect)
+    // Pending offers on a rendezvous queue are not visible to peek.
+    return internalEffect.andThen(awaitTake(self, () => self.messages.length > 0), peek(self))
   })
-  return effect
-}
 
 /**
  * Attempts to take one message from the queue synchronously.
@@ -1991,48 +1993,23 @@ const takeBetweenUnsafe = <A, E>(
   }
 }
 
-const takeOrWait = <A, E>(self: Dequeue<A, E>) =>
-  internalEffect.callback<A, E>((resume) => {
-    const exit = takeUnsafe(self)
-    return exit !== undefined ? resume(exit) : waitToTake(self, resume, take(self))
-  })
+const canTake = <A, E>(self: Dequeue<A, E>) => () =>
+  self.messages.length > 0 || (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
 
-const takeBetweenOrWait = <A, E>(self: Dequeue<A, E>, min: number, max: number) =>
-  internalEffect.callback<Array<A>, E>((resume) => {
-    const exit = takeBetweenUnsafe(self, min, max)
-    return exit !== undefined ? resume(exit) : waitToTake(self, resume, takeBetween(self, 1, max))
+const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
+  internalEffect.callback<void, E>((resume) => {
+    if (self.state._tag === "Done") return resume(self.state.exit)
+    if (ready()) return resume(internalEffect.exitVoid)
+    self.state.takers.add(resume)
+    return internalEffect.sync(() => {
+      if (self.state._tag !== "Done") self.state.takers.delete(resume)
+    })
   })
-
-const waitToTake = <A, E, X>(
-  self: Dequeue<A, E>,
-  resume: (effect: Effect<X, E>) => void,
-  again: Effect<X, E>
-) => {
-  if (self.state._tag === "Done") {
-    return resume(self.state.exit)
-  }
-  const taker = () => resume(again)
-  self.state.takers.add(taker)
-  return internalEffect.sync(() => {
-    if (self.state._tag !== "Done") {
-      self.state.takers.delete(taker)
-    }
-  })
-}
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
   internalEffect.callback<boolean>((resume) => {
-    if (self.state._tag !== "Open") {
-      return resume(exitFalse)
-    } else if (self.messages.length < self.capacity) {
-      MutableList.append(self.messages, message)
-      scheduleReleaseTaker(self as Queue<A, E>)
-      return resume(exitTrue)
-    } else if (self.capacity <= 0 && self.state.takers.size > 0) {
-      MutableList.append(self.messages, message)
-      releaseTakers(self as Queue<A, E>)
-      return resume(exitTrue)
-    }
+    if (offerUnsafe(self, message)) return resume(exitTrue)
+    if (self.state._tag !== "Open") return resume(exitFalse)
     return waitToOffer(self, self.state.offers, { _tag: "Single", message, resume })
   })
 
