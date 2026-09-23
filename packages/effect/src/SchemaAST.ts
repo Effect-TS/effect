@@ -2384,7 +2384,6 @@ export const Arrays: new(
         }
         return parse(input, options)
       } catch (error) {
-        // `Effect.fnUntracedEager` turned a synchronous throw into a defect
         return Effect.die(error)
       }
     }
