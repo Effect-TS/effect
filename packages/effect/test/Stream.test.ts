@@ -1567,6 +1567,27 @@ describe("Stream", () => {
     )
   })
 
+  describe("mapEffect with concurrency", () => {
+    for (const unordered of [false, true]) {
+      it.effect(`fails when the mapping function throws (unordered: ${unordered})`, () =>
+        Effect.gen(function*() {
+          const boom = new Error("boom")
+          const fiber = yield* Stream.make(1, 2).pipe(
+            Stream.mapEffect((n) => {
+              if (n === 1) return Effect.never
+              throw boom
+            }, { concurrency: 2, unordered }),
+            Stream.runDrain,
+            Effect.timeoutOption("1 second"),
+            Effect.exit,
+            Effect.forkChild
+          )
+          yield* TestClock.adjust("1 second")
+          assertExitFailure(yield* Fiber.join(fiber), Cause.die(boom))
+        }))
+    }
+  })
+
   describe("switchMap", () => {
     it.effect(
       "interrupts a never-ending inner stream when the outer stream fails",
