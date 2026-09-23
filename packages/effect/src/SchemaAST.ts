@@ -2837,7 +2837,7 @@ export const Objects: new(
       for (const ps of ast.propertySignatures) {
         expectedKeys.push(typeof ps.name === "number" ? globalThis.String(ps.name) : ps.name)
       }
-      const expectedKeysSet = hasProperties ? new Set(expectedKeys) : undefined
+      let expectedKeysSet = hasProperties && indexCount ? new Set(expectedKeys) : undefined
       const finishIndex = (
         s: ObjectParserState,
         key: PropertyKey,
@@ -2934,7 +2934,8 @@ export const Objects: new(
           ? ast.indexSignatures.map((index) => getIndexSignatureKeys(record, index.parameter, options))
           : undefined
         if (onExcessPropertyError) {
-          const coveredKeys = indexKeys || !expectedKeysSet ? new Set(expectedKeys) : expectedKeysSet
+          expectedKeysSet ??= new Set(expectedKeys)
+          const coveredKeys = indexKeys ? new Set(expectedKeysSet) : expectedKeysSet
           if (indexKeys) {
             for (const keys of indexKeys) {
               for (const key of keys) coveredKeys.add(key)
