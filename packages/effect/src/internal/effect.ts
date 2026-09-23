@@ -1319,6 +1319,8 @@ const makeFn = (
   const body = typeof bodyOrOptions === "function"
     ? bodyOrOptions
     : (pipeables.shift()!).bind(bodyOrOptions.self)
+  const definitionName = `${name} (definition)`
+  const definitionStack = defError ? fnStackCleaner(() => defError.stack) : constUndefined
 
   return defineFunctionLength(body.length, function(this: any, ...args: Array<any>) {
     let result = suspend(() => {
@@ -1347,8 +1349,8 @@ const makeFn = (
         name,
         stack: callError ? fnStackCleaner(() => callError.stack) : constUndefined,
         parent: {
-          name: `${name} (definition)`,
-          stack: defError ? fnStackCleaner(() => defError.stack) : constUndefined,
+          name: definitionName,
+          stack: definitionStack,
           parent: prev
         }
       })

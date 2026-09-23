@@ -3843,6 +3843,25 @@ describe("Effect", () => {
       assert.strictEqual(named.length, 3)
       assert.strictEqual(untraced.length, 2)
     })
+
+    it.effect("should record the definition site on every call", () => {
+      const fn = Effect.fn("traced")(function*() {
+        return yield* References.CurrentStackFrame
+      })
+      return Effect.gen(function*() {
+        const first = yield* fn()
+        const second = yield* fn()
+        for (const frame of [first, second]) {
+          assert.strictEqual(frame?.name, "traced")
+          assert.strictEqual(frame?.parent?.name, "traced (definition)")
+          assert.include(frame?.stack(), "Effect.test.ts")
+          assert.include(frame?.parent?.stack(), "Effect.test.ts")
+          assert.notStrictEqual(frame?.stack(), frame?.parent?.stack())
+        }
+        assert.notStrictEqual(first?.stack(), second?.stack())
+        assert.strictEqual(first?.parent?.stack(), second?.parent?.stack())
+      })
+    })
   })
 
   describe("catchReason", () => {
