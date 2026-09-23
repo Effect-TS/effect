@@ -168,6 +168,10 @@ export interface Writable<R, W = R> extends Atom<R> {
 /**
  * Context passed to atom read functions for reading dependencies, awaiting `AsyncResult` or `Option` values, managing subscriptions and finalizers, refreshing atoms, and updating writable atoms.
  *
+ * **Details**
+ *
+ * `hydrating` is `true` while the atom is first built with a hydrated value.
+ *
  * @unstable
  * @category context
  * @since 4.0.0
@@ -204,6 +208,7 @@ export interface AtomContext {
     readonly immediate?: boolean
   }): void
   readonly registry: Registry.AtomRegistry
+  readonly hydrating: boolean
 }
 
 /**
@@ -562,6 +567,9 @@ function makeEffect<A, E>(
   uninterruptible = false
 ): AsyncResult.AsyncResult<A, E> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
+  if (previous._tag === "Some" && ctx.hydrating) {
+    return previous.value
+  }
   const scope = Scope.makeUnsafe()
   ctx.addFinalizer(() => {
     Effect.runForkWith(services)(Scope.close(scope, Exit.void))

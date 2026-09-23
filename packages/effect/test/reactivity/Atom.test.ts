@@ -2557,13 +2557,13 @@ describe("Atom", { concurrent: false }, () => {
       r.mount(atom)
 
       assert.strictEqual(r.get(atom), 10)
-      assert.strictEqual(rebuilds, 0)
+      assert.strictEqual(rebuilds, 1)
 
       value = 11
       r.set(fn, void 0)
 
       assert.strictEqual(r.get(atom), 11)
-      assert.strictEqual(rebuilds, 1)
+      assert.strictEqual(rebuilds, 2)
     })
 
     it("tracks dependencies after hydrating a wrapped atom", () => {
@@ -2588,12 +2588,12 @@ describe("Atom", { concurrent: false }, () => {
       r.mount(atom)
 
       assert.strictEqual(r.get(atom), 10)
-      assert.strictEqual(reads, 0)
+      assert.strictEqual(reads, 1)
 
       r.set(dependency, 7)
 
       assert.strictEqual(r.get(atom), 14)
-      assert.strictEqual(reads, 1)
+      assert.strictEqual(reads, 2)
     })
 
     it("does not run a hydrated effect until invalidated", () => {

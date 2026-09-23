@@ -456,7 +456,7 @@ class RegistryImpl implements AtomRegistry {
       if (target === atom) {
         node.setValue(decoded)
       } else {
-        this.ensureNode(target).setValue(decoded)
+        this.ensureNode(target).setHydratedValue(decoded)
       }
     }
     return node
@@ -614,6 +614,7 @@ class NodeImpl<A> {
   lifetime: Lifetime<A> | undefined
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
+  hydrating = false
 
   parents = new Set<NodeImpl<any>>()
   previousParents: Set<NodeImpl<any>> | undefined
@@ -650,6 +651,7 @@ class NodeImpl<A> {
       if ((this.state & NodeFlags.waitingForValue) !== 0) {
         if (this.preserveInitialValueOnBuild) {
           this.preserveInitialValueOnBuild = false
+          this.hydrating = false
           this.state = NodeState.valid
         } else {
           this.setValue(value)
@@ -676,6 +678,11 @@ class NodeImpl<A> {
       return Option.none()
     }
     return Option.some(this._value)
+  }
+
+  setHydratedValue(value: A): void {
+    this.hydrating = (this.state & NodeFlags.initialized) === 0
+    this.setInitialValue(value)
   }
 
   setInitialValue(value: A): void {
@@ -866,6 +873,10 @@ interface Lifetime<A> extends Atom.AtomContext {
 const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn"> = {
   get registry(): RegistryImpl {
     return (this as Lifetime<any>).node.registry
+  },
+
+  get hydrating(): boolean {
+    return (this as Lifetime<any>).node.hydrating
   },
 
   addFinalizer(this: Lifetime<any>, f: () => void): void {
