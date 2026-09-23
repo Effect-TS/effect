@@ -887,7 +887,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("String & check", () => {
       assertJsonSchemaDocument(
-        Schema.String.check(Schema.isMinLength(2)),
+        Schema.String.check(Schema.isMinCodePoints(2)),
         {
           schema: {
             "type": "string",
@@ -910,7 +910,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("String & annotate & check", () => {
       assertJsonSchemaDocument(
-        Schema.String.annotate({ description: "a" }).check(Schema.isMinLength(2)),
+        Schema.String.annotate({ description: "a" }).check(Schema.isMinCodePoints(2)),
         {
           schema: {
             "type": "string",
@@ -923,7 +923,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("String & check & annotate", () => {
       assertJsonSchemaDocument(
-        Schema.String.check(Schema.isMinLength(2)).annotate({
+        Schema.String.check(Schema.isMinCodePoints(2)).annotate({
           description: "a"
         }),
         {
@@ -938,7 +938,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("String & check & check", () => {
       assertJsonSchemaDocument(
-        Schema.String.check(Schema.isMinLength(2), Schema.isMaxLength(3)),
+        Schema.String.check(Schema.isMinCodePoints(2), Schema.isMaxCodePoints(3)),
         {
           schema: {
             "type": "string",
@@ -951,7 +951,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("String & annotate & check & check", () => {
       assertJsonSchemaDocument(
-        Schema.String.annotate({ description: "a" }).check(Schema.isMinLength(2), Schema.isMaxLength(3)),
+        Schema.String.annotate({ description: "a" }).check(Schema.isMinCodePoints(2), Schema.isMaxCodePoints(3)),
         {
           schema: {
             "type": "string",
@@ -965,7 +965,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("String & check & check & annotate", () => {
       assertJsonSchemaDocument(
-        Schema.String.check(Schema.isMinLength(2), Schema.isMaxLength(3)).annotate({
+        Schema.String.check(Schema.isMinCodePoints(2), Schema.isMaxCodePoints(3)).annotate({
           description: "a"
         }),
         {
@@ -982,8 +982,8 @@ describe("toJsonSchemaDocument", () => {
     it("String & annotate & check & check & annotate", () => {
       assertJsonSchemaDocument(
         Schema.String.annotate({ description: "a" }).check(
-          Schema.isMinLength(2),
-          Schema.isMaxLength(3, { description: "c" })
+          Schema.isMinCodePoints(2),
+          Schema.isMaxCodePoints(3, { description: "c" })
         ),
         {
           schema: {
@@ -1004,8 +1004,8 @@ describe("toJsonSchemaDocument", () => {
     it("String & check & annotations & check & annotations", () => {
       assertJsonSchemaDocument(
         Schema.String.check(
-          Schema.isMinLength(2, { description: "b" }),
-          Schema.isMaxLength(3, { description: "c" })
+          Schema.isMinCodePoints(2, { description: "b" }),
+          Schema.isMaxCodePoints(3, { description: "c" })
         ),
         {
           schema: {
@@ -1026,8 +1026,8 @@ describe("toJsonSchemaDocument", () => {
     it("String & annotations & check & annotations & check & annotations", () => {
       assertJsonSchemaDocument(
         Schema.String.annotate({ description: "a" }).check(
-          Schema.isMinLength(2, { description: "b" }),
-          Schema.isMaxLength(3, { description: "c" })
+          Schema.isMinCodePoints(2, { description: "b" }),
+          Schema.isMaxCodePoints(3, { description: "c" })
         ),
         {
           schema: {
@@ -1133,17 +1133,9 @@ describe("toJsonSchemaDocument", () => {
 
       describe("isBetweenLength", () => {
         it("String", () => {
-          assertJsonSchemaDocument(
+          assertUnsupportedSchema(
             Schema.String.check(Schema.isBetweenLength(2, 2)),
-            {
-              schema: {
-                "type": "string",
-                "allOf": [
-                  { "minLength": 2 },
-                  { "maxLength": 2 }
-                ]
-              }
-            }
+            "Cannot export Schema.isBetweenLength as JSON Schema length bounds: UTF-16 code units and Unicode code points differ. Use Schema.isBetweenCodePoints or provide a toJsonSchema annotation."
           )
         })
 
@@ -1208,14 +1200,9 @@ describe("toJsonSchemaDocument", () => {
 
       describe("isMinLength", () => {
         it("String", () => {
-          assertJsonSchemaDocument(
+          assertUnsupportedSchema(
             Schema.String.check(Schema.isMinLength(2)),
-            {
-              schema: {
-                "type": "string",
-                "minLength": 2
-              }
-            }
+            "Cannot export Schema.isMinLength as JSON Schema minLength: UTF-16 code units and Unicode code points differ. Use Schema.isMinCodePoints or provide a toJsonSchema annotation."
           )
         })
 
@@ -1258,14 +1245,9 @@ describe("toJsonSchemaDocument", () => {
 
       describe("isMaxLength", () => {
         it("String", () => {
-          assertJsonSchemaDocument(
+          assertUnsupportedSchema(
             Schema.String.check(Schema.isMaxLength(2)),
-            {
-              schema: {
-                "type": "string",
-                "maxLength": 2
-              }
-            }
+            "Cannot export Schema.isMaxLength as JSON Schema maxLength: UTF-16 code units and Unicode code points differ. Use Schema.isMaxCodePoints or provide a toJsonSchema annotation."
           )
         })
 
@@ -2937,7 +2919,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("does not use a partial pattern as an index selector", () => {
       const schema = Schema.Record(
-        Schema.String.check(Schema.isStartingWith("x"), Schema.isMinLength(3)),
+        Schema.String.check(Schema.isStartingWith("x"), Schema.isMinCodePoints(3)),
         Schema.Finite
       )
       assertJsonSchemaDocument(

@@ -2450,7 +2450,9 @@ export function toMultiDocument(document: Document): MultiDocument {
  *
  * - Reference allocation is already fixed in the input `Document`. The inherited `referencePolicy` option has no effect
  *   here; pass it to {@link toRepresentation} when creating the document.
- * - String length, RegExp flags, decoded-object property checks, and `oneOf` can differ from Effect validation.
+ * - UTF-16 string-length checks throw when their bounds have no supported equivalent JSON Schema mapping.
+ *   Use code-point checks or an explicit `toJsonSchema` check annotation instead.
+ * - RegExp flags, decoded-object property checks, and `oneOf` can differ from Effect validation.
  * - Opaque declarations are represented by an unconstrained JSON Schema.
  * - Check callback results are used directly, and exceptions raised by a callback pass through unchanged. Callbacks
  *   must treat their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must

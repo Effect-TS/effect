@@ -129,7 +129,7 @@ describe("Schema.toJsonSchemaDocument", () => {
   })
 
   it("preserves output, references and generation options", () => {
-    const shared = Schema.String.check(Schema.isMinLength(2)).annotate({
+    const shared = Schema.String.check(Schema.isMinCodePoints(2)).annotate({
       identifier: "Shared",
       description: "shared text",
       "x-consumer": "kept"

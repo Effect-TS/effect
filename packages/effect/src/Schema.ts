@@ -8019,9 +8019,11 @@ export const isBetweenBigInt: (options: {
  *
  * JSON Schema:
  *
- * For arrays, this check corresponds to `minItems`. For strings, it corresponds
- * to `minLength`. JavaScript counts UTF-16 code units while JSON Schema counts
- * Unicode code points, so the two validations can differ for some strings.
+ * For arrays, this check corresponds to `minItems`. For strings, bounds of zero
+ * and one correspond to `minLength`. Other string bounds throw during JSON Schema
+ * generation because UTF-16 code units differ from Unicode code points. Use
+ * {@link isMinCodePoints} for code-point semantics, or supply a `toJsonSchema`
+ * check annotation to define an explicit mapping.
  *
  * Arbitrary:
  *
@@ -8053,7 +8055,14 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
         id: "effect/schema/isMinLength",
         payload: { minLength }
       },
-      toJsonSchema: ({ type }) => type === "array" ? { minItems: minLength } : { minLength },
+      toJsonSchema: ({ type }) => {
+        if (type === "string" && minLength !== 0 && minLength !== 1) {
+          throw new globalThis.Error(
+            "Cannot export Schema.isMinLength as JSON Schema minLength: UTF-16 code units and Unicode code points differ. Use Schema.isMinCodePoints or provide a toJsonSchema annotation."
+          )
+        }
+        return type === "array" ? { minItems: minLength } : { minLength }
+      },
       toCode: () => ({ runtime: `Schema.isMinLength(${minLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8093,8 +8102,11 @@ export function isNonEmpty(annotations?: Annotations.Filter) {
  *
  * JSON Schema:
  *
- * This check corresponds to the `maxLength` constraint for strings or the
- * `maxItems` constraint for arrays in JSON Schema.
+ * For arrays, this check corresponds to `maxItems`. A string bound of zero
+ * corresponds to `maxLength: 0`. Other string bounds throw during JSON Schema
+ * generation because UTF-16 code units differ from Unicode code points. Use
+ * {@link isMaxCodePoints} for code-point semantics, or supply a `toJsonSchema`
+ * check annotation to define an explicit mapping.
  *
  * Arbitrary:
  *
@@ -8115,7 +8127,14 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
         id: "effect/schema/isMaxLength",
         payload: { maxLength }
       },
-      toJsonSchema: ({ type }) => type === "array" ? { maxItems: maxLength } : { maxLength },
+      toJsonSchema: ({ type }) => {
+        if (type === "string" && maxLength !== 0) {
+          throw new globalThis.Error(
+            "Cannot export Schema.isMaxLength as JSON Schema maxLength: UTF-16 code units and Unicode code points differ. Use Schema.isMaxCodePoints or provide a toJsonSchema annotation."
+          )
+        }
+        return type === "array" ? { maxItems: maxLength } : { maxLength }
+      },
       toCode: () => ({ runtime: `Schema.isMaxLength(${maxLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8134,9 +8153,11 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
  * JSON Schema:
  *
  * For arrays, this check corresponds to `minItems` and `maxItems`. For strings,
- * it corresponds to `minLength` and `maxLength`. JavaScript counts UTF-16 code
- * units while JSON Schema counts Unicode code points, so the two validations
- * can differ for some strings.
+ * only a maximum of zero with a minimum of zero or one is exported directly.
+ * Other string bounds throw during JSON Schema generation because UTF-16 code
+ * units differ from Unicode code points. Use {@link isBetweenCodePoints} for
+ * code-point semantics, or supply a `toJsonSchema` check annotation to define
+ * an explicit mapping.
  *
  * Arbitrary:
  *
@@ -8161,10 +8182,16 @@ export function isBetweenLength(minimum: number, maximum: number, annotations?: 
         id: "effect/schema/isBetweenLength",
         payload: { minimum, maximum }
       },
-      toJsonSchema: ({ type }) =>
-        type === "array"
+      toJsonSchema: ({ type }) => {
+        if (type === "string" && (maximum !== 0 || (minimum !== 0 && minimum !== 1))) {
+          throw new globalThis.Error(
+            "Cannot export Schema.isBetweenLength as JSON Schema length bounds: UTF-16 code units and Unicode code points differ. Use Schema.isBetweenCodePoints or provide a toJsonSchema annotation."
+          )
+        }
+        return type === "array"
           ? { allOf: [{ minItems: minimum }, { maxItems: maximum }] }
-          : { allOf: [{ minLength: minimum }, { maxLength: maximum }] },
+          : { allOf: [{ minLength: minimum }, { maxLength: maximum }] }
+      },
       toCode: () => ({ runtime: `Schema.isBetweenLength(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -15230,9 +15257,11 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  *
  * **Gotchas**
  *
- * JSON Schema generation is best-effort. String length uses Unicode code points
- * in JSON Schema and UTF-16 code units in Effect. A generated `pattern` cannot
- * retain JavaScript RegExp flags. Object property checks apply to the original
+ * JSON Schema generation is best-effort. UTF-16 string-length checks throw when
+ * their bounds cannot be exported directly as equivalent code-point bounds.
+ * Use code-point checks or an explicit `toJsonSchema` check annotation instead.
+ * A generated `pattern` cannot retain JavaScript RegExp flags.
+ * Object property checks apply to the original
  * input in JSON Schema but to the decoded object in Effect. `oneOf` can also
  * reject values accepted by overlapping Effect union members. Custom
  * `toJsonSchema` annotations are the annotation author's responsibility. When
