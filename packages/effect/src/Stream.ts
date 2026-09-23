@@ -2882,18 +2882,24 @@ export const concat: {
   }
 )
 
+// The operands of each `concat` result, so a chain can be run as one layer
 const concatParts = new WeakMap<Stream<any, any, any>, readonly [Stream<any, any, any>, Stream<any, any, any>]>()
 
+// Emits the channel of each non-`concat` part of a chain in order, expanding
+// nested `concat` operands onto a stack that is created for each run
 const concatLeaves = <A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) =>
   Channel.fromPull(Effect.sync(() => {
-    const stack = [that, self]
+    const stack: Array<Stream<A, E, R>> = [that, self]
     return Effect.suspend(() => {
       let stream = stack.pop()
-      for (let parts = stream && concatParts.get(stream); parts !== undefined; parts = concatParts.get(stream)) {
+      if (stream === undefined) return Cause.done()
+      let parts = concatParts.get(stream)
+      while (parts !== undefined) {
         stack.push(parts[1])
         stream = parts[0]
+        parts = concatParts.get(stream)
       }
-      return stream === undefined ? Cause.done() : Effect.succeed(stream.channel)
+      return Effect.succeed(stream.channel)
     })
   }))
 
