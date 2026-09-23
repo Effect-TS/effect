@@ -966,6 +966,11 @@ Missing key
         `Expected no excess property
   at [1]`
       )
+      await decoding.fail(
+        ["a", "b", "c"],
+        `Expected no excess property
+  at [1]`
+      )
       const decodingAll = asserts.decoding({ parseOptions: { errors: "all" } })
       await decodingAll.fail(
         ["a", "b", "c"],

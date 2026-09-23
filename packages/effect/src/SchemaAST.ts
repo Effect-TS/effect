@@ -2319,29 +2319,38 @@ export const Arrays: new(
       return rest![0]
     }
 
-    return Effect.fnUntracedEager(function*(input, options) {
-      if (input === InternalParser.missing) {
-        return InternalParser.missing
+    const finish = (s: ArrayParserState): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+      if (ast.rest.length === 0 && s.len > elementLen) {
+        for (let i = elementLen; i <= s.len - 1; i++) {
+          const unexpected = new SchemaIssue.UnexpectedKey(ast, s.input[i], s.options)
+          const issue = new SchemaIssue.Pointer([i], unexpected)
+          if (s.options.errors === "all") {
+            if (s.issues) s.issues.push(issue)
+            else s.issues = [issue]
+          } else {
+            return Effect.fail(new SchemaIssue.Composite(ast, [issue], s.input, s.options))
+          }
+        }
       }
+      if (s.issues) {
+        return Effect.fail(new SchemaIssue.Composite(ast, s.issues, s.input, s.options))
+      }
+      return InternalParser.succeed(s.output)
+    }
 
-      // If the input is not an array, return early with an error
-      if (!Array.isArray(input)) {
-        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
-      }
-      if (!elements) {
-        elements = ast.elements.map((ast) => ({ ast, parser: compileField(ast) }))
-        rest = ast.rest.map((ast) => ({ ast, parser: compileField(ast) }))
-      }
-
+    const parse = (
+      input: ReadonlyArray<unknown>,
+      options: ParseOptions
+    ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
       const len = input.length
-      const state = {
+      const state: ArrayParserState = {
         ast,
         getParser,
         input,
         len,
         tailThreshold: Math.max(elementLen, len - tailLen),
         output: new globalThis.Array(len),
-        issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
+        issues: undefined,
         options
       }
       const end = ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
@@ -2349,32 +2358,38 @@ export const Arrays: new(
       const eff = concurrency === 1
         ? parseArray(state, input, 0, end)
         : parseArrayConcurrent(state, input, { concurrency, end })
-      if (eff) yield* eff
+      return eff ? settle(eff, state) : finish(state)
+    }
 
-      // ---------------------------------------------
-      // handle excess indexes
-      // ---------------------------------------------
-      if (ast.rest.length === 0 && len > elementLen) {
-        for (let i = elementLen; i <= len - 1; i++) {
-          const unexpected = new SchemaIssue.UnexpectedKey(ast, input[i], options)
-          const issue = new SchemaIssue.Pointer([i], unexpected)
-          if (options.errors === "all") {
-            if (state.issues) state.issues.push(issue)
-            else state.issues = [issue]
-          } else {
-            return yield* Effect.fail(
-              new SchemaIssue.Composite(ast, [issue], input, options)
-            )
-          }
+    const settle = (
+      eff: Effect.Effect<void, SchemaIssue.Issue, any>,
+      state: ArrayParserState
+    ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+      if (effectIsExit(eff)) return Effect.flatMapEager(eff, () => finish(state))
+      let first = true
+      return Effect.suspend(() => {
+        if (!first) return parse(state.input, state.options)
+        first = false
+        return Effect.flatMap(eff, () => finish(state))
+      })
+    }
+
+    return (input, options) => {
+      if (input === InternalParser.missing) return InternalParser.missingExit
+      try {
+        // If the input is not an array, return early with an error
+        if (!Array.isArray(input)) {
+          return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
         }
+        if (!elements) {
+          elements = ast.elements.map((ast) => ({ ast, parser: compileField(ast) }))
+          rest = ast.rest.map((ast) => ({ ast, parser: compileField(ast) }))
+        }
+        return parse(input, options)
+      } catch (error) {
+        return Effect.die(error)
       }
-      if (state.issues) {
-        return yield* Effect.fail(
-          new SchemaIssue.Composite(ast, state.issues, input, options)
-        )
-      }
-      return state.output
-    })
+    }
   }
   private _rebuild(recur: (ast: AST) => AST, checks: Checks | undefined, encodingChecks: Checks | undefined) {
     const elements = mapOrSame(this.elements, recur)
