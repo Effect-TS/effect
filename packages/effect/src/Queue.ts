@@ -1408,7 +1408,12 @@ export const takeBetween: {
   min = Count.normalize(min)
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
-    takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(awaitTake(self), takeBetween(self, 1, max))
+    takeBetweenUnsafe(self, min, max) ?? internalEffect.andThen(
+      awaitTake(self, () =>
+        self.messages.length >= Math.min(min, self.capacity || 1) ||
+        (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)),
+      takeBetween(self, 1, max)
+    )
   )
 })
 
@@ -1537,7 +1542,7 @@ export const peek = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
     if (self.messages.length > 0 && self.messages.head) {
       return internalEffect.succeed(self.messages.head.array[self.messages.head.offset])
     }
-    return internalEffect.andThen(awaitTake(self), peek(self))
+    return internalEffect.andThen(awaitTake(self, () => self.messages.length > 0), peek(self))
   })
 
 /**
@@ -2073,10 +2078,20 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
   return false
 }
 
-const awaitTake = <A, E>(self: Dequeue<A, E>) =>
+const awaitTake = <A, E>(
+  self: Dequeue<A, E>,
+  isReady: () => boolean = () =>
+    self.messages.length > 0 ||
+    (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
+) =>
   internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") {
       return resume(self.state.exit)
+    }
+    // The availability check in the caller may have yielded before this callback ran.
+    // Recheck here, without yielding between the check and registering the taker.
+    if (isReady()) {
+      return resume(internalEffect.exitVoid)
     }
     self.state.takers.add(resume)
     return internalEffect.sync(() => {
