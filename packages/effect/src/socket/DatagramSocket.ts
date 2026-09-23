@@ -672,8 +672,12 @@ class ReaderState {
   }
 
   compact() {
-    this.buffer.copyWithin(0, this.head)
-    this.buffer.length -= this.head
+    // a plain loop: `copyWithin` takes V8's generic path, several times slower
+    const buffer = this.buffer
+    const head = this.head
+    const length = buffer.length - head
+    for (let i = 0; i < length; i++) buffer[i] = buffer[i + head]
+    buffer.length = length
     this.head = 0
   }
 
