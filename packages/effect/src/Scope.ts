@@ -489,7 +489,7 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  * @category combinators
  * @since 2.0.0
  */
-export const close: <A, E>(self: Scope, exit: Exit<A, E>) => Effect<void> = effect.scopeClose
+export const close: <A, E>(self: Closeable, exit: Exit<A, E>) => Effect<void> = effect.scopeClose
 
 /**
  * Closes a scope unsafely with the provided exit value.
