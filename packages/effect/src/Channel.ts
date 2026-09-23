@@ -3250,18 +3250,11 @@ const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutDon
                 // A failed close or schedule step must not start another repetition.
                 const transition = Scope.close(runScope, Exit.void).pipe(
                   Effect.flatMap(() => onDone(done as OutDone, scope)),
-                  Pull.catchDone((done2) =>
-                    currentPull = Cause.done(done2 as OutDone2)
-                  ),
-                  Effect.flatMap(() => {
-                    const nextScope = Scope.forkUnsafe(scope)
-                    return currentPull = makePull(nextScope)
-                  }),
-                  Effect.onError((cause) =>
-                    Effect.sync(() => {
-                      currentPull = Effect.failCause(cause)
-                    })
-                  )
+                  Effect.matchCauseEffect({
+                    onFailure: (cause) =>
+                      currentPull = Effect.failCause(cause),
+                    onSuccess: () => currentPull = makePull(Scope.forkUnsafe(scope))
+                  })
                 )
                 return currentPull = transition
               }))

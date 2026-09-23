@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Stream.forever` and `Stream.repeat` accumulating pull layers and retaining resources across repetitions. Repetitions now use a constant-depth loop and close each run's scope before the next one.
+Fix `Stream.forever` and `Stream.repeat` slowing down and retaining pull layers with each repetition by using a constant-depth loop.
