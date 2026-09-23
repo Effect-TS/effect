@@ -84,7 +84,7 @@ const makeTxPriorityQueue = <A>(ref: TxRef.TxRef<Chunk<A>>, ord: Order<A>): TxPr
   return self
 }
 
-const insertSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>): Chunk<A> => {
+const mergeSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>): Chunk<A> => {
   const arr = C.toReadonlyArray(chunk)
   const out = Array(arr.length + values.length) as Array<A>
   let i = 0
@@ -92,13 +92,22 @@ const insertSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A
   for (let j = 0; j < values.length; j++) {
     const value = values[j]
     let lo = i
-    let hi = arr.length
-    while (lo < hi) {
-      const mid = (lo + hi) >>> 1
-      if (ord(arr[mid], value) <= 0) {
-        lo = mid + 1
-      } else {
-        hi = mid
+    if (lo < arr.length && ord(arr[lo], value) <= 0) {
+      lo++
+      let step = 1
+      while (lo < arr.length && ord(arr[lo], value) <= 0) {
+        lo += step
+        step *= 2
+      }
+      let hi = Math.min(lo, arr.length)
+      lo = Math.max(i + 1, lo - step / 2)
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1
+        if (ord(arr[mid], value) <= 0) {
+          lo = mid + 1
+        } else {
+          hi = mid
+        }
       }
     }
     for (; i < lo; i++) out[k++] = arr[i]
@@ -343,7 +352,7 @@ export const offer: {
 } = dual(
   2,
   <A>(self: TxPriorityQueue<A>, value: A): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => insertSorted(chunk, [value], self.ord))
+    TxRef.update(self.ref, (chunk) => mergeSorted(chunk, [value], self.ord))
 )
 
 /**
@@ -372,7 +381,7 @@ export const offerAll: {
 } = dual(
   2,
   <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => insertSorted(chunk, Array.from(values).sort((a, b) => self.ord(a, b)), self.ord))
+    TxRef.update(self.ref, (chunk) => mergeSorted(chunk, Array.from(values).sort((a, b) => self.ord(a, b)), self.ord))
 )
 
 /**
