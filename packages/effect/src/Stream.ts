@@ -2875,9 +2875,27 @@ export const concat: {
   <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A | A2, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A | A2, E | E2, R | R2> =>
-    flatten(fromArray<Stream<A | A2, E | E2, R | R2>>([self, that]))
+  <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<A | A2, E | E2, R | R2> => {
+    const stream = fromChannel(Channel.flatMap(concatLeaves<A | A2, E | E2, R | R2>(self, that), identity))
+    concatParts.set(stream, [self, that])
+    return stream
+  }
 )
+
+const concatParts = new WeakMap<Stream<any, any, any>, readonly [Stream<any, any, any>, Stream<any, any, any>]>()
+
+const concatLeaves = <A, E, R>(self: Stream<A, E, R>, that: Stream<A, E, R>) =>
+  Channel.fromPull(Effect.sync(() => {
+    const stack = [that, self]
+    return Effect.suspend(() => {
+      let stream = stack.pop()
+      for (let parts = stream && concatParts.get(stream); parts !== undefined; parts = concatParts.get(stream)) {
+        stack.push(parts[1])
+        stream = parts[0]
+      }
+      return stream === undefined ? Cause.done() : Effect.succeed(stream.channel)
+    })
+  }))
 
 /**
  * Prepends the values from the provided iterable before the stream's elements.

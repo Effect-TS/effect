@@ -24,6 +24,7 @@ import {
   References,
   Result,
   Schedule,
+  Scheduler,
   Schema,
   Scope,
   Sink,
@@ -1414,6 +1415,52 @@ describe("Stream", () => {
           ["odd", [1, 3, 5]],
           ["even", [2, 4]]
         ])
+      }))
+  })
+
+  describe("concat", () => {
+    it.effect("work per part does not grow with the length of a chain", () =>
+      Effect.gen(function*() {
+        const countOps = (n: number, nest: "left" | "right") =>
+          Effect.suspend(() => {
+            let ops = 0
+            const scheduler: Scheduler.Scheduler = {
+              executionMode: "sync",
+              makeDispatcher: () => new Scheduler.MixedScheduler("sync").makeDispatcher(),
+              shouldYield: () => {
+                ops++
+                return false
+              }
+            }
+            let stream: Stream.Stream<number> = Stream.make(0)
+            for (let i = 1; i < n; i++) {
+              stream = nest === "left" ? Stream.concat(stream, Stream.make(i)) : Stream.concat(Stream.make(i), stream)
+            }
+            return Effect.map(
+              Effect.provideService(Stream.runDrain(stream), Scheduler.Scheduler, scheduler),
+              () => ops
+            )
+          })
+        for (const nest of ["left", "right"] as const) {
+          const small = yield* countOps(1_000, nest)
+          const large = yield* countOps(2_000, nest)
+          assertTrue(small > 1_000, `${nest}: operations were counted`)
+          assertTrue(large / small < 2.5, `${nest}: doubling the chain multiplied the work by ${large / small}`)
+        }
+      }))
+
+    it.effect("runs the same chain twice", () =>
+      Effect.gen(function*() {
+        const stream = Stream.concat(Stream.make(0), Stream.make(1))
+        deepStrictEqual(yield* Stream.runCollect(stream), [0, 1], "first run")
+        deepStrictEqual(yield* Stream.runCollect(stream), [0, 1], "second run")
+      }))
+
+    it.effect("runs a copy of a chain with its own channel", () =>
+      Effect.gen(function*() {
+        const chain = Stream.concat(Stream.make("a"), Stream.make("b"))
+        const copy: Stream.Stream<string> = { ...chain, channel: Stream.make("copy").channel }
+        deepStrictEqual(yield* Stream.runCollect(Stream.concat(copy, Stream.make("z"))), ["copy", "z"])
       }))
   })
 
