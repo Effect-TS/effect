@@ -805,12 +805,21 @@ export const shutdown = <A>(self: PubSub<A>): Effect.Effect<void> =>
  *
  * **Details**
  *
- * Later publishes return `false`. Each subscriber receives the messages
- * already buffered for it, then the final message. Subscribers that arrive
+ * Later publishes return `false`, as do publishers waiting for capacity when
+ * `end` is called. Each subscriber receives the messages already buffered
+ * for it, then the final message. Subscribers that arrive
  * after the end receive the replayed messages, if any, and then the final
  * message. The final message never occupies capacity, so a bounded `PubSub`
  * cannot drop it. Returns `false` if the `PubSub` was already ended or shut
  * down.
+ *
+ * `take`, `takeAll`, and `takeBetween` deliver the final message;
+ * non-suspending `takeUpTo` does not.
+ *
+ * **Gotchas**
+ *
+ * The final message is sticky: subsequent takes return it again. Consumers
+ * must treat it as terminal rather than continuing to take messages.
  *
  * **Example** (Ending a PubSub)
  *
@@ -867,6 +876,11 @@ export const endUnsafe: {
 } = dual(2, <A>(self: PubSub<A>, value: A): boolean => {
   if (self.shutdownFlag.current || Option.isSome(self.ended.current)) return false
   MutableRef.set(self.ended, Option.some(value))
+  if (self.strategy instanceof BackPressureStrategy) {
+    for (const [_, deferred, last] of MutableList.takeAll(self.strategy.publishers)) {
+      if (last) Deferred.doneUnsafe(deferred, Exit.succeed(false))
+    }
+  }
   // A waiting subscriber has nothing buffered, so it receives the final
   // message right away.
   const exit = Exit.succeed(value)
