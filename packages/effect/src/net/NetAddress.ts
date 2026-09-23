@@ -597,6 +597,13 @@ const packOctets = (a: number, b: number, c: number, d: number): number => ((a <
 const packBytes = (bytes: Uint8Array, offset: number): number =>
   packOctets(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3])
 
+const wordToOctets = (word: number): readonly [number, number, number, number] => [
+  word >>> 24,
+  (word >>> 16) & 0xff,
+  (word >>> 8) & 0xff,
+  word & 0xff
+]
+
 const makeMac = (bytes: Uint8Array): MacAddress => {
   const self = Object.assign(Object.create(MacProto), { bytes: new Uint8Array(bytes) })
   return Object.freeze(self)
@@ -875,10 +882,8 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
  * @category getters
  * @since 4.0.0
  */
-export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, number, number] => {
-  const value = ipv4Value(self)
-  return [value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]
-}
+export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, number, number] =>
+  wordToOctets(ipv4Value(self))
 
 /**
  * Returns the eight numeric segments of an IPv6 address in a fresh tuple.
@@ -905,11 +910,7 @@ export const ipv6ToOctets = (
   self: Ipv6Address
 ): ReadonlyArray<number> => {
   const { w0, w1, w2, w3 } = ipv6Words(self)
-  const output: Array<number> = []
-  for (const word of [w0, w1, w2, w3]) {
-    output.push(word >>> 24, (word >>> 16) & 0xff, (word >>> 8) & 0xff, word & 0xff)
-  }
-  return output
+  return [...wordToOctets(w0), ...wordToOctets(w1), ...wordToOctets(w2), ...wordToOctets(w3)]
 }
 
 /**
@@ -1017,10 +1018,7 @@ export const match: {
  * @since 4.0.0
  */
 export const formatIp = (self: IpAddress): string => {
-  if (isIpv4Address(self)) {
-    const value = ipv4Value(self)
-    return `${value >>> 24}.${(value >>> 16) & 0xff}.${(value >>> 8) & 0xff}.${value & 0xff}`
-  }
+  if (isIpv4Address(self)) return ipv4ToOctets(self).join(".")
   const segments = ipv6ToSegments(self)
   if (isIpv4Mapped(self)) {
     return `::ffff:${segments[6] >> 8}.${segments[6] & 0xff}.${segments[7] >> 8}.${segments[7] & 0xff}`
@@ -1151,7 +1149,7 @@ export const isUnicast = <A extends IpAddress | MacAddress>(self: A): self is Un
  */
 export const isLinkLocal = <A extends IpAddress>(self: A): self is LinkLocalAddress<A> => {
   if (isIpv4Address(self)) return (ipv4Value(self) >>> 16) === 0xa9fe
-  return (ipv6Words(self).w0 >>> 22) === 0x3fa
+  return ((ipv6Words(self).w0 >>> 16) & 0xffc0) === 0xfe80
 }
 
 /**
@@ -1163,7 +1161,7 @@ export const isLinkLocal = <A extends IpAddress>(self: A): self is LinkLocalAddr
  */
 export const isPrivate = <A extends Ipv4Address>(self: A): self is PrivateAddress<A> => {
   const value = ipv4Value(self)
-  return (value >>> 24) === 10 || (value >>> 20) === 0xac1 || (value >>> 16) === 0xc0a8
+  return (value >>> 24) === 10 || ((value >>> 16) & 0xfff0) === 0xac10 || (value >>> 16) === 0xc0a8
 }
 
 /**
@@ -1174,7 +1172,7 @@ export const isPrivate = <A extends Ipv4Address>(self: A): self is PrivateAddres
  * @since 4.0.0
  */
 export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is UniqueLocalAddress<A> =>
-  (ipv6Words(self).w0 >>> 25) === 0x7e
+  ((ipv6Words(self).w0 >>> 24) & 0xfe) === 0xfc
 
 /**
  * Returns `true` when an IPv6 address is in the `::ffff:0:0/96` mapped range.
