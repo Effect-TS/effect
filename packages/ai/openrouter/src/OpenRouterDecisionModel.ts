@@ -38,6 +38,27 @@ export const model = (
 ): Model.Model<"openrouter", DecisionModel.DecisionModel, OpenRouterClient> =>
   Model.make("openrouter", model, layer({ model, config }))
 
+// The Decisions API can round each probability independently (e.g. three
+// two-decimal values totaling 0.99). Only correct discrepancies small enough
+// to be explained by rounding; leave invalid distributions for DecisionModel
+// to reject rather than turning arbitrary weights into probabilities.
+const normalizeRoundedProbabilities = (probabilities: Record<string, number>): Record<string, number> => {
+  const values = Object.values(probabilities)
+  if (values.length === 0 || values.some((value) => !Number.isFinite(value) || value < 0 || value > 1)) {
+    return probabilities
+  }
+  const total = values.reduce((sum, value) => sum + value, 0)
+  const drift = Math.abs(total - 1)
+  if (total === 0 || drift <= 1e-6 || drift > Math.min(values.length * 0.005, 0.02) + 1e-12) {
+    return probabilities
+  }
+  const normalized: Record<string, number> = Object.create(null)
+  for (const [label, value] of Object.entries(probabilities)) {
+    normalized[label] = value / total
+  }
+  return normalized
+}
+
 /**
  * Creates a decision service that requires full choice and score distributions.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
@@ -98,7 +119,7 @@ export const make = Effect.fnUntraced(function*(options: {
           answers[key] = {
             _tag: "Classify",
             label: answer.choice,
-            probabilities: answer.probabilities,
+            probabilities: normalizeRoundedProbabilities(answer.probabilities),
             confidence: answer.confidence
           }
         } else {
@@ -112,7 +133,12 @@ export const make = Effect.fnUntraced(function*(options: {
               }
             }
           }
-          answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
+          answers[key] = {
+            _tag: "Rate",
+            rating: answer.score,
+            probabilities: normalizeRoundedProbabilities(probabilities),
+            confidence: answer.confidence
+          }
         }
       }
       return {

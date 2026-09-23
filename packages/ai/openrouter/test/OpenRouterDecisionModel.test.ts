@@ -81,18 +81,20 @@ describe("OpenRouterDecisionModel", () => {
       })
       const { answers } = yield* DecisionModel.decide(definition, { input: "It is fine" }).pipe(
         Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
-        Effect.provide(makeClientLayer((request) => Effect.succeed(jsonResponse(request, {
-          model: "test/decision-model",
-          answers: {
-            neutral3: {
-              type: "choice",
-              choice: "neutral",
-              probabilities: { negative: 0.02, neutral: 0.93, positive: 0.04 },
-              confidence: 0.93
-            }
-          },
-          usage: { input_tokens: 10, output_tokens: 5 }
-        }))))
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            model: "test/decision-model",
+            answers: {
+              neutral3: {
+                type: "choice",
+                choice: "neutral",
+                probabilities: { negative: 0.02, neutral: 0.93, positive: 0.04 },
+                confidence: 0.93
+              }
+            },
+            usage: { input_tokens: 10, output_tokens: 5 }
+          }))
+        ))
       )
 
       assert.strictEqual(answers.neutral3.label, "neutral")
