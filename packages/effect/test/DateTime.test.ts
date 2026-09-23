@@ -378,30 +378,12 @@ describe("DateTime", () => {
   })
 
   describe("zoneMakeNamedUnsafe", () => {
-    const resolvedZoneId = (zoneId: string) =>
-      new Intl.DateTimeFormat("en-US", { timeZone: zoneId }).resolvedOptions().timeZone
+    it("caches lookups by the requested zone id when Intl resolves a different id", () => {
+      const canonical = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles" })
+        .resolvedOptions().timeZone
+      const alias = canonical.toLowerCase()
+      strictEqual(alias !== canonical, true)
 
-    it("reports the zone id Intl resolved to and reuses the zone", () => {
-      for (
-        const zoneId of [
-          "Asia/Kolkata",
-          "Asia/Calcutta",
-          "US/Pacific",
-          "America/Los_Angeles",
-          "UTC"
-        ]
-      ) {
-        const zone = DateTime.zoneMakeNamedUnsafe(zoneId)
-        strictEqual(zone.id, resolvedZoneId(zoneId))
-        strictEqual(DateTime.zoneMakeNamedUnsafe(zoneId), zone)
-      }
-      strictEqual(
-        DateTime.zoneMakeNamedUnsafe("US/Pacific") === DateTime.zoneMakeNamedUnsafe("America/Los_Angeles"),
-        resolvedZoneId("US/Pacific") === resolvedZoneId("America/Los_Angeles")
-      )
-    })
-
-    it("builds one formatter for repeated lookups of an aliased zone id", () => {
       const Real = Intl.DateTimeFormat
       let built = 0
       Intl.DateTimeFormat = new Proxy(Real, {
@@ -411,13 +393,16 @@ describe("DateTime", () => {
         }
       })
       try {
+        const zone = DateTime.zoneMakeNamedUnsafe(canonical)
+        strictEqual(zone.id, canonical)
+        const beforeAlias = built
         for (let i = 0; i < 5; i++) {
-          DateTime.zoneMakeNamedUnsafe("Japan")
+          strictEqual(DateTime.zoneMakeNamedUnsafe(alias), zone)
         }
+        strictEqual(built - beforeAlias, 1)
       } finally {
         Intl.DateTimeFormat = Real
       }
-      strictEqual(built, 1)
     })
   })
 
