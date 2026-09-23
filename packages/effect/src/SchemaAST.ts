@@ -3404,6 +3404,8 @@ type SentinelIndex = Map<PropertyKey, SentinelEntry>
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
 const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
+const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array.isArray(input) ? "array" : typeof input
+
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
   key === "__proto__" ? Object.hasOwn(input, key) : key in input
 
@@ -3421,16 +3423,14 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     const encoded = toCandidate(a)
     if (isNever(encoded)) continue
 
-    if (onlyLiterals) {
-      if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
-        literalCandidates ??= new Map()
-        const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
-        let arr = literalCandidates.get(literal)
-        if (!arr) literalCandidates.set(literal, arr = [])
-        arr.push(a)
-      } else {
-        onlyLiterals = false
-      }
+    if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
+      literalCandidates ??= new Map()
+      const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
+      let arr = literalCandidates.get(literal)
+      if (!arr) literalCandidates.set(literal, arr = [])
+      arr.push(a)
+    } else {
+      onlyLiterals = false
     }
 
     const sentinels = collectSentinels(encoded)
@@ -3452,6 +3452,11 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       for (const t of candidateTypes) (otherwise[t] ??= []).push(i)
     }
   }
+
+  // Non-discriminated members are grouped by runtime type once and reused by every decode.
+  const fallbacks: { [K in Type]?: ReadonlyArray<AST> } = {}
+  const getFallback = (type: Type): ReadonlyArray<AST> =>
+    fallbacks[type] ??= Object.freeze((otherwise?.[type] ?? emptyCandidates).map((i) => types[i]))
 
   if (onlyLiterals && literalCandidates) {
     literalCandidates.forEach(Object.freeze)
@@ -3485,12 +3490,11 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
 
     index = (input, isConstructor) => {
-      const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
-      const base = otherwise?.[runtimeType] ?? emptyCandidates
-      if (!Predicate.isObjectKeyword(input)) return base.map((i) => types[i])
+      const runtimeType = getRuntimeType(input)
+      if (!Predicate.isObjectKeyword(input)) return getFallback(runtimeType)
 
       // Non-discriminated candidates are runtime-type fallbacks and are never removed by sentinel checks.
-      const selected = new Set(base)
+      const selected = new Set(otherwise?.[runtimeType])
       let directKey: PropertyKey | undefined
       // An observed common key can seed the selection directly; an unknown value rules out every
       // discriminated candidate.
@@ -3500,7 +3504,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
         const value = hasKey ? (input as any)[key] : undefined
         if (hasKey && (!isConstructor || value !== undefined)) {
           const match = byValue.get(value)
-          if (!match) return base.map((i) => types[i])
+          if (!match) return getFallback(runtimeType)
           for (const i of match) selected.add(i)
           directKey = key
         }
@@ -3538,8 +3542,8 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
   } else {
     index = (input) => {
-      const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
-      return (otherwise?.[runtimeType] ?? emptyCandidates).map((i) => types[i]).filter(filterLiterals(input))
+      const fallback = getFallback(getRuntimeType(input))
+      return literalCandidates ? fallback.filter(filterLiterals(input)) : fallback
     }
   }
 
