@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix a scope skipping its remaining finalizers when one of them throws.
+Run all scope finalizers even when one throws synchronously, and preserve the original failure when closing the scope.

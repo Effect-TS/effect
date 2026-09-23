@@ -3953,10 +3953,10 @@ export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>
   return scopeCloseFinalizers(self, finalizers, exit_)
 }
 
-const runFinalizer = <X>(
-  finalizer: (exit: Exit.Exit<any, any>) => X,
+const runFinalizer = (
+  finalizer: (exit: Exit.Exit<any, any>) => Effect.Effect<unknown>,
   exit_: Exit.Exit<any, any>
-): X | Exit.Exit<never> => {
+): Effect.Effect<unknown> => {
   try {
     return finalizer(exit_)
   } catch (defect) {
