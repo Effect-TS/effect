@@ -1,5 +1,5 @@
-import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Fiber, Latch, References } from "effect"
+import { afterEach, assert, describe, it, vi } from "@effect/vitest"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, Metric, References } from "effect"
 
 describe("Fiber", () => {
   it("is a fiber", async () => {
@@ -22,6 +22,67 @@ describe("Fiber", () => {
     fiber.interruptUnsafe()
 
     assert.deepStrictEqual(observed, [1, 2])
+  })
+
+  describe("a throwing exit callback", () => {
+    const reported: Array<unknown> = []
+    const collectReports = () => {
+      reported.length = 0
+      vi.stubGlobal("queueMicrotask", (task: () => void) => {
+        try {
+          task()
+        } catch (error) {
+          reported.push(error)
+        }
+      })
+    }
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+    const throwing = () => {
+      throw new Error("observer")
+    }
+
+    it("does not stop the other observers", () => {
+      collectReports()
+      const latch = Latch.makeUnsafe(false)
+      const fiber = Effect.runFork(latch.await)
+      const observed: Array<string> = []
+      fiber.addObserver(throwing)
+      fiber.addObserver((exit) => {
+        observed.push(exit._tag)
+      })
+      latch.openUnsafe()
+      assert.deepStrictEqual(observed, ["Success"])
+      assert.deepStrictEqual(reported, [new Error("observer")])
+    })
+
+    it("does not stop the completer resuming other waiters", () => {
+      collectReports()
+      const deferred = Deferred.makeUnsafe<void>()
+      Effect.runCallback(Deferred.await(deferred), { onExit: throwing })
+      const other = Effect.runFork(Deferred.await(deferred))
+      const completer = Effect.runSyncExit(Deferred.succeed(deferred, undefined))
+      assert.deepStrictEqual(completer, Exit.succeed(true))
+      assert.deepStrictEqual(other.pollUnsafe(), Exit.void)
+      assert.deepStrictEqual(reported, [new Error("observer")])
+    })
+
+    it("in runtime metrics does not stop the fiber ending", () => {
+      collectReports()
+      const metrics: Metric.FiberRuntimeMetricsService = {
+        recordFiberStart: () => {},
+        recordFiberEnd: throwing
+      }
+      const deferred = Deferred.makeUnsafe<void>()
+      const waiter = Effect.runForkWith(Context.make(Metric.FiberRuntimeMetrics, metrics))(Deferred.await(deferred))
+      const other = Effect.runFork(Deferred.await(deferred))
+      const completer = Effect.runSyncExit(Deferred.succeed(deferred, undefined))
+      assert.deepStrictEqual(completer, Exit.succeed(true))
+      assert.deepStrictEqual(waiter.pollUnsafe(), Exit.void)
+      assert.deepStrictEqual(other.pollUnsafe(), Exit.void)
+      assert.deepStrictEqual(reported, [new Error("observer")])
+    })
   })
 
   describe("joinAll", () => {

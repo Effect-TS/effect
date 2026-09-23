@@ -638,7 +638,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
 
     this._exit = exit
-    this.cache.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
+    try {
+      this.cache.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
+    } catch (error) {
+      queueMicrotask(() => {
+        throw error
+      })
+    }
     if (this._parent) {
       this._parent._children?.delete(this)
       this._parent = undefined
@@ -647,7 +653,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       const observers = this._observers
       this._observers = undefined
       for (let i = 0; i < observers.length; i++) {
-        observers[i](exit)
+        try {
+          observers[i](exit)
+        } catch (error) {
+          queueMicrotask(() => {
+            throw error
+          })
+        }
       }
     }
     this._stack.length = 0
