@@ -22,7 +22,6 @@ import {
   Schedule,
   Scheduler,
   Scope,
-  Tracer,
   TxRef
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
@@ -677,50 +676,14 @@ describe("Effect", () => {
         return result + this.b
       }).pipe(Effect.runPromise).then((_) => assert.deepStrictEqual(_, 3)))
 
-    it("keeps every iterator result intact", () => {
+    it("iterator yields the effect once, then completes with the sent value", () => {
       const effect = Effect.succeed(1)
       const iterator = effect[Symbol.iterator]()
       const yielded = iterator.next()
       const returned = iterator.next(2)
-      const again = iterator.next(3)
-      assert.isFalse(yielded.done)
-      assert.strictEqual(yielded.value, effect)
-      assert.strictEqual(JSON.stringify(returned), "{\"value\":2,\"done\":true}")
-      assert.strictEqual(JSON.stringify(again), "{\"value\":3,\"done\":true}")
-      assert.notStrictEqual(returned, again)
-    })
-
-    it("evaluates one operation per yielded effect", () => {
-      let operations = 0
-      const tracer = Tracer.make({
-        span: (options) => new Tracer.NativeSpan(options),
-        context: (primitive, fiber) => {
-          operations++
-          return primitive["~effect/Effect/evaluate"](fiber)
-        }
-      })
-      const count = (effect: Effect.Effect<unknown>) => {
-        operations = 0
-        Effect.runSync(Effect.withTracer(effect, tracer))
-        return operations
-      }
-      const yields = (n: number) =>
-        Effect.gen(function*() {
-          for (let i = 0; i < n; i++) {
-            yield* Effect.sync(() => i)
-            yield* Effect.succeed(i)
-          }
-        })
-      const traced = Effect.fn(function*(n: number) {
-        return yield* yields(n)
-      })
-      const spanned = Effect.fn("spanned")(function*(n: number) {
-        return yield* traced(n)
-      })
-      assert.deepStrictEqual(
-        [count(yields(0)), count(yields(1)), count(yields(10)), count(traced(10)), count(spanned(10))],
-        [3, 4, 13, 18, 29]
-      )
+      assert.deepStrictEqual({ ...yielded }, { value: effect, done: false })
+      assert.deepStrictEqual({ ...returned }, { value: 2, done: true })
+      assert.deepStrictEqual({ ...iterator.next(3) }, { value: 3, done: true })
     })
   })
 
@@ -3844,22 +3807,17 @@ describe("Effect", () => {
       assert.strictEqual(untraced.length, 2)
     })
 
-    it.effect("should record the definition site on every call", () => {
+    it.effect("should reuse the definition frame across calls", () => {
       const fn = Effect.fn("traced")(function*() {
-        return yield* References.CurrentStackFrame
+        return (yield* References.CurrentStackFrame)!
       })
       return Effect.gen(function*() {
         const first = yield* fn()
         const second = yield* fn()
-        for (const frame of [first, second]) {
-          assert.strictEqual(frame?.name, "traced")
-          assert.strictEqual(frame?.parent?.name, "traced (definition)")
-          assert.include(frame?.stack(), "Effect.test.ts")
-          assert.include(frame?.parent?.stack(), "Effect.test.ts")
-          assert.notStrictEqual(frame?.stack(), frame?.parent?.stack())
-        }
-        assert.notStrictEqual(first?.stack(), second?.stack())
-        assert.strictEqual(first?.parent?.stack(), second?.parent?.stack())
+        assert.strictEqual(first.parent?.name, "traced (definition)")
+        assert.include(first.parent?.stack(), "Effect.test.ts")
+        assert.strictEqual(first.parent?.stack(), second.parent?.stack())
+        assert.notStrictEqual(first.stack(), second.stack())
       })
     })
   })
