@@ -3087,6 +3087,45 @@ describe("Effect", () => {
         boom
       )
     })
+
+    it("passes only the outcome to handlers", () => {
+      function onSuccess(this: unknown, _value: number) {
+        // eslint-disable-next-line prefer-rest-params
+        return [this, arguments.length] as const
+      }
+      function onFailure(this: unknown, _error: string) {
+        // eslint-disable-next-line prefer-rest-params
+        return [this, arguments.length] as const
+      }
+      const options = { onFailure, onSuccess }
+      assert.deepStrictEqual(Effect.runSync(Effect.match(Effect.succeed(1), options)), [options, 1])
+      assert.deepStrictEqual(Effect.runSync(Effect.match(Effect.fail("error"), options)), [options, 1])
+      function onCause(this: unknown, _cause: Cause.Cause<string>) {
+        // eslint-disable-next-line prefer-rest-params
+        return [this, arguments.length] as const
+      }
+      const causeOptions = { onFailure: onCause, onSuccess }
+      assert.deepStrictEqual(
+        Effect.runSync(Effect.matchCause(Effect.succeed(1), causeOptions)),
+        [causeOptions, 1]
+      )
+      assert.deepStrictEqual(
+        Effect.runSync(Effect.matchCause(Effect.fail("error"), causeOptions)),
+        [causeOptions, 1]
+      )
+    })
+
+    it("leaves a defect for match and hands it to matchCause", () => {
+      const boom = new Error("boom")
+      assertExitDefect(
+        Effect.runSyncExit(Effect.match(Effect.die(boom), { onFailure: () => "handled", onSuccess: () => "ok" })),
+        boom
+      )
+      assert.strictEqual(
+        Effect.runSync(Effect.matchCause(Effect.die(boom), { onFailure: () => "handled", onSuccess: () => "ok" })),
+        "handled"
+      )
+    })
   })
 
   describe("flatMap", () => {
