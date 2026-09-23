@@ -14558,6 +14558,7 @@ export class Transaction extends Context.Service<
       {
         readonly version: number
         value: any
+        written: boolean
       }
     >
   }
@@ -14686,8 +14687,9 @@ const awaitPendingTransaction = (state: Transaction["Service"]) =>
   })
 
 function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["Service"]) {
-  for (const [ref, { value }] of state.journal) {
-    if (value !== ref.value) {
+  for (const [ref, { value, written }] of state.journal) {
+    if (!written) continue
+    if (!Object.is(value, ref.value)) {
       ref.version = ref.version + 1
       ref.value = value
     }

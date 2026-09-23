@@ -3831,6 +3831,47 @@ describe("Effect", () => {
 
           assert.deepStrictEqual(yield* Fiber.join(joined), Option.some(1))
         }))
+
+      it.effect("commits wake the waiters of refs they write, not refs they read", () =>
+        Effect.gen(function*() {
+          const gate = TxRef.makeUnsafe(0)
+          const other = TxRef.makeUnsafe(0)
+          let runs = 0
+          const waiter = yield* Effect.tx(Effect.gen(function*() {
+            runs++
+            const value = yield* TxRef.get(gate)
+            if (value === 0) return yield* Effect.txRetry
+            return value
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+
+          yield* Effect.tx(Effect.gen(function*() {
+            yield* TxRef.get(gate)
+            yield* TxRef.set(other, 1)
+          }))
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.strictEqual(runs, 1, "reading a ref should not wake its waiters")
+
+          yield* Effect.tx(TxRef.set(gate, 0))
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.strictEqual(runs, 2, "writing the same value should wake its waiters")
+
+          yield* Effect.tx(TxRef.set(gate, 1))
+          assert.strictEqual(yield* Fiber.join(waiter), 1)
+        }))
+
+      it.effect("a write of -0 over 0 is published and wakes its waiters", () =>
+        Effect.gen(function*() {
+          const zero = TxRef.makeUnsafe(0)
+          const negativeZero = yield* Effect.tx(Effect.gen(function*() {
+            const value = yield* TxRef.get(zero)
+            if (Object.is(value, 0)) return yield* Effect.txRetry
+            return 1 / value
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Effect.tx(TxRef.set(zero, -0))
+
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.deepStrictEqual(negativeZero.pollUnsafe(), Exit.succeed(-Infinity), "-0 over 0 never woke its waiter")
+        }))
     })
   })
 
