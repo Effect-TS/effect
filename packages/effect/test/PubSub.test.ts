@@ -701,43 +701,25 @@ describe("PubSub", () => {
       assert.deepStrictEqual(failed, [])
     })
 
-  it.effect("an interrupted take never leaves a poller that swallows a message", () =>
-    interruptAtEveryYield((budget) =>
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>()
-        const subscription = yield* PubSub.subscribe(pubsub)
-        const fiber = yield* Effect.forkChild(budget(PubSub.take(subscription)), { startImmediately: true })
-        yield* Fiber.interrupt(fiber)
-        yield* PubSub.publish(pubsub, 1)
-        return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
-      })
-    ))
-
-  it.effect("an interrupted takeAll never leaves a poller that swallows a message", () =>
-    interruptAtEveryYield((budget) =>
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.bounded<number>(4)
-        const subscription = yield* PubSub.subscribe(pubsub)
-        const fiber = yield* Effect.forkChild(budget(PubSub.takeAll(subscription)), { startImmediately: true })
-        yield* Fiber.interrupt(fiber)
-        yield* PubSub.publish(pubsub, 1)
-        return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
-      })
-    ))
-
-  it.effect("an interrupted takeBetween never leaves a poller that swallows a message", () =>
-    interruptAtEveryYield((budget) =>
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>()
-        const subscription = yield* PubSub.subscribe(pubsub)
-        const fiber = yield* Effect.forkChild(budget(PubSub.takeBetween(subscription, 1, 2)), {
-          startImmediately: true
+  for (
+    const [name, take] of [
+      ["take", PubSub.take],
+      ["takeAll", PubSub.takeAll],
+      ["takeBetween", (sub: PubSub.Subscription<number>) => PubSub.takeBetween(sub, 1, 2)]
+    ] as const
+  ) {
+    it.effect(`an interrupted ${name} never swallows the next message`, () =>
+      interruptAtEveryYield((budget) =>
+        Effect.gen(function*() {
+          const pubsub = yield* PubSub.bounded<number>(4)
+          const subscription = yield* PubSub.subscribe(pubsub)
+          const fiber = yield* Effect.forkChild(budget(take(subscription)), { startImmediately: true })
+          yield* Fiber.interrupt(fiber)
+          yield* PubSub.publish(pubsub, 1)
+          return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
         })
-        yield* Fiber.interrupt(fiber)
-        yield* PubSub.publish(pubsub, 1)
-        return (yield* PubSub.takeUpTo(subscription, 1)).length === 1
-      })
-    ))
+      ))
+  }
 
   it.effect("waiting takes on one subscription receive messages in the order they started waiting", () =>
     Effect.gen(function*() {
