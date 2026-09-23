@@ -354,6 +354,7 @@ describe("WorkflowEngine", () => {
       for (
         const [leftTag, leftKey, rightTag, rightKey] of [
           ["Order", "Pay-42", "Order-Pay", "42"],
+          ["Order", "Pay:42", "Order:Pay", "42"],
           ["", "-", "-", ""],
           ["A\"", "B\\", "A\"-B", "\\"]
         ]
