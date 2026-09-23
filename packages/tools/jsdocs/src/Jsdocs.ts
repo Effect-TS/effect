@@ -1519,8 +1519,8 @@ function buildTags(
   }
   const deprecated = values.get("deprecated")?.[0] ?? null
   const stability = values.get("stability")?.[0]
-  if (stability !== undefined && stability !== "unstable") {
-    diagnostics.push(diagnostic("invalid-stability", "@stability must have the value unstable"))
+  if (stability !== undefined && stability !== "unstable" && stability !== "experimental") {
+    diagnostics.push(diagnostic("invalid-stability", "@stability must have the value unstable or experimental"))
   }
   const unstable = stability === "unstable"
   if (deprecated === "") diagnostics.push(diagnostic("empty-tag", "@deprecated must include a message"))

@@ -53,7 +53,7 @@ Declaration tags appear in this order:
 1. `@deprecated`
 2. `@default`
 3. `@see`
-4. `@stability unstable` (when applicable)
+4. `@stability unstable` or `@stability experimental` (when applicable)
 5. `@category`
 6. `@since`
 
@@ -74,7 +74,7 @@ fences.
 When present, the first top-level JSDoc is the module block unless TypeScript
 attaches it to a non-import first declaration. An `@internal` module is omitted.
 Module prose does not use the declaration template. Its tags are optional
-non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability unstable`,
+non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability unstable` or `@stability experimental`,
 then required stable-semver `@since`. Its examples and links follow the declaration contracts.
 
 Inline `{@link Symbol}` targets must resolve to TypeScript symbols; use normal
