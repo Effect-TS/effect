@@ -322,6 +322,15 @@ describe("Queue", () => {
       assert.deepStrictEqual(yield* Queue.takeAll(queue), [1, 2])
     }))
 
+  it.effect("offer hands off to a waiting taker on a zero-capacity dropping queue", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.make<number>({ capacity: 0, strategy: "dropping" })
+      assert.isFalse(yield* Queue.offer(queue, 0))
+      const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      assert.isTrue(yield* Queue.offer(queue, 1))
+      assert.strictEqual(yield* Fiber.join(taker), 1)
+    }))
+
   it.effect("offer sliding", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.make<number>({ capacity: 2, strategy: "sliding" })
