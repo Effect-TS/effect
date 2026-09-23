@@ -11,6 +11,7 @@ import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
+import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
 import * as InternalRecord from "./record.ts"
 
@@ -96,32 +97,11 @@ export const StructuralProto = {
 }
 
 /** @internal */
-export class SingleShotIterator {
-  declare value: unknown
-  declare done: boolean | undefined
-  constructor(value: unknown) {
-    this.value = value
-  }
-  next(value: unknown) {
-    if (this.done) {
-      return { value, done: true }
-    }
-    if (this.done === undefined) {
-      this.done = false
-      return { value: this.value, done: false }
-    }
-    this.value = value
-    this.done = true
-    return this
-  }
-}
-
-/** @internal */
 export const EffectProto = {
   [EffectTypeId]: effectVariance,
   ...PipeInspectableProto,
   [Symbol.iterator]() {
-    return new SingleShotIterator(this)
+    return new SingleShotGen(this) as any
   },
   toJSON(this: Primitive) {
     return {

@@ -6,7 +6,8 @@ import { toJson } from "../Inspectable.ts"
 import type { Option } from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Result from "../Result.ts"
-import { PipeInspectableProto, SingleShotIterator } from "./core.ts"
+import { SingleShotGen } from "../Utils.ts"
+import { PipeInspectableProto } from "./core.ts"
 import * as option from "./option.ts"
 
 const TypeId = "~effect/Result"
@@ -19,7 +20,7 @@ const CommonProto = {
   },
   ...PipeInspectableProto,
   [Symbol.iterator]() {
-    return new SingleShotIterator(this)
+    return new SingleShotGen(this)
   }
 }
 
