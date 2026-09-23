@@ -2581,6 +2581,41 @@ describe("Effect", () => {
         Effect.timeoutOption(50)
       )
     })
+
+    const depth = 100_000
+    const nest = <A>(
+      bottom: Effect.Effect<A, string>,
+      step: (inner: Effect.Effect<A, string>) => Effect.Effect<A, string>
+    ) => {
+      const loop = (n: number): Effect.Effect<A, string> => n === 0 ? bottom : step(Effect.suspend(() => loop(n - 1)))
+      return loop(depth)
+    }
+
+    it("lazily nested map, tap and exit continuations", () => {
+      const bottom = Effect.succeed(0)
+      assert.strictEqual(Effect.runSync(nest(bottom, Effect.map((n) => n + 1))), depth)
+      assert.strictEqual(Effect.runSync(nest(bottom, Effect.tap(Effect.void))), 0)
+      assert.strictEqual(Effect.runSync(nest(bottom, Effect.tap(() => Effect.void))), 0)
+
+      let result: unknown = Effect.runSync(nest<unknown>(Effect.fail("error"), Effect.exit))
+      let successes = 0
+      while (Exit.isExit(result) && Exit.isSuccess(result)) {
+        result = result.value
+        successes++
+      }
+      assert.deepStrictEqual(result, Exit.fail("error"))
+      assert.strictEqual(successes, depth - 1)
+    })
+
+    it("lazily nested match continuations on success and failure", () => {
+      const match = Effect.match({ onFailure: () => 0, onSuccess: (n: number) => n + 1 })
+      assert.strictEqual(Effect.runSync(nest(Effect.succeed(0), match)), depth)
+      assert.strictEqual(Effect.runSync(nest(Effect.fail("error"), match)), depth - 1)
+
+      const matchCause = Effect.matchCause({ onFailure: () => 0, onSuccess: (n: number) => n + 1 })
+      assert.strictEqual(Effect.runSync(nest(Effect.succeed(0), matchCause)), depth)
+      assert.strictEqual(Effect.runSync(nest(Effect.fail("error"), matchCause)), depth - 1)
+    })
   })
 
   describe("finalization", () => {
