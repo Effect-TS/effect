@@ -21,7 +21,8 @@ const CloseableTypeId = effect.ScopeCloseableTypeId
 /**
  * A `Scope` represents a context where resources can be acquired and
  * automatically cleaned up when the scope is closed. Scopes can use
- * either sequential or parallel finalization strategies.
+ * either sequential or parallel finalization strategies. A scope created with
+ * `fork` keeps a reference to the scope it was forked from in `parent`.
  *
  * **Example** (Managing scoped resources)
  *
@@ -45,6 +46,7 @@ const CloseableTypeId = effect.ScopeCloseableTypeId
 export interface Scope {
   readonly [TypeId]: typeof TypeId
   readonly strategy: "sequential" | "parallel"
+  readonly parent: Scope | undefined
   state: State.Open | State.Closed | State.Empty
 }
 /**
@@ -76,8 +78,9 @@ export interface Closeable extends Scope {
 
 /**
  * The `State` namespace contains the concrete states of a scope: `Empty`
- * before any finalizers are registered, `Open` with registered finalizers, and
- * `Closed` with the exit value used to close the scope.
+ * with no finalizers currently registered, `Open` with at least one
+ * registered finalizer, and `Closed` with the exit value used to close the
+ * scope.
  *
  * **Example** (Checking scope states)
  *
@@ -98,13 +101,13 @@ export interface Closeable extends Scope {
  */
 export declare namespace State {
   /**
-   * Represents an open scope with no registered finalizers yet.
+   * Represents an open scope with no finalizers currently registered.
    *
    * **Details**
    *
-   * Adding the first finalizer transitions the scope to `Open`; closing an
-   * empty scope transitions directly to `Closed` without producing a finalizer
-   * effect.
+   * Adding a finalizer transitions the scope to `Open`, and removing the last
+   * finalizer returns it to `Empty`. Closing an empty scope transitions
+   * directly to `Closed` without producing a finalizer effect.
    *
    * **Example** (Inspecting an empty scope state)
    *

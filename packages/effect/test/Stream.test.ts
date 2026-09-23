@@ -1543,6 +1543,61 @@ describe("Stream", () => {
     })
 
   describe("flatMap", () => {
+    it.effect("releases each inner stream before starting the next", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const resource = (n: number) =>
+          Stream.unwrap(Effect.map(
+            Effect.acquireRelease(
+              Effect.sync(() => log.push(`acquire ${n}`)),
+              () => Effect.sync(() => log.push(`release ${n}`))
+            ),
+            () => Stream.make(n)
+          ))
+        const result = yield* Stream.make(1, 2, 3).pipe(
+          Stream.flatMap((n) => n % 2 === 0 ? Stream.make(n) : resource(n)),
+          Stream.tap((n) => Effect.sync(() => log.push(`emit ${n}`))),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [1, 2, 3])
+        assert.deepStrictEqual(log, [
+          "acquire 1",
+          "emit 1",
+          "release 1",
+          "emit 2",
+          "acquire 3",
+          "emit 3",
+          "release 3"
+        ])
+      }))
+
+    it.effect("an inner stream that closes its scope does not affect the next one", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const closesScope = Stream.fromChannel(
+          Channel.fromTransform((upstream, scope) =>
+            Effect.andThen(
+              Scope.close(scope, Exit.void),
+              Channel.toTransform(Stream.toChannel(Stream.make(0)))(upstream, scope)
+            )
+          )
+        )
+        const resource = Stream.unwrap(Effect.map(
+          Effect.acquireRelease(
+            Effect.sync(() => log.push("acquire")),
+            () => Effect.sync(() => log.push("release"))
+          ),
+          () => Stream.make(1)
+        ))
+        const result = yield* Stream.make(0, 1).pipe(
+          Stream.flatMap((n) => n === 0 ? closesScope : resource),
+          Stream.tap((n) => Effect.sync(() => log.push(`emit ${n}`))),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [0, 1])
+        assert.deepStrictEqual(log, ["emit 0", "acquire", "emit 1", "release"])
+      }))
+
     it.effect("interrupts all inner streams when the outer fails at the concurrency limit", () =>
       Effect.gen(function*() {
         const latch = yield* Latch.make()

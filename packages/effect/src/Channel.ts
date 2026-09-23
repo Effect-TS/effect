@@ -21,7 +21,7 @@ import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
 import * as Count from "./internal/count.ts"
-import { ClockRef, endSpan, scopeFinalizerCountUnsafe } from "./internal/effect.ts"
+import { ClockRef, endSpan } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -2514,8 +2514,8 @@ const flatMapSequential = <
       })
       const catchHalt = Pull.catchDone((_) => {
         childPull = undefined
-        // we can reuse the scope if the only finalizer is the "fork" one
-        if (childScope!.state._tag === "Open" && scopeFinalizerCountUnsafe(childScope!) === 1) {
+        // the scope can be reused if the inner channel left no finalizers behind
+        if (childScope!.state._tag === "Empty") {
           return makePull
         }
         const close = Scope.close(childScope!, Exit.void)

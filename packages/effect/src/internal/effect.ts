@@ -3933,21 +3933,18 @@ export const scopeClose = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
 
 /** @internal */
 export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
-  if (self.state._tag === "Closed") return
-  const closed: Scope.State.Closed = { _tag: "Closed", exit: exit_ }
-  if (self.state._tag === "Empty") {
-    self.state = closed
-    return
-  }
   const state = self.state
-  self.state = closed
+  if (state._tag === "Closed") return
+  self.state = { _tag: "Closed", exit: exit_ }
+  if (self.parent !== undefined) {
+    scopeRemoveFinalizerUnsafe(self.parent, self)
+  }
+  if (state._tag === "Empty") return
   if (state.finalizer !== undefined) {
     return runFinalizer(state.finalizer, exit_)
   }
-  const finalizers = state.finalizers
-  if (finalizers === undefined || finalizers.size === 0) {
-    return
-  } else if (finalizers.size === 1) {
+  const finalizers = state.finalizers!
+  if (finalizers.size === 1) {
     return runFinalizer(finalizers.values().next().value!, exit_)
   }
   return scopeCloseFinalizers(self, finalizers, exit_)
@@ -3999,15 +3996,13 @@ export const scopeFork = (scope: Scope.Scope, finalizerStrategy?: "sequential" |
 
 /** @internal */
 export const scopeForkUnsafe = (scope: Scope.Scope, finalizerStrategy?: "sequential" | "parallel") => {
-  const newScope = scopeMakeUnsafe(finalizerStrategy)
+  const child = makeScope(finalizerStrategy, scope)
   if (scope.state._tag === "Closed") {
-    newScope.state = scope.state
-    return newScope
+    child.state = scope.state
+    return child
   }
-  const key = {}
-  scopeAddFinalizerUnsafe(scope, key, (exit) => scopeClose(newScope, exit))
-  scopeAddFinalizerUnsafe(newScope, key, (_) => sync(() => scopeRemoveFinalizerUnsafe(scope, key)))
-  return newScope
+  scopeAddFinalizerUnsafe(scope, child, (exit) => scopeClose(child, exit))
+  return child
 }
 
 /** @internal */
@@ -4045,11 +4040,8 @@ export const scopeAddFinalizerUnsafe = (
       state.finalizerKey = undefined
       state.finalizer = undefined
       state.finalizers.set(key, finalizer)
-    } else if (state.finalizers === undefined) {
-      state.finalizerKey = key
-      state.finalizer = finalizer
     } else {
-      state.finalizers.set(key, finalizer)
+      state.finalizers!.set(key, finalizer)
     }
   }
 }
@@ -4059,30 +4051,30 @@ export const scopeRemoveFinalizerUnsafe = (
   scope: Scope.Scope,
   key: {}
 ): void => {
-  if (scope.state._tag === "Open") {
-    const state = scope.state
-    if (state.finalizerKey === key) {
-      state.finalizerKey = undefined
-      state.finalizer = undefined
-    } else if (state.finalizers !== undefined) {
-      state.finalizers.delete(key)
+  if (scope.state._tag !== "Open") return
+  const state = scope.state
+  if (state.finalizerKey === key) {
+    scope.state = constScopeEmpty
+  } else if (state.finalizers !== undefined) {
+    state.finalizers.delete(key)
+    if (state.finalizers.size === 0) {
+      scope.state = constScopeEmpty
     }
   }
 }
 
 /** @internal */
-export const scopeFinalizerCountUnsafe = (scope: Scope.Scope): number =>
-  scope.state._tag !== "Open"
-    ? 0
-    : scope.state.finalizer !== undefined
-    ? 1
-    : (scope.state.finalizers?.size ?? 0)
+export const scopeMakeUnsafe = (finalizerStrategy?: "sequential" | "parallel"): Scope.Closeable =>
+  makeScope(finalizerStrategy, undefined)
 
-/** @internal */
-export const scopeMakeUnsafe = (finalizerStrategy: "sequential" | "parallel" = "sequential"): Scope.Closeable => ({
+const makeScope = (
+  finalizerStrategy: "sequential" | "parallel" = "sequential",
+  parent: Scope.Scope | undefined
+): Scope.Closeable => ({
   [ScopeCloseableTypeId]: ScopeCloseableTypeId,
   [ScopeTypeId]: ScopeTypeId,
   strategy: finalizerStrategy,
+  parent,
   state: constScopeEmpty
 })
 
