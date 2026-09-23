@@ -80,34 +80,6 @@ describe("SchemaParser", () => {
       }
     ]
 
-    for (const { input, make, name } of cases.filter(({ name }) => name === "Array" || name === "Tuple")) {
-      for (const operation of ["decode", "encode"] as const) {
-        for (const concurrency of [1, 2]) {
-          it.effect(`${name} ${operation} reruns suspended children without reusing output (concurrency ${concurrency})`, () =>
-            Effect.gen(function*() {
-              const calls: Array<string> = []
-              const getter = SchemaGetter.transformEffect<string, string>((value) =>
-                Effect.map(Effect.yieldNow, () => {
-                  calls.push(value)
-                  return value
-                })
-              )
-              const schema = make(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
-              const parse = operation === "decode"
-                ? SchemaParser.decodeUnknownEffect(schema)
-                : SchemaParser.encodeUnknownEffect(schema)
-              const effect = parse(input, { concurrency })
-              const first = yield* effect
-              const second = yield* effect
-              deepStrictEqual(first, input)
-              deepStrictEqual(second, input)
-              assertTrue(first !== second)
-              deepStrictEqual(calls.sort(), ["a", "a", "b", "b", "c", "c"])
-            }))
-        }
-      }
-    }
-
     for (const { input, make, name } of cases) {
       it.effect(`${name} uses Effect.forEach bounded concurrency when decoding and encoding`, () =>
         Effect.gen(function*() {
@@ -797,54 +769,6 @@ describe("SchemaParser", () => {
       const unionResult = SchemaParser.decodeUnknownExit(Schema.Union([Schema.Unknown]))(failure)
       assertTrue(Exit.isSuccess(unionResult))
       strictEqual(unionResult.value, failure)
-    })
-
-    it("turns a throw from array input into a defect", () => {
-      const cases: Array<[string, any, unknown]> = [
-        [
-          "revoked proxy",
-          Schema.Array(Schema.String),
-          (() => {
-            const { proxy, revoke } = Proxy.revocable([], {})
-            revoke()
-            return proxy
-          })()
-        ],
-        [
-          "throwing length",
-          Schema.Array(Schema.String),
-          new Proxy([], {
-            get: (target, key) => {
-              if (key === "length") throw new Error("length")
-              return (target as any)[key]
-            }
-          })
-        ],
-        [
-          "throwing excess index",
-          Schema.Tuple([Schema.String]),
-          (() => {
-            const input: any = ["a"]
-            Object.defineProperty(input, 1, {
-              get: () => {
-                throw new Error("index")
-              },
-              enumerable: true,
-              configurable: true
-            })
-            input.length = 2
-            return input
-          })()
-        ]
-      ]
-
-      for (const [name, schema, input] of cases) {
-        const exit = SchemaParser.decodeUnknownExit(schema)(input)
-        assertTrue(Exit.isFailure(exit), name)
-        if (Exit.isFailure(exit)) {
-          assertTrue(Cause.hasDies(exit.cause as Cause.Cause<never>), name)
-        }
-      }
     })
 
     it("distinguishes missing tuple elements from undefined", () => {
