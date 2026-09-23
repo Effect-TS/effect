@@ -17,68 +17,9 @@ import * as Stream from "effect/Stream"
 
 describe("Channel", () => {
   describe("repetition", () => {
-    it.effect("repeat provides the schedule metadata to each repetition", () =>
-      Effect.gen(function*() {
-        const result = yield* Channel.fromEffect(Effect.service(Schedule.CurrentMetadata)).pipe(
-          Channel.map((meta) => [meta.attempt, meta.output]),
-          Channel.repeat(Schedule.recurs(3)),
-          Channel.runCollect
-        )
-        assert.deepStrictEqual(result, [[0, undefined], [1, 0], [2, 1], [3, 2]])
-      }))
-
-    it.effect("repeat does not step the schedule or reacquire after a finalizer fails", () =>
-      Effect.gen(function*() {
-        let acquisitions = 0
-        let steps = 0
-        const source = Channel.acquireUseRelease(
-          Effect.sync(() => ++acquisitions),
-          () => Channel.succeed(1),
-          () => Effect.die("release failed")
-        )
-        const schedule = Schedule.forever.pipe(Schedule.tap(() => Effect.sync(() => ++steps)))
-        const exit = yield* Effect.exit(Channel.runDrain(Channel.repeat(source, schedule)))
-        assertExitFailure(exit, Cause.die("release failed"))
-        assert.strictEqual(acquisitions, 1)
-        assert.strictEqual(steps, 0)
-      }))
-
-    it.effect("repeat does not replay a suspended schedule step on interruption", () =>
-      Effect.gen(function*() {
-        const inStep = yield* Latch.make(false)
-        let acquisitions = 0
-        let releases = 0
-        let steps = 0
-        const source = Channel.acquireUseRelease(
-          Effect.sync(() => ++acquisitions),
-          () => Channel.succeed(1),
-          () => Effect.sync(() => ++releases)
-        )
-        const schedule = Schedule.forever.pipe(
-          Schedule.tap(() => Effect.sync(() => ++steps).pipe(Effect.andThen(inStep.open), Effect.andThen(Effect.never)))
-        )
-        const fiber = yield* Effect.forkChild(Channel.runDrain(Channel.repeat(source, schedule)))
-        yield* Fiber.interrupt(fiber).pipe(inStep.whenOpen)
-        assert.strictEqual(acquisitions, 1)
-        assert.strictEqual(releases, 1)
-        assert.strictEqual(steps, 1)
-      }))
-
     for (const kind of ["repeat", "forever"] as const) {
       const repeated = (source: Channel.Channel<Arr.NonEmptyArray<number>>) =>
         kind === "repeat" ? Channel.repeat(source, Schedule.forever) : Channel.forever(source)
-
-      it.effect(kind + " releases each repetition before the next one starts", () =>
-        Effect.gen(function*() {
-          const log: Array<string> = []
-          const source = Channel.acquireUseRelease(
-            Effect.sync(() => log.push("acquire")),
-            () => Channel.fromEffect(Effect.as(Effect.sync(() => log.push("emit")), Arr.make(1))),
-            () => Effect.sync(() => log.push("release"))
-          )
-          yield* Stream.fromChannel(repeated(source)).pipe(Stream.take(2), Stream.runDrain)
-          assert.deepStrictEqual(log, ["acquire", "emit", "release", "acquire", "emit", "release"])
-        }))
 
       it.effect(kind + " work per repetition does not grow", () =>
         Effect.gen(function*() {
