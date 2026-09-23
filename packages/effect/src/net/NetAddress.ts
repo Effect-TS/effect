@@ -1380,7 +1380,9 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
 /**
  * Creates an internet address from a trusted native numeric host and port.
  * Named IPv6 zones are resolved using the supplied interface-to-scope map.
- * Inputs must already be known to come from a native socket address.
+ * Use only for runtime-supplied socket addresses: this skips input validation,
+ * so malformed strings or ports may silently produce incorrect values. An
+ * unknown named IPv6 zone throws rather than losing its scope.
  *
  * @stability unstable
  * @category unsafe
@@ -1391,10 +1393,100 @@ export const inetAddressFromNativeUnsafe = (
   port: number,
   scopeIds?: ReadonlyMap<string, number>
 ): InetAddress => {
-  void host
-  void port
-  void scopeIds
-  throw new Error("not implemented")
+  const zoneStart = host.indexOf("%")
+  const end = zoneStart === -1 ? host.length : zoneStart
+  if (host.indexOf(":") === -1) {
+    const self = Object.create(InetV4Proto)
+    self.address = makeIpv4(parseNativeIpv4(host, 0, end))
+    self.port = port
+    return Object.freeze(self)
+  }
+
+  let scopeId = 0
+  if (zoneStart !== -1) {
+    let numeric = zoneStart + 1 < host.length
+    for (let j = zoneStart + 1; j < host.length; j++) {
+      const digit = host.charCodeAt(j) - 48
+      if (digit < 0 || digit > 9) {
+        numeric = false
+        break
+      }
+      scopeId = scopeId * 10 + digit
+    }
+    if (!numeric) {
+      const zone = host.slice(zoneStart + 1)
+      const resolved = scopeIds?.get(zone)
+      if (resolved === undefined) throw new Error(`unknown IPv6 interface: ${zone}`)
+      scopeId = resolved
+    }
+  }
+
+  let w0 = 0
+  let w1 = 0
+  let w2 = 0
+  let w3 = 0
+  let segment = 0
+  let i = 0
+  while (i < end) {
+    if (host.charCodeAt(i) === 58) {
+      // The rest of a compressed address is anchored at the last segment.
+      i += 2
+      if (i === end) break
+      let remaining = 1
+      for (let j = i; j < end; j++) {
+        if (host.charCodeAt(j) === 58) remaining++
+      }
+      if (host.indexOf(".", i) !== -1) remaining++
+      segment = 8 - remaining
+    }
+    const start = i
+    let value = 0
+    while (i < end) {
+      const ch = host.charCodeAt(i)
+      if (ch === 58 || ch === 46) break
+      value = (value << 4) | (ch <= 57 ? ch - 48 : (ch & 0x5f) - 55)
+      i++
+    }
+    if (i < end && host.charCodeAt(i) === 46) {
+      w3 = parseNativeIpv4(host, start, end)
+      break
+    }
+    switch (segment >>> 1) {
+      case 0:
+        w0 |= value << ((1 - (segment & 1)) * 16)
+        break
+      case 1:
+        w1 |= value << ((1 - (segment & 1)) * 16)
+        break
+      case 2:
+        w2 |= value << ((1 - (segment & 1)) * 16)
+        break
+      default:
+        w3 |= value << ((1 - (segment & 1)) * 16)
+    }
+    segment++
+    if (i < end && host.charCodeAt(i + 1) !== 58) i++
+  }
+  const self = Object.create(InetV6Proto)
+  self.address = makeIpv6(w0, w1, w2, w3)
+  self.port = port
+  self.scopeId = scopeId
+  return Object.freeze(self)
+}
+
+const parseNativeIpv4 = (host: string, start: number, end: number): number => {
+  let value = 0
+  let octet = 0
+  for (let i = start; i < end; i++) {
+    const ch = host.charCodeAt(i)
+    if (ch === 46) {
+      value = (value << 8) | octet
+      octet = 0
+    } else {
+      octet = octet * 10 + ch - 48
+    }
+  }
+  return ((value << 8) | octet) >>> 0
 }
 
 /**
