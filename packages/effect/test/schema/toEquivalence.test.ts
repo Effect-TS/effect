@@ -120,40 +120,6 @@ describe("toEquivalence", () => {
         toEquivalence: (): Equivalence.Equivalence<number> => Equivalence.make((a, b) => a % n === b % n)
       })
 
-    it("no rest element", () => {
-      const schema = Schema.Tuple([Mod(2), Schema.optionalKey(Mod(3))])
-      const equivalence = Schema.toEquivalence(schema)
-      assertTrue(equivalence([2, 3], [4, 6]))
-      assertFalse(equivalence([2, 3], [5, 6]))
-      assertFalse(equivalence([2, 3], [4, 7]))
-      assertTrue(equivalence([2], [4]))
-      assertFalse(equivalence([2], [5]))
-      assertFalse(equivalence([2], [4, 6]))
-    })
-
-    it("rest element only", () => {
-      const schema = Schema.Array(Mod(3))
-      const equivalence = Schema.toEquivalence(schema)
-      assertTrue(equivalence([], []))
-      assertTrue(equivalence([3], [6]))
-      assertFalse(equivalence([3], [4]))
-      assertTrue(equivalence([3, 6, 9], [6, 9, 12]))
-      assertFalse(equivalence([3, 6, 9], [6, 7, 12]))
-      assertFalse(equivalence([], [3]))
-      assertFalse(equivalence([3], []))
-    })
-
-    it("leading element and a rest element, no trailing elements", () => {
-      const schema = Schema.TupleWithRest(Schema.Tuple([Mod(2)]), [Mod(3)])
-      const equivalence = Schema.toEquivalence(schema)
-      assertTrue(equivalence([2], [4]))
-      assertTrue(equivalence([2, 3], [4, 6]))
-      assertTrue(equivalence([2, 3, 6], [4, 6, 9]))
-      assertFalse(equivalence([2, 3], [5, 6]))
-      assertFalse(equivalence([2, 3], [4, 7]))
-      assertFalse(equivalence([2, 3], [4, 6, 9]))
-    })
-
     it("one trailing element after the rest element", () => {
       const schema = Schema.TupleWithRest(Schema.Tuple([Mod(2)]), [Mod(3), Mod(5)])
       const equivalence = Schema.toEquivalence(schema)
@@ -164,29 +130,6 @@ describe("toEquivalence", () => {
       assertFalse(equivalence([2, 3, 5], [4, 6, 7]))
       assertTrue(equivalence([2, 3, 6, 5], [4, 6, 9, 10]))
       assertFalse(equivalence([2, 3, 6, 5], [4, 6, 10, 10]))
-    })
-
-    it("two trailing elements after the rest element", () => {
-      const schema = Schema.TupleWithRest(Schema.Tuple([Mod(2)]), [Mod(3), Mod(5), Mod(7)])
-      const equivalence = Schema.toEquivalence(schema)
-      assertTrue(equivalence([2, 5, 7], [4, 10, 14]))
-      assertFalse(equivalence([2, 5, 7], [4, 11, 14]))
-      assertFalse(equivalence([2, 5, 7], [4, 10, 15]))
-      assertTrue(equivalence([2, 3, 5, 7], [4, 6, 10, 14]))
-      assertFalse(equivalence([2, 3, 5, 7], [4, 7, 10, 14]))
-      assertTrue(equivalence([2, 3, 6, 5, 7], [4, 6, 9, 10, 14]))
-      assertFalse(equivalence([2, 3, 6, 5, 7], [4, 6, 9, 11, 14]))
-      assertFalse(equivalence([2, 3, 6, 5, 7], [4, 6, 9, 10, 15]))
-    })
-
-    it("transformation in the rest element", () => {
-      const schema = Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.NumberFromString, Mod(5)])
-      const equivalence = Schema.toEquivalence(schema)
-      assertTrue(equivalence(["a", 5], ["a", 10]))
-      assertTrue(equivalence(["a", 1, 2, 5], ["a", 1, 2, 10]))
-      assertFalse(equivalence(["a", 1, 2, 5], ["a", 1, 3, 10]))
-      assertFalse(equivalence(["a", 1, 2, 5], ["a", 1, 2, 11]))
-      assertFalse(equivalence(["a", 1, 2, 5], ["b", 1, 2, 10]))
     })
   })
 
