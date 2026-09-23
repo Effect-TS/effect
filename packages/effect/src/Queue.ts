@@ -1414,7 +1414,7 @@ export const takeBetween: {
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
     takeBetweenUnsafe(self, min, max) ??
-      internalEffect.andThen(awaitTake(self, canTake(self)), takeBetween(self, 1, max))
+      internalEffect.andThen(awaitTake(self, canTake(self, min)), takeBetween(self, 1, max))
   )
 })
 
@@ -1993,8 +1993,9 @@ const takeBetweenUnsafe = <A, E>(
   }
 }
 
-const canTake = <A, E>(self: Dequeue<A, E>) => () =>
-  self.messages.length > 0 || (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
+const canTake = <A, E>(self: Dequeue<A, E>, min = 1) => () =>
+  self.messages.length >= Math.min(min, self.capacity || 1) ||
+  (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
 
 const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
   internalEffect.callback<void, E>((resume) => {
