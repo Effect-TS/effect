@@ -5976,6 +5976,7 @@ export const makeSpanUnsafe = <XA, XE>(
       )
     })
   } else {
+    // The cache stores only explicit tracer overrides; absent references use the default.
     const tracer = fiber.cache.tracer ?? Tracer.nativeTracer
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)

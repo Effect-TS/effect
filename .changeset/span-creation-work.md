@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce the work done to create a tracing span.
+Avoid redundant context lookups for the tracer and tracing-enabled flag when creating spans.
