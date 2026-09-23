@@ -569,7 +569,7 @@ const documentation = (symbol: ts.Symbol, checker: ts.TypeChecker): Documentatio
     deprecated: tags.get("deprecated"),
     since: tags.get("since"),
     category: tags.get("category"),
-    stability: tags.has("unstable") ? "unstable" : "stable"
+    stability: tags.has("unstable") || tags.get("stability") === "unstable" ? "unstable" : "stable"
   }
 }
 
