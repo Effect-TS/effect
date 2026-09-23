@@ -94,8 +94,9 @@ const makeTxPriorityQueue = <A>(ref: TxRef.TxRef<Chunk<A>>, ord: Order<A>): TxPr
  */
 const mergeSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>): Chunk<A> => {
   const arr = C.toReadonlyArray(chunk)
-  const out: Array<A> = []
+  const out: Array<A> = Array(arr.length + values.length)
   let i = 0
+  let k = 0
   for (const value of values) {
     let lo = i
     let hi = i
@@ -112,10 +113,10 @@ const mergeSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>
         hi = mid
       }
     }
-    for (; i < lo; i++) out.push(arr[i])
-    out.push(value)
+    for (; i < lo; i++) out[k++] = arr[i]
+    out[k++] = value
   }
-  for (; i < arr.length; i++) out.push(arr[i])
+  for (; i < arr.length; i++) out[k++] = arr[i]
   return C.fromIterable(out)
 }
 
