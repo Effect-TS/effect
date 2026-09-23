@@ -73,6 +73,31 @@ describe("Fiber", () => {
         yield* Fiber.interrupt(joinFiber)
         assert.strictEqual(cleaned, 1)
       }))
+
+    it.effect("uses the cancel returned at registration even if addObserver changes", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.forkChild(Effect.never)
+        let cleaned = 0
+        let override = true
+        const tracked = new Proxy(fiber, {
+          get(target, property, receiver) {
+            if (property !== "addObserver" || !override) return Reflect.get(target, property, receiver)
+            return (observer: Parameters<typeof target.addObserver>[0]) => {
+              const cancel = target.addObserver(observer)
+              return () => {
+                cleaned++
+                cancel()
+              }
+            }
+          }
+        })
+        const joinFiber = yield* Fiber.joinAll([tracked]).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        override = false
+        yield* Fiber.interrupt(joinFiber)
+        assert.strictEqual(cleaned, 1)
+      }))
   })
 
   describe("interruptAll", () => {
