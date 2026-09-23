@@ -199,6 +199,27 @@ describe("Queue", () => {
       }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)))
   }
 
+  it.effect("takeN and takeBetween keep waiting on a partial batch", () =>
+    Effect.gen(function*() {
+      const takeNQueue = yield* Queue.unbounded<number>()
+      yield* Queue.offer(takeNQueue, 1)
+      const takeN = yield* Effect.forkDetach(Queue.takeN(takeNQueue, 3))
+
+      const takeBetweenQueue = yield* Queue.unbounded<number>()
+      yield* Queue.offer(takeBetweenQueue, 1)
+      const takeBetween = yield* Effect.forkDetach(Queue.takeBetween(takeBetweenQueue, 2, 5))
+
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+      // A buffered message below the minimum must not resume the taker.
+      assert.strictEqual(takeN.pollUnsafe(), undefined)
+      assert.strictEqual(takeBetween.pollUnsafe(), undefined)
+
+      yield* Queue.offerAll(takeNQueue, [2, 3])
+      yield* Queue.offerAll(takeBetweenQueue, [2, 3])
+      assert.deepStrictEqual(yield* Fiber.await(takeN), Exit.succeed([1, 2, 3]))
+      assert.deepStrictEqual(yield* Fiber.await(takeBetween), Exit.succeed([1, 2, 3]))
+    }))
+
   it.effect("takeN and takeBetween normalize element counts before waiting", () =>
     Effect.gen(function*() {
       const takeNQueue = yield* Queue.unbounded<number>()
