@@ -633,9 +633,12 @@ describe("NetAddress", () => {
     it("throws for a named IPv6 zone missing from the scope map", () => {
       const host = "fe80::1%eth1"
       failure(NetAddress.inetAddressFromHostString(host, 4567, new Map([["eth0", 7]])))
-      assert.throws(() => NetAddress.inetAddressFromNativeUnsafe(host, 4567, new Map([["eth0", 7]])))
+      assert.throws(
+        () => NetAddress.inetAddressFromNativeUnsafe(host, 4567, new Map([["eth0", 7]])),
+        /unknown IPv6 interface: eth1/
+      )
       failure(NetAddress.inetAddressFromHostString(host, 4567))
-      assert.throws(() => NetAddress.inetAddressFromNativeUnsafe(host, 4567))
+      assert.throws(() => NetAddress.inetAddressFromNativeUnsafe(host, 4567), /unknown IPv6 interface: eth1/)
     })
 
     it("formats separate socket hosts while preserving IPv6 scope", () => {
