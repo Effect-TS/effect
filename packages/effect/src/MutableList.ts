@@ -159,6 +159,8 @@ export const make = <A>(): MutableList<A> => ({
   length: 0
 })
 
+// Only the mutable tail can keep growing as values are taken. Other buckets
+// have a fixed size and will be released when they are fully consumed.
 const compactHead = <A>(self: MutableList<A>, bucket: MutableList.Bucket<A>): void => {
   if (bucket === self.tail && bucket.mutable && (bucket.array.length - bucket.offset) * 8 <= bucket.offset) {
     self.head = self.tail = {
@@ -630,6 +632,7 @@ export const toArray = <A>(self: MutableList<A>): Array<A> => toArrayN(self, sel
 /**
  * Filters the MutableList in place, keeping only elements that satisfy the predicate.
  * This operation modifies the list and rebuilds its internal structure for efficiency.
+ * The predicate index is the position of the element in the current list.
  *
  * **Example** (Filtering in place)
  *
@@ -650,9 +653,10 @@ export const toArray = <A>(self: MutableList<A>): Array<A> => toArrayN(self, sel
 export const filter = <A>(self: MutableList<A>, f: (value: A, i: number) => boolean): void => {
   const array: Array<A> = []
   let chunk: MutableList.Bucket<A> | undefined = self.head
+  let index = 0
   while (chunk) {
     for (let i = chunk.offset; i < chunk.array.length; i++) {
-      if (f(chunk.array[i], i)) {
+      if (f(chunk.array[i], index++)) {
         array.push(chunk.array[i])
       }
     }
