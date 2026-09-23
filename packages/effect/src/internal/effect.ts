@@ -5955,7 +5955,7 @@ export const makeSpanUnsafe = <XA, XE>(
   name: string,
   options: Tracer.SpanOptionsNoTrace | undefined
 ) => {
-  const disablePropagation = !fiber.getRef(TracerEnabled) ||
+  const disablePropagation = !fiber.cache.tracerEnabled ||
     (options?.annotations && Context.get(options.annotations, Tracer.DisablePropagation))
   const parent = options?.parent !== undefined
     ? Option.some(options.parent)
@@ -5976,7 +5976,7 @@ export const makeSpanUnsafe = <XA, XE>(
       )
     })
   } else {
-    const tracer = fiber.getRef(Tracer.Tracer)
+    const tracer = fiber.cache.tracer ?? Tracer.nativeTracer
     const clock = fiber.getRef(ClockRef)
     const timingEnabled = fiber.getRef(TracerTimingEnabled)
     const annotationsFromEnv = fiber.getRef(TracerSpanAnnotations)
