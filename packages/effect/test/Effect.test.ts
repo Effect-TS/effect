@@ -824,6 +824,57 @@ describe("Effect", () => {
         const results = yield* Effect.forEach("abc", (_) => Effect.succeed(_))
         assert.deepStrictEqual(results, ["a", "b", "c"])
       }))
+
+    it.effect("sequential reads array holes as undefined", () =>
+      Effect.gen(function*() {
+        const sparse = new Array<number | undefined>(3)
+        sparse[0] = 1
+        sparse[2] = 3
+        const results = yield* Effect.forEach(sparse, (_) => Effect.succeed(_))
+        assert.deepStrictEqual(results, [1, undefined, 3])
+      }))
+
+    it.effect("sequential follows an array that grows while it runs", () =>
+      Effect.gen(function*() {
+        const values = [1, 2]
+        const results = yield* Effect.forEach(values, (value, index) =>
+          Effect.sync(() => {
+            if (index === 0) values.push(3)
+            return value
+          }))
+        assert.deepStrictEqual(results, [1, 2, 3])
+      }))
+
+    it.effect("sequential reads an iterator installed on the array once per run", () =>
+      Effect.gen(function*() {
+        let reads = 0
+        const values = [1, 2, 3]
+        Object.defineProperty(values, Symbol.iterator, {
+          get() {
+            reads++
+            return function*() {
+              yield 9
+            }
+          }
+        })
+        const program = Effect.forEach(values, (_) => Effect.succeed(_))
+        assert.deepStrictEqual(yield* program, [9])
+        assert.strictEqual(reads, 1)
+        yield* program
+        assert.strictEqual(reads, 2)
+      }))
+
+    it.effect("sequential uses the iterator of an array subclass", () =>
+      Effect.gen(function*() {
+        class Values extends Array<number> {}
+        Object.defineProperty(Values.prototype, Symbol.iterator, {
+          value: function*() {
+            yield 7
+          }
+        })
+        const values = Values.from([1, 2, 3])
+        assert.deepStrictEqual(yield* Effect.forEach(values, (_) => Effect.succeed(_)), [7])
+      }))
   })
 
   describe("head", () => {

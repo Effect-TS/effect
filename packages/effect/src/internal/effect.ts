@@ -4946,6 +4946,8 @@ export const head = <A, E, R>(
     return result.done ? fail(new NoSuchElementError()) : succeed(result.value)
   })
 
+const arrayIterator = Array.prototype[Symbol.iterator]
+
 const forEachSequential = <A, B, E, R>(
   iterable: Iterable<A>,
   f: (a: A, index: number) => Effect.Effect<B, E, R>,
@@ -4955,9 +4957,23 @@ const forEachSequential = <A, B, E, R>(
 ) =>
   suspend(() => {
     const out: Array<B> | undefined = options?.discard ? undefined : []
-    const iterator = iterable[Symbol.iterator]()
-    let state = iterator.next()
     let index = 0
+    const iterate = iterable[Symbol.iterator]
+    if (iterate === arrayIterator && Array.isArray(iterable)) {
+      const items: ReadonlyArray<A> = iterable
+      return as(
+        whileLoop({
+          while: () => index < items.length,
+          body: () => f(items[index], index++),
+          step: (b) => {
+            if (out) out.push(b)
+          }
+        }),
+        out
+      )
+    }
+    const iterator: Iterator<A> = Reflect.apply(iterate, iterable, [])
+    let state = iterator.next()
     return as(
       whileLoop({
         while: () => !state.done,
