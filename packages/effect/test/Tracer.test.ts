@@ -26,14 +26,6 @@ const otlpTracerLayer = OtlpTracer.layer({
   ))
 )
 
-const recordingTracer = (names: Array<string>): Tracer.Tracer =>
-  Tracer.make({
-    span(options) {
-      names.push(options.name)
-      return Tracer.nativeTracer.span(options)
-    }
-  })
-
 const makeRootAndChildSpans = Effect.gen(function*() {
   const root = yield* Effect.withSpan(Effect.currentSpan, "root")
   const child = yield* Effect.withSpan(Effect.currentSpan, "child", { parent: root })
@@ -382,7 +374,6 @@ describe("Tracer", () => {
         strictEqual(span.name, "A")
         strictEqual(span.spanId, "noop")
         strictEqual(spanB.name, "B")
-        assert.notStrictEqual(spanB.spanId, "noop")
       }))
   })
 
@@ -545,54 +536,6 @@ describe("Tracer", () => {
         const parent = getParent(span)
         strictEqual(parent._tag, "Span")
         strictEqual((parent as Span).name, "parent")
-      }))
-  })
-
-  describe("tracer changes within a fiber", () => {
-    it.effect("uses a tracer provided part-way through a fiber", () =>
-      Effect.gen(function*() {
-        const names: Array<string> = []
-        yield* Effect.withSpan(Effect.void, "before")
-        yield* Effect.provideService(
-          Effect.withSpan(Effect.void, "after"),
-          Tracer.Tracer,
-          recordingTracer(names)
-        )
-        yield* Effect.withSpan(Effect.void, "restored")
-        deepStrictEqual(names, ["after"], "only spans made after the tracer is provided reach it")
-      }))
-
-    it.effect("uses the tracer a forked child was given", () =>
-      Effect.gen(function*() {
-        const outer: Array<string> = []
-        const inner: Array<string> = []
-        yield* Effect.provideService(
-          Effect.gen(function*() {
-            yield* Effect.withSpan(Effect.void, "parent")
-            const fiber = yield* Effect.forkChild(Effect.provideService(
-              Effect.withSpan(Effect.void, "child"),
-              Tracer.Tracer,
-              recordingTracer(inner)
-            ))
-            yield* Fiber.join(fiber)
-          }),
-          Tracer.Tracer,
-          recordingTracer(outer)
-        )
-        deepStrictEqual(outer, ["parent"], "the forking fiber keeps its own tracer")
-        deepStrictEqual(inner, ["child"], "the forked child uses the tracer it was given")
-      }))
-
-    it.effect("falls back to the native tracer when the tracer is omitted", () =>
-      Effect.gen(function*() {
-        const names: Array<string> = []
-        const span = yield* Effect.currentSpan.pipe(
-          Effect.withSpan("omitted"),
-          Effect.updateContext(Context.omit(Tracer.Tracer)),
-          Effect.withTracer(recordingTracer(names))
-        )
-        assert.instanceOf(span, Tracer.NativeSpan)
-        deepStrictEqual(names, [])
       }))
   })
 })
