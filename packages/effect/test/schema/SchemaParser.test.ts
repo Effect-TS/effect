@@ -109,6 +109,37 @@ describe("SchemaParser", () => {
       }
     ]
 
+    for (const { input, make, name } of cases.filter(({ name }) => name === "Array" || name === "Tuple")) {
+      for (const operation of ["decode", "encode"] as const) {
+        it.effect(
+          name + " " + operation + " reruns suspended concurrent children without reusing output",
+          () =>
+            Effect.gen(function*() {
+              const calls: Array<string> = []
+              const getter = SchemaGetter.transformEffect<string, string>((value) =>
+                Effect.gen(function*() {
+                  yield* Effect.yieldNow
+                  calls.push(value)
+                  return value
+                })
+              )
+              const schema = make(Schema.String.pipe(Schema.decode({ decode: getter, encode: getter })))
+              const parse = operation === "decode"
+                ? SchemaParser.decodeUnknownEffect(schema)
+                : SchemaParser.encodeUnknownEffect(schema)
+              const effect = parse(input, { concurrency: 2 })
+              const first = yield* effect
+              deepStrictEqual(first, input)
+              deepStrictEqual(calls.slice().sort(), ["a", "b", "c"])
+              const second = yield* effect
+              deepStrictEqual(second, input)
+              deepStrictEqual(calls.slice(3).sort(), ["a", "b", "c"])
+              assertTrue(first !== second)
+            })
+        )
+      }
+    }
+
     for (const { input, make, name } of cases) {
       it.effect(`${name} uses Effect.forEach bounded concurrency when decoding and encoding`, () =>
         Effect.gen(function*() {
