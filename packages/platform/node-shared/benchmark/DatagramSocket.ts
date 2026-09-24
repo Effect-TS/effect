@@ -28,26 +28,26 @@
  * and cost less.
  *
  * Tier (b) baseline (node v26.7.0, Linux 6.18.48, Intel Xeon Platinum 8573C,
- * 64 B payloads; B/op is ±3 B). A later change fails if it is more than 10%
- * slower on the same machine:
+ * 64 B payloads, median of 3 runs; B/op is ±3 B). A later change fails if it
+ * is more than 10% slower on the same machine:
  *
  * | Task                                 | ns/op | B/op |
  * | ------------------------------------ | ----- | ---- |
- * | queued pull, batch of 1              | 197.4 |  465 |
- * | queued pull, batch of 64             |  28.1 |   91 |
- * | parked pull, resumed inline          | 328.1 |  794 |
- * | parked pull, reading .address (IPv4) | 523.3 |  923 |
- * | parked pull, reading .address (IPv6) | 682.5 |  921 |
- * | accepted, 1024 per pull              |  27.6 |   96 |
- * | accepted, 65536 per pull             |  30.2 |   96 |
- * | dropping, full at 1024               |   8.3 |    0 |
- * | sliding, full at 1024                |  28.9 |   99 |
- * | sliding, full at 65536               |  39.4 |   96 |
- * | loop overhead                        |  95.6 |  114 |
- * | write, reply path                    | 167.0 |  493 |
- * | write, explicit InetAddress          | 169.4 |  493 |
- * | writeAll ×16                         |  27.7 |   55 |
- * | writeAll ×256                        |  19.1 |   19 |
+ * | queued pull, batch of 1              | 119.2 |  260 |
+ * | queued pull, batch of 64             |  16.6 |   85 |
+ * | parked pull, resumed inline          | 184.3 |  196 |
+ * | parked pull, reading .address (IPv4) | 335.9 |  324 |
+ * | parked pull, reading .address (IPv6) | 487.9 |  321 |
+ * | accepted, 1024 per pull              |  22.7 |   96 |
+ * | accepted, 65536 per pull             |  25.2 |   96 |
+ * | dropping, full at 1024               |   6.4 |    0 |
+ * | sliding, full at 1024                |   9.6 |    4 |
+ * | sliding, full at 65536               |   9.9 |    2 |
+ * | loop overhead                        |  87.3 |  114 |
+ * | write, reply path                    | 151.1 |  494 |
+ * | write, explicit InetAddress          | 153.1 |  493 |
+ * | writeAll ×16                         |  25.8 |   54 |
+ * | writeAll ×256                        |  18.1 |   18 |
  *
  * Environment variables: `DATAGRAM_BENCH_SENDERS` (default 3),
  * `DATAGRAM_BENCH_TIMEOUT` in milliseconds per run (default 10000), and
