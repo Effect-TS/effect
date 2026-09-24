@@ -13,6 +13,18 @@ describe("HttpRouter", () => {
       const serve = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.serve(app)
       expect(serve).type.toBeCallableWith(Layer.empty)
     })
+
+    it("omits the router output while preserving other services", () => {
+      class SomeService extends Context.Service<SomeService, { readonly value: number }>()("SomeService") {}
+
+      const app = Layer.merge(
+        Layer.effect(HttpRouter.HttpRouter, HttpRouter.make),
+        Layer.succeed(SomeService, { value: 1 })
+      )
+      const served = HttpRouter.serve(app)
+
+      expect<Layer.Success<typeof served>>().type.toBe<SomeService>()
+    })
   })
 
   describe("middleware", () => {
