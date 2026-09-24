@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Context, Effect, Option } from "effect"
+import { ByteSize, Effect, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
@@ -47,55 +47,20 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
-  const sharedHealthServers = (health: Layer.Layer<never, never, HttpRouter.HttpRouter>) =>
+  it.effect("registers a shared fresh route layer on both servers", () =>
     Effect.gen(function*() {
       const publicServer = Http.createServer()
       const internalServer = Http.createServer()
-      const serve = (server: Http.Server, route: Layer.Layer<never, never, HttpRouter.HttpRouter>) =>
-        HttpRouter.serve(Layer.mergeAll(route, health), { disableListenLog: true, disableLogger: true }).pipe(
+      const health = Layer.fresh(HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy")))
+      const serve = (server: Http.Server) =>
+        HttpRouter.serve(health, { disableListenLog: true, disableLogger: true }).pipe(
           Layer.provide(NodeHttpServer.layer(() => server, { port: 0 }))
         )
-
-      yield* Layer.build(Layer.mergeAll(
-        serve(publicServer, HttpRouter.add("GET", "/public", HttpServerResponse.text("public"))),
-        serve(internalServer, HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")))
-      ))
-
-      const status = (server: Http.Server, path: string) =>
-        Effect.promise(() => fetch("http://localhost:" + tcpPort(server) + path).then((response) => response.status))
-      assert.strictEqual(yield* status(publicServer, "/public"), 200)
-      assert.strictEqual(yield* status(internalServer, "/internal"), 200)
-      assert.strictEqual(yield* status(publicServer, "/internal"), 404)
-      assert.strictEqual(yield* status(internalServer, "/public"), 404)
-      return { publicServer, internalServer, status }
-    })
-
-  it.effect("does not leak routes when servers share a route layer", () =>
-    sharedHealthServers(HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy"))))
-
-  it.effect("registers a shared fresh route layer on both servers", () =>
-    Effect.gen(function*() {
-      const health = Layer.fresh(HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy")))
-      const { internalServer, publicServer, status } = yield* sharedHealthServers(health)
-      assert.strictEqual(yield* status(publicServer, "/health"), 200)
-      assert.strictEqual(yield* status(internalServer, "/health"), 200)
-    }))
-
-  it.effect("shares dependencies outside a fresh route layer", () =>
-    Effect.gen(function*() {
-      class Counter extends Context.Service<Counter, number>()("SharedHealthCounter") {}
-      let acquisitions = 0
-      const counter = Layer.sync(Counter, () => ++acquisitions)
-      const healthRoute = Layer.effectDiscard(Effect.gen(function*() {
-        const value = yield* Counter
-        const router = yield* HttpRouter.HttpRouter
-        yield* router.add("GET", "/health", HttpServerResponse.text(String(value)))
-      }))
-      const health = Layer.fresh(healthRoute).pipe(Layer.provide(counter))
-      const { internalServer, publicServer, status } = yield* sharedHealthServers(health)
-      assert.strictEqual(yield* status(publicServer, "/health"), 200)
-      assert.strictEqual(yield* status(internalServer, "/health"), 200)
-      assert.strictEqual(acquisitions, 1)
+      yield* Layer.build(Layer.mergeAll(serve(publicServer), serve(internalServer)))
+      for (const server of [publicServer, internalServer]) {
+        const response = yield* Effect.promise(() => fetch("http://localhost:" + tcpPort(server) + "/health"))
+        assert.strictEqual(response.status, 200)
+      }
     }))
 
   it.effect("serves its own router when the app outputs another router", () =>

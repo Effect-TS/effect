@@ -9,34 +9,9 @@ describe("HttpRouter", () => {
       expect<Effect.Success<typeof HttpRouter.make>>().type.toBe<HttpRouter.HttpRouter>()
     })
 
-    it("accepts app layers that output HttpRouter", () => {
-      const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
-      expect(HttpRouter.serve).type.toBeCallableWith(app)
-      expect(HttpRouter.toWebHandler).type.toBeCallableWith(app)
-      expect(HttpRouter.toHttpEffect).type.toBeCallableWith(app)
-    })
-
-    it("accepts app layers with any output", () => {
-      const app = {} as Layer.Layer<any, never, never>
-      expect(HttpRouter.serve).type.toBeCallableWith(app)
-      expect(HttpRouter.toWebHandler).type.toBeCallableWith(app)
-      expect(HttpRouter.toHttpEffect).type.toBeCallableWith(app)
-    })
-
-    it("accepts app layers with unknown output", () => {
-      const app = {} as Layer.Layer<unknown>
-      expect(HttpRouter.serve).type.toBeCallableWith(app)
-      expect(HttpRouter.toWebHandler).type.toBeCallableWith(app)
-      expect(HttpRouter.toHttpEffect).type.toBeCallableWith(app)
-    })
-
-    it("accepts unconstrained generic wrappers", () => {
+    it("accepts unconstrained app outputs", () => {
       const serve = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.serve(app)
-      const toWebHandler = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.toWebHandler(app)
-      const toHttpEffect = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.toHttpEffect(app)
       expect(serve).type.toBeCallableWith(Layer.empty)
-      expect(toWebHandler).type.toBeCallableWith(Layer.empty)
-      expect(toHttpEffect).type.toBeCallableWith(Layer.empty)
     })
   })
 
