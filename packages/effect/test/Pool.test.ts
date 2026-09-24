@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scheduler, Scope } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scheduler, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { collectGarbage } from "./utils/gc.ts"
 
@@ -546,7 +546,76 @@ describe("Pool", () => {
       strictEqual(pool.state.usage, 0)
     }))
 
-  it.effect("does not leak a failed acquisition when a healthy item returns during cleanup", () =>
+  for (const borrowers of [1, 2]) {
+    it.effect(
+      "delivers " + borrowers + " caller-owned failure(s) once after asynchronous cleanup",
+      () =>
+        Effect.gen(function*() {
+          const releaseAcquisitions = yield* Deferred.make<void>()
+          const cleanupStarted = yield* Deferred.make<void>()
+          const finishCleanup = yield* Deferred.make<void>()
+          yield* Effect.addFinalizer(() => Deferred.succeed(finishCleanup, undefined))
+          let attempts = 0
+          let cleaning = 0
+          const pool = yield* Pool.makeWithTTL({
+            acquire: Effect.suspend(() => {
+              const attempt = ++attempts
+              if (attempt > borrowers) return Effect.succeed("unexpected retry")
+              return Effect.gen(function*() {
+                yield* Effect.addFinalizer(() =>
+                  Effect.gen(function*() {
+                    if (++cleaning === borrowers) yield* Deferred.succeed(cleanupStarted, undefined)
+                    yield* Deferred.await(finishCleanup)
+                  })
+                )
+                yield* Deferred.await(releaseAcquisitions)
+                return yield* Effect.fail("connect " + attempt)
+              })
+            }),
+            min: 0,
+            max: borrowers,
+            timeToLive: Duration.infinity
+          })
+          const waiting = yield* Effect.all(
+            Array.from(
+              { length: borrowers },
+              () => Effect.forkChild(Effect.exit(Effect.scoped(Pool.get(pool))), { startImmediately: true })
+            )
+          )
+          yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
+            until: (size) => size === borrowers
+          })
+          const originalWaiters = Array.from(pool.state.waiters)
+          yield* Deferred.succeed(releaseAcquisitions, undefined)
+          yield* Deferred.await(cleanupStarted)
+          // The old implementation wakes and re-registers callers before cleanup.
+          // The corrected implementation has already completed their failure exits.
+          yield* Effect.repeat(
+            Effect.andThen(
+              Effect.yieldNow,
+              Effect.sync(() =>
+                originalWaiters.every((observer) => !pool.state.waiters.has(observer)) &&
+                (pool.state.waiters.size === borrowers || waiting.every((fiber) => fiber.pollUnsafe() !== undefined))
+              )
+            ),
+            {
+              until: (ready) => ready
+            }
+          )
+          yield* Deferred.succeed(finishCleanup, undefined)
+          const results = yield* Effect.all(waiting.map(Fiber.join))
+          deepStrictEqual(
+            results.map((result) => result._tag === "Failure" ? Cause.squash(result.cause) : result.value).sort(),
+            Array.from({ length: borrowers }, (_, i) => "connect " + (i + 1)).sort(),
+            "each waiting borrower must receive its own acquisition failure"
+          )
+          strictEqual(attempts, borrowers)
+          strictEqual(pool.state.usage, 0)
+        })
+    )
+  }
+
+  it.effect("keeps a caller's failure when a healthy item returns during cleanup", () =>
     Effect.gen(function*() {
       const releaseFailure = yield* Deferred.make<void>()
       const inFinalizer = yield* Deferred.make<void>()
@@ -578,9 +647,13 @@ describe("Pool", () => {
       yield* Deferred.succeed(releaseFailure, undefined)
       yield* Deferred.await(inFinalizer)
       // The failed acquisition is still being cleaned up when the healthy
-      // lease returns. A later borrower must never inherit its failure.
+      // lease returns. Its caller keeps the failure; later borrowers do not.
       yield* Scope.close(owner, Exit.void)
-      deepStrictEqual(yield* Fiber.join(waiter), Exit.succeed("healthy"))
+      deepStrictEqual(
+        yield* Fiber.join(waiter),
+        Exit.fail("background"),
+        "the returning healthy lease must not replace the caller's own failure"
+      )
       const held = yield* Scope.make()
       strictEqual(yield* Scope.provide(Pool.get(pool), held), "healthy")
       strictEqual(yield* Pool.use(pool, Effect.succeed), "healthy")
