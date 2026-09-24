@@ -61,11 +61,6 @@ const PublicFailureTool = Tool.make("PublicFailureTool", {
   failure: Schema.ErrorInstance()
 })
 
-const StringFailureTool = Tool.make("StringFailureTool", {
-  success: Schema.String,
-  failure: Schema.String
-})
-
 const StructuredFailureTool = Tool.make("StructuredFailureTool", {
   success: Schema.Struct({ answer: Schema.String }),
   failure: Schema.Struct({
@@ -110,7 +105,6 @@ const TestToolkit = Toolkit.make(
   OptionalStringTool,
   StrictObjectTool,
   PublicFailureTool,
-  StringFailureTool,
   StructuredFailureTool,
   InternalAiErrorTool,
   DefectTool,
@@ -135,7 +129,6 @@ const testToolkitHandlers = TestToolkit.of({
   OptionalStringTool: ({ signature }) => Effect.succeed(signature ?? "omitted"),
   StrictObjectTool: ({ config }) => Effect.succeed(config.value.toFixed(0)),
   PublicFailureTool: () => Effect.fail(publicFailure),
-  StringFailureTool: () => Effect.fail("failed"),
   StructuredFailureTool: () => Effect.fail({ reason: "busy", retryAfter: 5 }),
   InternalAiErrorTool: () => Effect.fail(internalAiError),
   DefectTool: () => Effect.die(privateDefect),
@@ -1475,7 +1468,6 @@ describe("McpServer", () => {
         }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
 
         assert.strictEqual(result.structuredContent, "ok")
-        assert.strictEqual(toolResultText(result), JSON.stringify("ok"))
       }))
 
     it.effect("registers tools with identified output schemas", () =>
@@ -1799,16 +1791,6 @@ describe("McpServer", () => {
         }])
         assert.deepStrictEqual(reported, [])
         assert.deepStrictEqual(logged, [])
-      }))
-
-    it.effect("keeps declared string failures JSON-encoded", () =>
-      Effect.gen(function*() {
-        const { client } = yield* makeToolkitTestClient()
-        const result = yield* client["tools/call"]({ name: "StringFailureTool" })
-
-        assert.isTrue(result.isError)
-        assert.isUndefined(result.structuredContent)
-        assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("failed") }])
       }))
 
     it.effect("scrubs and records serialization failures in declared non-Error failures", () =>

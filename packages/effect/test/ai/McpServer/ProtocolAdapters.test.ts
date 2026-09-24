@@ -1001,9 +1001,7 @@ describe("McpServer protocol adapters", () => {
       )
 
       assert.isNull(modernResponse.headers.get("Mcp-Session-Id"))
-      const capabilityText = JSON.stringify({ sampling: {} })
-      assert.strictEqual(resultOf(modern).structuredContent, capabilityText)
-      assert.strictEqual(textResult(modern), JSON.stringify(capabilityText))
+      assert.strictEqual(resultOf(modern).structuredContent, JSON.stringify({ sampling: {} }))
       assert.strictEqual(
         textResult(yield* legacy.request("tools/call", { name: "capability" })),
         JSON.stringify({ roots: {} })

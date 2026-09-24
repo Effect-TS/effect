@@ -53,6 +53,12 @@ const callToolWire = (name: string) =>
     return yield* test.decodeResult(response)
   })
 
+// String results are mirrored as serialized JSON only where they are also returned as structured content.
+const stringResultContent = (protocol: McpProtocol.ProtocolAdapter, text: string) => [{
+  type: "text" as const,
+  text: protocol.protocolVersion === "2026-07-28" ? JSON.stringify(text) : text
+}]
+
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Tools", () => {
@@ -164,10 +170,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             )
 
             assert.strictEqual(result.isError, false)
-            assert.deepStrictEqual(result.content, [{
-              type: "text",
-              text: protocol.protocolVersion === "2026-07-28" ? JSON.stringify("called") : "called"
-            }])
+            assert.deepStrictEqual(result.content, stringResultContent(protocol, "called"))
           }))
 
         it.effect("MUST reject an unknown tool name with a protocol error", () =>
@@ -209,10 +212,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               Effect.flatMap((message) => decodeCallTool(message.result))
             )
 
-            assert.deepStrictEqual(result.content, [{
-              type: "text",
-              text: protocol.protocolVersion === "2026-07-28" ? JSON.stringify("text") : "text"
-            }])
+            assert.deepStrictEqual(result.content, stringResultContent(protocol, "text"))
           }))
         it.effect("SCHEMA returns image content", () =>
           Effect.gen(function*() {
