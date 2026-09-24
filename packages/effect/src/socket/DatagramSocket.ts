@@ -45,6 +45,7 @@ import { args, contA, contAll, exitSucceed, makePrimitive, type Primitive, withF
 import type { FiberImpl } from "../internal/effect.ts"
 import * as Latch from "../Latch.ts"
 import * as NetAddress from "../net/NetAddress.ts"
+import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 
@@ -451,6 +452,17 @@ export type DatagramSocketErrorReason = typeof DatagramSocketErrorReason.Type
  * @since 4.0.0
  */
 export const DatagramSocketErrorTypeId = "~effect/socket/DatagramSocket/DatagramSocketError"
+
+/**
+ * Returns `true` when a value is a `DatagramSocketError`.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isDatagramSocketError = (u: unknown): u is DatagramSocketError =>
+  Predicate.hasProperty(u, DatagramSocketErrorTypeId)
+
 /**
  * The error raised by `DatagramSocket` operations, wrapping a specific
  * reason. Its `cause` and `message` come from the reason.
@@ -769,7 +781,7 @@ class ReaderState {
     // a received datagram passed whole is echoed to its sender
     const target = targetOf(datagram)
     const destination = this.destination(target)
-    if (destination instanceof DatagramSocketError) return Effect.fail(destination)
+    if (isDatagramSocketError(destination)) return Effect.fail(destination)
     let result: Effect.Effect<void, DatagramSocketError> | undefined
     let parked = false
     this.handle!.send(encode(datagram.payload), destination, (error) => {
@@ -794,7 +806,7 @@ class ReaderState {
     for (let i = 0; i < datagrams.length; i++) {
       const datagram = datagrams[i]
       const destination = this.destination(targetOf(datagram))
-      if (destination instanceof DatagramSocketError) return Effect.fail(destination)
+      if (isDatagramSocketError(destination)) return Effect.fail(destination)
       payloads[i] = encode(datagram.payload)
       destinations[i] = destination
     }
