@@ -585,6 +585,18 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
   }))
 
 /**
+ * Layer that provides a newly constructed `HttpRouter`.
+ *
+ * This layer is memoized within its graph. Router entrypoints create their own
+ * router even when this layer is provided outside the app.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
+
+/**
  * Builds an application layer with a router and returns the router as an HTTP
  * handler effect.
  *
