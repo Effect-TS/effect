@@ -689,7 +689,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
         checks: []
       })
       const pattern = SchemaRepresentation.toRepresentation(
-        Schema.String.check(Schema.isPattern(/^a/)).ast
+        Schema.String.check(Schema.isPattern(/^a/u)).ast
       ).representation
       const output = SchemaRepresentation.toJsonSchemaMultiDocument({
         representations: [

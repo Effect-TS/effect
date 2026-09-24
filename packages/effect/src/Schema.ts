@@ -6563,9 +6563,9 @@ export function isTrimmed(annotations?: Annotations.Filter) {
  *
  * JSON Schema:
  *
- * JSON Schema receives a `pattern` only when the JavaScript RegExp can be
- * represented without rejecting values accepted by this check. Unsupported
- * flags or non-Unicode semantics cause the `pattern` constraint to be omitted.
+ * Unless annotations override `toJsonSchema`, JSON Schema receives a `pattern`
+ * only when the JavaScript RegExp uses the Unicode flag and has no flags that
+ * change which strings it accepts.
  *
  * Arbitrary:
  *

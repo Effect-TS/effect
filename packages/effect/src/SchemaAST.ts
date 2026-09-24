@@ -4165,63 +4165,6 @@ const numberToJson = new Link(
   )
 )
 
-function isUnicodeInvariantPattern(source: string): boolean {
-  try {
-    globalThis.RegExp(source, "u")
-  } catch {
-    return false
-  }
-  let inCharacterClass = false
-  let rangeStart: number | undefined
-  for (let index = 0; index < source.length; index++) {
-    const character = source[index]
-    let codeUnit = source.charCodeAt(index)
-    if (character === "\\") {
-      const escaped = source[++index]
-      if (escaped === "x" || escaped === "u") {
-        // Code point escapes have different semantics without the Unicode flag.
-        if (source[index + 1] === "{") return false
-        const length = escaped === "x" ? 2 : 4
-        codeUnit = globalThis.Number.parseInt(source.slice(index + 1, index + 1 + length), 16)
-        index += length
-      } else if ("dswfnrtv0/\\^$*+?.()|[]{}-".includes(escaped)) {
-        // Single-character escapes here are ASCII; class escapes cannot be range endpoints.
-        codeUnit = 0
-      } else {
-        return false
-      }
-    } else if (character === "]" && inCharacterClass) {
-      inCharacterClass = false
-      continue
-    } else if (!inCharacterClass) {
-      if (character === ".") return false
-      if (character === "[") {
-        if (source[index + 1] === "^") return false
-        inCharacterClass = true
-        continue
-      }
-    }
-    if (codeUnit >= 0xd800 && codeUnit <= 0xdfff) return false
-    if (inCharacterClass) {
-      if (rangeStart !== undefined) {
-        if (rangeStart <= 0xdfff && codeUnit >= 0xd800) return false
-        rangeStart = undefined
-      } else if (source[index + 1] === "-" && source[index + 2] !== "]") {
-        rangeStart = codeUnit
-        index++
-      }
-    }
-  }
-  return true
-}
-
-function getJsonSchemaPattern(regExp: globalThis.RegExp): string | undefined {
-  const flags = regExp.flags
-  if (flags.includes("i") || flags.includes("m") || flags.includes("s") || flags.includes("v")) return undefined
-  if (!flags.includes("u") && !isUnicodeInvariantPattern(regExp.source)) return undefined
-  return flags.includes("y") ? `^(?:${regExp.source})` : regExp.source
-}
-
 /**
  * Creates a {@link Filter} that validates strings by running `RegExp.test`.
  *
@@ -4244,9 +4187,10 @@ function getJsonSchemaPattern(regExp: globalThis.RegExp): string | undefined {
  * Arbitrary metadata preserves both `regExp.source` and `regExp.flags`.
  * Implementations that cannot consume all flags may still use the source as a
  * generation hint because the Schema filter validates every generated value.
- * JSON Schema has no way to carry JavaScript regular-expression flags. A
- * `pattern` is generated only when the RegExp can be represented without
- * making JSON Schema validation stricter than this filter.
+ * JSON Schema has no way to carry JavaScript regular-expression flags. Unless
+ * annotations override `toJsonSchema`, a `pattern` is generated only when the
+ * RegExp uses the Unicode flag and has no flags that change which strings it
+ * accepts.
  *
  * **Example** (Validating an email pattern)
  *
@@ -4264,22 +4208,24 @@ function getJsonSchemaPattern(regExp: globalThis.RegExp): string | undefined {
  */
 export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annotations.Filter) {
   const source = regExp.source
-  const pattern = new globalThis.RegExp(source, regExp.flags)
-  const jsonSchemaPattern = getJsonSchemaPattern(regExp)
+  const flags = regExp.flags
+  const copy = new globalThis.RegExp(source, flags)
+  const canExport = flags.includes("u") && !/[imsvy]/.test(flags)
+  const payload = { source, flags }
   return makeFilter(
     (s: string) => {
-      pattern.lastIndex = 0
-      return pattern.test(s)
+      copy.lastIndex = 0
+      return copy.test(s)
     },
     {
       expected: `a string matching the RegExp ${source}`,
       representation: {
         id: "effect/schema/isPattern",
-        payload: { source, flags: regExp.flags }
+        payload
       },
-      toJsonSchema: () => jsonSchemaPattern === undefined ? {} : { pattern: jsonSchemaPattern },
+      toJsonSchema: () => canExport ? { pattern: source } : {},
       arbitraryConstraint: {
-        patterns: [{ source: regExp.source, flags: regExp.flags }]
+        patterns: [payload]
       },
       ...annotations
     }

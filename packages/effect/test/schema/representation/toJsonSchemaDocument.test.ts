@@ -660,7 +660,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         Schema.TemplateLiteral(["a", Schema.String]).ast
       ).representation
       const pattern = SchemaRepresentation.toRepresentation(
-        Schema.String.check(Schema.isPattern(/^b/)).ast
+        Schema.String.check(Schema.isPattern(/^b/u)).ast
       ).representation
       const document: SchemaRepresentation.Document = {
         representation: {

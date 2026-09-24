@@ -132,7 +132,7 @@ describe("toCodecAnthropic", () => {
     })
 
     it("String + pattern", () => {
-      assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/)), {
+      assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/u)), {
         "type": "string",
         "description": `a string matching the RegExp ^a`,
         "pattern": "^a"
@@ -140,7 +140,7 @@ describe("toCodecAnthropic", () => {
     })
 
     it("String + pattern + description", () => {
-      assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/, { description: "description" })), {
+      assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/u, { description: "description" })), {
         "type": "string",
         "description": "description",
         "pattern": "^a"

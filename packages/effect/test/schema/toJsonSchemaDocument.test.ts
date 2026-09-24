@@ -1068,7 +1068,7 @@ describe("toJsonSchemaDocument", () => {
 
     describe("checks", () => {
       it("isPattern", () => {
-        assertJsonSchemaDocument(Schema.String.check(Schema.isPattern(/^abb+$/)), {
+        assertJsonSchemaDocument(Schema.String.check(Schema.isPattern(/^abb+$/u)), {
           schema: {
             "type": "string",
             "pattern": "^abb+$"
@@ -1077,21 +1077,22 @@ describe("toJsonSchemaDocument", () => {
       })
 
       it("omits isPattern when its flags cannot be represented", () => {
-        assertJsonSchemaDocument(Schema.String.check(Schema.isPattern(/^abb+$/i)), {
-          schema: { type: "string" }
-        })
+        for (const regExp of [/^abb+$/, /^abb+$/iu, /^abb+$/mu, /^abb+$/su, /^abb+$/uy]) {
+          assertJsonSchemaDocument(Schema.String.check(Schema.isPattern(regExp)), {
+            schema: { type: "string" }
+          })
+        }
       })
 
       it("preserves representable isPattern semantics", () => {
         for (
           const [regExp, pattern] of [
-            [/^abb+$/g, "^abb+$"],
-            [/^[é]+$/, "^[é]+$"],
-            [/^[a-z]+$/, "^[a-z]+$"],
-            [/^[\x20-\uD7FF\uE000-\uFFFF]+$/, "^[\\x20-\\uD7FF\\uE000-\\uFFFF]+$"],
-            [/^[a-b-\uE000]+$/, "^[a-b-\\uE000]+$"],
-            [/^[\d-]+$/, "^[\\d-]+$"],
-            [/abb/uy, "^(?:abb)"]
+            [/^abb+$/gu, "^abb+$"],
+            [/^[é]+$/u, "^[é]+$"],
+            [/^[a-z]+$/u, "^[a-z]+$"],
+            [/^[\x20-\uD7FF\uE000-\uFFFF]+$/u, "^[\\x20-\\uD7FF\\uE000-\\uFFFF]+$"],
+            [/^[a-b-\uE000]+$/u, "^[a-b-\\uE000]+$"],
+            [/^[\d-]+$/u, "^[\\d-]+$"]
           ] as const
         ) {
           assertJsonSchemaDocument(Schema.String.check(Schema.isPattern(regExp)), {
@@ -1100,7 +1101,7 @@ describe("toJsonSchemaDocument", () => {
         }
       })
 
-      it("omits isPattern when non-Unicode matching cannot be represented safely", () => {
+      it("omits isPattern without the Unicode flag", () => {
         for (
           const [regExp, values] of [
             [/^.$/, ["a", "😀", "\uD800"]],
@@ -3036,7 +3037,7 @@ describe("toJsonSchemaDocument", () => {
 
     it("uses propertyNames for conjunctive record key patterns", () => {
       assertJsonSchemaDocument(
-        Schema.Record(Schema.String.check(Schema.isPattern(/^ab/)), Schema.Finite),
+        Schema.Record(Schema.String.check(Schema.isPattern(/^ab/u)), Schema.Finite),
         {
           schema: {
             type: "object",
@@ -3049,7 +3050,7 @@ describe("toJsonSchemaDocument", () => {
       )
       assertJsonSchemaDocument(
         Schema.Record(
-          Schema.String.check(Schema.isPattern(/^ab/), Schema.isEndingWith("z")),
+          Schema.String.check(Schema.isPattern(/^ab/u), Schema.isEndingWith("z")),
           Schema.Finite
         ),
         {
