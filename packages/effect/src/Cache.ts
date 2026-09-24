@@ -425,11 +425,13 @@ export const get: {
   <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
     core.withFiber((fiber) => {
       const oentry = MutableHashMap.get(self.map, key)
-      if (Option.isSome(oentry) && !hasExpired(oentry.value, fiber)) {
-        // Move the entry to the end of the map to keep it fresh
+      if (Option.isSome(oentry)) {
         MutableHashMap.remove(self.map, key)
-        MutableHashMap.set(self.map, key, oentry.value)
-        return oentry.value.await()
+        if (!hasExpired(oentry.value, fiber)) {
+          // Move the entry to the end of the map to keep it fresh
+          MutableHashMap.set(self.map, key, oentry.value)
+          return oentry.value.await()
+        }
       }
       const entry = new EntryImpl(fiber, self.lookup(key))
       let skipCache = false
