@@ -12,7 +12,6 @@
  */
 import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
-import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import { compose, dual, identity } from "../Function.ts"
 import { fiberEnterInterruptibleUnsafe } from "../internal/effect.ts"
@@ -475,10 +474,6 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  * Use when you need to register routes or middleware with the router during layer
  * construction.
  *
- * A shared `use` layer registers on each router, but a memoized wrapper around
- * it may build only once across entrypoints. Use `Layer.fresh` on the wrapper
- * when each router needs its registration.
- *
  * **Example** (Registering routes during layer construction)
  *
  * ```ts import.meta.vitest
@@ -509,34 +504,7 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  */
 export const use = <A, E, R>(
   f: (router: HttpRouter) => Effect.Effect<A, E, R>
-): Layer.Layer<never, E, HttpRouter | Exclude<R, Scope.Scope>> => {
-  const self = Layer.fromBuild((_, scope) =>
-    Effect.flatMap(HttpRouter, (router) =>
-      Effect.suspend(() => {
-        let registrations = registeredLayers.get(router)
-        if (!registrations) registeredLayers.set(router, registrations = new WeakMap())
-        let deferred: Deferred.Deferred<void, E> | undefined
-        return Effect.onExitPrimitive(
-          Effect.suspend(() => {
-            const existing = registrations.get(self)
-            if (existing) return Deferred.await(existing)
-            deferred = Deferred.makeUnsafe<void, E>()
-            registrations.set(self, deferred)
-            return Effect.asVoid(Scope.provide(f(router), scope))
-          }),
-          (exit) => {
-            if (deferred) {
-              if (exit._tag === "Failure") registrations.delete(self)
-              Deferred.doneUnsafe(deferred, exit)
-            }
-          }
-        ).pipe(Effect.as(Context.empty()))
-      }))
-  )
-  return self
-}
-
-const registeredLayers = new WeakMap<HttpRouter, WeakMap<object, Deferred.Deferred<void, any>>>()
+): Layer.Layer<never, E, HttpRouter | Exclude<R, Scope.Scope>> => Layer.effectDiscard(Effect.flatMap(HttpRouter, f))
 
 /**
  * Create a layer that adds a single route to the HTTP router.
@@ -626,9 +594,8 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler. Each call creates its own router.
  *
- * A reused memoized wrapper around route layers, or a custom registration
- * layer, may build only once across entrypoints. Use `Layer.fresh` on that layer
- * when each router needs its routes.
+ * Layers built inside the app are private to this entrypoint. Layers already
+ * built in the supplied `memoMap` are reused.
  *
  * @stability unstable
  * @category converting
@@ -668,7 +635,11 @@ const provideRouter = <A, E, R>(
 ): Layer.Layer<A | HttpRouter, E, Exclude<R, HttpRouter>> =>
   Layer.fromBuild(Effect.fnUntraced(function*(memoMap, scope) {
     const router = yield* (routerConfig ? Effect.provideService(make, RouterConfig, routerConfig) : make)
-    const context = yield* Effect.provideService(Layer.buildWithMemoMap(appLayer, memoMap, scope), HttpRouter, router)
+    const context = yield* Effect.provideService(
+      Layer.buildWithMemoMap(appLayer, Layer.forkMemoMapUnsafe(memoMap), scope),
+      HttpRouter,
+      router
+    )
     return Context.add(context, HttpRouter, router)
   }))
 
@@ -1318,9 +1289,8 @@ export const provideRequest =
  *
  * **Details**
  *
- * A reused memoized wrapper around route layers, or a custom registration
- * layer, may build only once across entrypoints. Use `Layer.fresh` on that layer
- * when each router needs its routes.
+ * Layers built inside the app are private to this server. Provide shared
+ * services outside the app.
  *
  * @stability unstable
  * @category layers
@@ -1397,9 +1367,8 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * If the build fails, every request rejects with the build error. Each call
  * creates its own router.
  *
- * A reused memoized wrapper around route layers, or a custom registration
- * layer, may build only once across entrypoints. Use `Layer.fresh` on that layer
- * when each router needs its routes.
+ * Layers built inside the app are private to this handler. Layers already
+ * built in the supplied `memoMap` are reused.
  *
  * @stability unstable
  * @category converting

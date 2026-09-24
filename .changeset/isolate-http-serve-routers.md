@@ -4,7 +4,7 @@
 
 `HttpRouter.serve`, `toWebHandler`, and `toHttpEffect` now each create their own router, so servers and handlers in one layer graph, or sharing a `memoMap`, no longer share routes. `toHttpEffect` also accepts a `memoMap` option.
 
-Reused `HttpRouter.add`, `addAll`, and `use` layers register on each router. A memoized wrapper around them, or a custom layer that registers routes, may build only once across entrypoints; use `Layer.fresh` on that layer if each router needs its routes.
+Each entrypoint builds its app layers privately, so even reused or custom route layers register on each router. Dependencies built inside an app are also private to that entrypoint. Provide services outside the app to share them; a supplied `memoMap` still reuses dependencies already built in it.
 
 ### Breaking changes
 
