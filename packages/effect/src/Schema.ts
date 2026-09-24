@@ -15267,6 +15267,11 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  *
  * **Details**
  *
+ * The document describes the encoded side of `Schema.toCodecJson(schema)`.
+ * Use that codec to decode JSON inputs. For example, it decodes JSON `null`
+ * to JavaScript `undefined` for a field defined with `Schema.optional(Schema.String)`.
+ * Decoding the same input with the original schema rejects `null`.
+ *
  * The `options` parameter controls reference extraction and generation details
  * such as excess properties and synthesized check descriptions; it does not
  * change the draft target. The reference policy receives canonical JSON
@@ -15298,6 +15303,25 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  * candidate index value schemas. The Effect decoder enforces the exact
  * key-value association.
  *
+ * **Example** (Decoding JSON with the matching codec)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   name: Schema.optional(Schema.String)
+ * })
+ *
+ * const document = Schema.toJsonSchemaDocument(schema)
+ * const jsonCodec = Schema.toCodecJson(schema)
+ *
+ * Schema.decodeUnknownResult(schema)({ name: null })._tag // => "Failure"
+ * Schema.decodeUnknownSync(jsonCodec)({ name: null }) // => { name: undefined }
+ * Schema.decodeUnknownSync(jsonCodec)({}) // => {}
+ * Schema.encodeSync(jsonCodec)({ name: undefined }) // => { name: null }
+ * ```
+ *
+ * @see {@link toCodecJson} for decoding and encoding the canonical JSON representation
  * @see {@link SchemaRepresentation.toJsonSchemaDocument} for compiling an existing live representation document
  *
  * @category converting
