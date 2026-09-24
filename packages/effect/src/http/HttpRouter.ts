@@ -120,8 +120,8 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
  * **Gotchas**
  *
  * `serve`, `toWebHandler`, and `toHttpEffect` create their own router. Use
- * `make` only for custom integrations; an app layer passed to an entrypoint
- * that outputs a different router fails with a defect.
+ * `make` for custom integrations. A router output by an app layer does not
+ * replace the router served by an entrypoint.
  *
  * @stability unstable
  * @category constructors
@@ -641,12 +641,6 @@ const provideRouter = <A, E, R>(
     Effect.gen(function*() {
       const router = yield* (routerConfig ? Effect.provideService(make, RouterConfig, routerConfig) : make)
       const context = yield* Effect.provideService(Layer.buildWithMemoMap(appLayer, memoMap, scope), HttpRouter, router)
-      const appRouter = Context.getOrUndefined(context as Context.Context<HttpRouter>, HttpRouter)
-      if (appRouter !== undefined && appRouter !== router) {
-        return yield* Effect.die(
-          new Error("The app layer provided a foreign HttpRouter; the router is owned by the HttpRouter entrypoint")
-        )
-      }
       return Context.add(context, HttpRouter, router)
     })
   )
