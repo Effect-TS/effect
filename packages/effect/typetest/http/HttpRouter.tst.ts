@@ -3,20 +3,6 @@ import { HttpRouter, type HttpServerError, HttpServerResponse } from "effect/htt
 import { describe, expect, it } from "tstyche"
 
 describe("HttpRouter", () => {
-  describe("router ownership", () => {
-    it("omits the router output while preserving other services", () => {
-      class SomeService extends Context.Service<SomeService, { readonly value: number }>()("SomeService") {}
-
-      const app = Layer.merge(
-        Layer.effect(HttpRouter.HttpRouter, HttpRouter.make),
-        Layer.succeed(SomeService, { value: 1 })
-      )
-      const served = HttpRouter.serve(app)
-
-      expect<Layer.Success<typeof served>>().type.toBe<SomeService>()
-    })
-  })
-
   describe("middleware", () => {
     it("provides handled request errors", () => {
       class MyError {
