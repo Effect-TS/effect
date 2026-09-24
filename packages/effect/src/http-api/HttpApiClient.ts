@@ -25,6 +25,7 @@ import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
+import { stringOrRedacted } from "../internal/redacted.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
@@ -715,9 +716,9 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
         const url = new URL(
           HttpClientRequest.prependUrl(HttpClientRequest.get(path), options.baseUrl.toString()).url
         )
-        for (const [key, value] of urlParams.params) {
+        for (const [key, value] of urlParams) {
           if (value !== undefined) {
-            url.searchParams.append(key, value)
+            url.searchParams.append(key, stringOrRedacted(value))
           }
         }
         return url.toString()

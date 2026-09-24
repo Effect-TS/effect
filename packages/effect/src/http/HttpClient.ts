@@ -726,17 +726,19 @@ export const make = (
             if (url.port !== "") {
               span.attribute("server.port", +url.port)
             }
-            span.attribute("url.full", url.toString())
+            const traceUrl = redactUrlForTracing(request, url)
+            span.attribute("url.full", traceUrl.full)
             span.attribute("url.path", url.pathname)
             span.attribute("url.scheme", url.protocol.slice(0, -1))
-            const query = url.search.slice(1)
-            if (query !== "") {
-              span.attribute("url.query", query)
+            if (traceUrl.query !== "") {
+              span.attribute("url.query", traceUrl.query)
             }
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             for (const name in request.headers) {
-              if (!headerFilter(name, "request")) continue
+              if (!headerFilter(name, "request")) {
+                continue
+              }
               span.attribute(
                 `http.request.header.${name}`,
                 Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : request.headers[name]
@@ -752,14 +754,18 @@ export const make = (
                   onSuccess: (response) => {
                     span.attribute("http.response.status_code", response.status)
                     for (const name in response.headers) {
-                      if (!headerFilter(name, "response")) continue
+                      if (!headerFilter(name, "response")) {
+                        continue
+                      }
                       span.attribute(
                         `http.response.header.${name}`,
                         Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : response.headers[name]
                       )
                     }
 
-                    if (scopedController) return Effect.succeed(response)
+                    if (scopedController) {
+                      return Effect.succeed(response)
+                    }
                     responseRegistry.register(response, controller)
                     return Effect.succeed(new InterruptibleResponse(response, controller))
                   },
@@ -775,6 +781,32 @@ export const make = (
           }
         )
       })), Effect.succeed as HttpClient.Preprocess<never, never>)
+
+const redactUrlForTracing = (
+  request: HttpClientRequest.HttpClientRequest,
+  url: URL
+): { readonly full: string; readonly query: string } => {
+  const params = request.urlParams.params
+  if (params.every(([, value]) => typeof value === "string")) {
+    return { full: url.href, query: url.search.slice(1) }
+  }
+  // `Url.make` appends `request.urlParams` after any query already present in
+  // `request.url`, so the last `params.length` entries map to `params` in order.
+  const entries = Array.from(url.searchParams)
+  const offset = entries.length - params.length
+  const parts: Array<string> = []
+  for (let i = 0; i < entries.length; i++) {
+    const [key, value] = entries[i]
+    parts.push(
+      i >= offset && typeof params[i - offset][1] !== "string"
+        ? `${new URLSearchParams([[key, ""]]).toString()}<redacted>`
+        : new URLSearchParams([[key, value]]).toString()
+    )
+  }
+  const query = parts.join("&")
+  const prefix = url.href.slice(0, url.href.length - url.search.length - url.hash.length)
+  return { full: `${prefix}?${query}${url.hash}`, query }
+}
 
 /**
  * Appends a transformation of the request object before sending it.

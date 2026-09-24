@@ -40,6 +40,7 @@ import * as core from "./internal/core.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
 import * as InternalRecord from "./internal/record.ts"
+import { stringOrRedacted } from "./internal/redacted.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalMake from "./internal/schema/make.ts"
 import * as InternalStandardSchema from "./internal/schema/standardSchema.ts"
@@ -13970,9 +13971,9 @@ export const UrlParams: UrlParams = declare(
     toCodec: () =>
       link<UrlParams_.UrlParams>()(
         ArraySchema(Tuple([String, String])),
-        SchemaTransformation.transform({
+        SchemaTransformation.transform<UrlParams_.UrlParams, ReadonlyArray<readonly [string, string]>>({
           decode: UrlParams_.make,
-          encode: (self) => self.params
+          encode: (self) => self.params.map(([key, value]) => [key, stringOrRedacted(value)])
         })
       )
   }
