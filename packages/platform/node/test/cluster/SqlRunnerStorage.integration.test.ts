@@ -316,6 +316,56 @@ describe("SqlRunnerStorage", () => {
       Effect.provide(PgContainer.layerClient),
       Effect.provide(ShardingConfig.layer())
     ), 60_000)
+
+  it.effect(
+    "pg (no advisory) does not deadlock acquisition with refresh or bulk release",
+    () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+        const shards = Array.from({ length: 12 }, (_, i) => ShardId.make("default", i + 1))
+        const reversed = [...shards].reverse()
+        // Rewrite each lease in reverse so the physical row order differs from
+        // the sorted lock order.
+        const acquireShuffled = Effect.gen(function*() {
+          yield* storageA.acquire(runnerAddress1, shards)
+          for (const shard of reversed) {
+            yield* storageA.refresh(runnerAddress1, [shard])
+          }
+        })
+
+        // Slow each row write so the concurrent statements overlap.
+        yield* sql`CREATE FUNCTION delay_row() RETURNS trigger LANGUAGE plpgsql AS $$
+          BEGIN PERFORM pg_sleep(0.003); RETURN COALESCE(NEW, OLD); END $$`
+        yield* sql`CREATE TRIGGER delay_row BEFORE UPDATE OR DELETE ON cluster_locks
+          FOR EACH ROW EXECUTE FUNCTION delay_row()`
+
+        for (let i = 0; i < 8; i++) {
+          yield* acquireShuffled
+          yield* sql`UPDATE cluster_locks SET acquired_at = NOW() - INTERVAL '1 hour'`
+          yield* Effect.all([
+            storageA.refresh(runnerAddress1, shards),
+            storageB.acquire(runnerAddress2, reversed)
+          ], { concurrency: 2 })
+          yield* storageA.releaseAll(runnerAddress1)
+          yield* storageB.releaseAll(runnerAddress2)
+
+          yield* acquireShuffled
+          yield* Effect.all([
+            storageA.releaseAll(runnerAddress1),
+            storageB.acquire(runnerAddress2, reversed)
+          ], { concurrency: 2 })
+          yield* storageB.releaseAll(runnerAddress2)
+        }
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(PgContainer.layerClient),
+        Effect.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true })),
+        TestClock.withLive
+      ),
+    60_000
+  )
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
