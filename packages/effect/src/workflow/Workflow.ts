@@ -323,7 +323,7 @@ const InstanceTag = Context.Service<
 )
 
 const makeExecutionIdFromPayload = (self: AnyWithProps, payload: unknown) =>
-  makeHashDigest(`${self._tag}-${self.idempotencyKey(payload)}`)
+  makeHashDigest(`${self._tag.length}:${self._tag}:${self.idempotencyKey(payload)}`)
 
 const Proto = {
   [TypeId]: TypeId,
