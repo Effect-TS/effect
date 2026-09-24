@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`63ffdfb9b446b9fb05a235d23b41167c8098b321`)
+Base: `origin/v3` (`97d80c91fef755966ffd0adbfb00b3eb4ae7eace`)
 
-Head: `4d28d25123` (`4d28d25123d45525b2a9a71b912f54f206ccfe29`)
+Head: `HEAD` (`95c19c5987fa6289e00c4e4443e2ef6962d41cd3`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -13968,8 +13968,6 @@ Schema.toFormatter(schema)
 - `Schedule.modifyDelayEffect` -> `Schedule.modifyDelay`: The v4 delay modifier is effectful by default and receives full Schedule.Metadata.
 
 - `Schedule.onDecision` -> `Schedule.tap`: Use Schedule.tap for effects on recurrence metadata. To also observe final completion, wrap Schedule.toStep with Pull.matchEffect in Schedule.fromStep.
-
-- `Schedule.once` -> `Schedule.duration(Duration.zero)`: A zero-duration schedule recurs once and then completes; map its Duration output to void if needed.
 
 - `Schedule.provideContext` -> `Schedule.fromStep + Effect.provide`: Provide the Context to both Schedule.toStep acquisition and each Effect returned by the acquired step.
 

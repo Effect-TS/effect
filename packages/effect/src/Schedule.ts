@@ -1462,6 +1462,8 @@ export const forever: Schedule<number> = spaced(Duration.zero)
 /**
  * Returns a schedule that recurs immediately once, then completes.
  *
+ * **Details**
+ *
  * The output of both the recurrence and completion is `void`. When used with
  * `Effect.repeat`, the effect runs twice in total: once initially and once
  * after the schedule recurs.
