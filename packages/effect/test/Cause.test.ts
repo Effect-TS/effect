@@ -594,6 +594,18 @@ describe("Cause", () => {
       const errors = Cause.prettyErrors(Cause.empty)
       assert.ok(Array.isArray(errors))
     })
+
+    it("restores Error.stackTraceLimit when formatting a reason throws", () => {
+      const limit = Error.stackTraceLimit
+      const error = new Error("boom")
+      Object.defineProperty(error, "stack", {
+        get() {
+          throw new Error("stack getter")
+        }
+      })
+      assert.throws(() => Cause.prettyErrors(Cause.fail(error)), /stack getter/)
+      assert.strictEqual(Error.stackTraceLimit, limit)
+    })
   })
 
   describe("pretty", () => {
