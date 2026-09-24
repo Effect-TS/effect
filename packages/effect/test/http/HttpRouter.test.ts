@@ -1,4 +1,4 @@
-import { assert, describe, expect, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Layer, Option } from "effect"
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 
@@ -126,22 +126,49 @@ describe("HttpRouter", () => {
       if (Exit.isFailure(internalMiss)) assert.match(Cause.pretty(internalMiss.cause), /RouteNotFound/)
     }).pipe(Effect.scoped))
 
-  it("rejects an app that outputs a foreign router in toWebHandler", async () => {
-    const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
-    const { dispose, handler } = HttpRouter.toWebHandler(app as Layer.Layer<never>, { disableLogger: true })
+  it("serves its own router when the app outputs another router in toWebHandler", async () => {
+    const foreign = Layer.effect(
+      HttpRouter.HttpRouter,
+      Effect.gen(function*() {
+        yield* (yield* HttpRouter.HttpRouter).add("GET", "/own", HttpServerResponse.text("own"))
+        const router = yield* HttpRouter.make
+        yield* router.add("GET", "/foreign", HttpServerResponse.text("foreign"))
+        return router
+      })
+    )
+    const { dispose, handler } = HttpRouter.toWebHandler(foreign, { disableLogger: true })
     try {
-      await expect(handler(new Request("http://localhost/"))).rejects.toThrow(/foreign.*router/i)
+      assert.strictEqual((await handler(new Request("http://localhost/own"))).status, 200)
+      assert.strictEqual((await handler(new Request("http://localhost/foreign"))).status, 404)
     } finally {
       await dispose()
     }
   })
 
-  it.effect("rejects an app that outputs a foreign router in toHttpEffect", () =>
+  it.effect("serves its own router when the app outputs another router in toHttpEffect", () =>
     Effect.gen(function*() {
-      const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
-      const exit = yield* Effect.exit(HttpRouter.toHttpEffect(app as Layer.Layer<never>))
-      assert.isTrue(Exit.isFailure(exit))
-      if (Exit.isFailure(exit)) assert.match(Cause.pretty(exit.cause), /foreign.*router/i)
+      const foreign = Layer.effect(
+        HttpRouter.HttpRouter,
+        Effect.gen(function*() {
+          yield* (yield* HttpRouter.HttpRouter).add("GET", "/own", HttpServerResponse.text("own"))
+          const router = yield* HttpRouter.make
+          yield* router.add("GET", "/foreign", HttpServerResponse.text("foreign"))
+          return router
+        })
+      )
+      const handler = yield* HttpRouter.toHttpEffect(foreign)
+      const status = (path: string) =>
+        handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost" + path))
+          ),
+          Effect.map((response) => response.status)
+        )
+      assert.strictEqual(yield* status("/own"), 200)
+      const foreignMiss = yield* Effect.exit(status("/foreign"))
+      assert.isTrue(Exit.isFailure(foreignMiss))
+      if (Exit.isFailure(foreignMiss)) assert.match(Cause.pretty(foreignMiss.cause), /RouteNotFound/)
     }).pipe(Effect.scoped))
 
   it("normalizes the prefix stored by prefixRoute", () => {

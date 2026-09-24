@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Cause, Context, Effect, Exit, Option } from "effect"
+import { ByteSize, Context, Effect, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
@@ -98,18 +98,27 @@ describe("HttpServer", () => {
       assert.strictEqual(acquisitions, 1)
     }))
 
-  it.effect("rejects a foreign router output from serve", () =>
+  it.effect("serves its own router when the app outputs another router", () =>
     Effect.gen(function*() {
-      const foreign = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
-      const exit = yield* Effect.exit(
-        Layer.build(
-          HttpRouter.serve(foreign as Layer.Layer<never>, { disableLogger: true, disableListenLog: true }).pipe(
-            Layer.provide(NodeHttpServer.layer(() => Http.createServer(), { port: 0 }))
-          )
+      const server = Http.createServer()
+      const foreign = Layer.effect(
+        HttpRouter.HttpRouter,
+        Effect.gen(function*() {
+          yield* (yield* HttpRouter.HttpRouter).add("GET", "/own", HttpServerResponse.text("own"))
+          const router = yield* HttpRouter.make
+          yield* router.add("GET", "/foreign", HttpServerResponse.text("foreign"))
+          return router
+        })
+      )
+      yield* Layer.build(
+        HttpRouter.serve(foreign, { disableLogger: true, disableListenLog: true }).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 }))
         )
       )
-      assert.isTrue(Exit.isFailure(exit))
-      if (Exit.isFailure(exit)) assert.match(Cause.pretty(exit.cause), /foreign.*router/i)
+      const status = (path: string) =>
+        Effect.promise(() => fetch("http://localhost:" + tcpPort(server) + path).then((response) => response.status))
+      assert.strictEqual(yield* status("/own"), 200)
+      assert.strictEqual(yield* status("/foreign"), 404)
     }).pipe(Effect.scoped))
 
   it.effect("keeps routes isolated between independent servers", () =>
