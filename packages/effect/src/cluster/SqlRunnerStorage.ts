@@ -302,8 +302,8 @@ export const make = Effect.fnUntraced(function*(options: {
   })
   const sqlNow = sql.literal(sqlNowString)
 
-  // Statements that lock several PostgreSQL lease rows must lock them in the
-  // same order, otherwise concurrent acquisition, refresh and release deadlock.
+  // Use the same shard ID order for all multi-row PostgreSQL lease locks to
+  // avoid deadlocks between acquisition, refresh and bulk release.
   const pgLockOrder = sql.literal(`ORDER BY shard_id COLLATE "C"`)
 
   const expiresSeconds = sql.literal(
