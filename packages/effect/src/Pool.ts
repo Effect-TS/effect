@@ -31,7 +31,9 @@ const TypeId = "~effect/Pool"
 
 const Acquire = Symbol()
 const AcquireContext = Symbol()
-const pendingFailureCleanups = new WeakMap<object, Set<Fiber.Fiber<void, never>>>()
+// A failed acquisition hidden during cleanup belongs to the waiter present
+// when it failed, not whichever borrower happens to arrive after cleanup.
+const failureOwners = new WeakMap<object, (failure?: Exit.Failure<any, any>) => void>()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
@@ -555,12 +557,15 @@ const getSlowWith = <A, E, X, R>(
 ): Effect.Effect<X, any, R> =>
   internal.uninterruptibleMask((restore) => {
     const state = self.state
-    // A failed allocation still cleaning up can hold a slot while a waiting
-    // borrower receives a returned healthy item. A new borrower may replace
-    // that failed slot without waiting for cleanup to complete.
+    // A cancelled waiter leaves its failed allocation behind during cleanup.
+    // A new borrower may replace that slot without waiting for cleanup.
     if (state.availableHead === undefined) {
       for (const item of state.items) {
-        if (item.exit._tag === "Failure" && !item.isAvailable) {
+        const owner = failureOwners.get(item)
+        if (
+          item.exit._tag === "Failure" && !item.isAvailable &&
+          (owner === undefined || !state.waiters.has(owner))
+        ) {
           removeFailedItem(self, item)
           replacingFailure = true
           break
@@ -583,7 +588,12 @@ const getSlowWith = <A, E, X, R>(
         state.usage--
         return internal.interrupt
       }
-      const item = replacingFailure ? firstHealthyAvailable(self) : state.availableHead
+      let item = replacingFailure ? firstHealthyAvailable(self) : state.availableHead
+      // Another failed placeholder can occupy the remaining slot while a
+      // healthy lease is held. Consume it only when there is no room to grow.
+      if (item === undefined && state.availableHead !== undefined && targetSize(self) <= activeSize(self)) {
+        item = state.availableHead
+      }
       if (item !== undefined) {
         if (item.exit._tag === "Failure") {
           removeFailedItem(self, item)
@@ -945,40 +955,29 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         }
         item.release = constant(releaseItem(self, item))
         self.state.items.add(item)
-        // A pending waiter must not see a failed item during cleanup: a
-        // healthy lease may return before cleanup finishes. Otherwise expose
-        // the placeholder so another borrower can replace it immediately.
-        const pendingWaiter = exit._tag === "Failure" && self.state.waiters.size > 0 &&
-          firstHealthyAvailable(self) === undefined
-        if (!pendingWaiter) addAvailable(self, item)
+        // Keep a caller-owned failure hidden until cleanup finishes. A
+        // background failure instead becomes an available placeholder.
+        const pendingWaiter = exit._tag === "Failure" && firstHealthyAvailable(self) === undefined
+          ? self.state.waiters.values().next().value as ((failure?: Exit.Failure<A, E>) => void) | undefined
+          : undefined
+        if (pendingWaiter !== undefined) failureOwners.set(item, pendingWaiter)
+        if (pendingWaiter === undefined) addAvailable(self, item)
         const onAcquire = Effect.suspend(() =>
           // A borrower may have removed the item before the callback runs.
           self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
         )
         if (exit._tag === "Success") {
           if (self.config.strategy === strategyNoop) return Effect.succeed(item)
-          const pending = pendingFailureCleanups.get(self)
-          if (pending === undefined || pending.size === 0) return Effect.as(onAcquire, item)
-          return Effect.as(
-            Effect.forkIn(
-              Effect.andThen(Effect.forEach(Array.from(pending), Fiber.await), onAcquire),
-              self.state.scope,
-              { startImmediately: true }
-            ),
-            item
-          )
+          return Effect.as(onAcquire, item)
         }
         const cleanup = Effect.andThen(
           item.finalizer,
           Effect.andThen(
             Effect.sync(() => {
-              if (pendingWaiter && self.state.items.has(item)) {
-                const waiter = firstHealthyAvailable(self) === undefined
-                  ? self.state.waiters.values().next().value
-                  : undefined
-                if (waiter !== undefined) {
+              if (pendingWaiter !== undefined && self.state.items.has(item)) {
+                if (self.state.waiters.has(pendingWaiter)) {
                   removeFailedItem(self, item)
-                  waiter(exit)
+                  pendingWaiter(exit)
                 } else {
                   addAvailable(self, item)
                 }
@@ -987,20 +986,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
             Effect.andThen(onAcquire, wakeAll(self))
           )
         )
-        return Effect.flatMap(Effect.forkIn(cleanup, self.state.scope, { startImmediately: true }), (cleanupFiber) =>
-          Effect.sync(() => {
-            let pending = pendingFailureCleanups.get(self)
-            if (pending === undefined) {
-              pendingFailureCleanups.set(self, pending = new Set())
-            }
-            if (cleanupFiber.pollUnsafe() === undefined) {
-              pending.add(cleanupFiber)
-              cleanupFiber.addObserver(() =>
-                pending!.delete(cleanupFiber)
-              )
-            }
-            return item
-          }))
+        return Effect.as(Effect.forkIn(cleanup, self.state.scope, { startImmediately: true }), item)
       })
       return internal.onExitPrimitive(
         restore(use) as Effect.Effect<PoolItem<A, E>>,
