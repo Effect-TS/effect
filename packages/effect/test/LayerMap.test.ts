@@ -12,9 +12,10 @@ const trackedLayer = (events: Array<string>) =>
         events.push("acquire")
         return "value"
       }),
-      () => Effect.sync(() => {
-        events.push("release")
-      })
+      () =>
+        Effect.sync(() => {
+          events.push("release")
+        })
     )
   )
 
