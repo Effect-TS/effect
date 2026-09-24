@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Scope from "effect/Scope"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
@@ -136,6 +137,58 @@ describe("BunDatagramSocket", () => {
       const unicast = NetAddress.ipFromStringUnsafe(host) as NetAddress.MulticastAddress<NetAddress.Ipv4Address>
       const error = yield* Effect.flip(reader.joinMulticast({ group: unicast }))
       assert.instanceOf(error, DatagramSocket.DatagramSocketError)
+    }))))
+
+  it.effect("stops draining when the socket closes and completes queued writes once", () =>
+    bounded(Effect.scoped(Effect.gen(function*() {
+      let handlers: Bun.udp.SocketHandler<"buffer"> | undefined
+      let sends = 0
+      let completions = 0
+      let closed = false
+      const native = {
+        address: { address: host, port: 12345, family: "IPv4" },
+        get closed() {
+          return closed
+        },
+        reload: (options: { socket: Bun.udp.SocketHandler<"buffer"> }) => {
+          handlers = options.socket
+        },
+        send: () => {
+          sends++
+          return false
+        },
+        sendMany: () => {
+          sends++
+          closed = true
+          throw new Error("Socket is closed")
+        },
+        close: () => {
+          closed = true
+        }
+      } as unknown as BunDatagramSocket.UdpSocket
+      const socket = BunDatagramSocket.fromUdpSocket(Effect.succeed(native))
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const destination = NetAddress.inetAddressFromIpStringUnsafe(host, 12346)
+      const writes = ["one", "two", "three", "four"].map((payload) =>
+        Effect.runFork(
+          Effect.flip(writer.write({ payload, address: destination })).pipe(
+            Effect.tap(() =>
+              Effect.sync(() => {
+                completions++
+              })
+            )
+          )
+        )
+      )
+      assert.strictEqual(sends, 1)
+      assert.isFunction(handlers?.drain)
+      handlers!.drain!(native)
+      for (const write of writes) {
+        assertReason(yield* Fiber.join(write), "DatagramSocketClosedError")
+      }
+      assert.strictEqual(sends, 2, "drain must not retry entries already failed by closure")
+      assert.strictEqual(completions, writes.length)
     }))))
 
   it.effect("reports ICMP errors through onError", () =>

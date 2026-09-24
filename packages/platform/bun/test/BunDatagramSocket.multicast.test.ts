@@ -17,8 +17,10 @@ describe.skipIf(Bun.env.EFFECT_MULTICAST_TESTS !== "1")("BunDatagramSocket multi
         multicast: { loopback: true }
       })
       const reader = yield* socket.reader
-      yield* reader.joinMulticast({ group })
-      const sender = BunDatagramSocket.make({ multicast: { loopback: true } })
+      yield* reader.joinMulticast({ group, interface: NetAddress.ipv4Loopback })
+      const sender = BunDatagramSocket.make({
+        multicast: { interface: NetAddress.ipv4Loopback, loopback: true }
+      })
       yield* sender.reader
       const writer = yield* sender.writer
       for (const payload of ["m1", "m2"]) {
