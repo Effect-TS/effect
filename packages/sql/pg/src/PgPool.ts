@@ -155,6 +155,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const maxConnections = options.maxConnections ?? 10
   pool = yield* Pool.makeWithTTL({
     acquire,
+    discardFailuresWhenIdle: true,
     min: options.minConnections ?? 0,
     max: maxConnections,
     concurrency: multiplex

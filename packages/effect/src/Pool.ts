@@ -84,6 +84,7 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
  */
 export interface Config<A, E> {
   readonly acquire: Effect.Effect<A, E, Scope.Scope>
+  readonly discardFailuresWhenIdle: boolean
   readonly concurrency: number
   readonly isFixed: boolean
   readonly minSize: number
@@ -299,6 +300,8 @@ export const make = <A, E, R>(options: {
  */
 export const makeWithTTL = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
+  /** Discard failed background acquisitions when no borrower is waiting. */
+  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly min: number
   readonly max: number
   readonly concurrency?: number | undefined
@@ -335,6 +338,8 @@ export const makeWithTTL = <A, E, R>(options: {
  */
 export const makeWithStrategy = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
+  /** Discard failed background acquisitions when no borrower is waiting. */
+  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly min: number
   readonly max: number
   readonly concurrency?: number | undefined
@@ -352,6 +357,7 @@ export const makeWithStrategy = <A, E, R>(options: {
 
     const config: Config<A, E> = {
       acquire,
+      discardFailuresWhenIdle: options.discardFailuresWhenIdle ?? false,
       concurrency,
       isFixed: options.min === options.max,
       minSize: options.min,
@@ -904,6 +910,17 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
+        // A background failure with no waiter belongs to no checkout. Do not
+        // leave it in the available list for an unrelated borrower to find.
+        if (
+          exit._tag === "Failure" && self.config.discardFailuresWhenIdle &&
+          self.state.usage <= Array.from(self.state.items).reduce(
+              (sum, item) => sum + item.refCount + (item.isAvailable ? self.config.concurrency - item.refCount : 0),
+              0
+            )
+        ) {
+          return Effect.as(item.finalizer, item)
+        }
         self.state.items.add(item)
         addAvailable(self, item)
         if (self.config.strategy === strategyNoop) {
