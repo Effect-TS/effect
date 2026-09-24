@@ -1,5 +1,14 @@
 # @effect/sql-pg
 
+## 0.53.1
+
+### Patch Changes
+
+- [#8480](https://github.com/Effect-TS/effect/pull/8480) [`63ffdfb`](https://github.com/Effect-TS/effect/commit/63ffdfb9b446b9fb05a235d23b41167c8098b321) Thanks @tim-smart! - Close the `pg.Pool` when `PgClient` fails its initial connection check, and make `connectTimeout` interrupt a hanging check.
+
+- Updated dependencies [[`97d80c9`](https://github.com/Effect-TS/effect/commit/97d80c91fef755966ffd0adbfb00b3eb4ae7eace), [`05803bd`](https://github.com/Effect-TS/effect/commit/05803bd0219a71ea91d7e99e3d5a86b56f832c1c)]:
+  - effect@3.22.3
+
 ## 0.53.0
 
 ### Patch Changes

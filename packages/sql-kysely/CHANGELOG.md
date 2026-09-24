@@ -1,5 +1,14 @@
 # @effect/sql-kysely
 
+## 0.48.1
+
+### Patch Changes
+
+- [#8262](https://github.com/Effect-TS/effect/pull/8262) [`04f5106`](https://github.com/Effect-TS/effect/commit/04f510659ed28bf8214c12e98565c48ab0ab8d7d) Thanks @Marve10s! - Apply Kysely result plugins to rows returned through Effect SQL clients. Other `QueryResult` metadata is unavailable because Effect SQL clients expose rows only.
+
+- Updated dependencies [[`97d80c9`](https://github.com/Effect-TS/effect/commit/97d80c91fef755966ffd0adbfb00b3eb4ae7eace), [`05803bd`](https://github.com/Effect-TS/effect/commit/05803bd0219a71ea91d7e99e3d5a86b56f832c1c)]:
+  - effect@3.22.3
+
 ## 0.48.0
 
 ### Patch Changes
