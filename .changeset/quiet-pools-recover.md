@@ -3,4 +3,4 @@
 "@effect/sql-pg": patch
 ---
 
-Discard unclaimed pool acquisition failures so background PostgreSQL connection errors cannot fail later, unrelated queries. Deliver failures to callers waiting for their own connections.
+Keep failed background pool acquisitions as capacity placeholders until a borrower needs the slot. Retry that slot with a fresh acquisition instead of passing a stale PostgreSQL connection error to an unrelated query; callers waiting on their own failed connection still receive its error.

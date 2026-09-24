@@ -31,6 +31,7 @@ const TypeId = "~effect/Pool"
 
 const Acquire = Symbol()
 const AcquireContext = Symbol()
+const pendingFailureCleanups = new WeakMap<object, Set<Fiber.Fiber<void, never>>>()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
@@ -84,7 +85,6 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
  */
 export interface Config<A, E> {
   readonly acquire: Effect.Effect<A, E, Scope.Scope>
-  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly concurrency: number
   readonly isFixed: boolean
   readonly minSize: number
@@ -233,8 +233,6 @@ export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u
  */
 export const make = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
-  /** Hand acquisition failures to a waiting borrower, or discard them. */
-  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly size: number
   readonly concurrency?: number | undefined
   readonly targetUtilization?: number | undefined
@@ -302,8 +300,6 @@ export const make = <A, E, R>(options: {
  */
 export const makeWithTTL = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
-  /** Hand acquisition failures to a waiting borrower, or discard them. */
-  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly min: number
   readonly max: number
   readonly concurrency?: number | undefined
@@ -340,8 +336,6 @@ export const makeWithTTL = <A, E, R>(options: {
  */
 export const makeWithStrategy = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
-  /** Hand acquisition failures to a waiting borrower, or discard them. */
-  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly min: number
   readonly max: number
   readonly concurrency?: number | undefined
@@ -359,7 +353,6 @@ export const makeWithStrategy = <A, E, R>(options: {
 
     const config: Config<A, E> = {
       acquire,
-      discardFailuresWhenIdle: options.discardFailuresWhenIdle,
       concurrency,
       isFixed: options.min === options.max,
       minSize: options.min,
@@ -459,6 +452,11 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
     if (state.availableHead !== undefined) {
       state.usage++
       if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
+        if (state.availableHead.exit._tag === "Failure") {
+          removeFailedItem(self, state.availableHead)
+          state.usage--
+          return getSlowWith(self, leaseItemWith, true)
+        }
         return leaseItem(self, state.availableHead, fiber)
       }
       state.usage--
@@ -512,6 +510,11 @@ export const use: {
     if (state.availableHead !== undefined) {
       state.usage++
       if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
+        if (state.availableHead.exit._tag === "Failure") {
+          removeFailedItem(self, state.availableHead)
+          state.usage--
+          return getSlowWith(self, (self, item, fiber, restore) => useItem(self, item, f, fiber, restore), true)
+        }
         return useItem(self, state.availableHead, f, fiber)
       }
       state.usage--
@@ -547,14 +550,27 @@ const getSlowWith = <A, E, X, R>(
     item: PoolItem<A, E>,
     fiber: Fiber.Fiber<unknown, unknown>,
     restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
-  ) => Effect.Effect<X, any, R>
+  ) => Effect.Effect<X, any, R>,
+  replacingFailure = false
 ): Effect.Effect<X, any, R> =>
   internal.uninterruptibleMask((restore) => {
     const state = self.state
+    // A failed allocation still cleaning up can hold a slot while a waiting
+    // borrower receives a returned healthy item. A new borrower may replace
+    // that failed slot without waiting for cleanup to complete.
+    if (state.availableHead === undefined) {
+      for (const item of state.items) {
+        if (item.exit._tag === "Failure" && !item.isAvailable) {
+          removeFailedItem(self, item)
+          replacingFailure = true
+          break
+        }
+      }
+    }
     state.usage++
     const wait: Effect.Effect<X, any, R> = internal.flatMap(
       internal.onError(
-        restore(waitForItem(self)),
+        restore(waitForItem(self, replacingFailure)),
         () =>
           internal.sync(() => {
             state.usage--
@@ -567,8 +583,14 @@ const getSlowWith = <A, E, X, R>(
         state.usage--
         return internal.interrupt
       }
-      if (state.availableHead !== undefined) {
-        return lease(self, state.availableHead, fiber, restore)
+      const item = replacingFailure ? firstHealthyAvailable(self) : state.availableHead
+      if (item !== undefined) {
+        if (item.exit._tag === "Failure") {
+          removeFailedItem(self, item)
+          replacingFailure = true
+          return loop
+        }
+        return lease(self, item, fiber, restore)
       }
       return wait
     })
@@ -593,9 +615,7 @@ const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boo
   const state = self.state
   if (item.exit._tag === "Failure") {
     state.usage--
-    state.items.delete(item)
-    state.invalidated.delete(item)
-    removeAvailable(self, item)
+    removeFailedItem(self, item)
     return false
   }
   item.refCount++
@@ -603,6 +623,12 @@ const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boo
     removeAvailable(self, item)
   }
   return true
+}
+
+const removeFailedItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
+  self.state.items.delete(item)
+  self.state.invalidated.delete(item)
+  removeAvailable(self, item)
 }
 
 const leaseItem = <A, E>(
@@ -648,10 +674,16 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     return internal.void
   })
 
-const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void, E> =>
+const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefined => {
+  let item = self.state.availableHead
+  while (item !== undefined && item.exit._tag === "Failure") item = item.availableNext
+  return item
+}
+
+const waitForItem = <A, E>(self: Pool<A, E>, healthyOnly: boolean): Effect.Effect<void, E> =>
   internal.callback((resume) => {
     const state = self.state
-    if (state.availableHead !== undefined || state.isShuttingDown) {
+    if ((healthyOnly ? firstHealthyAvailable(self) : state.availableHead) !== undefined || state.isShuttingDown) {
       return resume(internal.void)
     }
     const observer = (failure?: Exit.Failure<A, E>) => {
@@ -912,27 +944,63 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
-        // Hand the failure to one current waiter, unless an available item can
-        // serve it instead, and never store it for a later borrower.
-        if (exit._tag === "Failure" && self.config.discardFailuresWhenIdle) {
-          if (self.state.availableHead === undefined) {
-            self.state.waiters.values().next().value?.(exit)
-          }
-          return Effect.as(item.finalizer, item)
-        }
         self.state.items.add(item)
-        addAvailable(self, item)
-        if (self.config.strategy === strategyNoop) {
-          return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
-        }
+        // A pending waiter must not see a failed item during cleanup: a
+        // healthy lease may return before cleanup finishes. Otherwise expose
+        // the placeholder so another borrower can replace it immediately.
+        const pendingWaiter = exit._tag === "Failure" && self.state.waiters.size > 0 &&
+          firstHealthyAvailable(self) === undefined
+        if (!pendingWaiter) addAvailable(self, item)
         const onAcquire = Effect.suspend(() =>
           // A borrower may have removed the item before the callback runs.
           self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
         )
-        return Effect.as(
-          exit._tag === "Success" ? onAcquire : Effect.flatMap(item.finalizer, () => onAcquire),
-          item
+        if (exit._tag === "Success") {
+          if (self.config.strategy === strategyNoop) return Effect.succeed(item)
+          const pending = pendingFailureCleanups.get(self)
+          if (pending === undefined || pending.size === 0) return Effect.as(onAcquire, item)
+          return Effect.as(
+            Effect.forkIn(
+              Effect.andThen(Effect.forEach(Array.from(pending), Fiber.await), onAcquire),
+              self.state.scope,
+              { startImmediately: true }
+            ),
+            item
+          )
+        }
+        const cleanup = Effect.andThen(
+          item.finalizer,
+          Effect.andThen(
+            Effect.sync(() => {
+              if (pendingWaiter && self.state.items.has(item)) {
+                const waiter = firstHealthyAvailable(self) === undefined
+                  ? self.state.waiters.values().next().value
+                  : undefined
+                if (waiter !== undefined) {
+                  removeFailedItem(self, item)
+                  waiter(exit)
+                } else {
+                  addAvailable(self, item)
+                }
+              }
+            }),
+            Effect.andThen(onAcquire, wakeAll(self))
+          )
         )
+        return Effect.flatMap(Effect.forkIn(cleanup, self.state.scope, { startImmediately: true }), (cleanupFiber) =>
+          Effect.sync(() => {
+            let pending = pendingFailureCleanups.get(self)
+            if (pending === undefined) {
+              pendingFailureCleanups.set(self, pending = new Set())
+            }
+            if (cleanupFiber.pollUnsafe() === undefined) {
+              pending.add(cleanupFiber)
+              cleanupFiber.addObserver(() =>
+                pending!.delete(cleanupFiber)
+              )
+            }
+            return item
+          }))
       })
       return internal.onExitPrimitive(
         restore(use) as Effect.Effect<PoolItem<A, E>>,
