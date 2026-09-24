@@ -302,6 +302,10 @@ export const make = Effect.fnUntraced(function*(options: {
   })
   const sqlNow = sql.literal(sqlNowString)
 
+  // Statements that lock several PostgreSQL lease rows must lock them in the
+  // same order, otherwise concurrent acquisition, refresh and release deadlock.
+  const pgLockOrder = sql.literal(`ORDER BY shard_id COLLATE "C"`)
+
   const expiresSeconds = sql.literal(
     Math.ceil(Duration.toSeconds(
       Duration.fromInputUnsafe(config.shardLockExpiration)
@@ -409,9 +413,8 @@ export const make = Effect.fnUntraced(function*(options: {
           )
           return sql`
             INSERT INTO ${locksTableSql} (shard_id, address, acquired_at)
-            SELECT shard_id, address, acquired_at
-            FROM (VALUES ${sql.csv(values)}) AS requested(shard_id, address, acquired_at)
-            ORDER BY shard_id COLLATE "C"
+            SELECT * FROM (VALUES ${sql.csv(values)}) AS requested (shard_id, address, acquired_at)
+            ${pgLockOrder}
             ON CONFLICT (shard_id) DO UPDATE
             SET address = ${address}, acquired_at = ${sqlNow}
             WHERE ${locksTableSql}.address = ${address}
@@ -599,10 +602,10 @@ export const make = Effect.fnUntraced(function*(options: {
       if (!disableAdvisoryLocks) return acquireLock
       return (address: string, shardIds: ReadonlyArray<string>) =>
         sql`
-          WITH locked AS MATERIALIZED (
+          WITH locked AS (
             SELECT shard_id FROM ${locksTableSql}
             WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
-            ORDER BY shard_id COLLATE "C" FOR UPDATE
+            ${pgLockOrder} FOR UPDATE
           )
           UPDATE ${locksTableSql}
           SET acquired_at = ${sqlNow}
@@ -702,12 +705,10 @@ export const make = Effect.fnUntraced(function*(options: {
     pg: () => (address: string) =>
       disableAdvisoryLocks
         ? sql`
-          WITH locked AS MATERIALIZED (
-            SELECT shard_id FROM ${locksTableSql} WHERE address = ${address}
-            ORDER BY shard_id COLLATE "C" FOR UPDATE
+          WITH locked AS (
+            SELECT shard_id FROM ${locksTableSql} WHERE address = ${address} ${pgLockOrder} FOR UPDATE
           )
-          DELETE FROM ${locksTableSql}
-          WHERE address = ${address} AND shard_id IN (SELECT shard_id FROM locked)
+          DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id IN (SELECT shard_id FROM locked)
         `.pipe(execWithLockConn)
         : sql`SELECT pg_advisory_unlock_all()`.pipe(execWithLockConn, Effect.asVoid),
     mysql: () => (address: string) =>
