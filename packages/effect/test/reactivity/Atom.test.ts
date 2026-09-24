@@ -1922,6 +1922,54 @@ describe("Atom", { concurrent: false }, () => {
     assert.strictEqual(runs, 1)
   })
 
+  test(`swr does not notify subscribers during a nested read`, async () => {
+    const r = AtomRegistry.make()
+    const makeDispatcher = r.schedulerAsync.makeDispatcher.bind(r.schedulerAsync)
+    let flushes = 0
+    let cancellations = 0
+    vitest.spyOn(r.schedulerAsync, "makeDispatcher").mockImplementation(() => {
+      const dispatcher = makeDispatcher()
+      const flush = dispatcher.flush.bind(dispatcher)
+      const cancel = dispatcher.cancel?.bind(dispatcher)
+      dispatcher.flush = () => {
+        flushes++
+        flush()
+      }
+      dispatcher.cancel = () => {
+        cancellations++
+        cancel?.()
+      }
+      return dispatcher
+    })
+    const events: Array<string> = []
+    let runs = 0
+    const base = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
+    const atom = base.pipe(Atom.swr({ staleTime: 100 }))
+    r.get(base)
+    await vitest.advanceTimersByTimeAsync(101)
+    const unsubscribe = r.subscribe(base, () => events.push("notified"))
+    const outer = Atom.make(() => {
+      events.push("read start")
+      const unmount = r.mount(atom)
+      const value = r.get(atom)
+      assert(AsyncResult.isSuccess(value))
+      assert.strictEqual(value.value, 1)
+      unmount()
+      events.push("read end")
+      return value
+    })
+
+    r.get(outer)
+    assert.deepStrictEqual(events, ["read start", "read end"])
+    assert.strictEqual(flushes, 0)
+    await Effect.runPromise(Effect.yieldNow)
+    assert.deepStrictEqual(events, ["read start", "read end"])
+    assert.strictEqual(runs, 1)
+    assert.strictEqual(flushes, 0)
+    assert.strictEqual(cancellations, 1)
+    unsubscribe()
+  })
+
   test(`swr skips queued revalidation when the source becomes fresh`, async () => {
     const r = AtomRegistry.make()
     let runs = 0

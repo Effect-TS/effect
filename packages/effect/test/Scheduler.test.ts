@@ -77,6 +77,29 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(order, [1, 2, 3])
     }))
 
+  it("MixedScheduler cancel discards pending tasks", () => {
+    let scheduled: (() => void) | undefined
+    let cancellations = 0
+    const dispatcher = new Scheduler.MixedScheduler("async", (run) => {
+      scheduled = run
+      return () => {
+        cancellations++
+      }
+    }).makeDispatcher()
+    const order: Array<number> = []
+
+    dispatcher.scheduleTask(() => order.push(1), 0)
+    dispatcher.cancel?.()
+    assert.strictEqual(cancellations, 1)
+    scheduled?.()
+    dispatcher.flush()
+    assert.deepStrictEqual(order, [])
+
+    dispatcher.scheduleTask(() => order.push(2), 0)
+    dispatcher.flush()
+    assert.deepStrictEqual(order, [2])
+  })
+
   it.effect("PreventSchedulerYield disables shouldYield checks", () =>
     Effect.gen(function*() {
       let calls = 0
