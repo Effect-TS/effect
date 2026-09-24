@@ -11,7 +11,7 @@ import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
 import * as Effect from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import { dual, memoize } from "./Function.ts"
+import { dual, flow, memoize } from "./Function.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as LogLevel_ from "./LogLevel.ts"
 import * as Option from "./Option.ts"
@@ -185,6 +185,81 @@ export const map: {
   <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
 } = dual(2, <A, B>(self: Config<A>, f: (a: A) => B): Config<B> => {
   return make((provider, pathPrefix) => Effect.map(evaluateAt(self, provider, pathPrefix), Result.map(f)))
+})
+
+/**
+ * Lets you sequence multiple configs that depend on each other or branch to
+ * multiple different configs depending on the parent.
+ *
+ * **When to use**
+ *
+ * When you want to maintain 2 sets of env vars with different names, and switch
+ * between whole sets based on a single dedicated env var. Or when you want to
+ * provide a variety of environment variable names (`PORT`, `BACKEND_PORT`,
+ * `API_PORT`) in order of preference for a specific configuration option, such
+ * as the listening port.
+ *
+ * **Example** (fallback configs and branching)
+ *
+ * ```ts import.meta.vitest
+ * import { Config, Option } from "effect"
+ *
+ * const EnvVar = (name: string) =>
+ *   Config.Literals([
+ *     ...["prod", "production", "PROD", "PRODUCTION"] as const,
+ *     ...["dev", "development", "DEV", "DEVELOPMENT"] as const
+ *   ], name)
+ *
+ * const withAbsenceFallback = <A, B>(fallback: Config.Config<A>) => (self: Config.Config<B>): Config.Config<A | B> =>
+ *   Config.flatMap(
+ *     Config.option(self),
+ *     Option.match({
+ *       onNone: () => fallback,
+ *       onSome: Config.succeed<A | B>
+ *     })
+ *   )
+ *
+ * // const ENV: Config.Config<"dev" | "prod">
+ * const ENV = EnvVar("ENV").pipe(
+ *   withAbsenceFallback(EnvVar("NODE_ENV")),
+ *   Config.map((fuzzyEnv) =>
+ *     fuzzyEnv.toLowerCase().startsWith("dev") ? "dev" : "prod"),
+ *   Config.withDefault('dev')
+ * )
+ *
+ * // const hostConfig: Config.Config<string>
+ * const hostConfig = ENV.pipe(
+ *   Config.flatMap((env) =>
+ *     env === "dev"
+ *       // dev is very forgiving
+ *       ? Config.NonEmptyString("DEV_HOST").pipe(
+ *         Config.orElse(() => Config.NonEmptyString("HOST")),
+ *         Config.orElse(() => Config.succeed("localhost"))
+ *       )
+ *       // prod is much stricter
+ *       : Config.NonEmptyString("PROD_HOST").pipe(
+ *         withAbsenceFallback(Config.NonEmptyString("HOST"))
+ *       )
+ *   )
+ * )
+ * ```
+ *
+ * @category mapping
+ * @since 2.0.0
+ */
+export const flatMap: {
+  <A, B>(f: (a: A) => Config<B>): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => Config<B>): Config<B>
+} = dual(2, <A, B>(self: Config<A>, f: (a: A) => Config<B>): Config<B> => {
+  return make((provider, pathPrefix) =>
+    Effect.flatMap(
+      evaluateAt(self, provider, pathPrefix),
+      Result.match({
+        onSuccess: (success) => evaluateAt(f(success), provider, pathPrefix),
+        onFailure: flow(Result.fail, Effect.succeed)
+      })
+    )
+  )
 })
 
 /**
