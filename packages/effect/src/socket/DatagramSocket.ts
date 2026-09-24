@@ -533,8 +533,8 @@ export const fromNativeHandle = (
     free.openUnsafe()
   }
 
-  const reader: DatagramSocket["reader"] = Effect.uninterruptibleMask((restore) =>
-    Effect.gen(function*() {
+  const reader: DatagramSocket["reader"] = Effect.uninterruptibleMask(
+    Effect.fnUntraced(function*(restore) {
       while (!free.closeUnsafe()) yield* restore(free.await)
       const scope = yield* Effect.scope
       const state = new ReaderState(capacity, sliding, onError)
@@ -581,8 +581,11 @@ const writeError = (message: string, address?: NetAddress.InetAddress) =>
     reason: new DatagramSocketWriteError({ kind: "Unknown", address, cause: new Error(message) })
   })
 
+const datagramTypeId = Symbol.for("effect/socket/DatagramSocket/Datagram")
+
 // Also a `NativeAddress`, so the reply path passes the record itself
 class DatagramImpl implements Datagram, NativeAddress {
+  readonly [datagramTypeId] = datagramTypeId
   payload: Uint8Array
   host: string
   port: number
@@ -606,12 +609,11 @@ class DatagramImpl implements Datagram, NativeAddress {
   }
 }
 
-type Destination = NetAddress.InetAddress | DatagramImpl | undefined
-type Resume<A> = (effect: Effect.Effect<A, DatagramSocketError>) => void
-type Failure = Effect.Effect<never, DatagramSocketError>
+const isDatagramImpl = (value: NetAddress.InetAddress | OutgoingDatagram | undefined): value is DatagramImpl =>
+  value !== undefined && datagramTypeId in value
 
-const targetOf = (datagram: OutgoingDatagram): Destination =>
-  datagram instanceof DatagramImpl ? datagram : datagram.address as Destination
+const targetOf = (datagram: OutgoingDatagram): NetAddress.InetAddress | DatagramImpl | undefined =>
+  isDatagramImpl(datagram) ? datagram : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
 
 class ReaderState {
   readonly capacity: number
@@ -624,7 +626,7 @@ class ReaderState {
   head = 0
   dropped = 0
   // the sticky error as a failed exit, shared by every pull and write after it
-  failure: Failure | undefined = undefined
+  failure: Effect.Effect<never, DatagramSocketError> | undefined = undefined
   // fibers parked in `pull`, oldest first: the oldest sits in the slot and
   // the rest wait in `waiters`, so a single consumer never touches the array
   waiter: FiberImpl | undefined = undefined
@@ -732,7 +734,7 @@ class ReaderState {
     this.failWaiters(this.failure)
   }
 
-  failWaiters(failure: Failure) {
+  failWaiters(failure: Effect.Effect<never, DatagramSocketError>) {
     const waiter = this.waiter
     if (waiter === undefined) return
     const waiters = this.waiters
@@ -751,7 +753,7 @@ class ReaderState {
     this.handle?.close()
   }
 
-  write(datagram: OutgoingDatagram, resume: Resume<void>) {
+  write(datagram: OutgoingDatagram, resume: (effect: Effect.Effect<void, DatagramSocketError>) => void) {
     if (this.failure !== undefined) return resume(this.failure)
     // a received datagram passed whole is echoed to its sender
     const target = targetOf(datagram)
@@ -762,7 +764,10 @@ class ReaderState {
     })
   }
 
-  writeAll(datagrams: NonEmptyReadonlyArray<OutgoingDatagram>, resume: Resume<void>) {
+  writeAll(
+    datagrams: NonEmptyReadonlyArray<OutgoingDatagram>,
+    resume: (effect: Effect.Effect<void, DatagramSocketError>) => void
+  ) {
     if (this.failure !== undefined) return resume(this.failure)
     const payloads = new Array<Uint8Array>(datagrams.length)
     const destinations = new Array<NativeAddress | undefined>(datagrams.length)
@@ -779,13 +784,15 @@ class ReaderState {
     })
   }
 
-  destination(target: Destination): NativeAddress | undefined | DatagramSocketError {
+  destination(
+    target: NetAddress.InetAddress | DatagramImpl | undefined
+  ): NativeAddress | undefined | DatagramSocketError {
     const handle = this.handle!
     if (target === undefined) {
       if (handle.connected || handle.peer !== undefined) return handle.peer
       return writeError("DatagramSocket write has no destination and the socket has no peer")
     }
-    if (target instanceof DatagramImpl) return handle.connected ? undefined : target
+    if (isDatagramImpl(target)) return handle.connected ? undefined : target
     if (handle.connected) return writeError("an explicit address cannot be used on a connected DatagramSocket", target)
     if (target === this.#lastTarget) return this.#lastDestination
     const destination = { host: NetAddress.formatNativeHost(target, this.scopeIds), port: target.port }
@@ -794,7 +801,10 @@ class ReaderState {
     return destination
   }
 
-  withAddress(error: DatagramSocketError, target: Destination): DatagramSocketError {
+  withAddress(
+    error: DatagramSocketError,
+    target: NetAddress.InetAddress | DatagramImpl | undefined
+  ): DatagramSocketError {
     const reason = error.reason
     if (reason._tag !== "DatagramSocketWriteError" || reason.address !== undefined) return error
     const address = this.addressOf(target)
@@ -804,9 +814,9 @@ class ReaderState {
     })
   }
 
-  addressOf(target: Destination): NetAddress.InetAddress | undefined {
+  addressOf(target: NetAddress.InetAddress | DatagramImpl | undefined): NetAddress.InetAddress | undefined {
     try {
-      if (target instanceof DatagramImpl) return target.address
+      if (isDatagramImpl(target)) return target.address
       if (target !== undefined) return target
       const peer = this.handle!.peer
       return peer === undefined
