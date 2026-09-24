@@ -21,14 +21,21 @@
  *   grow toward the queue capacity and the rest is dropped.
  * - `read loop`: the adapter's receive loop on its own. The reader has a
  *   capacity of 1 and is never pulled, so every packet after the first is
- *   received, copied and dropped. The adopted connection counts the adapter's
- *   `receive` calls, which is one call per packet handled.
+ *   received, copied and dropped. The adopted connection's own `receive` is
+ *   wrapped to count the adapter's calls, which is one call per packet
+ *   handled.
  * - `request/reply`: sequential round trips in this process, so the figures
  *   are same-order rather than absolute. The server replies either through
  *   the received datagram or with `write` to an explicit `InetAddress`.
  * - `write` and `writeAll ×N`: sequential writes to a sink process. The
  *   adapter's `writeAll` awaits each send before the next, so its baseline
- *   does the same. A second native baseline starts a whole batch at once.
+ *   does the same. A second native baseline starts a whole batch at once,
+ *   which is the baseline the plan named before `writeAll` became sequential.
+ *
+ * Every suite runs its baselines first and DatagramSocket last, as the Node
+ * file does. The same raw loop has measured 10% apart at the two ends of one
+ * suite, so a single run's `vs native` can move by that much with no change
+ * to the code; compare medians over several runs.
  *
  * Tier (b) uses a fake native handle that pushes packets synchronously and
  * completes sends synchronously, so it measures the core layer alone, on
@@ -39,9 +46,14 @@
  * loops reuse one `flatMap` and cost less.
  *
  * Tier (b) baseline (deno 2.9.4, V8 15.0.245.2, Linux 6.18.48, Intel Xeon
- * Platinum 8573C, 64 B payloads, median of 5 runs; B/op is ±3 B). A later
+ * Platinum 8573C, 64 B payloads, median of 5 full runs; B/op is ±3 B). A later
  * change fails if it is more than 10% slower on the same machine. B/op counts
- * the V8 heap only, so the copy's 64 B backing store isn't in its row:
+ * the V8 heap only, so the copy's 64 B backing store isn't in its row. Running
+ * the receive group alone with `DATAGRAM_BENCH_ONLY` reads about 12 B/op
+ * higher for queued pulls than a full run does. The two `.address` rows are
+ * bimodal from one process to the next (IPv4 338 to 498 ns, IPv6 482 to
+ * 654 ns over the 5 runs), so they can't carry the 10% gate; compare them
+ * against that range:
  *
  * | Task                                 | ns/op | B/op |
  * | ------------------------------------ | ----- | ---- |
@@ -228,7 +240,8 @@ const spawnPeer = async (): Promise<Peer> => {
       for (const listener of listeners) listener(message)
     }
   })()
-  await isReady
+  // a peer that dies on startup never reports ready
+  await withTimeout("peer startup", () => isReady)()
   return {
     request: (command, expected) =>
       new Promise((resolve, reject) => {
@@ -623,22 +636,17 @@ const main = async () => {
       name: "DatagramSocket read loop",
       setup: async () => {
         const conn = listen()
-        const receive = (buffer?: Uint8Array) => {
+        // an own property, so the adapter's calls cost one extra closure call
+        const receive = conn.receive.bind(conn)
+        conn.receive = (buffer) => {
           if (++calls >= target) {
             target = Infinity
             wake!()
           }
-          return conn.receive(buffer)
+          return receive(buffer)
         }
-        const counting = new Proxy(conn, {
-          get: (conn, key) => {
-            if (key === "receive") return receive
-            const value = Reflect.get(conn, key, conn)
-            return typeof value === "function" ? value.bind(conn) : value
-          }
-        })
         const socket = await Effect.runPromise(
-          DenoDatagramSocket.fromDatagramConn(Effect.succeed(counting), {
+          DenoDatagramSocket.fromDatagramConn(Effect.succeed(conn), {
             receiveBuffer: { capacity: 1, strategy: "dropping" }
           })
         )
@@ -1329,9 +1337,10 @@ const allocatedBytes = () => V8.getHeapStatistics().total_allocated_bytes
 const measureAllocation = async (task: LayerTask): Promise<number> => {
   await task.setup()
   // one warm pass so lazily created state isn't counted
-  await task.run(layerOpsPerRun)
+  await withTimeout(`${task.name}: allocation warmup`, (signal) => task.run(layerOpsPerRun, signal))()
   const before = allocatedBytes()
-  await task.run(allocationOps)
+  // the timer adds a few hundred bytes over 2^18 operations
+  await withTimeout(`${task.name}: allocation pass`, (signal) => task.run(allocationOps, signal))()
   const bytes = allocatedBytes() - before
   await task.teardown()
   return bytes / allocationOps
