@@ -30,15 +30,15 @@ const assertReason = (error: DatagramSocket.DatagramSocketError, tag: string) =>
 describe("BunDatagramSocket", () => {
   it.effect("binds port zero and reports the actual address", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const reader = yield* BunDatagramSocket.make({ bind: { address: host, port: 0 } }).reader
+      const reader = yield* (yield* BunDatagramSocket.make({ bind: { address: host, port: 0 } })).reader
       assert.isAbove(reader.address.port, 0)
       assert.deepStrictEqual(reader.address, NetAddress.inetAddressFromIpStringUnsafe(host, reader.address.port))
     }))))
 
   it.effect("round trips IPv4 and replies using the received datagram", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const server = BunDatagramSocket.make({ bind: { address: host } })
-      const client = BunDatagramSocket.make({ bind: { address: host } })
+      const server = yield* BunDatagramSocket.make({ bind: { address: host } })
+      const client = yield* BunDatagramSocket.make({ bind: { address: host } })
       const serverReader = yield* server.reader
       const clientReader = yield* client.reader
       const serverWriter = yield* server.writer
@@ -54,8 +54,8 @@ describe("BunDatagramSocket", () => {
 
   it.effect("sends a batch with writeAll", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const server = BunDatagramSocket.make({ bind: { address: host } })
-      const client = BunDatagramSocket.make({ bind: { address: host } })
+      const server = yield* BunDatagramSocket.make({ bind: { address: host } })
+      const client = yield* BunDatagramSocket.make({ bind: { address: host } })
       const reader = yield* server.reader
       yield* client.reader
       const writer = yield* client.writer
@@ -70,9 +70,9 @@ describe("BunDatagramSocket", () => {
   for (const address of [host, "localhost"]) {
     it.effect(`peer resolves ${address} once and supplies the default destination`, () =>
       bounded(Effect.scoped(Effect.gen(function*() {
-        const server = BunDatagramSocket.make({ bind: { address: host } })
+        const server = yield* BunDatagramSocket.make({ bind: { address: host } })
         const reader = yield* server.reader
-        const client = BunDatagramSocket.make({ peer: endpoint(reader.address.port, address), family: "ipv4" })
+        const client = yield* BunDatagramSocket.make({ peer: endpoint(reader.address.port, address), family: "ipv4" })
         yield* client.reader
         const writer = yield* client.writer
         yield* writer.writeAll([{ payload: "one" }, { payload: "two" }])
@@ -82,9 +82,9 @@ describe("BunDatagramSocket", () => {
 
   it.effect("connects at creation and sends without a destination", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const server = BunDatagramSocket.make({ bind: { address: host } })
+      const server = yield* BunDatagramSocket.make({ bind: { address: host } })
       const reader = yield* server.reader
-      const client = BunDatagramSocket.make({ connect: endpoint(reader.address.port) })
+      const client = yield* BunDatagramSocket.make({ connect: endpoint(reader.address.port) })
       yield* client.reader
       const writer = yield* client.writer
       yield* writer.writeAll([{ payload: "connected-1" }, { payload: "connected-2" }])
@@ -93,9 +93,9 @@ describe("BunDatagramSocket", () => {
 
   it.effect("maps EADDRINUSE to an open error", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const first = BunDatagramSocket.make({ bind: { address: host } })
+      const first = yield* BunDatagramSocket.make({ bind: { address: host } })
       const reader = yield* first.reader
-      const second = BunDatagramSocket.make({ bind: endpoint(reader.address.port) })
+      const second = yield* BunDatagramSocket.make({ bind: endpoint(reader.address.port) })
       const error = yield* Effect.flip(second.reader)
       assertReason(error, "DatagramSocketOpenError")
       if (error.reason._tag === "DatagramSocketOpenError") assert.strictEqual(error.reason.kind, "AddressInUse")
@@ -103,7 +103,7 @@ describe("BunDatagramSocket", () => {
 
   it.effect("maps an oversized send to a write error", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const socket = BunDatagramSocket.make({ bind: { address: host } })
+      const socket = yield* BunDatagramSocket.make({ bind: { address: host } })
       const reader = yield* socket.reader
       const writer = yield* socket.writer
       const error = yield* Effect.flip(writer.write({ payload: new Uint8Array(65536), address: reader.address }))
@@ -112,8 +112,8 @@ describe("BunDatagramSocket", () => {
 
   it.effect("round trips IPv6 on ::1", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const server = BunDatagramSocket.make({ family: "ipv6", bind: { address: "::1" } })
-      const client = BunDatagramSocket.make({ family: "ipv6", bind: { address: "::1" } })
+      const server = yield* BunDatagramSocket.make({ family: "ipv6", bind: { address: "::1" } })
+      const client = yield* BunDatagramSocket.make({ family: "ipv6", bind: { address: "::1" } })
       const reader = yield* server.reader
       yield* client.reader
       const writer = yield* client.writer
@@ -126,7 +126,7 @@ describe("BunDatagramSocket", () => {
 
   it.effect("joins and leaves multicast and rejects a unicast group", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
-      const socket = BunDatagramSocket.make({ bind: { address: "0.0.0.0" }, reuseAddress: true })
+      const socket = yield* BunDatagramSocket.make({ bind: { address: "0.0.0.0" }, reuseAddress: true })
       const reader = yield* socket.reader
       const group = NetAddress.ipFromStringUnsafe("239.255.42.42")
       assert.isTrue(NetAddress.isMulticast(group))
@@ -166,7 +166,7 @@ describe("BunDatagramSocket", () => {
           closed = true
         }
       } as unknown as BunDatagramSocket.UdpSocket
-      const socket = BunDatagramSocket.fromUdpSocket(Effect.succeed(native))
+      const socket = yield* BunDatagramSocket.fromUdpSocket(Effect.succeed(native))
       yield* socket.reader
       const writer = yield* socket.writer
       const destination = NetAddress.inetAddressFromIpStringUnsafe(host, 12346)
@@ -194,12 +194,12 @@ describe("BunDatagramSocket", () => {
   it.effect("reports ICMP errors through onError", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
       const reported = yield* Deferred.make<DatagramSocket.DatagramSocketError>()
-      const probe = BunDatagramSocket.make({ bind: { address: host } })
+      const probe = yield* BunDatagramSocket.make({ bind: { address: host } })
       const probeScope = yield* Scope.make()
       const probeReader = yield* probe.reader.pipe(Scope.provide(probeScope))
       const port = probeReader.address.port
       yield* Scope.close(probeScope, Exit.void)
-      const client = BunDatagramSocket.make({
+      const client = yield* BunDatagramSocket.make({
         connect: endpoint(port),
         onError: (error) => {
           Effect.runSync(Deferred.succeed(reported, error))

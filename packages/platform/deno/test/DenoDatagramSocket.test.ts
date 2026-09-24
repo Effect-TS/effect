@@ -52,7 +52,7 @@ const assertSequentialBatch = async (warm: boolean) => {
     sends.length >= count
       ? Promise.resolve()
       : new Promise<void>((resolve) => waiters.push(resolve))
-  const socket = DenoDatagramSocket.fromDatagramConn(Effect.succeed(conn))
+  const socket = Effect.runSync(DenoDatagramSocket.fromDatagramConn(Effect.succeed(conn)))
 
   await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
     yield* socket.reader
@@ -90,7 +90,7 @@ const assertSequentialBatch = async (warm: boolean) => {
 describe("DenoDatagramSocket", () => {
   it.effect("binds port zero and reports the bound address", () =>
     bounded(Effect.gen(function*() {
-      const socket = DenoDatagramSocket.make({ bind: { address: host, port: 0 } })
+      const socket = yield* DenoDatagramSocket.make({ bind: { address: host, port: 0 } })
       const reader = yield* socket.reader
       assert.strictEqual(reader.address.port > 0, true)
       assert.deepStrictEqual(reader.address.address, address(host, 0).address)
@@ -99,8 +99,8 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("round trips IPv4 and replies through the received datagram", () =>
     bounded(Effect.gen(function*() {
-      const server = DenoDatagramSocket.make({ bind: { address: host } })
-      const client = DenoDatagramSocket.make({ bind: { address: host } })
+      const server = yield* DenoDatagramSocket.make({ bind: { address: host } })
+      const client = yield* DenoDatagramSocket.make({ bind: { address: host } })
       const incoming = yield* server.reader
       const sender = yield* client.reader
       const serverWriter = yield* server.writer
@@ -120,7 +120,7 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("sends every datagram in writeAll", () =>
     bounded(Effect.gen(function*() {
-      const socket = DenoDatagramSocket.make({ bind: { address: host } })
+      const socket = yield* DenoDatagramSocket.make({ bind: { address: host } })
       const reader = yield* socket.reader
       const writer = yield* socket.writer
       yield* writer.writeAll([
@@ -138,9 +138,9 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("uses the peer as the default destination", () =>
     bounded(Effect.gen(function*() {
-      const receiver = DenoDatagramSocket.make({ bind: { address: host } })
+      const receiver = yield* DenoDatagramSocket.make({ bind: { address: host } })
       const incoming = yield* receiver.reader
-      const socket = DenoDatagramSocket.make({ peer: incoming.address })
+      const socket = yield* DenoDatagramSocket.make({ peer: incoming.address })
       yield* socket.reader
       const writer = yield* socket.writer
       yield* writer.writeAll([{ payload: "peer-1" }, { payload: "peer-2" }])
@@ -149,12 +149,12 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("resolves a hostname peer once per reader acquisition", () =>
     bounded(Effect.gen(function*() {
-      const receiver = DenoDatagramSocket.make({ bind: { address: host } })
+      const receiver = yield* DenoDatagramSocket.make({ bind: { address: host } })
       const incoming = yield* receiver.reader
       const lookups = () => lookupCalls.filter((hostname) => hostname === "localhost").length
       const before = lookups()
       // Resolution must happen at open, never once per write.
-      const socket = DenoDatagramSocket.make({
+      const socket = yield* DenoDatagramSocket.make({
         peer: { address: "localhost", port: incoming.address.port },
         family: "ipv4"
       })
@@ -169,9 +169,9 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("maps an occupied port to an open error", () =>
     bounded(Effect.gen(function*() {
-      const first = DenoDatagramSocket.make({ bind: { address: host } })
+      const first = yield* DenoDatagramSocket.make({ bind: { address: host } })
       const reader = yield* first.reader
-      const second = DenoDatagramSocket.make({ bind: { address: host, port: reader.address.port } })
+      const second = yield* DenoDatagramSocket.make({ bind: { address: host, port: reader.address.port } })
       const error = yield* second.reader.pipe(Effect.scoped, Effect.flip)
       assertError(error, "DatagramSocketOpenError")
       assert.strictEqual(error.reason._tag === "DatagramSocketOpenError" && error.reason.kind, "AddressInUse")
@@ -179,7 +179,7 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("maps an oversized native send to a write error", () =>
     bounded(Effect.gen(function*() {
-      const socket = DenoDatagramSocket.make({ bind: { address: host } })
+      const socket = yield* DenoDatagramSocket.make({ bind: { address: host } })
       const reader = yield* socket.reader
       const writer = yield* socket.writer
       const error = yield* writer.write({ payload: new Uint8Array(65508), address: reader.address }).pipe(Effect.flip)
@@ -189,7 +189,7 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("round trips IPv6 on ::1", () =>
     bounded(Effect.gen(function*() {
-      const socket = DenoDatagramSocket.make({ family: "ipv6", bind: { address: "::1" } })
+      const socket = yield* DenoDatagramSocket.make({ family: "ipv6", bind: { address: "::1" } })
       const reader = yield* socket.reader
       const writer = yield* socket.writer
       yield* writer.writeAll([{ payload: "ipv6-1", address: reader.address }, {
@@ -202,7 +202,7 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("joins and leaves multicast and rejects a unicast group", () =>
     bounded(Effect.gen(function*() {
-      const socket = DenoDatagramSocket.make({ reuseAddress: true })
+      const socket = yield* DenoDatagramSocket.make({ reuseAddress: true })
       const reader = yield* socket.reader
       const group = NetAddress.ipFromStringUnsafe("239.255.0.1")
       if (!NetAddress.isMulticast(group)) throw new Error("expected multicast group")
@@ -214,7 +214,7 @@ describe("DenoDatagramSocket", () => {
 
   it.effect("rejects source-specific multicast", () =>
     bounded(Effect.gen(function*() {
-      const reader = yield* DenoDatagramSocket.make().reader
+      const reader = yield* (yield* DenoDatagramSocket.make()).reader
       const group = NetAddress.ipFromStringUnsafe("239.255.0.1")
       if (!NetAddress.isMulticast(group)) throw new Error("expected multicast group")
       const error = yield* reader.joinMulticast({ group, source: NetAddress.ipFromStringUnsafe(host) }).pipe(
