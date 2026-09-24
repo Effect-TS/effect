@@ -1527,6 +1527,39 @@ describe("McpServer", () => {
         assert.strictEqual(result.structuredContent, "ok")
       }))
 
+    it.effect("reports all non-strict parameter errors while ignoring unknown keys", () =>
+      Effect.gen(function*() {
+        let handlerInvoked = false
+        const NonStrictTool = Tool.make("NonStrictTool", {
+          parameters: Schema.Struct({ first: Schema.String, second: Schema.Number }),
+          success: Schema.String
+        })
+        const toolkit = Toolkit.make(NonStrictTool)
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            NonStrictTool: () => {
+              handlerInvoked = true
+              return Effect.succeed("ok")
+            }
+          }))
+        )
+
+        for (const args of [{ first: 1, second: "invalid", extra: true }, { extra: true }]) {
+          const error = yield* server.callTool({ name: "NonStrictTool", arguments: args }).pipe(
+            Effect.provideService(McpSchema.McpServerClient, directClient),
+            Effect.flip
+          )
+
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.include(error.message, "[\"first\"]")
+          assert.include(error.message, "[\"second\"]")
+          assert.notInclude(error.message, "[\"extra\"]")
+          assert.isFalse(handlerInvoked)
+        }
+      }))
+
     it.effect("registers tools with identified output schemas", () =>
       Effect.gen(function*() {
         const IdentifiedResultTool = Tool.make("IdentifiedResultTool", {
@@ -1611,6 +1644,36 @@ describe("McpServer", () => {
         })
         assert.isTrue(handlerInvoked)
         assert.strictEqual(toolResultText(result), "1")
+      }))
+
+    it.effect("reports all strict parameter errors without invoking the handler", () =>
+      Effect.gen(function*() {
+        let handlerInvoked = false
+        const { client } = yield* makeToolkitTestClient(TestToolkit.of({
+          ...testToolkitHandlers,
+          StrictObjectTool: () => {
+            handlerInvoked = true
+            return Effect.succeed("unexpected")
+          }
+        }))
+
+        for (const config of [{ value: "1" }, { value: 1 }, {}]) {
+          const error = yield* client["tools/call"]({
+            name: "StrictObjectTool",
+            arguments: { first: true, second: true, config: { ...config, third: true, fourth: true } }
+          }).pipe(Effect.flip)
+
+          assertTrue("code" in error)
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.include(error.message, "Invalid parameters for tool 'StrictObjectTool'")
+          for (const path of ["[\"first\"]", "[\"second\"]", "[\"config\"][\"third\"]", "[\"config\"][\"fourth\"]"]) {
+            assert.include(error.message, path)
+          }
+          if (config.value !== "1") {
+            assert.include(error.message, "[\"config\"][\"value\"]")
+          }
+          assert.isFalse(handlerInvoked)
+        }
       }))
 
     it.effect("dies on strict raw JSON Schema tools before registering any tools", () =>

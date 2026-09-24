@@ -1841,7 +1841,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
       )
     }
-    const decodeOptions: SchemaAST.ParseOptions | undefined = strict ? { onExcessProperty: "error" } : undefined
+    const decodeOptions: SchemaAST.ParseOptions = {
+      onExcessProperty: strict ? "error" : "ignore",
+      errors: "all"
+    }
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
