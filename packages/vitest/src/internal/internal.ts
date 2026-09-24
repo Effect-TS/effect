@@ -235,9 +235,6 @@ const makeProp =
   <ExtraContext>(it: V.TestAPI<ExtraContext>): Vitest.Vitest.Methods["prop"] => (name, arbitraries, self, timeout) =>
     registerProp(it, name, arbitraries, (values, ctx) => (self(values as any, ctx) as unknown) !== false, timeout)
 
-/** @internal */
-export const prop = makeProp(V.it)
-
 const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
 <R, E>(
   layer_: Layer.Layer<R, E>,
@@ -285,36 +282,35 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
     return runPromise(Scope.close(scope, Exit.void))
   }
 
-  const makeIt = (): Vitest.Vitest.MethodsNonLive<R, ExtraContext> =>
-    makeItProxy(it, {
-      effect: makeTester<R | Scope.Scope, ExtraContext>(
-        (effect) =>
-          Effect.flatMap(contextEffect, (context) =>
-            effect.pipe(
-              Effect.scoped,
-              Effect.provide(context)
-            )),
-        it
-      ),
-      prop: makeProp<ExtraContext>(it),
-      flakyTest,
-      layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
-        readonly concurrent?: boolean
-        readonly timeout?: Duration.Input
-      }) {
-        return makeLayer(it)(Layer.provideMerge(nestedLayer, withTestEnv), {
-          ...options,
-          memoMap: Layer.forkMemoMapUnsafe(memoMap),
-          excludeTestServices
-        })
-      }
-    })
+  const methods: Vitest.Vitest.MethodsNonLive<R, ExtraContext> = makeItProxy(it, {
+    effect: makeTester<R | Scope.Scope, ExtraContext>(
+      (effect) =>
+        Effect.flatMap(contextEffect, (context) =>
+          effect.pipe(
+            Effect.scoped,
+            Effect.provide(context)
+          )),
+      it
+    ),
+    prop: makeProp<ExtraContext>(it),
+    flakyTest,
+    layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, options?: {
+      readonly concurrent?: boolean
+      readonly timeout?: Duration.Input
+    }) {
+      return makeLayer(it)(Layer.provideMerge(nestedLayer, withTestEnv), {
+        ...options,
+        memoMap: Layer.forkMemoMapUnsafe(memoMap),
+        excludeTestServices
+      })
+    }
+  })
 
   if (args.length === 1) {
     const currentSuite = getCurrentSuite()
     const previousTasks = new Set(currentSuite.tasks)
 
-    args[0](makeIt())
+    args[0](methods)
 
     const blockTasks = collectTasks(
       currentSuite.tasks.filter((task) => !previousTasks.has(task)) as ReadonlyArray<CollectedTask>
@@ -357,12 +353,9 @@ const makeLayer = <ExtraContext>(it: V.TestAPI<ExtraContext>) =>
       () => closeScope(),
       hookTimeout(options?.timeout)
     )
-    return args[1](makeIt())
+    return args[1](methods)
   })
 }
-
-/** @internal */
-export const layer = makeLayer(V.it)
 
 /** @internal */
 export const flakyTest = <A, E, R>(
@@ -398,13 +391,20 @@ export const makeMethods = <ExtraContext>(it: V.TestAPI<ExtraContext>): Vitest.V
   })
 
 /** @internal */
+export const it = makeMethods(V.it)
+
+/** @internal */
 export const {
   /** @internal */
   effect,
   /** @internal */
-  live
-} = makeMethods(V.it)
+  layer,
+  /** @internal */
+  live,
+  /** @internal */
+  prop
+} = it
 
 /** @internal */
 export const describeWrapped = (name: string, f: (it: Vitest.Vitest.Methods) => void): V.SuiteCollector =>
-  V.describe(name, () => f(makeMethods(V.it)))
+  V.describe(name, () => f(it))

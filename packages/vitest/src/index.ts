@@ -7,7 +7,7 @@ import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
-import * as V from "vitest"
+import type * as V from "vitest"
 import * as internal from "./internal/internal.ts"
 
 /**
@@ -275,7 +275,7 @@ export const prop: Vitest.Methods["prop"] = internal.prop
 /**
  * @since 4.0.0
  */
-export const it: Vitest.Methods = internal.makeMethods(V.it)
+export const it: Vitest.Methods = internal.it
 
 /**
  * Creates the Effect test helpers for a Vitest test API, such as one extended with fixtures.
