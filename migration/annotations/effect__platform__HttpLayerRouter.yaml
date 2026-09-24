@@ -11,8 +11,8 @@
   replacement: "FindMyWay.PathInput"
   note: "Import FindMyWay from effect/http."
 "@effect/platform/HttpLayerRouter#make":
-  replacement: "none"
-  note: "HttpRouter.serve, HttpRouter.toWebHandler, and HttpRouter.toHttpEffect each create their own router; pass route layers to one of them."
+  replacement: "HttpRouter.make"
+  note: "The layer-oriented router became the sole v4 HttpRouter implementation."
 "@effect/platform/HttpLayerRouter#MiddlewareTypeId":
   replacement: "none"
   note: "The middleware type id is internal in v4; use HttpRouter.Middleware."

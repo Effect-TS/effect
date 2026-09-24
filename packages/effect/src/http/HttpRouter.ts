@@ -109,7 +109,25 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
   "effect/http/HttpRouter"
 )
 
-const make = Effect.gen(function*() {
+/**
+ * Constructs an empty `HttpRouter` service.
+ *
+ * **Details**
+ *
+ * The returned router accepts route and middleware registrations and later routes
+ * the current `HttpServerRequest` to the matching `HttpServerResponse`.
+ *
+ * **Gotchas**
+ *
+ * `serve`, `toWebHandler`, and `toHttpEffect` create their own router. Use
+ * `make` only for custom integrations; an app layer passed to an entrypoint
+ * that outputs a different router fails with a defect.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = Effect.gen(function*() {
   const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
   const middleware = new Set<middleware.Fn>()
 
@@ -588,7 +606,7 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
  * @since 4.0.0
  */
 export const toHttpEffect = <A, E, R>(
-  appLayer: Layer.Layer<A, E, R> & OwnedRouter<A>,
+  appLayer: Layer.Layer<A, E, R>,
   options?: {
     readonly memoMap?: Layer.MemoMap | undefined
   }
@@ -610,14 +628,6 @@ export const toHttpEffect = <A, E, R>(
     // @effect-diagnostics effect/returnEffectInGen:off
     return router.asHttpEffect()
   }) as any
-
-/**
- * Rejects app layers that output `HttpRouter`, since the entrypoint owns the
- * router. `any` outputs are not checked.
- */
-type OwnedRouter<A> = 0 extends 1 & A ? unknown
-  : HttpRouter extends A ? "The HttpRouter is provided by the entrypoint; remove it from the app layer"
-  : unknown
 
 /**
  * Builds the app layer with a new router, so apps never share a router through
@@ -1297,7 +1307,7 @@ export const provideRequest =
  * @since 4.0.0
  */
 export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>>(
-  appLayer: Layer.Layer<A, E, R> & OwnedRouter<A>,
+  appLayer: Layer.Layer<A, E, R>,
   options?: {
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
     readonly disableLogger?: boolean | undefined
@@ -1390,7 +1400,7 @@ export const toWebHandler = <
   HR = Exclude<Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>, A>,
   ReqR = Exclude<HR, A | Scope.Scope | HttpServerRequest.HttpServerRequest>
 >(
-  appLayer: Layer.Layer<A, E, R> & OwnedRouter<A>,
+  appLayer: Layer.Layer<A, E, R>,
   options?: {
     readonly memoMap?: Layer.MemoMap | undefined
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined

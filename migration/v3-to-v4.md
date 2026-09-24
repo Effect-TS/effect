@@ -7135,7 +7135,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.layer` -> `none`: HttpRouter.serve, HttpRouter.toWebHandler, and HttpRouter.toHttpEffect each provide their own router; remove the router layer and pass route layers to one of them.
 
-- `HttpLayerRouter.make` -> `none`: HttpRouter.serve, HttpRouter.toWebHandler, and HttpRouter.toHttpEffect each create their own router; pass route layers to one of them.
+- `HttpLayerRouter.make` -> `HttpRouter.make`: The layer-oriented router became the sole v4 HttpRouter implementation.
 
 - `HttpLayerRouter.schemaJson` -> `HttpRouter.schemaJson`: Moved to the consolidated router with v4 Schema and error types.
 
