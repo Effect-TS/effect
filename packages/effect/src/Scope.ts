@@ -466,6 +466,8 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  *
  * Finalizers run in the scope's configured order and receive the supplied
  * `Exit`.
+ * By default, finalizers run uninterruptibly, so interrupting the closing fiber
+ * waits for them to finish; a finalizer can explicitly restore interruptibility.
  *
  * **Example** (Running scope finalizers)
  *
