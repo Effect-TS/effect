@@ -243,6 +243,63 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  // Pings are allowed before the initialize response and require an empty result.
+  for (
+    const protocol of [
+      McpProtocol.v2024_11_05,
+      McpProtocol.v2025_03_26,
+      McpProtocol.v2025_06_18,
+      McpProtocol.v2025_11_25
+    ]
+  ) {
+    for (
+      const protocols of [
+        [protocol],
+        [McpProtocol.v2026_07_28, protocol],
+        [protocol, McpProtocol.v2026_07_28]
+      ] as const
+    ) {
+      it.effect(`answers stdio pings throughout initialization with ${protocols.map((p) => p.protocolVersion)}`, () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol, protocols)
+          assert.deepStrictEqual(yield* fixture.sendRequest("ping", undefined, 0), {
+            jsonrpc: "2.0",
+            id: 0,
+            result: {}
+          })
+          // A ping must not create a session or enable ordinary requests.
+          assert.property(yield* fixture.sendRequest("tools/list"), "error")
+          const initialized = yield* fixture.sendRequest("initialize", {
+            protocolVersion: protocol.protocolVersion,
+            capabilities: {},
+            clientInfo: { name: "ping-client", version: "1.0.0" }
+          })
+          assert.deepInclude(initialized.result, { protocolVersion: protocol.protocolVersion })
+          assert.deepStrictEqual(yield* fixture.sendRequest("ping", {}, "before-initialized"), {
+            jsonrpc: "2.0",
+            id: "before-initialized",
+            result: {}
+          })
+          yield* fixture.sendNotification("notifications/initialized")
+          assert.deepStrictEqual(yield* fixture.sendRequest("ping", undefined, "after-initialized"), {
+            jsonrpc: "2.0",
+            id: "after-initialized",
+            result: {}
+          })
+        }))
+    }
+  }
+
+  it.effect("does not route explicitly stateless pings to a stateful adapter", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28, [
+        McpProtocol.v2026_07_28,
+        McpProtocol.v2025_11_25
+      ])
+      assert.deepInclude((yield* fixture.sendRequest("ping")).error, { code: -32601 })
+    }))
+
   // Effect delivery contract: an unavailable destination must not leave the caller waiting.
   it.effect("should return from completion notification when the target client is absent", () =>
     Effect.gen(function*() {
@@ -2510,7 +2567,7 @@ describe("McpServer", () => {
         yield* send(1, {
           _tag: "Request",
           id: 30,
-          tag: "ping",
+          tag: "resources/list",
           payload: {},
           headers: []
         })
@@ -2522,7 +2579,7 @@ describe("McpServer", () => {
         yield* send(1, {
           _tag: "Request",
           id: 31,
-          tag: "ping",
+          tag: "resources/list",
           payload: {},
           headers: []
         })
