@@ -27,31 +27,23 @@ describe("WorkflowEngine", () => {
   it.effect("nested workflows", () =>
     Effect.gen(function*() {
       const executionId = yield* ParentWorkflow.execute({ id: "parent-1" }, { discard: true })
-      const clockDeadline = Date.now() + 10_000
 
-      while (Chunk.isEmpty(yield* TestClock.sleeps())) {
-        assert.isBelow(Date.now(), clockDeadline, "Child workflow clock was not registered")
-        yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
-      }
-
+      yield* Effect.zipRight(nextMacrotask, TestClock.sleeps()).pipe(
+        Effect.repeat({ until: Chunk.isNonEmpty })
+      )
       yield* TestClock.adjust("1 hour")
 
-      const completionDeadline = Date.now() + 10_000
-      let result = yield* ParentWorkflow.poll(executionId)
-      while (!(result instanceof Workflow.Complete)) {
-        assert.isBelow(Date.now(), completionDeadline, "Parent workflow did not complete")
-        yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
-        result = yield* ParentWorkflow.poll(executionId)
-      }
-
-      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
+      const result = yield* Effect.zipRight(nextMacrotask, ParentWorkflow.poll(executionId)).pipe(
+        Effect.repeat({ until: (r) => r?._tag === "Complete" })
+      )
+      expect(result).toEqual(new Workflow.Complete({ exit: Exit.void }))
     }).pipe(
       Effect.provide(
         Layer.mergeAll(ParentWorkflowLayer, ChildWorkflowLayer).pipe(
           Layer.provideMerge(WorkflowEngine.layerMemory)
         )
       )
-    ), 25_000)
+    ))
 
   it.effect("does not squash workflow failures after suspension", () =>
     Effect.gen(function*() {
@@ -133,6 +125,9 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(exits, [])
     }))
 })
+
+// workflow execution ids are hashed with WebCrypto, which TestClock cannot observe
+const nextMacrotask = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 
 const TestWorkflow = Workflow.make({
   name: "TestWorkflow",
