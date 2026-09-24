@@ -121,7 +121,8 @@ export const make: <
     readonly idleTimeToLive?: Duration.DurationInput | undefined
     /**
      * Preloaded entries become idle immediately and follow the idle TTL.
-     * With a zero TTL, preloading is skipped.
+     * The default idle TTL is zero, so preloading only occurs when a nonzero
+     * `idleTimeToLive` is configured.
      */
     readonly preloadKeys?: PreloadKeys
   } | undefined
@@ -183,7 +184,8 @@ export const make: <
 
   if (
     options?.preloadKeys &&
-    (options.idleTimeToLive === undefined || !Duration.isZero(Duration.decode(options.idleTimeToLive)))
+    options.idleTimeToLive !== undefined &&
+    !Duration.isZero(Duration.decode(options.idleTimeToLive))
   ) {
     for (const key of options.preloadKeys) {
       yield* Effect.scoped(RcMap.get(rcMap, key) as Effect.Effect<any, EL, RL | Scope.Scope>)
@@ -213,7 +215,8 @@ export const fromRecord = <
     readonly idleTimeToLive?: Duration.DurationInput | undefined
     /**
      * Preloaded entries become idle immediately and follow the idle TTL.
-     * With a zero TTL, preloading is skipped.
+     * The default idle TTL is zero, so preloading only occurs when a nonzero
+     * `idleTimeToLive` is configured.
      */
     readonly preload?: Preload | undefined
   } | undefined
@@ -340,7 +343,8 @@ export const Service = <Self>() =>
         readonly idleTimeToLive?: Duration.DurationInput | undefined
         /**
          * Preloaded entries become idle immediately and follow the idle TTL.
-         * With a zero TTL, preloading is skipped.
+         * The default idle TTL is zero, so preloading only occurs when a nonzero
+         * `idleTimeToLive` is configured.
          */
         readonly preloadKeys?:
           | Iterable<Options extends { readonly lookup: (key: infer K) => any } ? K : never>
@@ -354,7 +358,8 @@ export const Service = <Self>() =>
       readonly idleTimeToLive?: Duration.DurationInput | undefined
       /**
        * Preloaded entries become idle immediately and follow the idle TTL.
-       * With a zero TTL, preloading is skipped.
+       * The default idle TTL is zero, so preloading only occurs when a nonzero
+       * `idleTimeToLive` is configured.
        */
       readonly preload?: boolean
     }, Options>
