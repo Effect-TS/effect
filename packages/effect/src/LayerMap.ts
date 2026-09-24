@@ -3,7 +3,7 @@
  * @experimental
  */
 import * as Context from "./Context.js"
-import type * as Duration from "./Duration.js"
+import * as Duration from "./Duration.js"
 import * as Effect from "./Effect.js"
 import * as FiberRefsPatch from "./FiberRefsPatch.js"
 import { identity } from "./Function.js"
@@ -119,6 +119,10 @@ export const make: <
   lookup: (key: K) => L,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
+    /**
+     * Preloaded entries become idle immediately and follow the idle TTL.
+     * With a zero TTL, preloading is skipped.
+     */
     readonly preloadKeys?: PreloadKeys
   } | undefined
 ) => Effect.Effect<
@@ -177,9 +181,12 @@ export const make: <
     idleTimeToLive: options?.idleTimeToLive
   })
 
-  if (options?.preloadKeys) {
+  if (
+    options?.preloadKeys &&
+    (options.idleTimeToLive === undefined || !Duration.isZero(Duration.decode(options.idleTimeToLive)))
+  ) {
     for (const key of options.preloadKeys) {
-      yield* (RcMap.get(rcMap, key) as Effect.Effect<any, EL, RL | Scope.Scope>)
+      yield* Effect.scoped(RcMap.get(rcMap, key) as Effect.Effect<any, EL, RL | Scope.Scope>)
     }
   }
 
@@ -204,6 +211,10 @@ export const fromRecord = <
   layers: Layers,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
+    /**
+     * Preloaded entries become idle immediately and follow the idle TTL.
+     * With a zero TTL, preloading is skipped.
+     */
     readonly preload?: Preload | undefined
   } | undefined
 ): Effect.Effect<
@@ -327,6 +338,10 @@ export const Service = <Self>() =>
         readonly lookup: (key: any) => Layer.Layer<any, any, any>
         readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>>
         readonly idleTimeToLive?: Duration.DurationInput | undefined
+        /**
+         * Preloaded entries become idle immediately and follow the idle TTL.
+         * With a zero TTL, preloading is skipped.
+         */
         readonly preloadKeys?:
           | Iterable<Options extends { readonly lookup: (key: infer K) => any } ? K : never>
           | undefined
@@ -337,6 +352,10 @@ export const Service = <Self>() =>
       readonly layers: Record<string, Layer.Layer<any, any, any>>
       readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>>
       readonly idleTimeToLive?: Duration.DurationInput | undefined
+      /**
+       * Preloaded entries become idle immediately and follow the idle TTL.
+       * With a zero TTL, preloading is skipped.
+       */
       readonly preload?: boolean
     }, Options>
 >(
