@@ -3,6 +3,38 @@ import { Cause, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Queue", () => {
+  describe("waiter registration after a yield", () => {
+    // Budget 3 yields after the first queue check but before the old waiter registration.
+    const withYield = <A, E>(effect: Effect.Effect<A, E>) =>
+      Effect.provideService(effect, Scheduler.MaxOpsBeforeYield, 3)
+
+    const assertCompletes = (fiber: Fiber.Fiber<unknown, unknown>) =>
+      Effect.gen(function*() {
+        for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+        const done = fiber.pollUnsafe() !== undefined
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(done, "lost wake-up")
+      })
+
+    it.effect("offerAll does not park beside available capacity", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(1)
+        yield* Queue.offer(queue, 0)
+        const fiber = yield* Effect.forkChild(withYield(Queue.offerAll(queue, [1])), { startImmediately: true })
+        yield* Queue.take(queue)
+        yield* assertCompletes(fiber)
+      }))
+
+    it.effect("zero-capacity offer and take can rendezvous", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(0)
+        const offerer = yield* Effect.forkChild(withYield(Queue.offer(queue, 1)), { startImmediately: true })
+        const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+        yield* assertCompletes(offerer)
+        yield* assertCompletes(taker)
+      }))
+  })
+
   it.effect("isEnqueue type guard", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(10)
