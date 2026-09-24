@@ -599,7 +599,7 @@ export const makeHandlers = (
       return yield* decodeListToolsResult(result)
     }, Effect.mapError(projectError)),
     "tools/call": Effect.fnUntraced(function*(request: typeof McpSchema.CallTool.payloadSchema.Type) {
-      const invocation = { ...(yield* getInputInvocation(request)), structuredContentPolicy: "json" as const }
+      const invocation = yield* getInputInvocation(request)
       const tool = (yield* core.tools.list(invocation.protocol)).find((tool) => tool.name === request.name)
       const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
 

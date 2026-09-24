@@ -79,8 +79,7 @@ export const profileFromClient = (
  * @internal
  */
 export const invocationFromClient = (
-  request: PublicMcpSchema.McpServerClient["Service"],
-  structuredContentPolicy?: McpCore.StructuredContentPolicy
+  request: PublicMcpSchema.McpServerClient["Service"]
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: profileFromClient(request),
@@ -91,16 +90,14 @@ export const invocationFromClient = (
     clientInfo: request.clientInfo,
     requestMetadata: request.requestMetadata
   }),
-  serverClient: request,
-  structuredContentPolicy
+  serverClient: request
 })
 
 /**
  * @internal
  */
 export const invocationFromRequestContext = (
-  request: PublicMcpSchema.McpRequestContext["Service"],
-  structuredContentPolicy?: McpCore.StructuredContentPolicy
+  request: PublicMcpSchema.McpRequestContext["Service"]
 ): McpCore.McpInvocation => ({
   clientId: request.clientId,
   protocol: {
@@ -109,8 +106,7 @@ export const invocationFromRequestContext = (
     clientInfo: request.clientInfo,
     requestMetadata: request.requestMetadata
   },
-  requestContext: request,
-  structuredContentPolicy
+  requestContext: request
 })
 
 /**
@@ -123,6 +119,24 @@ export const requireCompleteOperation = <A>(
   outcome._tag === "Complete"
     ? Effect.succeed(outcome.value)
     : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
+
+/**
+ * Replaces the serialized JSON text mirror of a string `structuredContent`
+ * with the string itself, for protocols that cannot carry string
+ * `structuredContent`.
+ *
+ * @internal
+ */
+export const unwrapStringStructuredContent = (
+  result: PublicMcpSchema.CallToolResult
+): PublicMcpSchema.CallToolResult["content"] => {
+  const { content, structuredContent } = result
+  if (typeof structuredContent !== "string" || content.length !== 1) return content
+  const [block] = content
+  return block.type === "text" && block.text === JSON.stringify(structuredContent)
+    ? [{ ...block, text: structuredContent }]
+    : content
+}
 
 const isSamplingToolContent = (content: unknown): boolean =>
   Predicate.isReadonlyObject(content) && (content.type === "tool_use" || content.type === "tool_result")

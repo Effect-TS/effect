@@ -266,12 +266,12 @@ export const protocol = McpProtocol.make({
         const request = yield* PublicMcpSchema.McpServerClient
         const result = yield* core.tools.call(
           { ...call, arguments: call.arguments ?? {} },
-          McpProtocol.invocationFromClient(request, "none")
+          McpProtocol.invocationFromClient(request)
         ).pipe(
           Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
-        const content = yield* Effect.forEach(result.content, projectContent).pipe(
+        const content = yield* Effect.forEach(McpProtocol.unwrapStringStructuredContent(result), projectContent).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
         return McpSchema.CallToolResult.make({

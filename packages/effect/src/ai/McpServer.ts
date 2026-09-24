@@ -112,10 +112,6 @@ type ServerNotificationRequest<
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
 const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
-const StructuredContentPolicy = Context.Reference<McpCore.StructuredContentPolicy>(
-  "effect/ai/McpServer/StructuredContentPolicy",
-  { defaultValue: () => "none" }
-)
 
 const toInternalServerNotification = (
   message: ServerNotificationRequest
@@ -171,7 +167,6 @@ const provideInvocationContext = <A, E, R>(
   invocation: McpCore.McpInvocation
 ): Effect.Effect<A, E, Exclude<R, McpRequestContext>> => {
   let provided = Effect.provideService(effect, McpRequestContext, invocation.requestContext)
-  provided = Effect.provideService(provided, StructuredContentPolicy, invocation.structuredContentPolicy ?? "none")
   const requestMetadata = invocation.requestContext.requestMetadata
   const logLevel = Predicate.hasProperty(requestMetadata, "io.modelcontextprotocol/logLevel")
     ? requestMetadata["io.modelcontextprotocol/logLevel"]
@@ -455,7 +450,7 @@ export class McpServer extends Context.Service<McpServer, {
           const client = yield* McpServerClient
           const result = yield* internalCore.tools.call(
             request,
-            McpProtocolInternal.invocationFromClient(client, "json")
+            McpProtocolInternal.invocationFromClient(client)
           ).pipe(
             Effect.mapError((error) =>
               new InvalidParams({
@@ -1910,15 +1905,13 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
-              : Effect.map(StructuredContentPolicy, (policy) =>
+              : Effect.succeed(
                 new CallToolResult({
                   isError: result.isFailure,
                   structuredContent: result.isFailure ? undefined : result.encodedResult,
-                  content: !result.isFailure && typeof result.encodedResult === "string" &&
-                      policy !== "json"
-                    ? [{ type: "text", text: result.encodedResult }]
-                    : toolResultContent(result.encodedResult)
-                }))
+                  content: toolResultContent(result.encodedResult)
+                })
+              )
           ),
           Effect.catchCause(handleCause),
           Effect.provideContext(services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>)

@@ -92,16 +92,11 @@ export interface CanonicalInitializeResult {
 /**
  * @internal
  */
-// Keep this in sync with each adapter's tools/call structuredContent projection.
-/** @internal */
-export type StructuredContentPolicy = "none" | "object" | "json"
-
 export interface McpInvocation {
   readonly clientId: number
   readonly protocol: NegotiatedProtocolProfile<string>
   readonly requestContext: McpSchema.McpRequestContext["Service"]
   readonly serverClient?: McpSchema.McpServerClient["Service"] | undefined
-  readonly structuredContentPolicy?: StructuredContentPolicy | undefined
 }
 
 // NOTE: McpInvocation is runtime context, not a wire DTO. It combines the
