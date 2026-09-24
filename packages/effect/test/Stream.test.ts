@@ -1577,7 +1577,8 @@ describe("Stream", () => {
         const closesScope = Stream.fromChannel(
           Channel.fromTransform((upstream, scope) =>
             Effect.andThen(
-              Scope.closeUnsafe(scope, Exit.void) ?? Effect.void,
+              // flatMap supplies a Closeable scope to each inner channel.
+              Scope.close(scope as Scope.Closeable, Exit.void),
               Channel.toTransform(Stream.toChannel(Stream.make(0)))(upstream, scope)
             )
           )
