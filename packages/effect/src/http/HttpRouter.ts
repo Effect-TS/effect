@@ -1274,6 +1274,11 @@ export const provideRequest =
 /**
  * Runs the provided application layer as an HTTP server.
  *
+ * **Details**
+ *
+ * Layers first built inside the app are private to this server. Provide
+ * services that must be shared with sibling layers outside `serve`.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
