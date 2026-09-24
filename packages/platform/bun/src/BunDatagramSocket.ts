@@ -638,11 +638,14 @@ class NativeSocket {
 
   // on `drain`, send what the kernel refused, in order, until it refuses again
   flush() {
-    const pending = this.pending
     const socket = this.socket
     if (socket === undefined) return
     const stride = this.stride
-    while (pending.length !== 0) {
+    // `this.pending` is re-read on every turn: a failed send or a `done` that
+    // closes the reader can close the socket, and `failPending` then replaces
+    // the queue after completing every entry in it
+    while (!this.closing && this.pending.length !== 0) {
+      const pending = this.pending
       const next = pending[0]
       let sent: number
       try {
