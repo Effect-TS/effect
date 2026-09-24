@@ -3,6 +3,21 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import * as NetAddress from "effect/net/NetAddress"
 import type * as DatagramSocket from "effect/socket/DatagramSocket"
+import type * as Dns from "node:dns"
+import { vi } from "vitest"
+
+// Keep calls outside vi.fn: concurrent tests can clear Vitest mock histories.
+const lookupCalls = vi.hoisted(() => [] as Array<string>)
+
+vi.mock("node:dns", async (importOriginal) => {
+  const original = await importOriginal<typeof Dns>()
+  const lookup = vi.fn(original.lookup)
+  lookup.mockImplementation((...args) => {
+    lookupCalls.push(args[0])
+    Reflect.apply(original.lookup, original, args)
+  })
+  return { ...original, lookup, default: { ...original, lookup } }
+})
 
 const host = "127.0.0.1"
 const address = (host: string, port: number) => NetAddress.inetAddressFromIpStringUnsafe(host, port)
@@ -80,32 +95,20 @@ describe("DenoDatagramSocket", () => {
     bounded(Effect.gen(function*() {
       const receiver = DenoDatagramSocket.make({ bind: { address: host } })
       const incoming = yield* receiver.reader
-      const original = Deno.resolveDns
-      let calls = 0
+      const lookups = () => lookupCalls.filter((hostname) => hostname === "localhost").length
+      const before = lookups()
       // Resolution must happen at open, never once per write.
-      const descriptor = Object.getOwnPropertyDescriptor(Deno, "resolveDns")!
-      Object.defineProperty(Deno, "resolveDns", {
-        ...descriptor,
-        value: (...args: Parameters<typeof Deno.resolveDns>) => {
-          calls++
-          return original(...args)
-        }
+      const socket = DenoDatagramSocket.make({
+        peer: { address: "localhost", port: incoming.address.port },
+        family: "ipv4"
       })
-      try {
-        const socket = DenoDatagramSocket.make({
-          peer: { address: "localhost", port: incoming.address.port },
-          family: "ipv4"
-        })
-        yield* Effect.gen(function*() {
-          yield* socket.reader
-          const writer = yield* socket.writer
-          yield* writer.writeAll([{ payload: "first" }, { payload: "second" }])
-          assert.deepStrictEqual((yield* take(incoming, 2)).map((packet) => text(packet.payload)), ["first", "second"])
-        }).pipe(Effect.scoped)
-        assert.strictEqual(calls, 1)
-      } finally {
-        Object.defineProperty(Deno, "resolveDns", descriptor)
-      }
+      yield* Effect.gen(function*() {
+        yield* socket.reader
+        const writer = yield* socket.writer
+        yield* writer.writeAll([{ payload: "first" }, { payload: "second" }])
+        assert.deepStrictEqual((yield* take(incoming, 2)).map((packet) => text(packet.payload)), ["first", "second"])
+      }).pipe(Effect.scoped)
+      assert.strictEqual(lookups() - before, 1)
     })))
 
   it.effect("maps an occupied port to an open error", () =>
