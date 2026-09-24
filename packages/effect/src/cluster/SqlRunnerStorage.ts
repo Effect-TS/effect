@@ -408,7 +408,10 @@ export const make = Effect.fnUntraced(function*(options: {
             sql`(${stringLiteral(shardId)}, ${stringLiteral(address)}, ${sqlNow})`
           )
           return sql`
-            INSERT INTO ${locksTableSql} (shard_id, address, acquired_at) VALUES ${sql.csv(values)}
+            INSERT INTO ${locksTableSql} (shard_id, address, acquired_at)
+            SELECT shard_id, address, acquired_at
+            FROM (VALUES ${sql.csv(values)}) AS requested(shard_id, address, acquired_at)
+            ORDER BY shard_id COLLATE "C"
             ON CONFLICT (shard_id) DO UPDATE
             SET address = ${address}, acquired_at = ${sqlNow}
             WHERE ${locksTableSql}.address = ${address}
@@ -596,9 +599,14 @@ export const make = Effect.fnUntraced(function*(options: {
       if (!disableAdvisoryLocks) return acquireLock
       return (address: string, shardIds: ReadonlyArray<string>) =>
         sql`
+          WITH locked AS MATERIALIZED (
+            SELECT shard_id FROM ${locksTableSql}
+            WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
+            ORDER BY shard_id COLLATE "C" FOR UPDATE
+          )
           UPDATE ${locksTableSql}
           SET acquired_at = ${sqlNow}
-          WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
+          WHERE address = ${address} AND shard_id IN (SELECT shard_id FROM locked)
           RETURNING shard_id
         `.pipe(
           execWithLockConnValues,
@@ -693,7 +701,14 @@ export const make = Effect.fnUntraced(function*(options: {
   const releaseAllShards = sql.onDialectOrElse({
     pg: () => (address: string) =>
       disableAdvisoryLocks
-        ? sql`DELETE FROM ${locksTableSql} WHERE address = ${address}`.pipe(execWithLockConn)
+        ? sql`
+          WITH locked AS MATERIALIZED (
+            SELECT shard_id FROM ${locksTableSql} WHERE address = ${address}
+            ORDER BY shard_id COLLATE "C" FOR UPDATE
+          )
+          DELETE FROM ${locksTableSql}
+          WHERE address = ${address} AND shard_id IN (SELECT shard_id FROM locked)
+        `.pipe(execWithLockConn)
         : sql`SELECT pg_advisory_unlock_all()`.pipe(execWithLockConn, Effect.asVoid),
     mysql: () => (address: string) =>
       disableAdvisoryLocks
