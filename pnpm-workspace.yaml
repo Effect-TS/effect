@@ -32,14 +32,18 @@ patchedDependencies:
 minimumReleaseAgeExclude:
   - '@alchemy.run/*'
   - alchemy
-  - '@effect/platform-bun@4.0.0-rc.116'
-  - '@effect/platform-node-shared@4.0.0-rc.116'
-  - '@effect/platform-node@4.0.0-rc.116'
-  - '@effect/sql-mysql2@4.0.0-rc.116'
-  - '@effect/sql-pg@4.0.0-rc.116'
+  - '@effect/platform-bun@4.0.0-rc.117'
+  - '@effect/platform-node-shared@4.0.0-rc.117'
+  - '@effect/platform-node@4.0.0-rc.117'
+  - '@effect/sql-mysql2@4.0.0-rc.117'
+  - '@effect/sql-pg@4.0.0-rc.117'
 
-# alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
-# otherwise join the shared tests compilation and clash with the workspace
-# @types/node globals.
 overrides:
+  # jsdom 30.1.0 fails under Bun when Vitest installs its window error handler.
+  # Remove after a later jsdom release passes the Atom React and Solid suites under Bun.
+  # Upstream changes: https://github.com/jsdom/jsdom/compare/v30.0.1...v30.1.0
+  jsdom: ~30.0.1
+  # alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
+  # otherwise join the shared tests compilation and clash with the workspace
+  # @types/node globals.
   '@types/ssh2>@types/node': ^26.2.0

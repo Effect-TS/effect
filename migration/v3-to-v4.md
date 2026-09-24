@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`1ce1e62367e67a04e63bdf62ce2911cfee8c716c`)
 
-Head: `origin/main` (`9ad9891e24058065bcd445772e005f8ce4b3e42f`)
+Head: `origin/main` (`3d59ae6d5f9ff3e52cb6ed4a9f325320580218d5`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4884,7 +4884,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `OpenRouterClient.ChatStreamingResponseChunk` -> `OpenRouterClient.ChatStreamingResponseChunkData`: The standalone streaming chunk schema was replaced by the decoded data type from Generated.ChatStreamingResponse.
 
-- `OpenRouterClient.Service` -> `OpenRouterClient.Service`: Still exported in v4; adapt to the regenerated client, revised request and response schemas, and the new streaming result tuple.
+- `OpenRouterClient.Service` -> `OpenRouterClient.Service`: Still exported in v4; adapt to the regenerated client, revised request and response schemas, and the new streaming result tuple. Custom service implementations and mocks must also provide createDecisions, returning an Effect of [decoded DecisionsResponse, HttpClientResponse] with AiError failures.
 
 ### `@effect/ai-openrouter/OpenRouterConfig`
 
@@ -7314,7 +7314,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServerResponse.text` -> `HttpServerResponse.text`: Moved unchanged.
 
-- `HttpServerResponse.toWeb` -> `HttpServerResponse.toWeb`: Retained, but the optional Runtime became an optional Context for stream execution.
+- `HttpServerResponse.toWeb` -> `HttpServerResponse.toWeb`: Retained, but the optional Runtime became an optional Context for stream execution. For a raw Web Response, outer headers override native headers and cookies append, including when the body is omitted. With withoutBody, the raw status and statusText are preserved unless the outer status is 204, 205, or 304, which takes precedence.
 
 - `HttpServerResponse.uint8Array` -> `HttpServerResponse.uint8Array`: Moved unchanged.
 
@@ -12841,7 +12841,7 @@ SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 
 - `ParseResult.Composite` -> `SchemaIssue.Composite`: Composite parse failures moved to SchemaIssue. The v4 constructor takes the failing AST and an array of nested issues; input is retained only when reportInput is enabled.
 
-- `ParseResult.DeclarationDecodeUnknown` -> `SchemaGetter.Getter`: Custom declaration decoding now uses SchemaGetter values and Schema.declare annotations.
+- `ParseResult.DeclarationDecodeUnknown` -> `SchemaGetter.Getter`: Custom declaration decoding now uses SchemaGetter values and Schema.declare annotations. Getter is a tagged union, not a constructor; use transformOptionalEffect for an Option-to-Effect decoder. Use standalone SchemaGetter.run, map, and compose instead of instance methods.
 
 - `ParseResult.DecodeUnknown` -> `Schema.decodeUnknownEffect`: Use the function type returned by Schema.decodeUnknownEffect.
 
@@ -16179,6 +16179,8 @@ switch (strategy) {
 - `TMap.remove` -> `TxHashMap.remove`: Import TxHashMap from "effect/TxHashMap"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TMap.removeAll` -> `TxHashMap.removeMany`: The bulk removal operation was renamed.
+
+- `TMap.set`: TODO: needs guidance
 
 - `TMap.setIfAbsent` -> `Effect.tx + TxHashMap.get/TxHashMap.set`: No direct helper remains; check and conditionally set under one outer transaction.
 

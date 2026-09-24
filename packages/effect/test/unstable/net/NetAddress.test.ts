@@ -233,6 +233,70 @@ describe("NetAddress", () => {
     assert.isTrue(Equal.equals(NetAddress.ipv6Unspecified, ip("::")))
   })
 
+  describe("branded classifications", () => {
+    const ip = NetAddress.ipFromStringUnsafe
+    const ipv4 = (text: string) => success(NetAddress.ipv4FromString(text))
+    const ipv6 = (text: string) => success(NetAddress.ipv6FromString(text))
+    const mac = NetAddress.macAddressFromStringUnsafe
+
+    it("classifies IP boundaries without claiming reachability", () => {
+      for (const text of ["1.2.3.4", "127.0.0.1", "169.254.1.1", "240.0.0.1", "::1", "fe80::1"]) {
+        assert.isTrue(NetAddress.isUnicast(ip(text)), text)
+      }
+      for (const text of ["0.0.0.0", "224.0.0.0", "255.255.255.255", "::", "ff00::"]) {
+        assert.isFalse(NetAddress.isUnicast(ip(text)), text)
+      }
+      assert.isTrue(NetAddress.isLoopback(ip("127.0.0.0")))
+      assert.isTrue(NetAddress.isLoopback(ip("127.255.255.255")))
+      assert.isFalse(NetAddress.isLoopback(ip("128.0.0.0")))
+      assert.isTrue(NetAddress.isLoopback(ip("::1")))
+      assert.isFalse(NetAddress.isLoopback(ip("::2")))
+      assert.isFalse(NetAddress.isLoopback(ip("::ffff:127.0.0.1")))
+      assert.isFalse(NetAddress.isMulticast(ip("::ffff:224.0.0.1")))
+      assert.isTrue(NetAddress.isLinkLocal(ip("169.254.0.0")))
+      assert.isTrue(NetAddress.isLinkLocal(ip("169.254.255.255")))
+      assert.isFalse(NetAddress.isLinkLocal(ip("169.255.0.0")))
+      assert.isTrue(NetAddress.isLinkLocal(ip("fe80::")))
+      assert.isTrue(NetAddress.isLinkLocal(ip("febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff")))
+      assert.isFalse(NetAddress.isLinkLocal(ip("fec0::")))
+      for (const text of ["10.0.0.0", "10.255.255.255", "172.16.0.0", "172.31.255.255", "192.168.0.0"]) {
+        assert.isTrue(NetAddress.isPrivate(ipv4(text)), text)
+      }
+      for (const text of ["9.255.255.255", "172.15.255.255", "172.32.0.0", "192.169.0.0", "100.64.0.1"]) {
+        assert.isFalse(NetAddress.isPrivate(ipv4(text)), text)
+      }
+      assert.isTrue(NetAddress.isUniqueLocal(ipv6("fc00::")))
+      assert.isTrue(NetAddress.isUniqueLocal(ipv6("fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")))
+      assert.isFalse(NetAddress.isUniqueLocal(ipv6("fe00::")))
+    })
+
+    it("classifies the independent MAC group and administration bits", () => {
+      const cases = [
+        ["00:00:5e:00:53:01", false, false],
+        ["01:00:5e:00:00:01", true, false],
+        ["02:00:00:00:00:01", false, true],
+        ["03:00:00:00:00:01", true, true],
+        ["ff:ff:ff:ff:ff:ff", true, true]
+      ] as const
+      for (const [text, multicast, local] of cases) {
+        const address = mac(text)
+        assert.strictEqual(NetAddress.isMulticast(address), multicast)
+        assert.strictEqual(NetAddress.isMacMulticast(address), multicast)
+        assert.strictEqual(NetAddress.isUnicast(address), !multicast)
+        assert.strictEqual(NetAddress.isMacUnicast(address), !multicast)
+        assert.strictEqual(NetAddress.isMacLocallyAdministered(address), local)
+        assert.strictEqual(NetAddress.isMacUniversallyAdministered(address), !local)
+      }
+      const broadcast = mac("ff:ff:ff:ff:ff:ff")
+      assert.isTrue(NetAddress.isBroadcast(broadcast))
+      assert.isTrue(NetAddress.isMacBroadcast(broadcast))
+      assert.isTrue(NetAddress.isMulticast(broadcast))
+      assert.isFalse(NetAddress.isBroadcast(mac("01:00:5e:00:00:01")))
+      assert.isTrue(NetAddress.isBroadcast(NetAddress.ipv4Broadcast))
+      assert.isFalse(NetAddress.isMulticast(NetAddress.ipv4Broadcast))
+    })
+  })
+
   it("serializes and inspects canonical strings without private bytes", () => {
     const cases = [
       [NetAddress.ipv4Loopback, "127.0.0.1"],
@@ -384,6 +448,29 @@ describe("NetAddress", () => {
     }
   })
 
+  it("canonicalizes mapped internet addresses while retaining their port", () => {
+    const ipv4 = success(NetAddress.ipv4FromString("192.0.2.128"))
+    const expected = success(NetAddress.inetAddressV4(ipv4, 4567))
+    for (const scopeId of [0, 7]) {
+      const mapped = success(NetAddress.inetAddressV6(NetAddress.toIpv4Mapped(ipv4), 4567, { scopeId }))
+      const canonical: NetAddress.InetAddress = NetAddress.toCanonical(mapped)
+      assert.isTrue(NetAddress.isInetAddressV4(canonical))
+      assert.isTrue(Equal.equals(canonical, expected))
+      assert.strictEqual(Hash.hash(canonical), Hash.hash(expected))
+      assert.strictEqual(NetAddress.toCanonical(canonical), canonical)
+    }
+  })
+
+  it("retains identity and scope for internet addresses that need no canonicalization", () => {
+    const scoped = success(
+      NetAddress.inetAddressV6(success(NetAddress.ipv6FromString("fe80::1")), 1234, { scopeId: 3 })
+    )
+    for (const address of [success(NetAddress.inetAddressV4(NetAddress.ipv4Loopback, 1234)), scoped]) {
+      assert.strictEqual(NetAddress.toCanonical(address), address)
+    }
+    assert.strictEqual(NetAddress.toCanonical(scoped.address), scoped.address)
+  })
+
   it("constructs immutable address values", () => {
     const ipv4 = success(NetAddress.ipv4FromString("127.0.0.1"))
     const ipv6 = success(NetAddress.ipv6FromString("::1"))
@@ -514,6 +601,55 @@ describe("NetAddress", () => {
       }
     })
 
+    it("formats native hosts using the supplied platform and interface names", () => {
+      const scopeIds = NetAddress.scopeIdsFromInterfaces([
+        ["en0", [{ family: "IPv6", scopeid: 7 }]],
+        ["en1", [{ family: "IPv6", scopeid: 7 }]]
+      ])
+      for (const platform of ["win32", "linux", "darwin", undefined]) {
+        for (
+          const [input, expected] of [
+            ["127.0.0.1:8080", "127.0.0.1"],
+            ["[0:0:0:0:0:0:0:1]:8080", "::1"],
+            ["[fe80::1%0]:4567", "fe80::1"],
+            ["[fe80::1%7]:4567", platform === "win32" ? "fe80::1%7" : "fe80::1%en0"],
+            ["[fe80::1%9]:4567", "fe80::1%9"]
+          ]
+        ) {
+          const address = NetAddress.inetAddressFromStringUnsafe(input)
+          const host = NetAddress.formatNativeHost(address, scopeIds, platform)
+          assert.strictEqual(host, expected)
+          assert.deepStrictEqual(success(NetAddress.inetAddressFromHostString(host, address.port, scopeIds)), address)
+        }
+      }
+      const address = NetAddress.inetAddressFromStringUnsafe("[fe80::1%7]:4567")
+      assert.strictEqual(NetAddress.formatNativeHost(address, scopeIds), "fe80::1%en0")
+      assert.strictEqual(NetAddress.formatNativeHost(address, new Map(), "linux"), "fe80::1%7")
+      assert.strictEqual(NetAddress.formatNativeHost(address, new Map([["eth0", 7]]), "linux"), "fe80::1%eth0")
+    })
+
+    it("formats multicast interfaces using the supplied platform and scope map", () => {
+      const scopeIds = NetAddress.scopeIdsFromInterfaces([
+        ["en0", [{ family: "IPv6", scopeid: 7 }]],
+        ["en1", [{ family: "IPv6", scopeid: 7 }]]
+      ])
+      for (const platform of ["win32", "linux", "darwin", undefined]) {
+        assert.strictEqual(
+          NetAddress.formatMulticastInterface(NetAddress.ipv4Loopback, scopeIds, platform),
+          "127.0.0.1"
+        )
+        assert.strictEqual(NetAddress.formatMulticastInterface(0, scopeIds, platform), "::")
+        assert.strictEqual(
+          NetAddress.formatMulticastInterface(7, scopeIds, platform),
+          platform === "win32" ? "::%7" : "::%en0"
+        )
+        assert.strictEqual(NetAddress.formatMulticastInterface(9, scopeIds, platform), "::%9")
+      }
+      assert.strictEqual(NetAddress.formatMulticastInterface(7, scopeIds), "::%en0")
+      assert.strictEqual(NetAddress.formatMulticastInterface(7, new Map(), "linux"), "::%7")
+      assert.strictEqual(NetAddress.formatMulticastInterface(7, new Map([["eth0", 7]]), "linux"), "::%eth0")
+    })
+
     it("resolves named IPv6 zones only through the supplied scope map", () => {
       for (const scopeId of [7, 9]) {
         const scopeIds = new Map([["en0", scopeId]])
@@ -637,5 +773,62 @@ describe("NetAddress", () => {
     assert.strictEqual(Schema.encodeSync(Schema.UnixPathAddressFromString)(unix), "../opaque.sock")
     assert.throws(() => Schema.decodeUnknownSync(Schema.MacAddressFromString)("00-11-22-33-44-55"))
     assert.throws(() => Schema.decodeUnknownSync(Schema.Ipv4AddressFromString)("999.0.0.1"))
+  })
+
+  it("validates branded address schemas on decode and encode", () => {
+    const multicastIp = Schema.decodeUnknownSync(Schema.IpMulticastAddressFromString)("239.255.0.1")
+    const multicastMac = Schema.decodeUnknownSync(Schema.MacMulticastAddressFromString)("01:00:5E:00:00:01")
+    const broadcastMac = Schema.decodeUnknownSync(Schema.MacBroadcastAddressFromString)("FF:FF:FF:FF:FF:FF")
+    assert.strictEqual(Schema.encodeSync(Schema.IpMulticastAddressFromString)(multicastIp), "239.255.0.1")
+    assert.strictEqual(
+      Schema.encodeSync(Schema.MacMulticastAddressFromString)(multicastMac),
+      "01:00:5e:00:00:01"
+    )
+    assert.isTrue(NetAddress.isMulticast(multicastIp))
+    assert.isTrue(NetAddress.isMulticast(multicastMac))
+    assert.isTrue(NetAddress.isMulticast(broadcastMac))
+
+    assert.isTrue(NetAddress.isUnicast(Schema.decodeUnknownSync(Schema.IpUnicastAddressFromString)("192.0.2.1")))
+    assert.isTrue(
+      NetAddress.isMacUnicast(Schema.decodeUnknownSync(Schema.MacUnicastAddressFromString)("00:00:5e:00:53:01"))
+    )
+    assert.isTrue(
+      NetAddress.isBroadcast(Schema.decodeUnknownSync(Schema.Ipv4BroadcastAddressFromString)("255.255.255.255"))
+    )
+    assert.isTrue(NetAddress.isLoopback(Schema.decodeUnknownSync(Schema.IpLoopbackAddressFromString)("::1")))
+    assert.isTrue(NetAddress.isLinkLocal(Schema.decodeUnknownSync(Schema.IpLinkLocalAddressFromString)("fe80::1")))
+    assert.isTrue(NetAddress.isUnspecified(Schema.decodeUnknownSync(Schema.IpUnspecifiedAddressFromString)("::")))
+    assert.isTrue(NetAddress.isPrivate(Schema.decodeUnknownSync(Schema.Ipv4PrivateAddressFromString)("10.0.0.1")))
+    assert.isTrue(
+      NetAddress.isUniqueLocal(Schema.decodeUnknownSync(Schema.Ipv6UniqueLocalAddressFromString)("fd00::1"))
+    )
+    assert.isTrue(
+      NetAddress.isMacLocallyAdministered(
+        Schema.decodeUnknownSync(Schema.MacLocallyAdministeredAddressFromString)("02:00:00:00:00:01")
+      )
+    )
+    assert.isTrue(
+      NetAddress.isMacUniversallyAdministered(
+        Schema.decodeUnknownSync(Schema.MacUniversallyAdministeredAddressFromString)("00:00:5e:00:53:01")
+      )
+    )
+
+    const loopback = NetAddress.ipv4Loopback
+    const decodedLoopback: NetAddress.IpAddress = Schema.decodeUnknownSync(Schema.IpLoopbackAddress)(loopback)
+    assert.strictEqual(decodedLoopback, loopback)
+    assert.isTrue(Schema.is(Schema.IpLoopbackAddress)(loopback))
+    assert.isFalse(Schema.is(Schema.IpMulticastAddress)(loopback))
+    assert.throws(
+      () => Schema.decodeUnknownSync(Schema.IpMulticastAddressFromString)("127.0.0.1"),
+      /Expected a multicast address/
+    )
+    assert.throws(
+      () => Schema.decodeUnknownSync(Schema.IpMulticastAddressFromString)("localhost"),
+      /expected exactly four decimal octets/
+    )
+    assert.throws(
+      () => Schema.encodeUnknownSync(Schema.IpMulticastAddressFromString)(loopback),
+      /Expected a multicast address/
+    )
   })
 })

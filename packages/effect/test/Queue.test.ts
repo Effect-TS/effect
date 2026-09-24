@@ -393,6 +393,70 @@ describe("Queue", () => {
       assert.strictEqual(yield* Queue.offer(queue, 10), false)
     }))
 
+  it.effect("shutdownUnsafe interrupts waiting takers synchronously", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const taker = yield* Queue.take(queue).pipe(Effect.forkChild({ startImmediately: true }))
+
+      Queue.shutdownUnsafe(queue)
+
+      assert.isTrue(Exit.hasInterrupts(taker.pollUnsafe()!))
+    }))
+
+  it.effect("shutdownUnsafe clears buffered messages and settles pending offers synchronously", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(1)
+      Queue.offerUnsafe(queue, 1)
+      const offerer = yield* Queue.offer(queue, 2).pipe(Effect.forkChild({ startImmediately: true }))
+
+      Queue.shutdownUnsafe(queue)
+
+      assert.strictEqual(queue.messages.length, 0)
+      assert.deepStrictEqual(offerer.pollUnsafe(), Exit.succeed(false))
+    }))
+
+  it.effect("shutdownUnsafe resumes batch offers with their unaccepted suffix", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(1)
+      const producer = yield* Queue.offerAll(queue, [1, 2, 3]).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.strictEqual(yield* Queue.take(queue), 1)
+
+      Queue.shutdownUnsafe(queue)
+
+      assert.deepStrictEqual(producer.pollUnsafe(), Exit.succeed([3]))
+    }))
+
+  it.effect("shutdownUnsafe returns true and preserves an existing failure", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number, string>()
+      Queue.offerUnsafe(queue, 1)
+      Queue.failCauseUnsafe(queue, Cause.fail("boom"))
+
+      assert.isTrue(Queue.shutdownUnsafe(queue))
+
+      assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), "boom")
+    }))
+
+  it.effect("shutdownUnsafe returns false when already shut down", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+
+      assert.isTrue(Queue.shutdownUnsafe(queue))
+      assert.isFalse(Queue.shutdownUnsafe(queue))
+      assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(Queue.await(queue))))
+    }))
+
+  it.effect("shutdown returns false and preserves a completed queue's failure", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number, string>()
+      Queue.failCauseUnsafe(queue, Cause.fail("boom"))
+
+      assert.isFalse(yield* Queue.shutdown(queue))
+      assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), "boom")
+    }))
+
   it.effect("fail doesnt drop items", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number, string>(2)

@@ -178,6 +178,11 @@ export class MessageStorage extends Context.Service<MessageStorage, {
     address: EntityAddress
   ) => Effect.Effect<void, PersistenceError>
 
+  /** Release request claims without changing replies or processed state. */
+  readonly resetRequests: (
+    requestIds: ReadonlyArray<Snowflake.Snowflake>
+  ) => Effect.Effect<void, PersistenceError>
+
   /**
    * Reset the mailbox state for the provided addresses.
    */
@@ -411,6 +416,11 @@ export type Encoded = {
     }>,
     PersistenceError
   >
+
+  /** Release request claims without changing replies or processed state. */
+  readonly resetRequests: (
+    requestIds: ReadonlyArray<Snowflake.Snowflake>
+  ) => Effect.Effect<void, PersistenceError>
 
   /**
    * Reset the mailbox state for the provided addresses.
@@ -716,6 +726,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       )
     },
     resetAddress: (address) => encoded.resetAddresses([address]),
+    resetRequests: (requestIds) => requestIds.length === 0 ? Effect.void : encoded.resetRequests(requestIds),
     resetAddresses: (addresses) => addresses.length === 0 ? Effect.void : encoded.resetAddresses(addresses),
     clearAddress: encoded.clearAddress,
     resetShards: (shardIds) => {
@@ -846,6 +857,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   unprocessedMessages: () => Effect.succeed([]),
   unprocessedMessagesById: () => Effect.succeed([]),
   resetAddress: () => Effect.void,
+  resetRequests: () => Effect.void,
   resetAddresses: () => Effect.void,
   clearAddress: () => Effect.void,
   resetShards: () => Effect.void,
@@ -1067,6 +1079,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               if (claimedAt !== undefined && claimedAt > now - claimExpirationMillis) {
                 continue
               }
+              // Memory storage models claim expiry, but not SQL reply filtering or transactions.
               messages.push({
                 envelope,
                 lastSentReply: Option.fromNullishOr(entry.replies[entry.replies.length - 1])
@@ -1091,6 +1104,13 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
         }),
       resetAddresses,
+      resetRequests: (requestIds) =>
+        Effect.sync(() => {
+          for (const id of requestIds) {
+            const entry = requests.get(String(id))
+            if (entry) lastRead.delete(entry.envelope)
+          }
+        }),
       clearAddress: (address) =>
         Effect.sync(() => {
           for (const [primaryKey, entry] of requestsByPrimaryKey) {

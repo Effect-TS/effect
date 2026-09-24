@@ -15,7 +15,10 @@ import * as NetAddress from "./NetAddress.ts"
 const TypeId = "~effect/net/IpNetwork" as const
 
 /**
- * An immutable canonical IP network prefix.
+ * An immutable canonical IP network prefix. Constructors that retain the exact
+ * input address also retain its verified refinements. Operations that derive a
+ * different address return only its IPv4 or IPv6 family; revalidate the result
+ * before treating it as refined.
  *
  * @category models
  * @since 4.0.0
@@ -100,11 +103,18 @@ const fromInterfaceValue = <A extends NetAddress.IpAddress>(value: IpInterface.I
 const toBytes = (address: NetAddress.IpAddress): ReadonlyArray<number> =>
   NetAddress.isIpv4Address(address) ? NetAddress.ipv4ToOctets(address) : NetAddress.ipv6ToOctets(address)
 
-const fromBytes = <A extends NetAddress.IpAddress>(address: A, bytes: ReadonlyArray<number>): A => {
+type IpAddressFamily<A extends NetAddress.IpAddress> = A extends NetAddress.Ipv4Address ? NetAddress.Ipv4Address
+  : A extends NetAddress.Ipv6Address ? NetAddress.Ipv6Address
+  : never
+
+const fromBytes = <A extends NetAddress.IpAddress>(
+  address: A,
+  bytes: ReadonlyArray<number>
+): IpAddressFamily<A> => {
   const array = new Uint8Array(bytes)
   return (NetAddress.isIpv4Address(address)
     ? NetAddress.ipv4FromBytesUnsafe(array)
-    : NetAddress.ipv6FromBytesUnsafe(array)) as A
+    : NetAddress.ipv6FromBytesUnsafe(array)) as IpAddressFamily<A>
 }
 
 const maskBytes = (bytes: ReadonlyArray<number>, prefixLength: number): Array<number> => {
@@ -149,6 +159,8 @@ export const make = <A extends NetAddress.IpAddress>(
  * **Gotchas**
  *
  * The returned network's address can differ from the input address.
+ * Its type therefore retains the IPv4 or IPv6 family but not refinements on
+ * the input address. Revalidate the derived address to recover a refinement.
  *
  * @category constructors
  * @since 4.0.0
@@ -156,7 +168,7 @@ export const make = <A extends NetAddress.IpAddress>(
 export const fromAddress = <A extends NetAddress.IpAddress>(
   address: A,
   prefixLength: number
-): Result.Result<IpNetwork<A>, NetAddress.NetAddressError> => {
+): Result.Result<IpNetwork<IpAddressFamily<A>>, NetAddress.NetAddressError> => {
   return Result.map(IpInterface.make(address, prefixLength), (value) => {
     const masked = fromBytes(address, maskBytes(toBytes(address), prefixLength))
     return fromInterfaceValue(IpInterface.makeUnsafe(masked, value.prefixLength))
@@ -164,13 +176,15 @@ export const fromAddress = <A extends NetAddress.IpAddress>(
 }
 
 /**
- * Returns the canonical network containing an interface address.
+ * Returns the canonical network containing an interface address. The derived
+ * address retains its IPv4 or IPv6 family but not refinements on the input.
  *
  * @category conversions
  * @since 4.0.0
  */
-export const fromInterface = <A extends NetAddress.IpAddress>(self: IpInterface.IpInterface<A>): IpNetwork<A> =>
-  fromAddressUnsafe(self.address, self.prefixLength)
+export const fromInterface = <A extends NetAddress.IpAddress>(
+  self: IpInterface.IpInterface<A>
+): IpNetwork<IpAddressFamily<A>> => fromAddressUnsafe(self.address, self.prefixLength)
 
 /**
  * Parses a strict IPv4 network prefix in CIDR notation.
@@ -222,12 +236,16 @@ export const makeUnsafe = <A extends NetAddress.IpAddress>(address: A, prefixLen
 
 /**
  * Creates the network containing a trusted address, throwing when its prefix is invalid.
+ * The derived address retains its IPv4 or IPv6 family but not refinements on
+ * the input address.
  *
  * @category unsafe
  * @since 4.0.0
  */
-export const fromAddressUnsafe = <A extends NetAddress.IpAddress>(address: A, prefixLength: number): IpNetwork<A> =>
-  Result.getOrThrow(fromAddress(address, prefixLength))
+export const fromAddressUnsafe = <A extends NetAddress.IpAddress>(
+  address: A,
+  prefixLength: number
+): IpNetwork<IpAddressFamily<A>> => Result.getOrThrow(fromAddress(address, prefixLength))
 
 /**
  * Parses a trusted network prefix in CIDR notation, throwing on failure.
@@ -254,12 +272,14 @@ export const format = (self: IpNetwork): string => `${NetAddress.formatIp(self.a
 export const firstAddress = <A extends NetAddress.IpAddress>(self: IpNetwork<A>): A => self.address
 
 /**
- * Returns the numerically greatest address in a network prefix.
+ * Returns the numerically greatest address in a network prefix. The derived
+ * address retains its IPv4 or IPv6 family but not refinements on the network
+ * address.
  *
  * @category getters
  * @since 4.0.0
  */
-export const lastAddress = <A extends NetAddress.IpAddress>(self: IpNetwork<A>): A => {
+export const lastAddress = <A extends NetAddress.IpAddress>(self: IpNetwork<A>): IpAddressFamily<A> => {
   const bytes = toBytes(self.address)
   const networkMask = maskBytes(bytes.map(() => 0xff), self.prefixLength)
   return fromBytes(self.address, bytes.map((byte, index) => byte | (networkMask[index] ^ 0xff)))

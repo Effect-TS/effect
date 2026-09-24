@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-react-native",
-  "version": "4.0.0-rc.116",
+  "version": "4.0.0-rc.117",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -61,7 +61,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@op-engineering/op-sqlite": "^18.2.1",
+    "@op-engineering/op-sqlite": "^18.2.4",
     "effect": "workspace:^"
   },
   "peerDependencies": {

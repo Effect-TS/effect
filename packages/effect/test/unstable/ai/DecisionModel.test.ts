@@ -112,6 +112,22 @@ describe("Decision", () => {
     })
   })
 
+  it("probability accepts omitted criteria", () => {
+    const decision = Decision.probability({ instructions: "Needs action now" })
+
+    assert.strictEqual(decision._tag, "Probability")
+    assert.strictEqual(decision.instructions, "Needs action now")
+    assert.strictEqual(decision.criteria, undefined)
+  })
+
+  it("probability preserves explicit criteria, including empty descriptions", () => {
+    const criteria = { false: "", true: "Needs action now" }
+    const decision = Decision.probability({ instructions: "Is urgent", criteria })
+
+    assert.strictEqual(decision.instructions, "Is urgent")
+    assert.strictEqual(decision.criteria, criteria)
+  })
+
   it("make fails on empty decisions", () => {
     assert.throws(() => Decision.make({ input: Schema.String, decisions: {} }))
   })
@@ -122,6 +138,34 @@ describe("Decision", () => {
 })
 
 describe("DecisionModel", () => {
+  it.effect("probability without criteria reaches the provider and returns an answer", () => {
+    const definition = Decision.make({
+      input: Schema.String,
+      decisions: {
+        urgent: Decision.probability({ instructions: "Needs action now" })
+      }
+    })
+    const calls: Array<DecisionModel.ProviderOptions> = []
+
+    return Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(definition, { input: "Help now" })
+
+      assert.strictEqual(calls.length, 1)
+      assert.strictEqual(calls[0].state, "Help now")
+      assert.strictEqual(calls[0].decisions, definition.decisions)
+      assert.strictEqual(calls[0].decisions.urgent.criteria, undefined)
+      assert.deepStrictEqual(answers, { urgent: { probability: 0.9 } })
+    }).pipe(
+      Effect.provide(makeLayer((options) => {
+        calls.push(options)
+        return Effect.succeed({
+          answers: { urgent: triageAnswers.urgent },
+          usage: { inputTokens: undefined, outputTokens: undefined }
+        })
+      }))
+    )
+  })
+
   for (const key of ["__proto__", "constructor", "toString"]) {
     it.effect("preserves the own enumerable rate probability " + key, () => {
       const definition = Decision.make({

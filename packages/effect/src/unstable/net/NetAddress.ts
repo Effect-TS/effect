@@ -3,6 +3,7 @@
  *
  * @since 4.0.0
  */
+import type * as Brand from "../../Brand.ts"
 import * as Data from "../../Data.ts"
 import * as Equal from "../../Equal.ts"
 import { dual } from "../../Function.ts"
@@ -60,6 +61,137 @@ export interface MacAddress extends Equal.Equal, Hash.Hash {
   toString(): string
   toJSON(): string
 }
+
+const MulticastTypeId = "~effect/net/NetAddress/MulticastAddress" as const
+const UnicastTypeId = "~effect/net/NetAddress/UnicastAddress" as const
+const BroadcastTypeId = "~effect/net/NetAddress/BroadcastAddress" as const
+const LoopbackTypeId = "~effect/net/NetAddress/LoopbackAddress" as const
+const LinkLocalTypeId = "~effect/net/NetAddress/LinkLocalAddress" as const
+const UnspecifiedTypeId = "~effect/net/NetAddress/UnspecifiedAddress" as const
+const PrivateTypeId = "~effect/net/NetAddress/PrivateAddress" as const
+const UniqueLocalTypeId = "~effect/net/NetAddress/UniqueLocalAddress" as const
+const LocallyAdministeredTypeId = "~effect/net/NetAddress/LocallyAdministeredAddress" as const
+const UniversallyAdministeredTypeId = "~effect/net/NetAddress/UniversallyAdministeredAddress" as const
+
+/**
+ * An IP or MAC address proven to be multicast (IPv4 `224.0.0.0/4`, IPv6
+ * `ff00::/8`, or a MAC address with the IEEE group bit set).
+ *
+ * **Details**
+ *
+ * This is a branded refinement of the underlying address. Construction returns
+ * the same runtime value, preserving identity, equality, hashing, and formatting.
+ * The MAC all-ones broadcast address has the group bit set and is therefore
+ * multicast; use {@link isMacBroadcast} to distinguish it. The IPv4 limited
+ * broadcast address `255.255.255.255` is not multicast.
+ *
+ * The default type argument remains `IpAddress`; specify `MacAddress` or an
+ * explicit IP/MAC union when accepting those wider address families.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type MulticastAddress<A extends IpAddress | MacAddress = IpAddress> = Brand.Branded<
+  A,
+  typeof MulticastTypeId
+>
+
+/**
+ * An IP or MAC address proven to be syntactically unicast.
+ *
+ * **Details**
+ *
+ * For IP addresses this excludes multicast, unspecified, and the IPv4 limited
+ * broadcast address. Reserved and special-purpose addresses may still satisfy
+ * this refinement, as may an IPv4 directed broadcast whose network prefix is
+ * unknown. It does not promise reachability or destination usability. For MAC
+ * addresses it means that the IEEE individual/group bit is clear.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type UnicastAddress<A extends IpAddress | MacAddress = IpAddress | MacAddress> = Brand.Branded<
+  A,
+  typeof UnicastTypeId
+>
+
+/**
+ * An IPv4 limited-broadcast or MAC all-ones broadcast address.
+ *
+ * **Details**
+ *
+ * MAC broadcast is also multicast because its IEEE group bit is set. IPv4
+ * limited broadcast is not multicast. Directed IPv4 broadcast requires network
+ * prefix context and is intentionally not represented by this refinement.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type BroadcastAddress<A extends Ipv4Address | MacAddress = Ipv4Address | MacAddress> = A extends MacAddress
+  ? Brand.Branded<MulticastAddress<A>, typeof BroadcastTypeId>
+  : Brand.Branded<A, typeof BroadcastTypeId>
+
+/**
+ * An IP address proven to be loopback.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type LoopbackAddress<A extends IpAddress = IpAddress> = Brand.Branded<A, typeof LoopbackTypeId>
+
+/**
+ * An IP address proven to be link-local.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type LinkLocalAddress<A extends IpAddress = IpAddress> = Brand.Branded<A, typeof LinkLocalTypeId>
+
+/**
+ * An all-zero IPv4 or IPv6 address.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type UnspecifiedAddress<A extends IpAddress = IpAddress> = Brand.Branded<A, typeof UnspecifiedTypeId>
+
+/**
+ * An IPv4 private-use address in an RFC 1918 range.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PrivateAddress<A extends Ipv4Address = Ipv4Address> = Brand.Branded<A, typeof PrivateTypeId>
+
+/**
+ * An IPv6 unique-local address in `fc00::/7`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type UniqueLocalAddress<A extends Ipv6Address = Ipv6Address> = Brand.Branded<A, typeof UniqueLocalTypeId>
+
+/**
+ * A MAC address whose IEEE universal/local bit marks it as locally administered.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type LocallyAdministeredAddress<A extends MacAddress = MacAddress> = Brand.Branded<
+  A,
+  typeof LocallyAdministeredTypeId
+>
+
+/**
+ * A MAC address whose IEEE universal/local bit marks it as universally administered.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type UniversallyAdministeredAddress<A extends MacAddress = MacAddress> = Brand.Branded<
+  A,
+  typeof UniversallyAdministeredTypeId
+>
 
 const getBytes = (self: IpAddress | MacAddress): Uint8Array => (self as any).bytes
 
@@ -367,7 +499,9 @@ export const ipv4Loopback: Ipv4Address = makeIpv4(new Uint8Array([127, 0, 0, 1])
  * @category constants
  * @since 4.0.0
  */
-export const ipv6Loopback: Ipv6Address = makeIpv6(new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]))
+export const ipv6Loopback: Ipv6Address = makeIpv6(
+  new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+)
 
 /**
  * The unspecified IPv4 address `0.0.0.0`.
@@ -652,7 +786,8 @@ export const formatMacAddress = (self: MacAddress): string =>
  * @category predicates
  * @since 4.0.0
  */
-export const isMacBroadcast = (self: MacAddress): boolean => getBytes(self).every((byte) => byte === 0xff)
+export const isMacBroadcast = <A extends MacAddress>(self: A): self is BroadcastAddress<A> =>
+  getBytes(self).every((byte) => byte === 0xff)
 
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit set.
@@ -660,7 +795,8 @@ export const isMacBroadcast = (self: MacAddress): boolean => getBytes(self).ever
  * @category predicates
  * @since 4.0.0
  */
-export const isMacMulticast = (self: MacAddress): boolean => (getBytes(self)[0] & 1) !== 0
+export const isMacMulticast = <A extends MacAddress>(self: A): self is MulticastAddress<A> =>
+  (getBytes(self)[0] & 1) !== 0
 
 /**
  * Returns `true` when the MAC address has the IEEE group-address bit clear.
@@ -668,7 +804,7 @@ export const isMacMulticast = (self: MacAddress): boolean => (getBytes(self)[0] 
  * @category predicates
  * @since 4.0.0
  */
-export const isMacUnicast = (self: MacAddress): boolean => (getBytes(self)[0] & 1) === 0
+export const isMacUnicast = <A extends MacAddress>(self: A): self is UnicastAddress<A> => (getBytes(self)[0] & 1) === 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit set.
@@ -676,7 +812,9 @@ export const isMacUnicast = (self: MacAddress): boolean => (getBytes(self)[0] & 
  * @category predicates
  * @since 4.0.0
  */
-export const isMacLocallyAdministered = (self: MacAddress): boolean => (getBytes(self)[0] & 2) !== 0
+export const isMacLocallyAdministered = <A extends MacAddress>(
+  self: A
+): self is LocallyAdministeredAddress<A> => (getBytes(self)[0] & 2) !== 0
 
 /**
  * Returns `true` when the MAC address has the IEEE local-administration bit clear.
@@ -684,7 +822,9 @@ export const isMacLocallyAdministered = (self: MacAddress): boolean => (getBytes
  * @category predicates
  * @since 4.0.0
  */
-export const isMacUniversallyAdministered = (self: MacAddress): boolean => (getBytes(self)[0] & 2) === 0
+export const isMacUniversallyAdministered = <A extends MacAddress>(
+  self: A
+): self is UniversallyAdministeredAddress<A> => (getBytes(self)[0] & 2) === 0
 
 /**
  * Folds an IP address by its numeric version.
@@ -744,7 +884,8 @@ export const formatIp = (self: IpAddress): string => {
  * @category predicates
  * @since 4.0.0
  */
-export const isUnspecified = (self: IpAddress): boolean => getBytes(self).every((byte) => byte === 0)
+export const isUnspecified = <A extends IpAddress>(self: A): self is UnspecifiedAddress<A> =>
+  getBytes(self).every((byte) => byte === 0)
 
 /**
  * Returns `true` for IPv4 `127.0.0.0/8` or IPv6 `::1`.
@@ -752,7 +893,7 @@ export const isUnspecified = (self: IpAddress): boolean => getBytes(self).every(
  * @category predicates
  * @since 4.0.0
  */
-export const isLoopback = (self: IpAddress): boolean => {
+export const isLoopback = <A extends IpAddress>(self: A): self is LoopbackAddress<A> => {
   if (isIpv4Address(self)) return getBytes(self)[0] === 127
   const bytes = getBytes(self)
   for (let index = 0; index < 15; index++) {
@@ -762,23 +903,72 @@ export const isLoopback = (self: IpAddress): boolean => {
 }
 
 /**
- * Returns `true` for IPv4 `224.0.0.0/4` or IPv6 `ff00::/8`.
+ * Returns `true` for IPv4 `224.0.0.0/4`, IPv6 `ff00::/8`, or a MAC address with
+ * the IEEE group bit set, refining the value while preserving its address type.
+ *
+ * **Details**
+ *
+ * The MAC all-ones broadcast address has the group bit set and is multicast;
+ * the IPv4 limited broadcast address `255.255.255.255` is not. Use
+ * {@link isMacBroadcast} or {@link isBroadcast} to distinguish broadcast.
+ *
+ * **Example** (Classifying IP and MAC group addresses)
+ *
+ * ```ts import.meta.vitest
+ * import { assert } from "@effect/vitest"
+ * import { NetAddress } from "effect/unstable/net"
+ *
+ * const ip = NetAddress.ipFromStringUnsafe("239.255.0.1")
+ * const mac = NetAddress.macAddressFromStringUnsafe("ff:ff:ff:ff:ff:ff")
+ *
+ * assert.isTrue(NetAddress.isMulticast(ip))
+ * assert.isTrue(NetAddress.isMulticast(mac))
+ * assert.isTrue(NetAddress.isBroadcast(mac))
+ * assert.isFalse(NetAddress.isMulticast(NetAddress.ipv4Broadcast))
+ * ```
  *
  * @category predicates
  * @since 4.0.0
  */
-export const isMulticast = (self: IpAddress): boolean => {
+export const isMulticast = <A extends IpAddress | MacAddress>(self: A): self is MulticastAddress<A> => {
+  if (isMacAddress(self)) return isMacMulticast(self)
   if (isIpv4Address(self)) return (getBytes(self)[0] >> 4) === 0xe
   return getBytes(self)[0] === 0xff
 }
 
 /**
- * Returns `true` for the IPv4 broadcast address `255.255.255.255`.
+ * Returns `true` for the IPv4 limited broadcast address `255.255.255.255` or
+ * the MAC all-ones broadcast address.
+ *
+ * **Details**
+ *
+ * MAC broadcast is also multicast because its IEEE group bit is set. IPv4
+ * limited broadcast is not multicast. Directed IPv4 broadcast cannot be
+ * determined without a network prefix and is not classified here.
  *
  * @category predicates
  * @since 4.0.0
  */
-export const isBroadcast = (self: Ipv4Address): boolean => getBytes(self).every((byte) => byte === 0xff)
+export const isBroadcast = <A extends Ipv4Address | MacAddress>(self: A): self is BroadcastAddress<A> =>
+  isMacAddress(self) ? isMacBroadcast(self) : getBytes(self).every((byte) => byte === 0xff)
+
+/**
+ * Returns `true` when an address is syntactically unicast.
+ *
+ * **Details**
+ *
+ * IP addresses exclude multicast, unspecified, and IPv4 limited broadcast.
+ * This does not exclude reserved ranges, prefix-relative directed broadcast,
+ * or addresses that are unusable or unreachable in a particular deployment.
+ * MAC addresses are unicast when their IEEE individual/group bit is clear.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isUnicast = <A extends IpAddress | MacAddress>(self: A): self is UnicastAddress<A> => {
+  if (isMacAddress(self)) return isMacUnicast(self)
+  return !isMulticast(self) && !isUnspecified(self) && (!isIpv4Address(self) || !isBroadcast(self))
+}
 
 /**
  * Returns `true` for IPv4 `169.254.0.0/16` or IPv6 `fe80::/10`.
@@ -786,7 +976,7 @@ export const isBroadcast = (self: Ipv4Address): boolean => getBytes(self).every(
  * @category predicates
  * @since 4.0.0
  */
-export const isLinkLocal = (self: IpAddress): boolean => {
+export const isLinkLocal = <A extends IpAddress>(self: A): self is LinkLocalAddress<A> => {
   if (isIpv4Address(self)) {
     const bytes = getBytes(self)
     return bytes[0] === 0xa9 && bytes[1] === 0xfe
@@ -801,7 +991,7 @@ export const isLinkLocal = (self: IpAddress): boolean => {
  * @category predicates
  * @since 4.0.0
  */
-export const isPrivate = (self: Ipv4Address): boolean => {
+export const isPrivate = <A extends Ipv4Address>(self: A): self is PrivateAddress<A> => {
   const bytes = getBytes(self)
   return bytes[0] === 10 || (bytes[0] === 172 && (bytes[1] & 0xf0) === 16) ||
     (bytes[0] === 192 && bytes[1] === 168)
@@ -813,7 +1003,8 @@ export const isPrivate = (self: Ipv4Address): boolean => {
  * @category predicates
  * @since 4.0.0
  */
-export const isUniqueLocal = (self: Ipv6Address): boolean => (getBytes(self)[0] & 0xfe) === 0xfc
+export const isUniqueLocal = <A extends Ipv6Address>(self: A): self is UniqueLocalAddress<A> =>
+  (getBytes(self)[0] & 0xfe) === 0xfc
 
 /**
  * Returns `true` when an IPv6 address is in the `::ffff:0:0/96` mapped range.
@@ -853,13 +1044,26 @@ export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
   isIpv4Mapped(self) ? Option.some(makeIpv4(getBytes(self).slice(12))) : Option.none()
 
 /**
- * Converts an IPv4-mapped IPv6 address to IPv4, leaving all other addresses unchanged.
+ * Converts IPv4-mapped IPv6 addresses to IPv4, including the IP component of internet addresses.
+ *
+ * **Details**
+ *
+ * Internet addresses retain their port. Addresses that need no conversion are
+ * returned unchanged, preserving their identity and any IPv6 scope identifier.
+ * Converted internet addresses are IPv4 values without IPv6 scope metadata.
  *
  * @category converting
  * @since 4.0.0
  */
-export const toCanonical = (self: IpAddress): IpAddress =>
-  isIpv6Address(self) ? Option.getOrElse(fromIpv4Mapped(self), () => self) : self
+export function toCanonical(self: IpAddress): IpAddress
+export function toCanonical(self: InetAddress): InetAddress
+export function toCanonical(self: IpAddress | InetAddress): IpAddress | InetAddress {
+  if (isInetAddress(self)) {
+    const address = toCanonical(self.address)
+    return address === self.address ? self : inetAddressUnsafe(address, self.port)
+  }
+  return isIpv6Address(self) ? Option.getOrElse(fromIpv4Mapped(self), () => self) : self
+}
 
 const InetV4Proto = {
   _tag: "InetAddressV4",
@@ -1151,6 +1355,68 @@ export const inetAddressFromStringUnsafe = (input: string): InetAddress =>
  */
 export const formatHost = (self: InetAddress): string =>
   formatIp(self.address) + (isInetAddressV6(self) && self.scopeId !== 0 ? `%${self.scopeId}` : "")
+
+/**
+ * Formats an internet address's host for a native socket API, without brackets
+ * or a port.
+ *
+ * **Details**
+ *
+ * On `"win32"`, IPv6 zones remain numeric. On other platforms, the first
+ * interface name matching the scope ID is used, falling back to the numeric ID
+ * when no name matches. Unscoped IPv6 and IPv4 hosts are unchanged.
+ *
+ * Supply a scope map from {@link scopeIdsFromInterfaces} and optionally a platform
+ * string. Omitting the platform uses non-Windows behavior. This function performs
+ * no operating-system lookups.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatNativeHost = (
+  self: InetAddress,
+  scopeIds: ReadonlyMap<string, number>,
+  platform?: string
+): string => {
+  if (platform !== "win32" && isInetAddressV6(self) && self.scopeId !== 0) {
+    for (const [name, scopeId] of scopeIds) {
+      if (scopeId === self.scopeId) return `${formatIp(self.address)}%${name}`
+    }
+  }
+  return formatHost(self)
+}
+
+/**
+ * Formats an IPv4 address or IPv6 interface index for a native multicast API.
+ *
+ * **Details**
+ *
+ * IPv4 addresses are formatted as numeric IPs. An IPv6 index of zero produces
+ * `"::"`. Other indices produce `"::%index"` on `"win32"`, or `"::%name"` on
+ * other platforms using the first matching interface name, falling back to the
+ * numeric index when no name matches.
+ *
+ * Supply a scope map from {@link scopeIdsFromInterfaces} and optionally a platform
+ * string. Omitting the platform uses non-Windows behavior. This function performs
+ * no operating-system lookups.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export const formatMulticastInterface = (
+  networkInterface: Ipv4Address | number,
+  scopeIds: ReadonlyMap<string, number>,
+  platform?: string
+): string => {
+  if (typeof networkInterface !== "number") return formatIp(networkInterface)
+  if (networkInterface === 0) return "::"
+  if (platform !== "win32") {
+    for (const [name, scopeId] of scopeIds) {
+      if (scopeId === networkInterface) return `::%${name}`
+    }
+  }
+  return `::%${networkInterface}`
+}
 
 /**
  * Formats a resolved internet address, bracketing IPv6 around its port.

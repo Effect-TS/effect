@@ -243,6 +243,25 @@ const make = Effect.gen(function*() {
   const entityManagers = new Map<string, EntityManagerState>()
   let entityRegistrationStartMillis: number | undefined
   let entityRegistrationFallbackStartMillis: number | undefined
+  const entityRegistrationTimeoutMillis = Duration.toMillis(
+    Duration.fromInputUnsafe(config.entityRegistrationTimeout)
+  )
+  const entityRegistrationTimeRemaining = () => {
+    const now = clock.currentTimeMillisUnsafe()
+    const registrationStarted = entityRegistrationStartMillis !== undefined
+    // The first missing entity observed by either the storage read loop or a
+    // local send starts the shared fallback registration window.
+    const timeoutStartMillis = entityRegistrationStartMillis ??
+      (entityRegistrationFallbackStartMillis ??= now)
+    // If registration never starts, allow two intervals from the first missing
+    // entity before failing.
+    const timeoutMillis = registrationStarted
+      ? entityRegistrationTimeoutMillis
+      : entityRegistrationTimeoutMillis * 2
+    return Math.max(0, timeoutMillis - (now - timeoutStartMillis))
+  }
+  const entityNotRegistered = (entityType: string) =>
+    Effect.die(new Error(`Entity type '${entityType}' not registered`))
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -624,9 +643,6 @@ const make = Effect.gen(function*() {
 
   if (storageEnabled && initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
-    const entityRegistrationTimeoutMillis = Duration.toMillis(
-      Duration.fromInputUnsafe(config.entityRegistrationTimeout)
-    )
 
     yield* Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -637,11 +653,21 @@ const make = Effect.gen(function*() {
       let deliveredThisRead = false
       const removableNotifications = new Set<PendingNotification>()
       const resetAddresses = MutableHashSet.empty<EntityAddress>()
+      const resetRequestIds: Array<Snowflake.Snowflake> = []
       const cappedAddresses = MutableHashSet.empty<EntityAddress>()
 
       const markDelivered = Effect.sync(() => {
         deliveredThisRead = true
       })
+
+      // A completed request may remain deduplicated after storage claims its reset.
+      // Release the claim so the reset can be redelivered immediately.
+      const releaseCompletedClaim = (message: Message.Incoming<any>) => {
+        const state = entityManagers.get(message.envelope.address.entityType)
+        if (!state?.manager.isProcessingFor(message, { excludeCompleted: true })) {
+          resetRequestIds.push(message.envelope.requestId)
+        }
+      }
 
       const processMessages = Effect.whileLoop({
         while: () => index < messages.length,
@@ -668,21 +694,13 @@ const make = Effect.gen(function*() {
           }
           const state = entityManagers.get(address.entityType)
           if (!state) {
-            const now = clock.currentTimeMillisUnsafe()
-            const registrationStarted = entityRegistrationStartMillis !== undefined
-            const timeoutStartMillis = entityRegistrationStartMillis ??
-              (entityRegistrationFallbackStartMillis ??= now)
-            // If registration never starts, allow two intervals from the first missing read before failing.
-            const timeoutMillis = registrationStarted
-              ? entityRegistrationTimeoutMillis
-              : entityRegistrationTimeoutMillis * 2
-            if (now - timeoutStartMillis < timeoutMillis) {
+            if (entityRegistrationTimeRemaining() > 0) {
               // reset address in the case that the entity is slow to register
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
             }
             // if the entity did not register in time, we save a defect reply
-            return Effect.die(new Error(`Entity type '${address.entityType}' not registered`))
+            return entityNotRegistered(address.entityType)
           } else if (state.status === "closed") {
             return Effect.void
           }
@@ -696,6 +714,7 @@ const make = Effect.gen(function*() {
           } else if (isProcessing || state.status === "closing") {
             // If the request is already processing, we skip it.
             // Or if the entity is closing, we skip all incoming messages.
+            if (isProcessing) releaseCompletedClaim(message)
             return Effect.void
           } else if (message._tag === "IncomingRequest" && pendingNotifications.has(message.envelope.requestId)) {
             const entry = pendingNotifications.get(message.envelope.requestId)!
@@ -737,6 +756,11 @@ const make = Effect.gen(function*() {
               requestId: message.envelope.requestId,
               defect: Cause.squash(cause)
             }))
+          }
+          if (error.success._tag === "AlreadyProcessingMessage") {
+            // Completion raced with decoding.
+            releaseCompletedClaim(message)
+            return Effect.void
           }
           if (error.success._tag === "MailboxFull") {
             const address = message.envelope.address
@@ -849,6 +873,11 @@ const make = Effect.gen(function*() {
 
         // let the resuming entities check if they are done
         yield* storageReadLock.release(1)
+
+        if (resetRequestIds.length > 0) {
+          yield* Effect.ignore(storage.resetRequests(resetRequestIds))
+          resetRequestIds.length = 0
+        }
 
         if (cappedAddressesToReset !== undefined) {
           yield* Effect.ignore(storage.resetAddresses(cappedAddressesToReset))
@@ -1668,13 +1697,23 @@ const make = Effect.gen(function*() {
     }
   )
 
+  // Sleeps until the registration deadline shared with the storage read loop,
+  // re-checking once in case registration started and moved the deadline.
+  const awaitRegistrationDeadline = (entityType: string): Effect.Effect<never> =>
+    Effect.suspend(() => {
+      const remaining = entityRegistrationTimeRemaining()
+      return remaining > 0
+        ? Effect.flatMap(Effect.sleep(remaining), () => awaitRegistrationDeadline(entityType))
+        : entityNotRegistered(entityType)
+    })
+
   const waitForEntityManager = (entityType: string) => {
     let latch = entityManagerLatches.get(entityType)
     if (!latch) {
       latch = Latch.makeUnsafe()
       entityManagerLatches.set(entityType, latch)
     }
-    return latch.await
+    return Effect.raceFirst(latch.await, awaitRegistrationDeadline(entityType))
   }
 
   // --- Runner health checks ---

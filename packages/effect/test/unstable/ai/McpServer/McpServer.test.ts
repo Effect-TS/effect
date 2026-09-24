@@ -37,6 +37,7 @@ import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
 import { RequestId } from "effect/unstable/rpc/RpcMessage"
 import * as RpcServer from "effect/unstable/rpc/RpcServer"
+import { collectGarbage } from "../../../utils/gc.ts"
 import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
@@ -240,19 +241,6 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
   assertTrue(content?.type === "text", "Expected text tool-result content")
   return content.text
 }
-
-const collectGarbage = Effect.promise(async () => {
-  const { setFlagsFromString } = await import("node:v8")
-  const { runInNewContext } = await import("node:vm")
-  setFlagsFromString("--expose_gc")
-  const collect = runInNewContext("gc") as () => void
-  setFlagsFromString("--no-expose_gc")
-  // WeakRef targets remain alive until the current job ends, so collect across jobs.
-  for (let i = 0; i < 8; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    collect()
-  }
-})
 
 describe("McpServer", () => {
   // Effect delivery contract: an unavailable destination must not leave the caller waiting.
@@ -1070,6 +1058,45 @@ describe("McpServer", () => {
         yield* server.notifyElicitationComplete({ clientId: 0, elicitationId: "not-connected" })
       }))
 
+    it.effect("inlines identified elicitation schemas", () =>
+      Effect.gen(function*() {
+        let observed: Parameters<McpSchema.McpReverseClient["elicit"]>[0] | undefined
+        const reverseClient: McpSchema.McpReverseClient = {
+          listRoots: () => Effect.die("Not used"),
+          createMessage: () => Effect.die("Not used"),
+          elicit: (request) => {
+            observed = request
+            return Effect.succeed({ action: "accept", content: { name: "Ada" } })
+          }
+        }
+        const client = McpSchema.McpServerClient.of({
+          clientId: 1,
+          protocolVersion: "2025-11-25",
+          clientCapabilities: { elicitation: { form: {} } },
+          clientInfo: { name: "client", version: "1" },
+          initializePayload: {
+            protocolVersion: "2025-11-25",
+            capabilities: { elicitation: { form: {} } },
+            clientInfo: { name: "client", version: "1" }
+          },
+          getClient: Effect.succeed(reverseClient)
+        })
+
+        const result = yield* McpServer.elicit({
+          message: "Profile",
+          schema: Schema.Struct({ name: Schema.String }).annotate({ identifier: "Profile" })
+        }).pipe(Effect.provideService(McpSchema.McpServerClient, client))
+
+        assert.deepStrictEqual(result, { name: "Ada" })
+        assert.isDefined(observed)
+        if (observed.mode !== "form") return assert.fail("Expected a form elicitation request")
+        assert.deepStrictEqual(JSON.parse(JSON.stringify(observed.requestedSchema)), {
+          type: "object",
+          properties: { name: { type: "string" } },
+          required: ["name"]
+        })
+      }))
+
     describe("registration context", () => {
       class RegistrationLabel extends Context.Service<RegistrationLabel, string>()("test/RegistrationLabel") {}
 
@@ -1441,6 +1468,36 @@ describe("McpServer", () => {
         }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
 
         assert.strictEqual(toolResultText(result), JSON.stringify("ok"))
+      }))
+
+    it.effect("registers tools with identified output schemas", () =>
+      Effect.gen(function*() {
+        const IdentifiedResultTool = Tool.make("IdentifiedResultTool", {
+          success: Schema.Struct({ value: Schema.String }).annotate({ identifier: "IdentifiedResult" })
+        })
+        const toolkit = Toolkit.make(IdentifiedResultTool)
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            IdentifiedResultTool: () => Effect.succeed({ value: "ok" })
+          }))
+        )
+
+        assert.deepStrictEqual(server.tools[0].tool.outputSchema, {
+          type: "object",
+          properties: { value: { type: "string" } },
+          required: ["value"],
+          additionalProperties: true,
+          $defs: {
+            IdentifiedResult: {
+              type: "object",
+              properties: { value: { type: "string" } },
+              required: ["value"],
+              additionalProperties: true
+            }
+          }
+        })
       }))
 
     it.effect("advertises closed strict input schemas with escaped identifiers", () =>

@@ -23,6 +23,31 @@ const makeClients = Effect.gen(function*() {
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
 
 describe("Client", () => {
+  it.effect("releases completed nested savepoints", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE savepoint_release (value INTEGER)`
+      yield* sql.withTransaction(Effect.gen(function*() {
+        for (const rollback of [false, true]) {
+          yield* sql.withTransaction(
+            sql`INSERT INTO savepoint_release VALUES (1)`.pipe(
+              Effect.andThen(rollback ? Effect.fail("rollback") : Effect.void)
+            )
+          ).pipe(Effect.ignore)
+          const error = yield* sql`RELEASE SAVEPOINT effect_sql_1`.unprepared.pipe(Effect.flip)
+          assert.strictEqual(error._tag, "SqlError")
+        }
+      }))
+      assert.deepStrictEqual(yield* sql`SELECT value FROM savepoint_release`, [{ value: 1 }])
+      const error = yield* sql.withTransaction(
+        sql.withTransaction(sql`INSERT INTO savepoint_release VALUES (2)`).pipe(
+          Effect.andThen(Effect.fail("outer rollback"))
+        )
+      ).pipe(Effect.flip)
+      assert.strictEqual(error, "outer rollback")
+      assert.deepStrictEqual(yield* sql`SELECT value FROM savepoint_release`, [{ value: 1 }])
+    }))
+
   it.effect("should work", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
