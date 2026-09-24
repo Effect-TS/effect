@@ -10,7 +10,6 @@ import { e2eSuite, UsersClient } from "./fixtures/rpc-e2e.ts"
 import { RpcLayer, User } from "./fixtures/rpc-schemas.ts"
 
 describe("RpcServer", () => {
-  // http ndjson
   const HttpProtocol = RpcServer.layerProtocolHttp({ path: "/rpc" })
   const HttpNdjsonServer = HttpRouter.serve(
     RpcLayer.pipe(Layer.provideMerge(HttpProtocol)),
@@ -50,7 +49,6 @@ describe("RpcServer", () => {
     )
   )
 
-  // websocket
   const WsProtocol = RpcServer.layerProtocolWebsocket({ path: "/rpc" })
   const HttpWsServer = HttpRouter.serve(
     RpcLayer.pipe(Layer.provideMerge(WsProtocol)),
