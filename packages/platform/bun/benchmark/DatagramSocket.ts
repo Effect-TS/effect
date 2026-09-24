@@ -1099,10 +1099,10 @@ const openFake = async (receiveBuffer?: DatagramSocket.ReceiveBufferOptions): Pr
     joinMulticast: () => Effect.succeed(() => Effect.void),
     close: () => {}
   }
-  const socket = DatagramSocket.fromNativeHandle((installed) => {
+  const socket = await Effect.runPromise(DatagramSocket.fromNativeHandle((installed) => {
     events = installed
     return Effect.succeed(handle)
-  }, receiveBuffer)
+  }, { receiveBuffer }))
   const opened = await openSocket(socket)
   return { opened, push: (payload, host) => events!.onPacket(payload, host, 41234) }
 }

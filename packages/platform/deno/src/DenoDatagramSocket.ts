@@ -194,7 +194,7 @@ export type AdoptOptions = Pick<Options, "peer" | "receiveBuffer" | "onError">
  * @since 4.0.0
  */
 export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  Shared.makeWith(options, open)
+  DatagramSocket.fromNativeHandle((events) => open(options, events), options)
 
 /**
  * Adopts a `Deno.DatagramConn`.
@@ -214,7 +214,7 @@ export const fromDatagramConn = <R>(
   acquire: Effect.Effect<Deno.DatagramConn, DatagramSocket.DatagramSocketError, R>,
   options: AdoptOptions = {}
 ): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  Shared.adoptWith(acquire, options, adopt)
+  DatagramSocket.fromNativeHandle((events) => Effect.flatMap(acquire, (conn) => adopt(conn, options, events)), options)
 
 /**
  * Provides a `DatagramSocket` built with `make`.
