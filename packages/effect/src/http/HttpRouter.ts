@@ -575,8 +575,13 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
  *
  * The returned effect handles the current `HttpServerRequest` in the current
  * `Scope`; route request markers are converted into the ordinary requirements of
- * the returned handler. Each call creates its own router, even when `memoMap`
- * is shared with other builds.
+ * the returned handler. Each call creates its own router.
+ *
+ * **Gotchas**
+ *
+ * A route layer shared with another entrypoint in the same layer graph, or
+ * through a shared `memoMap`, is registered only once. Wrap it in `Layer.fresh`,
+ * and provide shared resources outside `Layer.fresh` so they are built once.
  *
  * @stability unstable
  * @category converting
@@ -608,10 +613,10 @@ export const toHttpEffect = <A, E, R>(
 
 /**
  * Rejects app layers that output `HttpRouter`, since the entrypoint owns the
- * router.
+ * router. `any` outputs are not checked.
  */
-type OwnedRouter<A> = HttpRouter extends A ?
-  "The HttpRouter is provided by the entrypoint; remove it from the app layer"
+type OwnedRouter<A> = 0 extends 1 & A ? unknown
+  : HttpRouter extends A ? "The HttpRouter is provided by the entrypoint; remove it from the app layer"
   : unknown
 
 /**
@@ -1279,7 +1284,13 @@ export const provideRequest =
     )
 
 /**
- * Runs the provided application layer as an HTTP server.
+ * Runs the provided application layer as an HTTP server with its own router.
+ *
+ * **Gotchas**
+ *
+ * A route layer shared with another entrypoint in the same layer graph, or
+ * through a shared `memoMap`, is registered only once. Wrap it in `Layer.fresh`,
+ * and provide shared resources outside `Layer.fresh` so they are built once.
  *
  * @stability unstable
  * @category layers
@@ -1353,7 +1364,14 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * handler is created rather than on the first request. A layer that performs
  * asynchronous work while building may still be in progress when the first
  * request arrives, in which case that request waits for the build to finish.
- * If the build fails, every request rejects with the build error.
+ * If the build fails, every request rejects with the build error. Each call
+ * creates its own router.
+ *
+ * **Gotchas**
+ *
+ * A route layer shared with another entrypoint in the same layer graph, or
+ * through a shared `memoMap`, is registered only once. Wrap it in `Layer.fresh`,
+ * and provide shared resources outside `Layer.fresh` so they are built once.
  *
  * @stability unstable
  * @category converting
