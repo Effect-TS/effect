@@ -48,6 +48,11 @@ replacements:
     to: '"server_tool_use": Schema.optionalKey(Schema.Union([BetaServerToolUsage, Schema.Null]).annotate({ "description": "The number of server tool requests.", "default": null })) })'
   - from: '"server_tool_use": Schema.Union([ServerToolUsage, Schema.Null]).annotate({ "description": "The number of server tool requests.", "default": null }) })'
     to: '"server_tool_use": Schema.optionalKey(Schema.Union([ServerToolUsage, Schema.Null]).annotate({ "description": "The number of server tool requests.", "default": null })) })'
+  # Anthropic-compatible gateways may omit inference_geo in response usage (#8464)
+  - from: 'readonly "inference_geo": string | null'
+    to: 'readonly "inference_geo"?: string | null'
+  - from: '"inference_geo": Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Inference Geo", "description": "The geographic region where inference was performed for this request.", "default": null }),'
+    to: '"inference_geo": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]).annotate({ "title": "Inference Geo", "description": "The geographic region where inference was performed for this request.", "default": null })),'
   # Make context_management and container optional in BetaMessage (API may omit these fields)
   - from: 'readonly "context_management": BetaResponseContextManagement | null'
     to: 'readonly "context_management"?: BetaResponseContextManagement | null'
