@@ -406,6 +406,45 @@ describe("DatagramSocket native handle", () => {
       assert.deepStrictEqual(yield* Effect.exit(reader.pull), yield* Effect.exit(reader.pull))
     })))
 
+  it.effect("delivers packets through a detached native callback", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const { onPacket } = handles[0]!.events
+      onPacket(bytes("detached"), "127.0.0.2", 9876)
+      const [packet] = yield* reader.pull
+      assert.deepStrictEqual(texts([packet]), ["detached"])
+      assert.strictEqual(packet.address.port, 9876)
+    })))
+
+  it.effect("keeps a detached read-error callback terminal after draining packets", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      handles[0]!.packet("queued")
+      const { onReadError } = handles[0]!.events
+      onReadError(failure())
+      assert.deepStrictEqual(texts(yield* reader.pull), ["queued"])
+      const first = yield* Effect.exit(reader.pull)
+      assert.isTrue(Exit.isFailure(first))
+      assert.include(JSON.stringify(first), "DatagramSocketReadError")
+      assert.deepStrictEqual(yield* Effect.exit(reader.pull), first)
+    })))
+
+  it.effect("keeps a detached native-close callback terminal after draining packets", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      handles[0]!.packet("queued")
+      const { onClose } = handles[0]!.events
+      onClose()
+      assert.deepStrictEqual(texts(yield* reader.pull), ["queued"])
+      const first = yield* Effect.exit(reader.pull)
+      assert.isTrue(Exit.isFailure(first))
+      assert.include(JSON.stringify(first), "DatagramSocketClosedError")
+      assert.deepStrictEqual(yield* Effect.exit(reader.pull), first)
+    })))
+
   it.effect("discards queued packets without counting them as overflow", () =>
     Effect.gen(function*() {
       const { socket, handles } = yield* fixture()
