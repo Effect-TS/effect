@@ -71,20 +71,32 @@ class TestHandle implements DatagramSocket.NativeHandle {
   }
 }
 
+// A handle that sends synchronously, as Bun does
+class SyncHandle extends TestHandle {
+  tried: Array<Uint8Array> = []
+  refuse = false
+  readonly trySend: DatagramSocket.NativeHandle["trySend"] = (payload) => {
+    this.tried.push(payload)
+    return !this.refuse
+  }
+}
+
 const fixture = (
   options?: DatagramSocket.ReceiveBufferOptions & {
     readonly onError?: (error: DatagramSocket.DatagramSocketError) => void
   }
 ) => {
   const handles: Array<TestHandle> = []
-  const socket = DatagramSocket.fromNativeHandle((events) =>
-    Effect.sync(() => {
-      const handle = new TestHandle()
-      handle.events = events
-      handles.push(handle)
-      return handle
-    }), options)
-  return { socket, handles }
+  return Effect.map(
+    DatagramSocket.fromNativeHandle((events) =>
+      Effect.sync(() => {
+        const handle = new TestHandle()
+        handle.events = events
+        handles.push(handle)
+        return handle
+      }), { receiveBuffer: options, onError: options?.onError }),
+    (socket) => ({ socket, handles })
+  )
 }
 
 const texts = (batch: ReadonlyArray<DatagramSocket.Datagram>) =>
@@ -94,7 +106,7 @@ const delayedOpen = Effect.gen(function*() {
   const firstStarted = yield* Deferred.make<void>()
   const secondStarted = yield* Deferred.make<void>()
   const pending: Array<{ resolve: (handle: TestHandle) => void; reject: (error: Error) => void }> = []
-  const socket = DatagramSocket.fromNativeHandle((events) =>
+  const socket = yield* DatagramSocket.fromNativeHandle((events) =>
     Effect.promise(() =>
       new Promise<TestHandle>((resolve, reject) => {
         const count = pending.push({
@@ -140,7 +152,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("serves concurrent pulls in FIFO order", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
@@ -157,7 +169,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("fails every parked pull on scope close", () =>
     Effect.gen(function*() {
-      const { socket } = fixture()
+      const { socket } = yield* fixture()
       const scope = yield* Scope.make()
       const reader = yield* socket.reader.pipe(Scope.provide(scope))
       const first = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
@@ -174,7 +186,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("fails the slot and queued waiters with the same terminal read error", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const first = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
@@ -197,7 +209,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("does not let an interrupted pull swallow the next packet", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
@@ -208,7 +220,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("delivers to a masked parked pull before applying its interruption", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const received: Array<string> = []
       const waiting = yield* Effect.uninterruptible(Effect.gen(function*() {
@@ -227,7 +239,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("removes a waiter after a deferred self-interrupt", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const interrupted = yield* Effect.gen(function*() {
         Fiber.getCurrent()!.interruptUnsafe()
@@ -240,7 +252,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("cleans up pulls lost to timeout and race", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       let timeoutStarted = false
       const timeoutFiber = yield* Effect.exit(Effect.timeout(
@@ -279,7 +291,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("resumes a parked pull inside a tracing span", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const waiting = yield* reader.pull.pipe(
         Effect.withSpan("datagram parked pull"),
@@ -295,7 +307,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("removes a promoted waiter when it is interrupted", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
@@ -313,7 +325,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("keeps FIFO order when a waiting pull is promoted", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const cancelled = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
@@ -337,7 +349,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("slides fresh payloads and sender addresses without mutating returned datagrams", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture({ capacity: 2, strategy: "sliding" })
+      const { socket, handles } = yield* fixture({ capacity: 2, strategy: "sliding" })
       const reader = yield* socket.reader
       const handle = handles[0]!
       handle.packet("retained", "127.0.0.1", 1001)
@@ -368,7 +380,7 @@ describe("DatagramSocket native handle", () => {
   for (const strategy of ["dropping", "sliding"] as const) {
     it.effect(`overflow using ${strategy}`, () =>
       Effect.scoped(Effect.gen(function*() {
-        const { socket, handles } = fixture({ capacity: 2, strategy })
+        const { socket, handles } = yield* fixture({ capacity: 2, strategy })
         const reader = yield* socket.reader
         const handle = handles[0]!
         handle.packet("a")
@@ -384,7 +396,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("delivers queued packets before a sticky read error", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const error = failure()
       handles[0]!.packet("queued")
@@ -396,7 +408,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("discards queued packets without counting them as overflow", () =>
     Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const scope = yield* Scope.make()
       const reader = yield* socket.reader.pipe(Scope.provide(scope))
       handles[0]!.packet("discard")
@@ -408,7 +420,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("fails a parked pull on scope close", () =>
     Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const scope = yield* Scope.make()
       const reader = yield* socket.reader.pipe(Scope.provide(scope))
       const pending = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
@@ -424,7 +436,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("waits for the first reader to release before rebinding", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const scope = yield* Scope.make()
       yield* socket.reader.pipe(Scope.provide(scope))
       const second = yield* socket.reader.pipe(Effect.forkChild({ startImmediately: true }))
@@ -438,7 +450,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("waits for a reader before writing", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const writer = yield* socket.writer
       const send = yield* writer.write({ payload: "hello", address }).pipe(Effect.forkChild({ startImmediately: true }))
       yield* Effect.yieldNow
@@ -448,9 +460,33 @@ describe("DatagramSocket native handle", () => {
       assert.deepStrictEqual(handles[0]!.sends[0]!.payload, bytes("hello"))
     })))
 
+  it.effect("completes a write through trySend, and falls back to send when it refuses", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const handles: Array<SyncHandle> = []
+      const socket = yield* DatagramSocket.fromNativeHandle((events) =>
+        Effect.sync(() => {
+          const handle = new SyncHandle()
+          handle.events = events
+          handles.push(handle)
+          return handle
+        })
+      )
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      yield* writer.write({ payload: "now", address })
+      assert.deepStrictEqual(handle.tried.map((payload) => new TextDecoder().decode(payload)), ["now"])
+      assert.strictEqual(handle.sends.length, 0)
+      handle.refuse = true
+      yield* writer.write({ payload: "later", address })
+      assert.strictEqual(handle.tried.length, 2)
+      assert.deepStrictEqual(handle.sends.map((send) => new TextDecoder().decode(send.payload)), ["later"])
+      assert.strictEqual(handle.sends[0]!.destination?.host, "127.0.0.1")
+    })))
+
   it.effect("reports a failed write's destination and stops writeAll at the first failure", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       yield* socket.reader
       const writer = yield* socket.writer
       const handle = handles[0]!
@@ -469,7 +505,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("waits for the runtime to report a send and enriches a deferred failure", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       yield* socket.reader
       const writer = yield* socket.writer
       const handle = handles[0]!
@@ -502,7 +538,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("resumes a parked writeAll and reports a deferred batch failure's destination", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       yield* socket.reader
       const writer = yield* socket.writer
       const handle = handles[0]!
@@ -537,7 +573,7 @@ describe("DatagramSocket native handle", () => {
 
     it.effect(`ignores a late completion after its parked ${name} is interrupted`, () =>
       Effect.scoped(Effect.gen(function*() {
-        const { socket, handles } = fixture()
+        const { socket, handles } = yield* fixture()
         yield* socket.reader
         const writer = yield* socket.writer
         const handle = handles[0]!
@@ -570,7 +606,7 @@ describe("DatagramSocket native handle", () => {
 
     it.effect(`completes a masked parked ${name} before applying its interruption`, () =>
       Effect.scoped(Effect.gen(function*() {
-        const { socket, handles } = fixture()
+        const { socket, handles } = yield* fixture()
         yield* socket.reader
         const writer = yield* socket.writer
         const handle = handles[0]!
@@ -595,7 +631,7 @@ describe("DatagramSocket native handle", () => {
       omitIndex ? "leaves a batch failure address unset without an index" : "reports the failing batch destination",
       () =>
         Effect.scoped(Effect.gen(function*() {
-          const { socket, handles } = fixture()
+          const { socket, handles } = yield* fixture()
           yield* socket.reader
           const writer = yield* socket.writer
           const handle = handles[0]!
@@ -619,7 +655,7 @@ describe("DatagramSocket native handle", () => {
   it.effect("ignores errors thrown by onError", () =>
     Effect.scoped(Effect.gen(function*() {
       let count = 0
-      const { socket, handles } = fixture({
+      const { socket, handles } = yield* fixture({
         onError: () => {
           count++
           throw new Error("listener")
@@ -633,7 +669,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("leaves a multicast group when its scope closes", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       const group = NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 1])) as NetAddress.MulticastAddress<
         NetAddress.Ipv4Address
@@ -645,7 +681,7 @@ describe("DatagramSocket native handle", () => {
 
   it.effect("caches the bound address and reply destination without eager parsing", () =>
     Effect.scoped(Effect.gen(function*() {
-      const { socket, handles } = fixture()
+      const { socket, handles } = yield* fixture()
       const reader = yield* socket.reader
       assert.strictEqual(reader.address, reader.address)
       const handle = handles[0]!
@@ -663,7 +699,7 @@ describe("DatagramSocket native handle", () => {
       let finish!: (handle: TestHandle) => void
       const opened = yield* Deferred.make<void>()
       const handle = new TestHandle()
-      const socket = DatagramSocket.fromNativeHandle((events) => {
+      const socket = yield* DatagramSocket.fromNativeHandle((events) => {
         handle.events = events
         return Effect.promise(() =>
           new Promise<TestHandle>((resolve) => {

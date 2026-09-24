@@ -83,11 +83,9 @@
  * @since 4.0.0
  */
 import {
-  adoptWith,
   closedError,
   type Family,
   ioWriteError as writeError,
-  makeWith,
   openError,
   type OpenPlan,
   planOpen,
@@ -222,7 +220,8 @@ export type UdpSocket = Bun.udp.Socket<"buffer"> | Bun.udp.ConnectedSocket<"buff
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> => makeWith(options, open)
+export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
+  DatagramSocket.fromNativeHandle((events) => open(options, events), options)
 
 /**
  * Adopts a Bun UDP socket.
@@ -245,7 +244,11 @@ export const make = (options: Options = {}): Effect.Effect<DatagramSocket.Datagr
 export const fromUdpSocket = <R>(
   acquire: Effect.Effect<UdpSocket, DatagramSocket.DatagramSocketError, R>,
   options: AdoptOptions = {}
-): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> => adoptWith(acquire, options, adopt)
+): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
+  DatagramSocket.fromNativeHandle(
+    (events) => Effect.flatMap(acquire, (socket) => adopt(socket, options, events)),
+    options
+  )
 
 /**
  * Provides a `DatagramSocket` built with `make`.
@@ -371,6 +374,9 @@ const adopt = (
     )
   })
 
+// `trySend` found the kernel's send buffer full
+const kernelFull = Symbol("kernelFull")
+
 // A send waiting for `drain`, in `sendMany`'s flat form: `[data, port, host]`
 // per datagram, or plain payloads when connected
 class PendingSend {
@@ -400,6 +406,8 @@ class NativeSocket {
   pending: Array<PendingSend> = []
   // entries per datagram in `sendMany`'s list
   stride = 3
+  // why the last `trySend` returned `false`, for the `send` that follows it
+  refusal: unknown = undefined
   closing = false
 
   constructor(events: DatagramSocket.NativeEvents) {
@@ -428,17 +436,26 @@ class NativeSocket {
       scopeIds,
       peer,
       connected,
-      send: (payload, destination, done) => {
-        if (this.pending.length !== 0) return this.waitOne(payload, destination, done)
-        let sent: boolean
+      trySend: (payload, destination) => {
+        // behind a backlog, `send` queues it
+        if (this.pending.length !== 0) return false
         try {
-          sent = connected
+          const sent = connected
             ? (socket as Bun.udp.ConnectedSocket<"buffer">).send(payload)
             : (socket as Bun.udp.Socket<"buffer">).send(payload, destination!.port, destination!.host)
+          if (sent) return true
+          this.refusal = kernelFull
         } catch (error) {
-          return done(this.sendError(error))
+          this.refusal = error
         }
-        if (sent) return done()
+        return false
+      },
+      // Core calls this right after `trySend` refused the same datagram, so it
+      // queues it or reports the error without sending again
+      send: (payload, destination, done) => {
+        const refusal = this.refusal
+        this.refusal = undefined
+        if (refusal !== undefined && refusal !== kernelFull) return done(this.sendError(refusal))
         this.waitOne(payload, destination, done)
       },
       sendMany: (payloads, destinations, done) => {

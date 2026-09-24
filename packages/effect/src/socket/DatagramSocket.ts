@@ -269,7 +269,11 @@ export interface NativeAddress {
  *
  * `send` and `sendMany` hand datagrams to the runtime and call `done` exactly
  * once, synchronously or later, when the runtime reports the result. They must
- * not throw. `sendMany` passes the index of the failing datagram to `done`
+ * not throw. A runtime that can send synchronously also implements `trySend`,
+ * which core calls first so a write that goes out at once allocates nothing.
+ * It returns `true` when the datagram was sent, and `false` when it wasn't,
+ * for any reason. Core then calls `send` at once with the same datagram, so
+ * the runtime can act on what `trySend` found instead of trying again. `sendMany` passes the index of the failing datagram to `done`
  * when the runtime knows it, so core can attach its address. Adapters
  * normalize their native errors before passing them to core. A destination
  * may be a received datagram record, so read its `host` and `port` during the
@@ -286,6 +290,7 @@ export interface NativeHandle {
   readonly scopeIds?: ReadonlyMap<string, number> | undefined
   readonly peer?: NativeAddress | undefined
   readonly connected?: boolean | undefined
+  readonly trySend?: ((payload: Uint8Array, destination: NativeAddress | undefined) => boolean) | undefined
   readonly send: (
     payload: Uint8Array,
     destination: NativeAddress | undefined,
@@ -507,7 +512,8 @@ export class DatagramSocketError
  * settled, so two native sockets never exist at once. An adopted `acquire`
  * must therefore finish in bounded time.
  *
- * `open` runs in the reader's scope, so an adopted `acquire` can register
+ * `open` runs in the reader's scope, with the services of the fiber that
+ * built the socket, so an adopted `acquire` can use them and register
  * finalizers that run when the reader closes.
  *
  * Concurrent pulls are served in the order they started waiting.
@@ -515,23 +521,43 @@ export class DatagramSocketError
  * `onError` receives errors with no write left to fail. It runs
  * synchronously, and anything it throws is ignored.
  *
- * A `capacity` below 1, a fractional one or `Infinity` throws a `RangeError`
- * here.
+ * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` is a
+ * defect.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const fromNativeHandle = (
-  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError, Scope.Scope>,
-  options?: ReceiveBufferOptions & { readonly onError?: ((error: DatagramSocketError) => void) | undefined }
+export const fromNativeHandle = <R = never>(
+  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError, R>,
+  options?: {
+    readonly receiveBuffer?: ReceiveBufferOptions | undefined
+    readonly onError?: ((error: DatagramSocketError) => void) | undefined
+  } | undefined
+): Effect.Effect<DatagramSocket, never, Exclude<R, Scope.Scope>> =>
+  withFiber((fiber) => {
+    const capacity = options?.receiveBuffer?.capacity ?? 1024
+    if (!Number.isSafeInteger(capacity) || capacity < 1) {
+      throw new RangeError(`DatagramSocket receive buffer capacity must be a positive integer, received ${capacity}`)
+    }
+    return Effect.succeed(
+      makeFromHandle(
+        open,
+        fiber.context as Context.Context<R>,
+        capacity,
+        options?.receiveBuffer?.strategy === "sliding",
+        options?.onError
+      )
+    )
+  })
+
+const makeFromHandle = <R>(
+  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError, R>,
+  services: Context.Context<R>,
+  capacity: number,
+  sliding: boolean,
+  onError: ((error: DatagramSocketError) => void) | undefined
 ): DatagramSocket => {
-  const capacity = options?.capacity ?? 1024
-  if (!Number.isSafeInteger(capacity) || capacity < 1) {
-    throw new RangeError(`DatagramSocket receive buffer capacity must be a positive integer, received ${capacity}`)
-  }
-  const sliding = options?.strategy === "sliding"
-  const onError = options?.onError
   // open while a reader may be acquired; closed while one holds the socket
   const free = Latch.makeUnsafe(true)
   // open while a reader is current, so writes can go out
@@ -563,7 +589,13 @@ export const fromNativeHandle = (
       // `open` may not be cancellable (Node's `lookup`), so it runs in its own
       // fiber and is never interrupted. Interruption only stops the wait, and
       // `abandon` closes a handle that arrives later.
-      const opening = yield* Effect.forkDetach(Scope.provide(open(state), scope), { startImmediately: true })
+      // the builder's services, with the reader's scope in place of theirs
+      const opened = open(state).pipe(
+        Effect.updateContext((input: Context.Context<never>) =>
+          Context.add(Context.merge(services, input), Scope.Scope, scope)
+        )
+      ) as Effect.Effect<NativeHandle, DatagramSocketError>
+      const opening = yield* Effect.forkDetach(opened, { startImmediately: true })
       state.handle = yield* restore(Fiber.join(opening)).pipe(
         Effect.onError(() => Effect.sync(() => abandon(state, opening)))
       )
@@ -788,9 +820,12 @@ class ReaderState implements NativeEvents {
     // `destination` only returns errors this module made, and `instanceof` is
     // measurably cheaper than `isDatagramSocketError` per datagram
     if (destination instanceof DatagramSocketError) return Effect.fail(destination)
+    const handle = this.handle!
+    const payload = encode(datagram.payload)
+    if (handle.trySend !== undefined && handle.trySend(payload, destination)) return Effect.void
     let result: Effect.Effect<void, DatagramSocketError> | undefined
     let parked = false
-    this.handle!.send(encode(datagram.payload), destination, (error) => {
+    handle.send(payload, destination, (error) => {
       if (result !== undefined) return
       result = error === undefined ? Effect.void : Effect.fail(this.withAddress(error, target))
       if (parked) fiber.evaluate(result as any)

@@ -110,7 +110,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
@@ -237,7 +236,8 @@ export interface FromSocketOptions {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> => makeWith(options, open)
+export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
+  DatagramSocket.fromNativeHandle((events) => open(options, events), options)
 
 /**
  * Adopts a `dgram.Socket`.
@@ -256,7 +256,11 @@ export const make = (options: Options = {}): Effect.Effect<DatagramSocket.Datagr
 export const fromSocket = <R>(
   acquire: Effect.Effect<Dgram.Socket, DatagramSocket.DatagramSocketError, R>,
   options: FromSocketOptions = {}
-): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> => adoptWith(acquire, options, adopt)
+): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
+  DatagramSocket.fromNativeHandle(
+    (events) => Effect.flatMap(acquire, (socket) => adopt(socket, options, events)),
+    options
+  )
 
 /**
  * Provides a `DatagramSocket` built with `make`.
@@ -274,50 +278,6 @@ export const layer = (options?: Options): Layer.Layer<DatagramSocket.DatagramSoc
 
 /** @internal */
 export type Family = "ipv4" | "ipv6"
-
-/** @internal */
-export interface ReceiveOptions {
-  readonly receiveBuffer?: DatagramSocket.ReceiveBufferOptions | undefined
-  readonly onError?: ((error: DatagramSocket.DatagramSocketError) => void) | undefined
-}
-
-/** @internal */
-export const makeWith = <O extends ReceiveOptions>(
-  options: O,
-  open: (
-    options: O,
-    events: DatagramSocket.NativeEvents
-  ) => Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError>
-): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  Effect.sync(() =>
-    DatagramSocket.fromNativeHandle((events) => open(options, events), {
-      ...options.receiveBuffer,
-      onError: options.onError
-    })
-  )
-
-/** @internal */
-export const adoptWith = <A, O extends ReceiveOptions, R>(
-  acquire: Effect.Effect<A, DatagramSocket.DatagramSocketError, R>,
-  options: O,
-  adopt: (
-    native: A,
-    options: O,
-    events: DatagramSocket.NativeEvents
-  ) => Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError>
-): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  Effect.map(Effect.context<Exclude<R, Scope.Scope>>(), (services) =>
-    DatagramSocket.fromNativeHandle(
-      (events) =>
-        acquire.pipe(
-          // the reader's scope replaces the caller's
-          Effect.updateContext((input: Context.Context<Scope.Scope>) =>
-            Context.merge(services, input) as Context.Context<R>
-          ),
-          Effect.flatMap((native) => adopt(native, options, events))
-        ) as Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError, Scope.Scope>,
-      { ...options.receiveBuffer, onError: options.onError }
-    ))
 
 /** @internal */
 export const noScopeIds: ReadonlyMap<string, number> = new Map()
