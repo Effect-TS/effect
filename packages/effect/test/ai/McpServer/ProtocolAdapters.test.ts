@@ -504,6 +504,28 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
           )
       })
       yield* server.addTool({
+        tool: makeTool("structured-string-mirror", "Mirrored string structured content"),
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.succeed(
+            new McpSchema.CallToolResult({
+              content: [{ type: "text", text: JSON.stringify("fixture") }],
+              structuredContent: "fixture"
+            })
+          )
+      })
+      yield* server.addTool({
+        tool: makeTool("structured-string-multiple", "Multiple content blocks"),
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.succeed(
+            new McpSchema.CallToolResult({
+              content: [{ type: "text", text: JSON.stringify("fixture") }, { type: "text", text: "extra" }],
+              structuredContent: "fixture"
+            })
+          )
+      })
+      yield* server.addTool({
         tool: makeTool("invalid-structured-content", "Non-JSON structured content"),
         annotations: Context.empty(),
         handle: () =>
@@ -1669,6 +1691,21 @@ describe("McpServer protocol adapters", () => {
   it.effect("should project structured content according to the negotiated revision", () =>
     Effect.gen(function*() {
       const fixture = yield* makeLowLevelFixture()
+      for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const mirror = resultOf(yield* client.request("tools/call", { name: "structured-string-mirror" }))
+        const custom = resultOf(yield* client.request("tools/call", { name: "structured-scalar" }))
+        const multiple = resultOf(yield* client.request("tools/call", { name: "structured-string-multiple" }))
+        assert.deepStrictEqual(mirror.content, [{ type: "text", text: "fixture" }])
+        assert.deepStrictEqual(custom.content, [{ type: "text", text: "structured" }])
+        assert.deepStrictEqual(multiple.content, [
+          { type: "text", text: JSON.stringify("fixture") },
+          { type: "text", text: "extra" }
+        ])
+        assert.notProperty(mirror, "structuredContent")
+        assert.notProperty(custom, "structuredContent")
+        assert.notProperty(multiple, "structuredContent")
+      }
       for (const protocolVersion of ["2024-11-05", "2025-03-26"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const objectResult = resultOf(
@@ -1703,6 +1740,17 @@ describe("McpServer protocol adapters", () => {
         )
       )
       assert.strictEqual(modernResult.structuredContent, "fixture")
+      const modernMirrorResponse = yield* fixture.post(
+        modernRequest(42, "tools/call", { name: "structured-string-mirror", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "structured-string-mirror" }
+      )
+      const modernMirror = resultOf(
+        yield* Effect.promise<unknown>(() => modernMirrorResponse.json()).pipe(
+          Effect.flatMap(decodeJsonRpcResponse)
+        )
+      )
+      assert.strictEqual(modernMirror.structuredContent, "fixture")
+      assert.deepStrictEqual(modernMirror.content, [{ type: "text", text: JSON.stringify("fixture") }])
     }))
 
   it.effect("should preserve only supported metadata when projecting embedded resource content", () =>
