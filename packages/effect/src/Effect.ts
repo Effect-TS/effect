@@ -7584,7 +7584,7 @@ export const forever: <
  * This function executes an effect repeatedly according to the given schedule.
  * Each repetition occurs after the initial execution of the effect, meaning
  * that the schedule determines the number of additional repetitions. For
- * example, using `Schedule.once` will result in the effect being executed twice
+ * example, using `Schedule.recurs(1)` executes the effect twice
  * (once initially and once as part of the repetition).
  *
  * If the effect succeeds, it is repeated according to the schedule. If it
