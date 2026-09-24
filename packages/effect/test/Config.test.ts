@@ -293,6 +293,194 @@ describe("Config", () => {
       )
     })
 
+    describe("flatMap", () => {
+      const hostConfig = Config.flatMap(Config.Int("port"), (port) =>
+        Schema.String.pipe(
+          Schema.check(Schema.makeFilter((s) =>
+            s.endsWith("effect.website")
+              ? undefined
+              : new SchemaIssue.InvalidValue({ message: `Must end with "effect.website"` })
+          )),
+          (schema) => Config.schema(schema, port === 80 ? "prodHost" : "devHost")
+        ))
+
+      it("lets an inner config propagate parsing failure", () =>
+        assertFailure(
+          hostConfig,
+          ConfigProvider.fromUnknown({ port: 80, prodHost: "example.com" }),
+          `Must end with "effect.website"\n  at ["prodHost"]`
+        ))
+
+      it("lets an inner config propagate key absence", () =>
+        assertFailure(
+          hostConfig,
+          ConfigProvider.fromUnknown({ port: 80 }),
+          `Expected string\n  at ["prodHost"]`
+        ))
+
+      it("lets recover after an inner config propagated parsing failure", () =>
+        assertSuccess(
+          Config.orElse(hostConfig, (err) => Config.succeed(err.message)),
+          ConfigProvider.fromUnknown({ port: 80, prodHost: "example.com" }),
+          `SchemaError(Must end with "effect.website"\n  at ["prodHost"])`
+        ))
+
+      it("lets recover after an inner config propagated key absence", () =>
+        assertSuccess(
+          Config.withDefault(hostConfig, "localhost"),
+          ConfigProvider.fromUnknown({ port: 80 }),
+          "localhost"
+        ))
+
+      it("propagates inner config success", () =>
+        assertSuccess(
+          hostConfig,
+          ConfigProvider.fromUnknown({ port: 3000, devHost: "stage.effect.website" }),
+          "stage.effect.website"
+        ))
+
+      it("lets the base config propagate parsing failure", () =>
+        assertFailure(
+          hostConfig,
+          ConfigProvider.fromUnknown({ port: "zzz", prodHost: "effect.website", devHost: "effect.website" }),
+          `Expected a string representing a finite number\n  at ["port"]`
+        ))
+
+      it("lets the base config propagate key absence", () =>
+        assertFailure(
+          hostConfig,
+          ConfigProvider.fromUnknown({ prodHost: "effect.website", devHost: "effect.website" }),
+          `Expected string\n  at ["port"]`
+        ))
+
+      it("lets recover after the base config propagated parsing failure", () =>
+        assertSuccess(
+          Config.orElse(hostConfig, (err) => Config.succeed(err.message)),
+          ConfigProvider.fromUnknown({ port: "zzz", prodHost: "effect.website", devHost: "effect.website" }),
+          `SchemaError(Expected a string representing a finite number\n  at ["port"])`
+        ))
+
+      it("lets recover after the base config propagated key absence", () =>
+        assertSuccess(
+          Config.withDefault(hostConfig, "localhost"),
+          ConfigProvider.fromUnknown({ prodHost: "effect.website", devHost: "effect.website" }),
+          "localhost"
+        ))
+
+      it("handles chains of multiple flatMaps and withDefaults", async () => {
+        const symbol = Symbol()
+        const withAbsenceFallback =
+          <A, B>(fallback: Config.Config<A>) => (self: Config.Config<B>): Config.Config<A | B> =>
+            Config.flatMap(
+              Config.withDefault(self, symbol),
+              (e) => e === symbol ? fallback : Config.succeed<A | B>(e)
+            )
+
+        const portConfig = Config.Port("BACKEND_PORT").pipe(
+          withAbsenceFallback(Config.Port("POOORT")),
+          withAbsenceFallback(Config.Port("PORT")),
+          Config.withDefault(3001)
+        )
+
+        await assertSuccess(portConfig, ConfigProvider.fromUnknown({}), 3001)
+        await assertSuccess(
+          portConfig,
+          ConfigProvider.fromUnknown({ BACKEND_PORT: 5000, PORT: 99999 }),
+          5000
+        )
+        await assertSuccess(
+          portConfig,
+          ConfigProvider.fromUnknown({ PORT: 5000 }),
+          5000
+        )
+        await assertFailure(
+          portConfig,
+          ConfigProvider.fromUnknown({ PORT: 99999 }),
+          `Expected a value between 1 and 65535\n  at ["PORT"]`
+        )
+        await assertFailure(
+          portConfig,
+          ConfigProvider.fromUnknown({ BACKEND_PORT: 99999, PORT: 80 }),
+          `Expected a value between 1 and 65535\n  at ["BACKEND_PORT"]`
+        )
+      })
+
+      it("lifts absence in nested composition", async () => {
+        const config = Config.all({
+          flag: Config.Int("port").pipe(
+            Config.flatMap(() => Config.option(Config.String("unused")))
+          ),
+          required: Config.String("required")
+        }).pipe(Config.withDefault({ flag: Option.none(), required: "default" }))
+
+        await assertSuccess(
+          config,
+          ConfigProvider.fromUnknown({ port: "80" }),
+          { flag: Option.none(), required: "default" }
+        )
+      })
+
+      it.effect("matches map when chained with succeed, including grouped defaults and options", () =>
+        Effect.gen(function*() {
+          const mapped = Config.Int("port").pipe(Config.map((port) => port + 1))
+          const chained = Config.Int("port").pipe(Config.flatMap((port) => Config.succeed(port + 1)))
+          const group = (port: Config.Config<number>) => Config.all({ port, host: Config.String("host") })
+          const wrappers: Array<(config: Config.Config<number>) => Config.Config<unknown>> = [
+            (config) => config,
+            Config.option,
+            Config.withDefault(3000),
+            group,
+            (config) => group(config).pipe(Config.option),
+            (config) => group(config).pipe(Config.withDefault({ port: 3000, host: "default" }))
+          ]
+
+          for (
+            const input of [
+              {},
+              { port: "80" },
+              { host: "localhost" },
+              { port: "80", host: "localhost" },
+              { port: "invalid" },
+              { port: "invalid", host: "localhost" }
+            ]
+          ) {
+            const provider = ConfigProvider.fromUnknown(input)
+            const parse = (config: Config.Config<unknown>) =>
+              config.parse(provider).pipe(Effect.mapError((error) => error.cause.message), Effect.result)
+
+            for (const wrap of wrappers) {
+              assert.deepStrictEqual(yield* parse(wrap(chained)), yield* parse(wrap(mapped)))
+            }
+          }
+        }))
+
+      it.effect("preserves the outer prefix and composes prefixes in the selected config", () =>
+        Effect.gen(function*() {
+          const config = Config.Int("port").pipe(
+            Config.flatMap((port) => Config.String(port === 80 ? "prodHost" : "devHost").pipe(Config.nested("hosts"))),
+            Config.nested("service")
+          )
+          const root = {
+            port: 3000,
+            hosts: { prodHost: "root-prod", devHost: "root-dev" }
+          }
+          const provider = ConfigProvider.fromUnknown({
+            ...root,
+            service: {
+              port: 80,
+              prodHost: "wrong-local-path",
+              hosts: { prodHost: "service-prod", devHost: "service-dev" }
+            }
+          })
+          assert.strictEqual(yield* config.parse(provider), "service-prod")
+
+          const missing = ConfigProvider.fromUnknown({ ...root, service: { port: 80 } })
+          const error = yield* config.parse(missing).pipe(Effect.flip)
+          assert.strictEqual(error.cause.message, `Expected string\n  at ["service"]["hosts"]["prodHost"]`)
+          assert.deepStrictEqual(yield* config.pipe(Config.option).parse(missing), Option.none())
+        }))
+    })
+
     it.effect("defers user callbacks until the Config Effect is executed", () =>
       Effect.gen(function*() {
         const provider = ConfigProvider.fromUnknown({})
