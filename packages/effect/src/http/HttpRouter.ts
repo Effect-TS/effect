@@ -1289,8 +1289,10 @@ export const provideRequest =
  *
  * **Details**
  *
- * Layers built inside the app are private to this server. Provide shared
- * services outside the app.
+ * Layers first built inside the app are private to this server; layers already
+ * built outside it are reused. A service provided both inside the app and to a
+ * sibling may be built twice depending on build order. Provide services that
+ * must be shared outside the server.
  *
  * @stability unstable
  * @category layers
