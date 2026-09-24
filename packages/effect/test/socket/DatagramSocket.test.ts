@@ -39,14 +39,18 @@ class TestHandle implements DatagramSocket.NativeHandle {
     else done(error)
   }
   readonly sendMany: DatagramSocket.NativeHandle["sendMany"] = (payloads, destinations, done) => {
+    let error: DatagramSocket.DatagramSocketError | undefined
+    let index: number | undefined
     for (let i = 0; i < payloads.length; i++) {
       if (++this.sendCount === this.failAt) {
-        done(this.sendError(), this.omitIndex ? undefined : i)
-        return
+        error = this.sendError()
+        index = this.omitIndex ? undefined : i
+        break
       }
       this.sends.push({ payload: payloads[i]!, destination: destinations[i] })
     }
-    done()
+    if (this.deferSends) this.pending.push((override) => done(override ?? error, override ? undefined : index))
+    else done(error, index)
   }
   readonly joinMulticast: DatagramSocket.NativeHandle["joinMulticast"] = () =>
     Effect.sync(() => {
@@ -495,6 +499,96 @@ describe("DatagramSocket native handle", () => {
       assert.isTrue(Exit.isFailure(exit))
       assert.include(JSON.stringify(exit), "127.0.0.1")
     })))
+
+  it.effect("resumes a parked writeAll and reports a deferred batch failure's destination", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = fixture()
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      handle.deferSends = true
+      const first = yield* writer.writeAll([{ payload: "a", address }, { payload: "b", address }]).pipe(
+        Effect.exit,
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(first.pollUnsafe(), "writeAll must wait for the runtime to report the batch")
+      assert.strictEqual(handle.pending.length, 1)
+      handle.pending.shift()!()
+      assert.isTrue(Exit.isSuccess(yield* Fiber.join(first)))
+      handle.failAt = 4
+      const destination = NetAddress.inetAddressFromNativeUnsafe("127.0.0.2", 2345)
+      const second = yield* writer.writeAll([{ payload: "c", address }, { payload: "d", address: destination }]).pipe(
+        Effect.exit,
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(second.pollUnsafe())
+      handle.pending.shift()!()
+      const exit = yield* Fiber.join(second)
+      assert.isTrue(Exit.isFailure(exit))
+      assert.include(JSON.stringify(exit), "127.0.0.2")
+    })))
+
+  for (const batch of [false, true]) {
+    const name = batch ? "writeAll" : "write"
+    const send = (writer: DatagramSocket.Writer, payload: string) =>
+      batch ? writer.writeAll([{ payload, address }]) : writer.write({ payload, address })
+
+    it.effect(`ignores a late completion after its parked ${name} is interrupted`, () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { socket, handles } = fixture()
+        yield* socket.reader
+        const writer = yield* socket.writer
+        const handle = handles[0]!
+        handle.deferSends = true
+        const release = yield* Deferred.make<void>()
+        let written: Exit.Exit<void, DatagramSocket.DatagramSocketError> | undefined
+        // The fiber outlives its interrupted write and parks again, so a late
+        // completion that still resumed it would end the await early
+        const fiber = yield* Effect.uninterruptible(Effect.gen(function*() {
+          written = yield* Effect.exit(Effect.interruptible(send(writer, "interrupted")))
+          yield* Deferred.await(release)
+        })).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        assert.strictEqual(handle.pending.length, 1)
+        fiber.interruptUnsafe()
+        assert.isDefined(written, "interruption must not wait for the runtime")
+        assert.isTrue(Exit.hasInterrupts(written!))
+        handle.pending.shift()!()
+        yield* Effect.yieldNow
+        assert.isUndefined(fiber.pollUnsafe(), "a late completion must not resume the fiber")
+        yield* Deferred.succeed(release, undefined)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+        handle.deferSends = false
+        yield* send(writer, "next")
+        assert.deepStrictEqual(handle.sends.map(({ payload }) => new TextDecoder().decode(payload)), [
+          "interrupted",
+          "next"
+        ])
+      })))
+
+    it.effect(`completes a masked parked ${name} before applying its interruption`, () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { socket, handles } = fixture()
+        yield* socket.reader
+        const writer = yield* socket.writer
+        const handle = handles[0]!
+        handle.deferSends = true
+        let completed = false
+        const waiting = yield* Effect.uninterruptible(Effect.gen(function*() {
+          yield* send(writer, "masked")
+          completed = true
+        })).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        waiting.interruptUnsafe()
+        assert.isUndefined(waiting.pollUnsafe(), "a masked write must stay parked")
+        handle.pending.shift()!()
+        const exit = yield* Fiber.await(waiting)
+        assert.isTrue(completed)
+        assert.isTrue(Exit.hasInterrupts(exit))
+      })))
+  }
 
   for (const omitIndex of [false, true]) {
     it.effect(
