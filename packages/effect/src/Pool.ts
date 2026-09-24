@@ -359,7 +359,7 @@ export const makeWithStrategy = <A, E, R>(options: {
 
     const config: Config<A, E> = {
       acquire,
-      discardFailuresWhenIdle: options.discardFailuresWhenIdle ?? false,
+      discardFailuresWhenIdle: options.discardFailuresWhenIdle,
       concurrency,
       isFixed: options.min === options.max,
       minSize: options.min,
@@ -553,20 +553,14 @@ const getSlowWith = <A, E, X, R>(
     const state = self.state
     state.usage++
     const wait: Effect.Effect<X, any, R> = internal.flatMap(
-      internal.onInterrupt(
+      internal.onError(
         restore(waitForItem(self)),
         () =>
           internal.sync(() => {
             state.usage--
           })
       ),
-      (failure) => {
-        if (failure !== undefined) {
-          state.usage--
-          return internal.failCause(failure.cause)
-        }
-        return loop
-      }
+      () => loop
     )
     const step: Effect.Effect<X, any, R> = core.withFiber((fiber) => {
       if (state.isShuttingDown) {
@@ -654,7 +648,7 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     return internal.void
   })
 
-const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void | Exit.Failure<A, E>> =>
+const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void, E> =>
   internal.callback((resume) => {
     const state = self.state
     if (state.availableHead !== undefined || state.isShuttingDown) {
@@ -662,7 +656,7 @@ const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void | Exit.Failure<
     }
     const observer = (failure?: Exit.Failure<A, E>) => {
       state.waiters.delete(observer)
-      resume(failure === undefined ? internal.void : internal.succeed(failure))
+      resume(failure ?? internal.void)
     }
     state.waiters.add(observer)
     return internal.sync(() => {
@@ -918,16 +912,12 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
-        // Deliver the failure to a current waiter, never to a later checkout.
-        // Removing the observer here also prevents a cancelled waiter from
-        // leaving an unclaimed failure in the available list.
+        // Hand the failure to one current waiter, unless an available item can
+        // serve it instead, and never store it for a later borrower.
         if (exit._tag === "Failure" && self.config.discardFailuresWhenIdle) {
-          // An already available success can serve a waiter awakened by this
-          // resize. A concurrent failed acquisition must not replace it.
-          const waiter = self.state.availableHead === undefined
-            ? self.state.waiters.values().next().value
-            : undefined
-          waiter?.(exit)
+          if (self.state.availableHead === undefined) {
+            self.state.waiters.values().next().value?.(exit)
+          }
           return Effect.as(item.finalizer, item)
         }
         self.state.items.add(item)

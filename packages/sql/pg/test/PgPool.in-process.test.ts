@@ -1,7 +1,6 @@
 import { PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import * as Net from "node:net"
 import { Duplex } from "node:stream"
 
 const backendMessage = (tag: string, payload: Buffer): Buffer => {
@@ -15,20 +14,6 @@ const ready = Buffer.concat([
   backendMessage("K", Buffer.alloc(8)),
   backendMessage("Z", Buffer.from("I"))
 ])
-
-const withServer = (onConnection: (socket: Net.Socket) => void) =>
-  Effect.acquireRelease(
-    Effect.promise(() =>
-      new Promise<{ port: number; server: Net.Server }>((resolve) => {
-        const server = Net.createServer(onConnection)
-        server.listen(0, "127.0.0.1", () => {
-          const address = server.address() as Net.AddressInfo
-          resolve({ port: address.port, server })
-        })
-      })
-    ),
-    ({ server }) => Effect.promise(() => new Promise<void>((resolve) => server.close(() => resolve())))
-  )
 
 const waitFor = (predicate: () => boolean) =>
   Effect.promise(async () => {
@@ -87,11 +72,16 @@ describe("PgPool failed startup", () => {
     () =>
       Effect.scoped(Effect.gen(function*() {
         let attempts = 0
-        const { port } = yield* withServer((socket) => {
-          attempts++
-          socket.destroy()
+        const pool = yield* PgPool.make({
+          username: "test",
+          maxConnections: 1,
+          stream: () => {
+            attempts++
+            const socket = new Duplex({ read() {}, write() {} })
+            queueMicrotask(() => socket.destroy())
+            return socket
+          }
         })
-        const pool = yield* PgPool.make({ host: "127.0.0.1", port, username: "test", maxConnections: 1 })
         const result = yield* Effect.result(pool.get)
         assert.strictEqual(result._tag, "Failure")
         if (result._tag === "Failure") {
