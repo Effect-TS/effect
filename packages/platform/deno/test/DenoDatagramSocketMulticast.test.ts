@@ -17,8 +17,11 @@ describe.skipIf(Deno.env.get("EFFECT_MULTICAST_TESTS") !== "1")("DenoDatagramSoc
           multicast: { loopback: true }
         })
         const reader = yield* socket.reader
-        yield* reader.joinMulticast({ group })
-        const sender = yield* DenoDatagramSocket.make({ multicast: { loopback: true } })
+        yield* reader.joinMulticast({ group, interface: NetAddress.ipv4Loopback })
+        const sender = yield* DenoDatagramSocket.make({
+          bind: { address: "127.0.0.1" },
+          multicast: { loopback: true }
+        })
         yield* sender.reader
         const writer = yield* sender.writer
         yield* writer.write({ payload: "multicast", address: NetAddress.inetAddressUnsafe(group, reader.address.port) })
