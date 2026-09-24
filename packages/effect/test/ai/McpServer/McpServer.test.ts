@@ -1467,7 +1467,7 @@ describe("McpServer", () => {
           arguments: { value: "ok", typo: true }
         }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
 
-        assert.strictEqual(toolResultText(result), JSON.stringify("ok"))
+        assert.strictEqual(result.structuredContent, "ok")
       }))
 
     it.effect("registers tools with identified output schemas", () =>
@@ -1553,7 +1553,7 @@ describe("McpServer", () => {
           arguments: { config: { value: "1" } }
         })
         assert.isTrue(handlerInvoked)
-        assert.strictEqual(toolResultText(result), JSON.stringify("1"))
+        assert.strictEqual(toolResultText(result), "1")
       }))
 
     it.effect("dies on strict raw JSON Schema tools before registering any tools", () =>
@@ -1697,7 +1697,7 @@ describe("McpServer", () => {
           result,
           new McpSchema.CallToolResult({
             isError: false,
-            content: [{ type: "text", text: JSON.stringify("omitted") }]
+            content: [{ type: "text", text: "omitted" }]
           })
         )
       }))

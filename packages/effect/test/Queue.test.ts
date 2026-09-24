@@ -3,6 +3,38 @@ import { Cause, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Queue", () => {
+  describe("waiter registration after a yield", () => {
+    // Budget 3 yields after the first queue check but before the old waiter registration.
+    const withYield = <A, E>(effect: Effect.Effect<A, E>) =>
+      Effect.provideService(effect, Scheduler.MaxOpsBeforeYield, 3)
+
+    const assertCompletes = (fiber: Fiber.Fiber<unknown, unknown>) =>
+      Effect.gen(function*() {
+        for (let i = 0; i < 200 && fiber.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+        const done = fiber.pollUnsafe() !== undefined
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(done, "lost wake-up")
+      })
+
+    it.effect("offerAll does not park beside available capacity", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(1)
+        yield* Queue.offer(queue, 0)
+        const fiber = yield* Effect.forkChild(withYield(Queue.offerAll(queue, [1])), { startImmediately: true })
+        yield* Queue.take(queue)
+        yield* assertCompletes(fiber)
+      }))
+
+    it.effect("zero-capacity offer and take can rendezvous", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(0)
+        const offerer = yield* Effect.forkChild(withYield(Queue.offer(queue, 1)), { startImmediately: true })
+        const taker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+        yield* assertCompletes(offerer)
+        yield* assertCompletes(taker)
+      }))
+  })
+
   it.effect("isEnqueue type guard", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(10)
@@ -167,6 +199,71 @@ describe("Queue", () => {
       const b = yield* Queue.takeN(queue, 2)
       assert.deepEqual(a, [1, 2])
       assert.deepEqual(b, [3, 4])
+    }))
+
+  const lostWakeupCases: ReadonlyArray<readonly [string, (queue: Queue.Queue<number>) => Effect.Effect<unknown>]> = [
+    ["take", Queue.take],
+    ["takeN", (queue) => Queue.takeN(queue, 1)],
+    ["takeAll", Queue.takeAll],
+    ["takeBetween", (queue) => Queue.takeBetween(queue, 1, 5)],
+    ["peek", Queue.peek]
+  ]
+  for (const [name, receive] of lostWakeupCases) {
+    it.effect(`${name} does not miss an offer during the check-to-registration yield`, () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        // At a budget of 8, this padding exhausts the taker budget after
+        // checking the empty queue but before registering in awaitTake.
+        let pad: Effect.Effect<void> = Effect.void
+        for (let i = 0; i < 5; i++) pad = Effect.andThen(pad, Effect.void)
+        const taker = yield* Effect.forkDetach(Effect.andThen(pad, receive(queue)))
+        const offerer = yield* Effect.forkDetach(Queue.offer(queue, 1))
+        for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+
+        const exit = taker.pollUnsafe()
+        const size = yield* Queue.size(queue)
+        yield* Queue.shutdown(queue)
+        assert.deepStrictEqual(offerer.pollUnsafe(), Exit.succeed(true))
+        // Without the fix the taker stays suspended with no future wakeup, and
+        // the offered message remains in the queue.
+        assert.deepStrictEqual(exit, Exit.succeed(name === "take" || name === "peek" ? 1 : [1]))
+        assert.strictEqual(size, name === "peek" ? 1 : 0)
+      }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)))
+  }
+
+  it.effect("takeN and takeBetween keep waiting on a partial batch", () =>
+    Effect.gen(function*() {
+      const takeNQueue = yield* Queue.unbounded<number>()
+      yield* Queue.offer(takeNQueue, 1)
+      const takeN = yield* Effect.forkDetach(Queue.takeN(takeNQueue, 3))
+
+      const takeBetweenQueue = yield* Queue.unbounded<number>()
+      yield* Queue.offer(takeBetweenQueue, 1)
+      const takeBetween = yield* Effect.forkDetach(Queue.takeBetween(takeBetweenQueue, 2, 5))
+
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+      // A buffered message below the minimum must not resume the taker.
+      assert.strictEqual(takeN.pollUnsafe(), undefined)
+      assert.strictEqual(takeBetween.pollUnsafe(), undefined)
+
+      yield* Queue.offerAll(takeNQueue, [2, 3])
+      yield* Queue.offerAll(takeBetweenQueue, [2, 3])
+      assert.deepStrictEqual(yield* Fiber.await(takeN), Exit.succeed([1, 2, 3]))
+      assert.deepStrictEqual(yield* Fiber.await(takeBetween), Exit.succeed([1, 2, 3]))
+    }))
+
+  it.effect("takeN ending at an offerAll boundary keeps the next message", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      yield* Queue.offerAll(queue, [1, 2])
+      yield* Queue.offerAll(queue, [3])
+      assert.deepStrictEqual(yield* Queue.takeN(queue, 2), [1, 2])
+      assert.strictEqual(yield* Queue.size(queue), 1)
+      assert.strictEqual(yield* Queue.peek(queue), 3)
+      assert.strictEqual(yield* Queue.take(queue), 3)
+      yield* Queue.offer(queue, 99)
+      assert.strictEqual(yield* Queue.take(queue), 99)
+      assert.strictEqual(yield* Queue.size(queue), 0)
     }))
 
   it.effect("takeN and takeBetween normalize element counts before waiting", () =>

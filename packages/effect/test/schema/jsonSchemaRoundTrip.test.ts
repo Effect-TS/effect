@@ -102,6 +102,18 @@ describe("JSON Schema round-trip laws", () => {
       )
     })
 
+    it("preserves Unicode string lengths and patterns", () => {
+      const inputs = ["", "a", "é", "😀", "e\u0301", "😀a", "\uD800"]
+      assertJsonSchemaImportRoundTrip(
+        { type: "string", minLength: 2, maxLength: 2 },
+        inputs
+      )
+      assertJsonSchemaImportRoundTrip(
+        { type: "string", pattern: "^.$" },
+        inputs
+      )
+    })
+
     it("conjoins enum with its sibling constraints", () => {
       assertJsonSchemaImportRoundTrip(
         { enum: ["a", "ab", 1], minLength: 2 },

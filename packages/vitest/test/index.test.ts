@@ -1,4 +1,4 @@
-import { afterAll, assert, describe, expect, it, layer } from "@effect/vitest"
+import { afterAll, assert, describe, describeWrapped, expect, it, layer } from "@effect/vitest"
 import * as testAssert from "@effect/vitest/utils"
 import { Clock, Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import * as Arbitrary from "effect/Arbitrary"
@@ -185,6 +185,18 @@ describe("layer", () => {
     })
   })
 
+  describe("anonymous layer next to a Vitest fixture", () => {
+    const withValue = it.extend("value", () => 1)
+
+    layer(Foo.layer)((it) => {
+      it.effect("provides its context", () => Effect.map(Foo, (foo) => expect(foo).toEqual("foo")))
+    })
+
+    withValue("runs the fixture test", ({ value }) => {
+      expect(value).toEqual(1)
+    })
+  })
+
   layer(Sleeper.layer)("test services", (it) => {
     it.effect("TestClock", () =>
       Effect.gen(function*() {
@@ -216,6 +228,17 @@ describe("layer", () => {
       Effect.gen(function*() {
         const sleeper = yield* Sleeper
         yield* sleeper.sleep(1)
+      }))
+  })
+})
+
+describeWrapped("describeWrapped", (it) => {
+  it.layer(Foo.layer)("named layer", (it) => {
+    it.effect("registers in its own suite", ({ task }) =>
+      Effect.gen(function*() {
+        assert.strictEqual(task.suite?.name, "named layer")
+        assert.isTrue(task.suite?.tasks.includes(task))
+        assert.strictEqual(yield* Foo, "foo")
       }))
   })
 })

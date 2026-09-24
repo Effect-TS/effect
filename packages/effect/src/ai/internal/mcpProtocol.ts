@@ -120,6 +120,22 @@ export const requireCompleteOperation = <A>(
     ? Effect.succeed(outcome.value)
     : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
 
+/**
+ * Unquotes an exact text mirror when the protocol drops string `structuredContent`.
+ *
+ * @internal
+ */
+export const unwrapStringStructuredContent = (
+  result: PublicMcpSchema.CallToolResult
+): PublicMcpSchema.CallToolResult["content"] => {
+  const { content, structuredContent } = result
+  if (typeof structuredContent !== "string" || content.length !== 1) return content
+  const [block] = content
+  return block.type === "text" && block.text === JSON.stringify(structuredContent)
+    ? [{ ...block, text: structuredContent }]
+    : content
+}
+
 const isSamplingToolContent = (content: unknown): boolean =>
   Predicate.isReadonlyObject(content) && (content.type === "tool_use" || content.type === "tool_result")
 

@@ -14,6 +14,71 @@ import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientRes
 
 describe("AnthropicLanguageModel", () => {
   describe("streamText", () => {
+    for (
+      const [label, geo] of [
+        ["missing", {}],
+        ["null", { inference_geo: null }],
+        ["string", { inference_geo: "us" }]
+      ] as const
+    ) {
+      it.effect(`accepts ${label} usage.inference_geo in message_start`, () =>
+        Effect.gen(function*() {
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) =>
+                Effect.succeed(sseResponse(request, [
+                  {
+                    type: "message_start",
+                    message: {
+                      id: "msg_test_1",
+                      type: "message",
+                      role: "assistant",
+                      model: "claude-sonnet-4-20250514",
+                      content: [],
+                      stop_reason: null,
+                      stop_sequence: null,
+                      usage: {
+                        cache_creation: null,
+                        cache_creation_input_tokens: null,
+                        cache_read_input_tokens: null,
+                        ...geo,
+                        input_tokens: 10,
+                        output_tokens: 0,
+                        service_tier: null
+                      }
+                    }
+                  },
+                  { type: "content_block_start", index: 0, content_block: { type: "text", text: "Hello" } },
+                  { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Hello" } },
+                  { type: "content_block_stop", index: 0 },
+                  {
+                    type: "message_delta",
+                    delta: { stop_reason: "end_turn", stop_sequence: null },
+                    usage: {
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      input_tokens: null,
+                      output_tokens: 5
+                    }
+                  },
+                  { type: "message_stop" }
+                ]))
+              )
+            ))
+          )
+
+          const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+            Stream.runCollect,
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+            Effect.provide(layer)
+          )
+          assert.isTrue(
+            globalThis.Array.from(parts).some((part) => part.type === "text-delta" && part.delta === "Hello")
+          )
+        }))
+    }
+
     it.effect("decodes tool call params in content_block_stop", () =>
       Effect.gen(function*() {
         const toolParams = { pattern: "*.ts" }
@@ -437,6 +502,49 @@ describe("AnthropicLanguageModel", () => {
   })
 
   describe("generateText", () => {
+    for (
+      const [label, geo] of [
+        ["missing", {}],
+        ["null", { inference_geo: null }],
+        ["string", { inference_geo: "us" }]
+      ] as const
+    ) {
+      it.effect(`accepts ${label} usage.inference_geo in a message response`, () =>
+        Effect.gen(function*() {
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) =>
+                Effect.succeed(jsonResponse(request, {
+                  id: "msg_test_1",
+                  type: "message",
+                  role: "assistant",
+                  model: "claude-sonnet-4-20250514",
+                  content: [{ type: "text", text: "Hello" }],
+                  stop_reason: "end_turn",
+                  stop_sequence: null,
+                  usage: {
+                    cache_creation: null,
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    ...geo,
+                    input_tokens: 10,
+                    output_tokens: 5,
+                    service_tier: null
+                  }
+                }))
+              )
+            ))
+          )
+
+          const response = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+            Effect.provide(layer)
+          )
+          assert.isTrue(response.content.some((part) => part.type === "text" && part.text === "Hello"))
+        }))
+    }
+
     it.effect("omits strictJsonSchema from the request while preserving tool strictness", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined

@@ -2988,6 +2988,58 @@ export interface String extends Bottom<string, string, never, never, SchemaAST.S
  * @since 4.0.0
  */
 export const String: String = make(SchemaAST.string)
+
+/**
+ * Type-level representation of {@link StringForLiteralAutocomplete}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StringForLiteralAutocomplete extends
+  Bottom<
+    string & {},
+    string & {},
+    never,
+    never,
+    SchemaAST.String,
+    StringForLiteralAutocomplete
+  >
+{}
+/**
+ * Schema for `string & {}`. Validates that the input is `typeof` `"string"`.
+ *
+ * **When to use**
+ *
+ * Use with {@link Union} and {@link Literals} when a value may be any string
+ * and known literals should stay available for editor autocomplete.
+ *
+ * **Details**
+ *
+ * `string & {}` stays alongside string literals in a union, so editors keep
+ * suggesting those literals. Any string still passes validation. Read the
+ * literals from the {@link Literals} member.
+ *
+ * **Example** (Suggesting known HTTP methods)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const Method = Schema.Union([
+ *   Schema.StringForLiteralAutocomplete,
+ *   Schema.Literals(["GET", "POST"])
+ * ])
+ *
+ * // Type: "GET" | "POST" | (string & {})
+ * Method.make("PATCH") // => "PATCH"
+ * Method.members[1].literals // => ["GET", "POST"]
+ * ```
+ *
+ * @see {@link String} for a schema whose type is plain `string`.
+ * @see {@link Literals} for the known literals to include in the union.
+ * @category schemas
+ * @since 4.0.0
+ */
+export const StringForLiteralAutocomplete: StringForLiteralAutocomplete = String
 /**
  * Type-level representation of {@link Number}.
  *

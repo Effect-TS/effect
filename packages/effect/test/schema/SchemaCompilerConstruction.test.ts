@@ -339,6 +339,16 @@ describe("Schema compiler construction", { concurrent: false }, () => {
     assert.throws(() => SchemaParser.make(required)("a"), /Schema validation failed/)
   })
 
+  it("compiles construction only without nested records, unions or constructor defaults", () => {
+    const compilesMake = (schema: Schema.Top) => Codegen.generate(schema.ast, "make") !== undefined
+    assert.isTrue(compilesMake(Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })))
+    assert.isFalse(compilesMake(Schema.Struct({ a: Schema.Record(Schema.String, Schema.Number) })))
+    assert.isFalse(compilesMake(Schema.Struct({ a: Schema.Union([Schema.String, Schema.Number]) })))
+    assert.isFalse(compilesMake(Schema.Struct({
+      a: Schema.Struct({ b: Schema.String.pipe(Schema.withConstructorDefault(Effect.succeed("b"))) })
+    })))
+  })
+
   it.effect("executes async defaults once, including on later failure", () =>
     Effect.gen(function*() {
       let defaults = 0

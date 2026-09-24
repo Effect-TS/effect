@@ -107,7 +107,9 @@ export const suiteWith = <R>(
         const queue = yield* PersistedQueue.make({
           name: "test-queue-retry-schedule",
           schema: Item,
-          retrySchedule: Schedule.spaced(500)
+          // MySQL and SQLite truncate retry timestamps to whole seconds.
+          // Leave room for that truncation before the real-time assertion below.
+          retrySchedule: Schedule.spaced("2 seconds")
         })
 
         yield* queue.offer({ n: 42n })
@@ -124,13 +126,13 @@ export const suiteWith = <R>(
         yield* Effect.sleep(100).pipe(TestClock.withLive)
         assert.isUndefined(fiber.pollUnsafe())
 
-        // give real-time backends time to pass the retry delay and poll again
-        for (let i = 0; i < 3; i++) {
+        // Keep advancing while the take is pending: an SQL poll can still be
+        // in flight during an adjust and miss that virtual-clock wakeup.
+        for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
           yield* TestClock.adjust(1000)
           yield* Effect.sleep(700).pipe(TestClock.withLive)
         }
-        yield* TestClock.adjust(1000)
-
+        assert.isDefined(fiber.pollUnsafe())
         assert.strictEqual(yield* Fiber.join(fiber), 2)
       }), testOptions)
 

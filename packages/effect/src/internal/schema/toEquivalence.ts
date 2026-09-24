@@ -47,6 +47,8 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
     case "Arrays": {
       const elements = ast.elements.map(recur)
       const rest = ast.rest.map(recur)
+      const [head, ...tail] = rest
+      const tailLength = tail.length
       return Equivalence.make((a, b) => {
         if (!Array.isArray(a) || !Array.isArray(b)) {
           return false
@@ -68,8 +70,7 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
         // handle rest element
         // ---------------------------------------------
         if (rest.length > 0) {
-          const [head, ...tail] = rest
-          for (; i < len - tail.length; i++) {
+          for (; i < len - tailLength; i++) {
             if (!head(a[i], b[i])) {
               return false
             }
@@ -77,7 +78,7 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
           // ---------------------------------------------
           // handle post rest elements
           // ---------------------------------------------
-          for (let j = 0; j < tail.length; j++) {
+          for (let j = 0; j < tailLength; j++) {
             if (!tail[j](a[i + j], b[i + j])) {
               return false
             }

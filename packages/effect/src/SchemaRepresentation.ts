@@ -2196,6 +2196,8 @@ const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
   isIntReviver,
   isMinLengthReviver,
   isMaxLengthReviver,
+  isMinCodePointsReviver,
+  isMaxCodePointsReviver,
   isMinPropertiesReviver,
   isMaxPropertiesReviver,
   isPropertyNamesReviver,
@@ -2216,13 +2218,15 @@ const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
  *
  * - `"error"` rejects the document and is the default.
  * - `"ignore"` skips the constraint.
- * - `"apply"` compiles and enforces the constraint with the runtime's native regular expression engine.
+ * - `"apply"` compiles and enforces the constraint with the runtime's native regular expression engine in Unicode
+ *   mode. Patterns that cannot be compiled with the `u` flag are rejected with their source path.
  *
  * **Gotchas**
  *
  * Use `patterns: "apply"` only for trusted documents because regular expression evaluation may block for an unbounded
  * amount of time. `patterns: "ignore"` can admit values the source rejects, but can also reject previously valid
  * values inside `oneOf` when removing constraints makes multiple branches match.
+ * Input documents are assumed to be valid Draft 2020-12 schemas and are not validated against the meta-schema.
  * Ignoring `patternProperties` also skips its value constraints and `additionalProperties`, because matching keys cannot
  * be determined without evaluating the patterns.
  * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
@@ -2885,6 +2889,8 @@ export function fromRepresentations(
  * Translates a Draft 2020-12 subset using Effect schemas and built-in checks. Validation follows those checks and the
  * decoder's parse options, so import and re-export do not guarantee identical accepted values or a lossless round trip.
  * Import errors explain the unsupported constraint or reference and include its source path.
+ * The input is assumed to be a valid Draft 2020-12 document; this function does not validate it against the meta-schema.
+ * Instance validation semantics assume JSON-compatible JavaScript values produced by `JSON.parse`.
  *
  * **Gotchas**
  *
@@ -2896,8 +2902,10 @@ export function fromRepresentations(
  *   Object keyword scopes still constrain declared properties in intersections. Combinations requiring index
  *   signatures that exclude explicit properties or patterned keys are rejected with an explanation of the limitation.
  * - Property count and name checks run on the decoded object, after excess properties have been stripped.
- * - String length checks count UTF-16 code units. `integer` uses `Schema.isInt`, which requires safe integers.
- *   Applied patterns use `Schema.isPattern` without adding a Unicode flag.
+ * - String `minLength` and `maxLength` checks count Unicode code points, except that `minLength: 1` uses the equivalent
+ *   UTF-16 non-empty check. `integer` uses `Schema.isInt`, which requires safe integers.
+ * - Applied patterns use `Schema.isPattern` with the `u` flag. Patterns that cannot be compiled in Unicode mode are
+ *   rejected as unsupported translations with their source path.
  * - `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, active `if` / `then` / `else`,
  *   `unevaluatedItems`, and `unevaluatedProperties` are rejected with an error identifying the unsupported keyword. Inactive
  *   conditional keywords and `minContains` / `maxContains` without `contains` have no validation effect and are ignored.
@@ -2940,6 +2948,7 @@ export function fromJsonSchemaDocument(
  * **Details**
  *
  * Uses the same best-effort translation, built-in checks, and excess-property behavior as {@link fromJsonSchemaDocument}.
+ * The input is assumed to be a valid Draft 2020-12 document; this function does not validate it against the meta-schema.
  *
  * **Gotchas**
  *

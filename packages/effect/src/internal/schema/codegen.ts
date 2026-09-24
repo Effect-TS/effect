@@ -18,129 +18,129 @@ type Operation = "decode" | "is"
 
 const failureExpression = (operation: Operation): string => operation === "decode" ? "I" : "false"
 
-/** @internal */
-const getEmission = (
-  ast: SchemaAST.AST,
-  depth = 0,
-  local = false,
-  budget = { remaining: maxGeneratedNodes }
-): Emission => {
-  // Count occurrences, not distinct ASTs: shared subgraphs are expanded by the emitter.
-  if (--budget.remaining < 0 || depth > maxGeneratedDepth || !local && ast.encoding !== undefined) return "unsupported"
-  switch (ast._tag) {
-    case "Null":
-    case "Undefined":
-    case "Void":
-    case "Never":
-    case "Any":
-    case "Unknown":
-    case "ObjectKeyword":
-    case "Enum":
-    case "UniqueSymbol":
-    case "Literal":
-    case "String":
-    case "Number":
-    case "Boolean":
-    case "Symbol":
-    case "BigInt":
-      return "is"
-    case "TemplateLiteral": {
-      for (const part of ast.parts) {
-        if (getEmission(part, depth + 1, false, budget) === "unsupported") return "unsupported"
-      }
-      return "is"
-    }
-    case "Arrays": {
-      let isOutputFree = ast.checks === undefined
-      for (const element of ast.elements) {
-        const emission = getEmission(element, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
-      }
-      for (const element of ast.rest) {
-        const emission = getEmission(element, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
-      }
-      return isOutputFree ? "is" : "decode"
-    }
-    case "Objects": {
-      let isOutputFree = ast.checks === undefined
-      for (const property of ast.propertySignatures) {
-        const emission = getEmission(property.type, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
-      }
-      for (const signature of ast.indexSignatures) {
-        const key = getEmission(SchemaAST.parameterFromPropertyKey(signature.parameter), depth + 1, false, budget)
-        const value = getEmission(signature.type, depth + 1, false, budget)
-        if (key === "unsupported" || value === "unsupported") return "unsupported"
-        if (key === "decode" || value === "decode") isOutputFree = false
-      }
-      return isOutputFree ? "is" : "decode"
-    }
-    case "Union": {
-      let isOutputFree = ast.checks === undefined
-      for (const type of ast.types) {
-        const emission = getEmission(type, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
-      }
-      return isOutputFree ? "is" : "decode"
-    }
-    case "Declaration":
-    case "Suspend":
-      return "unsupported"
-  }
+type Facts = {
+  supported: boolean
+  outputFree: boolean
+  makeSafe: boolean
+  nodes: number
+  height: number
 }
 
-const canEmit = (ast: SchemaAST.AST, depth = 0): boolean => getEmission(ast, depth) !== "unsupported"
+const factsCache = new WeakMap<SchemaAST.AST, Facts>()
 
-const isMakeSafe = (
-  ast: SchemaAST.AST,
-  depth = 0,
-  budget = { remaining: maxGeneratedNodes }
+const unsupportedFacts: Facts = { supported: false, outputFree: false, makeSafe: false, nodes: 1, height: 0 }
+
+const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
+  ast._tag !== "Union" && ast._tag !== "Declaration" && ast._tag !== "Suspend" &&
+  (ast._tag !== "Objects" || ast.indexSignatures.length === 0) &&
+  ast.encoding === undefined &&
+  ast.context?.constructorDefault === undefined
+
+const addChild = (
+  facts: Facts,
+  child: SchemaAST.AST,
+  depth: number,
+  budget: { remaining: number }
 ): boolean => {
-  if (
-    --budget.remaining < 0 ||
-    depth > maxGeneratedDepth ||
-    ast.encoding !== undefined ||
-    ast.context?.constructorDefault !== undefined ||
-    SchemaAST.getConstructorDescriptor(ast) !== undefined
-  ) {
+  if (child.encoding !== undefined || child._tag === "Declaration" || child._tag === "Suspend") {
+    facts.supported = false
     return false
   }
-  switch (ast._tag) {
-    case "Null":
-    case "Undefined":
-    case "Void":
-    case "Never":
-    case "Any":
-    case "Unknown":
-    case "ObjectKeyword":
-    case "Enum":
-    case "UniqueSymbol":
-    case "Literal":
-    case "String":
-    case "Number":
-    case "Boolean":
-    case "Symbol":
-    case "BigInt":
-      return true
+  switch (child._tag) {
     case "TemplateLiteral":
-      return ast.parts.every((part) => isMakeSafe(part, depth + 1, budget))
     case "Arrays":
-      return ast.elements.every((element) => isMakeSafe(element, depth + 1, budget)) &&
-        ast.rest.every((element) => isMakeSafe(element, depth + 1, budget))
     case "Objects":
-      return ast.indexSignatures.length === 0 &&
-        ast.propertySignatures.every((property) => isMakeSafe(property.type, depth + 1, budget))
-    case "Union":
-    case "Declaration":
-    case "Suspend":
-      return false
+    case "Union": {
+      const childFacts = getFacts(child, depth, budget)
+      if (childFacts === undefined) return false
+      if (!childFacts.supported) {
+        facts.supported = false
+        return false
+      }
+      if (!childFacts.outputFree) facts.outputFree = false
+      if (!childFacts.makeSafe) facts.makeSafe = false
+      facts.nodes += childFacts.nodes
+      if (childFacts.height >= facts.height) facts.height = childFacts.height + 1
+      return true
+    }
+    default:
+      if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
+      if (!isMakeSafeNode(child)) facts.makeSafe = false
+      facts.nodes++
+      if (facts.height === 0) facts.height = 1
+      return true
   }
 }
+
+const stop = (ast: SchemaAST.AST, facts: Facts): Facts | undefined => {
+  if (facts.supported) return undefined
+  factsCache.set(ast, unsupportedFacts)
+  return unsupportedFacts
+}
+
+const getFacts = (
+  ast: SchemaAST.AST,
+  depth = 0,
+  budget = { remaining: maxGeneratedNodes }
+): Facts | undefined => {
+  const cached = factsCache.get(ast)
+  if (cached !== undefined) {
+    budget.remaining -= cached.nodes
+    return budget.remaining < 0 || depth + cached.height > maxGeneratedDepth ? undefined : cached
+  }
+  if (--budget.remaining < 0 || depth > maxGeneratedDepth) return undefined
+  const facts: Facts = { supported: true, outputFree: true, makeSafe: true, nodes: 1, height: 0 }
+  const next = depth + 1
+  switch (ast._tag) {
+    case "TemplateLiteral":
+      for (const part of ast.parts) {
+        if (!addChild(facts, part, next, budget)) return stop(ast, facts)
+      }
+      break
+    case "Arrays":
+      for (const element of ast.elements) {
+        if (!addChild(facts, element, next, budget)) return stop(ast, facts)
+      }
+      for (const element of ast.rest) {
+        if (!addChild(facts, element, next, budget)) return stop(ast, facts)
+      }
+      break
+    case "Objects":
+      for (const property of ast.propertySignatures) {
+        if (!addChild(facts, property.type, next, budget)) return stop(ast, facts)
+      }
+      for (const signature of ast.indexSignatures) {
+        if (
+          !addChild(facts, SchemaAST.parameterFromPropertyKey(signature.parameter), next, budget) ||
+          !addChild(facts, signature.type, next, budget)
+        ) return stop(ast, facts)
+      }
+      break
+    case "Union":
+      for (const type of ast.types) {
+        if (!addChild(facts, type, next, budget)) return stop(ast, facts)
+      }
+      break
+  }
+  facts.outputFree = ast._tag === "Arrays" || ast._tag === "Objects" || ast._tag === "Union"
+    ? ast.checks === undefined && facts.outputFree
+    : true
+  facts.makeSafe = facts.makeSafe && isMakeSafeNode(ast)
+  factsCache.set(ast, facts)
+  return facts
+}
+
+/** @internal */
+const getEmission = (ast: SchemaAST.AST, depth = 0, local = false): Emission => {
+  if (!local && ast.encoding !== undefined || ast._tag === "Declaration" || ast._tag === "Suspend") {
+    return "unsupported"
+  }
+  const facts = getFacts(ast, depth)
+  if (facts === undefined || !facts.supported) return "unsupported"
+  return facts.outputFree ? "is" : "decode"
+}
+
+const isMakeSafe = (ast: SchemaAST.AST): boolean => getFacts(ast)?.makeSafe ?? false
 
 const shouldCompileMake = (ast: SchemaAST.AST): ast is SchemaAST.Arrays | SchemaAST.Objects =>
   (ast._tag === "Arrays" && ast.elements.length === 0 && ast.rest.length === 1 ||
@@ -181,7 +181,6 @@ const constant = (emitter: Emitter, value: unknown, reference: string): string =
 }
 
 const needsPresenceCheck = (ast: SchemaAST.AST): boolean => {
-  if (!canEmit(ast)) return true
   switch (ast._tag) {
     case "Undefined":
     case "Void":
@@ -314,7 +313,8 @@ const emitIndexes = (
   statements: Array<string>,
   emitter: Emitter,
   operation: Operation,
-  path: string
+  path: string,
+  indexKeys: string
 ): void => {
   const fixedKeys = output === undefined || ast.propertySignatures.length === 0
     ? undefined
@@ -331,7 +331,7 @@ const emitIndexes = (
     const key = variable(emitter)
     const parameter = signature.parameter
     statements.push(
-      `const ${keys}=${
+      `const ${keys}=${indexKeys}?.[${signatureIndex}]??${
         parameter._tag === "String" && parameter.checks === undefined
           ? `Object.keys(${input})`
           : `G(${input},${constant(emitter, parameter, `${signaturePath}.parameter`)},o)`
@@ -524,12 +524,22 @@ const emitBase = (
       statements.push(
         `if(typeof ${input}!=="object"||${input}===null||Array.isArray(${input}))return ${invalid}`
       )
+      // Strict parsing collects index keys before reading any declared fields,
+      // just like the interpreter. Reuse that snapshot when decoding the indexes.
+      const object = constant(emitter, ast, path)
+      const strict = `o!==D&&o.onExcessProperty==="error"`
+      const indexKeys = ast.indexSignatures.length > 0 ? variable(emitter) : undefined
+      if (indexKeys !== undefined) {
+        statements.push(
+          `const ${indexKeys}=${strict}?${object}.indexSignatures.map(p=>G(${input},p.parameter,o)):void 0`
+        )
+      }
       statements.push(
-        `if(o!==D&&o.onExcessProperty==="error"&&E(${constant(emitter, ast, path)},${input},o))return ${invalid}`
+        `if(${indexKeys ?? strict}&&E(${object},${input},${indexKeys ?? "void 0"}))return ${invalid}`
       )
+      const output = needsValue ? variable(emitter) : undefined
       const hasOptional = ast.propertySignatures.some((property) => isOptional(property.type))
-      if (needsValue && ast.propertySignatures.length > 0 && !hasOptional) {
-        const output = variable(emitter)
+      if (output !== undefined && ast.propertySignatures.length > 0 && !hasOptional) {
         const properties = ast.propertySignatures.map((property, index) => {
           const propertyPath = `${path}.propertySignatures[${index}]`
           const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
@@ -542,30 +552,28 @@ const emitBase = (
           return `${outputKey}:${emit(property.type, value, statements, emitter, operation, `${propertyPath}.type`)}`
         })
         statements.push(`const ${output}={${properties.join(",")}}`)
-        if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, operation, path)
-        return output
+      } else {
+        if (output !== undefined) statements.push(`const ${output}={}`)
+        for (let propertyIndex = 0; propertyIndex < ast.propertySignatures.length; propertyIndex++) {
+          const property = ast.propertySignatures[propertyIndex]
+          const propertyPath = `${path}.propertySignatures[${propertyIndex}]`
+          const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
+          const value = variable(emitter)
+          const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
+          const decoded = emit(property.type, value, propertyStatements, emitter, operation, `${propertyPath}.type`)
+          if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
+          statements.push(
+            isOptional(property.type)
+              ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
+              : `${
+                propertyNeedsPresenceCheck(property.name, property.type)
+                  ? `if(!(${propertyPresence(input, key, property.name)}))return ${invalid};`
+                  : ""
+              }${propertyStatements.join(";")}`
+          )
+        }
       }
-      const output = needsValue ? variable(emitter) : undefined
-      if (output !== undefined) statements.push(`const ${output}={}`)
-      for (let propertyIndex = 0; propertyIndex < ast.propertySignatures.length; propertyIndex++) {
-        const property = ast.propertySignatures[propertyIndex]
-        const propertyPath = `${path}.propertySignatures[${propertyIndex}]`
-        const key = propertyKey(emitter, property.name, `${propertyPath}.name`)
-        const value = variable(emitter)
-        const propertyStatements: Array<string> = [`const ${value}=${input}[${key}]`]
-        const decoded = emit(property.type, value, propertyStatements, emitter, operation, `${propertyPath}.type`)
-        if (output !== undefined) propertyStatements.push(assignProperty(output, key, decoded, property.name))
-        statements.push(
-          isOptional(property.type)
-            ? `if(${propertyPresence(input, key, property.name)}){${propertyStatements.join(";")}}`
-            : `${
-              propertyNeedsPresenceCheck(property.name, property.type)
-                ? `if(!(${propertyPresence(input, key, property.name)}))return ${invalid};`
-                : ""
-            }${propertyStatements.join(";")}`
-        )
-      }
-      if (ast.indexSignatures.length > 0) emitIndexes(ast, input, output, statements, emitter, operation, path)
+      if (indexKeys !== undefined) emitIndexes(ast, input, output, statements, emitter, operation, path, indexKeys)
       return output ?? input
     }
     case "Union": {
