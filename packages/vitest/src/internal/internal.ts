@@ -135,7 +135,6 @@ const makeItProxy = <Methods extends object, ExtraContext>(
   it: V.TestAPI<ExtraContext>,
   overrides: Methods
 ): Methods & V.TestAPI<ExtraContext> =>
-  // The proxy supplies every override and forwards the remaining TestAPI members.
   new Proxy(it as Methods & V.TestAPI<ExtraContext>, {
     apply(target, thisArg, argArray) {
       return Reflect.apply(target, thisArg, argArray)
@@ -175,7 +174,7 @@ const registerProp = <ExtraContext, A>(
   timeout: PropertyTimeout | undefined
 ) => {
   const arbitrary = makeArbitrary(arbitraries)
-  // Property tests receive the context as their second parameter, so they request no fixtures.
+  // Property callbacks receive only the base context; the empty source requests no fixtures.
   it(
     name,
     testOptions(timeout),

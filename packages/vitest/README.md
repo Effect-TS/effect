@@ -341,7 +341,7 @@ it.effect("runs a query", ({ db }) =>
   }))
 ```
 
-Destructure the fixtures a test uses: Vitest reads those names to decide what to set up, and rejects `(ctx) =>` once any fixture is defined. `it.effect.each` passes the context after the test case, and property tests don't receive fixtures. Build `makeMethods` from `test`, not from the test a `describe` callback receives, which is bound to that suite.
+Destructure the fixtures a test uses: Vitest reads those names to decide what to set up, and rejects `(ctx) =>` once any fixture is defined. `it.effect.each` passes the context after the test case. Property tests cannot request fixtures, but auto fixtures still run. Build `makeMethods` from `test` or `test.extend(...)`, not from the test a `describe` callback receives: that API is bound to the outer suite, so tests in a named `it.layer` can end up outside their named suite and miss its hooks and concurrency setting.
 
 ## Writing Tests with `it.flakyTest`
 

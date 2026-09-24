@@ -290,7 +290,7 @@ export const it: Vitest.Methods = internal.makeMethods(V.it)
  *
  * Vitest reads the destructured names to decide which fixtures to set up. Once any fixture is defined, a test that
  * takes the whole context as a plain parameter, such as `(ctx) =>`, fails with a `FixtureParseError`. Property
- * tests receive the base test context and do not set up fixtures.
+ * tests receive only the base test context and cannot request fixtures; auto fixtures still run.
  *
  * **Example** (Using a Vitest fixture in an Effect test)
  *
