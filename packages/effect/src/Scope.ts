@@ -507,7 +507,9 @@ export const close: <A, E>(self: Closeable, exit: Exit<A, E>) => Effect<void> = 
  *
  * **Gotchas**
  *
- * Ignoring the returned effect skips registered finalizers.
+ * Ignoring the returned effect skips registered finalizers. The caller must
+ * run the returned effect uninterruptibly: the scope is already closed, so
+ * interruption during finalization can permanently skip remaining finalizers.
  *
  * @see {@link close} for the usual effectful close operation that always returns an `Effect`
  *

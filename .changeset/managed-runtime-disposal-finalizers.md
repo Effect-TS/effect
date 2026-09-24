@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Finish running layer finalizers when `ManagedRuntime.disposeEffect` is interrupted, rather than abandoning the remaining cleanup.
+Run `Scope.close` finalizers uninterruptibly so interruption cannot abandon remaining cleanup, including when closing a `ManagedRuntime`.

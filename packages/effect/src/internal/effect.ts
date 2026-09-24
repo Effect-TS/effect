@@ -3955,7 +3955,12 @@ export const scopeTag: Context.Service<Scope.Scope, Scope.Scope> = Context.Servi
 
 /** @internal */
 export const scopeClose = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
-  suspend(() => scopeCloseUnsafe(self, exit_) ?? void_)
+  withFiber((fiber) => {
+    const close = scopeCloseUnsafe(self, exit_)
+    if (close === undefined) return void_
+    fiberEnterUninterruptibleUnsafe(fiber)
+    return close
+  })
 
 /** @internal */
 export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
