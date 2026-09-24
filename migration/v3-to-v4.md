@@ -7133,7 +7133,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpLayerRouter.cors` -> `HttpRouter.cors`: HttpLayerRouter was consolidated into v4 HttpRouter.
 
-- `HttpLayerRouter.layer` -> `none`: HttpRouter.serve, HttpRouter.toWebHandler, and HttpRouter.toHttpEffect each provide their own router; remove the router layer and pass route layers to one of them.
+- `HttpLayerRouter.layer` -> `HttpRouter.layer`: Use the layer for the consolidated HttpRouter service.
 
 - `HttpLayerRouter.make` -> `HttpRouter.make`: The layer-oriented router became the sole v4 HttpRouter implementation.
 
@@ -7177,7 +7177,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/HttpRouter`
 
-- `HttpRouter.Default` -> `HttpRouter.HttpRouter`: Custom/default router tags were removed; route layers require HttpRouter.HttpRouter, which HttpRouter.serve, HttpRouter.toWebHandler, and HttpRouter.toHttpEffect provide.
+- `HttpRouter.Default` -> `HttpRouter.HttpRouter + HttpRouter.layer`: Custom/default router tags were removed; v4 provides one router service.
 
 - `HttpRouter.HttpRouter` -> `HttpRouter.HttpRouter`: The name remains, but now denotes the mutable layer-oriented registration service.
 
