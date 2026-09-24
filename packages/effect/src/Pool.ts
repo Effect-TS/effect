@@ -84,7 +84,7 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
  */
 export interface Config<A, E> {
   readonly acquire: Effect.Effect<A, E, Scope.Scope>
-  readonly discardFailuresWhenIdle: boolean
+  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly concurrency: number
   readonly isFixed: boolean
   readonly minSize: number
@@ -125,7 +125,7 @@ export interface State<A, E> {
   availableHead: PoolItem<A, E> | undefined
   availableTail: PoolItem<A, E> | undefined
   readonly invalidated: Set<PoolItem<A, E>>
-  readonly waiters: Set<() => void>
+  readonly waiters: Set<(failure?: Exit.Failure<A, E>) => void>
 }
 
 /**
@@ -233,6 +233,8 @@ export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u
  */
 export const make = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
+  /** Hand acquisition failures to a waiting borrower, or discard them. */
+  readonly discardFailuresWhenIdle?: boolean | undefined
   readonly size: number
   readonly concurrency?: number | undefined
   readonly targetUtilization?: number | undefined
@@ -300,7 +302,7 @@ export const make = <A, E, R>(options: {
  */
 export const makeWithTTL = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
-  /** Discard failed background acquisitions when no borrower is waiting. */
+  /** Hand acquisition failures to a waiting borrower, or discard them. */
   readonly discardFailuresWhenIdle?: boolean | undefined
   readonly min: number
   readonly max: number
@@ -338,7 +340,7 @@ export const makeWithTTL = <A, E, R>(options: {
  */
 export const makeWithStrategy = <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
-  /** Discard failed background acquisitions when no borrower is waiting. */
+  /** Hand acquisition failures to a waiting borrower, or discard them. */
   readonly discardFailuresWhenIdle?: boolean | undefined
   readonly min: number
   readonly max: number
@@ -558,7 +560,13 @@ const getSlowWith = <A, E, X, R>(
             state.usage--
           })
       ),
-      () => loop
+      (failure) => {
+        if (failure !== undefined) {
+          state.usage--
+          return internal.failCause(failure.cause)
+        }
+        return loop
+      }
     )
     const step: Effect.Effect<X, any, R> = core.withFiber((fiber) => {
       if (state.isShuttingDown) {
@@ -646,15 +654,15 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     return internal.void
   })
 
-const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
+const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void | Exit.Failure<A, E>> =>
   internal.callback((resume) => {
     const state = self.state
     if (state.availableHead !== undefined || state.isShuttingDown) {
       return resume(internal.void)
     }
-    const observer = () => {
+    const observer = (failure?: Exit.Failure<A, E>) => {
       state.waiters.delete(observer)
-      resume(internal.void)
+      resume(failure === undefined ? internal.void : internal.succeed(failure))
     }
     state.waiters.add(observer)
     return internal.sync(() => {
@@ -667,7 +675,7 @@ const wakeWaiters = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown
   if (waiters.size === 0) return
   fiber.currentDispatcher.scheduleTask(() => {
     let remaining = count
-    const toWake: Array<() => void> = []
+    const toWake: Array<(failure?: Exit.Failure<A, E>) => void> = []
     for (const notify of waiters) {
       if (remaining-- <= 0) break
       toWake.push(notify)
@@ -910,15 +918,16 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
-        // A background failure with no waiter belongs to no checkout. Do not
-        // leave it in the available list for an unrelated borrower to find.
-        if (
-          exit._tag === "Failure" && self.config.discardFailuresWhenIdle &&
-          self.state.usage <= Array.from(self.state.items).reduce(
-              (sum, item) => sum + item.refCount + (item.isAvailable ? self.config.concurrency - item.refCount : 0),
-              0
-            )
-        ) {
+        // Deliver the failure to a current waiter, never to a later checkout.
+        // Removing the observer here also prevents a cancelled waiter from
+        // leaving an unclaimed failure in the available list.
+        if (exit._tag === "Failure" && self.config.discardFailuresWhenIdle) {
+          // An already available success can serve a waiter awakened by this
+          // resize. A concurrent failed acquisition must not replace it.
+          const waiter = self.state.availableHead === undefined
+            ? self.state.waiters.values().next().value
+            : undefined
+          waiter?.(exit)
           return Effect.as(item.finalizer, item)
         }
         self.state.items.add(item)
