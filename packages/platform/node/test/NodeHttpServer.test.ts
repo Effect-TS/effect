@@ -51,8 +51,9 @@ describe("HttpServer", () => {
     Effect.gen(function*() {
       const publicServer = Http.createServer()
       const internalServer = Http.createServer()
-      const publicApp = HttpRouter.add("GET", "/public", HttpServerResponse.text("public"))
-      const internalApp = HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal"))
+      const Health = HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy"))
+      const publicApp = Layer.mergeAll(HttpRouter.add("GET", "/public", HttpServerResponse.text("public")), Health)
+      const internalApp = Layer.mergeAll(HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")), Health)
 
       yield* Layer.mergeAll(
         HttpRouter.serve(publicApp, { disableListenLog: true, disableLogger: true }).pipe(
@@ -68,6 +69,8 @@ describe("HttpServer", () => {
 
       assert.strictEqual(yield* status(tcpPort(publicServer), "/public"), 200)
       assert.strictEqual(yield* status(tcpPort(internalServer), "/internal"), 200)
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/health"), 200)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/health"), 200)
       assert.strictEqual(yield* status(tcpPort(publicServer), "/internal"), 404)
       assert.strictEqual(yield* status(tcpPort(internalServer), "/public"), 404)
     }))
