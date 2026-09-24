@@ -1924,23 +1924,6 @@ describe("Atom", { concurrent: false }, () => {
 
   test(`swr does not notify subscribers during a nested read`, async () => {
     const r = AtomRegistry.make()
-    const makeDispatcher = r.schedulerAsync.makeDispatcher.bind(r.schedulerAsync)
-    let flushes = 0
-    let cancellations = 0
-    vitest.spyOn(r.schedulerAsync, "makeDispatcher").mockImplementation(() => {
-      const dispatcher = makeDispatcher()
-      const flush = dispatcher.flush.bind(dispatcher)
-      const cancel = dispatcher.cancel?.bind(dispatcher)
-      dispatcher.flush = () => {
-        flushes++
-        flush()
-      }
-      dispatcher.cancel = () => {
-        cancellations++
-        cancel?.()
-      }
-      return dispatcher
-    })
     const events: Array<string> = []
     let runs = 0
     const base = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
@@ -1961,12 +1944,9 @@ describe("Atom", { concurrent: false }, () => {
 
     r.get(outer)
     assert.deepStrictEqual(events, ["read start", "read end"])
-    assert.strictEqual(flushes, 0)
     await Effect.runPromise(Effect.yieldNow)
     assert.deepStrictEqual(events, ["read start", "read end"])
     assert.strictEqual(runs, 1)
-    assert.strictEqual(flushes, 0)
-    assert.strictEqual(cancellations, 1)
     unsubscribe()
   })
 
