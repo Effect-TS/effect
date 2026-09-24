@@ -41,7 +41,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import { constVoid } from "../Function.ts"
-import { args, contA, contAll, evaluate, exitSucceed, makePrimitive, type Primitive } from "../internal/core.ts"
+import { args, contA, contAll, exitSucceed, makePrimitive, type Primitive, withFiber } from "../internal/core.ts"
 import type { FiberImpl } from "../internal/effect.ts"
 import * as Latch from "../Latch.ts"
 import * as NetAddress from "../net/NetAddress.ts"
@@ -820,11 +820,11 @@ class ReaderState {
 }
 
 // `pull` without `Effect.callback`: a parked fiber is its own waiter, and a
-// packet resumes it inline with `fiber.evaluate`, like `Effect.yieldNow`
-const pull: (state: ReaderState) => Reader["pull"] = makePrimitive({
-  op: "DatagramSocketPull",
-  [evaluate](fiber) {
-    const state: ReaderState = this[args]
+// packet resumes it inline with `fiber.evaluate`, like `Effect.yieldNow`. It
+// is built on the shared `withFiber` primitive rather than a new one, so the
+// run loop's dispatch sees no extra primitive shape
+const makePull = (state: ReaderState): Reader["pull"] =>
+  withFiber((fiber): any => {
     if (state.buffer.length !== 0) {
       const batch = state.take()
       const cont = fiber.getCont(contA)
@@ -834,8 +834,7 @@ const pull: (state: ReaderState) => Reader["pull"] = makePrimitive({
     state.park(fiber)
     fiber._stack.push(state.unpark)
     return fiber.yieldWith(constVoid)
-  }
-})
+  })
 
 // Popped on every path out of a park, as `Effect.uninterruptible`'s frame is.
 // `contAll` runs even when an interruption skips `contE`, so an interrupted
@@ -848,7 +847,7 @@ const unpark: (state: ReaderState) => Primitive = makePrimitive({
 })
 
 const makeReader = (state: ReaderState): Reader => ({
-  pull: pull(state),
+  pull: makePull(state),
   get address() {
     return state.address
   },
