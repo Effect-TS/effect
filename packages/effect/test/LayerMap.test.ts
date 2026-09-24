@@ -17,26 +17,32 @@ const trackedLayer = (events: Array<string>) =>
   )
 
 const constructors = {
-  make: (layer: Layer.Layer<Value, Error>, idleTimeToLive: number) =>
-    Effect.map(LayerMap.make((_key: string) => layer, { preloadKeys: ["a"], idleTimeToLive }), (map) =>
+  make: (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) =>
+    Effect.map(LayerMap.make((_key: string) => layer, {
+      preloadKeys: ["a"],
+      ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
+    }), (map) =>
       Effect.asVoid(Effect.scoped(map.runtime("a")))),
-  fromRecord: (layer: Layer.Layer<Value, Error>, idleTimeToLive: number) =>
-    Effect.map(LayerMap.fromRecord({ a: layer }, { preload: true, idleTimeToLive }), (map) =>
+  fromRecord: (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) =>
+    Effect.map(LayerMap.fromRecord({ a: layer }, {
+      preload: true,
+      ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
+    }), (map) =>
       Effect.asVoid(Effect.scoped(map.runtime("a")))),
-  "Service with lookup": (layer: Layer.Layer<Value, Error>, idleTimeToLive: number) => {
+  "Service with lookup": (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) => {
     class MapService extends LayerMap.Service<MapService>()("LayerMap.test.Lookup", {
       lookup: (_key: string) => layer,
       preloadKeys: ["a"],
-      idleTimeToLive
+      ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
     }) {}
     return Effect.map(Layer.build(MapService.Default), (context) =>
       Effect.asVoid(Effect.scoped(Context.get(context, MapService).runtime("a"))))
   },
-  "Service with layers": (layer: Layer.Layer<Value, Error>, idleTimeToLive: number) => {
+  "Service with layers": (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) => {
     class MapService extends LayerMap.Service<MapService>()("LayerMap.test.Layers", {
       layers: { a: layer },
       preload: true,
-      idleTimeToLive
+      ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
     }) {}
     return Effect.map(Layer.build(MapService.Default), (context) =>
       Effect.asVoid(Effect.scoped(Context.get(context, MapService).runtime("a"))))
@@ -66,6 +72,16 @@ describe("LayerMap preload", () => {
         const events: Array<string> = []
         const scope = yield* Scope.make()
         yield* construct(trackedLayer(events), 0).pipe(Scope.extend(scope))
+        deepStrictEqual(events, [])
+        yield* Scope.close(scope, Exit.void)
+        deepStrictEqual(events, [])
+      }))
+
+    it.effect(`${name}: does not acquire when the idle TTL is omitted`, () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        const scope = yield* Scope.make()
+        yield* construct(trackedLayer(events)).pipe(Scope.extend(scope))
         deepStrictEqual(events, [])
         yield* Scope.close(scope, Exit.void)
         deepStrictEqual(events, [])
