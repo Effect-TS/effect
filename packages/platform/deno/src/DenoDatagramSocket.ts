@@ -302,6 +302,12 @@ const openError = (
   })
 }
 
+// DNS lookup reports a missing Deno net permission as EPERM, not NotCapable.
+const lookupOpenError = (error: unknown) => {
+  const code = (error as DenoError)?.code
+  return openError(error, code === "EPERM" || code === "EACCES" ? "PermissionDenied" : "AddressNotAvailable")
+}
+
 const unsupportedError = (capability: string) =>
   new DatagramSocket.DatagramSocketError({
     reason: new DatagramSocket.DatagramSocketUnsupportedError({ capability, runtime: "Deno" })
@@ -378,7 +384,7 @@ const lookup = async (
   try {
     return await resolve(address, family)
   } catch (error) {
-    throw openError(error, "AddressNotAvailable")
+    throw lookupOpenError(error)
   }
 }
 
@@ -437,7 +443,7 @@ const adopt = (
         } catch {
           // already closed
         }
-        resume(Effect.fail(openError(error, "AddressNotAvailable")))
+        resume(Effect.fail(lookupOpenError(error)))
       }
     )
   })
