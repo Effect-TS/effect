@@ -37,7 +37,7 @@ export interface CheckRepresentationAnnotation<S> extends RepresentationAnnotati
 }
 
 /**
- * Input passed to JSON Schema compiler annotations.
+ * Input and output contracts for JSON Schema compiler annotations.
  *
  * @since 4.0.0
  */
@@ -54,18 +54,70 @@ export declare namespace ToJsonSchema {
   }
 
   /**
-   * Compiles a check to a JSON Schema fragment.
+   * The result of compiling a check to JSON Schema.
+   *
+   * **Details**
+   *
+   * Return the JSON Schema fragment directly when it represents the check
+   * exactly. Return `[schema, false]` when the fragment is a safe, looser
+   * approximation: it must accept every value accepted by the check, but may
+   * accept additional values. Use `[{}, false]` when the constraint is omitted;
+   * a bare `{}` declares that the check imposes no constraint.
+   *
+   * Approximation propagates through enclosing schemas and dependencies listed
+   * in `representation.schemas`, including recursive references. A `oneOf`
+   * union with an approximate branch exports as `anyOf`. Approximate record-key
+   * patterns cannot be used as `patternProperties` selectors.
    *
    * **Gotchas**
    *
-   * Treat the input schemas as immutable. The returned value must be a valid JSON Schema object graph and must not be
-   * mutated after this function returns. Local `$defs` references must use valid JSON Pointer URI fragments. Return a
-   * new object graph to produce different output during a later compilation.
+   * The compiler trusts the callback's declaration; it does not prove that the
+   * fragment is exact or safely looser. Returning a plain fragment does not
+   * override approximation inherited from a schema dependency.
+   *
+   * **Example** (Declaring a Unicode length approximation)
+   *
+   * ```ts import.meta.vitest
+   * import { Schema } from "effect"
+   *
+   * const short = Schema.String.check(Schema.makeFilter(
+   *   (value: string) => value.length <= 1,
+   *   { toJsonSchema: () => [{ maxLength: 1 }, false] }
+   * ))
+   * const schema = Schema.Union([short, Schema.Literal("😀")], { mode: "oneOf" })
+   * const document = Schema.toJsonSchemaDocument(schema)
+   *
+   * Schema.is(schema)("😀") // => true
+   * document.schema.oneOf // => undefined
+   * document.schema.anyOf // => [{ type: "string", maxLength: 1 }, { type: "string", enum: ["😀"] }]
+   * ```
    *
    * @category models
    * @since 4.0.0
    */
-  export type Check = (input: CheckInput) => JsonSchema.JsonSchema
+  export type CheckOutput = JsonSchema.JsonSchema | readonly [schema: JsonSchema.JsonSchema, exact: false]
+
+  /**
+   * Compiles a check to a JSON Schema fragment.
+   *
+   * **Details**
+   *
+   * Return a fragment for an exact translation or `[fragment, false]` for a safe,
+   * looser approximation. Dependencies in `representation.schemas` are compiled
+   * into the input's `schemas` array; their approximation status propagates automatically.
+   *
+   * **Gotchas**
+   *
+   * Treat the input schemas as immutable. The returned fragment must be a valid JSON Schema object graph and must not be
+   * mutated after this function returns. Local `$defs` references must use valid JSON Pointer URI fragments. Return a
+   * new object graph to produce different output during a later compilation.
+   *
+   * @see {@link CheckOutput} for exact and approximate results
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export type Check = (input: CheckInput) => CheckOutput
 }
 
 /**
@@ -2446,19 +2498,29 @@ export function toMultiDocument(document: Document): MultiDocument {
  * decoder remains the final authority. Passing JSON Schema validation does not
  * guarantee that Effect decoding will succeed.
  *
+ * A `oneOf` union exports as `anyOf` when any branch contains a known
+ * approximation; otherwise it retains `oneOf`. Approximation propagates through
+ * checks, nested schemas, check dependencies, and recursive references. Filters
+ * without a `toJsonSchema` callback and opaque declarations are approximate.
+ * Custom callbacks declare their result using {@link ToJsonSchema.CheckOutput}.
+ *
  * **Gotchas**
  *
  * - Reference allocation is already fixed in the input `Document`. The inherited `referencePolicy` option has no effect
  *   here; pass it to {@link toRepresentation} when creating the document.
- * - String length, RegExp flags, decoded-object property checks, and `oneOf` can differ from Effect validation.
+ * - String length, RegExp flags, and decoded-object property checks can differ from Effect validation.
  * - Opaque declarations are represented by an unconstrained JSON Schema.
  * - Check callback results are used directly, and exceptions raised by a callback pass through unchanged. Callbacks
- *   must treat their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must
+ *   must treat their input schemas as immutable. Each returned fragment must be a valid JSON Schema object graph and must
  *   not be mutated after the callback returns. The callback author is responsible for the emitted semantics.
  * - Local definition references returned by callbacks are resolved together with compiler-generated references.
  *   Invalid JSON Pointer URI fragments throw an `Error`.
  * - The default `onExcessProperty: "ignore"` matches the decoder default. Use `onExcessProperty: "error"` in both
  *   places when a closed object contract is required.
+ * - Record keys require an exact translation to a pattern before they can select `patternProperties` values.
+ *   Otherwise, `"ignore"` omits that index-signature constraint. In `"error"` mode, the compiler emits the generated
+ *   key schemas under `propertyNames` and allows unmatched properties to satisfy any candidate index value schema.
+ *   Exact selectors from other index signatures are retained, even when their value schemas are approximate.
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *
@@ -2479,15 +2541,20 @@ export function toJsonSchemaDocument(
  *
  * Use when several representation roots must share the same JSON Schema definitions.
  *
+ * **Details**
+ *
+ * Uses the same approximation tracking and `oneOf` and record-key fallbacks as
+ * {@link toJsonSchemaDocument}, including across shared and recursive definitions.
+ *
  * **Gotchas**
  *
  * - Reference allocation is already fixed in the input `MultiDocument`. The inherited `referencePolicy` option has no
  *   effect here; pass it to {@link toRepresentations} when creating the document.
  * - Every definition is compiled, including definitions that are not reachable from a root. Check callbacks must treat
- *   their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
+ *   their input schemas as immutable. Each returned fragment must be a valid JSON Schema object graph and must not be
  *   mutated after the callback returns. Local definition references returned by callbacks are resolved together with
  *   compiler-generated references. Invalid JSON Pointer URI fragments throw an `Error`.
- * - String length, RegExp flags, decoded-object property checks, `oneOf`, and custom check callbacks can differ from
+ * - String length, RegExp flags, decoded-object property checks, and custom check callbacks can differ from
  *   Effect validation, as described by {@link toJsonSchemaDocument}.
  *
  * @see {@link toJsonSchemaDocument} for a single root

@@ -1144,7 +1144,7 @@ describe("toJsonSchemaDocument", () => {
         ) {
           const schema = Schema.String.check(check)
           assertJsonSchemaDocument(schema, {
-            schema: { type: "string", allOf: [{ pattern }] }
+            schema: { type: "string", pattern }
           })
           assertJsonSchemaAcceptsEffectValues(schema, values)
         }
@@ -3022,12 +3022,11 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "object",
-            "patternProperties": {
-              "^[^a-z]*$": {
-                "type": "number"
-              }
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[^a-z]*$"
             },
-            "additionalProperties": false
+            "additionalProperties": { "type": "number" }
           }
         }
       )
@@ -3191,8 +3190,14 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             type: "object",
-            patternProperties: {
-              "^[^a-z]*$": { type: "number" }
+            propertyNames: {
+              anyOf: [
+                { type: "string", pattern: "^[^a-z]*$" },
+                { type: "string" }
+              ]
+            },
+            additionalProperties: {
+              anyOf: [{ type: "number" }, { type: "boolean" }]
             },
             allOf: [{ type: "object", additionalProperties: { type: "boolean" } }]
           }
@@ -3594,6 +3599,29 @@ describe("toJsonSchemaDocument", () => {
             "description": "outer"
           }
         }
+      )
+    })
+
+    it("uses anyOf when approximated oneOf branches can overlap", () => {
+      const schema = Schema.Union([
+        Schema.String.check(Schema.isMinLength(2)),
+        Schema.String.check(Schema.isMaxLength(1))
+      ], { mode: "oneOf" })
+      assertJsonSchemaDocument(schema, {
+        schema: {
+          anyOf: [
+            { type: "string", minLength: 1 },
+            { type: "string", maxLength: 1 }
+          ]
+        }
+      })
+      assertJsonSchemaAcceptsEffectValues(schema, ["a", "ab", "😀"])
+    })
+
+    it("keeps oneOf when its branches are exact", () => {
+      assertJsonSchemaDocument(
+        Schema.Union([Schema.String, Schema.Boolean], { mode: "oneOf" }),
+        { schema: { oneOf: [{ type: "string" }, { type: "boolean" }] } }
       )
     })
 

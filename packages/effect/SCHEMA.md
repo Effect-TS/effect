@@ -5263,8 +5263,8 @@ Properties not modeled by an object schema use `onExcessProperty: "ignore"` by
 default, matching the decoder default. This emits `additionalProperties: true`.
 Pass `{ onExcessProperty: "error" }` to the generator and decoder to reject
 unmatched properties whenever the key space is representable. An
-index-signature key check that cannot be represented leaves unmatched
-properties open so that JSON Schema does not reject inputs Effect may accept.
+index-signature key check that cannot be translated to an exact selector uses
+a conservative fallback so that JSON Schema does not reject inputs Effect may accept.
 The generator does not merge conjunctive key patterns into a new regular
 expression. With `onExcessProperty: "ignore"`, it leaves that index signature
 open. With `onExcessProperty: "error"`, it uses the generated key schemas under
@@ -5273,9 +5273,11 @@ open. With `onExcessProperty: "error"`, it uses the generated key schemas under
 decoder enforces the exact association between keys and values.
 
 Known differences include Unicode code-point versus UTF-16 string length,
-JavaScript RegExp flags, property checks applied before versus after decoding,
-and `oneOf` with overlapping members. Custom `toJsonSchema` callbacks are also
-responsible for the semantics they emit.
+JavaScript RegExp flags, and property checks applied before versus after decoding.
+When a `oneOf` branch has a known approximation, the compiler emits `anyOf` so
+that newly overlapping branches cannot reject valid values. It retains `oneOf`
+when all branches are exact. Custom `toJsonSchema` callbacks declare approximate
+results with `[schema, false]`; see [Check exporters and approximation](#check-exporters-and-approximation).
 
 The result is a data structure including:
 
@@ -6227,25 +6229,63 @@ different allocation rule.
 
 Generated JSON Schema is a preliminary validation layer. The Effect decoder
 remains the final authority because string length, RegExp flags,
-decoded-object property checks, and `oneOf` can differ between the two
-validators. The default `onExcessProperty: "ignore"` emits
+and decoded-object property checks can differ between the two validators.
+If a `oneOf` branch contains a known approximation, the compiler emits `anyOf`.
+This prevents the approximation from rejecting values by making multiple
+branches match. Unions whose branches are all exact retain `oneOf`.
+
+The default `onExcessProperty: "ignore"` emits
 `additionalProperties: true`; use `onExcessProperty: "error"` in both
 generation and decoding to reject unmatched properties whenever the key space
-is representable. Unrepresentable index-signature key checks leave unmatched
-properties open under the default mode. The compiler does not merge
-conjunctive key patterns into a new regular expression. In `error` mode it uses
-the generated key schemas under `propertyNames`. For properties not otherwise
-selected, it accepts any index-signature value schema and leaves the exact
-key-value association to the Effect decoder.
+has an exact selector. For `Schema.Record(Key, Value)`, a `patternProperties`
+selector must represent the key check exactly. A looser pattern could select
+extra keys and impose `Value` constraints on properties the Effect decoder ignores.
+
+When a key cannot be translated to an exact selector, including conjunctive key
+patterns that the compiler does not merge into a single regular expression:
+
+- With `onExcessProperty: "ignore"`, the compiler omits that index-signature constraint.
+- With `onExcessProperty: "error"`, it emits the generated key schemas under
+  `propertyNames`, also allowing explicitly declared property names. Properties
+  not selected by `properties` or exact `patternProperties` selectors may satisfy
+  any candidate index-signature value schema. The Effect decoder enforces the
+  exact association between keys and values.
+
+Exact selectors from other index signatures remain active. An exact key selector
+is also retained when only its value schema is approximate.
 
 At the lower level, `SchemaRepresentation.toJsonSchemaDocument(document)` compiles a live `Document`, and
 `toJsonSchemaMultiDocument` compiles a live `MultiDocument`. Check-level `toJsonSchema` callbacks contribute JSON Schema
 constraints. Opaque declarations that have not been structurally lowered compile to an unconstrained JSON Schema.
 Callback authors are responsible for the semantics of their output.
 
-`toJsonSchema` callbacks must treat their input schemas as immutable and return a valid JSON Schema object graph. After a
-callback returns, it must not mutate that object or anything reachable from it; returning a new graph is the supported way
-to produce different output during a later compilation. The compiler may cache structural comparisons while
+#### Check exporters and approximation
+
+Check-level `toJsonSchema` callbacks return `SchemaRepresentation.ToJsonSchema.CheckOutput`:
+
+| Return value      | Meaning                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `schema`          | The fragment represents the check exactly.                                   |
+| `[schema, false]` | The fragment accepts every value accepted by the check, and may accept more. |
+
+Use the tightest safe approximation available. Return `[{}, false]` when the
+constraint must be omitted. Returning a bare `{}` instead declares that the
+check imposes no constraint. The compiler trusts this declaration; it does not
+prove that a custom export is exact or safely looser.
+
+Approximation propagates through grouped checks, array elements, object
+properties, unions, and references, including recursive definitions. It also
+propagates from dependencies listed in a check's `representation.schemas`, even
+if its callback returns a plain fragment. The callback receives those compiled
+dependencies in its `schemas` input. Filters without a `toJsonSchema` callback
+and opaque declarations without a structural codec are treated as approximate.
+
+This information controls the `oneOf` and record-key fallbacks described above.
+It is used during compilation and adds no metadata to the emitted JSON Schema.
+
+`toJsonSchema` callbacks must treat their input schemas as immutable and return a valid JSON Schema fragment, either
+directly or in the tuple above. After a callback returns, it must not mutate that fragment or anything reachable from it;
+returning a new graph is the supported way to produce different output during a later compilation. The compiler may cache structural comparisons while
 deduplicating completed definitions, so mutating a previously returned graph can make equality results stale.
 
 Definitions are compared only with definitions in the same internal fallback-identifier group. Equal definitions in
@@ -6260,6 +6300,10 @@ schema with revivers first.
 
 `SchemaRepresentation.fromJsonSchemaDocument` imports a JSON Schema Draft 2020-12 document as a runtime `Schema.Top`.
 It does not return a representation document.
+
+The input is assumed to be a valid Draft 2020-12 document and is not validated
+against the meta-schema. Instance validation assumes JSON-compatible JavaScript
+values produced by `JSON.parse`.
 
 Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
 references, external references, and pointers below a definition are rejected with the supported reference format.
@@ -6293,10 +6337,11 @@ validation or a lossless round trip:
   result to a finite set of properties.
 - `minProperties`, `maxProperties`, and `propertyNames` use the existing checks on the decoded object, after excess
   properties have been stripped. No separate validation of the original object is added.
-- String length checks count UTF-16 code units, not Unicode code points. For example, `"😀"` satisfies an imported
-  `minLength: 2` and fails an imported `maxLength: 1`, unlike JSON Schema validation.
+- String `minLength` and `maxLength` count Unicode code points through `Schema.isMinCodePoints` and
+  `Schema.isMaxCodePoints`, except that `minLength: 1` uses the equivalent non-empty check `Schema.isMinLength(1)`.
 - `integer` uses `Schema.isInt` and rejects integers outside JavaScript's safe integer range.
-- Applied patterns use the existing `Schema.isPattern` check without adding a Unicode flag.
+- Applied patterns use `Schema.isPattern` with the `u` flag. Patterns that cannot be compiled in Unicode mode are
+  rejected as unsupported translations, with their source path, rather than interpreted with different semantics.
 
 An Effect struct exported with `additionalProperties: true` therefore imports with a JSON-valued index signature,
 even if the original struct had none. The imported decoder retains additional properties that the original decoder

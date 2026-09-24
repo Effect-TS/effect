@@ -6586,7 +6586,7 @@ export function isPattern(
     ? `new RegExp(${format(source)})`
     : `new RegExp(${format(source)}, ${format(flags)})`
   return SchemaAST.isPattern(regExp, {
-    toJsonSchema: () => canExport ? { pattern: flags.endsWith("y") ? `^(?:${source})` : source } : {},
+    toJsonSchema: () => canExport ? { pattern: flags.endsWith("y") ? `^(?:${source})` : source } : [{}, false],
     toCode: () => ({ runtime: `Schema.isPattern(${runtimeRegExp})` }),
     ...annotations
   })
@@ -6856,11 +6856,14 @@ export function isBase64Url(annotations?: Annotations.Filter) {
   )
 }
 
-function literalToJsonSchema(literal: string, original: string, pattern: string): JsonSchema.JsonSchema {
-  if (literal.length === 0) return {}
+function literalToJsonSchema(
+  literal: string,
+  original: string,
+  pattern: string
+): SchemaRepresentation.ToJsonSchema.CheckOutput {
+  if (literal.length === 0) return original.length === 0 ? {} : [{}, false]
   const constraint = { pattern: new globalThis.RegExp(pattern).source }
-  // Approximate patterns must not become patternProperties selectors for Record keys.
-  return literal === original ? constraint : { allOf: [constraint] }
+  return literal === original ? constraint : [constraint, false]
 }
 
 /**
@@ -6987,7 +6990,7 @@ export function isUppercased(annotations?: Annotations.Filter) {
         id: "effect/schema/isUppercased",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, false],
       toCode: () => ({ runtime: "Schema.isUppercased()" }),
       arbitraryConstraint: {
         patterns: [{ source: UPPERCASED_PATTERN, flags: "" }]
@@ -7020,7 +7023,7 @@ export function isLowercased(annotations?: Annotations.Filter) {
         id: "effect/schema/isLowercased",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, false],
       toCode: () => ({ runtime: "Schema.isLowercased()" }),
       arbitraryConstraint: {
         patterns: [{ source: LOWERCASED_PATTERN, flags: "" }]
@@ -7053,7 +7056,7 @@ export function isCapitalized(annotations?: Annotations.Filter) {
         id: "effect/schema/isCapitalized",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, false],
       toCode: () => ({ runtime: "Schema.isCapitalized()" }),
       arbitraryConstraint: {
         patterns: [{ source: CAPITALIZED_PATTERN, flags: "" }]
@@ -7086,7 +7089,7 @@ export function isUncapitalized(annotations?: Annotations.Filter) {
         id: "effect/schema/isUncapitalized",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, false],
       toCode: () => ({ runtime: "Schema.isUncapitalized()" }),
       arbitraryConstraint: {
         patterns: [{ source: UNCAPITALIZED_PATTERN, flags: "" }]
@@ -7570,7 +7573,7 @@ export function isInt(annotations?: Annotations.Filter) {
         id: "effect/schema/isInt",
         payload: null
       },
-      toJsonSchema: () => ({ type: "integer" }),
+      toJsonSchema: () => [{ type: "integer" }, false],
       toCode: () => ({ runtime: "Schema.isInt()" }),
       arbitraryConstraint: {
         number: "integer"
@@ -7714,7 +7717,7 @@ export const isGreaterThanDate: (
         id: "effect/schema/isGreaterThanDate",
         payload: { exclusiveMinimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isGreaterThanDate(${formatDateRuntime(exclusiveMinimum)})` })
     }
   }
@@ -7749,7 +7752,7 @@ export const isGreaterThanOrEqualToDate: (
         id: "effect/schema/isGreaterThanOrEqualToDate",
         payload: { minimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isGreaterThanOrEqualToDate(${formatDateRuntime(minimum)})` })
     }
   }
@@ -7778,7 +7781,7 @@ export const isLessThanDate: (
         id: "effect/schema/isLessThanDate",
         payload: { exclusiveMaximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isLessThanDate(${formatDateRuntime(exclusiveMaximum)})` })
     }
   }
@@ -7813,7 +7816,7 @@ export const isLessThanOrEqualToDate: (
         id: "effect/schema/isLessThanOrEqualToDate",
         payload: { maximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isLessThanOrEqualToDate(${formatDateRuntime(maximum)})` })
     }
   }
@@ -7857,7 +7860,7 @@ export const isBetweenDate: (options: {
         id: "effect/schema/isBetweenDate",
         payload
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({
         runtime: `Schema.isBetweenDate({ minimum: ${formatDateRuntime(options.minimum)}, maximum: ${
           formatDateRuntime(options.maximum)
@@ -7890,7 +7893,7 @@ export const isGreaterThanBigInt: (
         id: "effect/schema/isGreaterThanBigInt",
         payload: { exclusiveMinimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isGreaterThanBigInt(${format(exclusiveMinimum)})` })
     }
   }
@@ -7920,7 +7923,7 @@ export const isGreaterThanOrEqualToBigInt: (
         id: "effect/schema/isGreaterThanOrEqualToBigInt",
         payload: { minimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isGreaterThanOrEqualToBigInt(${format(minimum)})` })
     }
   }
@@ -7949,7 +7952,7 @@ export const isLessThanBigInt: (
         id: "effect/schema/isLessThanBigInt",
         payload: { exclusiveMaximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isLessThanBigInt(${format(exclusiveMaximum)})` })
     }
   }
@@ -7979,7 +7982,7 @@ export const isLessThanOrEqualToBigInt: (
         id: "effect/schema/isLessThanOrEqualToBigInt",
         payload: { maximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isLessThanOrEqualToBigInt(${format(maximum)})` })
     }
   }
@@ -8018,7 +8021,7 @@ export const isBetweenBigInt: (options: {
         id: "effect/schema/isBetweenBigInt",
         payload
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({
         runtime: `Schema.isBetweenBigInt({ minimum: ${format(options.minimum)}, maximum: ${
           format(options.maximum)
@@ -8078,12 +8081,14 @@ function makeIsMinLength(minLength: number, minCodePoints: number, annotations?:
       },
       toJsonSchema: ({ type }) =>
         type === "string"
-          ? { minLength: minCodePoints }
+          ? minLength <= 1
+            ? { minLength: minCodePoints }
+            : [{ minLength: minCodePoints }, false]
           : type === "array"
           ? { minItems: minLength }
           : type === undefined
-          ? { minLength: minCodePoints, minItems: minLength }
-          : {},
+          ? [{ minLength: minCodePoints, minItems: minLength }, false]
+          : [{}, false],
       toCode: () => ({ runtime: `Schema.isMinLength(${minLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8149,12 +8154,12 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
       },
       toJsonSchema: ({ type }) =>
         type === "string"
-          ? { maxLength }
+          ? maxLength === 0 ? { maxLength } : [{ maxLength }, false]
           : type === "array"
           ? { maxItems: maxLength }
           : type === undefined
-          ? { maxLength, maxItems: maxLength }
-          : {},
+          ? [{ maxLength, maxItems: maxLength }, false]
+          : [{}, false],
       toCode: () => ({ runtime: `Schema.isMaxLength(${maxLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8203,17 +8208,19 @@ export function isBetweenLength(minimum: number, maximum: number, annotations?: 
       },
       toJsonSchema: ({ type }) =>
         type === "string"
-          ? { minLength: Math.ceil(minimum / 2), maxLength: maximum }
+          ? maximum === 0 || Math.ceil(minimum / 2) > maximum
+            ? { minLength: Math.ceil(minimum / 2), maxLength: maximum }
+            : [{ minLength: Math.ceil(minimum / 2), maxLength: maximum }, false]
           : type === "array"
           ? { minItems: minimum, maxItems: maximum }
           : type === undefined
-          ? {
+          ? [{
             minLength: Math.ceil(minimum / 2),
             maxLength: maximum,
             minItems: minimum,
             maxItems: maximum
-          }
-          : {},
+          }, false]
+          : [{}, false],
       toCode: () => ({ runtime: `Schema.isBetweenLength(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8391,7 +8398,7 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
         id: "effect/schema/isMinSize",
         payload: { minSize }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isMinSize(${minSize})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8431,7 +8438,7 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
         id: "effect/schema/isMaxSize",
         payload: { maxSize }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isMaxSize(${maxSize})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8475,7 +8482,7 @@ export function isBetweenSize(minimum: number, maximum: number, annotations?: An
         id: "effect/schema/isBetweenSize",
         payload: { minimum, maximum }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, false],
       toCode: () => ({ runtime: `Schema.isBetweenSize(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8519,7 +8526,7 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
         id: "effect/schema/isMinProperties",
         payload: { minProperties }
       },
-      toJsonSchema: () => ({ minProperties }),
+      toJsonSchema: ({ type }) => type === "object" ? { minProperties } : [{ minProperties }, false],
       toCode: () => ({ runtime: `Schema.isMinProperties(${minProperties})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8561,7 +8568,7 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
         id: "effect/schema/isMaxProperties",
         payload: { maxProperties }
       },
-      toJsonSchema: () => ({ maxProperties }),
+      toJsonSchema: ({ type }) => type === "object" ? { maxProperties } : [{ maxProperties }, false],
       toCode: () => ({ runtime: `Schema.isMaxProperties(${maxProperties})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8607,7 +8614,10 @@ export function isBetweenProperties(minimum: number, maximum: number, annotation
         id: "effect/schema/isBetweenProperties",
         payload: { minimum, maximum }
       },
-      toJsonSchema: () => ({ minProperties: minimum, maxProperties: maximum }),
+      toJsonSchema: ({ type }) =>
+        type === "object"
+          ? { minProperties: minimum, maxProperties: maximum }
+          : [{ minProperties: minimum, maxProperties: maximum }, false],
       toCode: () => ({ runtime: `Schema.isBetweenProperties(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8662,7 +8672,8 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
         payload: null,
         schemas: [propertyNames.ast]
       },
-      toJsonSchema: ({ schemas }) => ({ propertyNames: schemas[0] }),
+      toJsonSchema: ({ schemas, type }) =>
+        type === "object" ? { propertyNames: schemas[0] } : [{ propertyNames: schemas[0] }, false],
       toCode: ({ schemas }) => ({ runtime: `Schema.isPropertyNames(${schemas[0].runtime})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       ...annotations
@@ -15303,15 +15314,17 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  * JSON Schema generation is best-effort. String length uses Unicode code points
  * in JSON Schema and UTF-16 code units in Effect. A generated `pattern` cannot
  * retain JavaScript RegExp flags. Object property checks apply to the original
- * input in JSON Schema but to the decoded object in Effect. `oneOf` can also
- * reject values accepted by overlapping Effect union members. Custom
- * `toJsonSchema` annotations are the annotation author's responsibility. When
+ * input in JSON Schema but to the decoded object in Effect. When a `oneOf`
+ * branch contains a known approximation, the compiler emits `anyOf` so that
+ * the approximation cannot create a false rejection. Unions with only exact
+ * branches retain `oneOf`. Custom `toJsonSchema` callbacks return `[schema, false]` for safe,
+ * looser approximations and are responsible for the semantics they declare. When
  * canonical JSON derivation adds an artificial transformation, checks and
  * annotations on its source node are not copied to the JSON target, so they do
  * not appear in the emitted document. Opaque declarations without a structural
  * codec are represented by an unconstrained JSON Schema. The default
  * `onExcessProperty: "ignore"` matches the decoder default and leaves
- * unrepresentable index-signature keys open. In `"error"` mode, the compiler
+ * index-signature keys without exact selectors open. In `"error"` mode, the compiler
  * constrains those keys with `propertyNames` and applies a permissive choice of
  * candidate index value schemas. The Effect decoder enforces the exact
  * key-value association.
@@ -16121,11 +16134,21 @@ export declare namespace Annotations {
     /**
      * Compiles this filter to a JSON Schema fragment.
      *
+     * **Details**
+     *
+     * Return the fragment directly for an exact translation or `[fragment, false]`
+     * for a safe, looser approximation. Use `[{}, false]` to omit the constraint.
+     * Approximation propagates from `representation.schemas` automatically. It
+     * makes enclosing `oneOf` unions export as `anyOf` and prevents approximate
+     * record-key patterns from selecting `patternProperties` values.
+     *
      * **Gotchas**
      *
-     * Treat the input schemas as immutable. The returned value must be a valid JSON Schema object graph and must not be
-     * mutated after this function returns. Return a new object graph to produce different output during a later
-     * compilation.
+     * The compiler trusts the declared semantics. Treat the input schemas as immutable. The returned fragment must be
+     * a valid JSON Schema object graph and must not be mutated after this function returns. Return a new object graph
+     * to produce different output during a later compilation.
+     *
+     * @see {@link SchemaRepresentation.ToJsonSchema.CheckOutput} for the result contract
      */
     readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined
     readonly toCode?: SchemaRepresentation.Generation.Check | undefined

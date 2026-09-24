@@ -561,6 +561,53 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       ])
     })
 
+    it("resolves oneOf exactness through recursive references", () => {
+      const approximate: SchemaRepresentation.Representation = {
+        _tag: "String",
+        checks: [{
+          _tag: "Filter",
+          aborted: false,
+          annotations: { toJsonSchema: () => [{ minLength: 1 }, false] }
+        }]
+      }
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument({
+        representations: [
+          { _tag: "Reference", $ref: "Exact" },
+          { _tag: "Reference", $ref: "Approximate" }
+        ],
+        references: {
+          Exact: {
+            _tag: "Union",
+            types: [{ _tag: "Reference", $ref: "Exact" }, { _tag: "Boolean", checks: [] }],
+            options: { mode: "oneOf" },
+            checks: []
+          },
+          Approximate: {
+            _tag: "Union",
+            types: [{ _tag: "Reference", $ref: "Approximate" }, approximate],
+            options: { mode: "oneOf" },
+            checks: []
+          }
+        }
+      })
+
+      assert.deepStrictEqual(output, {
+        dialect: "draft-2020-12",
+        schemas: [
+          { $ref: "#/$defs/Exact" },
+          { $ref: "#/$defs/Approximate" }
+        ],
+        definitions: {
+          Exact: {
+            oneOf: [{ $ref: "#/$defs/Exact" }, { type: "boolean" }]
+          },
+          Approximate: {
+            anyOf: [{ $ref: "#/$defs/Approximate" }, { type: "string", minLength: 1 }]
+          }
+        }
+      })
+    })
+
     it("uses group overrides without visiting children and otherwise falls back to allOf", () => {
       let visits = 0
       const child: SchemaRepresentation.Filter = {
