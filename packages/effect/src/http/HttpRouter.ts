@@ -1315,7 +1315,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
   }).pipe(
     Layer.unwrap,
     Layer.provideMerge(appLayer),
-    Layer.provide(RouterLayer),
+    Layer.provide(Layer.fresh(RouterLayer)),
     options?.disableListenLog ? identity : HttpServer.withLogAddress
   ) as any
 }
