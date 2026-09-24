@@ -432,6 +432,7 @@ export const get: {
         return oentry.value.await()
       }
       const entry = new EntryImpl(fiber, self.lookup(key))
+      let skipCache = false
       entry.fiber.addObserver((exit) => {
         if (effect.exitHasInterrupts(exit)) {
           const current = MutableHashMap.get(self.map, key)
@@ -441,14 +442,18 @@ export const get: {
           return
         }
         const ttl = self.timeToLive(exit, key)
-        if (Duration.isFinite(ttl)) {
+        if (Duration.isZero(ttl)) {
+          skipCache = true
+          const current = MutableHashMap.get(self.map, key)
+          if (Option.isSome(current) && current.value === entry) {
+            MutableHashMap.remove(self.map, key)
+          }
+        } else if (Duration.isFinite(ttl)) {
           entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
-        } else if (Duration.isZero(ttl)) {
-          MutableHashMap.remove(self.map, key)
         }
       })
       const exit = entry.fiber.pollUnsafe()
-      if (exit === undefined || !effect.exitHasInterrupts(exit)) {
+      if (!skipCache && (exit === undefined || !effect.exitHasInterrupts(exit))) {
         MutableHashMap.set(self.map, key, entry)
       }
       if (Number.isFinite(self.capacity)) {
