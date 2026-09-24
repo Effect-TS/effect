@@ -386,11 +386,12 @@ const prepareMessages: (
           const parts: Array<typeof Generated.Part.Encoded> = []
 
           for (const part of message.content) {
+            const response = Predicate.isRecord(part.result) ? part.result : { result: part.result }
             parts.push({
               functionResponse: {
                 id: part.id,
                 name: part.name,
-                response: part.result as any
+                response: response as any
               }
             })
           }
