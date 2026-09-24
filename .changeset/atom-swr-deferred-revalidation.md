@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Defer stale-while-revalidate refreshes until after atom reads finish. Skip queued refreshes if the source is fresh or the atom is disposed. One-shot, unmounted `registry.get` reads no longer refresh stale sources if their lifetime ends before revalidation runs.
+Defer `Atom.swr` stale refreshes until after reads, skipping them if the source becomes fresh or the atom is disposed. One-shot unmounted reads no longer refresh stale sources after disposal.

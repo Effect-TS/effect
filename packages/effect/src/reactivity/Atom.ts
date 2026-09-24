@@ -1869,13 +1869,11 @@ export const withRefresh: {
 /**
  * Adds stale-while-revalidate refresh behavior to an async result atom.
  *
- * **Details**
- *
- * Automatic revalidation during reads is skipped while the current value is
- * fresh within `staleTime`. Manual `refresh` calls remain forceful and always
- * forward to the wrapped atom. Use `revalidateOnMount` to control whether stale data should trigger a
- * background refresh on first mount. Use `revalidateOnFocus` to control
- * focus behavior. `true` respects `staleTime` and `"always"` forces refetch.
+ * Returns the current result and defers stale-source revalidation until after the read.
+ * Skips revalidation if the source becomes fresh or the atom is disposed.
+ * Manual refreshes still forward to the source. `revalidateOnMount` controls
+ * initial stale refreshes; `revalidateOnFocus` controls focus refreshes
+ * (`true` respects `staleTime`, `"always"` forces refresh).
  *
  * @stability unstable
  * @category combinators
