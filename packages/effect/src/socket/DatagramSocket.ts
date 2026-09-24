@@ -562,18 +562,15 @@ export const fromNativeHandle = (
     })
   )
 
-  // one callback per write: it is both the lazy wrapper and the resume
   const write = (datagram: OutgoingDatagram): Effect.Effect<void, DatagramSocketError> =>
-    Effect.callback((resume) => {
+    withFiber((fiber) => {
       const state = current
-      if (state === undefined) resume(latch.whenOpen(write(datagram)))
-      else state.write(datagram, resume)
+      return state === undefined ? latch.whenOpen(write(datagram)) : state.write(datagram, fiber)
     })
   const writeAll = (datagrams: NonEmptyReadonlyArray<OutgoingDatagram>): Effect.Effect<void, DatagramSocketError> =>
-    Effect.callback((resume) => {
+    withFiber((fiber) => {
       const state = current
-      if (state === undefined) resume(latch.whenOpen(writeAll(datagrams)))
-      else state.writeAll(datagrams, resume)
+      return state === undefined ? latch.whenOpen(writeAll(datagrams)) : state.writeAll(datagrams, fiber)
     })
   const writer: DatagramSocket["writer"] = Effect.succeed({ write, writeAll })
 
@@ -763,35 +760,58 @@ class ReaderState {
     this.handle?.close()
   }
 
-  write(datagram: OutgoingDatagram, resume: (effect: Effect.Effect<void, DatagramSocketError>) => void) {
-    if (this.failure !== undefined) return resume(this.failure)
+  // A send the handle completes synchronously (Bun) returns its result without
+  // suspending. Otherwise the fiber parks, as in `pull`, and the completion
+  // resumes it inline. An interrupted write ignores its completion, as with
+  // `Effect.callback`.
+  write(datagram: OutgoingDatagram, fiber: FiberImpl): Effect.Effect<void, DatagramSocketError> {
+    if (this.failure !== undefined) return this.failure
     // a received datagram passed whole is echoed to its sender
     const target = targetOf(datagram)
     const destination = this.destination(target)
-    if (destination instanceof DatagramSocketError) return resume(Effect.fail(destination))
+    if (destination instanceof DatagramSocketError) return Effect.fail(destination)
+    let result: Effect.Effect<void, DatagramSocketError> | undefined
+    let parked = false
     this.handle!.send(encode(datagram.payload), destination, (error) => {
-      resume(error === undefined ? Effect.void : Effect.fail(this.withAddress(error, target)))
+      if (result !== undefined) return
+      result = error === undefined ? Effect.void : Effect.fail(this.withAddress(error, target))
+      if (parked) fiber.evaluate(result as any)
     })
+    if (result !== undefined) return result
+    parked = true
+    return fiber.yieldWith(() => {
+      parked = false
+    }) as any
   }
 
   writeAll(
     datagrams: NonEmptyReadonlyArray<OutgoingDatagram>,
-    resume: (effect: Effect.Effect<void, DatagramSocketError>) => void
-  ) {
-    if (this.failure !== undefined) return resume(this.failure)
+    fiber: FiberImpl
+  ): Effect.Effect<void, DatagramSocketError> {
+    if (this.failure !== undefined) return this.failure
     const payloads = new Array<Uint8Array>(datagrams.length)
     const destinations = new Array<NativeAddress | undefined>(datagrams.length)
     for (let i = 0; i < datagrams.length; i++) {
       const datagram = datagrams[i]
       const destination = this.destination(targetOf(datagram))
-      if (destination instanceof DatagramSocketError) return resume(Effect.fail(destination))
+      if (destination instanceof DatagramSocketError) return Effect.fail(destination)
       payloads[i] = encode(datagram.payload)
       destinations[i] = destination
     }
+    let result: Effect.Effect<void, DatagramSocketError> | undefined
+    let parked = false
     this.handle!.sendMany(payloads, destinations, (error, index) => {
-      if (error === undefined) return resume(Effect.void)
-      resume(Effect.fail(index === undefined ? error : this.withAddress(error, targetOf(datagrams[index]!))))
+      if (result !== undefined) return
+      result = error === undefined
+        ? Effect.void
+        : Effect.fail(index === undefined ? error : this.withAddress(error, targetOf(datagrams[index]!)))
+      if (parked) fiber.evaluate(result as any)
     })
+    if (result !== undefined) return result
+    parked = true
+    return fiber.yieldWith(() => {
+      parked = false
+    }) as any
   }
 
   destination(
