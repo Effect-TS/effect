@@ -35,6 +35,58 @@ const assertError = (error: DatagramSocket.DatagramSocketError, tag: string) => 
   return error.reason
 }
 
+const assertSequentialBatch = async (warm: boolean) => {
+  const sends: Array<{ payload: string; complete: () => void }> = []
+  const waiters: Array<() => void> = []
+  const conn = {
+    addr: { transport: "udp", hostname: host, port: 12345 },
+    receive: () => new Promise<never>(() => {}),
+    send: (payload: Uint8Array) =>
+      new Promise<number>((resolve) => {
+        sends.push({ payload: text(payload), complete: () => resolve(payload.length) })
+        waiters.shift()?.()
+      }),
+    close: () => {}
+  } as unknown as Deno.DatagramConn
+  const sent = (count: number) =>
+    sends.length >= count
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => waiters.push(resolve))
+  const socket = DenoDatagramSocket.fromDatagramConn(Effect.succeed(conn))
+
+  await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
+    yield* socket.reader
+    const writer = yield* socket.writer
+    const destination = address(host, 12345)
+    yield* Effect.promise(async () => {
+      if (warm) {
+        const warming = Effect.runPromise(writer.write({ payload: "warm", address: destination }))
+        await sent(1)
+        sends[0].complete()
+        await warming
+      }
+
+      const batch = Effect.runPromise(writer.writeAll([
+        { payload: "first", address: destination },
+        { payload: "second", address: destination },
+        { payload: "third", address: destination }
+      ]))
+      const offset = warm ? 1 : 0
+      try {
+        for (let i = 0; i < 3; i++) {
+          await sent(offset + i + 1)
+          assert.strictEqual(sends.length, offset + i + 1, "a send started before the previous one completed")
+          assert.strictEqual(sends[offset + i].payload, ["first", "second", "third"][i])
+          sends[offset + i].complete()
+        }
+        await batch
+      } finally {
+        for (const send of sends) send.complete()
+      }
+    })
+  })))
+}
+
 describe("DenoDatagramSocket", () => {
   it.effect("binds port zero and reports the bound address", () =>
     bounded(Effect.gen(function*() {
@@ -79,6 +131,10 @@ describe("DenoDatagramSocket", () => {
       const packets = yield* take(reader, 3)
       assert.deepStrictEqual(packets.map((packet) => text(packet.payload)), ["one", "two", "three"])
     })))
+
+  it("waits for each Deno batch send to finish on a fresh socket", () => assertSequentialBatch(false))
+
+  it("waits for each Deno batch send to finish on a warm socket", () => assertSequentialBatch(true))
 
   it.effect("uses the peer as the default destination", () =>
     bounded(Effect.gen(function*() {
