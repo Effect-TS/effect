@@ -107,7 +107,9 @@ export const suiteWith = <R>(
         const queue = yield* PersistedQueue.make({
           name: "test-queue-retry-schedule",
           schema: Item,
-          retrySchedule: Schedule.spaced(500)
+          // MySQL and SQLite truncate retry timestamps to whole seconds.
+          // Leave room for that truncation before the real-time assertion below.
+          retrySchedule: Schedule.spaced("2 seconds")
         })
 
         yield* queue.offer({ n: 42n })
@@ -115,22 +117,14 @@ export const suiteWith = <R>(
         const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
-        // SQL retries use the database wall clock, while the in-memory store
-        // uses TestClock. Record a lower bound for when the retry was scheduled.
-        const failedAt = Date.now()
-
         const fiber = yield* queue.take((_val, { attempts }) => Effect.succeed(attempts)).pipe(
           Effect.forkScoped
         )
 
-        // Only assert while the wall-clock retry window is still open. Under
-        // CI load, even advancing TestClock can take longer than 500ms.
+        // not redelivered before the retry delay elapses
         yield* TestClock.adjust(100)
         yield* Effect.sleep(100).pipe(TestClock.withLive)
-        const result = fiber.pollUnsafe()
-        if (name === "memory" || Date.now() - failedAt < 500) {
-          assert.isUndefined(result)
-        }
+        assert.isUndefined(fiber.pollUnsafe())
 
         // give real-time backends time to pass the retry delay and poll again
         for (let i = 0; i < 3; i++) {
