@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Emit multipart parts buffered during file consumption before requesting more input.
+Emit parts buffered while reading a multipart file before pulling more input.
