@@ -435,7 +435,7 @@ describe("SqlRunnerStorage", () => {
             ShardId.make("default", 2),
             ShardId.make("default", 3)
           ])
-          expect(refreshed.map((_) => _.id)).toEqual([1, 2, 3])
+          expect(refreshed.map((_) => _.id).sort((a, b) => a - b)).toEqual([1, 2, 3])
 
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
