@@ -445,6 +445,19 @@ describe("DatagramSocket native handle", () => {
       assert.deepStrictEqual(yield* Effect.exit(reader.pull), first)
     })))
 
+  it.effect("forwards detached nonterminal errors without failing the reader", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const reported: Array<DatagramSocket.DatagramSocketError> = []
+      const { socket, handles } = yield* fixture({ onError: (error) => reported.push(error) })
+      const reader = yield* socket.reader
+      const error = failure()
+      const { onError } = handles[0]!.events
+      onError(error)
+      assert.deepStrictEqual(reported, [error])
+      handles[0]!.packet("still open")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["still open"])
+    })))
+
   it.effect("discards queued packets without counting them as overflow", () =>
     Effect.gen(function*() {
       const { socket, handles } = yield* fixture()
