@@ -27,7 +27,7 @@
  * import { Effect } from "effect"
  *
  * const echo = Effect.gen(function*() {
- *   const socket = BunDatagramSocket.make({ bind: { port: 9000 } })
+ *   const socket = yield* BunDatagramSocket.make({ bind: { port: 9000 } })
  *   const reader = yield* socket.reader
  *   const writer = yield* socket.writer
  *   while (true) {
@@ -47,7 +47,7 @@
  *
  * const send = (payload: string) =>
  *   Effect.gen(function*() {
- *     const socket = BunDatagramSocket.make({
+ *     const socket = yield* BunDatagramSocket.make({
  *       connect: { address: "localhost", port: 9000 }
  *     })
  *     // writes wait for an open reader, even when nothing is read
@@ -63,15 +63,20 @@
  * import { BunDatagramSocket } from "@effect/platform-bun"
  * import { Effect } from "effect"
  *
- * // `fromUdpSocket` replaces the socket's handlers with its own
- * const socket = BunDatagramSocket.fromUdpSocket(
- *   Effect.promise(() => Bun.udpSocket({ hostname: "127.0.0.1", port: 9000 }))
- * )
+ * const receive = Effect.gen(function*() {
+ *   // `fromUdpSocket` replaces the socket's handlers with its own
+ *   const socket = yield* BunDatagramSocket.fromUdpSocket(
+ *     Effect.promise(() => Bun.udpSocket({ hostname: "127.0.0.1", port: 9000 }))
+ *   )
+ *   const reader = yield* socket.reader
+ *   return yield* reader.pull
+ * }).pipe(Effect.scoped)
  * ```
  *
  * @stability unstable
  * @since 4.0.0
  */
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
@@ -186,23 +191,25 @@ export type UdpSocket = Bun.udp.Socket<"buffer"> | Bun.udp.ConnectedSocket<"buff
  *
  * **Details**
  *
- * Binding, applying options and resolving names happen when a reader is
- * acquired, and fail that acquisition with a `DatagramSocketError`. Hostnames
+ * Creating the socket never fails. Binding, applying options and resolving
+ * names happen when a reader is acquired, and fail that acquisition with a `DatagramSocketError`. Hostnames
  * in `bind`, `peer` and `connect` are resolved once per acquisition, so the
  * native socket only sees IP literals and no send waits for DNS.
  *
- * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` throws a
- * `RangeError`.
+ * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` is a
+ * defect.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: Options = {}): DatagramSocket.DatagramSocket =>
-  DatagramSocket.fromNativeHandle((events) => open(options, events), {
-    ...options.receiveBuffer,
-    onError: options.onError
-  })
+export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
+  Effect.sync(() =>
+    DatagramSocket.fromNativeHandle((events) => open(options, events), {
+      ...options.receiveBuffer,
+      onError: options.onError
+    })
+  )
 
 /**
  * Adopts a Bun UDP socket.
@@ -222,14 +229,22 @@ export const make = (options: Options = {}): DatagramSocket.DatagramSocket =>
  * @category constructors
  * @since 4.0.0
  */
-export const fromUdpSocket = (
-  acquire: Effect.Effect<UdpSocket, DatagramSocket.DatagramSocketError, Scope.Scope>,
+export const fromUdpSocket = <R>(
+  acquire: Effect.Effect<UdpSocket, DatagramSocket.DatagramSocketError, R>,
   options: AdoptOptions = {}
-): DatagramSocket.DatagramSocket =>
-  DatagramSocket.fromNativeHandle(
-    (events) => Effect.flatMap(acquire, (socket) => adopt(socket, options, events)),
-    { ...options.receiveBuffer, onError: options.onError }
-  )
+): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
+  Effect.map(Effect.context<Exclude<R, Scope.Scope>>(), (services) =>
+    DatagramSocket.fromNativeHandle(
+      (events) =>
+        acquire.pipe(
+          // the reader's scope replaces the caller's
+          Effect.updateContext((input: Context.Context<Scope.Scope>) =>
+            Context.merge(services, input) as Context.Context<R>
+          ),
+          Effect.flatMap((socket) => adopt(socket, options, events))
+        ) as Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError, Scope.Scope>,
+      { ...options.receiveBuffer, onError: options.onError }
+    ))
 
 /**
  * Provides a `DatagramSocket` built with `make`.
@@ -239,7 +254,7 @@ export const fromUdpSocket = (
  * @since 4.0.0
  */
 export const layer = (options: Options = {}): Layer.Layer<DatagramSocket.DatagramSocket> =>
-  Layer.sync(DatagramSocket.DatagramSocket, () => make(options))
+  Layer.effect(DatagramSocket.DatagramSocket, make(options))
 
 // -----------------------------------------------------------------------------
 // internal
