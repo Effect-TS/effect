@@ -224,6 +224,30 @@ describe("Cache", () => {
           assert.strictEqual(yield* Cache.size(cache), 2)
         }))
 
+      it.effect("zero-TTL lookup after expiration does not evict a live entry", () =>
+        Effect.gen(function*() {
+          let kLookups = 0
+          const cache = yield* Cache.makeWith(
+            (key: string) => key === "k" && ++kLookups === 2 ? Effect.fail("error") : Effect.succeed(1),
+            {
+              capacity: 2,
+              timeToLive: (exit, key) =>
+                Exit.isFailure(exit) ? Duration.zero : key === "k" ? Duration.minutes(1) : Duration.hours(1)
+            }
+          )
+
+          yield* Cache.get(cache, "a")
+          yield* Cache.get(cache, "k")
+          yield* TestClock.adjust("2 minutes")
+          assert.deepStrictEqual(yield* Effect.exit(Cache.get(cache, "k")), Exit.fail("error"))
+          // Do not enumerate keys: that would prune the stale entry and hide the eviction.
+          yield* Cache.get(cache, "b")
+
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "a"), Option.some(1))
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "b"), Option.some(1))
+          assert.strictEqual(yield* Cache.size(cache), 2)
+        }))
+
       it.effect("zero-TTL completion does not remove a newer set value", () =>
         Effect.gen(function*() {
           const started = yield* Latch.make()
