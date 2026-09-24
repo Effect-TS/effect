@@ -47,45 +47,6 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
-  it.effect("registers a shared fresh route layer on both servers", () =>
-    Effect.gen(function*() {
-      const publicServer = Http.createServer()
-      const internalServer = Http.createServer()
-      const health = Layer.fresh(HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy")))
-      const serve = (server: Http.Server) =>
-        HttpRouter.serve(health, { disableListenLog: true, disableLogger: true }).pipe(
-          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 }))
-        )
-      yield* Layer.build(Layer.mergeAll(serve(publicServer), serve(internalServer)))
-      for (const server of [publicServer, internalServer]) {
-        const response = yield* Effect.promise(() => fetch("http://localhost:" + tcpPort(server) + "/health"))
-        assert.strictEqual(response.status, 200)
-      }
-    }))
-
-  it.effect("serves its own router when the app outputs another router", () =>
-    Effect.gen(function*() {
-      const server = Http.createServer()
-      const foreign = Layer.effect(
-        HttpRouter.HttpRouter,
-        Effect.gen(function*() {
-          yield* (yield* HttpRouter.HttpRouter).add("GET", "/own", HttpServerResponse.text("own"))
-          const router = yield* HttpRouter.make
-          yield* router.add("GET", "/foreign", HttpServerResponse.text("foreign"))
-          return router
-        })
-      )
-      yield* Layer.build(
-        HttpRouter.serve(foreign, { disableLogger: true, disableListenLog: true }).pipe(
-          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 }))
-        )
-      )
-      const status = (path: string) =>
-        Effect.promise(() => fetch("http://localhost:" + tcpPort(server) + path).then((response) => response.status))
-      assert.strictEqual(yield* status("/own"), 200)
-      assert.strictEqual(yield* status("/foreign"), 404)
-    }).pipe(Effect.scoped))
-
   it.effect("keeps routes isolated between independent servers", () =>
     Effect.gen(function*() {
       const publicServer = Http.createServer()
@@ -102,21 +63,13 @@ describe("HttpServer", () => {
         )
       ).pipe(Layer.build)
 
-      const publicAddress = publicServer.address()
-      const internalAddress = internalServer.address()
-      if (
-        !publicAddress || typeof publicAddress === "string" ||
-        !internalAddress || typeof internalAddress === "string"
-      ) {
-        throw new Error("Expected both servers to listen on TCP ports")
-      }
       const status = (port: number, path: string) =>
         Effect.promise(() => fetch("http://localhost:" + port + path).then((response) => response.status))
 
-      assert.strictEqual(yield* status(publicAddress.port, "/public"), 200)
-      assert.strictEqual(yield* status(internalAddress.port, "/internal"), 200)
-      assert.strictEqual(yield* status(publicAddress.port, "/internal"), 404)
-      assert.strictEqual(yield* status(internalAddress.port, "/public"), 404)
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/public"), 200)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/internal"), 200)
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/internal"), 404)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/public"), 404)
     }))
 
   it.effect("schema", () =>

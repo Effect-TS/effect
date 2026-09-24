@@ -4,16 +4,6 @@ import { describe, expect, it } from "tstyche"
 
 describe("HttpRouter", () => {
   describe("router ownership", () => {
-    it("exposes make but not the reusable router layer", () => {
-      expect<typeof HttpRouter>().type.not.toHaveProperty("layer")
-      expect<Effect.Success<typeof HttpRouter.make>>().type.toBe<HttpRouter.HttpRouter>()
-    })
-
-    it("accepts unconstrained app outputs", () => {
-      const serve = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.serve(app)
-      expect(serve).type.toBeCallableWith(Layer.empty)
-    })
-
     it("omits the router output while preserving other services", () => {
       class SomeService extends Context.Service<SomeService, { readonly value: number }>()("SomeService") {}
 

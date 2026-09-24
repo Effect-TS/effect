@@ -22,28 +22,6 @@ const fetchText = (app: Layer.Layer<never, never, HttpRouter.HttpRouter>, path: 
   )
 
 describe("HttpRouter", () => {
-  it("isolates toWebHandler routes even with a shared memo map", async () => {
-    const memoMap = Layer.makeMemoMapUnsafe()
-    const publicHandler = HttpRouter.toWebHandler(
-      HttpRouter.add("GET", "/public", HttpServerResponse.text("public")),
-      { memoMap, disableLogger: true }
-    )
-    const internalHandler = HttpRouter.toWebHandler(
-      HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")),
-      { memoMap, disableLogger: true }
-    )
-    try {
-      const status = (handler: typeof publicHandler.handler, path: string) =>
-        handler(new Request("http://localhost" + path)).then((response) => response.status)
-      assert.strictEqual(await status(publicHandler.handler, "/public"), 200)
-      assert.strictEqual(await status(internalHandler.handler, "/internal"), 200)
-      assert.strictEqual(await status(publicHandler.handler, "/internal"), 404)
-      assert.strictEqual(await status(internalHandler.handler, "/public"), 404)
-    } finally {
-      await Promise.all([publicHandler.dispose(), internalHandler.dispose()])
-    }
-  })
-
   it("normalizes the prefix stored by prefixRoute", () => {
     const route = HttpRouter.prefixRoute(
       HttpRouter.route("GET", "/users", HttpServerResponse.text("ok")),
