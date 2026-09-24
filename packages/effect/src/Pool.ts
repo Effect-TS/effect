@@ -448,14 +448,9 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
   core.withFiber((fiber) => {
     const state = self.state
     if (state.isShuttingDown) return internal.interrupt
-    if (state.availableHead !== undefined) {
+    if (state.availableHead?.exit._tag === "Success") {
       state.usage++
       if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
-        if (state.availableHead.exit._tag === "Failure") {
-          removeFailedItem(self, state.availableHead)
-          state.usage--
-          return getSlowWith(self, leaseItemWith, true)
-        }
         return leaseItem(self, state.availableHead, fiber)
       }
       state.usage--
@@ -506,14 +501,9 @@ export const use: {
   core.withFiber((fiber) => {
     const state = self.state
     if (state.isShuttingDown) return internal.interrupt
-    if (state.availableHead !== undefined) {
+    if (state.availableHead?.exit._tag === "Success") {
       state.usage++
       if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
-        if (state.availableHead.exit._tag === "Failure") {
-          removeFailedItem(self, state.availableHead)
-          state.usage--
-          return getSlowWith(self, (self, item, fiber, restore) => useItem(self, item, f, fiber, restore), true)
-        }
         return useItem(self, state.availableHead, f, fiber)
       }
       state.usage--
@@ -547,15 +537,14 @@ const getSlowWith = <A, E, X, R>(
     item: PoolItem<A, E>,
     fiber: Fiber.Fiber<unknown, unknown>,
     restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
-  ) => Effect.Effect<X, any, R>,
-  replacingFailure = false
+  ) => Effect.Effect<X, any, R>
 ): Effect.Effect<X, any, R> =>
   internal.uninterruptibleMask((restore) => {
     const state = self.state
     state.usage++
     const wait: Effect.Effect<X, any, R> = internal.flatMap(
       internal.onError(
-        restore(waitForItem(self, replacingFailure)),
+        restore(waitForItem(self)),
         () =>
           internal.sync(() => {
             state.usage--
@@ -568,21 +557,18 @@ const getSlowWith = <A, E, X, R>(
         state.usage--
         return internal.interrupt
       }
-      let item = replacingFailure ? firstHealthyAvailable(self) : state.availableHead
-      // Another failed placeholder can occupy the remaining slot while a
-      // healthy lease is held. Consume it only when there is no room to grow.
-      if (item === undefined && state.availableHead !== undefined && targetSize(self) <= activeSize(self)) {
-        item = state.availableHead
+      // Prefer a healthy item. A failed placeholder is only consumed, to make
+      // room for a fresh acquisition, when the pool cannot otherwise grow.
+      const item = firstHealthyAvailable(self) ??
+        (targetSize(self) <= activeSize(self) ? state.availableHead : undefined)
+      if (item === undefined) {
+        return wait
       }
-      if (item !== undefined) {
-        if (item.exit._tag === "Failure") {
-          removeFailedItem(self, item)
-          replacingFailure = true
-          return loop
-        }
-        return lease(self, item, fiber, restore)
+      if (item.exit._tag === "Failure") {
+        removeFailedItem(self, item)
+        return loop
       }
-      return wait
+      return lease(self, item, fiber, restore)
     })
     const loop: Effect.Effect<X, any, R> = internal.suspend(() => {
       if (state.isShuttingDown) {
@@ -661,10 +647,10 @@ const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefin
   return item
 }
 
-const waitForItem = <A, E>(self: Pool<A, E>, healthyOnly: boolean): Effect.Effect<void, E> =>
+const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void, E> =>
   internal.callback((resume) => {
     const state = self.state
-    if ((healthyOnly ? firstHealthyAvailable(self) : state.availableHead) !== undefined || state.isShuttingDown) {
+    if (firstHealthyAvailable(self) !== undefined || state.isShuttingDown) {
       return resume(internal.void)
     }
     const observer = (failure?: Exit.Failure<A, E>) => {
@@ -925,27 +911,31 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
-        // Decide ownership before the resize wakes waiters. Cleanup may run
-        // asynchronously, and a waiter can re-register while it is pending.
-        const waiter = exit._tag === "Failure" && firstHealthyAvailable(self) === undefined
-          ? self.state.waiters.values().next().value as ((failure?: Exit.Failure<A, E>) => void) | undefined
-          : undefined
-        if (waiter === undefined) {
-          self.state.items.add(item)
-          addAvailable(self, item)
-        } else {
-          waiter(exit as Exit.Failure<A, E>)
-        }
         const onAcquire = Effect.suspend(() =>
           // A borrower may have removed the item before the callback runs.
           self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
         )
         if (exit._tag === "Success") {
-          if (self.config.strategy === strategyNoop) return Effect.succeed(item)
-          return Effect.as(onAcquire, item)
+          self.state.items.add(item)
+          addAvailable(self, item)
+          return self.config.strategy === strategyNoop ? Effect.succeed(item) : Effect.as(onAcquire, item)
         }
-        const cleanup = Effect.andThen(item.finalizer, Effect.andThen(onAcquire, wakeAll(self)))
-        return Effect.as(Effect.forkIn(cleanup, self.state.scope, { startImmediately: true }), item)
+        // Hand the failure to a waiting borrower before the resize wakes it,
+        // unless a healthy item can serve that borrower. Otherwise keep it as a
+        // placeholder that holds its slot until a borrower needs it.
+        const waiter = firstHealthyAvailable(self) === undefined ? self.state.waiters.values().next().value : undefined
+        if (waiter !== undefined) {
+          waiter(exit)
+        } else {
+          self.state.items.add(item)
+          addAvailable(self, item)
+        }
+        // Clean up in the background so a slow finalizer cannot block the
+        // replacement acquisition.
+        return Effect.as(
+          Effect.forkIn(Effect.andThen(item.finalizer, onAcquire), self.state.scope, { startImmediately: true }),
+          item
+        )
       })
       return internal.onExitPrimitive(
         restore(use) as Effect.Effect<PoolItem<A, E>>,
