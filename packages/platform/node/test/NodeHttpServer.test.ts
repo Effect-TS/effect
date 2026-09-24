@@ -63,7 +63,8 @@ describe("HttpServer", () => {
 
       yield* Layer.mergeAll(
         HttpRouter.serve(publicApp, { disableListenLog: true, disableLogger: true }).pipe(
-          Layer.provide(NodeHttpServer.layer(() => publicServer, { port: 0 }))
+          Layer.provide(NodeHttpServer.layer(() =>
+            publicServer, { port: 0 }))
         ),
         HttpRouter.serve(internalApp, { disableListenLog: true, disableLogger: true }).pipe(
           Layer.provide(NodeHttpServer.layer(() => internalServer, { port: 0 }))
