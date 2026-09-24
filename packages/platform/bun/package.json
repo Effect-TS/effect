@@ -60,7 +60,8 @@
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "check": "tsc -b tsconfig.json"
+    "check": "tsc -b tsconfig.json",
+    "benchmark:datagram": "bun benchmark/DatagramSocket.ts"
   },
   "peerDependencies": {
     "effect": "workspace:^"
@@ -70,6 +71,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "tinybench": "^6.2.0"
   }
 }
