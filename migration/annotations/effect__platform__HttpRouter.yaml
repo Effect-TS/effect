@@ -23,8 +23,8 @@
   replacement: "HttpRouter.RouterConfig"
   note: "The FiberRef became a Context.Reference containing Partial<FindMyWay.RouterConfig>."
 "@effect/platform/HttpRouter#Default":
-  replacement: "HttpRouter.HttpRouter + HttpRouter.layer"
-  note: "Custom/default router tags were removed; v4 provides one router service."
+  replacement: "HttpRouter.HttpRouter"
+  note: "Custom/default router tags were removed; route layers require HttpRouter.HttpRouter, which HttpRouter.serve, HttpRouter.toWebHandler, and HttpRouter.toHttpEffect provide."
 "@effect/platform/HttpRouter#empty":
   replacement: "Layer.empty"
   note: "There is no immutable empty router; use an empty registration layer."

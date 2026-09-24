@@ -109,19 +109,7 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
   "effect/http/HttpRouter"
 )
 
-/**
- * Constructs an empty `HttpRouter` service.
- *
- * **Details**
- *
- * The returned router accepts route and middleware registrations and later routes
- * the current `HttpServerRequest` to the matching `HttpServerResponse`.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const make = Effect.gen(function*() {
+const make = Effect.gen(function*() {
   const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
   const middleware = new Set<middleware.Fn>()
 
@@ -580,15 +568,6 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
   }))
 
 /**
- * Layer that provides a newly constructed `HttpRouter`.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
-
-/**
  * Builds an application layer with a router and returns the router as an HTTP
  * handler effect.
  *
@@ -596,14 +575,18 @@ export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
  *
  * The returned effect handles the current `HttpServerRequest` in the current
  * `Scope`; route request markers are converted into the ordinary requirements of
- * the returned handler.
+ * the returned handler. Each call creates its own router, even when `memoMap`
+ * is shared with other builds.
  *
  * @stability unstable
  * @category converting
  * @since 4.0.0
  */
 export const toHttpEffect = <A, E, R>(
-  appLayer: Layer.Layer<A, E, R>
+  appLayer: Layer.Layer<A, E, R> & OwnedRouter<A>,
+  options?: {
+    readonly memoMap?: Layer.MemoMap | undefined
+  }
 ): Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
@@ -614,11 +597,44 @@ export const toHttpEffect = <A, E, R>(
   Exclude<Request.Without<R>, HttpRouter> | Scope.Scope
 > =>
   Effect.gen(function*() {
-    const context = yield* Layer.build(Layer.provideMerge(appLayer, layer))
+    const app = provideRouter(appLayer, undefined)
+    const context = yield* (options?.memoMap
+      ? Layer.buildWithMemoMap(app, options.memoMap, yield* Effect.scope)
+      : Layer.build(app))
     const router = Context.get(context, HttpRouter)
     // @effect-diagnostics effect/returnEffectInGen:off
     return router.asHttpEffect()
   }) as any
+
+/**
+ * Rejects app layers that output `HttpRouter`, since the entrypoint owns the
+ * router.
+ */
+type OwnedRouter<A> = HttpRouter extends A ?
+  "The HttpRouter is provided by the entrypoint; remove it from the app layer"
+  : unknown
+
+/**
+ * Builds the app layer with a new router, so apps never share a router through
+ * layer memoization.
+ */
+const provideRouter = <A, E, R>(
+  appLayer: Layer.Layer<A, E, R>,
+  routerConfig: Partial<FindMyWay.RouterConfig> | undefined
+): Layer.Layer<A | HttpRouter, E, Exclude<R, HttpRouter>> =>
+  Layer.fromBuild((memoMap, scope) =>
+    Effect.gen(function*() {
+      const router = yield* (routerConfig ? Effect.provideService(make, RouterConfig, routerConfig) : make)
+      const context = yield* Effect.provideService(Layer.buildWithMemoMap(appLayer, memoMap, scope), HttpRouter, router)
+      const appRouter = Context.getOrUndefined(context as Context.Context<HttpRouter>, HttpRouter)
+      if (appRouter !== undefined && appRouter !== router) {
+        return yield* Effect.die(
+          new Error("The app layer provided a foreign HttpRouter; the router is owned by the HttpRouter entrypoint")
+        )
+      }
+      return Context.add(context, HttpRouter, router)
+    })
+  )
 
 const RouteTypeId = "~effect/http/HttpRouter/Route"
 
@@ -1270,7 +1286,7 @@ export const provideRequest =
  * @since 4.0.0
  */
 export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>>(
-  appLayer: Layer.Layer<A, E, R>,
+  appLayer: Layer.Layer<A, E, R> & OwnedRouter<A>,
   options?: {
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
     readonly disableLogger?: boolean | undefined
@@ -1305,17 +1321,22 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
   }
-  const RouterLayer = options?.routerConfig
-    ? Layer.provide(layer, Layer.succeed(RouterConfig)(options.routerConfig))
-    : layer
-  return Effect.gen(function*() {
-    const router = yield* HttpRouter
-    const handler = router.asHttpEffect()
-    return middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler)
-  }).pipe(
-    Layer.unwrap,
-    Layer.provideMerge(appLayer),
-    Layer.provide(Layer.fresh(RouterLayer)),
+  const app = provideRouter(appLayer, options?.routerConfig)
+  return Layer.fromBuild((memoMap, scope) =>
+    Effect.gen(function*() {
+      const context = yield* Layer.buildWithMemoMap(app, memoMap, scope)
+      const handler = Context.get(context, HttpRouter).asHttpEffect()
+      yield* Effect.provideContext(
+        Layer.buildWithMemoMap(
+          middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler),
+          memoMap,
+          scope
+        ),
+        context
+      )
+      return Context.omit(HttpRouter)(context)
+    })
+  ).pipe(
     options?.disableListenLog ? identity : HttpServer.withLogAddress
   ) as any
 }
@@ -1351,7 +1372,7 @@ export const toWebHandler = <
   HR = Exclude<Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>, A>,
   ReqR = Exclude<HR, A | Scope.Scope | HttpServerRequest.HttpServerRequest>
 >(
-  appLayer: Layer.Layer<A, E, R>,
+  appLayer: Layer.Layer<A, E, R> & OwnedRouter<A>,
   options?: {
     readonly memoMap?: Layer.MemoMap | undefined
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
@@ -1390,12 +1411,12 @@ export const toWebHandler = <
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
   }
-  const RouterLayer = options?.routerConfig
-    ? Layer.provide(layer, Layer.succeed(RouterConfig)(options.routerConfig))
-    : layer
-  return HttpEffect.toWebHandlerLayerWith(Layer.provideMerge(appLayer, RouterLayer) as Layer.Layer<A | HttpRouter, E>, {
-    toHandler: (s) => Effect.succeed(Context.get(s, HttpRouter).asHttpEffect()),
-    middleware,
-    memoMap: options?.memoMap
-  })
+  return HttpEffect.toWebHandlerLayerWith(
+    provideRouter(appLayer, options?.routerConfig) as Layer.Layer<A | HttpRouter, E>,
+    {
+      toHandler: (s) => Effect.succeed(Context.get(s, HttpRouter).asHttpEffect()),
+      middleware,
+      memoMap: options?.memoMap
+    }
+  )
 }

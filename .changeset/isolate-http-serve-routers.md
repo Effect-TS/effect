@@ -2,6 +2,10 @@
 "effect": patch
 ---
 
-`HttpRouter.serve` now uses a fresh router per server, so listeners no longer share routes by default. Apps that supply the same router can still share routes.
+`HttpRouter.serve`, `toWebHandler`, and `toHttpEffect` now each create their own router, so servers and handlers in one layer graph, or sharing a `memoMap`, no longer share routes. `toHttpEffect` also accepts a `memoMap` option.
 
-Routes registered on an `HttpRouter.layer` provided outside `serve` are no longer implicitly served and may return 404. Put the route-producing layer inside the app passed to `serve`, for example `HttpRouter.serve(YourRpcHandlers.pipe(Layer.provideMerge(RpcServer.layerProtocolHttp({ path: "/rpc" }))))`, where `YourRpcHandlers` is your RPC application layer.
+### Breaking changes
+
+- `HttpRouter.layer` and `HttpRouter.make` were removed. Delete the router layer and pass route layers to an entrypoint: `HttpRouter.toWebHandler(routes)` instead of `HttpRouter.toWebHandler(routes.pipe(Layer.provideMerge(HttpRouter.layer)))`.
+- App layers passed to an entrypoint can no longer output `HttpRouter`; this is a type error, and a defect at build time.
+- Routes registered on a router provided outside `serve` are no longer served. Move the route layer into the app: `HttpRouter.serve(YourRpcHandlers.pipe(Layer.provideMerge(RpcServer.layerProtocolHttp({ path: "/rpc" }))))`.
