@@ -31,9 +31,6 @@ const TypeId = "~effect/Pool"
 
 const Acquire = Symbol()
 const AcquireContext = Symbol()
-// A failed acquisition hidden during cleanup belongs to the waiter present
-// when it failed, not whichever borrower happens to arrive after cleanup.
-const failureOwners = new WeakMap<object, (failure?: Exit.Failure<any, any>) => void>()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
@@ -532,9 +529,7 @@ const useItem = <A, E, B, E2, R2>(
   fiber: Fiber.Fiber<unknown, unknown>,
   restore?: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<B, E | E2, R2> => {
-  if (!leaseItemBookkeeping(self, item)) {
-    return item.exit as Exit.Exit<never, E>
-  }
+  leaseItemBookkeeping(self, item)
   internal.onExitUnsafe(fiber, item.release)
   let body: Effect.Effect<B, E2, R2>
   try {
@@ -557,21 +552,6 @@ const getSlowWith = <A, E, X, R>(
 ): Effect.Effect<X, any, R> =>
   internal.uninterruptibleMask((restore) => {
     const state = self.state
-    // A cancelled waiter leaves its failed allocation behind during cleanup.
-    // A new borrower may replace that slot without waiting for cleanup.
-    if (state.availableHead === undefined) {
-      for (const item of state.items) {
-        const owner = failureOwners.get(item)
-        if (
-          item.exit._tag === "Failure" && !item.isAvailable &&
-          (owner === undefined || !state.waiters.has(owner))
-        ) {
-          removeFailedItem(self, item)
-          replacingFailure = true
-          break
-        }
-      }
-    }
     state.usage++
     const wait: Effect.Effect<X, any, R> = internal.flatMap(
       internal.onError(
@@ -621,18 +601,11 @@ const getSlowWith = <A, E, X, R>(
     return loop
   })
 
-const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boolean => {
-  const state = self.state
-  if (item.exit._tag === "Failure") {
-    state.usage--
-    removeFailedItem(self, item)
-    return false
-  }
+const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
   item.refCount++
   if (item.refCount >= self.config.concurrency) {
     removeAvailable(self, item)
   }
-  return true
 }
 
 const removeFailedItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
@@ -646,9 +619,7 @@ const leaseItem = <A, E>(
   item: PoolItem<A, E>,
   fiber: Fiber.Fiber<unknown, unknown>
 ): Effect.Effect<A, E> => {
-  if (!leaseItemBookkeeping(self, item)) {
-    return item.exit
-  }
+  leaseItemBookkeeping(self, item)
   const scope = Context.getUnsafe(fiber.context, Scope.Scope)
   if (scope.state._tag === "Closed") {
     internal.onExitUnsafe(fiber, item.release)
@@ -954,14 +925,17 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
-        self.state.items.add(item)
-        // Keep a caller-owned failure hidden until cleanup finishes. A
-        // background failure instead becomes an available placeholder.
-        const pendingWaiter = exit._tag === "Failure" && firstHealthyAvailable(self) === undefined
+        // Decide ownership before the resize wakes waiters. Cleanup may run
+        // asynchronously, and a waiter can re-register while it is pending.
+        const waiter = exit._tag === "Failure" && firstHealthyAvailable(self) === undefined
           ? self.state.waiters.values().next().value as ((failure?: Exit.Failure<A, E>) => void) | undefined
           : undefined
-        if (pendingWaiter !== undefined) failureOwners.set(item, pendingWaiter)
-        if (pendingWaiter === undefined) addAvailable(self, item)
+        if (waiter === undefined) {
+          self.state.items.add(item)
+          addAvailable(self, item)
+        } else {
+          waiter(exit as Exit.Failure<A, E>)
+        }
         const onAcquire = Effect.suspend(() =>
           // A borrower may have removed the item before the callback runs.
           self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
@@ -970,22 +944,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           if (self.config.strategy === strategyNoop) return Effect.succeed(item)
           return Effect.as(onAcquire, item)
         }
-        const cleanup = Effect.andThen(
-          item.finalizer,
-          Effect.andThen(
-            Effect.sync(() => {
-              if (pendingWaiter !== undefined && self.state.items.has(item)) {
-                if (self.state.waiters.has(pendingWaiter)) {
-                  removeFailedItem(self, item)
-                  pendingWaiter(exit)
-                } else {
-                  addAvailable(self, item)
-                }
-              }
-            }),
-            Effect.andThen(onAcquire, wakeAll(self))
-          )
-        )
+        const cleanup = Effect.andThen(item.finalizer, Effect.andThen(onAcquire, wakeAll(self)))
         return Effect.as(Effect.forkIn(cleanup, self.state.scope, { startImmediately: true }), item)
       })
       return internal.onExitPrimitive(
