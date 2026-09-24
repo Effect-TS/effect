@@ -12,31 +12,39 @@ const trackedLayer = (events: Array<string>) =>
         events.push("acquire")
         return "value"
       }),
-      () => Effect.sync(() => { events.push("release") })
+      () => Effect.sync(() => {
+        events.push("release")
+      })
     )
   )
 
 const constructors = {
   make: (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) =>
-    Effect.map(LayerMap.make((_key: string) => layer, {
-      preloadKeys: ["a"],
-      ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
-    }), (map) =>
-      Effect.asVoid(Effect.scoped(map.runtime("a")))),
+    Effect.map(
+      LayerMap.make((_key: string) => layer, {
+        preloadKeys: ["a"],
+        ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
+      }),
+      (map) => Effect.asVoid(Effect.scoped(map.runtime("a")))
+    ),
   fromRecord: (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) =>
-    Effect.map(LayerMap.fromRecord({ a: layer }, {
-      preload: true,
-      ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
-    }), (map) =>
-      Effect.asVoid(Effect.scoped(map.runtime("a")))),
+    Effect.map(
+      LayerMap.fromRecord({ a: layer }, {
+        preload: true,
+        ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
+      }),
+      (map) => Effect.asVoid(Effect.scoped(map.runtime("a")))
+    ),
   "Service with lookup": (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) => {
     class MapService extends LayerMap.Service<MapService>()("LayerMap.test.Lookup", {
       lookup: (_key: string) => layer,
       preloadKeys: ["a"],
       ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
     }) {}
-    return Effect.map(Layer.build(MapService.Default), (context) =>
-      Effect.asVoid(Effect.scoped(Context.get(context, MapService).runtime("a"))))
+    return Effect.map(
+      Layer.build(MapService.Default),
+      (context) => Effect.asVoid(Effect.scoped(Context.get(context, MapService).runtime("a")))
+    )
   },
   "Service with layers": (layer: Layer.Layer<Value, Error>, idleTimeToLive?: number) => {
     class MapService extends LayerMap.Service<MapService>()("LayerMap.test.Layers", {
@@ -44,8 +52,10 @@ const constructors = {
       preload: true,
       ...(idleTimeToLive === undefined ? {} : { idleTimeToLive })
     }) {}
-    return Effect.map(Layer.build(MapService.Default), (context) =>
-      Effect.asVoid(Effect.scoped(Context.get(context, MapService).runtime("a"))))
+    return Effect.map(
+      Layer.build(MapService.Default),
+      (context) => Effect.asVoid(Effect.scoped(Context.get(context, MapService).runtime("a")))
+    )
   }
 }
 
