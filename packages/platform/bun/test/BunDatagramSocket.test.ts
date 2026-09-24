@@ -191,6 +191,68 @@ describe("BunDatagramSocket", () => {
       assert.strictEqual(completions, writes.length)
     }))))
 
+  for (const batch of [false, true]) {
+    it.effect(`silent close with a backlog fails queued writes and the reader (${batch ? "writeAll" : "write"})`, () =>
+      bounded(Effect.scoped(Effect.gen(function*() {
+        let closed = false
+        let sends = 0
+        const native = {
+          address: { address: host, port: 12345, family: "IPv4" },
+          get closed() {
+            return closed
+          },
+          reload: () => {},
+          send: () => {
+            sends++
+            return false
+          },
+          sendMany: () => {
+            sends++
+            return 0
+          },
+          close: () => {
+            closed = true
+          }
+        } as unknown as BunDatagramSocket.UdpSocket
+        const socket = yield* BunDatagramSocket.fromUdpSocket(Effect.succeed(native))
+        const reader = yield* socket.reader
+        const writer = yield* socket.writer
+        const packet = { payload: "pending", address: NetAddress.inetAddressFromIpStringUnsafe(host, 12346) }
+        const first = Effect.runFork(Effect.flip(writer.write(packet)))
+        assert.strictEqual(sends, 1)
+        closed = true // no drain or error callback: closure is silent
+        const second = batch ? writer.writeAll([packet]) : writer.write(packet)
+        assertReason(yield* Effect.flip(second), "DatagramSocketClosedError")
+        assertReason(yield* Fiber.join(first), "DatagramSocketClosedError")
+        assertReason(yield* Effect.flip(reader.pull), "DatagramSocketClosedError")
+        assert.strictEqual(sends, 1, "a closed socket must not be sent to again")
+      }))))
+  }
+
+  it.effect("adopts a real socket, installs receive handlers, and detects a silent close on write", () =>
+    bounded(Effect.scoped(Effect.gen(function*() {
+      const native = yield* Effect.promise(() =>
+        Bun.udpSocket({
+          hostname: host,
+          port: 0,
+          socket: { data: () => {} }
+        })
+      )
+      // The adopted reader owns the native socket once it has opened.
+      const socket = yield* BunDatagramSocket.fromUdpSocket(Effect.succeed(native))
+      const reader = yield* socket.reader
+      const writer = yield* socket.writer
+      const sender = yield* BunDatagramSocket.make({ bind: { address: host } })
+      yield* sender.reader
+      const senderWriter = yield* sender.writer
+      yield* senderWriter.write({ payload: "adopted", address: reader.address })
+      assert.deepStrictEqual((yield* collect(reader, 1)).map(text), ["adopted"])
+      native.close() // no native error or drain callback
+      const error = yield* Effect.flip(writer.write({ payload: "after-close", address: reader.address }))
+      assertReason(error, "DatagramSocketClosedError")
+      assertReason(yield* Effect.flip(reader.pull), "DatagramSocketClosedError")
+    }))))
+
   it.effect("reports ICMP errors through onError", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
       const reported = yield* Deferred.make<DatagramSocket.DatagramSocketError>()
