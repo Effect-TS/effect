@@ -6581,10 +6581,12 @@ export function isPattern(
 ): SchemaAST.Filter<string> {
   const source = regExp.source
   const flags = regExp.flags
+  const canExport = /^[dg]*u$/.test(flags)
   const runtimeRegExp = flags === ""
     ? `new RegExp(${format(source)})`
     : `new RegExp(${format(source)}, ${format(flags)})`
   return SchemaAST.isPattern(regExp, {
+    toJsonSchema: () => canExport ? { pattern: source } : {},
     toCode: () => ({ runtime: `Schema.isPattern(${runtimeRegExp})` }),
     ...annotations
   })
@@ -8026,22 +8028,6 @@ export const isBetweenBigInt: (options: {
   }
 })
 
-function getLengthJsonSchemaConstraint(
-  type: JsonSchema.Type | undefined,
-  stringConstraints: ReadonlyArray<JsonSchema.JsonSchema>,
-  arrayConstraints: ReadonlyArray<JsonSchema.JsonSchema>
-): JsonSchema.JsonSchema {
-  const constraints = type === "string"
-    ? stringConstraints
-    : type === "array"
-    ? arrayConstraints
-    : type === undefined
-    ? [...stringConstraints, ...arrayConstraints]
-    : []
-  if (constraints.length === 0) return {}
-  return constraints.length === 1 ? constraints[0] : { allOf: constraints }
-}
-
 /**
  * Validates that a value has at least the specified length. Works with strings
  * and arrays.
@@ -8078,8 +8064,10 @@ function getLengthJsonSchemaConstraint(
  */
 export function isMinLength(minLength: number, annotations?: Annotations.Filter) {
   minLength = normalizeCardinality(minLength)
-  const stringConstraints = [{ minLength: Math.ceil(minLength / 2) }]
-  const arrayConstraints = [{ minItems: minLength }]
+  return makeIsMinLength(minLength, Math.ceil(minLength / 2), annotations)
+}
+
+function makeIsMinLength(minLength: number, minCodePoints: number, annotations?: Annotations.Filter) {
   return makeFilter<{ readonly length: number }>(
     (input) => input.length >= minLength,
     {
@@ -8088,7 +8076,14 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
         id: "effect/schema/isMinLength",
         payload: { minLength }
       },
-      toJsonSchema: ({ type }) => getLengthJsonSchemaConstraint(type, stringConstraints, arrayConstraints),
+      toJsonSchema: ({ type }) =>
+        type === "string"
+          ? { minLength: minCodePoints }
+          : type === "array"
+          ? { minItems: minLength }
+          : type === undefined
+          ? { minLength: minCodePoints, minItems: minLength }
+          : {},
       toCode: () => ({ runtime: `Schema.isMinLength(${minLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8118,7 +8113,7 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
  * @since 4.0.0
  */
 export function isNonEmpty(annotations?: Annotations.Filter) {
-  return isMinLength(1, annotations)
+  return makeIsMinLength(1, 1, annotations)
 }
 /**
  * Validates that a value has at most the specified length. Works with strings
@@ -8144,8 +8139,6 @@ export function isNonEmpty(annotations?: Annotations.Filter) {
  */
 export function isMaxLength(maxLength: number, annotations?: Annotations.Filter) {
   maxLength = normalizeCardinality(maxLength)
-  const stringConstraints = [{ maxLength }]
-  const arrayConstraints = [{ maxItems: maxLength }]
   return makeFilter<{ readonly length: number }>(
     (input) => input.length <= maxLength,
     {
@@ -8154,7 +8147,14 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
         id: "effect/schema/isMaxLength",
         payload: { maxLength }
       },
-      toJsonSchema: ({ type }) => getLengthJsonSchemaConstraint(type, stringConstraints, arrayConstraints),
+      toJsonSchema: ({ type }) =>
+        type === "string"
+          ? { maxLength }
+          : type === "array"
+          ? { maxItems: maxLength }
+          : type === undefined
+          ? { maxLength, maxItems: maxLength }
+          : {},
       toCode: () => ({ runtime: `Schema.isMaxLength(${maxLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8190,8 +8190,6 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
 export function isBetweenLength(minimum: number, maximum: number, annotations?: Annotations.Filter) {
   minimum = normalizeCardinality(minimum)
   maximum = normalizeCardinality(maximum)
-  const stringConstraints = [{ minLength: Math.ceil(minimum / 2) }, { maxLength: maximum }]
-  const arrayConstraints = [{ minItems: minimum }, { maxItems: maximum }]
   return makeFilter<{ readonly length: number }>(
     (input) => input.length >= minimum && input.length <= maximum,
     {
@@ -8203,7 +8201,19 @@ export function isBetweenLength(minimum: number, maximum: number, annotations?: 
         id: "effect/schema/isBetweenLength",
         payload: { minimum, maximum }
       },
-      toJsonSchema: ({ type }) => getLengthJsonSchemaConstraint(type, stringConstraints, arrayConstraints),
+      toJsonSchema: ({ type }) =>
+        type === "string"
+          ? { minLength: Math.ceil(minimum / 2), maxLength: maximum }
+          : type === "array"
+          ? { minItems: minimum, maxItems: maximum }
+          : type === undefined
+          ? {
+            minLength: Math.ceil(minimum / 2),
+            maxLength: maximum,
+            minItems: minimum,
+            maxItems: maximum
+          }
+          : {},
       toCode: () => ({ runtime: `Schema.isBetweenLength(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8346,7 +8356,7 @@ function countCodePointsUpTo(input: string, limit: number): number {
 
 function normalizeCardinality(value: number): number {
   if (!globalThis.Number.isFinite(value)) {
-    throw new globalThis.RangeError(`Expected a finite number, got ${format(value)}`)
+    throw new globalThis.RangeError(`Expected a finite number, got ${value}`)
   }
   return Math.max(0, Math.floor(value))
 }

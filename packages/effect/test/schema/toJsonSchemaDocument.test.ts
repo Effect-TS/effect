@@ -1227,10 +1227,8 @@ describe("toJsonSchemaDocument", () => {
             {
               schema: {
                 "type": "string",
-                "allOf": [
-                  { "minLength": 1 },
-                  { "maxLength": 2 }
-                ]
+                "minLength": 1,
+                "maxLength": 2
               }
             }
           )
@@ -1245,10 +1243,8 @@ describe("toJsonSchemaDocument", () => {
                 "items": {
                   "type": "string"
                 },
-                "allOf": [
-                  { "minItems": 2 },
-                  { "maxItems": 2 }
-                ]
+                "minItems": 2,
+                "maxItems": 2
               }
             }
           )
@@ -1268,8 +1264,7 @@ describe("toJsonSchemaDocument", () => {
                 },
                 "minItems": 1,
                 "allOf": [
-                  { "minItems": 2 },
-                  { "maxItems": 2 }
+                  { "minItems": 2, "maxItems": 2 }
                 ]
               }
             }
@@ -1281,7 +1276,8 @@ describe("toJsonSchemaDocument", () => {
           assertJsonSchemaDocument(schema, {
             schema: {
               type: "string",
-              allOf: [{ minLength: 2 }, { maxLength: 4 }]
+              minLength: 2,
+              maxLength: 4
             }
           })
           assertJsonSchemaAcceptsEffectValues(schema, ["ab", "a😀", "😀😀", "abcde"])
@@ -3508,10 +3504,8 @@ describe("toJsonSchemaDocument", () => {
             schema: {
               "type": "array",
               "items": { "type": "string" },
-              "allOf": [
-                { "minItems": 2 },
-                { "maxItems": 2 }
-              ]
+              "minItems": 2,
+              "maxItems": 2
             }
           }
         )

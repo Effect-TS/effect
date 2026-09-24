@@ -4188,9 +4188,8 @@ const numberToJson = new Link(
  * Implementations that cannot consume all flags may still use the source as a
  * generation hint because the Schema filter validates every generated value.
  * JSON Schema has no way to carry JavaScript regular-expression flags. Unless
- * annotations override `toJsonSchema`, a `pattern` is generated only when the
- * RegExp uses the Unicode flag and has no flags that change which strings it
- * accepts.
+ * annotations provide `toJsonSchema`, the RegExp constraint is omitted from
+ * JSON Schema export.
  *
  * **Example** (Validating an email pattern)
  *
@@ -4207,23 +4206,20 @@ const numberToJson = new Link(
  * @since 4.0.0
  */
 export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annotations.Filter) {
-  const source = regExp.source
-  const flags = regExp.flags
-  const copy = new globalThis.RegExp(source, flags)
-  const canExport = flags.includes("u") && !/[imsvy]/.test(flags)
-  const payload = { source, flags }
+  const copy = new globalThis.RegExp(regExp)
+  const payload = { source: copy.source, flags: copy.flags }
   return makeFilter(
     (s: string) => {
       copy.lastIndex = 0
       return copy.test(s)
     },
     {
-      expected: `a string matching the RegExp ${source}`,
+      expected: `a string matching the RegExp ${payload.source}`,
       representation: {
         id: "effect/schema/isPattern",
         payload
       },
-      toJsonSchema: () => canExport ? { pattern: source } : {},
+      toJsonSchema: () => ({}),
       arbitraryConstraint: {
         patterns: [payload]
       },
