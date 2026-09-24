@@ -563,16 +563,13 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
       assert.strictEqual(receivedType, "integer")
     })
 
-    it("compiles the isPattern vertical slice", () => {
+    it("omits isPattern flags that JSON Schema cannot represent", () => {
       const pattern = SchemaRepresentation.toJsonSchemaDocument(
         SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
       )
       assert.deepStrictEqual(pattern, {
         dialect: "draft-2020-12",
-        schema: {
-          type: "string",
-          pattern: "^[a-z]+$"
-        },
+        schema: { type: "string" },
         definitions: {}
       })
     })
