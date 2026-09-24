@@ -1,6 +1,7 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
 import * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
@@ -27,10 +28,15 @@ describe("WorkflowEngine", () => {
     Effect.gen(function*() {
       const executionId = yield* ParentWorkflow.execute({ id: "parent-1" }, { discard: true })
 
+      yield* Effect.zipRight(nextMacrotask, TestClock.sleeps()).pipe(
+        Effect.repeat({ until: Chunk.isNonEmpty })
+      )
       yield* TestClock.adjust("1 hour")
 
-      expect(yield* ParentWorkflow.poll(executionId))
-        .toEqual(new Workflow.Complete({ exit: Exit.void }))
+      const result = yield* Effect.zipRight(nextMacrotask, ParentWorkflow.poll(executionId)).pipe(
+        Effect.repeat({ until: (r) => r?._tag === "Complete" })
+      )
+      expect(result).toEqual(new Workflow.Complete({ exit: Exit.void }))
     }).pipe(
       Effect.provide(
         Layer.mergeAll(ParentWorkflowLayer, ChildWorkflowLayer).pipe(
@@ -119,6 +125,9 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(exits, [])
     }))
 })
+
+// workflow execution ids are hashed with WebCrypto, which TestClock cannot observe
+const nextMacrotask = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 
 const TestWorkflow = Workflow.make({
   name: "TestWorkflow",
