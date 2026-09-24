@@ -47,6 +47,39 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("keeps routes isolated between independent servers", () =>
+    Effect.gen(function*() {
+      const publicServer = Http.createServer()
+      const internalServer = Http.createServer()
+      const publicApp = HttpRouter.add("GET", "/public", HttpServerResponse.text("public"))
+      const internalApp = HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal"))
+
+      yield* Layer.mergeAll(
+        HttpRouter.serve(publicApp, { disableListenLog: true, disableLogger: true }).pipe(
+          Layer.provide(NodeHttpServer.layer(() => publicServer, { port: 0 }))
+        ),
+        HttpRouter.serve(internalApp, { disableListenLog: true, disableLogger: true }).pipe(
+          Layer.provide(NodeHttpServer.layer(() => internalServer, { port: 0 }))
+        )
+      ).pipe(Layer.build)
+
+      const publicAddress = publicServer.address()
+      const internalAddress = internalServer.address()
+      if (
+        !publicAddress || typeof publicAddress === "string" ||
+        !internalAddress || typeof internalAddress === "string"
+      ) {
+        throw new Error("Expected both servers to listen on TCP ports")
+      }
+      const status = (port: number, path: string) =>
+        Effect.promise(() => fetch("http://localhost:" + port + path).then((response) => response.status))
+
+      assert.strictEqual(yield* status(publicAddress.port, "/public"), 200)
+      assert.strictEqual(yield* status(internalAddress.port, "/internal"), 200)
+      assert.strictEqual(yield* status(publicAddress.port, "/internal"), 404)
+      assert.strictEqual(yield* status(internalAddress.port, "/public"), 404)
+    }))
+
   it.effect("schema", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
