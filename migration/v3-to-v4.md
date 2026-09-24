@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`04f510659ed28bf8214c12e98565c48ab0ab8d7d`)
+Base: `origin/v3` (`63ffdfb9b446b9fb05a235d23b41167c8098b321`)
 
-Head: `31b3cdbf9f126294b1aa538efa1b1fbccb3cbd6f` (`31b3cdbf9f126294b1aa538efa1b1fbccb3cbd6f`)
+Head: `4d28d25123` (`4d28d25123d45525b2a9a71b912f54f206ccfe29`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -682,7 +682,6 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/workflow/WorkflowEngine` -> `effect/workflow/WorkflowEngine`
 - `@effect/workflow/WorkflowProxy` -> `effect/workflow/WorkflowProxy`
 - `@effect/workflow/WorkflowProxyServer` -> `effect/workflow/WorkflowProxyServer`
-- `effect/Arbitrary` -> `effect/arbitrary/Arbitrary`: Schema-derived generation moved to the native Arbitrary module. Effect no longer bridges to fast-check.
 - `effect/ChildExecutorDecision` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
 - `effect/ConfigError`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ConfigProviderPathPatch`: No single module replacement; follow the curated per-API guidance below.
@@ -690,7 +689,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `effect/Either` -> `effect/Result`
 - `effect/Encoding` -> `none`: Import each format or the shared error API from its direct subpath.
 - `effect/ExecutionStrategy`: No single module replacement; follow the curated per-API guidance below.
-- `effect/FastCheck` -> `fast-check`: Effect no longer re-exports fast-check. Depend on the fast-check package and import it directly. For Schema-derived generation, use Arbitrary.schema from effect/arbitrary.
+- `effect/FastCheck` -> `fast-check`: Effect no longer re-exports fast-check. Depend on the fast-check package and import it directly. For Schema-derived generation, use Arbitrary.schema from effect/Arbitrary.
 - `effect/FiberId`: No single module replacement; follow the curated per-API guidance below.
 - `effect/FiberRef` -> `effect/References`
 - `effect/FiberRefs`: No single module replacement; follow the curated per-API guidance below.
@@ -8749,11 +8748,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Arbitrary.ArbitraryGenerationContext` -> `Schema.Annotations.ToArbitrary.DeclarationInput`: Native arbitrary callbacks receive DeclarationInput with decoded type-parameter schemas and normalized constraints.
 
-- `Arbitrary.LazyArbitrary` -> `effect/arbitrary/Arbitrary#Arbitrary`: The generated-value description is now the native Arbitrary interface from effect/arbitrary.
+- `Arbitrary.LazyArbitrary` -> `effect/Arbitrary#Arbitrary`: The generated-value description is now the native Arbitrary interface from effect/Arbitrary.
 
 #### `Arbitrary.make`
 
-**Replacement:** `effect/arbitrary/Arbitrary#schema`
+**Replacement:** `effect/Arbitrary#schema`
 
 Derive a native Arbitrary from a Schema. Effect no longer bridges to fast-check.
 
@@ -8765,7 +8764,7 @@ Arbitrary.schema(schema)
 
 #### `Arbitrary.makeLazy`
 
-**Replacement:** `effect/arbitrary/Arbitrary#schema`
+**Replacement:** `effect/Arbitrary#schema`
 
 Lazy and eager Schema derivation are the same native Arbitrary.schema constructor.
 
@@ -9265,7 +9264,7 @@ Arbitrary.schema(schema)
 
 - `Config.LiteralValue` -> `SchemaAST.LiteralValue`: Use the literal value type shared by v4 Schema constructors.
 
-- `Config.all` -> `Config.all`: Combine an iterable or record of Config values. A wholly absent product can use Config.withDefault or Config.option, while a partially supplied product fails.
+- `Config.all` -> `Config.all`: Combine an iterable or record of Config values. If any child is absent and none fail, Config.withDefault replaces the whole group and Config.option returns None. Apply defaults to individual children to preserve other supplied values.
 
 - `Config.array` -> `Config.Array(valueSchema, path)`: Array parsing is schema-based in v4; rebuild the element Config as a Schema and pass it with the optional path to Config.Array.
 
@@ -9299,6 +9298,10 @@ Arbitrary.schema(schema)
 
 - `Config.number` -> `Config.Number`: Direct constructor rename; use Config.Finite when NaN and infinities must be rejected.
 
+- `Config.option` -> `Config.option`: Returns None for an absent config, including an all group with a missing child and no failed children. Successfully decoded undefined is wrapped in Some; validation and source errors still propagate.
+
+- `Config.orElse` -> `Config.orElse`: The fallback receives Config.ConfigError and its result replaces the original failure. Unlike v3, failed attempts are not combined: an absent fallback can be handled by a later withDefault or option even if the original input was invalid.
+
 - `Config.orElseIf` -> `Config.orElse`: The fallback now receives Config.ConfigError; test it in the callback and re-fail with Config.fail(error.cause) when the predicate is false.
 
 - `Config.port` -> `Config.Port`: Direct constructor rename.
@@ -9322,6 +9325,8 @@ Arbitrary.schema(schema)
 - `Config.url` -> `Config.URL`: Direct constructor rename.
 
 - `Config.validate` -> `Config.schema(schema.check(check), path)`: Validation moved to Schema checks; attach the predicate and message to the Schema used by Config.schema.
+
+- `Config.withDefault` -> `Config.withDefault`: Defaults absent configs, including all groups with missing children and no failed children. A group default replaces the whole group; use defaults on children to preserve other supplied values. Validation and source errors still propagate.
 
 - `Config.withDescription` -> `Config.schema(schema.annotate({ description }), path)`: Config descriptions moved to Schema annotations in v4.
 
@@ -9349,7 +9354,7 @@ Arbitrary.schema(schema)
 
 - `ConfigError.Options` -> `none`: The shared constructor options type was removed; ConfigProvider.SourceError accepts message and optional cause, while Schema issues have issue-specific constructors.
 
-- `ConfigError.Or` -> `SchemaIssue.AnyOf`: The ConfigError boolean ADT was removed; alternative schema failures are represented inside Config.ConfigError.cause as SchemaIssue.AnyOf.
+- `ConfigError.Or` -> `SchemaIssue.AnyOf`: The ConfigError boolean ADT was removed. Schema union failures can use SchemaIssue.AnyOf inside Config.ConfigError.cause; Config.orElse adopts the fallback's result instead of combining failed attempts.
 
 - `ConfigError.SourceUnavailable` -> `new ConfigProvider.SourceError({ message, cause })`: Source failures moved to effect/ConfigProvider and are wrapped by Config.ConfigError when a Config is parsed.
 
@@ -9361,11 +9366,11 @@ Arbitrary.schema(schema)
 
 - `ConfigError.isInvalidData` -> `Schema.isSchemaError(error.cause)`: Parsing and validation failures are SchemaError causes; inspect the contained SchemaIssue for finer classification.
 
-- `ConfigError.isMissingData` -> `none`: Do not infer semantic absence from a SchemaIssue. Use Config.withDefault or Config.option; they distinguish absent provider input from successful undefined, invalid input, and partial products.
+- `ConfigError.isMissingData` -> `none`: Do not infer semantic absence from a SchemaIssue. Use Config.withDefault or Config.option; they recover missing data, including Config.all groups with missing children, while preserving successful undefined and propagating validation and source errors.
 
-- `ConfigError.isMissingDataOnly` -> `Config.withDefault / Config.option`: The public classifier was removed. These combinators use provider lookup evidence rather than recursively classifying SchemaIssue values.
+- `ConfigError.isMissingDataOnly` -> `Config.withDefault / Config.option`: The public classifier was removed. These combinators handle absence without recursively classifying SchemaIssue values; invalid input and source errors still propagate.
 
-- `ConfigError.isOr` -> `error.cause.issue._tag === "AnyOf"`: After narrowing cause with Schema.isSchemaError, inspect the SchemaIssue tag; the old Or node no longer exists.
+- `ConfigError.isOr` -> `error.cause.issue._tag === "AnyOf"`: After narrowing cause with Schema.isSchemaError, AnyOf identifies schema union failures. Config.orElse does not combine failed attempts; it propagates only the fallback's error.
 
 - `ConfigError.isSourceUnavailable` -> `error.cause instanceof ConfigProvider.SourceError`: Provider source failures now use the ConfigProvider.SourceError class.
 
