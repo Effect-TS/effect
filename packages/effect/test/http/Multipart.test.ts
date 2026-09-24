@@ -1,34 +1,10 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { ByteSize, Effect, ErrorReporter, FileSystem, identity, Path, Schema, Sink, Stream, Unify } from "effect"
 import { HttpClientRequest, HttpIncomingMessage, HttpServerRequest, Multipart, MultipartParser } from "effect/http"
 import * as HttpServerRespondable from "effect/http/HttpServerRespondable"
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert"
 
 describe("Multipart", () => {
-  it.live("emits parts buffered while reading a file before pulling more input", () =>
-    Effect.gen(function*() {
-      const encoder = new TextEncoder()
-      const chunks = [
-        encoder.encode("--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nhello"),
-        encoder.encode("\r\n--b\r\nContent-Disposition: form-data; name=\"field\"\r\n\r\nvalue\r\n--b--\r\n")
-      ]
-      const parts = yield* Stream.fromArray(chunks).pipe(
-        Stream.rechunk(1),
-        Stream.concat(Stream.never),
-        Stream.pipeThroughChannel(Multipart.makeChannel({ "content-type": "multipart/form-data; boundary=b" })),
-        Stream.mapEffect((part) =>
-          part._tag === "File"
-            ? Effect.map(part.contentEffect, (content) => [part.key, new TextDecoder().decode(content)])
-            : Effect.succeed([part.key, part.value])
-        ),
-        Stream.take(2),
-        Stream.runCollect,
-        Effect.timeout("1 second")
-      )
-
-      assert.deepStrictEqual(parts, [["file", "hello"], ["field", "value"]])
-    }))
-
   it.effect("schemaJson applies a JSON reviver", () =>
     Effect.gen(function*() {
       const decoded = yield* Multipart.schemaJson(Schema.Struct({ value: Schema.String }), {
@@ -105,7 +81,7 @@ describe("Multipart", () => {
       deepStrictEqual(contents, [encoder.encode("abcdef")])
     }))
 
-  it.effect("parses a field after a file when the body is split across chunks", () =>
+  it.live("emits a field buffered while reading a file without pulling more input", () =>
     Effect.gen(function*() {
       const boundary = "----testboundary"
       const encoder = new TextEncoder()
@@ -123,6 +99,7 @@ describe("Multipart", () => {
 
       const parts = yield* Stream.fromArray(chunks).pipe(
         Stream.rechunk(1),
+        Stream.concat(Stream.never),
         Stream.pipeThroughChannel(
           Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
         ),
@@ -131,7 +108,9 @@ describe("Multipart", () => {
             ? part.contentEffect.pipe(Effect.map((content) => [part.key, new TextDecoder().decode(content)] as const))
             : Effect.succeed([part.key, part.value] as const)
         ),
-        Stream.runCollect
+        Stream.take(2),
+        Stream.runCollect,
+        Effect.timeout("2 seconds")
       )
 
       deepStrictEqual(parts, [
