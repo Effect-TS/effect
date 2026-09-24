@@ -408,7 +408,17 @@ export class DatagramSocketUnsupportedError
     capability: Schema.String,
     runtime: Schema.String
   })
-{}
+{
+  /**
+   * Names the runtime and the capability it lacks.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  override get message() {
+    return `${this.runtime} does not support ${this.capability}`
+  }
+}
 
 /**
  * Schema for the union of `DatagramSocketError` reasons.
