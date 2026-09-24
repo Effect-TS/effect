@@ -243,8 +243,7 @@ export const make = Effect.fnUntraced(
         : identity
     )
 
-    // Gateways can return 4xx bodies that lack Anthropic's error envelope.
-    // Preserve their status instead of reporting a response schema error.
+    // Let status mapping handle gateway errors without an Anthropic envelope.
     const generatedHttpClient = HttpClient.transformResponse(
       httpClient,
       Effect.flatMap((response) => {
