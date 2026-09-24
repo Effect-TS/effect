@@ -103,6 +103,7 @@ import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Result from "effect/Result"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
+import * as Dns from "node:dns"
 
 /**
  * An endpoint given in open-time options.
@@ -110,8 +111,8 @@ import * as DatagramSocket from "effect/socket/DatagramSocket"
  * **Details**
  *
  * Hostnames are allowed here, and are resolved once per reader acquisition
- * with `Deno.resolveDns`. An `InetAddress` satisfies this type, so it can be
- * passed as is.
+ * with `node:dns` `lookup` (the system resolver). An `InetAddress` satisfies
+ * this type, so it can be passed as is.
  *
  * @stability unstable
  * @category models
@@ -252,28 +253,27 @@ const formatEndpoint = (endpoint: { readonly address?: string | NetAddress.IpAdd
     ? endpoint.address
     : NetAddress.formatIp(endpoint.address)
 
-const resolveRecord = async (name: string, type: "A" | "AAAA"): Promise<string | undefined> => {
-  const records = await Deno.resolveDns(name, type)
-  return records[0]
-}
-
-// Resolves a hostname, preferring IPv4 unless `family` is fixed. IP literals
-// answer without a lookup.
+// Resolve through the system resolver once, preferring IPv4 unless the family
+// is fixed. IP literals answer without a lookup.
 const resolve = async (address: string, family: Family | undefined): Promise<Resolved> => {
   const literal = familyOfLiteral(address)
   if (literal !== undefined) return { host: address, family: literal }
-  if (family !== "ipv6") {
+  return new Promise((resolve, reject) => {
     try {
-      const host = await resolveRecord(address, "A")
-      if (host !== undefined) return { host, family: "ipv4" }
+      Dns.lookup(
+        address,
+        { all: true, family: family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0 },
+        (error, results) => {
+          if (error) return reject(error)
+          const result = results.find((result) => result.family === 4) ?? results[0]
+          if (result === undefined) return reject(new Error(`${address} has no addresses`))
+          resolve({ host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" })
+        }
+      )
     } catch (error) {
-      if (family === "ipv4" || (error as DenoError)?.name === "NotCapable") throw error
+      reject(error)
     }
-    if (family === "ipv4") throw new Error(`${address} has no IPv4 addresses`)
-  }
-  const host = await resolveRecord(address, "AAAA")
-  if (host === undefined) throw new Error(`${address} has no addresses`)
-  return { host, family: "ipv6" }
+  })
 }
 
 const openError = (
@@ -378,7 +378,7 @@ const lookup = async (
   }
 }
 
-// `resolveDns` can't be cancelled, and core never interrupts `open`
+// `lookup` can't be cancelled, and core never interrupts `open`
 const openAsync = async (
   options: Options,
   events: DatagramSocket.NativeEvents
