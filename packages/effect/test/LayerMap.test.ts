@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Layer, LayerMap, Option, Scope } from "effect"
+import { Duration, Effect, Exit, Layer, LayerMap, Option, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 const makeLayer = (key: string, acquired: Array<string>, released: Array<string>): Layer.Layer<any> =>
@@ -60,15 +60,169 @@ describe("LayerMap", () => {
       }).pipe(Effect.provide(TestMap.layer))
     }))
 
-  it.effect("make preloads the requested keys", () =>
+  it.effect("make does not preload with the default idle TTL", () =>
     Effect.gen(function*() {
       const acquired: Array<string> = []
+      const released: Array<string> = []
       yield* LayerMap.make(
-        (key: string) => Layer.effectDiscard(Effect.sync(() => acquired.push(key))) as Layer.Layer<any>,
+        (key: string) => makeLayer(key, acquired, released),
         { preloadKeys: ["a", "b"] }
       )
 
-      assert.deepStrictEqual(acquired, ["a", "b"])
+      assert.deepStrictEqual(acquired, [])
+      assert.deepStrictEqual(released, [])
+    }))
+
+  it.effect("fromRecord does not preload with the default idle TTL", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      yield* LayerMap.fromRecord({
+        a: makeLayer("a", acquired, released),
+        b: makeLayer("b", acquired, released)
+      }, { preload: true })
+      assert.deepStrictEqual(acquired, [])
+      assert.deepStrictEqual(released, [])
+    }))
+
+  it.effect("make skips an explicitly zero idle TTL even when preloading would fail", () =>
+    Effect.gen(function*() {
+      const layerMap = yield* LayerMap.make(
+        (_key: string) => Layer.effectDiscard(Effect.fail("unexpected preload")) as Layer.Layer<any, string>,
+        { preloadKeys: ["a"], idleTimeToLive: 0 }
+      )
+      assert.isTrue(Option.isNone(yield* layerMap.contextEffectOption("a")))
+    }))
+
+  it.effect("Service does not preload with the default idle TTL", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      class LookupMap extends LayerMap.Service<LookupMap>()("LayerMapTest/ZeroLookup", {
+        lookup: (key: string) => makeLayer(key, acquired, released),
+        preloadKeys: ["a", "b"]
+      }) {}
+      class RecordMap extends LayerMap.Service<RecordMap>()("LayerMapTest/ZeroRecord", {
+        layers: { a: makeLayer("a", acquired, released), b: makeLayer("b", acquired, released) },
+        preload: true
+      }) {}
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          yield* LookupMap
+          yield* RecordMap
+          assert.deepStrictEqual(acquired, [])
+          assert.deepStrictEqual(released, [])
+        }).pipe(Effect.provide([LookupMap.layer, RecordMap.layer]))
+      )
+    }))
+
+  it.effect("make retains preloaded keys until their idle TTL expires", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      const layerMap = yield* LayerMap.make(
+        (key: string) => makeLayer(key, acquired, released),
+        { preloadKeys: ["a"], idleTimeToLive: 1000 }
+      )
+      assert.deepStrictEqual(acquired, ["a"])
+      assert.deepStrictEqual(released, [])
+      yield* Effect.scoped(layerMap.contextEffect("a"))
+      assert.deepStrictEqual(acquired, ["a"])
+      yield* TestClock.adjust(999)
+      assert.deepStrictEqual(released, [])
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(released, ["a"])
+    }))
+
+  it.effect("fromRecord retains preloaded keys until their idle TTL expires", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      const layerMap = yield* LayerMap.fromRecord(
+        { a: makeLayer("a", acquired, released) },
+        { preload: true, idleTimeToLive: 1000 }
+      )
+      assert.deepStrictEqual(acquired, ["a"])
+      assert.deepStrictEqual(released, [])
+      yield* Effect.scoped(layerMap.contextEffect("a"))
+      assert.deepStrictEqual(acquired, ["a"])
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(released, ["a"])
+    }))
+
+  it.effect("make retains preloaded keys with infinite idle TTL", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      const layerMap = yield* LayerMap.make(
+        (key: string) => makeLayer(key, acquired, released),
+        { preloadKeys: ["a"], idleTimeToLive: Duration.infinity }
+      )
+      assert.deepStrictEqual(acquired, ["a"])
+      yield* TestClock.adjust(1000)
+      yield* Effect.scoped(layerMap.contextEffect("a"))
+      assert.deepStrictEqual(acquired, ["a"])
+      assert.deepStrictEqual(released, [])
+    }))
+
+  it.effect("make skips only keys with zero idle TTL", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      const layerMap = yield* LayerMap.make(
+        (key: string) => makeLayer(key, acquired, released),
+        { preloadKeys: ["zero", "kept"], idleTimeToLive: (key: string) => key === "zero" ? 0 : 1000 }
+      )
+      assert.deepStrictEqual(acquired, ["kept"])
+      assert.deepStrictEqual(released, [])
+      yield* Effect.scoped(layerMap.contextEffect("kept"))
+      assert.deepStrictEqual(acquired, ["kept"])
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(released, ["kept"])
+    }))
+
+  it.effect("fromRecord skips only keys with zero idle TTL", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      yield* LayerMap.fromRecord(
+        { zero: makeLayer("zero", acquired, released), kept: makeLayer("kept", acquired, released) },
+        { preload: true, idleTimeToLive: (key) => key === "zero" ? 0 : 1000 }
+      )
+      assert.deepStrictEqual(acquired, ["kept"])
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(released, ["kept"])
+    }))
+
+  it.effect("Service skips only keys with zero idle TTL", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      class TestMap extends LayerMap.Service<TestMap>()("LayerMapTest/MixedPreload", {
+        lookup: (key: string) => makeLayer(key, acquired, released),
+        preloadKeys: ["zero", "kept"],
+        idleTimeToLive: (key: string) => key === "zero" ? 0 : 1000
+      }) {}
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          yield* TestMap
+          assert.deepStrictEqual(acquired, ["kept"])
+          assert.deepStrictEqual(released, [])
+          yield* Effect.scoped(TestMap.contextEffect("kept"))
+          assert.deepStrictEqual(acquired, ["kept"])
+          yield* TestClock.adjust(1000)
+          assert.deepStrictEqual(released, ["kept"])
+        }).pipe(Effect.provide(TestMap.layer))
+      )
+    }))
+
+  it.effect("make fails construction when a non-zero TTL preload fails", () =>
+    Effect.gen(function*() {
+      const exit = yield* Effect.exit(LayerMap.make(
+        (key: string) => Layer.effectDiscard(Effect.fail(key)) as Layer.Layer<any, string>,
+        { preloadKeys: ["broken"], idleTimeToLive: 1000 }
+      ))
+      assert.isTrue(Exit.isFailure(exit))
     }))
 
   it.effect("make supports dynamic idleTimeToLive", () =>
