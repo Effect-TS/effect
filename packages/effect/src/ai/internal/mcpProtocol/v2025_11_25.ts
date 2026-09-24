@@ -327,7 +327,7 @@ export const protocol = McpProtocol.make({
             }))),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
-        const content = yield* Effect.forEach(result.content, projectContent).pipe(
+        const content = yield* Effect.forEach(McpProtocol.unwrapStringStructuredContent(result), projectContent).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
         const structuredContent = projectStructuredContent(result.structuredContent)
