@@ -11,14 +11,14 @@ describe.skipIf(Bun.env.EFFECT_MULTICAST_TESTS !== "1")("BunDatagramSocket multi
       const group = NetAddress.ipFromStringUnsafe("239.255.42.43")
       assert.isTrue(NetAddress.isMulticast(group))
       if (!NetAddress.isMulticast(group)) return
-      const socket = BunDatagramSocket.make({
+      const socket = yield* BunDatagramSocket.make({
         bind: { address: "0.0.0.0" },
         reuseAddress: true,
         multicast: { loopback: true }
       })
       const reader = yield* socket.reader
       yield* reader.joinMulticast({ group, interface: NetAddress.ipv4Loopback })
-      const sender = BunDatagramSocket.make({
+      const sender = yield* BunDatagramSocket.make({
         multicast: { interface: NetAddress.ipv4Loopback, loopback: true }
       })
       yield* sender.reader

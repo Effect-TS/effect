@@ -9,7 +9,7 @@ describe("DenoDatagramSocket without unstable-net", () => {
       const descriptor = Object.getOwnPropertyDescriptor(Deno, "listenDatagram")!
       Object.defineProperty(Deno, "listenDatagram", { ...descriptor, value: undefined })
       try {
-        const socket = DenoDatagramSocket.make()
+        const socket = yield* DenoDatagramSocket.make()
         const error = yield* socket.reader.pipe(Effect.scoped, Effect.flip)
         assert.strictEqual(error.reason._tag, "DatagramSocketUnsupportedError")
         assert.match(error.message, /--unstable-net|unstable/)
