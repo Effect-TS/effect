@@ -427,17 +427,16 @@ export const make = (
     pool.on("error", (_err) => {
     })
 
-    yield* Effect.acquireRelease(
-      Effect.tryPromise({
-        try: () => pool.query("SELECT 1"),
-        catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
-      }),
-      () =>
-        Effect.promise(() => pool.end()).pipe(
-          Effect.interruptible,
-          Effect.timeoutOption(1000)
-        )
-    ).pipe(
+    yield* Effect.acquireRelease(Effect.succeed(pool), () =>
+      Effect.promise(() => pool.end()).pipe(
+        Effect.interruptible,
+        Effect.timeoutOption(1000)
+      ))
+
+    yield* Effect.tryPromise({
+      try: () => pool.query("SELECT 1"),
+      catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
+    }).pipe(
       Effect.timeoutFail({
         duration: options.connectTimeout ?? Duration.seconds(5),
         onTimeout: () =>

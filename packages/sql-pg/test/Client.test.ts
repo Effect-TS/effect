@@ -1,17 +1,58 @@
+import * as Reactivity from "@effect/experimental/Reactivity"
 import { PgClient } from "@effect/sql-pg"
 import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
-import { Effect, Fiber, Redacted, String } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, Redacted, String } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Stream from "effect/Stream"
 import * as TestServices from "effect/TestServices"
+import * as Pg from "pg"
 import { parse as parsePgConnectionString } from "pg-connection-string"
+import { afterEach, describe, vi } from "vitest"
 import { PgContainer } from "./utils.js"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
 const transformsNested = Statement.defaultTransforms(String.snakeToCamel)
 const transforms = Statement.defaultTransforms(String.snakeToCamel, false)
+
+describe.sequential("PgClient readiness probe cleanup", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.effect("closes each pool when its readiness probe fails", () =>
+    Effect.gen(function*() {
+      const query = vi.spyOn(Pg.Pool.prototype, "query").mockRejectedValue(new Error("probe failed"))
+      const end = vi.spyOn(Pg.Pool.prototype, "end").mockResolvedValue(undefined)
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const exit = yield* Effect.exit(
+          Effect.scoped(PgClient.make({}).pipe(Effect.provide(Reactivity.layer)))
+        )
+        assert.isTrue(Exit.isFailure(exit))
+      }
+
+      assert.strictEqual(query.mock.calls.length, 2)
+      assert.strictEqual(end.mock.calls.length, 2)
+      assert.deepStrictEqual(end.mock.contexts, query.mock.contexts)
+    }))
+
+  it.live("closes the pool when a hanging readiness probe times out", () =>
+    Effect.gen(function*() {
+      const query = vi.spyOn(Pg.Pool.prototype, "query").mockImplementation(() => new Promise(() => {}))
+      const end = vi.spyOn(Pg.Pool.prototype, "end").mockResolvedValue(undefined)
+
+      const exit = yield* Effect.exit(
+        Effect.scoped(PgClient.make({ connectTimeout: Duration.millis(50) }).pipe(Effect.provide(Reactivity.layer)))
+      )
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) {
+        assert.match(Cause.pretty(exit.cause), /PgClient: Connection timed out/)
+      }
+      assert.strictEqual(query.mock.calls.length, 1)
+      assert.strictEqual(end.mock.calls.length, 1)
+      assert.deepStrictEqual(end.mock.contexts, query.mock.contexts)
+    }))
+})
 
 it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => {
   it.effect("insert helper", () =>
