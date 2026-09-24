@@ -121,9 +121,7 @@ export const requireCompleteOperation = <A>(
     : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
 
 /**
- * Replaces the serialized JSON text mirror of a string `structuredContent`
- * with the string itself, for protocols that cannot carry string
- * `structuredContent`.
+ * Unquotes an exact text mirror when the protocol drops string `structuredContent`.
  *
  * @internal
  */

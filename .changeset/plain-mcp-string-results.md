@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Return toolkit string results as plain text in MCP protocol versions that do not carry string `structuredContent`, preserving newlines and Markdown formatting.
+In MCP protocols that omit string `structuredContent`, return plain text for toolkit and hand-written tool results whose single text block is an exact JSON mirror of that string.
