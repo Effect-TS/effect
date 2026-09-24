@@ -1678,6 +1678,64 @@ describe("McpServer", () => {
         assert.deepStrictEqual(existing.content, [{ type: "text", text: "existing" }])
       }))
 
+    describe("dies with a message naming the tool when parameters are not object-rooted", () => {
+      const Echo = Tool.make("echo", {
+        parameters: Schema.Struct({ text: Schema.String }),
+        success: Schema.String
+      })
+      const register = Effect.fnUntraced(function*(invalid: Tool.Any) {
+        const toolkit = Toolkit.make(Echo, invalid)
+        const server = yield* McpServer.McpServer.make
+        const exit = yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            echo: ({ text }) => Effect.succeed(text),
+            [invalid.name]: () => Effect.succeed("ok")
+          } as any)),
+          Effect.exit
+        )
+        assertTrue(exit._tag === "Failure")
+        assert.isTrue(Cause.hasDies(exit.cause))
+        assert.deepStrictEqual(server.tools, [])
+        return String(Cause.squash(exit.cause))
+      })
+
+      it.effect("union of structs", () =>
+        Effect.gen(function*() {
+          const message = yield* register(Tool.make("act", {
+            parameters: Schema.Union([
+              Schema.Struct({ action: Schema.Literal("start"), id: Schema.String }),
+              Schema.Struct({ action: Schema.Literal("stop"), reason: Schema.String })
+            ]),
+            success: Schema.String
+          }))
+          assert.match(
+            message,
+            /cannot register tool 'act': its parameters must encode to a JSON Schema with an object root/
+          )
+          assert.include(message, "Tool.EmptyParams")
+        }))
+
+      it.effect("empty struct", () =>
+        Effect.gen(function*() {
+          const message = yield* register(Tool.make("empty", {
+            parameters: Schema.Struct({}),
+            success: Schema.String
+          }))
+          assert.match(message, /cannot register tool 'empty'/)
+          assert.include(message, "Tool.EmptyParams")
+        }))
+
+      it.effect("raw JSON Schema", () =>
+        Effect.gen(function*() {
+          const message = yield* register(Tool.dynamic("raw", {
+            parameters: { anyOf: [{ type: "object" }, { type: "string" }] },
+            success: Schema.String
+          }))
+          assert.match(message, /cannot register tool 'raw': its raw JSON Schema must have an object root/)
+        }))
+    })
+
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {
         const { client } = yield* makeToolkitTestClient()
