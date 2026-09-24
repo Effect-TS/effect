@@ -185,6 +185,18 @@ describe("layer", () => {
     })
   })
 
+  describe("anonymous layer next to a Vitest fixture", () => {
+    const withValue = it.extend("value", () => 1)
+
+    layer(Foo.layer)((it) => {
+      it.effect("provides its context", () => Effect.map(Foo, (foo) => expect(foo).toEqual("foo")))
+    })
+
+    withValue("runs the fixture test", ({ value }) => {
+      expect(value).toEqual(1)
+    })
+  })
+
   layer(Sleeper.layer)("test services", (it) => {
     it.effect("TestClock", () =>
       Effect.gen(function*() {
