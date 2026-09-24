@@ -637,13 +637,11 @@ const provideRouter = <A, E, R>(
   appLayer: Layer.Layer<A, E, R>,
   routerConfig: Partial<FindMyWay.RouterConfig> | undefined
 ): Layer.Layer<A | HttpRouter, E, Exclude<R, HttpRouter>> =>
-  Layer.fromBuild((memoMap, scope) =>
-    Effect.gen(function*() {
-      const router = yield* (routerConfig ? Effect.provideService(make, RouterConfig, routerConfig) : make)
-      const context = yield* Effect.provideService(Layer.buildWithMemoMap(appLayer, memoMap, scope), HttpRouter, router)
-      return Context.add(context, HttpRouter, router)
-    })
-  )
+  Layer.fromBuild(Effect.fnUntraced(function*(memoMap, scope) {
+    const router = yield* (routerConfig ? Effect.provideService(make, RouterConfig, routerConfig) : make)
+    const context = yield* Effect.provideService(Layer.buildWithMemoMap(appLayer, memoMap, scope), HttpRouter, router)
+    return Context.add(context, HttpRouter, router)
+  }))
 
 const RouteTypeId = "~effect/http/HttpRouter/Route"
 
