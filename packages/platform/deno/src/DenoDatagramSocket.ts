@@ -89,6 +89,9 @@
  *
  * const announce = Effect.gen(function*() {
  *   const socket = yield* DenoDatagramSocket.make({
+ *     // Deno has no egress `multicast.interface` option, so the bind address
+ *     // picks the interface the group's datagrams leave through
+ *     bind: { address: "127.0.0.1" },
  *     peer: { address: group, port: 5000 },
  *     multicast: { loopback: true }
  *   })
@@ -139,8 +142,11 @@ export interface Endpoint {
  * Deno has no `connect`.
  *
  * The family is the explicit `family`, else the family of an IP literal in
- * `bind`, else the family of the `peer` address, else `"ipv4"`. A hostname
- * `peer` is resolved before binding, IPv4 first.
+ * `bind`, else the family of the `peer` address (resolved first if it is a
+ * hostname), else the family a `bind` hostname resolves to, else `"ipv4"`. A
+ * hostname lookup is limited to the family already fixed at that point: `peer`
+ * by `family` or a `bind` literal, and `bind` by those or the `peer` family.
+ * Otherwise IPv4 is preferred.
  *
  * `reuseAddress` means `SO_REUSEADDR` on Linux and `SO_REUSEPORT` on BSD and
  * macOS. `multicast.loopback` loops sent multicast datagrams back to the local
