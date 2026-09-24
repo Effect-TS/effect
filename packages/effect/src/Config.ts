@@ -11,7 +11,7 @@ import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
 import * as Effect from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import { dual, flow, memoize } from "./Function.ts"
+import { dual, memoize } from "./Function.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as LogLevel_ from "./LogLevel.ts"
 import * as Option from "./Option.ts"
@@ -256,7 +256,7 @@ export const flatMap: {
       evaluateAt(self, provider, pathPrefix),
       Result.match({
         onSuccess: (success) => evaluateAt(f(success), provider, pathPrefix),
-        onFailure: flow(Result.fail, Effect.succeed)
+        onFailure: (error) => Effect.succeed(Result.fail(error))
       })
     )
   )
