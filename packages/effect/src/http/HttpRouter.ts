@@ -12,6 +12,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import { compose, dual, identity } from "../Function.ts"
 import { fiberEnterInterruptibleUnsafe } from "../internal/effect.ts"
@@ -504,7 +505,34 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  */
 export const use = <A, E, R>(
   f: (router: HttpRouter) => Effect.Effect<A, E, R>
-): Layer.Layer<never, E, HttpRouter | Exclude<R, Scope.Scope>> => Layer.effectDiscard(Effect.flatMap(HttpRouter, f))
+): Layer.Layer<never, E, HttpRouter | Exclude<R, Scope.Scope>> => {
+  const self = Layer.fromBuild((_, scope) =>
+    Effect.flatMap(HttpRouter, (router) =>
+      Effect.suspend(() => {
+        let registrations = registeredLayers.get(router)
+        if (!registrations) registeredLayers.set(router, registrations = new WeakMap())
+        let deferred: Deferred.Deferred<void, E> | undefined
+        return Effect.onExitPrimitive(
+          Effect.suspend(() => {
+            const existing = registrations.get(self)
+            if (existing) return Deferred.await(existing)
+            deferred = Deferred.makeUnsafe<void, E>()
+            registrations.set(self, deferred)
+            return Effect.asVoid(Scope.provide(f(router), scope))
+          }),
+          (exit) => {
+            if (deferred) {
+              if (exit._tag === "Failure") registrations.delete(self)
+              Deferred.doneUnsafe(deferred, exit)
+            }
+          }
+        ).pipe(Effect.as(Context.empty()))
+      }))
+  )
+  return self
+}
+
+const registeredLayers = new WeakMap<HttpRouter, WeakMap<object, Deferred.Deferred<void, any>>>()
 
 /**
  * Create a layer that adds a single route to the HTTP router.
@@ -576,9 +604,8 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
   | Request.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
   | Request.From<"Error", Route.Error<Routes[number]>>
 > =>
-  Layer.effectDiscard(Effect.gen(function*() {
+  use(Effect.fnUntraced(function*(router) {
     const toAdd = Effect.isEffect(routes) ? yield* routes : routes
-    let router = yield* HttpRouter
     if (options?.prefix) {
       router = router.prefixed(options.prefix)
     }
@@ -594,12 +621,6 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
  * The returned effect handles the current `HttpServerRequest` in the current
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler. Each call creates its own router.
- *
- * **Gotchas**
- *
- * A route layer shared with another entrypoint in the same layer graph, or
- * through a shared `memoMap`, is registered only once. Wrap it in `Layer.fresh`,
- * and provide shared resources outside `Layer.fresh` so they are built once.
  *
  * @stability unstable
  * @category converting
@@ -1005,8 +1026,7 @@ const makeMiddleware = (middleware: any, options?: {
   readonly global?: boolean | undefined
 }) =>
   options?.global ?
-    Layer.effectDiscard(Effect.gen(function*() {
-      const router = yield* HttpRouter
+    use(Effect.fnUntraced(function*(router) {
       const fn = Effect.isEffect(middleware) ? yield* middleware : middleware
       yield* router.addGlobalMiddleware(fn)
     }))
@@ -1288,12 +1308,6 @@ export const provideRequest =
 /**
  * Runs the provided application layer as an HTTP server with its own router.
  *
- * **Gotchas**
- *
- * A route layer shared with another entrypoint in the same layer graph, or
- * through a shared `memoMap`, is registered only once. Wrap it in `Layer.fresh`,
- * and provide shared resources outside `Layer.fresh` so they are built once.
- *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -1368,12 +1382,6 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * request arrives, in which case that request waits for the build to finish.
  * If the build fails, every request rejects with the build error. Each call
  * creates its own router.
- *
- * **Gotchas**
- *
- * A route layer shared with another entrypoint in the same layer graph, or
- * through a shared `memoMap`, is registered only once. Wrap it in `Layer.fresh`,
- * and provide shared resources outside `Layer.fresh` so they are built once.
  *
  * @stability unstable
  * @category converting
