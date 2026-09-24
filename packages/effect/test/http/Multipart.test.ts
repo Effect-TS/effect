@@ -81,7 +81,7 @@ describe("Multipart", () => {
       deepStrictEqual(contents, [encoder.encode("abcdef")])
     }))
 
-  it.effect("parses a field after a file when the body is split across chunks", () =>
+  it.live("emits a field buffered while reading a file without pulling more input", () =>
     Effect.gen(function*() {
       const boundary = "----testboundary"
       const encoder = new TextEncoder()
@@ -99,6 +99,7 @@ describe("Multipart", () => {
 
       const parts = yield* Stream.fromArray(chunks).pipe(
         Stream.rechunk(1),
+        Stream.concat(Stream.never),
         Stream.pipeThroughChannel(
           Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
         ),
@@ -107,7 +108,9 @@ describe("Multipart", () => {
             ? part.contentEffect.pipe(Effect.map((content) => [part.key, new TextDecoder().decode(content)] as const))
             : Effect.succeed([part.key, part.value] as const)
         ),
-        Stream.runCollect
+        Stream.take(2),
+        Stream.runCollect,
+        Effect.timeout("2 seconds")
       )
 
       deepStrictEqual(parts, [
