@@ -89,6 +89,7 @@ export interface HttpRouter {
     | Request.From<"GlobalError", Exclude<E, Types.unhandled>>
   >
 
+  // @effect-diagnostics-next-line lazyEffect:off
   readonly asHttpEffect: () => Effect.Effect<
     HttpServerResponse.HttpServerResponse,
     unknown,
@@ -588,15 +589,6 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
  */
 export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
 
-const isolate = <A, E, R>(app: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> =>
-  Layer.fromBuild((memoMap, scope) =>
-    Effect.flatMap(Effect.context<R>(), (context) =>
-      Effect.provideContext(
-        Layer.buildWithMemoMap(app, Layer.forkMemoMapUnsafe(memoMap), scope),
-        Context.omit(HttpRouter)(context)
-      ))
-  )
-
 /**
  * Builds an application layer with a router and returns the router as an HTTP
  * handler effect.
@@ -606,6 +598,11 @@ const isolate = <A, E, R>(app: Layer.Layer<A, E, R>): Layer.Layer<A, E, R> =>
  * The returned effect handles the current `HttpServerRequest` in the current
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler.
+ *
+ * **Gotchas**
+ *
+ * The layer is built with a forked `MemoMap`, so calling `toHttpEffect` twice
+ * will build the same layer twice.
  *
  * @stability unstable
  * @category converting
@@ -622,11 +619,13 @@ export const toHttpEffect = <A, E, R>(
   Request.Without<E>,
   Exclude<Request.Without<R>, HttpRouter> | Scope.Scope
 > =>
-  Effect.gen(function*() {
-    const context = yield* Layer.build(isolate(Layer.provideMerge(appLayer, Layer.fresh(layer))))
-    const router = Context.get(context, HttpRouter)
-    // @effect-diagnostics effect/returnEffectInGen:off
-    return router.asHttpEffect()
+  Effect.contextWith((context) => {
+    const scope = Context.get(context, Scope.Scope)
+    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context)
+    return Effect.map(Layer.buildWithMemoMap(Layer.provideMerge(appLayer, layer), memoMap, scope), (context) => {
+      const router = Context.get(context, HttpRouter)
+      return router.asHttpEffect()
+    })
   }) as any
 
 const RouteTypeId = "~effect/http/HttpRouter/Route"
@@ -1279,6 +1278,11 @@ export const provideRequest =
  * Layers first built inside the app are private to this server. Provide
  * services that must be shared with sibling layers outside `serve`.
  *
+ * **Gotchas**
+ *
+ * The layer is built with a forked `MemoMap`, so calling `serve` twice will
+ * build the same layer twice.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -1319,20 +1323,26 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
   }
-  const RouterLayer = options?.routerConfig
-    ? Layer.provide(Layer.fresh(layer), Layer.succeed(RouterConfig)(options.routerConfig))
-    : Layer.fresh(layer)
-  return isolate(
-    Effect.gen(function*() {
-      const router = yield* HttpRouter
+  const layerWithRouter = Layer.provideMerge(
+    appLayer,
+    options?.routerConfig
+      ? Layer.provide(layer, Layer.succeed(RouterConfig)(options.routerConfig))
+      : layer
+  )
+  return Effect.contextWith((context) => {
+    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context)
+    return Layer.buildWithMemoMap(layerWithRouter, memoMap, Context.get(context, Scope.Scope))
+  }).pipe(
+    Effect.map((context) => {
+      const router = Context.get(context, HttpRouter)
       const handler = router.asHttpEffect()
-      return middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler)
-    }).pipe(
-      Layer.unwrap,
-      Layer.provideMerge(appLayer),
-      Layer.provide(RouterLayer),
-      options?.disableListenLog ? identity : HttpServer.withLogAddress
-    )
+      return Layer.merge(
+        middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler),
+        Layer.succeedContext(context)
+      )
+    }),
+    Layer.unwrap,
+    options?.disableListenLog ? identity : HttpServer.withLogAddress
   ) as any
 }
 
@@ -1407,10 +1417,10 @@ export const toWebHandler = <
     middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
   }
   const RouterLayer = options?.routerConfig
-    ? Layer.provide(Layer.fresh(layer), Layer.succeed(RouterConfig)(options.routerConfig))
-    : Layer.fresh(layer)
+    ? Layer.provide(layer, Layer.succeed(RouterConfig)(options.routerConfig))
+    : layer
   return HttpEffect.toWebHandlerLayerWith(
-    isolate(Layer.provideMerge(appLayer, RouterLayer)) as Layer.Layer<A | HttpRouter, E>,
+    Layer.provideMerge(appLayer, RouterLayer) as Layer.Layer<A | HttpRouter, E>,
     {
       toHandler: (s) => Effect.succeed(Context.get(s, HttpRouter).asHttpEffect()),
       middleware,
