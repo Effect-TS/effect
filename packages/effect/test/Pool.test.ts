@@ -309,6 +309,101 @@ describe("Pool", () => {
       yield* Scope.close(scope1, Exit.void)
     }))
 
+  it.effect("does not expose a failed background acquisition while another item is reserved", () =>
+    Effect.gen(function*() {
+      const releaseFailure = yield* Deferred.make<void>()
+      const finalizedFailure = yield* Deferred.make<void>()
+      let attempts = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.suspend(() => {
+          const attempt = ++attempts
+          return attempt === 2
+            ? Effect.gen(function*() {
+              yield* Effect.addFinalizer(() => Deferred.succeed(finalizedFailure, undefined))
+              yield* Deferred.await(releaseFailure)
+              return yield* Effect.fail("background")
+            })
+            : Effect.succeed(attempt)
+        }),
+        min: 2,
+        max: 2,
+        concurrency: 2,
+        discardFailuresWhenIdle: true,
+        timeToLive: Duration.infinity
+      })
+      const owner = yield* Scope.make()
+      const reservation = yield* Scope.make()
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.availableHead)), {
+        until: (item) => item !== undefined
+      })
+      strictEqual(yield* Pool.get(pool).pipe(Scope.provide(owner)), 1)
+      yield* Pool.reserve(pool, 1).pipe(Scope.provide(reservation))
+      yield* Deferred.succeed(releaseFailure, undefined)
+      yield* Deferred.await(finalizedFailure)
+      const result = yield* Effect.exit(Pool.use(pool, Effect.succeed))
+      strictEqual(result._tag, "Success")
+      if (result._tag === "Success") strictEqual(result.value, 3)
+      strictEqual(attempts, 3)
+      yield* Scope.close(reservation, Exit.void)
+      yield* Scope.close(owner, Exit.void)
+    }))
+
+  it.effect("reports an acquisition failure to its waiting borrower with discardFailuresWhenIdle", () =>
+    Effect.gen(function*() {
+      const releaseFailure = yield* Deferred.make<void>()
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.andThen(Deferred.await(releaseFailure), Effect.fail("connect")),
+        min: 0,
+        max: 1,
+        discardFailuresWhenIdle: true,
+        timeToLive: Duration.infinity
+      })
+      const borrower = yield* Effect.forkChild(Effect.exit(Effect.scoped(Pool.get(pool))), {
+        startImmediately: true
+      })
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
+        until: (size) => size === 1
+      })
+      yield* Deferred.succeed(releaseFailure, undefined)
+      deepStrictEqual(yield* Fiber.join(borrower), Exit.fail("connect"))
+    }))
+
+  it.effect("drops a failed acquisition when its waiter is cancelled during cleanup", () =>
+    Effect.gen(function*() {
+      const releaseFailure = yield* Deferred.make<void>()
+      const inFinalizer = yield* Deferred.make<void>()
+      const finishFinalizer = yield* Deferred.make<void>()
+      let attempts = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.suspend(() =>
+          ++attempts === 1 ?
+            Effect.gen(function*() {
+              yield* Effect.addFinalizer(() =>
+                Effect.andThen(Deferred.succeed(inFinalizer, undefined), Deferred.await(finishFinalizer))
+              )
+              yield* Deferred.await(releaseFailure)
+              return yield* Effect.fail("cancelled")
+            }) :
+            Effect.succeed("healthy")
+        ),
+        min: 1,
+        max: 1,
+        discardFailuresWhenIdle: true,
+        timeToLive: Duration.infinity
+      })
+      const waiter = yield* Effect.forkChild(Effect.scoped(Pool.get(pool)), { startImmediately: true })
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
+        until: (size) => size === 1
+      })
+      yield* Deferred.succeed(releaseFailure, undefined)
+      yield* Deferred.await(inFinalizer)
+      yield* Fiber.interrupt(waiter)
+      yield* Deferred.succeed(finishFinalizer, undefined)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(yield* Effect.exit(Pool.use(pool, Effect.succeed)), Exit.succeed("healthy"))
+      strictEqual(attempts, 2)
+    }))
+
   it.effect("releasing a shared borrower preserves an active reservation", () =>
     Effect.gen(function*() {
       const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1, concurrency: 2 })
