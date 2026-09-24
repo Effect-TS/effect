@@ -437,6 +437,56 @@ describe("Pool", () => {
       yield* Scope.close(owner, Exit.void)
     }))
 
+  it.effect("replaces a multiplexed failure without borrowing reserved healthy capacity", () =>
+    Effect.gen(function*() {
+      const releaseFailure = yield* Deferred.make<void>()
+      const cleanupStarted = yield* Deferred.make<void>()
+      const finishCleanup = yield* Deferred.make<void>()
+      let attempts = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.suspend(() => {
+          const attempt = ++attempts
+          return attempt === 2
+            ? Effect.gen(function*() {
+              yield* Effect.addFinalizer(() =>
+                Effect.andThen(Deferred.succeed(cleanupStarted, undefined), Deferred.await(finishCleanup))
+              )
+              yield* Deferred.await(releaseFailure)
+              return yield* Effect.fail("background")
+            })
+            : Effect.succeed(attempt)
+        }),
+        min: 2,
+        max: 2,
+        concurrency: 3,
+        timeToLive: Duration.infinity
+      })
+      yield* Effect.addFinalizer(() => Deferred.succeed(finishCleanup, undefined))
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.availableHead)), {
+        until: (item) => item?.exit._tag === "Success"
+      })
+      const owner = yield* Scope.make()
+      const reservation = yield* Scope.make()
+      strictEqual(yield* Scope.provide(Pool.get(pool), owner), 1)
+      yield* Scope.provide(Pool.reserve(pool, 1), reservation)
+      yield* Deferred.succeed(releaseFailure, undefined)
+      yield* Deferred.await(cleanupStarted)
+      // The failed item occupies a pool slot but has no borrowable permits.
+      strictEqual(pool.state.items.size, 2)
+      strictEqual(pool.state.usage, 3)
+      const leases = yield* Scope.make()
+      strictEqual(yield* Scope.provide(Pool.get(pool), leases), 3)
+      strictEqual(yield* Scope.provide(Pool.get(pool), leases), 3)
+      strictEqual(yield* Scope.provide(Pool.get(pool), leases), 3)
+      strictEqual(attempts, 3)
+      strictEqual(pool.state.usage, 6)
+      yield* Scope.close(leases, Exit.void)
+      yield* Deferred.succeed(finishCleanup, undefined)
+      yield* Scope.close(reservation, Exit.void)
+      yield* Scope.close(owner, Exit.void)
+      strictEqual(pool.state.usage, 0)
+    }))
+
   it.effect("reports a fresh acquisition failure to its waiting borrower once", () =>
     Effect.gen(function*() {
       const releaseFailure = yield* Deferred.make<void>()
@@ -755,6 +805,50 @@ describe("Pool", () => {
       strictEqual(one, 0)
       strictEqual(two, 0)
       strictEqual(three, 15)
+    }))
+
+  it.effect("creation TTL starts replacement lifetime after failed cleanup", () =>
+    Effect.gen(function*() {
+      const cleanupStarted = yield* Deferred.make<void>()
+      const finishCleanup = yield* Deferred.make<void>()
+      let attempts = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.suspend(() => {
+          const attempt = ++attempts
+          return attempt === 1
+            ? Effect.gen(function*() {
+              yield* Effect.addFinalizer(() =>
+                Effect.andThen(Deferred.succeed(cleanupStarted, undefined), Deferred.await(finishCleanup))
+              )
+              return yield* Effect.fail("background")
+            })
+            : Effect.succeed(attempt)
+        }),
+        min: 1,
+        max: 1,
+        timeToLive: Duration.seconds(60),
+        timeToLiveStrategy: "creation"
+      })
+      yield* Effect.addFinalizer(() => Deferred.succeed(finishCleanup, undefined))
+      yield* Deferred.await(cleanupStarted)
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), 2)
+      strictEqual(attempts, 2)
+      yield* TestClock.adjust(Duration.seconds(30))
+      strictEqual(yield* Pool.use(pool, Effect.succeed), 2)
+      yield* Deferred.succeed(finishCleanup, undefined)
+      // The failed item's callback must not queue a removed placeholder.
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.items.size)), {
+        until: (size) => size === 1
+      })
+      yield* TestClock.adjust(Duration.seconds(59))
+      strictEqual(attempts, 2)
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), 2)
+      yield* TestClock.adjust(Duration.seconds(1))
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => attempts)), {
+        until: (count) => count === 3
+      })
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), 3)
+      strictEqual(pool.state.usage, 0)
     }))
 
   it.effect("shutdown robustness", () =>
