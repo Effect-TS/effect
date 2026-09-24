@@ -36,7 +36,7 @@
  * import { Effect } from "effect"
  *
  * const echo = Effect.gen(function*() {
- *   const socket = DenoDatagramSocket.make({ bind: { port: 9000 } })
+ *   const socket = yield* DenoDatagramSocket.make({ bind: { port: 9000 } })
  *   const reader = yield* socket.reader
  *   const writer = yield* socket.writer
  *   while (true) {
@@ -56,7 +56,7 @@
  *
  * const send = (payload: string) =>
  *   Effect.gen(function*() {
- *     const socket = DenoDatagramSocket.make({
+ *     const socket = yield* DenoDatagramSocket.make({
  *       peer: { address: "localhost", port: 9000 }
  *     })
  *     // writes wait for an open reader, even when nothing is read
@@ -77,7 +77,7 @@
  *
  * const receive = Effect.gen(function*() {
  *   if (!NetAddress.isMulticast(group) || !NetAddress.isIpv4Address(group)) return
- *   const socket = DenoDatagramSocket.make({
+ *   const socket = yield* DenoDatagramSocket.make({
  *     bind: { address: "0.0.0.0", port: 5000 },
  *     reuseAddress: true
  *   })
@@ -88,7 +88,7 @@
  * }).pipe(Effect.scoped)
  *
  * const announce = Effect.gen(function*() {
- *   const socket = DenoDatagramSocket.make({
+ *   const socket = yield* DenoDatagramSocket.make({
  *     peer: { address: group, port: 5000 },
  *     multicast: { loopback: true }
  *   })
@@ -101,11 +101,13 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Result from "effect/Result"
+import type * as Scope from "effect/Scope"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
 import * as Dns from "node:dns"
 
@@ -180,18 +182,20 @@ export type AdoptOptions = Pick<Options, "peer" | "receiveBuffer" | "onError">
  * acquisition with a `DatagramSocketError`. Hostnames in `bind` and `peer` are
  * resolved once per acquisition, so no send waits for DNS.
  *
- * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` throws a
- * `RangeError`.
+ * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` is a
+ * defect.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: Options = {}): DatagramSocket.DatagramSocket =>
-  DatagramSocket.fromNativeHandle((events) => open(options, events), {
-    ...options.receiveBuffer,
-    onError: options.onError
-  })
+export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
+  Effect.sync(() =>
+    DatagramSocket.fromNativeHandle((events) => open(options, events), {
+      ...options.receiveBuffer,
+      onError: options.onError
+    })
+  )
 
 /**
  * Adopts a `Deno.DatagramConn`.
@@ -207,14 +211,22 @@ export const make = (options: Options = {}): DatagramSocket.DatagramSocket =>
  * @category constructors
  * @since 4.0.0
  */
-export const fromDatagramConn = (
-  acquire: Effect.Effect<Deno.DatagramConn, DatagramSocket.DatagramSocketError>,
+export const fromDatagramConn = <R>(
+  acquire: Effect.Effect<Deno.DatagramConn, DatagramSocket.DatagramSocketError, R>,
   options: AdoptOptions = {}
-): DatagramSocket.DatagramSocket =>
-  DatagramSocket.fromNativeHandle(
-    (events) => Effect.flatMap(acquire, (conn) => adopt(conn, options, events)),
-    { ...options.receiveBuffer, onError: options.onError }
-  )
+): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
+  Effect.map(Effect.context<Exclude<R, Scope.Scope>>(), (services) =>
+    DatagramSocket.fromNativeHandle(
+      (events) =>
+        acquire.pipe(
+          // the reader's scope replaces the caller's
+          Effect.updateContext((input: Context.Context<Scope.Scope>) =>
+            Context.merge(services, input) as Context.Context<R>
+          ),
+          Effect.flatMap((conn) => adopt(conn, options, events))
+        ) as Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError, Scope.Scope>,
+      { ...options.receiveBuffer, onError: options.onError }
+    ))
 
 /**
  * Provides a `DatagramSocket` built with `make`.
@@ -224,7 +236,7 @@ export const fromDatagramConn = (
  * @since 4.0.0
  */
 export const layer = (options: Options = {}): Layer.Layer<DatagramSocket.DatagramSocket> =>
-  Layer.sync(DatagramSocket.DatagramSocket, () => make(options))
+  Layer.effect(DatagramSocket.DatagramSocket, make(options))
 
 // -----------------------------------------------------------------------------
 // internal
