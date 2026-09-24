@@ -2806,13 +2806,8 @@ export const Objects: new(
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
-    const expectedKeys: Array<PropertyKey> = []
-    for (const ps of ast.propertySignatures) {
-      expectedKeys.push(typeof ps.name === "number" ? globalThis.String(ps.name) : ps.name)
-    }
-    const hasProperties = expectedKeys.length
+    const hasProperties = ast.propertySignatures.length
     const indexCount = ast.indexSignatures.length
-    let expectedKeysSet = hasProperties && indexCount ? new Set(expectedKeys) : undefined
     // ---------------------------------------------
     // handle empty struct
     // ---------------------------------------------
@@ -2829,71 +2824,6 @@ export const Objects: new(
       }>
       | undefined
     type Index = NonNullable<typeof indexes>[number]
-    const finishIndex = (
-      s: ObjectParserState,
-      key: PropertyKey,
-      k2: PropertyKey | typeof InternalParser.missing,
-      inputValue: unknown,
-      exitValue: Exit.Exit<unknown, SchemaIssue.Issue>
-    ): Effect.Effect<void, SchemaIssue.Issue, any> => {
-      if (exitValue._tag === "Failure") {
-        return wrapPropertyKeyIssue(s, ast, key, exitValue) ?? Exit.void
-      }
-      const value = exitValue === InternalParser.sameExit
-        ? inputValue
-        : (exitValue as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-      if (k2 !== InternalParser.missing && value !== InternalParser.missing) {
-        if (
-          hasProperties &&
-          (expectedKeysSet!.has(key) || expectedKeysSet!.has(typeof k2 === "number" ? globalThis.String(k2) : k2))
-        ) return Exit.void
-        InternalRecord.assignProperty(s.out, k2, value)
-      }
-      return Exit.void
-    }
-    const parseIndex = (
-      s: ObjectParserState,
-      key: PropertyKey,
-      index: Index,
-      exitKey?: Exit.Exit<unknown, SchemaIssue.Issue>
-    ): Effect.Effect<void, SchemaIssue.Issue, any> => {
-      if (!exitKey) {
-        const eff = index.parserKey(key, s.options)
-        if (!effectIsExit(eff)) {
-          return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exit))
-        }
-        exitKey = eff
-      }
-      if (exitKey._tag === "Failure") {
-        return wrapPropertyKeyIssue(s, ast, key, exitKey) ?? Exit.void
-      }
-      const k2 = exitKey === InternalParser.sameExit
-        ? key
-        : (exitKey as InternalParser.Success<PropertyKey, SchemaIssue.Issue>)[InternalParser.args]
-      const inputValue = s.input[key]
-      const result = index.parserValue(inputValue, s.options)
-      return effectIsExit(result)
-        ? finishIndex(s, key, k2, inputValue, result)
-        : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, k2, inputValue, exit))
-    }
-    const parseStringIndex = (
-      s: ObjectParserState,
-      key: PropertyKey,
-      index: Index
-    ): Effect.Effect<void, SchemaIssue.Issue, any> => {
-      const inputValue = s.input[key]
-      const result = index.parserValue(inputValue, s.options)
-      return effectIsExit(result)
-        ? finishIndex(s, key, key, inputValue, result)
-        : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, key, inputValue, exit))
-    }
-    const parseIndexes = indexCount
-      ? iterateConcurrent<ObjectParserState, readonly [key: PropertyKey, index: Index]>()({
-        onItem: (s, [key, index]) =>
-          index.is.parameter === string ? parseStringIndex(s, key, index) : parseIndex(s, key, index),
-        step: (_s, _item, exit) => exit._tag === "Failure" ? exit : undefined
-      })
-      : undefined
     const compileMembers = (): Array<ParsedProperty> => {
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
@@ -2912,119 +2842,190 @@ export const Objects: new(
       return properties
     }
 
-    const fallback: SchemaParser.Parser = Effect.fnUntracedEager(function*(input, options) {
-      if (input === InternalParser.missing) {
-        return InternalParser.missing
-      }
-
-      // If the input is not a record, return early with an error
-      if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
-        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
-      }
-      compileMembers()
-
-      const record = input as Record<PropertyKey, unknown>
-      const out: Record<PropertyKey, unknown> = {}
-      const state = {
-        ast,
-        input: record,
-        out,
-        issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
-        options
-      }
-      const errorsAllOption = options.errors === "all"
-      const onExcessPropertyError = options.onExcessProperty === "error"
-      const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
-
-      // ---------------------------------------------
-      // handle excess properties
-      // ---------------------------------------------
-      const indexKeys = indexCount && onExcessPropertyError
-        ? ast.indexSignatures.map((index) => getIndexSignatureKeys(record, index.parameter, options))
-        : undefined
-      if (onExcessPropertyError) {
-        expectedKeysSet ??= new Set(expectedKeys)
-        const coveredKeys = indexKeys ? new Set(expectedKeysSet) : expectedKeysSet
-        if (indexKeys) {
-          for (const keys of indexKeys) {
-            for (const key of keys) coveredKeys.add(key)
-          }
+    const makeFallback = (): SchemaParser.Parser => {
+      const expectedKeys = new Set<PropertyKey>(
+        ast.propertySignatures.map((ps) => typeof ps.name === "number" ? globalThis.String(ps.name) : ps.name)
+      )
+      const finishIndex = (
+        s: ObjectParserState,
+        key: PropertyKey,
+        k2: PropertyKey | typeof InternalParser.missing,
+        inputValue: unknown,
+        exitValue: Exit.Exit<unknown, SchemaIssue.Issue>
+      ): Effect.Effect<void, SchemaIssue.Issue, any> => {
+        if (exitValue._tag === "Failure") {
+          return wrapPropertyKeyIssue(s, ast, key, exitValue) ?? Exit.void
         }
-        // Only enumerable own properties can be excess. Declared fields are
-        // parsed separately, regardless of their enumerability.
-        const inputKeys = Reflect.ownKeys(record)
-        for (let i = 0; i < inputKeys.length; i++) {
-          const key = inputKeys[i]
-          if (!coveredKeys.has(key) && Object.prototype.propertyIsEnumerable.call(record, key)) {
-            // key is unexpected
-            const unexpected = new SchemaIssue.UnexpectedKey(ast, record[key], options)
-            const issue = new SchemaIssue.Pointer([key], unexpected)
-            if (errorsAllOption) {
-              if (state.issues) {
-                state.issues.push(issue)
+        const value = exitValue === InternalParser.sameExit
+          ? inputValue
+          : (exitValue as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+        if (k2 !== InternalParser.missing && value !== InternalParser.missing) {
+          if (
+            hasProperties &&
+            (expectedKeys.has(key) || expectedKeys.has(typeof k2 === "number" ? globalThis.String(k2) : k2))
+          ) return Exit.void
+          InternalRecord.assignProperty(s.out, k2, value)
+        }
+        return Exit.void
+      }
+      const parseIndex = (
+        s: ObjectParserState,
+        key: PropertyKey,
+        index: Index,
+        exitKey?: Exit.Exit<unknown, SchemaIssue.Issue>
+      ): Effect.Effect<void, SchemaIssue.Issue, any> => {
+        if (!exitKey) {
+          const eff = index.parserKey(key, s.options)
+          if (!effectIsExit(eff)) {
+            return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exit))
+          }
+          exitKey = eff
+        }
+        if (exitKey._tag === "Failure") {
+          return wrapPropertyKeyIssue(s, ast, key, exitKey) ?? Exit.void
+        }
+        const k2 = exitKey === InternalParser.sameExit
+          ? key
+          : (exitKey as InternalParser.Success<PropertyKey, SchemaIssue.Issue>)[InternalParser.args]
+        const inputValue = s.input[key]
+        const result = index.parserValue(inputValue, s.options)
+        return effectIsExit(result)
+          ? finishIndex(s, key, k2, inputValue, result)
+          : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, k2, inputValue, exit))
+      }
+      const parseStringIndex = (
+        s: ObjectParserState,
+        key: PropertyKey,
+        index: Index
+      ): Effect.Effect<void, SchemaIssue.Issue, any> => {
+        const inputValue = s.input[key]
+        const result = index.parserValue(inputValue, s.options)
+        return effectIsExit(result)
+          ? finishIndex(s, key, key, inputValue, result)
+          : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, key, inputValue, exit))
+      }
+      const parseIndexes = indexCount
+        ? iterateConcurrent<ObjectParserState, readonly [key: PropertyKey, index: Index]>()({
+          onItem: (s, [key, index]) =>
+            index.is.parameter === string ? parseStringIndex(s, key, index) : parseIndex(s, key, index),
+          step: (_s, _item, exit) => exit._tag === "Failure" ? exit : undefined
+        })
+        : undefined
+      return Effect.fnUntracedEager(function*(input, options) {
+        if (input === InternalParser.missing) {
+          return InternalParser.missing
+        }
+
+        // If the input is not a record, return early with an error
+        if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
+          return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+        }
+        compileMembers()
+
+        const record = input as Record<PropertyKey, unknown>
+        const out: Record<PropertyKey, unknown> = {}
+        const state = {
+          ast,
+          input: record,
+          out,
+          issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
+          options
+        }
+        const errorsAllOption = options.errors === "all"
+        const onExcessPropertyError = options.onExcessProperty === "error"
+        const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
+
+        // ---------------------------------------------
+        // handle excess properties
+        // ---------------------------------------------
+        const indexKeys = indexCount && onExcessPropertyError
+          ? ast.indexSignatures.map((index) => getIndexSignatureKeys(record, index.parameter, options))
+          : undefined
+        if (onExcessPropertyError) {
+          const coveredKeys = indexKeys ? new Set(expectedKeys) : expectedKeys
+          if (indexKeys) {
+            for (const keys of indexKeys) {
+              for (const key of keys) coveredKeys.add(key)
+            }
+          }
+          // Only enumerable own properties can be excess. Declared fields are
+          // parsed separately, regardless of their enumerability.
+          const inputKeys = Reflect.ownKeys(record)
+          for (let i = 0; i < inputKeys.length; i++) {
+            const key = inputKeys[i]
+            if (!coveredKeys.has(key) && Object.prototype.propertyIsEnumerable.call(record, key)) {
+              // key is unexpected
+              const unexpected = new SchemaIssue.UnexpectedKey(ast, record[key], options)
+              const issue = new SchemaIssue.Pointer([key], unexpected)
+              if (errorsAllOption) {
+                if (state.issues) {
+                  state.issues.push(issue)
+                } else {
+                  state.issues = [issue]
+                }
+                continue
               } else {
-                state.issues = [issue]
+                return yield* Effect.fail(
+                  new SchemaIssue.Composite(ast, [issue], input, options)
+                )
               }
-              continue
-            } else {
-              return yield* Effect.fail(
-                new SchemaIssue.Composite(ast, [issue], input, options)
-              )
             }
           }
         }
-      }
 
-      // ---------------------------------------------
-      // handle property signatures
-      // ---------------------------------------------
-      if (hasProperties) {
-        const eff = concurrency === 1
-          ? parseProperties(state, properties!)
-          : parsePropertiesConcurrent(state, properties!, { concurrency })
-        if (eff) yield* eff
-      }
-
-      // ---------------------------------------------
-      // handle index signatures
-      // ---------------------------------------------
-      if (indexCount && concurrency === 1) {
-        for (let i = 0; i < indexCount; i++) {
-          const index = indexes![i]
-          const parse = index.is.parameter === string ? parseStringIndex : parseIndex
-          const keys = indexKeys?.[i] ?? (index.is.parameter === string
-            ? Object.keys(record)
-            : getIndexSignatureKeys(record, index.is.parameter, options))
-          for (let j = 0; j < keys.length; j++) {
-            const eff = parse(state, keys[j], index)
-            if (!effectIsExit(eff)) yield* eff
-            else if (eff._tag === "Failure") return yield* eff as Exit.Exit<never, SchemaIssue.Issue>
-          }
+        // ---------------------------------------------
+        // handle property signatures
+        // ---------------------------------------------
+        if (hasProperties) {
+          const eff = concurrency === 1
+            ? parseProperties(state, properties!)
+            : parsePropertiesConcurrent(state, properties!, { concurrency })
+          if (eff) yield* eff
         }
-      } else if (parseIndexes) {
-        const keyPairs = Arr.empty<readonly [PropertyKey, Index]>()
-        for (let i = 0; i < indexCount; i++) {
-          const index = indexes![i]
-          const keys = indexKeys?.[i] ?? (index.is.parameter === string
-            ? Object.keys(record)
-            : getIndexSignatureKeys(record, index.is.parameter, options))
-          for (let j = 0; j < keys.length; j++) {
-            keyPairs.push([keys[j], index])
+
+        // ---------------------------------------------
+        // handle index signatures
+        // ---------------------------------------------
+        if (indexCount && concurrency === 1) {
+          for (let i = 0; i < indexCount; i++) {
+            const index = indexes![i]
+            const parse = index.is.parameter === string ? parseStringIndex : parseIndex
+            const keys = indexKeys?.[i] ?? (index.is.parameter === string
+              ? Object.keys(record)
+              : getIndexSignatureKeys(record, index.is.parameter, options))
+            for (let j = 0; j < keys.length; j++) {
+              const eff = parse(state, keys[j], index)
+              if (!effectIsExit(eff)) yield* eff
+              else if (eff._tag === "Failure") return yield* eff as Exit.Exit<never, SchemaIssue.Issue>
+            }
           }
+        } else if (parseIndexes) {
+          const keyPairs = Arr.empty<readonly [PropertyKey, Index]>()
+          for (let i = 0; i < indexCount; i++) {
+            const index = indexes![i]
+            const keys = indexKeys?.[i] ?? (index.is.parameter === string
+              ? Object.keys(record)
+              : getIndexSignatureKeys(record, index.is.parameter, options))
+            for (let j = 0; j < keys.length; j++) {
+              keyPairs.push([keys[j], index])
+            }
+          }
+          const eff = parseIndexes(state, keyPairs, { concurrency })
+          if (eff) yield* eff
         }
-        const eff = parseIndexes(state, keyPairs, { concurrency })
-        if (eff) yield* eff
-      }
 
-      if (state.issues) {
-        return yield* Effect.fail(
-          new SchemaIssue.Composite(ast, state.issues, input, options)
-        )
-      }
-      return out
-    })
+        if (state.issues) {
+          return yield* Effect.fail(
+            new SchemaIssue.Composite(ast, state.issues, input, options)
+          )
+        }
+        return out
+      })
+    }
 
-    if (indexCount) return fallback
+    if (indexCount) return makeFallback()
+
+    let fallback: SchemaParser.Parser | undefined
 
     // Resumes at the property whose parser suspended, without replaying the
     // properties already parsed.
@@ -3052,7 +3053,7 @@ export const Objects: new(
         options.onExcessProperty !== undefined ||
         (options.concurrency !== undefined && resolveConcurrency(options.concurrency) !== 1)
       ) {
-        return fallback(input, options)
+        return (fallback ??= makeFallback())(input, options)
       }
       if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
         return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
