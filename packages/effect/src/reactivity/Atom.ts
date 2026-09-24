@@ -1937,7 +1937,7 @@ export const swr: {
         const dispatcher = get.registry.schedulerAsync.makeDispatcher()
         get.addFinalizer(() => {
           active = false
-          dispatcher.flush()
+          dispatcher.cancel?.()
         })
         dispatcher.scheduleTask(() => {
           if (active && shouldRevalidateSWR(get.once(self), staleTime)) {
