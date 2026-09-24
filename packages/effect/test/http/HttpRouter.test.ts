@@ -22,6 +22,59 @@ const fetchText = (app: Layer.Layer<never, never, HttpRouter.HttpRouter>, path: 
   )
 
 describe("HttpRouter", () => {
+  it("registers fresh shared routes on both web handlers with a shared memo map", async () => {
+    const memoMap = Layer.makeMemoMapUnsafe()
+    const health = HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy"))
+    const publicHandler = HttpRouter.toWebHandler(
+      Layer.mergeAll(HttpRouter.add("GET", "/public", HttpServerResponse.text("public")), Layer.fresh(health)),
+      { memoMap, disableLogger: true }
+    )
+    const internalHandler = HttpRouter.toWebHandler(
+      Layer.mergeAll(HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")), Layer.fresh(health)),
+      { memoMap, disableLogger: true }
+    )
+    try {
+      const status = (handler: typeof publicHandler.handler, path: string) =>
+        handler(new Request("http://localhost" + path)).then((response) => response.status)
+      assert.strictEqual(await status(publicHandler.handler, "/health"), 200)
+      assert.strictEqual(await status(internalHandler.handler, "/health"), 200)
+      assert.strictEqual(await status(publicHandler.handler, "/internal"), 404)
+      assert.strictEqual(await status(internalHandler.handler, "/public"), 404)
+    } finally {
+      await Promise.all([publicHandler.dispose(), internalHandler.dispose()])
+    }
+  })
+
+  it.effect("registers fresh shared routes on both HTTP effects with a shared memo map", () =>
+    Effect.gen(function*() {
+      const memoMap = Layer.makeMemoMapUnsafe()
+      const health = HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy"))
+      const publicHandler = yield* HttpRouter.toHttpEffect(
+        Layer.mergeAll(HttpRouter.add("GET", "/public", HttpServerResponse.text("public")), Layer.fresh(health)),
+        { memoMap }
+      )
+      const internalHandler = yield* HttpRouter.toHttpEffect(
+        Layer.mergeAll(HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")), Layer.fresh(health)),
+        { memoMap }
+      )
+      const status = (handler: typeof publicHandler, path: string) =>
+        handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost" + path))
+          ),
+          Effect.map((response) => response.status)
+        )
+      assert.strictEqual(yield* status(publicHandler, "/health"), 200)
+      assert.strictEqual(yield* status(internalHandler, "/health"), 200)
+      const publicMiss = yield* Effect.exit(status(publicHandler, "/internal"))
+      const internalMiss = yield* Effect.exit(status(internalHandler, "/public"))
+      assert.isTrue(Exit.isFailure(publicMiss))
+      assert.isTrue(Exit.isFailure(internalMiss))
+      if (Exit.isFailure(publicMiss)) assert.match(Cause.pretty(publicMiss.cause), /RouteNotFound/)
+      if (Exit.isFailure(internalMiss)) assert.match(Cause.pretty(internalMiss.cause), /RouteNotFound/)
+    }).pipe(Effect.scoped))
+
   it("isolates toWebHandler routes even with a shared memo map", async () => {
     const memoMap = Layer.makeMemoMapUnsafe()
     const publicHandler = HttpRouter.toWebHandler(

@@ -19,6 +19,28 @@ describe("HttpRouter", () => {
       // @ts-expect-error remove it from the app layer
       void HttpRouter.toHttpEffect(app)
     })
+
+    it("accepts app layers with any output", () => {
+      const app = {} as Layer.Layer<any, never, never>
+      expect(HttpRouter.serve).type.toBeCallableWith(app)
+      expect(HttpRouter.toWebHandler).type.toBeCallableWith(app)
+      expect(HttpRouter.toHttpEffect).type.toBeCallableWith(app)
+    })
+
+    it("rejects app layers with unknown output", () => {
+      const app = {} as Layer.Layer<unknown>
+      // @ts-expect-error remove it from the app layer
+      void HttpRouter.serve(app)
+      // @ts-expect-error remove it from the app layer
+      void HttpRouter.toWebHandler(app)
+      // @ts-expect-error remove it from the app layer
+      void HttpRouter.toHttpEffect(app)
+    })
+
+    it("accepts a narrowed generic wrapper", () => {
+      const serve = <E>(app: Layer.Layer<never, E, HttpRouter.HttpRouter>) => HttpRouter.serve(app)
+      expect(serve).type.toBeCallableWith(Layer.empty as Layer.Layer<never, never, HttpRouter.HttpRouter>)
+    })
   })
 
   describe("middleware", () => {
