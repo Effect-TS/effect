@@ -51,7 +51,10 @@ describe("HttpServer", () => {
     Effect.gen(function*() {
       const publicServer = Http.createServer()
       const internalServer = Http.createServer()
-      const Health = HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy"))
+      const Health = Layer.effectDiscard(
+        Effect.flatMap(HttpRouter.HttpRouter, (router) =>
+          router.add("GET", "/health", HttpServerResponse.text("healthy")))
+      )
       const publicApp = Layer.mergeAll(HttpRouter.add("GET", "/public", HttpServerResponse.text("public")), Health)
       const internalApp = Layer.mergeAll(
         HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")),
