@@ -1077,7 +1077,7 @@ describe("toJsonSchemaDocument", () => {
       })
 
       it("omits isPattern when its flags cannot be represented", () => {
-        for (const regExp of [/^abb+$/, /^abb+$/iu, /^abb+$/mu, /^abb+$/su, /^abb+$/uy]) {
+        for (const regExp of [/^abb+$/, /^abb+$/y, /^abb+$/iu, /^abb+$/mu, /^abb+$/su]) {
           assertJsonSchemaDocument(Schema.String.check(Schema.isPattern(regExp)), {
             schema: { type: "string" }
           })
@@ -1088,6 +1088,8 @@ describe("toJsonSchemaDocument", () => {
         for (
           const [regExp, pattern] of [
             [/^abb+$/gu, "^abb+$"],
+            [/abb+/uy, "^(?:abb+)"],
+            [/abb+/guy, "^(?:abb+)"],
             [/^[é]+$/u, "^[é]+$"],
             [/^[a-z]+$/u, "^[a-z]+$"],
             [/^[\x20-\uD7FF\uE000-\uFFFF]+$/u, "^[\\x20-\\uD7FF\\uE000-\\uFFFF]+$"],

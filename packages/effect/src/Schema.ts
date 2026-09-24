@@ -6564,8 +6564,8 @@ export function isTrimmed(annotations?: Annotations.Filter) {
  * JSON Schema:
  *
  * Unless annotations override `toJsonSchema`, JSON Schema receives a `pattern`
- * only when the JavaScript RegExp uses the Unicode flag and has no flags that
- * change which strings it accepts.
+ * only when the JavaScript RegExp uses the Unicode flag and its other flags are
+ * `d`, `g`, or `y`. Sticky patterns are anchored at the start of the string.
  *
  * Arbitrary:
  *
@@ -6581,12 +6581,12 @@ export function isPattern(
 ): SchemaAST.Filter<string> {
   const source = regExp.source
   const flags = regExp.flags
-  const canExport = /^[dg]*u$/.test(flags)
+  const canExport = /^[dg]*uy?$/.test(flags)
   const runtimeRegExp = flags === ""
     ? `new RegExp(${format(source)})`
     : `new RegExp(${format(source)}, ${format(flags)})`
   return SchemaAST.isPattern(regExp, {
-    toJsonSchema: () => canExport ? { pattern: source } : {},
+    toJsonSchema: () => canExport ? { pattern: flags.endsWith("y") ? `^(?:${source})` : source } : {},
     toCode: () => ({ runtime: `Schema.isPattern(${runtimeRegExp})` }),
     ...annotations
   })
