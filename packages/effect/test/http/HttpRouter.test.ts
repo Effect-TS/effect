@@ -1,6 +1,6 @@
-import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Option } from "effect"
-import { HttpRouter, type HttpServerRequest, HttpServerResponse } from "effect/http"
+import { assert, describe, expect, it } from "@effect/vitest"
+import { Cause, Effect, Exit, Layer, Option } from "effect"
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -22,6 +22,75 @@ const fetchText = (app: Layer.Layer<never, never, HttpRouter.HttpRouter>, path: 
   )
 
 describe("HttpRouter", () => {
+  it("isolates toWebHandler routes even with a shared memo map", async () => {
+    const memoMap = Layer.makeMemoMapUnsafe()
+    const publicHandler = HttpRouter.toWebHandler(
+      HttpRouter.add("GET", "/public", HttpServerResponse.text("public")),
+      { memoMap, disableLogger: true }
+    )
+    const internalHandler = HttpRouter.toWebHandler(
+      HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")),
+      { memoMap, disableLogger: true }
+    )
+    try {
+      const status = (handler: typeof publicHandler.handler, path: string) =>
+        handler(new Request("http://localhost" + path)).then((response) => response.status)
+      assert.strictEqual(await status(publicHandler.handler, "/public"), 200)
+      assert.strictEqual(await status(internalHandler.handler, "/internal"), 200)
+      assert.strictEqual(await status(publicHandler.handler, "/internal"), 404)
+      assert.strictEqual(await status(internalHandler.handler, "/public"), 404)
+    } finally {
+      await Promise.all([publicHandler.dispose(), internalHandler.dispose()])
+    }
+  })
+
+  it.effect("isolates toHttpEffect routes with a shared memo map", () =>
+    Effect.gen(function*() {
+      const memoMap = Layer.makeMemoMapUnsafe()
+      const publicHandler = yield* HttpRouter.toHttpEffect(
+        HttpRouter.add("GET", "/public", HttpServerResponse.text("public")),
+        { memoMap }
+      )
+      const internalHandler = yield* HttpRouter.toHttpEffect(
+        HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")),
+        { memoMap }
+      )
+      const status = (handler: typeof publicHandler, path: string) =>
+        handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost" + path))
+          ),
+          Effect.map((response) => response.status)
+        )
+      assert.strictEqual(yield* status(publicHandler, "/public"), 200)
+      assert.strictEqual(yield* status(internalHandler, "/internal"), 200)
+      const publicMiss = yield* Effect.exit(status(publicHandler, "/internal"))
+      const internalMiss = yield* Effect.exit(status(internalHandler, "/public"))
+      assert.isTrue(Exit.isFailure(publicMiss))
+      assert.isTrue(Exit.isFailure(internalMiss))
+      if (Exit.isFailure(publicMiss)) assert.match(Cause.pretty(publicMiss.cause), /RouteNotFound/)
+      if (Exit.isFailure(internalMiss)) assert.match(Cause.pretty(internalMiss.cause), /RouteNotFound/)
+    }).pipe(Effect.scoped))
+
+  it("rejects an app that outputs a foreign router in toWebHandler", async () => {
+    const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
+    const { dispose, handler } = HttpRouter.toWebHandler(app as Layer.Layer<never>, { disableLogger: true })
+    try {
+      await expect(handler(new Request("http://localhost/"))).rejects.toThrow(/foreign.*router/i)
+    } finally {
+      await dispose()
+    }
+  })
+
+  it.effect("rejects an app that outputs a foreign router in toHttpEffect", () =>
+    Effect.gen(function*() {
+      const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
+      const exit = yield* Effect.exit(HttpRouter.toHttpEffect(app as Layer.Layer<never>))
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) assert.match(Cause.pretty(exit.cause), /foreign.*router/i)
+    }).pipe(Effect.scoped))
+
   it("normalizes the prefix stored by prefixRoute", () => {
     const route = HttpRouter.prefixRoute(
       HttpRouter.route("GET", "/users", HttpServerResponse.text("ok")),

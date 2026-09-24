@@ -2046,7 +2046,6 @@ describe("McpServer", () => {
         }).pipe(Effect.forkScoped)
         yield* router.add("POST", "/mcp", () => httpEffect)
       })).pipe(
-        Layer.provideMerge(HttpRouter.layer),
         Layer.provide(RpcSerialization.layerJsonRpc())
       )
       const harness = yield* makeHttpHarness(serverLayer)
@@ -2701,8 +2700,7 @@ describe("McpServer", () => {
               version: "1.0.0",
               protocols: [McpProtocol.v2026_07_28]
             }).pipe(
-              Layer.provide(stdioLayer),
-              Layer.provideMerge(HttpRouter.layer)
+              Layer.provide(stdioLayer)
             )
           )
           yield* Deferred.succeed(serverReady, Context.get(context, McpServer.McpServer))

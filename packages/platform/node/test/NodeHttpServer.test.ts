@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Option } from "effect"
+import { ByteSize, Cause, Effect, Exit, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
@@ -47,6 +47,20 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("rejects a foreign router output from serve", () =>
+    Effect.gen(function*() {
+      const foreign = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
+      const exit = yield* Effect.exit(
+        Layer.build(
+          HttpRouter.serve(foreign as Layer.Layer<never>, { disableLogger: true, disableListenLog: true }).pipe(
+            Layer.provide(NodeHttpServer.layer(() => Http.createServer(), { port: 0 }))
+          )
+        )
+      )
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) assert.match(Cause.pretty(exit.cause), /foreign.*router/i)
+    }).pipe(Effect.scoped))
+
   it.effect("keeps routes isolated between independent servers", () =>
     Effect.gen(function*() {
       const publicServer = Http.createServer()

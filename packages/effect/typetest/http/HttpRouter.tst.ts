@@ -3,6 +3,26 @@ import { HttpRouter, type HttpServerError, HttpServerResponse } from "effect/htt
 import { describe, expect, it } from "tstyche"
 
 describe("HttpRouter", () => {
+  describe("router ownership", () => {
+    it("does not expose reusable router constructors", () => {
+      // @ts-expect-error Router creation belongs to the entrypoints
+      void HttpRouter.layer
+      // @ts-expect-error Router creation belongs to the entrypoints
+      void HttpRouter.make
+    })
+
+    it("does not accept app layers that output HttpRouter", () => {
+      const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
+
+      // @ts-expect-error The router must be owned by serve
+      void HttpRouter.serve(app)
+      // @ts-expect-error The router must be owned by toWebHandler
+      void HttpRouter.toWebHandler(app)
+      // @ts-expect-error The router must be owned by toHttpEffect
+      void HttpRouter.toHttpEffect(app)
+    })
+  })
+
   describe("middleware", () => {
     it("provides handled request errors", () => {
       class MyError {
