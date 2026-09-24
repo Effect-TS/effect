@@ -1904,7 +1904,7 @@ describe("Atom", { concurrent: false }, () => {
     unmount2()
   })
 
-  test(`swr cancels queued revalidation when disposed`, async () => {
+  test(`swr cancels queued revalidation when unmounted`, async () => {
     const r = AtomRegistry.make()
     let runs = 0
     const base = Atom.make(Effect.sync(() => ++runs)).pipe(Atom.keepAlive)
@@ -1912,8 +1912,11 @@ describe("Atom", { concurrent: false }, () => {
     r.get(base)
     await vitest.advanceTimersByTimeAsync(101)
 
-    r.mount(atom)
-    r.dispose()
+    const unmount = r.mount(atom)
+    const result = r.get(atom)
+    assert(AsyncResult.isSuccess(result))
+    assert.strictEqual(result.value, 1)
+    unmount()
     await Effect.runPromise(Effect.yieldNow)
 
     assert.strictEqual(runs, 1)
@@ -1928,6 +1931,10 @@ describe("Atom", { concurrent: false }, () => {
     await vitest.advanceTimersByTimeAsync(101)
 
     const unmount = r.mount(atom)
+    const result = r.get(atom)
+    assert(AsyncResult.isSuccess(result))
+    assert.strictEqual(result.value, 1)
+    assert.strictEqual(runs, 1)
     r.refresh(base)
     await Effect.runPromise(Effect.yieldNow)
 
