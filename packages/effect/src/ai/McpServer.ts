@@ -1672,7 +1672,8 @@ const normalizeMcpJsonRpcResponse = (response: unknown): unknown => {
 function mcpJsonRpcSerialization(options?: {
   readonly contentType?: string | undefined
 }): RpcSerialization.RpcSerialization["Service"] {
-  const serialization = RpcSerialization.jsonRpc(options)
+  // MCP peers speak plain JSON-RPC, so `@effect/rpc/*` methods are ordinary notifications.
+  const serialization = RpcSerialization.jsonRpc({ ...options, controlMessages: false })
   return RpcSerialization.RpcSerialization.of({
     ...serialization,
     makeUnsafe: () => {
