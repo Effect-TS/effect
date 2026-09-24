@@ -419,6 +419,66 @@ describe("Config", () => {
           { flag: Option.none(), required: "default" }
         )
       })
+
+      it.effect("matches map when chained with succeed, including grouped defaults and options", () =>
+        Effect.gen(function*() {
+          const mapped = Config.Int("port").pipe(Config.map((port) => port + 1))
+          const chained = Config.Int("port").pipe(Config.flatMap((port) => Config.succeed(port + 1)))
+          const group = (port: Config.Config<number>) => Config.all({ port, host: Config.String("host") })
+          const wrappers: Array<(config: Config.Config<number>) => Config.Config<unknown>> = [
+            (config) => config,
+            Config.option,
+            Config.withDefault(3000),
+            group,
+            (config) => group(config).pipe(Config.option),
+            (config) => group(config).pipe(Config.withDefault({ port: 3000, host: "default" }))
+          ]
+
+          for (
+            const input of [
+              {},
+              { port: "80" },
+              { host: "localhost" },
+              { port: "80", host: "localhost" },
+              { port: "invalid" },
+              { port: "invalid", host: "localhost" }
+            ]
+          ) {
+            const provider = ConfigProvider.fromUnknown(input)
+            const parse = (config: Config.Config<unknown>) =>
+              config.parse(provider).pipe(Effect.mapError((error) => error.cause.message), Effect.result)
+
+            for (const wrap of wrappers) {
+              assert.deepStrictEqual(yield* parse(wrap(chained)), yield* parse(wrap(mapped)))
+            }
+          }
+        }))
+
+      it.effect("preserves the outer prefix and composes prefixes in the selected config", () =>
+        Effect.gen(function*() {
+          const config = Config.Int("port").pipe(
+            Config.flatMap((port) => Config.String(port === 80 ? "prodHost" : "devHost").pipe(Config.nested("hosts"))),
+            Config.nested("service")
+          )
+          const root = {
+            port: 3000,
+            hosts: { prodHost: "root-prod", devHost: "root-dev" }
+          }
+          const provider = ConfigProvider.fromUnknown({
+            ...root,
+            service: {
+              port: 80,
+              prodHost: "wrong-local-path",
+              hosts: { prodHost: "service-prod", devHost: "service-dev" }
+            }
+          })
+          assert.strictEqual(yield* config.parse(provider), "service-prod")
+
+          const missing = ConfigProvider.fromUnknown({ ...root, service: { port: 80 } })
+          const error = yield* config.parse(missing).pipe(Effect.flip)
+          assert.strictEqual(error.cause.message, `Expected string\n  at ["service"]["hosts"]["prodHost"]`)
+          assert.deepStrictEqual(yield* config.pipe(Config.option).parse(missing), Option.none())
+        }))
     })
 
     it.effect("defers user callbacks until the Config Effect is executed", () =>
