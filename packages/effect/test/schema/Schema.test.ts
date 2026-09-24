@@ -405,6 +405,50 @@ Missing key
     await encoding.fail(1, `Expected string`)
   })
 
+  it("StringForLiteralAutocomplete", async () => {
+    const schema = Schema.StringForLiteralAutocomplete
+    const asserts = new TestSchema.Asserts(schema)
+
+    strictEqual(schema.ast, SchemaAST.string)
+
+    const make = asserts.make()
+    await make.succeed("a")
+    await make.fail(null, `Expected string`)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("a")
+    await decoding.fail(1, `Expected string`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed("a")
+    await encoding.fail(1, `Expected string`)
+  })
+
+  it("StringForLiteralAutocomplete | Literals", async () => {
+    const schema = Schema.Union([
+      Schema.StringForLiteralAutocomplete,
+      Schema.Literals(["GET", "POST"])
+    ])
+    const asserts = new TestSchema.Asserts(schema)
+
+    deepStrictEqual(schema.members[1].literals, ["GET", "POST"])
+
+    const make = asserts.make()
+    await make.succeed("GET")
+    await make.succeed("PATCH")
+    await make.fail(null, `Expected string | "GET" | "POST"`)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("GET")
+    await decoding.succeed("PATCH")
+    await decoding.fail(1, `Expected string | "GET" | "POST"`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed("GET")
+    await encoding.succeed("PATCH")
+    await encoding.fail(1, `Expected string | "GET" | "POST"`)
+  })
+
   it("Number", async () => {
     const schema = Schema.Number
     const asserts = new TestSchema.Asserts(schema)
