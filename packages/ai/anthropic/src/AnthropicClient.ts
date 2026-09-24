@@ -16,7 +16,7 @@ import { identity } from "effect/Function"
 import * as Headers from "effect/http/Headers"
 import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
-import type * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
@@ -243,7 +243,42 @@ export const make = Effect.fnUntraced(
         : identity
     )
 
-    const client = Generated.make(httpClient, {
+    // Gateways can return 4xx bodies that lack Anthropic's error envelope.
+    // Preserve their status instead of reporting a response schema error.
+    const generatedHttpClient = HttpClient.transformResponse(
+      httpClient,
+      Effect.flatMap((response) => {
+        if (
+          response.status < 400 || response.status >= 500 ||
+          !response.request.url.endsWith("/v1/messages?beta=true")
+        ) {
+          return Effect.succeed(response)
+        }
+        return Effect.flatMap(Effect.option(response.json), (body) => {
+          if (
+            body._tag === "Some" &&
+            Schema.decodeUnknownOption(Generated.BetaMessagesPost4XX)(body.value)._tag === "Some"
+          ) {
+            return Effect.succeed(response)
+          }
+          return Effect.flatMap(
+            Effect.orElseSucceed(response.text, () => "Unexpected status code"),
+            (description) =>
+              Effect.fail(
+                new HttpClientError.HttpClientError({
+                  reason: new HttpClientError.StatusCodeError({
+                    request: response.request,
+                    response,
+                    description
+                  })
+                })
+              )
+          )
+        })
+      })
+    )
+
+    const client = Generated.make(generatedHttpClient, {
       transformClient: Effect.fnUntraced(function*(client) {
         const config = yield* AnthropicConfig.getOrUndefined
         if (Predicate.isNotUndefined(config?.transformClient)) {
