@@ -20,6 +20,12 @@
  * so they go to the `onError` option as a `DatagramSocketReadError` with no
  * address.
  *
+ * On macOS and Windows a poll error closes the socket without any event. The
+ * adapter notices on the next write, which fails with
+ * `DatagramSocketClosedError`, as do the reader and any write waiting for
+ * `drain`. Until then those waiting writes and `pull` keep waiting. The same
+ * applies when the caller closes a socket adopted with `fromUdpSocket`.
+ *
  * **Example** (Echo server)
  *
  * ```ts
@@ -141,7 +147,11 @@ export interface AdoptOptions {
  * two can't be combined.
  *
  * The family is the explicit `family`, else the family of an IP literal in
- * `bind`, else the family of the `peer` or `connect` address, else `"ipv4"`.
+ * `bind`, else the family of the `peer` or `connect` address (resolved first
+ * if it is a hostname), else the family a `bind` hostname resolves to, else
+ * `"ipv4"`. A hostname lookup is limited to the family already fixed at that
+ * point: `peer` or `connect` by `family` or a `bind` literal, and `bind` by
+ * those or the `peer` or `connect` family. Otherwise IPv4 is preferred.
  *
  * `reuseAddress` means `SO_REUSEADDR` on Linux and `SO_REUSEPORT` on BSD and
  * macOS.
@@ -648,6 +658,11 @@ class NativeSocket {
     sent: number,
     done: (error?: DatagramSocket.DatagramSocketError) => void
   ) {
+    // a closed socket fires no event and never drains, so check before queueing
+    if (this.socket?.closed) {
+      this.closedUnderneath()
+      return done(closedError())
+    }
     this.pending.push(new PendingSend(packets, count, sent, done))
   }
 
