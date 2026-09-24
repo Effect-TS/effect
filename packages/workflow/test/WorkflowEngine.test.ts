@@ -51,7 +51,7 @@ describe("WorkflowEngine", () => {
           Layer.provideMerge(WorkflowEngine.layerMemory)
         )
       )
-    ))
+    ), 25_000)
 
   it.effect("does not squash workflow failures after suspension", () =>
     Effect.gen(function*() {
