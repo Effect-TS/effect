@@ -62,6 +62,32 @@ describe("Config", () => {
       assert.deepStrictEqual(result, { STRING: "value" })
     }))
 
+  it.effect("preserves provider defects at the root and in nested fields", () =>
+    Effect.gen(function*() {
+      const defect = new Error("provider defect")
+      for (const failedPath of ["settings", "settings.value"]) {
+        const provider = ConfigProvider.make((path) =>
+          Effect.suspend(() =>
+            path.join(".") === failedPath
+              ? Effect.die(defect)
+              : Effect.succeed(ConfigProvider.makeRecord(new Set(["value"])))
+          )
+        )
+        let recovered = false
+        const config = Config.schema(Schema.Struct({ value: Schema.String }), "settings").pipe(
+          Config.orElse(() => {
+            recovered = true
+            return Config.succeed({ value: "fallback" })
+          }),
+          Config.option
+        )
+        const result = yield* config.parse(provider).pipe(Effect.catchDefect(Effect.succeed))
+
+        assert.strictEqual(result, defect)
+        assert.strictEqual(recovered, false)
+      }
+    }))
+
   describe("constructors", () => {
     it("fail creates an always-failing config", async () => {
       await assertFailure(
@@ -308,6 +334,43 @@ describe("Config", () => {
       }))
 
     describe("all", () => {
+      it.effect("resolves empty groups without using a default", () =>
+        Effect.gen(function*() {
+          const provider = ConfigProvider.fromUnknown({})
+          assert.deepStrictEqual(yield* Config.all([]).pipe(Config.withDefault("fallback")).parse(provider), [])
+          assert.deepStrictEqual(yield* Config.all({}).pipe(Config.withDefault("fallback")).parse(provider), {})
+          assert.deepStrictEqual(
+            yield* Config.all(new Set<Config.Config<string>>()).pipe(Config.withDefault("fallback")).parse(provider),
+            []
+          )
+        }))
+
+      it.effect("preserves Result values as configuration data", () =>
+        Effect.gen(function*() {
+          const value = Result.fail("data")
+          const config = Config.all([
+            Config.succeed(value),
+            Config.succeed(value).pipe(Config.map((value) => value)),
+            Config.succeed(value).pipe(Config.mapEffect(Effect.succeed))
+          ]).pipe(Config.option)
+
+          assert.deepStrictEqual(
+            yield* config.parse(ConfigProvider.fromUnknown({})),
+            Option.some([value, value, value])
+          )
+        }))
+
+      it.effect("preserves special record keys without changing the prototype", () =>
+        Effect.gen(function*() {
+          const result = yield* Config.all({
+            ["__proto__"]: Config.succeed("value"),
+            constructor: Config.succeed(undefined)
+          }).parse(ConfigProvider.fromUnknown({}))
+
+          assert.deepStrictEqual(result, { ["__proto__"]: "value", constructor: undefined })
+          assert.strictEqual(Object.getPrototypeOf(result), Object.prototype)
+        }))
+
       it("combines tuple inputs and preserves positions", async () => {
         const config = Config.all([Config.NonEmptyString("a"), Config.Finite("b")])
 

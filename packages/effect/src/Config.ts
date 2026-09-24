@@ -17,6 +17,7 @@ import * as LogLevel_ from "./LogLevel.ts"
 import * as Option from "./Option.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Rec from "./Record.ts"
+import * as Result from "./Result.ts"
 import * as Schema from "./Schema.ts"
 import * as SchemaAST from "./SchemaAST.ts"
 import * as SchemaGetter from "./SchemaGetter.ts"
@@ -109,19 +110,9 @@ export interface Config<out T> extends Effect.Effect<T, ConfigError> {
   readonly parse: (provider: ConfigProvider.ConfigProvider) => Effect.Effect<T, ConfigError>
 }
 
-// Keep absence separate from failures until parsing so defaults and optional
-// configs can recover it. Successful values, including undefined, stay resolved.
-interface Resolved<out T> {
-  readonly _tag: "Resolved"
-  readonly value: T
-}
-
-interface Absent {
-  readonly _tag: "Absent"
-  readonly error: ConfigError
-}
-
-type Resolution<T> = Resolved<T> | Absent
+// Result failure represents recoverable absence; Effect failure represents an
+// invalid value or a source error. Keep them separate until parsing completes.
+type Resolution<T> = Result.Result<T, ConfigError>
 
 type Evaluator<T> = (
   provider: ConfigProvider.ConfigProvider,
@@ -153,11 +144,7 @@ function make<T>(
   const self = Object.create(Proto)
   self.evaluator = evaluator
   self.parse = (provider: ConfigProvider.ConfigProvider) =>
-    evaluator(provider, []).pipe(
-      Effect.flatMapEager((resolution) =>
-        resolution._tag === "Resolved" ? Effect.succeed(resolution.value) : Effect.fail(resolution.error)
-      )
-    )
+    Effect.flatMapEager(evaluator(provider, []), Effect.fromResult)
   return self
 }
 
@@ -166,29 +153,6 @@ const evaluateAt = <T>(
   provider: ConfigProvider.ConfigProvider,
   pathPrefix: Path
 ): Effect.Effect<Resolution<T>, ConfigError> => (self as ConfigImpl<T>).evaluator(provider, pathPrefix)
-
-const resolved = <T>(value: T): Resolution<T> => ({
-  _tag: "Resolved",
-  value
-})
-
-const absent = (error: ConfigError): Absent => ({
-  _tag: "Absent",
-  error
-})
-
-const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate.isTagged(u, "SourceError")
-
-const catchSourceError = <A, E, R>(
-  self: Effect.Effect<A, E, R>
-): Effect.Effect<A, E | ConfigError, R> =>
-  self.pipe(
-    Effect.catchDefect((defect) =>
-      isSourceError(defect)
-        ? Effect.fail(new ConfigError(defect))
-        : Effect.die(defect)
-    )
-  )
 
 /**
  * Transforms the parsed value of a config with a pure function.
@@ -220,12 +184,7 @@ export const map: {
   <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
   <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
 } = dual(2, <A, B>(self: Config<A>, f: (a: A) => B): Config<B> => {
-  return make((provider, pathPrefix) =>
-    Effect.map(evaluateAt(self, provider, pathPrefix), (resolution) =>
-      resolution._tag === "Resolved"
-        ? resolved(f(resolution.value))
-        : resolution)
-  )
+  return make((provider, pathPrefix) => Effect.map(evaluateAt(self, provider, pathPrefix), Result.map(f)))
 })
 
 /**
@@ -258,10 +217,13 @@ export const mapEffect: {
   <A, B>(self: Config<A>, f: (a: A) => Effect.Effect<B, ConfigError>): Config<B>
 } = dual(2, <A, B>(self: Config<A>, f: (a: A) => Effect.Effect<B, ConfigError>): Config<B> => {
   return make((provider, pathPrefix) =>
-    Effect.flatMap(evaluateAt(self, provider, pathPrefix), (resolution) =>
-      resolution._tag === "Resolved"
-        ? Effect.mapEager(f(resolution.value), resolved)
-        : Effect.succeed(resolution))
+    Effect.flatMap(
+      evaluateAt(self, provider, pathPrefix),
+      (resolution): Effect.Effect<Resolution<B>, ConfigError> =>
+        Result.isSuccess(resolution)
+          ? Effect.mapEager(f(resolution.success), Result.succeed)
+          : Effect.succeed(Result.fail(resolution.failure))
+    )
   )
 })
 
@@ -314,8 +276,8 @@ export const orElse: {
     Effect.matchEffect(evaluateAt(self, provider, pathPrefix), {
       onFailure: (error) => evaluateAt(that(error), provider, pathPrefix),
       onSuccess: (resolution): Effect.Effect<Resolution<A | A2>, ConfigError> =>
-        resolution._tag === "Absent"
-          ? evaluateAt(that(resolution.error), provider, pathPrefix)
+        Result.isFailure(resolution)
+          ? evaluateAt(that(resolution.failure), provider, pathPrefix)
           : Effect.succeed(resolution)
     })
   )
@@ -380,48 +342,17 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
     : Symbol.iterator in arg
     ? [...arg as any]
     : arg
-  if (globalThis.Array.isArray(configs)) {
-    return make((provider, pathPrefix) =>
-      Effect.mapEager(
+  return make<any>((provider, pathPrefix) =>
+    globalThis.Array.isArray(configs)
+      ? Effect.mapEager(
         Effect.all(configs.map((config) => evaluateAt(config, provider, pathPrefix))),
-        resolveArray
+        Result.all
       )
-    ) as any
-  } else {
-    return make((provider, pathPrefix) =>
-      Effect.mapEager(
+      : Effect.mapEager(
         Effect.all(Rec.map(configs, (config) => evaluateAt(config, provider, pathPrefix))),
-        resolveRecord
+        Result.all
       )
-    ) as any
-  }
-}
-
-const resolveArray = (
-  resolutions: ReadonlyArray<Resolution<any>>
-): Resolution<Array<any>> => {
-  const values: Array<any> = []
-  for (const resolution of resolutions) {
-    if (resolution._tag === "Absent") {
-      return resolution
-    }
-    values.push(resolution.value)
-  }
-  return resolved(values)
-}
-
-const resolveRecord = (
-  resolutions: Record<string, Resolution<any>>
-): Resolution<Record<string, any>> => {
-  const values: Record<string, any> = {}
-  for (const key in resolutions) {
-    const resolution = resolutions[key]
-    if (resolution._tag === "Absent") {
-      return resolution
-    }
-    InternalRecord.assignProperty(values, key, resolution.value)
-  }
-  return resolved(values)
+  ) as any
 }
 
 /**
@@ -466,7 +397,7 @@ export const withDefault: {
   return make<A | A2>((provider, pathPrefix) =>
     Effect.mapEager(
       evaluateAt(self, provider, pathPrefix),
-      (resolution) => resolution._tag === "Absent" ? resolved(defaultValue) : resolution
+      (resolution) => Result.isFailure(resolution) ? Result.succeed(defaultValue) : resolution
     )
   )
 })
@@ -602,6 +533,8 @@ interface ConfigCursor {
   readonly toString: () => string
 }
 
+const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate.isTagged(u, "SourceError")
+
 const cursorToString = (): string => "<configuration>"
 
 const loadCursor: (
@@ -615,8 +548,6 @@ const loadCursor: (
 
 const loadChildCursor = (cursor: ConfigCursor, segment: string | number): Effect.Effect<ConfigCursor> =>
   loadCursor(cursor.provider, [...cursor.path, segment])
-
-const getScalar = (node: ConfigProvider.Node | undefined): string | undefined => node?.value
 
 const decodeFromCursor = (
   ast: SchemaAST.AST,
@@ -658,7 +589,7 @@ const hasProviderInput = (
     case "Suspend":
       return hasProviderInput(ast.thunk(), node)
     default:
-      return getScalar(node) !== undefined
+      return node?.value !== undefined
   }
 }
 
@@ -709,9 +640,8 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
         for (const member of ast.types) {
           recur(member)
         }
-        return isScalarInput(ast)
-          ? decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
-          : ast.recur(recur)
+        if (!isScalarInput(ast)) return ast.recur(recur)
+        break
       case "Suspend": {
         const target = ast.thunk()
         // Force new branches so opaque encodings fail when the Config is constructed.
@@ -721,9 +651,8 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
       case "Declaration":
       case "Any":
         throw new globalThis.Error("Config.schema does not support opaque StringTree encodings", { cause: ast })
-      default:
-        return decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
     }
+    return decodeFromCursor(ast, (cursor) => Effect.succeed(cursor.node?.value))
   })
   return recur(root)
 })
@@ -818,22 +747,21 @@ export function schema<T>(codec: Schema.ConstraintCodec<T, unknown>, path?: stri
   const localPath = typeof path === "string" ? [path] : path ?? []
   return make((provider, pathPrefix) => {
     const fullPath = [...pathPrefix, ...localPath]
-    return catchSourceError(loadCursor(provider, fullPath)).pipe(
-      Effect.flatMapEager((cursor) => {
-        return catchSourceError(
-          decodeCursor(cursor).pipe(
-            Effect.mapEager(resolved),
-            Effect.catchEager((issue) => {
-              const error = new ConfigError(
-                new Schema.SchemaError(fullPath.length > 0 ? new SchemaIssue.Pointer(fullPath, issue) : issue)
-              )
-              return hasProviderInput(encodedAst, cursor.node)
-                ? Effect.fail(error)
-                : Effect.succeed(absent(error))
-            })
-          )
+    return loadCursor(provider, fullPath).pipe(
+      Effect.flatMapEager((cursor) =>
+        decodeCursor(cursor).pipe(
+          Effect.mapEager(Result.succeed),
+          Effect.catchEager((issue) => {
+            const error = new ConfigError(
+              new Schema.SchemaError(fullPath.length > 0 ? new SchemaIssue.Pointer(fullPath, issue) : issue)
+            )
+            return hasProviderInput(encodedAst, cursor.node)
+              ? Effect.fail(error)
+              : Effect.succeed(Result.fail(error))
+          })
         )
-      })
+      ),
+      Effect.catchDefect((defect) => isSourceError(defect) ? Effect.fail(new ConfigError(defect)) : Effect.die(defect))
     )
   })
 }
@@ -897,7 +825,7 @@ export function fail(err: SourceError | Schema.SchemaError): Config<never> {
  * @since 2.0.0
  */
 export function succeed<T>(value: T) {
-  return make(() => Effect.succeed(resolved(value)))
+  return make(() => Effect.succeed(Result.succeed(value)))
 }
 
 /**
