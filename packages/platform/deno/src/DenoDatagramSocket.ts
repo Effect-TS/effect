@@ -104,15 +104,13 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Context from "effect/Context"
+import * as Shared from "@effect/platform-node-shared/NodeDatagramSocket"
 import * as Effect from "effect/Effect"
 import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
-import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
-import * as Dns from "node:dns"
 
 /**
  * An endpoint given in open-time options.
@@ -196,12 +194,7 @@ export type AdoptOptions = Pick<Options, "peer" | "receiveBuffer" | "onError">
  * @since 4.0.0
  */
 export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  Effect.sync(() =>
-    DatagramSocket.fromNativeHandle((events) => open(options, events), {
-      ...options.receiveBuffer,
-      onError: options.onError
-    })
-  )
+  Shared.makeWith(options, open)
 
 /**
  * Adopts a `Deno.DatagramConn`.
@@ -221,18 +214,7 @@ export const fromDatagramConn = <R>(
   acquire: Effect.Effect<Deno.DatagramConn, DatagramSocket.DatagramSocketError, R>,
   options: AdoptOptions = {}
 ): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  Effect.map(Effect.context<Exclude<R, Scope.Scope>>(), (services) =>
-    DatagramSocket.fromNativeHandle(
-      (events) =>
-        acquire.pipe(
-          // the reader's scope replaces the caller's
-          Effect.updateContext((input: Context.Context<Scope.Scope>) =>
-            Context.merge(services, input) as Context.Context<R>
-          ),
-          Effect.flatMap((conn) => adopt(conn, options, events))
-        ) as Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError, Scope.Scope>,
-      { ...options.receiveBuffer, onError: options.onError }
-    ))
+  Shared.adoptWith(acquire, options, adopt)
 
 /**
  * Provides a `DatagramSocket` built with `make`.
@@ -248,77 +230,16 @@ export const layer = (options: Options = {}): Layer.Layer<DatagramSocket.Datagra
 // internal
 // -----------------------------------------------------------------------------
 
-type Family = "ipv4" | "ipv6"
-
-interface Resolved {
-  readonly host: string
-  readonly family: Family
-}
-
 interface DenoError {
   readonly name?: unknown
   readonly code?: unknown
 }
 
-const familyOfLiteral = (address: string | NetAddress.IpAddress): Family | undefined => {
-  if (typeof address !== "string") return NetAddress.isIpv4Address(address) ? "ipv4" : "ipv6"
-  // hostnames never contain `:`, and an IPv6 literal may carry a zone
-  if (address.includes(":")) return "ipv6"
-  return Result.isSuccess(NetAddress.ipFromString(address)) ? "ipv4" : undefined
-}
-
-// `endpoint` may be a whole `InetAddress`, whose IPv6 scope must survive
-const formatEndpoint = (endpoint: { readonly address?: string | NetAddress.IpAddress | undefined }) =>
-  NetAddress.isInetAddress(endpoint)
-    ? NetAddress.formatHost(endpoint)
-    : endpoint.address === undefined || typeof endpoint.address === "string"
-    ? endpoint.address
-    : NetAddress.formatIp(endpoint.address)
-
-// Resolve through the system resolver once, preferring IPv4 unless the family
-// is fixed. IP literals answer without a lookup.
-const resolve = async (address: string, family: Family | undefined): Promise<Resolved> => {
-  const literal = familyOfLiteral(address)
-  if (literal !== undefined) return { host: address, family: literal }
-  return new Promise((resolve, reject) => {
-    try {
-      Dns.lookup(
-        address,
-        { all: true, family: family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0 },
-        (error, results) => {
-          if (error) return reject(error)
-          const result = results.find((result) => result.family === 4) ?? results[0]
-          if (result === undefined) return reject(new Error(`${address} has no addresses`))
-          resolve({ host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" })
-        }
-      )
-    } catch (error) {
-      reject(error)
-    }
-  })
-}
-
 const openError = (
   error: unknown,
   kind?: DatagramSocket.DatagramSocketOpenError["kind"]
-): DatagramSocket.DatagramSocketError => {
-  const denoError = error as DenoError
-  if (denoError?.name === "NotCapable") {
-    kind = "PermissionDenied"
-  } else if (kind === undefined) {
-    const code = denoError?.code
-    kind = code === "EADDRINUSE"
-      ? "AddressInUse"
-      : code === "EADDRNOTAVAIL"
-      ? "AddressNotAvailable"
-      : code === "EACCES" || code === "EPERM"
-      ? "PermissionDenied"
-      : "Unknown"
-  }
-  return new DatagramSocket.DatagramSocketError({
-    reason: new DatagramSocket.DatagramSocketOpenError({ kind, cause: error })
-  })
-}
+): DatagramSocket.DatagramSocketError =>
+  Shared.openError(error, (error as DenoError)?.name === "NotCapable" ? "PermissionDenied" : kind)
 
 // DNS lookup reports a missing Deno net permission as EPERM, not NotCapable.
 const lookupOpenError = (error: unknown) => {
@@ -331,23 +252,12 @@ const unsupportedError = (capability: string) =>
     reason: new DatagramSocket.DatagramSocketUnsupportedError({ capability, runtime: "Deno" })
   })
 
+// Node's errno kinds, then Deno's error names
 const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
+  const kind = Shared.ioKind(error)
+  if (kind !== "Unknown") return kind
   const denoError = error as DenoError
-  switch (denoError?.code) {
-    case "EMSGSIZE":
-      return "MessageTooLarge"
-    case "EHOSTUNREACH":
-    case "ENETUNREACH":
-    case "EHOSTDOWN":
-    case "ENETDOWN":
-      return "Unreachable"
-    case "ECONNREFUSED":
-    case "ECONNRESET":
-      return "ConnectionRefused"
-    case "EACCES":
-    case "EPERM":
-      return "PermissionDenied"
-  }
+  if (denoError?.code === "ECONNRESET") return "ConnectionRefused"
   switch (denoError?.name) {
     case "NotCapable":
     case "PermissionDenied":
@@ -360,23 +270,13 @@ const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
   }
 }
 
-const isDatagramSocketError = (error: unknown): error is DatagramSocket.DatagramSocketError =>
-  typeof error === "object" && error !== null && DatagramSocket.DatagramSocketErrorTypeId in error
-
-const closedError = () =>
-  new DatagramSocket.DatagramSocketError({ reason: new DatagramSocket.DatagramSocketClosedError() })
-
 const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
-  (error as DenoError)?.name === "BadResource"
-    ? closedError()
-    : new DatagramSocket.DatagramSocketError({
-      reason: new DatagramSocket.DatagramSocketWriteError({ kind: ioKind(error), cause: error })
-    })
+  (error as DenoError)?.name === "BadResource" ? Shared.closedError() : Shared.ioWriteError(error, ioKind(error))
 
-const readError = (error: unknown): DatagramSocket.DatagramSocketError =>
-  new DatagramSocket.DatagramSocketError({
-    reason: new DatagramSocket.DatagramSocketReadError({ kind: ioKind(error), cause: error })
-  })
+const readError = (error: unknown): DatagramSocket.DatagramSocketError => Shared.readError(error, ioKind(error))
+
+// Deno has no interface names to map, so IPv6 zones stay numeric
+const noScopeIds = () => Shared.noScopeIds
 
 const open = (
   options: Options,
@@ -387,74 +287,41 @@ const open = (
     ? Effect.fail(unsupportedError(
       `UDP sockets without --unstable-net (pass --unstable-net or add "net" to "unstable" in deno.json)`
     ))
+    // `lookup` can't be cancelled, and core never interrupts `open`
     : Effect.callback((resume) => {
-      openAsync(options, events).then(
-        (handle) => resume(Effect.succeed(handle)),
-        (error) => resume(Effect.fail(isDatagramSocketError(error) ? error : openError(error)))
+      Shared.planOpen(
+        { family: options.family, bind: options.bind, remote: options.peer },
+        noScopeIds,
+        (error) => resume(Effect.fail(lookupOpenError(error))),
+        (plan) => {
+          let conn: Deno.DatagramConn
+          try {
+            conn = Deno.listenDatagram({
+              transport: "udp",
+              hostname: plan.bindHost,
+              port: options.bind?.port ?? 0,
+              reuseAddress: options.reuseAddress ?? false,
+              loopback: options.multicast?.loopback ?? false
+            })
+          } catch (error) {
+            return resume(Effect.fail(openError(error)))
+          }
+          resume(Effect.succeed(new NativeConn(conn, events).open(plan.remote)))
+        }
       )
     })
-
-const lookup = async (
-  address: string | NetAddress.IpAddress | undefined,
-  family: Family | undefined
-): Promise<Resolved | undefined> => {
-  if (typeof address !== "string") return undefined
-  try {
-    return await resolve(address, family)
-  } catch (error) {
-    throw lookupOpenError(error)
-  }
-}
-
-// `lookup` can't be cancelled, and core never interrupts `open`
-const openAsync = async (
-  options: Options,
-  events: DatagramSocket.NativeEvents
-): Promise<DatagramSocket.NativeHandle> => {
-  const peer = options.peer
-  const fixed = options.family ??
-    (options.bind?.address === undefined ? undefined : familyOfLiteral(options.bind.address))
-  const resolvedPeer = await lookup(peer?.address, fixed)
-  const peerFamily = resolvedPeer?.family ?? (peer === undefined ? undefined : familyOfLiteral(peer.address))
-  const resolvedBind = await lookup(options.bind?.address, fixed ?? peerFamily)
-  const family = fixed ?? peerFamily ?? resolvedBind?.family ?? "ipv4"
-  const hostname = resolvedBind?.host ??
-    (options.bind === undefined ? undefined : formatEndpoint(options.bind)) ??
-    (family === "ipv6" ? "::" : "0.0.0.0")
-  let conn: Deno.DatagramConn
-  try {
-    conn = Deno.listenDatagram({
-      transport: "udp",
-      hostname,
-      port: options.bind?.port ?? 0,
-      reuseAddress: options.reuseAddress ?? false,
-      loopback: options.multicast?.loopback ?? false
-    })
-  } catch (error) {
-    throw openError(error)
-  }
-  return new NativeConn(conn, events).open(
-    peer === undefined ? undefined : { host: resolvedPeer?.host ?? formatEndpoint(peer)!, port: peer.port }
-  )
-}
 
 const adopt = (
   conn: Deno.DatagramConn,
   options: AdoptOptions,
   events: DatagramSocket.NativeEvents
-): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> => {
-  const peer = options.peer
-  if (peer === undefined || typeof peer.address !== "string") {
-    return Effect.sync(() =>
-      new NativeConn(conn, events).open(
-        peer === undefined ? undefined : { host: formatEndpoint(peer)!, port: peer.port }
-      )
-    )
-  }
-  return Effect.callback((resume) => {
-    const address = conn.addr as Deno.NetAddr
-    resolve(peer.address as string, address.hostname.includes(":") ? "ipv6" : "ipv4").then(
-      (resolved) => resume(Effect.succeed(new NativeConn(conn, events).open({ host: resolved.host, port: peer.port }))),
+): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
+  Effect.callback((resume) => {
+    const family: Shared.Family = (conn.addr as Deno.NetAddr).hostname.includes(":") ? "ipv6" : "ipv4"
+    Shared.resolvePeer(
+      options.peer,
+      family,
+      Shared.noScopeIds,
       (error) => {
         try {
           conn.close()
@@ -462,10 +329,10 @@ const adopt = (
           // already closed
         }
         resume(Effect.fail(lookupOpenError(error)))
-      }
+      },
+      (peer) => resume(Effect.succeed(new NativeConn(conn, events).open(peer)))
     )
   })
-}
 
 // One `receive` in flight at a time, since concurrent receives reorder packets
 const receiveBufferSize = 65536

@@ -563,7 +563,7 @@ export const fromNativeHandle = (
       // `open` may not be cancellable (Node's `lookup`), so it runs in its own
       // fiber and is never interrupted. Interruption only stops the wait, and
       // `abandon` closes a handle that arrives later.
-      const opening = yield* Effect.forkDetach(Scope.provide(open(state.events), scope), { startImmediately: true })
+      const opening = yield* Effect.forkDetach(Scope.provide(open(state), scope), { startImmediately: true })
       state.handle = yield* restore(Fiber.join(opening)).pipe(
         Effect.onError(() => Effect.sync(() => abandon(state, opening)))
       )
@@ -634,10 +634,11 @@ const isDatagramImpl = (value: NetAddress.InetAddress | OutgoingDatagram | undef
 const targetOf = (datagram: OutgoingDatagram): NetAddress.InetAddress | DatagramImpl | undefined =>
   isDatagramImpl(datagram) ? datagram : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
 
-class ReaderState {
+// Also the handle's `NativeEvents`, so a packet reaches `onPacket` directly
+class ReaderState implements NativeEvents {
   readonly capacity: number
   readonly sliding: boolean
-  readonly events: NativeEvents
+  readonly listener: ((error: DatagramSocketError) => void) | undefined
   readonly reader: Reader
   // queued packets, oldest first from `head`. `head` only moves under
   // "sliding" once the buffer is full, when it becomes a ring
@@ -658,22 +659,10 @@ class ReaderState {
   #lastTarget: NetAddress.InetAddress | undefined = undefined
   #lastDestination: NativeAddress | undefined = undefined
 
-  constructor(capacity: number, sliding: boolean, onError: ((error: DatagramSocketError) => void) | undefined) {
+  constructor(capacity: number, sliding: boolean, listener: ((error: DatagramSocketError) => void) | undefined) {
     this.capacity = capacity
     this.sliding = sliding
-    this.events = {
-      onPacket: (payload, host, port) => this.push(payload, host, port),
-      onReadError: (error) => this.fail(error),
-      onError: (error) => {
-        if (onError === undefined || this.closed) return
-        try {
-          onError(error)
-        } catch {
-          // listener failures are ignored
-        }
-      },
-      onClose: () => this.fail(closedError())
-    }
+    this.listener = listener
     this.reader = makeReader(this)
   }
 
@@ -683,14 +672,14 @@ class ReaderState {
   }
 
   get address(): NetAddress.InetAddress {
-    if (this.#address === undefined) {
-      const { host, port } = this.handle!.address
-      this.#address = NetAddress.inetAddressFromNativeUnsafe(host, port, this.scopeIds)
-    }
-    return this.#address
+    return this.#address ??= NetAddress.inetAddressFromNativeUnsafe(
+      this.handle!.address.host,
+      this.handle!.address.port,
+      this.scopeIds
+    )
   }
 
-  push(payload: Uint8Array, host: string, port: number) {
+  onPacket(payload: Uint8Array, host: string, port: number) {
     if (this.failure !== undefined) return
     // a parked pull implies an empty queue, so it never overflows
     if (this.buffer.length >= this.capacity) return this.overflow(payload, host, port)
@@ -747,15 +736,30 @@ class ReaderState {
     if (index !== -1) this.waiters.splice(index, 1)
   }
 
-  fail(error: DatagramSocketError) {
+  onReadError(error: DatagramSocketError) {
     if (this.failure !== undefined) return
     this.failure = Effect.fail(error)
-    this.failWaiters(this.failure)
+    this.failWaiters()
   }
 
-  failWaiters(failure: Effect.Effect<never, DatagramSocketError>) {
+  onClose() {
+    this.onReadError(closedError())
+  }
+
+  onError(error: DatagramSocketError) {
+    const listener = this.listener
+    if (listener === undefined || this.closed) return
+    try {
+      listener(error)
+    } catch {
+      // listener failures are ignored
+    }
+  }
+
+  failWaiters() {
     const waiter = this.waiter
     if (waiter === undefined) return
+    const failure = this.failure!
     const waiters = this.waiters
     this.waiter = undefined
     this.waiters = []
@@ -768,7 +772,7 @@ class ReaderState {
     this.buffer = []
     this.head = 0
     this.failure = Effect.fail(closedError())
-    this.failWaiters(this.failure)
+    this.failWaiters()
     this.handle?.close()
   }
 
@@ -781,7 +785,9 @@ class ReaderState {
     // a received datagram passed whole is echoed to its sender
     const target = targetOf(datagram)
     const destination = this.destination(target)
-    if (isDatagramSocketError(destination)) return Effect.fail(destination)
+    // `destination` only returns errors this module made, and `instanceof` is
+    // measurably cheaper than `isDatagramSocketError` per datagram
+    if (destination instanceof DatagramSocketError) return Effect.fail(destination)
     let result: Effect.Effect<void, DatagramSocketError> | undefined
     let parked = false
     this.handle!.send(encode(datagram.payload), destination, (error) => {
@@ -806,7 +812,7 @@ class ReaderState {
     for (let i = 0; i < datagrams.length; i++) {
       const datagram = datagrams[i]
       const destination = this.destination(targetOf(datagram))
-      if (isDatagramSocketError(destination)) return Effect.fail(destination)
+      if (destination instanceof DatagramSocketError) return Effect.fail(destination)
       payloads[i] = encode(datagram.payload)
       destinations[i] = destination
     }
@@ -831,8 +837,8 @@ class ReaderState {
   ): NativeAddress | undefined | DatagramSocketError {
     const handle = this.handle!
     if (target === undefined) {
-      if (handle.connected || handle.peer !== undefined) return handle.peer
-      return writeError("DatagramSocket write has no destination and the socket has no peer")
+      if (handle.connected) return undefined
+      return handle.peer ?? writeError("DatagramSocket write has no destination and the socket has no peer")
     }
     if (isDatagramImpl(target)) return handle.connected ? undefined : target
     if (handle.connected) return writeError("an explicit address cannot be used on a connected DatagramSocket", target)
