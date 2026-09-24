@@ -1429,6 +1429,14 @@ export const makeProtocolStdio = Effect.gen(function*() {
  * Provides a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
+ * **Gotchas**
+ *
+ * This layer is a module-level constant, and layers are memoized by reference
+ * within one layer graph. Providing it to several servers in the same graph
+ * yields one shared `Protocol` bound to the first `Stdio` that was built. To
+ * run more than one stdio server in a graph, wrap it in `Layer.fresh` or build
+ * a separate `Layer.effect(Protocol, makeProtocolStdio)` per server.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
