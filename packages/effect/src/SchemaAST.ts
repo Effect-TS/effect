@@ -4219,6 +4219,8 @@ export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annota
         id: "effect/schema/isPattern",
         payload
       },
+      // Keep the filter exportable so its JSON Schema annotations are preserved
+      // when the RegExp constraint itself is omitted.
       toJsonSchema: () => ({}),
       arbitraryConstraint: {
         patterns: [payload]
