@@ -20,10 +20,14 @@
  * a reader, or its writes wait forever. Every write waits for Deno's `send`
  * promise, so send errors fail the write that caused them.
  *
- * `writeAll` starts every send at once and waits for all of them. It fails
- * with the first send error; which of the other datagrams went out is
- * unspecified, nothing is resent, and the error carries the failed datagram's
- * `address`.
+ * `writeAll` sends one datagram at a time, waiting for each send to complete
+ * before starting the next. On failure it stops without sending the remaining
+ * datagrams; earlier sends are not rolled back or resent, and the error carries
+ * the failed datagram's `address`. Send order does not guarantee UDP arrival
+ * order.
+ *
+ * On Windows, ICMP connection resets or refusals reported by `receive` are
+ * passed to `onError` and reading continues.
  *
  * **Example** (Echo server)
  *
@@ -447,8 +451,6 @@ class NativeConn {
   readonly events: DatagramSocket.NativeEvents
   readonly buffer = new Uint8Array(receiveBufferSize)
   closing = false
-  // set once a send has completed, so the socket's write readiness is known
-  ready = false
   // the last destination, reused while consecutive sends share it
   lastAddr: Deno.NetAddr | undefined = undefined
 
@@ -508,28 +510,21 @@ class NativeConn {
     }
   }
 
-  // the batch from `start` goes out at once and resumes once every send settles
-  sendAll(
+  // Await each send before submitting the next, including on a warm socket.
+  async sendAll(
     payloads: ReadonlyArray<Uint8Array>,
     destinations: ReadonlyArray<DatagramSocket.NativeAddress | undefined>,
-    start: number,
     done: (error?: DatagramSocket.DatagramSocketError, index?: number) => void
   ) {
-    let remaining = payloads.length - start
-    let failure: DatagramSocket.DatagramSocketError | undefined
-    let failedAt: number | undefined
-    const report = () => {
-      if (--remaining === 0) done(failure, failedAt)
+    for (let i = 0; i < payloads.length; i++) {
+      try {
+        await this.send(payloads[i], destinations[i])
+      } catch (error) {
+        done(writeError(error), i)
+        return
+      }
     }
-    for (let i = start; i < payloads.length; i++) {
-      this.send(payloads[i], destinations[i]).then(report, (error) => {
-        if (failure === undefined) {
-          failure = writeError(error)
-          failedAt = i
-        }
-        report()
-      })
-    }
+    done()
   }
 
   open(peer: DatagramSocket.NativeAddress | undefined): DatagramSocket.NativeHandle {
@@ -541,21 +536,10 @@ class NativeConn {
       peer,
       connected: false,
       send: (payload, destination, done) => {
-        this.send(payload, destination).then(() => {
-          this.ready = true
-          done()
-        }, (error) => done(writeError(error)))
+        this.send(payload, destination).then(() => done(), (error) => done(writeError(error)))
       },
       sendMany: (payloads, destinations, done) => {
-        if (this.ready) return this.sendAll(payloads, destinations, 0, done)
-        // Until the socket's first writability event, Deno parks every send
-        // and completes concurrent ones in reverse order, so a fresh socket
-        // sends the first datagram on its own
-        this.send(payloads[0], destinations[0]).then(() => {
-          this.ready = true
-          if (payloads.length === 1) return done()
-          this.sendAll(payloads, destinations, 1, done)
-        }, (error) => done(writeError(error), 0))
+        void this.sendAll(payloads, destinations, done)
       },
       joinMulticast: ({ group, interface: ingress, source }) => {
         if (source !== undefined) return Effect.fail(unsupportedError("source-specific multicast"))
