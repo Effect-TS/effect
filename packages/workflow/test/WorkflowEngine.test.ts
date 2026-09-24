@@ -1,6 +1,7 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "@effect/workflow"
 import * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
@@ -26,11 +27,24 @@ describe("WorkflowEngine", () => {
   it.effect("nested workflows", () =>
     Effect.gen(function*() {
       const executionId = yield* ParentWorkflow.execute({ id: "parent-1" }, { discard: true })
+      const clockDeadline = Date.now() + 10_000
+
+      while (Chunk.isEmpty(yield* TestClock.sleeps())) {
+        assert.isBelow(Date.now(), clockDeadline, "Child workflow clock was not registered")
+        yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+      }
 
       yield* TestClock.adjust("1 hour")
 
-      expect(yield* ParentWorkflow.poll(executionId))
-        .toEqual(new Workflow.Complete({ exit: Exit.void }))
+      const completionDeadline = Date.now() + 10_000
+      let result = yield* ParentWorkflow.poll(executionId)
+      while (!(result instanceof Workflow.Complete)) {
+        assert.isBelow(Date.now(), completionDeadline, "Parent workflow did not complete")
+        yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+        result = yield* ParentWorkflow.poll(executionId)
+      }
+
+      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
     }).pipe(
       Effect.provide(
         Layer.mergeAll(ParentWorkflowLayer, ChildWorkflowLayer).pipe(
