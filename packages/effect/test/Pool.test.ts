@@ -366,6 +366,7 @@ describe("Pool", () => {
       })
       yield* Deferred.succeed(releaseFailure, undefined)
       deepStrictEqual(yield* Fiber.join(borrower), Exit.fail("connect"))
+      strictEqual(pool.state.usage, 0)
     }))
 
   it.effect("does not leak a failed acquisition when a healthy item returns during cleanup", () =>
