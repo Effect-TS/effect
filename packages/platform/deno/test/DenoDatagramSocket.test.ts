@@ -8,12 +8,29 @@ import { vi } from "vitest"
 
 // Keep calls outside vi.fn: concurrent tests can clear Vitest mock histories.
 const lookupCalls = vi.hoisted(() => [] as Array<string>)
+const familyCalls = vi.hoisted(() => [] as Array<{ hostname: string; family: number }>)
 
 vi.mock("node:dns", async (importOriginal) => {
   const original = await importOriginal<typeof Dns>()
   const lookup = vi.fn(original.lookup)
   lookup.mockImplementation((...args) => {
     lookupCalls.push(args[0])
+    const [hostname, options, callback] = args as unknown as [
+      string,
+      { family: number },
+      (error: null, results: Array<{ address: string; family: number }>) => void
+    ]
+    if (typeof hostname === "string" && hostname.startsWith("effect-datagram-")) {
+      const family = (options as { family: number }).family
+      familyCalls.push({ hostname, family })
+      const addresses = hostname.includes("v6-only")
+        ? [{ address: "::1", family: 6 }]
+        : [{ address: "127.0.0.1", family: 4 }, { address: "::1", family: 6 }]
+      queueMicrotask(() =>
+        Reflect.apply(callback, undefined, [null, addresses.filter((item) => !family || item.family === family)])
+      )
+      return
+    }
     Reflect.apply(original.lookup, original, args)
   })
   return { ...original, lookup, default: { ...original, lookup } }
@@ -88,6 +105,31 @@ const assertSequentialBatch = async (warm: boolean) => {
 }
 
 describe("DenoDatagramSocket", () => {
+  for (
+    const [name, bind, peer, family, expectedFamily] of [
+      ["v6-only", "effect-datagram-v6-only", undefined, undefined, 0],
+      ["peer-v6", "effect-datagram-dual-peer", "::1", undefined, 6],
+      ["explicit-v4", "effect-datagram-dual-v4", undefined, "ipv4", 4]
+    ] as const
+  ) {
+    it.effect(`resolves bind hostname family: ${name}`, () =>
+      bounded(Effect.gen(function*() {
+        const callsBefore = familyCalls.filter((call) => call.hostname === bind).length
+        const options = {
+          bind: { address: bind },
+          ...(peer && { peer: { address: peer, port: 12346 } }),
+          ...(family && { family })
+        }
+        const socket = yield* DenoDatagramSocket.make(options)
+        const reader = yield* socket.reader
+        assert.strictEqual(NetAddress.isInetAddressV6(reader.address), name !== "explicit-v4")
+        assert.deepStrictEqual(
+          familyCalls.filter((call) => call.hostname === bind).slice(callsBefore).map((call) => call.family),
+          [expectedFamily]
+        )
+      })))
+  }
+
   it.effect("binds port zero and reports the bound address", () =>
     bounded(Effect.gen(function*() {
       const socket = yield* DenoDatagramSocket.make({ bind: { address: host, port: 0 } })
