@@ -368,6 +368,47 @@ describe("Pool", () => {
       deepStrictEqual(yield* Fiber.join(borrower), Exit.fail("connect"))
     }))
 
+  it.effect("does not leak a failed acquisition when a healthy item returns during cleanup", () =>
+    Effect.gen(function*() {
+      const releaseFailure = yield* Deferred.make<void>()
+      const inFinalizer = yield* Deferred.make<void>()
+      const finishFinalizer = yield* Deferred.make<void>()
+      yield* Effect.addFinalizer(() => Deferred.succeed(finishFinalizer, undefined))
+      let attempts = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.suspend(() =>
+          ++attempts === 1 ? Effect.succeed("healthy") : Effect.gen(function*() {
+            yield* Effect.addFinalizer(() =>
+              Effect.andThen(Deferred.succeed(inFinalizer, undefined), Deferred.await(finishFinalizer))
+            )
+            yield* Deferred.await(releaseFailure)
+            return yield* Effect.fail("background")
+          })
+        ),
+        min: 0,
+        max: 2,
+        discardFailuresWhenIdle: true,
+        timeToLive: Duration.infinity
+      })
+      const owner = yield* Scope.make()
+      strictEqual(yield* Scope.provide(Pool.get(pool), owner), "healthy")
+      const waiter = yield* Effect.forkChild(Effect.exit(Effect.scoped(Pool.get(pool))), {
+        startImmediately: true
+      })
+      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
+        until: (size) => size === 1
+      })
+      yield* Deferred.succeed(releaseFailure, undefined)
+      yield* Deferred.await(inFinalizer)
+      // The failed acquisition is still being cleaned up when the healthy
+      // lease returns. A later borrower must never inherit its failure.
+      yield* Scope.close(owner, Exit.void)
+      deepStrictEqual(yield* Fiber.join(waiter), Exit.fail("background"))
+      deepStrictEqual(yield* Effect.exit(Pool.use(pool, Effect.succeed)), Exit.succeed("healthy"))
+      strictEqual(attempts, 2)
+      yield* Deferred.succeed(finishFinalizer, undefined)
+    }))
+
   it.effect("drops a failed acquisition when its waiter is cancelled during cleanup", () =>
     Effect.gen(function*() {
       const releaseFailure = yield* Deferred.make<void>()

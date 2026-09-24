@@ -40,7 +40,7 @@ const waitFor = (predicate: () => boolean) =>
 
 describe("PgPool failed startup", () => {
   it.live(
-    "retries a failed background acquisition rather than failing an unrelated checkout",
+    "discards a failed background acquisition rather than failing an unrelated checkout",
     () =>
       Effect.scoped(Effect.gen(function*() {
         let attempts = 0
