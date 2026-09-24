@@ -14,7 +14,10 @@ export const makeHttpHarness = Effect.fnUntraced(function*<A, E>(
   }
 ) {
   const appLayer = options?.routerLayer ? Layer.merge(serverLayer, options.routerLayer) : serverLayer
-  const { dispose, handler } = HttpRouter.toWebHandler(appLayer, { disableLogger: true })
+  const { dispose, handler } = HttpRouter.toWebHandler(
+    appLayer as Layer.Layer<never, E, HttpRouter.HttpRouter>,
+    { disableLogger: true }
+  )
   yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
   const responses: Array<Response> = []
   let sessionId: string | null = null

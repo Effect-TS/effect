@@ -5,20 +5,18 @@ import { describe, expect, it } from "tstyche"
 describe("HttpRouter", () => {
   describe("router ownership", () => {
     it("does not expose reusable router constructors", () => {
-      // @ts-expect-error Router creation belongs to the entrypoints
-      void HttpRouter.layer
-      // @ts-expect-error Router creation belongs to the entrypoints
-      void HttpRouter.make
+      expect<typeof HttpRouter>().type.not.toHaveProperty("layer")
+      expect<typeof HttpRouter>().type.not.toHaveProperty("make")
     })
 
     it("does not accept app layers that output HttpRouter", () => {
       const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
 
-      // @ts-expect-error The router must be owned by serve
+      // @ts-expect-error remove it from the app layer
       void HttpRouter.serve(app)
-      // @ts-expect-error The router must be owned by toWebHandler
+      // @ts-expect-error remove it from the app layer
       void HttpRouter.toWebHandler(app)
-      // @ts-expect-error The router must be owned by toHttpEffect
+      // @ts-expect-error remove it from the app layer
       void HttpRouter.toHttpEffect(app)
     })
   })
