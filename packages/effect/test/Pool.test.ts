@@ -108,7 +108,7 @@ describe("Pool", () => {
       strictEqual(pool.state.items.size, 2)
       const owner = yield* Scope.make()
       strictEqual(yield* Scope.provide(Pool.get(pool), owner), 1)
-      strictEqual(yield* Effect.scoped(Pool.get(pool)), 3)
+      strictEqual(yield* Pool.use(pool, Effect.succeed), 3)
       strictEqual(attempts, 3)
       yield* Scope.close(owner, Exit.void)
     }))
