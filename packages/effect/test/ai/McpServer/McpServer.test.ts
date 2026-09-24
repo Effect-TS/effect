@@ -1689,7 +1689,7 @@ describe("McpServer", () => {
         const exit = yield* McpServer.registerToolkit(toolkit).pipe(
           Effect.provideService(McpServer.McpServer, server),
           Effect.provide(toolkit.toLayer({
-            echo: ({ text }) => Effect.succeed(text),
+            echo: ({ text }: { readonly text: string }) => Effect.succeed(text),
             [invalid.name]: () => Effect.succeed("ok")
           } as any)),
           Effect.exit
