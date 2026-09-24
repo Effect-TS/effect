@@ -1328,7 +1328,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
 ): Layer.Layer<
-  A,
+  Exclude<A, HttpRouter>,
   Request.Without<E>,
   HttpServer.HttpServer | Exclude<Request.Without<R> | Exclude<HR, GlobalProvided>, HttpRouter>
 > => {
