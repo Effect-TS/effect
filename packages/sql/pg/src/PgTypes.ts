@@ -29,10 +29,10 @@
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
+import * as IpInterface from "effect/net/IpInterface"
+import * as IpNetwork from "effect/net/IpNetwork"
+import * as NetAddress from "effect/net/NetAddress"
 import * as Result from "effect/Result"
-import * as IpInterface from "effect/unstable/net/IpInterface"
-import * as IpNetwork from "effect/unstable/net/IpNetwork"
-import * as NetAddress from "effect/unstable/net/NetAddress"
 import type * as PgProtocol from "./PgProtocol.ts"
 import type { ValueSink } from "./PgProtocol.ts"
 

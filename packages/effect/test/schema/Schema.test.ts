@@ -651,6 +651,60 @@ Expected no excess property
           { a: "a" }
         )
       })
+
+      it("error ignores non-enumerable undeclared own properties without reading them", async () => {
+        const schema = Schema.Struct({
+          a: Schema.String
+        })
+        const asserts = new TestSchema.Asserts(schema)
+        const sym = Symbol("sym")
+        const input: Record<PropertyKey, unknown> = { a: "a" }
+        for (const key of ["stack", sym]) {
+          Object.defineProperty(input, key, {
+            get() {
+              throw new Error("Non-enumerable excess properties must not be read")
+            },
+            enumerable: false
+          })
+        }
+
+        for (const errors of ["first", "all"] as const) {
+          const parseOptions = { onExcessProperty: "error", errors } as const
+          await asserts.decoding({ parseOptions }).succeed(input, { a: "a" })
+          await asserts.encoding({ parseOptions }).succeed(input, { a: "a" })
+        }
+      })
+
+      it("error validates non-enumerable declared string and symbol properties", async () => {
+        for (const key of ["a", Symbol("a")]) {
+          const schema = Schema.Struct({ [key]: Schema.Number })
+          const input = Object.defineProperty({}, key, { value: 1, enumerable: false })
+          const invalid = Object.defineProperty({}, key, { value: "invalid", enumerable: false })
+          const asserts = new TestSchema.Asserts(schema)
+          const parseOptions = { onExcessProperty: "error" } as const
+          const message = `Expected number\n  at [${typeof key === "string" ? JSON.stringify(key) : String(key)}]`
+
+          await asserts.decoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.encoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.decoding({ parseOptions }).fail(invalid, message)
+          await asserts.encoding({ parseOptions }).fail(invalid, message)
+        }
+      })
+
+      it("error accepts Error internals in an open record", async () => {
+        const schema = Schema.Record(Schema.String, Schema.Number)
+        const asserts = new TestSchema.Asserts(schema)
+        const decoding = asserts.decoding({ parseOptions: { onExcessProperty: "error" } })
+        await decoding.succeed(new Error("boom"), {})
+        await asserts.encoding({ parseOptions: { onExcessProperty: "error" } }).succeed(new Error("boom"), {})
+      })
+
+      it("error encodes tagged errors carrying runtime internals", async () => {
+        class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.Number }) {}
+        const asserts = new TestSchema.Asserts(NotFound)
+        const encoding = asserts.encoding({ parseOptions: { onExcessProperty: "error" } })
+        await encoding.succeed(new NotFound({ id: 1 }), { _tag: "NotFound", id: 1 })
+      })
     })
 
     it("should corectly handle __proto__", async () => {
@@ -1239,7 +1293,7 @@ Expected no excess property
       it("multiple checks", async () => {
         const schema = Schema.String.check(
           Schema.isMinLength(3),
-          Schema.isIncludes("c")
+          Schema.isIncluding("c")
         )
         const asserts = new TestSchema.Asserts(schema)
 
@@ -1260,7 +1314,7 @@ Expected a string including "c"`
       it("aborting checks", async () => {
         const schema = Schema.String.check(
           Schema.isMinLength(2).abort(),
-          Schema.isIncludes("b")
+          Schema.isIncluding("b")
         )
         const asserts = new TestSchema.Asserts(schema)
 
@@ -1375,8 +1429,8 @@ Expected a string including "c"`
         }
       })
 
-      it("isStartsWith", async () => {
-        const schema = Schema.String.check(Schema.isStartsWith("a"))
+      it("isStartingWith", async () => {
+        const schema = Schema.String.check(Schema.isStartingWith("a"))
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
@@ -1394,8 +1448,8 @@ Expected a string including "c"`
         )
       })
 
-      it("isEndsWith", async () => {
-        const schema = Schema.String.check(Schema.isEndsWith("a"))
+      it("isEndingWith", async () => {
+        const schema = Schema.String.check(Schema.isEndingWith("a"))
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
@@ -1918,8 +1972,8 @@ Expected a value between -2147483648 and 2147483647`
         )
       })
 
-      it("isPropertiesLengthBetween", async () => {
-        const schema = Schema.Record(Schema.String, Schema.Number).check(Schema.isPropertiesLengthBetween(2, 2))
+      it("isBetweenProperties", async () => {
+        const schema = Schema.Record(Schema.String, Schema.Number).check(Schema.isBetweenProperties(2, 2))
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
@@ -1935,11 +1989,11 @@ Expected a value between -2147483648 and 2147483647`
         )
       })
 
-      it("isPropertiesLengthBetween with symbol keys", async () => {
+      it("isBetweenProperties with symbol keys", async () => {
         const sym1 = Symbol("test1")
         const sym2 = Symbol("test2")
         const schema = Schema.Record(Schema.Union([Schema.String, Schema.Symbol]), Schema.Number).check(
-          Schema.isPropertiesLengthBetween(2, 2)
+          Schema.isBetweenProperties(2, 2)
         )
         const asserts = new TestSchema.Asserts(schema)
 
@@ -4035,6 +4089,29 @@ Expected a value between -2147483648 and 2147483647`
       )
       await encoding.fail(null, "Expected object")
     })
+
+    for (const key of ["visible", Symbol("visible")]) {
+      it(`index signatures select only enumerable ${typeof key} properties`, async () => {
+        const input = { [key]: 1 }
+        const hidden = typeof key === "string" ? "hidden" : Symbol("hidden")
+        Object.defineProperty(input, hidden, {
+          get() {
+            throw new Error("Non-enumerable record entries must not be read")
+          },
+          enumerable: false
+        })
+        const schema = Schema.Record(typeof key === "string" ? Schema.String : Schema.Symbol, Schema.Number)
+        const asserts = new TestSchema.Asserts(schema)
+        const message = `Expected number\n  at [${typeof key === "string" ? JSON.stringify(key) : String(key)}]`
+
+        for (const parseOptions of [undefined, { onExcessProperty: "error" } as const]) {
+          await asserts.decoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.encoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.decoding({ parseOptions }).fail({ [key]: "invalid" }, message)
+          await asserts.encoding({ parseOptions }).fail({ [key]: "invalid" }, message)
+        }
+      })
+    }
 
     it("Record(Symbol.check, Number) should use the key checks to select keys", async () => {
       const a = Symbol.for("a")

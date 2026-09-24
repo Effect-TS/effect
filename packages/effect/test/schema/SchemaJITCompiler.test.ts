@@ -11,9 +11,9 @@ import {
   SchemaParser,
   SchemaTransformation
 } from "effect"
-import { SchemaCompiler } from "effect/unstable/schema"
+import { SchemaCompiler } from "effect/schema"
 // oxlint-disable-next-line no-unassigned-import
-import "effect/unstable/schema/SchemaJITCompiler/enable"
+import "effect/schema/SchemaJITCompiler/enable"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const schema = Schema.Struct({
@@ -174,7 +174,7 @@ describe("SchemaJITCompiler", () => {
     })
     strictEqual(SchemaParser.is(template)({ value: "prefix-a" }), false)
 
-    const record = Schema.Record(Schema.String.check(Schema.isStartsWith("x")), Schema.Number)
+    const record = Schema.Record(Schema.String.check(Schema.isStartingWith("x")), Schema.Number)
     const decode = SchemaParser.decodeUnknownSync(record)
     deepStrictEqual(decode({ x: 1, y: 2 }), { x: 1 })
     deepStrictEqual(decode({ x: 1, y: 2 }, { disableChecks: true }), { x: 1, y: 2 })

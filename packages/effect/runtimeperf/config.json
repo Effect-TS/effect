@@ -12,6 +12,113 @@
   },
   "suites": [
     {
+      "name": "schema-excess-properties",
+      "fixtures": [
+        {
+          "file": "suites/schema-excess-properties/fixtures/cases.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "interpreted",
+            "implementation": "effect",
+            "astTags": ["Objects", "String", "Number", "Boolean"],
+            "operation": "decode",
+            "path": "valid",
+            "size": 3
+          },
+          "cases": [
+            {
+              "name": "interpreted-struct-default",
+              "export": "interpretedStructDefault",
+              "scenario": "excess-struct-default"
+            },
+            {
+              "name": "jit-struct-default",
+              "export": "jitStructDefault",
+              "scenario": "excess-struct-default",
+              "family": "jit",
+              "implementation": "effect-jit"
+            },
+            {
+              "name": "interpreted-struct-strict",
+              "export": "interpretedStructStrict",
+              "scenario": "excess-struct-strict"
+            },
+            {
+              "name": "jit-struct-strict",
+              "export": "jitStructStrict",
+              "scenario": "excess-struct-strict",
+              "family": "jit",
+              "implementation": "effect-jit"
+            },
+            {
+              "name": "interpreted-extra-strict",
+              "export": "interpretedExtraStrict",
+              "scenario": "excess-extra-strict",
+              "path": "invalid",
+              "size": 4
+            },
+            {
+              "name": "jit-extra-strict",
+              "export": "jitExtraStrict",
+              "scenario": "excess-extra-strict",
+              "family": "jit",
+              "implementation": "effect-jit",
+              "path": "invalid",
+              "size": 4
+            },
+            {
+              "name": "interpreted-strings-strict",
+              "export": "interpretedStringsStrict",
+              "scenario": "excess-strings-strict",
+              "astTags": ["Objects", "String", "Number"],
+              "size": 32
+            },
+            {
+              "name": "jit-strings-strict",
+              "export": "jitStringsStrict",
+              "scenario": "excess-strings-strict",
+              "family": "jit",
+              "implementation": "effect-jit",
+              "astTags": ["Objects", "String", "Number"],
+              "size": 32
+            },
+            {
+              "name": "interpreted-symbols-default",
+              "export": "interpretedSymbolsDefault",
+              "scenario": "excess-symbols-default",
+              "astTags": ["Objects", "Symbol", "Number"],
+              "size": 32
+            },
+            {
+              "name": "jit-symbols-default",
+              "export": "jitSymbolsDefault",
+              "scenario": "excess-symbols-default",
+              "family": "jit",
+              "implementation": "effect-jit",
+              "astTags": ["Objects", "Symbol", "Number"],
+              "size": 32
+            },
+            {
+              "name": "interpreted-symbols-strict",
+              "export": "interpretedSymbolsStrict",
+              "scenario": "excess-symbols-strict",
+              "astTags": ["Objects", "Symbol", "Number"],
+              "size": 32
+            },
+            {
+              "name": "jit-symbols-strict",
+              "export": "jitSymbolsStrict",
+              "scenario": "excess-symbols-strict",
+              "family": "jit",
+              "implementation": "effect-jit",
+              "astTags": ["Objects", "Symbol", "Number"],
+              "size": 32
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "arbitrary",
       "fixtures": [
         {

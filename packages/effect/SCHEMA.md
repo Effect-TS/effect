@@ -70,12 +70,12 @@ means that the library does not provide that benchmark.
 Enable JIT compilation at application startup with a side-effect import:
 
 ```ts
-import "effect/unstable/schema/SchemaJITCompiler/enable"
+import "effect/schema/SchemaJITCompiler/enable"
 ```
 
 Alternatively, `SchemaJITCompiler.enable(schema.ast)` enables one AST and the
 dependencies reached while parsing it. Importing `SchemaJITCompiler` or the
-`unstable/schema` barrel alone does not enable compilation. Operations are
+`schema` barrel alone does not enable compilation. Operations are
 prepared on first use. If dynamic function construction is blocked or compilation
 fails, the interpreter remains available. Exceptions from executing a parser are
 not treated as compilation failures and do not trigger a retry.
@@ -101,12 +101,12 @@ The low-level installation trusts the supplied root order and AST definitions.
 Target `SchemaAST.toType(schema.ast)` with `is` or `make` for guards and
 construction. Target `SchemaAST.flip(schema.ast)` with `decode` for encoding.
 
-`effect/unstable/schema/SchemaAOTCompiler/Build` provides the higher-level
+`effect/schema/SchemaAOTCompiler/Build` provides the higher-level
 workflow. Its `build` function loads direct Schema exports, writes a
 self-installing module through `FileSystem`, and prepares decoding by default:
 
 ```ts
-import * as SchemaAOTCompilerBuild from "effect/unstable/schema/SchemaAOTCompiler/Build"
+import * as SchemaAOTCompilerBuild from "effect/schema/SchemaAOTCompiler/Build"
 
 SchemaAOTCompilerBuild.build({
   modules: {
@@ -302,11 +302,11 @@ import { Schema } from "effect"
 
 Schema.String.check(Schema.isMaxLength(5))
 Schema.String.check(Schema.isMinLength(5))
-Schema.String.check(Schema.isLengthBetween(5, 5))
+Schema.String.check(Schema.isBetweenLength(5, 5))
 Schema.String.check(Schema.isPattern(/^[a-z]+$/))
-Schema.String.check(Schema.isStartsWith("aaa"))
-Schema.String.check(Schema.isEndsWith("zzz"))
-Schema.String.check(Schema.isIncludes("---"))
+Schema.String.check(Schema.isStartingWith("aaa"))
+Schema.String.check(Schema.isEndingWith("zzz"))
+Schema.String.check(Schema.isIncluding("---"))
 Schema.String.check(Schema.isUppercased())
 Schema.String.check(Schema.isLowercased())
 ```

@@ -935,7 +935,7 @@ const isPath = (u: unknown): u is string | Path => Predicate.isString(u) || glob
  * @category constructors
  * @since 2.0.0
  */
-export function fail(err: SourceError | Schema.SchemaError) {
+export function fail(err: SourceError | Schema.SchemaError): Config<never> {
   return make(() => Effect.fail(evaluationFailure(new ConfigError(err), false)))
 }
 

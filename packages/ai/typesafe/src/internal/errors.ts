@@ -1,12 +1,12 @@
+import * as AiError from "effect/ai/AiError"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import type * as HttpClientError from "effect/http/HttpClientError"
+import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
-import * as AiError from "effect/unstable/ai/AiError"
-import type * as HttpClientError from "effect/unstable/http/HttpClientError"
-import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 
 const requestDetails = (request: HttpClientRequest.HttpClientRequest) => ({
   method: request.method,

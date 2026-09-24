@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ConfigProvider, Effect, Option } from "effect"
-import { RunnerAddress, ShardingConfig } from "effect/unstable/cluster"
+import { RunnerAddress, ShardingConfig } from "effect/cluster"
 
 describe("ShardingConfig", () => {
   it.effect("bounds runner residency and storage reads by default", () =>

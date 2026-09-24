@@ -2,7 +2,6 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Cause, Duration, Effect, Exit, FileSystem, Latch, Layer, Schedule } from "effect"
-import { TestClock } from "effect/testing"
 import {
   ClusterError,
   Runner,
@@ -11,8 +10,9 @@ import {
   ShardId,
   ShardingConfig,
   SqlRunnerStorage
-} from "effect/unstable/cluster"
-import { SqlClient, type SqlConnection, SqlError } from "effect/unstable/sql"
+} from "effect/cluster"
+import { SqlClient, type SqlConnection, SqlError } from "effect/sql"
+import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 

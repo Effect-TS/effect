@@ -20,11 +20,10 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
 import {
   AuthenticationError,
   AuthorizationError,
@@ -33,8 +32,9 @@ import {
   SqlSyntaxError,
   StatementTimeoutError,
   UnknownError
-} from "effect/unstable/sql/SqlError"
-import * as Statement from "effect/unstable/sql/Statement"
+} from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
+import * as Stream from "effect/Stream"
 import * as Crypto from "node:crypto"
 import type { Readable } from "node:stream"
 
@@ -116,6 +116,7 @@ export interface ClickhouseClient extends Client.SqlClient {
     readonly table: string
     readonly values: Clickhouse.InsertValues<Readable, T>
     readonly format?: Clickhouse.DataFormat
+    readonly columns?: NonNullable<Clickhouse.InsertParams<Readable, T>["columns"]>
   }) => Effect.Effect<Clickhouse.InsertResult, SqlError>
   readonly withQueryId: {
     (queryId: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
@@ -367,6 +368,7 @@ export const make = (
           readonly table: string
           readonly values: Clickhouse.InsertValues<Readable, T>
           readonly format?: Clickhouse.DataFormat
+          readonly columns?: NonNullable<Clickhouse.InsertParams<Readable, T>["columns"]>
         }) {
           return Effect.callback<Clickhouse.InsertResult, SqlError>((resume) => {
             const fiber = Fiber.getCurrent()!

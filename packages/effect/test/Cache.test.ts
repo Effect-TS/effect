@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cache, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Latch, MutableHashMap, Option } from "effect"
+import { Persistable, PersistedCache, Persistence } from "effect/persistence"
 import { TestClock } from "effect/testing"
-import { Persistable, PersistedCache, Persistence } from "effect/unstable/persistence"
 
 describe("Cache", () => {
   describe("constructors", () => {
@@ -337,6 +337,35 @@ describe("Cache", () => {
 
           assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(42))
           assert.deepStrictEqual(yield* Fiber.await(third), Exit.succeed(42))
+        }))
+
+      it.effect("interrupting a getOption waiter keeps the shared lookup available", () =>
+        Effect.gen(function*() {
+          const started = yield* Latch.make()
+          const finish = yield* Latch.make()
+          let lookups = 0
+          const cache = yield* Cache.make<string, number>({
+            capacity: 10,
+            lookup: () =>
+              Effect.gen(function*() {
+                lookups++
+                yield* started.open
+                yield* finish.await
+                return 42
+              })
+          })
+
+          const first = yield* Cache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* started.await
+          const waiter = yield* Cache.getOption(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          const second = yield* Cache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Fiber.interrupt(waiter)
+          yield* finish.open
+
+          assert.deepStrictEqual(yield* Fiber.await(first), Exit.succeed(42))
+          assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(42))
+          assert.deepStrictEqual(yield* Cache.getOption(cache, "key"), Option.some(42))
+          assert.strictEqual(lookups, 1)
         }))
 
       it.effect("concurrent access - interrupting the last consumer interrupts the lookup", () =>

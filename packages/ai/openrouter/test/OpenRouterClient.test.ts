@@ -2,7 +2,7 @@ import { OpenRouterClient } from "@effect/ai-openrouter"
 import * as Errors from "@effect/ai-openrouter/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Context, Effect, Exit, Layer, Option, Redacted, type Schema } from "effect"
-import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterClient", () => {
   it.effect("rejects unserializable bigint decision state with a typed error before making an HTTP call", () =>

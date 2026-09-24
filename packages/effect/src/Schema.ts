@@ -23,7 +23,7 @@ import * as DateTime from "./DateTime.ts"
 import type { Differ } from "./Differ.ts"
 import * as Duration_ from "./Duration.ts"
 import * as Effect from "./Effect.ts"
-import * as Encoding from "./Encoding.ts"
+import * as Base64 from "./encoding/Base64.ts"
 import * as Equal from "./Equal.ts"
 import type * as Equivalence from "./Equivalence.ts"
 import * as Exit_ from "./Exit.ts"
@@ -33,6 +33,9 @@ import { identity } from "./Function.ts"
 import type * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
+import * as Cookies_ from "./http/Cookies.ts"
+import * as Headers_ from "./http/Headers.ts"
+import * as UrlParams_ from "./http/UrlParams.ts"
 import * as core from "./internal/core.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
@@ -52,6 +55,9 @@ import { isSchemaError as isSchemaErrorInternal, SchemaErrorTypeId } from "./int
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import type * as JsonPatch from "./JsonPatch.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
+import * as IpInterface_ from "./net/IpInterface.ts"
+import * as IpNetwork_ from "./net/IpNetwork.ts"
+import * as NetAddress_ from "./net/NetAddress.ts"
 import { remainder } from "./Number.ts"
 import type * as Optic_ from "./Optic.ts"
 import * as Option_ from "./Option.ts"
@@ -73,12 +79,6 @@ import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
-import * as Cookies_ from "./unstable/http/Cookies.ts"
-import * as Headers_ from "./unstable/http/Headers.ts"
-import * as UrlParams_ from "./unstable/http/UrlParams.ts"
-import * as IpInterface_ from "./unstable/net/IpInterface.ts"
-import * as IpNetwork_ from "./unstable/net/IpNetwork.ts"
-import * as NetAddress_ from "./unstable/net/NetAddress.ts"
 
 const TypeId = InternalMake.TypeId
 /**
@@ -4477,7 +4477,7 @@ export function withArrayLengthConstraints<Item extends Constraint>(
   maximum: number | undefined
 ): $Array<Item> {
   if (minimum !== undefined && maximum !== undefined) {
-    return self.check(isLengthBetween(minimum, maximum))
+    return self.check(isBetweenLength(minimum, maximum))
   }
   if (minimum !== undefined) return self.check(isMinLength(minimum))
   if (maximum !== undefined) return self.check(isMaxLength(maximum))
@@ -6864,7 +6864,7 @@ export function isBase64Url(annotations?: Annotations.Filter) {
  * @category validation
  * @since 4.0.0
  */
-export function isStartsWith(startsWith: string, annotations?: Annotations.Filter) {
+export function isStartingWith(startsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(startsWith)
   const regExp = new globalThis.RegExp(`^${RegExp_.escape(startsWith)}`)
   return makeFilter(
@@ -6872,11 +6872,11 @@ export function isStartsWith(startsWith: string, annotations?: Annotations.Filte
     {
       expected: `a string starting with ${formatted}`,
       representation: {
-        id: "effect/schema/isStartsWith",
+        id: "effect/schema/isStartingWith",
         payload: { startsWith }
       },
       toJsonSchema: () => ({ pattern: regExp.source }),
-      toCode: () => ({ runtime: `Schema.isStartsWith(${format(startsWith)})` }),
+      toCode: () => ({ runtime: `Schema.isStartingWith(${format(startsWith)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
       },
@@ -6895,7 +6895,7 @@ export function isStartsWith(startsWith: string, annotations?: Annotations.Filte
  * @category validation
  * @since 4.0.0
  */
-export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
+export function isEndingWith(endsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(endsWith)
   const regExp = new globalThis.RegExp(`${RegExp_.escape(endsWith)}$`)
   return makeFilter(
@@ -6903,11 +6903,11 @@ export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
     {
       expected: `a string ending with ${formatted}`,
       representation: {
-        id: "effect/schema/isEndsWith",
+        id: "effect/schema/isEndingWith",
         payload: { endsWith }
       },
       toJsonSchema: () => ({ pattern: regExp.source }),
-      toCode: () => ({ runtime: `Schema.isEndsWith(${format(endsWith)})` }),
+      toCode: () => ({ runtime: `Schema.isEndingWith(${format(endsWith)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
       },
@@ -6927,7 +6927,7 @@ export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
  * @category validation
  * @since 4.0.0
  */
-export function isIncludes(includes: string, annotations?: Annotations.Filter) {
+export function isIncluding(includes: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(includes)
   const regExp = new globalThis.RegExp(RegExp_.escape(includes))
   return makeFilter(
@@ -6935,11 +6935,11 @@ export function isIncludes(includes: string, annotations?: Annotations.Filter) {
     {
       expected: `a string including ${formatted}`,
       representation: {
-        id: "effect/schema/isIncludes",
+        id: "effect/schema/isIncluding",
         payload: { includes }
       },
       toJsonSchema: () => ({ pattern: regExp.source }),
-      toCode: () => ({ runtime: `Schema.isIncludes(${format(includes)})` }),
+      toCode: () => ({ runtime: `Schema.isIncluding(${format(includes)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
       },
@@ -8147,7 +8147,7 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
  * @category validation
  * @since 4.0.0
  */
-export function isLengthBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+export function isBetweenLength(minimum: number, maximum: number, annotations?: Annotations.Filter) {
   minimum = Math.max(0, Math.floor(minimum))
   maximum = Math.max(0, Math.floor(maximum))
   return makeFilter<{ readonly length: number }>(
@@ -8158,14 +8158,14 @@ export function isLengthBetween(minimum: number, maximum: number, annotations?: 
         : `a value with a length between ${minimum} and ${maximum}`,
 
       representation: {
-        id: "effect/schema/isLengthBetween",
+        id: "effect/schema/isBetweenLength",
         payload: { minimum, maximum }
       },
       toJsonSchema: ({ type }) =>
         type === "array"
           ? { allOf: [{ minItems: minimum }, { maxItems: maximum }] }
           : { allOf: [{ minLength: minimum }, { maxLength: maximum }] },
-      toCode: () => ({ runtime: `Schema.isLengthBetween(${minimum}, ${maximum})` }),
+      toCode: () => ({ runtime: `Schema.isBetweenLength(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
         minLength: minimum,
@@ -8175,6 +8175,134 @@ export function isLengthBetween(minimum: number, maximum: number, annotations?: 
     }
   )
 }
+/**
+ * Validates that a string contains at least the specified number of Unicode code points.
+ *
+ * **Details**
+ *
+ * The bound is rounded down and clamped to zero. This check corresponds to
+ * `minLength` in JSON Schema and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isMinLength} for counting UTF-16 code units
+ * @see {@link isMaxCodePoints}
+ * @see {@link isBetweenCodePoints}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isMinCodePoints(minCodePoints: number, annotations?: Annotations.Filter) {
+  minCodePoints = Math.max(0, Math.floor(minCodePoints))
+  return makeFilter<string>(
+    (input) => countCodePointsUpTo(input, minCodePoints) >= minCodePoints,
+    {
+      expected: `a string with at least ${minCodePoints} code points`,
+      representation: {
+        id: "effect/schema/isMinCodePoints",
+        payload: { minCodePoints }
+      },
+      toJsonSchema: () => ({ minLength: minCodePoints }),
+      toCode: () => ({ runtime: `Schema.isMinCodePoints(${minCodePoints})` }),
+      arbitraryConstraint: { minCodePoints },
+      ...annotations
+    }
+  )
+}
+/**
+ * Validates that a string contains at most the specified number of Unicode code points.
+ *
+ * **Details**
+ *
+ * The bound is rounded down and clamped to zero. This check corresponds to
+ * `maxLength` in JSON Schema and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isMaxLength} for counting UTF-16 code units
+ * @see {@link isMinCodePoints}
+ * @see {@link isBetweenCodePoints}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isMaxCodePoints(maxCodePoints: number, annotations?: Annotations.Filter) {
+  maxCodePoints = Math.max(0, Math.floor(maxCodePoints))
+  return makeFilter<string>(
+    (input) => countCodePointsUpTo(input, maxCodePoints + 1) <= maxCodePoints,
+    {
+      expected: `a string with at most ${maxCodePoints} code points`,
+      representation: {
+        id: "effect/schema/isMaxCodePoints",
+        payload: { maxCodePoints }
+      },
+      toJsonSchema: () => ({ maxLength: maxCodePoints }),
+      toCode: () => ({ runtime: `Schema.isMaxCodePoints(${maxCodePoints})` }),
+      arbitraryConstraint: { maxCodePoints },
+      ...annotations
+    }
+  )
+}
+/**
+ * Validates that a string's Unicode code point count is within the specified inclusive range.
+ *
+ * **Details**
+ *
+ * Bounds are rounded down and clamped to zero. Equal bounds require an exact
+ * count. This check corresponds to `minLength` and `maxLength` in JSON Schema
+ * and guides arbitrary generation by code point count.
+ *
+ * **Gotchas**
+ *
+ * Code points are not grapheme clusters: combining marks and joined emoji can
+ * contribute multiple code points to one visible character. Unpaired UTF-16
+ * surrogates count as one code point each. This check does not normalize strings.
+ *
+ * @see {@link isBetweenLength} for counting UTF-16 code units
+ * @see {@link isMinCodePoints}
+ * @see {@link isMaxCodePoints}
+ * @category validation
+ * @since 4.0.0
+ */
+export function isBetweenCodePoints(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+  minimum = Math.max(0, Math.floor(minimum))
+  maximum = Math.max(0, Math.floor(maximum))
+  return makeFilter<string>(
+    (input) => {
+      const count = countCodePointsUpTo(input, maximum + 1)
+      return count >= minimum && count <= maximum
+    },
+    {
+      expected: minimum === maximum
+        ? `a string with ${minimum} code points`
+        : `a string with between ${minimum} and ${maximum} code points`,
+      representation: {
+        id: "effect/schema/isBetweenCodePoints",
+        payload: { minimum, maximum }
+      },
+      toJsonSchema: () => ({ allOf: [{ minLength: minimum }, { maxLength: maximum }] }),
+      toCode: () => ({ runtime: `Schema.isBetweenCodePoints(${minimum}, ${maximum})` }),
+      arbitraryConstraint: { minCodePoints: minimum, maxCodePoints: maximum },
+      ...annotations
+    }
+  )
+}
+
+function countCodePointsUpTo(input: string, limit: number): number {
+  if (limit === 0) return 0
+  let count = 0
+  for (const _ of input) {
+    if (++count >= limit) break
+  }
+  return count
+}
+
 /**
  * Validates that a value has at least the specified size. Works with values
  * that have a `size` property, such as `Set` or `Map`.
@@ -8269,7 +8397,7 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
  * @category validation
  * @since 4.0.0
  */
-export function isSizeBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+export function isBetweenSize(minimum: number, maximum: number, annotations?: Annotations.Filter) {
   minimum = Math.max(0, Math.floor(minimum))
   maximum = Math.max(0, Math.floor(maximum))
   return makeFilter<{ readonly size: number }>(
@@ -8280,11 +8408,11 @@ export function isSizeBetween(minimum: number, maximum: number, annotations?: An
         : `a value with a size between ${minimum} and ${maximum}`,
 
       representation: {
-        id: "effect/schema/isSizeBetween",
+        id: "effect/schema/isBetweenSize",
         payload: { minimum, maximum }
       },
       toJsonSchema: () => ({}),
-      toCode: () => ({ runtime: `Schema.isSizeBetween(${minimum}, ${maximum})` }),
+      toCode: () => ({ runtime: `Schema.isBetweenSize(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
         minSize: minimum,
@@ -8395,7 +8523,7 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
  * @category validation
  * @since 4.0.0
  */
-export function isPropertiesLengthBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
+export function isBetweenProperties(minimum: number, maximum: number, annotations?: Annotations.Filter) {
   minimum = Math.max(0, Math.floor(minimum))
   maximum = Math.max(0, Math.floor(maximum))
   return makeFilter<object>(
@@ -8406,11 +8534,11 @@ export function isPropertiesLengthBetween(minimum: number, maximum: number, anno
         : `a value with between ${minimum} and ${maximum} entries`,
 
       representation: {
-        id: "effect/schema/isPropertiesLengthBetween",
+        id: "effect/schema/isBetweenProperties",
         payload: { minimum, maximum }
       },
       toJsonSchema: () => ({ minProperties: minimum, maxProperties: maximum }),
-      toCode: () => ({ runtime: `Schema.isPropertiesLengthBetween(${minimum}, ${maximum})` }),
+      toCode: () => ({ runtime: `Schema.isBetweenProperties(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
         minProperties: minimum,
@@ -8576,12 +8704,12 @@ export interface Char extends String {
  *
  * @see {@link String} for unconstrained string values
  * @see {@link NonEmptyString} for strings with length greater than zero
- * @see {@link isLengthBetween} for the underlying length check
+ * @see {@link isBetweenLength} for the underlying length check
  *
  * @category schemas
  * @since 3.10.0
  */
-export const Char: Char = String.check(isLengthBetween(1, 1))
+export const Char: Char = String.check(isBetweenLength(1, 1))
 /**
  * Type-level representation of {@link ErrorInstance}.
  *
@@ -9247,7 +9375,7 @@ export const File: File = instanceOf(globalThis.File, {
       }),
       SchemaTransformation.transformEffect({
         decode: (e, options) =>
-          Result_.match(Encoding.decodeBase64(e.data), {
+          Result_.match(Base64.decode(e.data), {
             onFailure: () =>
               Effect.fail(
                 new SchemaIssue.InvalidValue(
@@ -9268,7 +9396,7 @@ export const File: File = instanceOf(globalThis.File, {
             try: async () => {
               const bytes = new globalThis.Uint8Array(await file.arrayBuffer())
               return {
-                data: Encoding.encodeBase64(bytes),
+                data: Base64.encode(bytes),
                 type: file.type,
                 name: file.name,
                 lastModified: file.lastModified
@@ -11319,7 +11447,7 @@ const netAddressFromString = <S extends declare<any>, E extends { readonly messa
 /**
  * Type-level representation of {@link MacAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11330,7 +11458,7 @@ export interface MacAddress extends declare<NetAddress_.MacAddress> {
 /**
  * Schema for already-constructed MAC address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11341,7 +11469,7 @@ export const MacAddress: MacAddress = declare(NetAddress_.isMacAddress, {
 /**
  * Type-level representation of {@link MacAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11352,7 +11480,7 @@ export interface MacAddressFromString extends decodeTo<MacAddress, String> {
 /**
  * Schema for MAC addresses encoded as canonical colon-separated hexadecimal strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11366,7 +11494,7 @@ export const MacAddressFromString: MacAddressFromString = netAddressFromString(
 /**
  * Type-level representation of {@link Ipv4Address}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11377,7 +11505,7 @@ export interface Ipv4Address extends declare<NetAddress_.Ipv4Address> {
 /**
  * Schema for already-constructed IPv4 address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11388,7 +11516,7 @@ export const Ipv4Address: Ipv4Address = declare(NetAddress_.isIpv4Address, {
 /**
  * Type-level representation of {@link Ipv4AddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11399,7 +11527,7 @@ export interface Ipv4AddressFromString extends decodeTo<Ipv4Address, String> {
 /**
  * Schema for IPv4 addresses encoded as canonical dotted-decimal strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11413,7 +11541,7 @@ export const Ipv4AddressFromString: Ipv4AddressFromString = netAddressFromString
 /**
  * Type-level representation of {@link Ipv6Address}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11424,7 +11552,7 @@ export interface Ipv6Address extends declare<NetAddress_.Ipv6Address> {
 /**
  * Schema for already-constructed IPv6 address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11435,7 +11563,7 @@ export const Ipv6Address: Ipv6Address = declare(NetAddress_.isIpv6Address, {
 /**
  * Type-level representation of {@link Ipv6AddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11446,7 +11574,7 @@ export interface Ipv6AddressFromString extends decodeTo<Ipv6Address, String> {
 /**
  * Schema for IPv6 addresses encoded as canonical strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11460,7 +11588,7 @@ export const Ipv6AddressFromString: Ipv6AddressFromString = netAddressFromString
 /**
  * Type-level representation of {@link IpAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11471,7 +11599,7 @@ export interface IpAddress extends declare<NetAddress_.IpAddress> {
 /**
  * Schema for already-constructed IPv4 or IPv6 address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11482,7 +11610,7 @@ export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
 /**
  * Type-level representation of {@link IpAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11493,7 +11621,7 @@ export interface IpAddressFromString extends decodeTo<IpAddress, String> {
 /**
  * Schema for IP addresses encoded as canonical numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11514,7 +11642,7 @@ const netAddressRefinement = <S extends Constraint, T extends S["Type"]>(
 /**
  * Type-level representation of {@link IpMulticastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11525,7 +11653,7 @@ export interface IpMulticastAddress extends refine<NetAddress_.MulticastAddress<
 /**
  * Schema for already-constructed multicast IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11539,7 +11667,7 @@ export const IpMulticastAddress: IpMulticastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpMulticastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11557,13 +11685,13 @@ export interface IpMulticastAddressFromString
  * ```ts import.meta.vitest
  * import { assert } from "@effect/vitest"
  * import { Schema } from "effect"
- * import { NetAddress } from "effect/unstable/net"
+ * import { NetAddress } from "effect/net"
  *
  * const address = Schema.decodeUnknownSync(Schema.IpMulticastAddressFromString)("239.255.0.1")
  * assert.isTrue(NetAddress.isMulticast(address))
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11577,7 +11705,7 @@ export const IpMulticastAddressFromString: IpMulticastAddressFromString = netAdd
 /**
  * Type-level representation of {@link MacMulticastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11588,7 +11716,7 @@ export interface MacMulticastAddress extends refine<NetAddress_.MulticastAddress
 /**
  * Schema for already-constructed multicast MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11602,7 +11730,7 @@ export const MacMulticastAddress: MacMulticastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link MacMulticastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11615,7 +11743,7 @@ export interface MacMulticastAddressFromString
 /**
  * Schema for multicast MAC addresses encoded as canonical strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11629,7 +11757,7 @@ export const MacMulticastAddressFromString: MacMulticastAddressFromString = netA
 /**
  * Type-level representation of {@link IpUnicastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11640,7 +11768,7 @@ export interface IpUnicastAddress extends refine<NetAddress_.UnicastAddress<NetA
 /**
  * Schema for already-constructed syntactic unicast IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11654,7 +11782,7 @@ export const IpUnicastAddress: IpUnicastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpUnicastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11667,7 +11795,7 @@ export interface IpUnicastAddressFromString
 /**
  * Schema for syntactic unicast IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11681,7 +11809,7 @@ export const IpUnicastAddressFromString: IpUnicastAddressFromString = netAddress
 /**
  * Type-level representation of {@link MacUnicastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11692,7 +11820,7 @@ export interface MacUnicastAddress extends refine<NetAddress_.UnicastAddress<Net
 /**
  * Schema for already-constructed unicast MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11706,7 +11834,7 @@ export const MacUnicastAddress: MacUnicastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link MacUnicastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11719,7 +11847,7 @@ export interface MacUnicastAddressFromString
 /**
  * Schema for unicast MAC addresses encoded as canonical strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11733,7 +11861,7 @@ export const MacUnicastAddressFromString: MacUnicastAddressFromString = netAddre
 /**
  * Type-level representation of {@link Ipv4BroadcastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11746,7 +11874,7 @@ export interface Ipv4BroadcastAddress
 /**
  * Schema for the already-constructed IPv4 limited broadcast address.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11760,7 +11888,7 @@ export const Ipv4BroadcastAddress: Ipv4BroadcastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link Ipv4BroadcastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11773,7 +11901,7 @@ export interface Ipv4BroadcastAddressFromString
 /**
  * Schema for the IPv4 limited broadcast address encoded as a string.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11787,7 +11915,7 @@ export const Ipv4BroadcastAddressFromString: Ipv4BroadcastAddressFromString = ne
 /**
  * Type-level representation of {@link MacBroadcastAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11798,7 +11926,7 @@ export interface MacBroadcastAddress extends refine<NetAddress_.BroadcastAddress
 /**
  * Schema for the already-constructed MAC all-ones broadcast address.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11812,7 +11940,7 @@ export const MacBroadcastAddress: MacBroadcastAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link MacBroadcastAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11825,7 +11953,7 @@ export interface MacBroadcastAddressFromString
 /**
  * Schema for the MAC all-ones broadcast address encoded as a string.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11839,7 +11967,7 @@ export const MacBroadcastAddressFromString: MacBroadcastAddressFromString = netA
 /**
  * Type-level representation of {@link IpLoopbackAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11850,7 +11978,7 @@ export interface IpLoopbackAddress extends refine<NetAddress_.LoopbackAddress<Ne
 /**
  * Schema for already-constructed loopback IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11864,7 +11992,7 @@ export const IpLoopbackAddress: IpLoopbackAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpLoopbackAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11877,7 +12005,7 @@ export interface IpLoopbackAddressFromString
 /**
  * Schema for loopback IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11891,7 +12019,7 @@ export const IpLoopbackAddressFromString: IpLoopbackAddressFromString = netAddre
 /**
  * Type-level representation of {@link IpLinkLocalAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11902,7 +12030,7 @@ export interface IpLinkLocalAddress extends refine<NetAddress_.LinkLocalAddress<
 /**
  * Schema for already-constructed link-local IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11916,7 +12044,7 @@ export const IpLinkLocalAddress: IpLinkLocalAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpLinkLocalAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11929,7 +12057,7 @@ export interface IpLinkLocalAddressFromString
 /**
  * Schema for link-local IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11943,7 +12071,7 @@ export const IpLinkLocalAddressFromString: IpLinkLocalAddressFromString = netAdd
 /**
  * Type-level representation of {@link IpUnspecifiedAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11954,7 +12082,7 @@ export interface IpUnspecifiedAddress extends refine<NetAddress_.UnspecifiedAddr
 /**
  * Schema for already-constructed unspecified IP addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11968,7 +12096,7 @@ export const IpUnspecifiedAddress: IpUnspecifiedAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link IpUnspecifiedAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11981,7 +12109,7 @@ export interface IpUnspecifiedAddressFromString
 /**
  * Schema for unspecified IP addresses encoded as numeric strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -11995,7 +12123,7 @@ export const IpUnspecifiedAddressFromString: IpUnspecifiedAddressFromString = ne
 /**
  * Type-level representation of {@link Ipv4PrivateAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12006,7 +12134,7 @@ export interface Ipv4PrivateAddress extends refine<NetAddress_.PrivateAddress<Ne
 /**
  * Schema for already-constructed RFC 1918 private-use addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12020,7 +12148,7 @@ export const Ipv4PrivateAddress: Ipv4PrivateAddress = netAddressRefinement(
 /**
  * Type-level representation of {@link Ipv4PrivateAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12033,7 +12161,7 @@ export interface Ipv4PrivateAddressFromString
 /**
  * Schema for RFC 1918 private-use addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12047,7 +12175,7 @@ export const Ipv4PrivateAddressFromString: Ipv4PrivateAddressFromString = netAdd
 /**
  * Type-level representation of {@link Ipv6UniqueLocalAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12060,7 +12188,7 @@ export interface Ipv6UniqueLocalAddress
 /**
  * Schema for already-constructed IPv6 unique-local addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12074,7 +12202,7 @@ export const Ipv6UniqueLocalAddress: Ipv6UniqueLocalAddress = netAddressRefineme
 /**
  * Type-level representation of {@link Ipv6UniqueLocalAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12087,7 +12215,7 @@ export interface Ipv6UniqueLocalAddressFromString
 /**
  * Schema for IPv6 unique-local addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12101,7 +12229,7 @@ export const Ipv6UniqueLocalAddressFromString: Ipv6UniqueLocalAddressFromString 
 /**
  * Type-level representation of {@link MacLocallyAdministeredAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12114,7 +12242,7 @@ export interface MacLocallyAdministeredAddress
 /**
  * Schema for already-constructed locally administered MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12128,7 +12256,7 @@ export const MacLocallyAdministeredAddress: MacLocallyAdministeredAddress = netA
 /**
  * Type-level representation of {@link MacLocallyAdministeredAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12141,7 +12269,7 @@ export interface MacLocallyAdministeredAddressFromString
 /**
  * Schema for locally administered MAC addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12155,7 +12283,7 @@ export const MacLocallyAdministeredAddressFromString: MacLocallyAdministeredAddr
 /**
  * Type-level representation of {@link MacUniversallyAdministeredAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12168,7 +12296,7 @@ export interface MacUniversallyAdministeredAddress
 /**
  * Schema for already-constructed universally administered MAC addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12182,7 +12310,7 @@ export const MacUniversallyAdministeredAddress: MacUniversallyAdministeredAddres
 /**
  * Type-level representation of {@link MacUniversallyAdministeredAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12195,7 +12323,7 @@ export interface MacUniversallyAdministeredAddressFromString
 /**
  * Schema for universally administered MAC addresses encoded as strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12210,7 +12338,7 @@ export const MacUniversallyAdministeredAddressFromString: MacUniversallyAdminist
 /**
  * Type-level representation of {@link Ipv4Interface}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12221,7 +12349,7 @@ export interface Ipv4Interface extends declare<IpInterface_.Ipv4Interface> {
 /**
  * Schema for already-constructed IPv4 interface address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12232,7 +12360,7 @@ export const Ipv4Interface: Ipv4Interface = declare(IpInterface_.isIpv4Interface
 /**
  * Type-level representation of {@link Ipv4InterfaceFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12243,7 +12371,7 @@ export interface Ipv4InterfaceFromString extends decodeTo<Ipv4Interface, String>
 /**
  * Schema for IPv4 interface addresses encoded as an address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12257,7 +12385,7 @@ export const Ipv4InterfaceFromString: Ipv4InterfaceFromString = netAddressFromSt
 /**
  * Type-level representation of {@link Ipv6Interface}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12268,7 +12396,7 @@ export interface Ipv6Interface extends declare<IpInterface_.Ipv6Interface> {
 /**
  * Schema for already-constructed IPv6 interface address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12279,7 +12407,7 @@ export const Ipv6Interface: Ipv6Interface = declare(IpInterface_.isIpv6Interface
 /**
  * Type-level representation of {@link Ipv6InterfaceFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12290,7 +12418,7 @@ export interface Ipv6InterfaceFromString extends decodeTo<Ipv6Interface, String>
 /**
  * Schema for IPv6 interface addresses encoded as an address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12304,7 +12432,7 @@ export const Ipv6InterfaceFromString: Ipv6InterfaceFromString = netAddressFromSt
 /**
  * Type-level representation of {@link IpInterface}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12315,7 +12443,7 @@ export interface IpInterface extends declare<IpInterface_.IpInterface> {
 /**
  * Schema for already-constructed IPv4 or IPv6 interface address values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12326,7 +12454,7 @@ export const IpInterface: IpInterface = declare(IpInterface_.isIpInterface, {
 /**
  * Type-level representation of {@link IpInterfaceFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12337,7 +12465,7 @@ export interface IpInterfaceFromString extends decodeTo<IpInterface, String> {
 /**
  * Schema for IPv4 or IPv6 interface addresses encoded as an address and prefix length.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12351,7 +12479,7 @@ export const IpInterfaceFromString: IpInterfaceFromString = netAddressFromString
 /**
  * Type-level representation of {@link Ipv4Network}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12362,7 +12490,7 @@ export interface Ipv4Network extends declare<IpNetwork_.Ipv4Network> {
 /**
  * Schema for already-constructed canonical IPv4 network prefixes.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12373,7 +12501,7 @@ export const Ipv4Network: Ipv4Network = declare(IpNetwork_.isIpv4Network, {
 /**
  * Type-level representation of {@link Ipv4NetworkFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12384,7 +12512,7 @@ export interface Ipv4NetworkFromString extends decodeTo<Ipv4Network, String> {
 /**
  * Schema for canonical IPv4 network prefixes encoded in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12398,7 +12526,7 @@ export const Ipv4NetworkFromString: Ipv4NetworkFromString = netAddressFromString
 /**
  * Type-level representation of {@link Ipv6Network}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12409,7 +12537,7 @@ export interface Ipv6Network extends declare<IpNetwork_.Ipv6Network> {
 /**
  * Schema for already-constructed canonical IPv6 network prefixes.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12420,7 +12548,7 @@ export const Ipv6Network: Ipv6Network = declare(IpNetwork_.isIpv6Network, {
 /**
  * Type-level representation of {@link Ipv6NetworkFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12431,7 +12559,7 @@ export interface Ipv6NetworkFromString extends decodeTo<Ipv6Network, String> {
 /**
  * Schema for canonical IPv6 network prefixes encoded in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12445,7 +12573,7 @@ export const Ipv6NetworkFromString: Ipv6NetworkFromString = netAddressFromString
 /**
  * Type-level representation of {@link IpNetwork}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12456,7 +12584,7 @@ export interface IpNetwork extends declare<IpNetwork_.IpNetwork> {
 /**
  * Schema for already-constructed canonical IPv4 or IPv6 network prefixes.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12467,7 +12595,7 @@ export const IpNetwork: IpNetwork = declare(IpNetwork_.isIpNetwork, {
 /**
  * Type-level representation of {@link IpNetworkFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12478,7 +12606,7 @@ export interface IpNetworkFromString extends decodeTo<IpNetwork, String> {
 /**
  * Schema for canonical IPv4 or IPv6 network prefixes encoded in CIDR notation.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12492,7 +12620,7 @@ export const IpNetworkFromString: IpNetworkFromString = netAddressFromString(
 /**
  * Type-level representation of {@link InetAddressV4}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12503,7 +12631,7 @@ export interface InetAddressV4 extends declare<NetAddress_.InetAddressV4> {
 /**
  * Schema for already-constructed resolved IPv4 internet addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12514,7 +12642,7 @@ export const InetAddressV4: InetAddressV4 = declare(NetAddress_.isInetAddressV4,
 /**
  * Type-level representation of {@link InetAddressV6}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12525,7 +12653,7 @@ export interface InetAddressV6 extends declare<NetAddress_.InetAddressV6> {
 /**
  * Schema for already-constructed resolved IPv6 internet addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12536,7 +12664,7 @@ export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6,
 /**
  * Type-level representation of {@link InetAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12547,7 +12675,7 @@ export interface InetAddress extends declare<NetAddress_.InetAddress> {
 /**
  * Schema for already-constructed resolved internet addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12558,7 +12686,7 @@ export const InetAddress: InetAddress = declare(NetAddress_.isInetAddress, {
 /**
  * Type-level representation of {@link InetAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12569,7 +12697,7 @@ export interface InetAddressFromString extends decodeTo<InetAddress, String> {
 /**
  * Schema for resolved internet addresses encoded as numeric socket strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12583,7 +12711,7 @@ export const InetAddressFromString: InetAddressFromString = netAddressFromString
 /**
  * Type-level representation of {@link UnixPathAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12594,7 +12722,7 @@ export interface UnixPathAddress extends declare<NetAddress_.UnixPathAddress> {
 /**
  * Schema for already-constructed Unix-domain filesystem addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12606,7 +12734,7 @@ export const UnixPathAddress: UnixPathAddress = declare(
 /**
  * Type-level representation of {@link UnixPathAddressFromString}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12617,7 +12745,7 @@ export interface UnixPathAddressFromString extends decodeTo<UnixPathAddress, Str
 /**
  * Schema for Unix-domain filesystem addresses encoded as opaque path strings.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -12632,7 +12760,7 @@ export const UnixPathAddressFromString: UnixPathAddressFromString = String.pipe(
 /**
  * Type-level representation of {@link SocketAddress}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -12643,7 +12771,7 @@ export interface SocketAddress extends declare<NetAddress_.SocketAddress> {
 /**
  * Schema for already-constructed portable concrete socket addresses.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13628,7 +13756,7 @@ export function OptionFromNullishOr<S extends Constraint>(
 /**
  * Type-level representation of {@link Cookie}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13639,7 +13767,7 @@ export interface Cookie extends declare<Cookies_.Cookie> {
 /**
  * Schema for HTTP cookie values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13653,7 +13781,7 @@ export const Cookie: Cookie = declare(
     toCode: () => ({
       runtime: "Schema.Cookie",
       Type: "Cookies.Cookie",
-      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+      importDeclarations: [`import * as Cookies from "effect/http/Cookies"`]
     }),
     expected: "Cookie"
   }
@@ -13662,7 +13790,7 @@ export const Cookie: Cookie = declare(
 /**
  * Type-level representation of {@link Cookies}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13683,7 +13811,7 @@ export interface Cookies extends
  * JSON encoding uses `Set-Cookie` header strings, while isomorphic encoding uses
  * a readonly record of cookie values.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13697,7 +13825,7 @@ export const Cookies: Cookies = declare(
     toCode: () => ({
       runtime: "Schema.Cookies",
       Type: "Cookies.Cookies",
-      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+      importDeclarations: [`import * as Cookies from "effect/http/Cookies"`]
     }),
     expected: "Cookies",
     toCodecJson: () =>
@@ -13722,7 +13850,7 @@ export const Cookies: Cookies = declare(
 /**
  * Type-level representation of {@link RecordFromCookies}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13734,7 +13862,7 @@ export interface RecordFromCookies extends decodeTo<$Record<String, String>, Coo
  * Schema that decodes HTTP cookies into a record of decoded string values keyed
  * by cookie name.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13754,7 +13882,7 @@ export const RecordFromCookies: RecordFromCookies = Cookies.pipe(
 /**
  * Type-level representation of {@link Headers}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13769,7 +13897,7 @@ export interface Headers extends declare<Headers_.Headers, { readonly [x: string
  *
  * Decoding normalizes header names; encoding returns a plain record.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13783,7 +13911,7 @@ export const Headers: Headers = declare(
     toCode: () => ({
       runtime: "Schema.Headers",
       Type: "Headers.Headers",
-      importDeclarations: [`import * as Headers from "effect/unstable/http/Headers"`]
+      importDeclarations: [`import * as Headers from "effect/http/Headers"`]
     }),
     expected: "Headers",
     toEquivalence: () => Headers_.Equivalence,
@@ -13801,7 +13929,7 @@ export const Headers: Headers = declare(
 /**
  * Type-level representation of {@link UrlParams}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13821,7 +13949,7 @@ export interface UrlParams extends
  *
  * The encoded representation is an array of string key-value tuples.
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13835,7 +13963,7 @@ export const UrlParams: UrlParams = declare(
     toCode: () => ({
       runtime: "Schema.UrlParams",
       Type: "UrlParams.UrlParams",
-      importDeclarations: [`import * as UrlParams from "effect/unstable/http/UrlParams"`]
+      importDeclarations: [`import * as UrlParams from "effect/http/UrlParams"`]
     }),
     expected: "UrlParams",
     toEquivalence: () => UrlParams_.Equivalence,
@@ -13853,7 +13981,7 @@ export const UrlParams: UrlParams = declare(
 /**
  * Type-level representation of {@link JsonFromUrlParamsField}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13869,7 +13997,7 @@ export interface JsonFromUrlParamsField extends decodeTo<fromJsonString<Unknown>
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { UrlParams } from "effect/unstable/http"
+ * import { UrlParams } from "effect/http"
  *
  * const extractFoo = Schema.JsonFromUrlParamsField("foo").pipe(
  *   Schema.decodeTo(Schema.Struct({
@@ -13885,7 +14013,7 @@ export interface JsonFromUrlParamsField extends decodeTo<fromJsonString<Unknown>
  * const result = [decoded.some, decoded.number] // => ["bar", 42]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13910,7 +14038,7 @@ export const JsonFromUrlParamsField = (
 /**
  * Type-level representation of {@link RecordFromUrlParams}.
  *
- * @unstable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13937,7 +14065,7 @@ export interface RecordFromUrlParams extends
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { UrlParams } from "effect/unstable/http"
+ * import { UrlParams } from "effect/http"
  *
  * const toStruct = Schema.RecordFromUrlParams.pipe(
  *   Schema.decodeTo(Schema.Struct({
@@ -13953,7 +14081,7 @@ export interface RecordFromUrlParams extends
  * const result = [decoded.some, decoded.number] // => ["value", 42]
  * ```
  *
- * @unstable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -16008,6 +16136,8 @@ export declare namespace Annotations {
       readonly exclusiveMaximum?: true | undefined
       readonly minLength?: number | undefined
       readonly maxLength?: number | undefined
+      readonly minCodePoints?: number | undefined
+      readonly maxCodePoints?: number | undefined
       readonly minSize?: number | undefined
       readonly maxSize?: number | undefined
       readonly minProperties?: number | undefined

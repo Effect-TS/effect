@@ -1,8 +1,8 @@
 import { MssqlClient, Procedure } from "@effect/sql-mssql"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber } from "effect"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Statement from "effect/unstable/sql/Statement"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Statement from "effect/sql/Statement"
 import type * as Tedious from "tedious"
 import { vi } from "vitest"
 

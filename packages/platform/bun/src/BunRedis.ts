@@ -16,8 +16,8 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Redis from "effect/persistence/Redis"
 import * as Scope from "effect/Scope"
-import * as Redis from "effect/unstable/persistence/Redis"
 
 /**
  * Service tag for Bun Redis integration, exposing the raw `RedisClient` and a `use` helper that maps client promise failures to `RedisError`.

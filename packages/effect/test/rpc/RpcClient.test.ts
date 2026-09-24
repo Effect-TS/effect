@@ -1,15 +1,15 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream } from "effect"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
+import { RpcClientError } from "effect/rpc/RpcClientError"
+import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/unstable/rpc"
-import { RpcClientError } from "effect/unstable/rpc/RpcClientError"
-import * as Socket from "effect/unstable/socket/Socket"
-import * as Worker from "effect/unstable/workers/Worker"
-import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerError"
+import * as Worker from "effect/workers/Worker"
+import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 import { vi } from "vitest"
-import type * as RpcClientErrorModule from "../../src/unstable/rpc/RpcClientError.ts"
+import type * as RpcClientErrorModule from "../../src/rpc/RpcClientError.ts"
 
 const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
@@ -157,7 +157,7 @@ describe("RpcClient", () => {
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignRpcClientError = await vi.importActual<typeof RpcClientErrorModule>(
-      "../../src/unstable/rpc/RpcClientError.ts"
+      "../../src/rpc/RpcClientError.ts"
     )
     const rpcClientError = new ForeignRpcClientError.RpcClientError({
       reason: new ForeignRpcClientError.RpcClientDefect({ message: "boom", cause: undefined })

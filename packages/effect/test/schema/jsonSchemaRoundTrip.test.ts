@@ -102,6 +102,18 @@ describe("JSON Schema round-trip laws", () => {
       )
     })
 
+    it("preserves Unicode string lengths and patterns", () => {
+      const inputs = ["", "a", "é", "😀", "e\u0301", "😀a", "\uD800"]
+      assertJsonSchemaImportRoundTrip(
+        { type: "string", minLength: 2, maxLength: 2 },
+        inputs
+      )
+      assertJsonSchemaImportRoundTrip(
+        { type: "string", pattern: "^.$" },
+        inputs
+      )
+    })
+
     it("conjoins enum with its sibling constraints", () => {
       assertJsonSchemaImportRoundTrip(
         { enum: ["a", "ab", 1], minLength: 2 },
@@ -244,7 +256,7 @@ describe("JSON Schema round-trip laws", () => {
 
     it("handles conjunctive key patterns permissively", () => {
       const schema = Schema.Record(
-        Schema.String.check(Schema.isStartsWith("ab"), Schema.isEndsWith("z")),
+        Schema.String.check(Schema.isStartingWith("ab"), Schema.isEndingWith("z")),
         Schema.Finite
       )
       const document = Schema.toJsonSchemaDocument(schema)
@@ -285,11 +297,11 @@ describe("JSON Schema round-trip laws", () => {
     it("uses permissive value alternatives with strict conjunctive indexes", () => {
       const schema = Schema.StructWithRest(Schema.Struct({}), [
         Schema.Record(
-          Schema.String.check(Schema.isStartsWith("a"), Schema.isEndsWith("z")),
+          Schema.String.check(Schema.isStartingWith("a"), Schema.isEndingWith("z")),
           Schema.Finite
         ),
         Schema.Record(
-          Schema.String.check(Schema.isStartsWith("b"), Schema.isEndsWith("z")),
+          Schema.String.check(Schema.isStartingWith("b"), Schema.isEndingWith("z")),
           Schema.Boolean
         )
       ])

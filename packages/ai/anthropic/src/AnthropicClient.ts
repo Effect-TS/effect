@@ -6,24 +6,24 @@
  *
  * @since 4.0.0
  */
+import type * as AiError from "effect/ai/AiError"
 import * as Array from "effect/Array"
 import type * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Sse from "effect/encoding/Sse"
 import { identity } from "effect/Function"
+import * as Headers from "effect/http/Headers"
+import * as HttpBody from "effect/http/HttpBody"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import type * as AiError from "effect/unstable/ai/AiError"
-import * as Sse from "effect/unstable/encoding/Sse"
-import * as Headers from "effect/unstable/http/Headers"
-import * as HttpBody from "effect/unstable/http/HttpBody"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import type * as HttpClientError from "effect/unstable/http/HttpClientError"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import { AnthropicConfig } from "./AnthropicConfig.ts"
 import * as Generated from "./Generated.ts"
 import * as Errors from "./internal/errors.ts"
@@ -243,7 +243,41 @@ export const make = Effect.fnUntraced(
         : identity
     )
 
-    const client = Generated.make(httpClient, {
+    // Let status mapping handle gateway errors without an Anthropic envelope.
+    const generatedHttpClient = HttpClient.transformResponse(
+      httpClient,
+      Effect.flatMap((response) => {
+        if (
+          response.status < 400 || response.status >= 500 ||
+          !response.request.url.endsWith("/v1/messages?beta=true")
+        ) {
+          return Effect.succeed(response)
+        }
+        return Effect.flatMap(Effect.option(response.json), (body) => {
+          if (
+            body._tag === "Some" &&
+            Schema.decodeUnknownOption(Generated.BetaMessagesPost4XX)(body.value)._tag === "Some"
+          ) {
+            return Effect.succeed(response)
+          }
+          return Effect.flatMap(
+            Effect.orElseSucceed(response.text, () => "Unexpected status code"),
+            (description) =>
+              Effect.fail(
+                new HttpClientError.HttpClientError({
+                  reason: new HttpClientError.StatusCodeError({
+                    request: response.request,
+                    response,
+                    description
+                  })
+                })
+              )
+          )
+        })
+      })
+    )
+
+    const client = Generated.make(generatedHttpClient, {
       transformClient: Effect.fnUntraced(function*(client) {
         const config = yield* AnthropicConfig.getOrUndefined
         if (Predicate.isNotUndefined(config?.transformClient)) {

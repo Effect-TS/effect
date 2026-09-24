@@ -35,6 +35,16 @@ function value(c: number, d: number): Value {
 }
 
 describe("MutableHashMap", () => {
+  it("retains its entries after it is used as a lookup key", () => {
+    const entryKey = key(0, 0)
+    const map = HM.make([entryKey, "value"])
+    const equalMap = HM.make([key(0, 0), "value"])
+    const outer = HM.make([equalMap, true])
+
+    assertSome(HM.get(outer, map), true)
+    assertSome(HM.get(map, key(0, 0)), "value")
+  })
+
   it("isMutableHashMap", () => {
     assertTrue(HM.isMutableHashMap(HM.make([0, "a"], [1, "b"])))
     assertFalse(HM.isMutableHashMap(new Map([[0, "a"]])))

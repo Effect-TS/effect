@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
+import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { describe, expect, it } from "tstyche"
 
 describe("SchemaCompiler", () => {
