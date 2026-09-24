@@ -12,10 +12,6 @@ describe("makeMethods fixtures", () => {
       assert.strictEqual(value, 1)
     }))
 
-  it.layer(Layer.empty)("named layer", (it) => {
-    it.effect("it.effect", ({ value }) => Effect.sync(() => assert.strictEqual(value, 1)))
-  })
-
   it.layer(Layer.empty)((it) => {
     it.effect("anonymous layer it.effect", ({ value }) => Effect.sync(() => assert.strictEqual(value, 1)))
   })
@@ -42,25 +38,14 @@ describe("makeMethods registers through the given test API", { concurrent: false
   it.effect.skipIf(false)("skipIf", () => Effect.void)
   it.effect.runIf(true)("runIf", () => Effect.void)
 
-  test("runs auto fixtures", () => {
-    assert.deepStrictEqual(setups, ["fails", "prop", "effect.prop", "live.prop", "skipIf", "runIf"])
-  })
-})
-
-describe("nested layer property registration", { concurrent: false }, () => {
-  const setups: Array<string> = []
-  const it = makeMethods(test.extend("setup", { auto: true }, ({ task }) => {
-    setups.push(task.name)
-  }))
-
   it.layer(Layer.empty)("outer", (it) => {
     it.layer(Layer.empty)("inner", (it) => {
       it.prop("nested prop", [Schema.Boolean], () => true)
     })
   })
 
-  test("runs the nested property's auto fixture", () => {
-    assert.deepStrictEqual(setups, ["nested prop"])
+  test("runs auto fixtures", () => {
+    assert.deepStrictEqual(setups, ["fails", "prop", "effect.prop", "live.prop", "skipIf", "runIf", "nested prop"])
   })
 })
 

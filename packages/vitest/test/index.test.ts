@@ -237,6 +237,7 @@ describeWrapped("describeWrapped", (it) => {
     it.effect("registers in its own suite", ({ task }) =>
       Effect.gen(function*() {
         assert.strictEqual(task.suite?.name, "named layer")
+        assert.isTrue(task.suite?.tasks.includes(task))
         assert.strictEqual(yield* Foo, "foo")
       }))
   })
