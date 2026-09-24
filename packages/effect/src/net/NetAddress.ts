@@ -1404,21 +1404,10 @@ export const inetAddressFromNativeUnsafe = (
 
   let scopeId = 0
   if (zoneStart !== -1) {
-    let numeric = zoneStart + 1 < host.length
-    for (let j = zoneStart + 1; j < host.length; j++) {
-      const digit = host.charCodeAt(j) - 48
-      if (digit < 0 || digit > 9) {
-        numeric = false
-        break
-      }
-      scopeId = scopeId * 10 + digit
-    }
-    if (!numeric) {
-      const zone = host.slice(zoneStart + 1)
-      const resolved = scopeIds?.get(zone)
-      if (resolved === undefined) throw new Error(`unknown IPv6 interface: ${zone}`)
-      scopeId = resolved
-    }
+    const zone = host.slice(zoneStart + 1)
+    const resolved = numericZone.test(zone) ? Number(zone) : scopeIds?.get(zone)
+    if (resolved === undefined) throw new Error(`unknown IPv6 interface: ${zone}`)
+    scopeId = resolved
   }
 
   let w0 = 0
@@ -1452,18 +1441,20 @@ export const inetAddressFromNativeUnsafe = (
       w3 = parseNativeIpv4(host, start, end)
       break
     }
+    // even segments fill the high half of their 32-bit word
+    const shifted = value << ((1 - (segment & 1)) * 16)
     switch (segment >>> 1) {
       case 0:
-        w0 |= value << ((1 - (segment & 1)) * 16)
+        w0 |= shifted
         break
       case 1:
-        w1 |= value << ((1 - (segment & 1)) * 16)
+        w1 |= shifted
         break
       case 2:
-        w2 |= value << ((1 - (segment & 1)) * 16)
+        w2 |= shifted
         break
       default:
-        w3 |= value << ((1 - (segment & 1)) * 16)
+        w3 |= shifted
     }
     segment++
     if (i < end && host.charCodeAt(i + 1) !== 58) i++
@@ -1474,6 +1465,8 @@ export const inetAddressFromNativeUnsafe = (
   self.scopeId = scopeId
   return Object.freeze(self)
 }
+
+const numericZone = /^\d+$/
 
 const parseNativeIpv4 = (host: string, start: number, end: number): number => {
   let value = 0

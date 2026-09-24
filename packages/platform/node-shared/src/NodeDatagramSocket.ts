@@ -237,13 +237,7 @@ export interface FromSocketOptions {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  Effect.sync(() =>
-    DatagramSocket.fromNativeHandle((events) => open(options, events), {
-      ...options.receiveBuffer,
-      onError: options.onError
-    })
-  )
+export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> => makeWith(options, open)
 
 /**
  * Adopts a `dgram.Socket`.
@@ -262,19 +256,7 @@ export const make = (options: Options = {}): Effect.Effect<DatagramSocket.Datagr
 export const fromSocket = <R>(
   acquire: Effect.Effect<Dgram.Socket, DatagramSocket.DatagramSocketError, R>,
   options: FromSocketOptions = {}
-): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  Effect.map(Effect.context<Exclude<R, Scope.Scope>>(), (services) =>
-    DatagramSocket.fromNativeHandle(
-      (events) =>
-        acquire.pipe(
-          // the reader's scope replaces the caller's
-          Effect.updateContext((input: Context.Context<Scope.Scope>) =>
-            Context.merge(services, input) as Context.Context<R>
-          ),
-          Effect.flatMap((socket) => adopt(socket, options, events))
-        ) as Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError, Scope.Scope>,
-      { ...options.receiveBuffer, onError: options.onError }
-    ))
+): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> => adoptWith(acquire, options, adopt)
 
 /**
  * Provides a `DatagramSocket` built with `make`.
@@ -287,25 +269,72 @@ export const layer = (options?: Options): Layer.Layer<DatagramSocket.DatagramSoc
   Layer.effect(DatagramSocket.DatagramSocket, make(options))
 
 // -----------------------------------------------------------------------------
-// internal
+// shared with the Bun and Deno adapters
 // -----------------------------------------------------------------------------
 
-type Family = "ipv4" | "ipv6"
+/** @internal */
+export type Family = "ipv4" | "ipv6"
 
-interface Resolved {
-  readonly host: string
-  readonly family: Family
+/** @internal */
+export interface ReceiveOptions {
+  readonly receiveBuffer?: DatagramSocket.ReceiveBufferOptions | undefined
+  readonly onError?: ((error: DatagramSocket.DatagramSocketError) => void) | undefined
 }
 
-const noScopeIds: ReadonlyMap<string, number> = new Map()
+/** @internal */
+export const makeWith = <O extends ReceiveOptions>(
+  options: O,
+  open: (
+    options: O,
+    events: DatagramSocket.NativeEvents
+  ) => Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError>
+): Effect.Effect<DatagramSocket.DatagramSocket> =>
+  Effect.sync(() =>
+    DatagramSocket.fromNativeHandle((events) => open(options, events), {
+      ...options.receiveBuffer,
+      onError: options.onError
+    })
+  )
 
-// Every address reaching the socket is an IP literal, so answer at once. This
-// also skips the `process.nextTick` Node's default `lookup` adds to each send.
-const immediateLookup = (
-  hostname: string,
-  family: unknown,
-  callback: (error: NodeJS.ErrnoException | null, address: string, family: number) => void
-) => callback(null, hostname, family === 6 ? 6 : 4)
+/** @internal */
+export const adoptWith = <A, O extends ReceiveOptions, R>(
+  acquire: Effect.Effect<A, DatagramSocket.DatagramSocketError, R>,
+  options: O,
+  adopt: (
+    native: A,
+    options: O,
+    events: DatagramSocket.NativeEvents
+  ) => Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError>
+): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
+  Effect.map(Effect.context<Exclude<R, Scope.Scope>>(), (services) =>
+    DatagramSocket.fromNativeHandle(
+      (events) =>
+        acquire.pipe(
+          // the reader's scope replaces the caller's
+          Effect.updateContext((input: Context.Context<Scope.Scope>) =>
+            Context.merge(services, input) as Context.Context<R>
+          ),
+          Effect.flatMap((native) => adopt(native, options, events))
+        ) as Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError, Scope.Scope>,
+      { ...options.receiveBuffer, onError: options.onError }
+    ))
+
+/** @internal */
+export const noScopeIds: ReadonlyMap<string, number> = new Map()
+
+// Windows reports numeric zones, which parse and format without a map
+const interfaceScopeIds = (): ReadonlyMap<string, number> => {
+  if (process.platform === "win32") return noScopeIds
+  try {
+    return NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces()))
+  } catch {
+    return noScopeIds
+  }
+}
+
+/** @internal */
+export const scopeIdsFor = (family: Family): ReadonlyMap<string, number> =>
+  family === "ipv6" ? interfaceScopeIds() : noScopeIds
 
 const familyOfLiteral = (address: string | NetAddress.IpAddress): Family | undefined => {
   if (typeof address !== "string") return NetAddress.isIpv4Address(address) ? "ipv4" : "ipv6"
@@ -319,46 +348,110 @@ const formatEndpoint = (
   scopeIds: ReadonlyMap<string, number>
 ): string | undefined =>
   NetAddress.isInetAddress(endpoint)
-    ? NetAddress.formatNativeHost(endpoint, scopeIds, process.platform)
+    ? NetAddress.formatNativeHost(endpoint, scopeIds)
     : endpoint.address === undefined || typeof endpoint.address === "string"
     ? endpoint.address
     : NetAddress.formatIp(endpoint.address)
 
-const interfaceScopeIds = (): ReadonlyMap<string, number> => {
-  // Windows reports numeric zones, which parse without a map
-  if (process.platform === "win32") return noScopeIds
-  try {
-    return NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces()))
-  } catch {
-    return noScopeIds
-  }
+interface Resolved {
+  readonly host: string
+  readonly family: Family
 }
 
 // Resolves a hostname with one `lookup`, preferring IPv4 unless `family` is
-// fixed. IP literals answer synchronously.
+// fixed. Anything that isn't a hostname answers synchronously.
 const resolve = (
-  address: string,
+  address: string | NetAddress.IpAddress | undefined,
   family: Family | undefined,
-  callback: (error: unknown, resolved?: Resolved) => void
+  onError: (error: unknown) => void,
+  next: (resolved: Resolved | undefined) => void
 ): void => {
+  if (typeof address !== "string") return next(undefined)
   const literal = familyOfLiteral(address)
-  if (literal !== undefined) return callback(undefined, { host: address, family: literal })
+  if (literal !== undefined) return next({ host: address, family: literal })
   try {
     Dns.lookup(address, { all: true, family: family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0 }, (error, results) => {
-      if (error) return callback(error)
+      if (error) return onError(error)
       const result = results.find((result) => result.family === 4) ?? results[0]
-      if (result === undefined) return callback(new Error(`${address} has no addresses`))
-      callback(undefined, { host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" })
+      if (result === undefined) return onError(new Error(`${address} has no addresses`))
+      next({ host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" })
     })
   } catch (error) {
-    callback(error)
+    onError(error)
   }
 }
 
-const errorCode = (error: unknown): unknown =>
+/** @internal */
+export interface OpenPlan {
+  readonly family: Family
+  readonly scopeIds: ReadonlyMap<string, number>
+  readonly bindHost: string
+  readonly remote: DatagramSocket.NativeAddress | undefined
+}
+
+/**
+ * Picks the socket's family and resolves `bind` and the remote endpoint
+ * (`peer` or `connect`) to IP literals. The family is the explicit `family`,
+ * else an IP literal in `bind`, else the remote's family, else a `bind`
+ * hostname's, else `"ipv4"`. IP literals answer synchronously.
+ *
+ * @internal
+ */
+export const planOpen = (
+  options: {
+    readonly family?: Family | undefined
+    readonly bind?: { readonly address?: string | NetAddress.IpAddress | undefined } | undefined
+    readonly remote?: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined
+  },
+  scopeIdsOf: (family: Family) => ReadonlyMap<string, number>,
+  onLookupError: (error: unknown) => void,
+  next: (plan: OpenPlan) => void
+): void => {
+  const { bind, remote } = options
+  const fixed = options.family ?? (bind?.address === undefined ? undefined : familyOfLiteral(bind.address))
+  resolve(remote?.address, fixed, onLookupError, (resolvedRemote) => {
+    const remoteFamily = resolvedRemote?.family ?? (remote === undefined ? undefined : familyOfLiteral(remote.address))
+    resolve(bind?.address, fixed ?? remoteFamily, onLookupError, (resolvedBind) => {
+      const family = fixed ?? remoteFamily ?? resolvedBind?.family ?? "ipv4"
+      const scopeIds = scopeIdsOf(family)
+      next({
+        family,
+        scopeIds,
+        bindHost: resolvedBind?.host ??
+          (bind === undefined ? undefined : formatEndpoint(bind, scopeIds)) ??
+          (family === "ipv6" ? "::" : "0.0.0.0"),
+        remote: remote === undefined ? undefined : {
+          host: resolvedRemote?.host ?? formatEndpoint(remote, scopeIds)!,
+          port: remote.port
+        }
+      })
+    })
+  })
+}
+
+/**
+ * Resolves an adopted socket's `peer` in the family the socket is bound to.
+ *
+ * @internal
+ */
+export const resolvePeer = (
+  peer: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined,
+  family: Family,
+  scopeIds: ReadonlyMap<string, number>,
+  onLookupError: (error: unknown) => void,
+  next: (peer: DatagramSocket.NativeAddress | undefined) => void
+): void => {
+  if (peer === undefined) return next(undefined)
+  if (typeof peer.address !== "string") return next({ host: formatEndpoint(peer, scopeIds)!, port: peer.port })
+  resolve(peer.address, family, onLookupError, (resolved) => next({ host: resolved!.host, port: peer.port }))
+}
+
+/** @internal */
+export const errorCode = (error: unknown): unknown =>
   typeof error === "object" && error !== null ? (error as NodeJS.ErrnoException).code : undefined
 
-const openError = (
+/** @internal */
+export const openError = (
   error: unknown,
   kind?: DatagramSocket.DatagramSocketOpenError["kind"]
 ): DatagramSocket.DatagramSocketError => {
@@ -377,7 +470,8 @@ const openError = (
   })
 }
 
-const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
+/** @internal */
+export const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
   switch (errorCode(error)) {
     case "EMSGSIZE":
       return "MessageTooLarge"
@@ -396,20 +490,42 @@ const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
   }
 }
 
-const closedError = () =>
+/** @internal */
+export const closedError = (): DatagramSocket.DatagramSocketError =>
   new DatagramSocket.DatagramSocketError({ reason: new DatagramSocket.DatagramSocketClosedError() })
 
-const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
-  errorCode(error) === "ERR_SOCKET_DGRAM_NOT_RUNNING"
-    ? closedError()
-    : new DatagramSocket.DatagramSocketError({
-      reason: new DatagramSocket.DatagramSocketWriteError({ kind: ioKind(error), cause: error })
-    })
-
-const readError = (error: unknown): DatagramSocket.DatagramSocketError =>
+/** @internal */
+export const ioWriteError = (
+  error: unknown,
+  kind: DatagramSocket.IoErrorKind = ioKind(error)
+): DatagramSocket.DatagramSocketError =>
   new DatagramSocket.DatagramSocketError({
-    reason: new DatagramSocket.DatagramSocketReadError({ kind: ioKind(error), cause: error })
+    reason: new DatagramSocket.DatagramSocketWriteError({ kind, cause: error })
   })
+
+/** @internal */
+export const readError = (
+  error: unknown,
+  kind: DatagramSocket.IoErrorKind = ioKind(error)
+): DatagramSocket.DatagramSocketError =>
+  new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketReadError({ kind, cause: error })
+  })
+
+// -----------------------------------------------------------------------------
+// internal
+// -----------------------------------------------------------------------------
+
+// Every address reaching the socket is an IP literal, so answer at once. This
+// also skips the `process.nextTick` Node's default `lookup` adds to each send.
+const immediateLookup = (
+  hostname: string,
+  family: unknown,
+  callback: (error: NodeJS.ErrnoException | null, address: string, family: number) => void
+) => callback(null, hostname, family === 6 ? 6 : 4)
+
+const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
+  errorCode(error) === "ERR_SOCKET_DGRAM_NOT_RUNNING" ? closedError() : ioWriteError(error)
 
 const open = (
   options: Options,
@@ -418,50 +534,18 @@ const open = (
   // `lookup` can't be cancelled, and core never interrupts `open`, so this
   // registers no finalizer
   Effect.callback((resume) => {
-    const fail = (error: DatagramSocket.DatagramSocketError) => resume(Effect.fail(error))
-    const remote = options.connect ?? options.peer
-    const fixed = options.family ??
-      (options.bind?.address === undefined ? undefined : familyOfLiteral(options.bind.address))
-
-    // Hostnames resolve to IP literals here. IP addresses are formatted once
-    // the family, and with it the IPv6 scope IDs, is known.
-    const lookup = (
-      address: string | NetAddress.IpAddress | undefined,
-      family: Family | undefined,
-      next: (resolved: Resolved | undefined) => void
-    ) => {
-      if (typeof address !== "string") return next(undefined)
-      resolve(address, family, (error, resolved) => {
-        if (error !== undefined) return fail(openError(error, "AddressNotAvailable"))
-        next(resolved)
-      })
-    }
-
-    lookup(remote?.address, fixed, (resolvedRemote) => {
-      const remoteFamily = resolvedRemote?.family ??
-        (remote === undefined ? undefined : familyOfLiteral(remote.address))
-      lookup(options.bind?.address, fixed ?? remoteFamily, (resolvedBind) => {
-        const family = fixed ?? remoteFamily ?? resolvedBind?.family ?? "ipv4"
-        const scopeIds = family === "ipv6" ? interfaceScopeIds() : noScopeIds
-        const remoteAddress: DatagramSocket.NativeAddress | undefined = remote === undefined ? undefined : {
-          host: resolvedRemote?.host ?? formatEndpoint(remote, scopeIds)!,
-          port: remote.port
-        }
-        const bindHost = resolvedBind?.host ??
-          (options.bind === undefined ? undefined : formatEndpoint(options.bind, scopeIds)) ??
-          (family === "ipv6" ? "::" : "0.0.0.0")
-        bind(options, events, family, scopeIds, bindHost, remoteAddress, resume)
-      })
-    })
+    planOpen(
+      { family: options.family, bind: options.bind, remote: options.connect ?? options.peer },
+      scopeIdsFor,
+      (error) => resume(Effect.fail(openError(error, "AddressNotAvailable"))),
+      (plan) => bind(options, events, plan, resume)
+    )
   })
 
 const bind = (
   options: Options,
   events: DatagramSocket.NativeEvents,
-  family: Family,
-  scopeIds: ReadonlyMap<string, number>,
-  host: string,
-  remote: DatagramSocket.NativeAddress | undefined,
+  { bindHost: host, family, remote, scopeIds }: OpenPlan,
   resume: (effect: Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError>) => void
 ) => {
   let socket: Dgram.Socket
@@ -495,7 +579,7 @@ const bind = (
         if (multicast?.loopback !== undefined) socket.setMulticastLoopback(multicast.loopback)
         if (multicast?.interface !== undefined) {
           socket.setMulticastInterface(
-            NetAddress.formatMulticastInterface(multicast.interface, scopeIds, process.platform)
+            NetAddress.formatMulticastInterface(multicast.interface, scopeIds)
           )
         }
       } catch (error) {
@@ -539,21 +623,17 @@ const adopt = (
     } catch {
       // not connected
     }
-    const scopeIds = family === "ipv6" ? interfaceScopeIds() : noScopeIds
+    const scopeIds = scopeIdsFor(family)
     if (remote !== undefined) {
       return resume(Effect.succeed(native.open(scopeIds, { host: remote.address, port: remote.port }, true)))
     }
-    const peer = options.peer
-    if (peer === undefined) return resume(Effect.succeed(native.open(scopeIds, undefined, false)))
-    if (typeof peer.address !== "string") {
-      return resume(
-        Effect.succeed(native.open(scopeIds, { host: formatEndpoint(peer, scopeIds)!, port: peer.port }, false))
-      )
-    }
-    resolve(peer.address, family, (error, resolved) => {
-      if (error !== undefined) return fail(openError(error, "AddressNotAvailable"))
-      resume(Effect.succeed(native.open(scopeIds, { host: resolved!.host, port: peer.port }, false)))
-    })
+    resolvePeer(
+      options.peer,
+      family,
+      scopeIds,
+      (error) => fail(openError(error, "AddressNotAvailable")),
+      (peer) => resume(Effect.succeed(native.open(scopeIds, peer, false)))
+    )
   })
 
 class NativeSocket {
@@ -593,7 +673,7 @@ class NativeSocket {
       try {
         // the callback is the only signal of a send's result, and on
         // `EAGAIN`/`ENOBUFS` it waits until libuv has sent the datagram
-        if (connected || destination === undefined) socket.send(payload, done)
+        if (destination === undefined) socket.send(payload, done)
         else socket.send(payload, destination.port, destination.host, done)
       } catch (error) {
         done(error)
@@ -601,7 +681,7 @@ class NativeSocket {
     }
     return {
       address: { host: bound.address, port: bound.port },
-      scopeIds: scopeIds === noScopeIds ? undefined : scopeIds,
+      scopeIds,
       peer,
       connected,
       send: (payload, destination, done) =>
@@ -628,7 +708,7 @@ class NativeSocket {
             const groupHost = NetAddress.formatIp(group)
             const interfaceHost = ingress === undefined
               ? undefined
-              : NetAddress.formatMulticastInterface(ingress, scopeIds, process.platform)
+              : NetAddress.formatMulticastInterface(ingress, scopeIds)
             if (source === undefined) {
               socket.addMembership(groupHost, interfaceHost)
               return () => Effect.sync(() => socket.dropMembership(groupHost, interfaceHost))
