@@ -82,22 +82,14 @@
  * @stability unstable
  * @since 4.0.0
  */
-import {
-  closedError,
-  type Family,
-  ioWriteError as writeError,
-  openError,
-  type OpenPlan,
-  planOpen,
-  readError,
-  resolvePeer,
-  scopeIdsFor
-} from "@effect/platform-node-shared/NodeDatagramSocket"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
 import type * as Scope from "effect/Scope"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
+import * as Dns from "node:dns"
+import * as Net from "node:net"
+import * as Os from "node:os"
 
 /**
  * An endpoint given in open-time options.
@@ -259,6 +251,192 @@ export const fromUdpSocket = <R>(
  */
 export const layer = (options: Options = {}): Layer.Layer<DatagramSocket.DatagramSocket> =>
   Layer.effect(DatagramSocket.DatagramSocket, make(options))
+
+// -----------------------------------------------------------------------------
+// name resolution and error mapping, as in the Node adapter
+// -----------------------------------------------------------------------------
+
+type Family = "ipv4" | "ipv6"
+
+const noScopeIds: ReadonlyMap<string, number> = new Map()
+
+// Windows reports numeric zones, which parse and format without a map
+const interfaceScopeIds = (): ReadonlyMap<string, number> => {
+  if (process.platform === "win32") return noScopeIds
+  try {
+    return NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces()))
+  } catch {
+    return noScopeIds
+  }
+}
+
+const scopeIdsFor = (family: Family): ReadonlyMap<string, number> =>
+  family === "ipv6" ? interfaceScopeIds() : noScopeIds
+
+const familyOfLiteral = (address: string | NetAddress.IpAddress): Family | undefined => {
+  if (typeof address !== "string") return NetAddress.isIpv4Address(address) ? "ipv4" : "ipv6"
+  const version = Net.isIP(address)
+  return version === 4 ? "ipv4" : version === 6 ? "ipv6" : undefined
+}
+
+// `endpoint` may be a whole `InetAddress`, whose IPv6 scope must survive
+const formatEndpoint = (
+  endpoint: { readonly address?: string | NetAddress.IpAddress | undefined },
+  scopeIds: ReadonlyMap<string, number>
+): string | undefined =>
+  NetAddress.isInetAddress(endpoint)
+    ? NetAddress.formatNativeHost(endpoint, scopeIds)
+    : endpoint.address === undefined || typeof endpoint.address === "string"
+    ? endpoint.address
+    : NetAddress.formatIp(endpoint.address)
+
+interface Resolved {
+  readonly host: string
+  readonly family: Family
+}
+
+// Resolves a hostname with one `lookup`, preferring IPv4 unless `family` is
+// fixed. Anything that isn't a hostname answers synchronously.
+const resolve = (
+  address: string | NetAddress.IpAddress | undefined,
+  family: Family | undefined,
+  onError: (error: unknown) => void,
+  next: (resolved: Resolved | undefined) => void
+): void => {
+  if (typeof address !== "string") return next(undefined)
+  const literal = familyOfLiteral(address)
+  if (literal !== undefined) return next({ host: address, family: literal })
+  try {
+    Dns.lookup(address, { all: true, family: family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0 }, (error, results) => {
+      if (error) return onError(error)
+      const result = results.find((result) => result.family === 4) ?? results[0]
+      if (result === undefined) return onError(new Error(`${address} has no addresses`))
+      next({ host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" })
+    })
+  } catch (error) {
+    onError(error)
+  }
+}
+
+interface OpenPlan {
+  readonly family: Family
+  readonly scopeIds: ReadonlyMap<string, number>
+  readonly bindHost: string
+  readonly remote: DatagramSocket.NativeAddress | undefined
+}
+
+/**
+ * Picks the socket's family and resolves `bind` and the remote endpoint
+ * (`peer` or `connect`) to IP literals. The family is the explicit `family`,
+ * else an IP literal in `bind`, else the remote's family, else a `bind`
+ * hostname's, else `"ipv4"`. IP literals answer synchronously.
+ */
+const planOpen = (
+  options: {
+    readonly family?: Family | undefined
+    readonly bind?: { readonly address?: string | NetAddress.IpAddress | undefined } | undefined
+    readonly remote?: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined
+  },
+  scopeIdsOf: (family: Family) => ReadonlyMap<string, number>,
+  onLookupError: (error: unknown) => void,
+  next: (plan: OpenPlan) => void
+): void => {
+  const { bind, remote } = options
+  const fixed = options.family ?? (bind?.address === undefined ? undefined : familyOfLiteral(bind.address))
+  resolve(remote?.address, fixed, onLookupError, (resolvedRemote) => {
+    const remoteFamily = resolvedRemote?.family ?? (remote === undefined ? undefined : familyOfLiteral(remote.address))
+    resolve(bind?.address, fixed ?? remoteFamily, onLookupError, (resolvedBind) => {
+      const family = fixed ?? remoteFamily ?? resolvedBind?.family ?? "ipv4"
+      const scopeIds = scopeIdsOf(family)
+      next({
+        family,
+        scopeIds,
+        bindHost: resolvedBind?.host ??
+          (bind === undefined ? undefined : formatEndpoint(bind, scopeIds)) ??
+          (family === "ipv6" ? "::" : "0.0.0.0"),
+        remote: remote === undefined ? undefined : {
+          host: resolvedRemote?.host ?? formatEndpoint(remote, scopeIds)!,
+          port: remote.port
+        }
+      })
+    })
+  })
+}
+
+/**
+ * Resolves an adopted socket's `peer` in the family the socket is bound to.
+ */
+const resolvePeer = (
+  peer: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined,
+  family: Family,
+  scopeIds: ReadonlyMap<string, number>,
+  onLookupError: (error: unknown) => void,
+  next: (peer: DatagramSocket.NativeAddress | undefined) => void
+): void => {
+  if (peer === undefined) return next(undefined)
+  if (typeof peer.address !== "string") return next({ host: formatEndpoint(peer, scopeIds)!, port: peer.port })
+  resolve(peer.address, family, onLookupError, (resolved) => next({ host: resolved!.host, port: peer.port }))
+}
+
+const errorCode = (error: unknown): unknown =>
+  typeof error === "object" && error !== null ? (error as NodeJS.ErrnoException).code : undefined
+
+const openError = (
+  error: unknown,
+  kind?: DatagramSocket.DatagramSocketOpenError["kind"]
+): DatagramSocket.DatagramSocketError => {
+  if (kind === undefined) {
+    const code = errorCode(error)
+    kind = code === "EADDRINUSE"
+      ? "AddressInUse"
+      : code === "EADDRNOTAVAIL"
+      ? "AddressNotAvailable"
+      : code === "EACCES" || code === "EPERM"
+      ? "PermissionDenied"
+      : "Unknown"
+  }
+  return new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketOpenError({ kind, cause: error })
+  })
+}
+
+const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
+  switch (errorCode(error)) {
+    case "EMSGSIZE":
+      return "MessageTooLarge"
+    case "EHOSTUNREACH":
+    case "ENETUNREACH":
+    case "EHOSTDOWN":
+    case "ENETDOWN":
+      return "Unreachable"
+    case "ECONNREFUSED":
+      return "ConnectionRefused"
+    case "EACCES":
+    case "EPERM":
+      return "PermissionDenied"
+    default:
+      return "Unknown"
+  }
+}
+
+const closedError = (): DatagramSocket.DatagramSocketError =>
+  new DatagramSocket.DatagramSocketError({ reason: new DatagramSocket.DatagramSocketClosedError() })
+
+const writeError = (
+  error: unknown,
+  kind: DatagramSocket.IoErrorKind = ioKind(error)
+): DatagramSocket.DatagramSocketError =>
+  new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketWriteError({ kind, cause: error })
+  })
+
+const readError = (
+  error: unknown,
+  kind: DatagramSocket.IoErrorKind = ioKind(error)
+): DatagramSocket.DatagramSocketError =>
+  new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketReadError({ kind, cause: error })
+  })
 
 // -----------------------------------------------------------------------------
 // internal

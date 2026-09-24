@@ -104,13 +104,14 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Shared from "@effect/platform-node-shared/NodeDatagramSocket"
 import * as Effect from "effect/Effect"
 import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
 import type * as Scope from "effect/Scope"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
+import * as Dns from "node:dns"
+import * as Net from "node:net"
 
 /**
  * An endpoint given in open-time options.
@@ -235,11 +236,29 @@ interface DenoError {
   readonly code?: unknown
 }
 
+const errorCode = (error: unknown): unknown => (error as DenoError)?.code
+
+// Node's errno codes, then Deno's error names
 const openError = (
   error: unknown,
   kind?: DatagramSocket.DatagramSocketOpenError["kind"]
-): DatagramSocket.DatagramSocketError =>
-  Shared.openError(error, (error as DenoError)?.name === "NotCapable" ? "PermissionDenied" : kind)
+): DatagramSocket.DatagramSocketError => {
+  if ((error as DenoError)?.name === "NotCapable") {
+    kind = "PermissionDenied"
+  } else if (kind === undefined) {
+    const code = errorCode(error)
+    kind = code === "EADDRINUSE"
+      ? "AddressInUse"
+      : code === "EADDRNOTAVAIL"
+      ? "AddressNotAvailable"
+      : code === "EACCES" || code === "EPERM"
+      ? "PermissionDenied"
+      : "Unknown"
+  }
+  return new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketOpenError({ kind, cause: error })
+  })
+}
 
 // DNS lookup reports a missing Deno net permission as EPERM, not NotCapable.
 const lookupOpenError = (error: unknown) => {
@@ -254,11 +273,22 @@ const unsupportedError = (capability: string) =>
 
 // Node's errno kinds, then Deno's error names
 const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
-  const kind = Shared.ioKind(error)
-  if (kind !== "Unknown") return kind
-  const denoError = error as DenoError
-  if (denoError?.code === "ECONNRESET") return "ConnectionRefused"
-  switch (denoError?.name) {
+  switch (errorCode(error)) {
+    case "EMSGSIZE":
+      return "MessageTooLarge"
+    case "EHOSTUNREACH":
+    case "ENETUNREACH":
+    case "EHOSTDOWN":
+    case "ENETDOWN":
+      return "Unreachable"
+    case "ECONNREFUSED":
+    case "ECONNRESET":
+      return "ConnectionRefused"
+    case "EACCES":
+    case "EPERM":
+      return "PermissionDenied"
+  }
+  switch ((error as DenoError)?.name) {
     case "NotCapable":
     case "PermissionDenied":
       return "PermissionDenied"
@@ -270,13 +300,121 @@ const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
   }
 }
 
-const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
-  (error as DenoError)?.name === "BadResource" ? Shared.closedError() : Shared.ioWriteError(error, ioKind(error))
+const closedError = (): DatagramSocket.DatagramSocketError =>
+  new DatagramSocket.DatagramSocketError({ reason: new DatagramSocket.DatagramSocketClosedError() })
 
-const readError = (error: unknown): DatagramSocket.DatagramSocketError => Shared.readError(error, ioKind(error))
+const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
+  (error as DenoError)?.name === "BadResource" ? closedError() : new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketWriteError({ kind: ioKind(error), cause: error })
+  })
+
+const readError = (error: unknown): DatagramSocket.DatagramSocketError =>
+  new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketReadError({ kind: ioKind(error), cause: error })
+  })
+
+// -----------------------------------------------------------------------------
+// name resolution, as in the Node adapter
+// -----------------------------------------------------------------------------
+
+type Family = "ipv4" | "ipv6"
 
 // Deno has no interface names to map, so IPv6 zones stay numeric
-const noScopeIds = () => Shared.noScopeIds
+const noScopeIds: ReadonlyMap<string, number> = new Map()
+
+const familyOfLiteral = (address: string | NetAddress.IpAddress): Family | undefined => {
+  if (typeof address !== "string") return NetAddress.isIpv4Address(address) ? "ipv4" : "ipv6"
+  const version = Net.isIP(address)
+  return version === 4 ? "ipv4" : version === 6 ? "ipv6" : undefined
+}
+
+// `endpoint` may be a whole `InetAddress`, whose IPv6 scope must survive
+const formatEndpoint = (
+  endpoint: { readonly address?: string | NetAddress.IpAddress | undefined },
+  scopeIds: ReadonlyMap<string, number>
+): string | undefined =>
+  NetAddress.isInetAddress(endpoint)
+    ? NetAddress.formatNativeHost(endpoint, scopeIds)
+    : endpoint.address === undefined || typeof endpoint.address === "string"
+    ? endpoint.address
+    : NetAddress.formatIp(endpoint.address)
+
+interface Resolved {
+  readonly host: string
+  readonly family: Family
+}
+
+// Resolves a hostname with one `lookup`, preferring IPv4 unless `family` is
+// fixed. Anything that isn't a hostname answers synchronously.
+const resolve = (
+  address: string | NetAddress.IpAddress | undefined,
+  family: Family | undefined,
+  onError: (error: unknown) => void,
+  next: (resolved: Resolved | undefined) => void
+): void => {
+  if (typeof address !== "string") return next(undefined)
+  const literal = familyOfLiteral(address)
+  if (literal !== undefined) return next({ host: address, family: literal })
+  try {
+    Dns.lookup(address, { all: true, family: family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0 }, (error, results) => {
+      if (error) return onError(error)
+      const result = results.find((result) => result.family === 4) ?? results[0]
+      if (result === undefined) return onError(new Error(`${address} has no addresses`))
+      next({ host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" })
+    })
+  } catch (error) {
+    onError(error)
+  }
+}
+
+interface OpenPlan {
+  readonly bindHost: string
+  readonly remote: DatagramSocket.NativeAddress | undefined
+}
+
+// Picks the socket's family and resolves `bind` and `peer` to IP literals.
+// The family is the explicit `family`, else an IP literal in `bind`, else the
+// peer's family, else a `bind` hostname's, else `"ipv4"`. IP literals answer
+// synchronously.
+const planOpen = (
+  options: {
+    readonly family?: Family | undefined
+    readonly bind?: { readonly address?: string | NetAddress.IpAddress | undefined } | undefined
+    readonly remote?: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined
+  },
+  onLookupError: (error: unknown) => void,
+  next: (plan: OpenPlan) => void
+): void => {
+  const { bind, remote } = options
+  const fixed = options.family ?? (bind?.address === undefined ? undefined : familyOfLiteral(bind.address))
+  resolve(remote?.address, fixed, onLookupError, (resolvedRemote) => {
+    const remoteFamily = resolvedRemote?.family ?? (remote === undefined ? undefined : familyOfLiteral(remote.address))
+    resolve(bind?.address, fixed ?? remoteFamily, onLookupError, (resolvedBind) => {
+      const family = fixed ?? remoteFamily ?? resolvedBind?.family ?? "ipv4"
+      next({
+        bindHost: resolvedBind?.host ??
+          (bind === undefined ? undefined : formatEndpoint(bind, noScopeIds)) ??
+          (family === "ipv6" ? "::" : "0.0.0.0"),
+        remote: remote === undefined ? undefined : {
+          host: resolvedRemote?.host ?? formatEndpoint(remote, noScopeIds)!,
+          port: remote.port
+        }
+      })
+    })
+  })
+}
+
+// Resolves an adopted socket's `peer` in the family the socket is bound to
+const resolvePeer = (
+  peer: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined,
+  family: Family,
+  onLookupError: (error: unknown) => void,
+  next: (peer: DatagramSocket.NativeAddress | undefined) => void
+): void => {
+  if (peer === undefined) return next(undefined)
+  if (typeof peer.address !== "string") return next({ host: formatEndpoint(peer, noScopeIds)!, port: peer.port })
+  resolve(peer.address, family, onLookupError, (resolved) => next({ host: resolved!.host, port: peer.port }))
+}
 
 const open = (
   options: Options,
@@ -289,9 +427,8 @@ const open = (
     ))
     // `lookup` can't be cancelled, and core never interrupts `open`
     : Effect.callback((resume) => {
-      Shared.planOpen(
+      planOpen(
         { family: options.family, bind: options.bind, remote: options.peer },
-        noScopeIds,
         (error) => resume(Effect.fail(lookupOpenError(error))),
         (plan) => {
           let conn: Deno.DatagramConn
@@ -317,11 +454,10 @@ const adopt = (
   events: DatagramSocket.NativeEvents
 ): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
   Effect.callback((resume) => {
-    const family: Shared.Family = (conn.addr as Deno.NetAddr).hostname.includes(":") ? "ipv6" : "ipv4"
-    Shared.resolvePeer(
+    const family: Family = (conn.addr as Deno.NetAddr).hostname.includes(":") ? "ipv6" : "ipv4"
+    resolvePeer(
       options.peer,
       family,
-      Shared.noScopeIds,
       (error) => {
         try {
           conn.close()

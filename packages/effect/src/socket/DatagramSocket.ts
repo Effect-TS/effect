@@ -269,12 +269,15 @@ export interface NativeAddress {
  *
  * `send` and `sendMany` hand datagrams to the runtime and call `done` exactly
  * once, synchronously or later, when the runtime reports the result. They must
- * not throw. A runtime that can send synchronously also implements `trySend`,
- * which core calls first so a write that goes out at once allocates nothing.
- * It returns `true` when the datagram was sent, and `false` when it wasn't,
- * for any reason. Core then calls `send` at once with the same datagram, so
- * the runtime can act on what `trySend` found instead of trying again. `sendMany` passes the index of the failing datagram to `done`
- * when the runtime knows it, so core can attach its address. Adapters
+ * not throw. `sendMany` passes the index of the failing datagram to `done`
+ * when the runtime knows it, so core can attach its address.
+ *
+ * A runtime that can send synchronously also implements `trySend`, which core
+ * calls first so a write that goes out at once allocates nothing. It returns
+ * `true` when the datagram was sent, and `false` when it wasn't, for any
+ * reason, and must not throw. Core then calls `send` at once with the same
+ * datagram, so the runtime can act on what `trySend` found instead of trying
+ * again. Adapters
  * normalize their native errors before passing them to core. A destination
  * may be a received datagram record, so read its `host` and `port` during the
  * call and don't keep a reference to it.
@@ -319,6 +322,9 @@ export interface NativeHandle {
  * error and `onClose` reports the native socket closing underneath the
  * reader; both are sticky. `onError` forwards errors with no write left to
  * fail, such as ICMP reports, to the user's `onError` option.
+ *
+ * Each callback can be passed on its own, for example as a runtime's event
+ * listener.
  *
  * @stability unstable
  * @category models
@@ -514,7 +520,8 @@ export class DatagramSocketError
  *
  * `open` runs in the reader's scope, with the services of the fiber that
  * built the socket, so an adopted `acquire` can use them and register
- * finalizers that run when the reader closes.
+ * finalizers that run when the reader closes. Where the fiber acquiring the
+ * reader has a service with the same tag, its own takes precedence.
  *
  * Concurrent pulls are served in the order they started waiting.
  *
@@ -590,7 +597,7 @@ const makeFromHandle = <R>(
       // fiber and is never interrupted. Interruption only stops the wait, and
       // `abandon` closes a handle that arrives later.
       // the builder's services, with the reader's scope in place of theirs
-      const opened = open(state).pipe(
+      const opened = open(state.events).pipe(
         Effect.updateContext((input: Context.Context<never>) =>
           Context.add(Context.merge(services, input), Scope.Scope, scope)
         )
@@ -666,11 +673,12 @@ const isDatagramImpl = (value: NetAddress.InetAddress | OutgoingDatagram | undef
 const targetOf = (datagram: OutgoingDatagram): NetAddress.InetAddress | DatagramImpl | undefined =>
   isDatagramImpl(datagram) ? datagram : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
 
-// Also the handle's `NativeEvents`, so a packet reaches `onPacket` directly
-class ReaderState implements NativeEvents {
+class ReaderState {
   readonly capacity: number
   readonly sliding: boolean
   readonly listener: ((error: DatagramSocketError) => void) | undefined
+  // arrow functions, so an adapter can pass one on its own as a callback
+  readonly events: NativeEvents
   readonly reader: Reader
   // queued packets, oldest first from `head`. `head` only moves under
   // "sliding" once the buffer is full, when it becomes a ring
@@ -695,6 +703,12 @@ class ReaderState implements NativeEvents {
     this.capacity = capacity
     this.sliding = sliding
     this.listener = listener
+    this.events = {
+      onPacket: (payload, host, port) => this.push(payload, host, port),
+      onReadError: (error) => this.fail(error),
+      onError: (error) => this.report(error),
+      onClose: () => this.fail(closedError())
+    }
     this.reader = makeReader(this)
   }
 
@@ -711,7 +725,7 @@ class ReaderState implements NativeEvents {
     )
   }
 
-  onPacket(payload: Uint8Array, host: string, port: number) {
+  push(payload: Uint8Array, host: string, port: number) {
     if (this.failure !== undefined) return
     // a parked pull implies an empty queue, so it never overflows
     if (this.buffer.length >= this.capacity) return this.overflow(payload, host, port)
@@ -768,17 +782,13 @@ class ReaderState implements NativeEvents {
     if (index !== -1) this.waiters.splice(index, 1)
   }
 
-  onReadError(error: DatagramSocketError) {
+  fail(error: DatagramSocketError) {
     if (this.failure !== undefined) return
     this.failure = Effect.fail(error)
     this.failWaiters()
   }
 
-  onClose() {
-    this.onReadError(closedError())
-  }
-
-  onError(error: DatagramSocketError) {
+  report(error: DatagramSocketError) {
     const listener = this.listener
     if (listener === undefined || this.closed) return
     try {

@@ -273,14 +273,12 @@ export const layer = (options?: Options): Layer.Layer<DatagramSocket.DatagramSoc
   Layer.effect(DatagramSocket.DatagramSocket, make(options))
 
 // -----------------------------------------------------------------------------
-// shared with the Bun and Deno adapters
+// name resolution and error mapping
 // -----------------------------------------------------------------------------
 
-/** @internal */
-export type Family = "ipv4" | "ipv6"
+type Family = "ipv4" | "ipv6"
 
-/** @internal */
-export const noScopeIds: ReadonlyMap<string, number> = new Map()
+const noScopeIds: ReadonlyMap<string, number> = new Map()
 
 // Windows reports numeric zones, which parse and format without a map
 const interfaceScopeIds = (): ReadonlyMap<string, number> => {
@@ -292,8 +290,7 @@ const interfaceScopeIds = (): ReadonlyMap<string, number> => {
   }
 }
 
-/** @internal */
-export const scopeIdsFor = (family: Family): ReadonlyMap<string, number> =>
+const scopeIdsFor = (family: Family): ReadonlyMap<string, number> =>
   family === "ipv6" ? interfaceScopeIds() : noScopeIds
 
 const familyOfLiteral = (address: string | NetAddress.IpAddress): Family | undefined => {
@@ -341,8 +338,7 @@ const resolve = (
   }
 }
 
-/** @internal */
-export interface OpenPlan {
+interface OpenPlan {
   readonly family: Family
   readonly scopeIds: ReadonlyMap<string, number>
   readonly bindHost: string
@@ -354,10 +350,8 @@ export interface OpenPlan {
  * (`peer` or `connect`) to IP literals. The family is the explicit `family`,
  * else an IP literal in `bind`, else the remote's family, else a `bind`
  * hostname's, else `"ipv4"`. IP literals answer synchronously.
- *
- * @internal
  */
-export const planOpen = (
+const planOpen = (
   options: {
     readonly family?: Family | undefined
     readonly bind?: { readonly address?: string | NetAddress.IpAddress | undefined } | undefined
@@ -391,10 +385,8 @@ export const planOpen = (
 
 /**
  * Resolves an adopted socket's `peer` in the family the socket is bound to.
- *
- * @internal
  */
-export const resolvePeer = (
+const resolvePeer = (
   peer: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined,
   family: Family,
   scopeIds: ReadonlyMap<string, number>,
@@ -406,12 +398,10 @@ export const resolvePeer = (
   resolve(peer.address, family, onLookupError, (resolved) => next({ host: resolved!.host, port: peer.port }))
 }
 
-/** @internal */
-export const errorCode = (error: unknown): unknown =>
+const errorCode = (error: unknown): unknown =>
   typeof error === "object" && error !== null ? (error as NodeJS.ErrnoException).code : undefined
 
-/** @internal */
-export const openError = (
+const openError = (
   error: unknown,
   kind?: DatagramSocket.DatagramSocketOpenError["kind"]
 ): DatagramSocket.DatagramSocketError => {
@@ -430,8 +420,7 @@ export const openError = (
   })
 }
 
-/** @internal */
-export const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
+const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
   switch (errorCode(error)) {
     case "EMSGSIZE":
       return "MessageTooLarge"
@@ -450,12 +439,10 @@ export const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
   }
 }
 
-/** @internal */
-export const closedError = (): DatagramSocket.DatagramSocketError =>
+const closedError = (): DatagramSocket.DatagramSocketError =>
   new DatagramSocket.DatagramSocketError({ reason: new DatagramSocket.DatagramSocketClosedError() })
 
-/** @internal */
-export const ioWriteError = (
+const ioWriteError = (
   error: unknown,
   kind: DatagramSocket.IoErrorKind = ioKind(error)
 ): DatagramSocket.DatagramSocketError =>
@@ -463,8 +450,7 @@ export const ioWriteError = (
     reason: new DatagramSocket.DatagramSocketWriteError({ kind, cause: error })
   })
 
-/** @internal */
-export const readError = (
+const readError = (
   error: unknown,
   kind: DatagramSocket.IoErrorKind = ioKind(error)
 ): DatagramSocket.DatagramSocketError =>
