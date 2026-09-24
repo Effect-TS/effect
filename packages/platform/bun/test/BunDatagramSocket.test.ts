@@ -110,6 +110,35 @@ describe("BunDatagramSocket", () => {
       assertReason(error, "DatagramSocketWriteError")
     }))))
 
+  it.effect("maps a thrown send once without retrying it", () =>
+    bounded(Effect.scoped(Effect.gen(function*() {
+      let sends = 0
+      const native = {
+        address: { address: host, port: 12345, family: "IPv4" },
+        closed: false,
+        reload: () => {},
+        send: () => {
+          sends++
+          if (sends === 1) throw Object.assign(new Error("too large"), { code: "EMSGSIZE" })
+          return true
+        },
+        close: () => {}
+      } as unknown as BunDatagramSocket.UdpSocket
+      const socket = yield* BunDatagramSocket.fromUdpSocket(Effect.succeed(native))
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const address = NetAddress.inetAddressFromIpStringUnsafe(host, 12346)
+      const error = yield* Effect.flip(writer.write({ payload: "first", address }))
+      assertReason(error, "DatagramSocketWriteError")
+      if (error.reason._tag === "DatagramSocketWriteError") {
+        assert.strictEqual(error.reason.kind, "MessageTooLarge")
+        assert.deepStrictEqual(error.reason.address, address)
+      }
+      assert.strictEqual(sends, 1, "a thrown send must not be retried")
+      yield* writer.write({ payload: "second", address })
+      assert.strictEqual(sends, 2)
+    }))))
+
   it.effect("round trips IPv6 on ::1", () =>
     bounded(Effect.scoped(Effect.gen(function*() {
       const server = yield* BunDatagramSocket.make({ family: "ipv6", bind: { address: "::1" } })
