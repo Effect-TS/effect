@@ -475,6 +475,10 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  * Use when you need to register routes or middleware with the router during layer
  * construction.
  *
+ * A shared `use` layer registers on each router, but a memoized wrapper around
+ * it may build only once across entrypoints. Use `Layer.fresh` on the wrapper
+ * when each router needs its registration.
+ *
  * **Example** (Registering routes during layer construction)
  *
  * ```ts import.meta.vitest
@@ -621,6 +625,10 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
  * The returned effect handles the current `HttpServerRequest` in the current
  * `Scope`; route request markers are converted into the ordinary requirements of
  * the returned handler. Each call creates its own router.
+ *
+ * A reused memoized wrapper around route layers, or a custom registration
+ * layer, may build only once across entrypoints. Use `Layer.fresh` on that layer
+ * when each router needs its routes.
  *
  * @stability unstable
  * @category converting
@@ -1308,6 +1316,12 @@ export const provideRequest =
 /**
  * Runs the provided application layer as an HTTP server with its own router.
  *
+ * **Details**
+ *
+ * A reused memoized wrapper around route layers, or a custom registration
+ * layer, may build only once across entrypoints. Use `Layer.fresh` on that layer
+ * when each router needs its routes.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -1382,6 +1396,10 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * request arrives, in which case that request waits for the build to finish.
  * If the build fails, every request rejects with the build error. Each call
  * creates its own router.
+ *
+ * A reused memoized wrapper around route layers, or a custom registration
+ * layer, may build only once across entrypoints. Use `Layer.fresh` on that layer
+ * when each router needs its routes.
  *
  * @stability unstable
  * @category converting

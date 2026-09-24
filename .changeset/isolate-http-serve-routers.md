@@ -4,6 +4,8 @@
 
 `HttpRouter.serve`, `toWebHandler`, and `toHttpEffect` now each create their own router, so servers and handlers in one layer graph, or sharing a `memoMap`, no longer share routes. `toHttpEffect` also accepts a `memoMap` option.
 
+Reused `HttpRouter.add`, `addAll`, and `use` layers register on each router. A memoized wrapper around them, or a custom layer that registers routes, may build only once across entrypoints; use `Layer.fresh` on that layer if each router needs its routes.
+
 ### Breaking changes
 
 - `HttpRouter.layer` was removed. Delete the router layer and pass route layers to an entrypoint: `HttpRouter.toWebHandler(routes)` instead of `HttpRouter.toWebHandler(routes.pipe(Layer.provideMerge(HttpRouter.layer)))`.
