@@ -4,20 +4,16 @@ import { describe, expect, it } from "tstyche"
 
 describe("HttpRouter", () => {
   describe("router ownership", () => {
-    it("does not expose reusable router constructors", () => {
+    it("exposes make but not the reusable router layer", () => {
       expect<typeof HttpRouter>().type.not.toHaveProperty("layer")
-      expect<typeof HttpRouter>().type.not.toHaveProperty("make")
+      expect<Effect.Success<typeof HttpRouter.make>>().type.toBe<HttpRouter.HttpRouter>()
     })
 
-    it("does not accept app layers that output HttpRouter", () => {
+    it("accepts app layers that output HttpRouter", () => {
       const app = Layer.succeed(HttpRouter.HttpRouter, {} as HttpRouter.HttpRouter)
-
-      // @ts-expect-error remove it from the app layer
-      void HttpRouter.serve(app)
-      // @ts-expect-error remove it from the app layer
-      void HttpRouter.toWebHandler(app)
-      // @ts-expect-error remove it from the app layer
-      void HttpRouter.toHttpEffect(app)
+      expect(HttpRouter.serve).type.toBeCallableWith(app)
+      expect(HttpRouter.toWebHandler).type.toBeCallableWith(app)
+      expect(HttpRouter.toHttpEffect).type.toBeCallableWith(app)
     })
 
     it("accepts app layers with any output", () => {
@@ -27,19 +23,20 @@ describe("HttpRouter", () => {
       expect(HttpRouter.toHttpEffect).type.toBeCallableWith(app)
     })
 
-    it("rejects app layers with unknown output", () => {
+    it("accepts app layers with unknown output", () => {
       const app = {} as Layer.Layer<unknown>
-      // @ts-expect-error remove it from the app layer
-      void HttpRouter.serve(app)
-      // @ts-expect-error remove it from the app layer
-      void HttpRouter.toWebHandler(app)
-      // @ts-expect-error remove it from the app layer
-      void HttpRouter.toHttpEffect(app)
+      expect(HttpRouter.serve).type.toBeCallableWith(app)
+      expect(HttpRouter.toWebHandler).type.toBeCallableWith(app)
+      expect(HttpRouter.toHttpEffect).type.toBeCallableWith(app)
     })
 
-    it("accepts a narrowed generic wrapper", () => {
-      const serve = <E>(app: Layer.Layer<never, E, HttpRouter.HttpRouter>) => HttpRouter.serve(app)
-      expect(serve).type.toBeCallableWith(Layer.empty as Layer.Layer<never, never, HttpRouter.HttpRouter>)
+    it("accepts unconstrained generic wrappers", () => {
+      const serve = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.serve(app)
+      const toWebHandler = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.toWebHandler(app)
+      const toHttpEffect = <A, E>(app: Layer.Layer<A, E, HttpRouter.HttpRouter>) => HttpRouter.toHttpEffect(app)
+      expect(serve).type.toBeCallableWith(Layer.empty)
+      expect(toWebHandler).type.toBeCallableWith(Layer.empty)
+      expect(toHttpEffect).type.toBeCallableWith(Layer.empty)
     })
   })
 
