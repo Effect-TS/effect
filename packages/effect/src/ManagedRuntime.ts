@@ -339,11 +339,11 @@ export const make = <R, ER>(
     [Symbol.asyncDispose](): Promise<void> {
       return self.dispose()
     },
-    disposeEffect: Effect.suspend(() => {
+    disposeEffect: Effect.uninterruptible(Effect.suspend(() => {
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
       return Scope.close(self.scope, Exit.void)
-    }),
+    })),
     runFork<A, E>(effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions): Fiber.Fiber<A, E | ER> {
       return self.cachedContext === undefined ?
         Effect.runFork(provide(self, effect), mergeRunOptions(options)) :
