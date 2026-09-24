@@ -1934,12 +1934,10 @@ export const swr: {
       }
       if (shouldRevalidateSWR(current, staleTime)) {
         let active = true
-        const dispatcher = get.registry.schedulerAsync.makeDispatcher()
         get.addFinalizer(() => {
           active = false
-          dispatcher.cancel?.()
         })
-        dispatcher.scheduleTask(() => {
+        get.registry.schedulerAsync.makeDispatcher().scheduleTask(() => {
           if (active && shouldRevalidateSWR(get.once(self), staleTime)) {
             get.refresh(self)
           }

@@ -49,8 +49,7 @@ export interface Scheduler {
  * `scheduleTask` queues a task with a priority. `flush` drains pending work
  * synchronously, which is useful when callers need deterministic completion of
  * already scheduled tasks. Lower priority numbers run first, and equal
- * priorities run in FIFO order. Dispatchers that support `cancel` can discard
- * pending tasks without executing them.
+ * priorities run in FIFO order.
  *
  * @category models
  * @since 4.0.0
@@ -58,7 +57,6 @@ export interface Scheduler {
 export interface SchedulerDispatcher {
   scheduleTask(task: () => void, priority: number): void
   flush(): void
-  cancel?(): void
 }
 
 /**
@@ -242,12 +240,6 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
         toRun[j]()
       }
     }
-  }
-
-  cancel() {
-    this.running?.()
-    this.running = undefined
-    this.tasks = new PriorityBuckets()
   }
 
   /**
