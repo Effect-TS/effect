@@ -19,9 +19,6 @@ export interface ClickHouseNativeMigratorOptions {
 
 const defaultTable = "effect_clickhouse_native_migrations"
 
-const invalidMigration = (message: string, operation: string): SqlError =>
-  SqlError.make({ reason: ConstraintError.make({ cause: new Error(message), message, operation }) })
-
 const identifier = (value: string): Effect.Effect<string, SqlError> => {
   const parts = value.split(".")
 
@@ -29,7 +26,13 @@ const identifier = (value: string): Effect.Effect<string, SqlError> => {
     ? Effect.succeed(
       Array.map(parts, (part) => `\`${part}\``).join(".")
     )
-    : invalidMigration(`Invalid ClickHouse migrations table identifier: ${value}`, "migrator.identifier")
+    : SqlError.make({
+      reason: ConstraintError.make({
+        cause: new Error(`Invalid ClickHouse migrations table identifier: ${value}`),
+        message: `Invalid ClickHouse migrations table identifier: ${value}`,
+        operation: "migrator.identifier"
+      })
+    })
 }
 
 const literal = (value: string): string => `'${value.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`
@@ -54,7 +57,13 @@ const validate = (
       })
     })
     : invalid
-    ? invalidMigration("Migration ids must be positive safe integers and names must not be empty", "migrator.validate")
+    ? SqlError.make({
+      reason: ConstraintError.make({
+        cause: new Error("Migration ids must be positive safe integers and names must not be empty"),
+        message: "Migration ids must be positive safe integers and names must not be empty",
+        operation: "migrator.validate"
+      })
+    })
     : Effect.succeed(Array.sortWith(migrations, (migration) => migration.id, Order.Number))
 }
 

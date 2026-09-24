@@ -4,6 +4,7 @@ import * as Context from "effect/Context"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import { SqlError, UnknownError } from "effect/sql/SqlError"
@@ -83,7 +84,7 @@ export const make = (
           ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
             Effect.serviceOption(sqlClient.transactionService).pipe(
               Effect.flatMap((activeTransaction) =>
-                activeTransaction._tag === "Some" ? nestedTransactionUnsupported : sqlClient.withTransaction(effect)
+                Option.isSome(activeTransaction) ? nestedTransactionUnsupported : sqlClient.withTransaction(effect)
               )
             )
           : Reflect.get(target, property, receiver)

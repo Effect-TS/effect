@@ -2,7 +2,7 @@ import { NodeCrypto } from "@effect/platform-node"
 import { it } from "@effect/vitest"
 import { Effect, Layer, Result } from "effect"
 import { SqlClient } from "effect/sql"
-import { SqlError } from "effect/sql/SqlError"
+import { SqlError, UnknownError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
 import { clickHouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
@@ -114,7 +114,7 @@ describe("ClickHouse native SQL client service integration", () => {
         expect(Result.isFailure(rollback)).toBe(true)
         expect(Result.isFailure(nested)).toBe(true)
         if (Result.isFailure(nested)) {
-          expect(nested.failure.reason._tag).toBe("UnknownError")
+          expect(nested.failure).toBeInstanceOf(UnknownError)
           expect(nested.failure.reason.operation).toBe("withTransaction")
         }
         expect(rows).toEqual([{ id: 1 }])

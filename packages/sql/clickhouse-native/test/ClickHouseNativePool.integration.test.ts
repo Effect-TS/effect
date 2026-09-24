@@ -1,7 +1,7 @@
 import { NodeCrypto } from "@effect/platform-node"
 import { it } from "@effect/vitest"
 import { Effect, Result } from "effect"
-import { isSqlError } from "effect/sql/SqlError"
+import { isSqlError, UnknownError } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
 import { clickHouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
@@ -22,7 +22,7 @@ describe("ClickHouse native TCP pool", () => {
           if (Result.isFailure(result)) {
             expect(isSqlError(result.failure)).toBe(true)
             if (isSqlError(result.failure)) {
-              expect(result.failure.reason._tag).toBe("UnknownError")
+              expect(result.failure.reason).toBeInstanceOf(UnknownError)
             }
           }
         })

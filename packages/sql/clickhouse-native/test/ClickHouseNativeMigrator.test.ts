@@ -1,6 +1,6 @@
 import { it } from "@effect/vitest"
 import { Array, Effect, Result } from "effect"
-import { isSqlError } from "effect/sql/SqlError"
+import { isSqlError, UniqueViolation } from "effect/sql/SqlError"
 import { describe, expect } from "vitest"
 
 import { run } from "@effect/sql-clickhouse-native/ClickHouseNativeMigrator"
@@ -27,7 +27,7 @@ describe("ClickHouse native migrator", () => {
           if (Result.isFailure(result)) {
             expect(isSqlError(result.failure)).toBe(true)
             if (isSqlError(result.failure)) {
-              expect(result.failure.reason._tag).toBe("UniqueViolation")
+              expect(result.failure.reason).toBeInstanceOf(UniqueViolation)
             }
           }
         })

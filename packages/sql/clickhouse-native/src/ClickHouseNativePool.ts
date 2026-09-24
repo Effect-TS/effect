@@ -34,15 +34,6 @@ export interface ClickHouseNativePool {
   >
 }
 
-const invalidPoolSize = (size: number): SqlError =>
-  SqlError.make({
-    reason: UnknownError.make({
-      cause: new RangeError(`ClickHouse native pool size must be a positive safe integer, received ${size}`),
-      message: `ClickHouse native pool size must be a positive safe integer, received ${size}`,
-      operation: "pool.make"
-    })
-  })
-
 export const makeClickHouseNativePool = (
   config: ClickHouseConfig,
   options: { readonly size: number }
@@ -58,7 +49,13 @@ export const makeClickHouseNativePool = (
         reserve: Pool.get(pool)
       }))
     )
-    : invalidPoolSize(options.size)
+    : SqlError.make({
+      reason: UnknownError.make({
+        cause: new RangeError(`ClickHouse native pool size must be a positive safe integer, received ${options.size}`),
+        message: `ClickHouse native pool size must be a positive safe integer, received ${options.size}`,
+        operation: "pool.make"
+      })
+    })
 
 export const withClickHouseNativePool = <A, E, R>(
   config: ClickHouseConfig,

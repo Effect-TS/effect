@@ -28,7 +28,7 @@ import type { ClickHouseConfig } from "./ClickHouseNativeConfig.ts"
 const CLIENT_PROTOCOL_VERSION = BigInt("54459")
 const SETTINGS_CUSTOM_FLAG = BigInt("2")
 
-class ClickHouseNativeError extends Data.TaggedError("ClickHouseNativeError")<{
+export class ClickHouseNativeError extends Data.TaggedError("ClickHouseNativeError")<{
   readonly cause: unknown
 }> {
   override get message(): string {
@@ -36,7 +36,7 @@ class ClickHouseNativeError extends Data.TaggedError("ClickHouseNativeError")<{
   }
 }
 
-class ClickHouseServerError extends Data.TaggedError("ClickHouseServerError")<{
+export class ClickHouseServerError extends Data.TaggedError("ClickHouseServerError")<{
   readonly code: number
   readonly name: string
   readonly serverMessage: string
@@ -53,22 +53,15 @@ export const toSqlError = (cause: unknown, operation: string): SqlError => {
     message: cause instanceof Error ? cause.message : String(cause),
     operation
   }
-  if (
-    !(cause instanceof ClickHouseServerError) &&
-    !(typeof cause === "object" && cause !== null &&
-      (cause as { readonly _tag?: unknown })._tag === "ClickHouseServerError")
-  ) {
+  if (!(cause instanceof ClickHouseServerError)) {
     return SqlError.make({ reason: ConnectionError.make(fields) })
   }
   const server = cause as ClickHouseServerError
-  if (server.code === 516) {
-    return SqlError.make({ reason: AuthenticationError.make(fields) })
-  }
-  if (server.code === 497) {
-    return SqlError.make({ reason: AuthorizationError.make(fields) })
-  }
-  if ([36, 60, 62].includes(server.code)) {
+  if (server.code === 36 || server.code === 60 || server.code === 62) {
     return SqlError.make({ reason: SqlSyntaxError.make(fields) })
+  }
+  if (server.code === 159 || server.code === 160) {
+    return SqlError.make({ reason: StatementTimeoutError.make(fields) })
   }
   if (server.code === 242) {
     return SqlError.make({ reason: UnknownError.make(fields) })
@@ -79,26 +72,29 @@ export const toSqlError = (cause: unknown, operation: string): SqlError => {
   if (server.code === 473) {
     return SqlError.make({ reason: DeadlockError.make(fields) })
   }
-  if ([159, 160, 469].includes(server.code)) {
-    return SqlError.make({ reason: StatementTimeoutError.make(fields) })
+  if (server.code === 497) {
+    return SqlError.make({ reason: AuthorizationError.make(fields) })
   }
-  if (server.name.includes("LOCK_TIMEOUT")) {
-    return SqlError.make({ reason: LockTimeoutError.make(fields) })
+  if (server.code === 516) {
+    return SqlError.make({ reason: AuthenticationError.make(fields) })
   }
-  if (server.name.includes("TIMEOUT")) {
-    return SqlError.make({ reason: StatementTimeoutError.make(fields) })
+  if (server.name.includes("CONSTRAINT")) {
+    return SqlError.make({ reason: ConstraintError.make(fields) })
   }
   if (server.name.includes("DEADLOCK")) {
     return SqlError.make({ reason: DeadlockError.make(fields) })
   }
+  if (server.name.includes("LOCK_TIMEOUT")) {
+    return SqlError.make({ reason: LockTimeoutError.make(fields) })
+  }
   if (server.name.includes("SERIALIZATION") || server.name.includes("TRANSACTION_CONFLICT")) {
     return SqlError.make({ reason: SerializationError.make(fields) })
   }
+  if (server.name.includes("TIMEOUT")) {
+    return SqlError.make({ reason: StatementTimeoutError.make(fields) })
+  }
   if (server.name.includes("UNIQUE")) {
     return SqlError.make({ reason: UniqueViolation.make({ ...fields, constraint: server.name }) })
-  }
-  if (server.name.includes("CONSTRAINT")) {
-    return SqlError.make({ reason: ConstraintError.make(fields) })
   }
 
   return SqlError.make({ reason: UnknownError.make(fields) })
@@ -112,10 +108,16 @@ interface NativeReader {
   readonly varUInt: Effect.Effect<bigint, ClickHouseNativeError>
 }
 
-type SocketEvent =
-  | { readonly _tag: "Closed" }
-  | { readonly _tag: "Data"; readonly value: Buffer }
-  | { readonly _tag: "Failure"; readonly error: ClickHouseNativeError }
+type SocketEvent = Data.TaggedEnum<{
+  Closed: {}
+  Data: {
+    readonly value: Buffer
+  }
+  Failure: {
+    readonly error: ClickHouseNativeError
+  }
+}>
+const SocketEventCase = Data.taggedEnum<SocketEvent>()
 
 const takeBytes = (
   events: Queue.Queue<SocketEvent>,
@@ -125,18 +127,21 @@ const takeBytes = (
   buffered.length >= length
     ? Effect.succeed([buffered.subarray(0, length), buffered.subarray(length)])
     : Queue.take(events).pipe(
-      Effect.flatMap((event) => {
-        switch (event._tag) {
-          case "Closed":
-            return new ClickHouseNativeError({
-              cause: new Error(`ClickHouse socket closed while reading ${length} bytes`)
-            })
-          case "Data":
-            return takeBytes(events, length, Buffer.concat([buffered, event.value]))
-          case "Failure":
-            return event.error
-        }
-      })
+      Effect.flatMap(SocketEventCase.$match({
+        Closed: () =>
+          new ClickHouseNativeError({
+            cause: new Error(
+              `ClickHouse socket closed while reading ${length} bytes`
+            )
+          }),
+        Data: ({ value }) =>
+          takeBytes(
+            events,
+            length,
+            Buffer.concat([buffered, value])
+          ),
+        Failure: ({ error }) => error
+      }))
     )
 
 const makeNativeReader = (socket: Socket): Effect.Effect<NativeReader, never, Scope.Scope> =>
@@ -144,13 +149,13 @@ const makeNativeReader = (socket: Socket): Effect.Effect<NativeReader, never, Sc
     const events = yield* Queue.unbounded<SocketEvent>()
     const buffered = yield* Ref.make<Buffer>(Buffer.alloc(0))
     const onData = (value: Buffer) => {
-      Queue.offerUnsafe(events, { _tag: "Data", value: Buffer.from(value) })
+      Queue.offerUnsafe(events, SocketEventCase.Data({ value: Buffer.from(value) }))
     }
     const onError = (cause: Error) => {
-      Queue.offerUnsafe(events, { _tag: "Failure", error: new ClickHouseNativeError({ cause }) })
+      Queue.offerUnsafe(events, SocketEventCase.Failure({ error: new ClickHouseNativeError({ cause }) }))
     }
     const onClose = () => {
-      Queue.offerUnsafe(events, { _tag: "Closed" })
+      Queue.offerUnsafe(events, SocketEventCase.Closed())
     }
     yield* Effect.acquireRelease(
       Effect.sync(() => {
