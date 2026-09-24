@@ -115,14 +115,22 @@ export const suiteWith = <R>(
         const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
+        // SQL retries use the database wall clock, while the in-memory store
+        // uses TestClock. Record a lower bound for when the retry was scheduled.
+        const failedAt = Date.now()
+
         const fiber = yield* queue.take((_val, { attempts }) => Effect.succeed(attempts)).pipe(
           Effect.forkScoped
         )
 
-        // not redelivered before the retry delay elapses
+        // Only assert while the wall-clock retry window is still open. Under
+        // CI load, even advancing TestClock can take longer than 500ms.
         yield* TestClock.adjust(100)
         yield* Effect.sleep(100).pipe(TestClock.withLive)
-        assert.isUndefined(fiber.pollUnsafe())
+        const result = fiber.pollUnsafe()
+        if (name === "memory" || Date.now() - failedAt < 500) {
+          assert.isUndefined(result)
+        }
 
         // give real-time backends time to pass the retry delay and poll again
         for (let i = 0; i < 3; i++) {
