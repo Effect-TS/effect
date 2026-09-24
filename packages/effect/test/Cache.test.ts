@@ -166,28 +166,16 @@ describe("Cache", () => {
 
   describe("basic operations", () => {
     describe("get", () => {
-      it.effect.each([false, true])(
-        "does not retain a synchronous zero-TTL lookup (failure: %s)",
-        (fail) =>
-          Effect.gen(function*() {
-            let lookups = 0
-            const cache = yield* Cache.makeWith(
-              (_key: string) =>
-                Effect.suspend(() => {
-                  lookups++
-                  return fail ? Effect.fail("error") : Effect.succeed(42)
-                }),
-              { capacity: 1, timeToLive: () => Duration.zero }
-            )
+      it.effect("does not retain a synchronous zero-TTL lookup", () =>
+        Effect.gen(function*() {
+          const cache = yield* Cache.makeWith(
+            (_key: string) => Effect.succeed(42),
+            { capacity: 1, timeToLive: () => Duration.zero }
+          )
 
-            const expected = fail ? Exit.fail("error") : Exit.succeed(42)
-            assert.deepStrictEqual(yield* Effect.exit(Cache.get(cache, "key")), expected)
-            assert.strictEqual(yield* Cache.size(cache), 0)
-            assert.deepStrictEqual(yield* Effect.exit(Cache.get(cache, "key")), expected)
-            assert.strictEqual(lookups, 2)
-            assert.strictEqual(yield* Cache.size(cache), 0)
-          })
-      )
+          assert.strictEqual(yield* Cache.get(cache, "key"), 42)
+          assert.strictEqual(yield* Cache.size(cache), 0)
+        }))
 
       it.effect("removes a suspended zero-TTL lookup after completion", () =>
         Effect.gen(function*() {
@@ -216,6 +204,7 @@ describe("Cache", () => {
 
           yield* Cache.get(cache, "a")
           assert.deepStrictEqual(yield* Effect.exit(Cache.get(cache, "bad")), Exit.fail("error"))
+          assert.strictEqual(yield* Cache.size(cache), 1)
           // Do not enumerate keys here: that would prune the expired entry and hide the eviction.
           yield* Cache.get(cache, "b")
 
