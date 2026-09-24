@@ -2980,75 +2980,66 @@ export const Undefined: Undefined = make(SchemaAST.undefined)
  * @category models
  * @since 4.0.0
  */
-export interface String extends Bottom<string, string, never, never, SchemaAST.String, String> {
-  /**
-   * Returns a string schema that accepts any string while preserving editor
-   * autocomplete for the provided suggestions.
-   *
-   * @see {@link StringWithAutocomplete} for the standalone constructor
-   * @since 4.0.0
-   */
-  withAutocomplete: <const A extends string>(
-    autocompleteOptions: ReadonlyArray<A>
-  ) => StringWithAutocomplete<A>
-}
+export interface String extends Bottom<string, string, never, never, SchemaAST.String, String> {}
 /**
  * Schema for `string` values. Validates that the input is `typeof` `"string"`.
  *
  * @category schemas
  * @since 4.0.0
  */
-export const String: String = make(SchemaAST.string, {
-  withAutocomplete: <const A extends string>(autocompleteOptions: ReadonlyArray<A>) =>
-    StringWithAutocomplete(autocompleteOptions)
-})
+export const String: String = make(SchemaAST.string)
+
 /**
- * Type-level representation returned by {@link StringWithAutocomplete}.
+ * Type-level representation of {@link StringForLiteralAutocomplete}.
  *
  * @category models
  * @since 4.0.0
  */
-export interface StringWithAutocomplete<A extends string>
-  extends Bottom<A | (string & {}), A | (string & {}), never, never, SchemaAST.String, StringWithAutocomplete<A>>
-{
-  readonly autocompleteOptions: ReadonlyArray<A>
-}
+export interface StringForLiteralAutocomplete extends
+  Bottom<
+    string & {},
+    string & {},
+    never,
+    never,
+    SchemaAST.String,
+    StringForLiteralAutocomplete
+  >
+{}
 /**
- * Creates a string schema that accepts any string while preserving editor
- * autocomplete for the provided suggestions.
+ * Schema for `string & {}`. Validates that the input is `typeof` `"string"`.
  *
  * **When to use**
  *
- * Use when a value is an open string at runtime but known literals should
- * still appear in editor completions.
+ * Use with {@link Union} and {@link Literals} when a value may be any string
+ * and known literals should stay available for editor autocomplete.
  *
  * **Details**
  *
- * The decoded and encoded types are `A | (string & {})`. That union keeps the
- * suggested literals visible in TypeScript without excluding other strings.
- * Runtime validation is identical to {@link String}.
+ * `string & {}` stays alongside string literals in a union, so editors keep
+ * suggesting those literals. Any string still passes validation. Read the
+ * literals from the {@link Literals} member.
  *
  * **Example** (Suggesting known HTTP methods)
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
- * const Method = Schema.StringWithAutocomplete(["GET", "POST"])
- * Schema.decodeUnknownSync(Method)("GET") // => "GET"
- * Schema.decodeUnknownSync(Method)("PATCH") // => "PATCH"
+ * const Method = Schema.Union([
+ *   Schema.StringForLiteralAutocomplete,
+ *   Schema.Literals(["GET", "POST"])
+ * ])
+ *
+ * // Type: "GET" | "POST" | (string & {})
+ * Method.make("PATCH") // => "PATCH"
+ * Method.members[1].literals // => ["GET", "POST"]
  * ```
  *
- * @see {@link String} for a string schema without suggested literals.
- * @see {@link String.withAutocomplete} for the method form on {@link String}.
- * @see {@link Literals} for a schema that accepts only the listed values.
- * @category constructors
+ * @see {@link String} for a schema whose type is plain `string`.
+ * @see {@link Literals} for the known literals to include in the union.
+ * @category schemas
  * @since 4.0.0
  */
-export function StringWithAutocomplete<const A extends string>(
-  autocompleteOptions: ReadonlyArray<A>
-): StringWithAutocomplete<A> {
-  return make(SchemaAST.string, { autocompleteOptions })
-}
+export const StringForLiteralAutocomplete: StringForLiteralAutocomplete = String
 /**
  * Type-level representation of {@link Number}.
  *

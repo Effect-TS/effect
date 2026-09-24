@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Schema: add `StringWithAutocomplete` and `String.withAutocomplete` for open strings that still suggest known literals.
+Schema: add `StringForLiteralAutocomplete`, a `string & {}` schema to union with `Literals` so editors still suggest the known literals.
