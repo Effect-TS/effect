@@ -293,6 +293,28 @@ describe("HttpClient", () => {
     })
   })
 
+  it.effect("logging a streamed response does not lock its body", () =>
+    Effect.gen(function*() {
+      const request = HttpClientRequest.get("http://example.com")
+      const source = new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode("data: hello\n\n"))
+            controller.enqueue(new TextEncoder().encode("data: world\n\n"))
+            controller.close()
+          }
+        }),
+        { headers: { "content-type": "text/event-stream; charset=utf-8" } }
+      )
+      const response = HttpClientResponse.fromWeb(request, source)
+
+      // Inspecting/logging the response must not consume its one-shot body.
+      Inspectable.toStringUnknown(response)
+
+      const body = yield* response.stream.pipe(Stream.decodeText(), Stream.mkString)
+      strictEqual(body, "data: hello\n\ndata: world\n\n")
+    }))
+
   it.effect("followRedirects", () =>
     Effect.gen(function*() {
       const defaultClient = yield* HttpClient.HttpClient
