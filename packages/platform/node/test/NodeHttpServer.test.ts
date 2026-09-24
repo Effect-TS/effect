@@ -53,7 +53,10 @@ describe("HttpServer", () => {
       const internalServer = Http.createServer()
       const Health = HttpRouter.add("GET", "/health", HttpServerResponse.text("healthy"))
       const publicApp = Layer.mergeAll(HttpRouter.add("GET", "/public", HttpServerResponse.text("public")), Health)
-      const internalApp = Layer.mergeAll(HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")), Health)
+      const internalApp = Layer.mergeAll(
+        HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")),
+        Health
+      )
 
       yield* Layer.mergeAll(
         HttpRouter.serve(publicApp, { disableListenLog: true, disableLogger: true }).pipe(
