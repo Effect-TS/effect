@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-Improve `Schema.toJsonSchemaDocument` export of built-in checks. String code-unit length checks now use safe code-point bounds, regex and literal checks avoid patterns that would reject accepted values under Unicode matching, and cardinality checks reject non-finite bounds instead of emitting invalid schemas. Custom check exporters can mark a fragment as approximate by returning `[schema, false]`; `oneOf` then falls back to `anyOf`, and approximate record-key patterns are not used as `patternProperties` selectors.
+Improve `Schema.toJsonSchemaDocument` export of built-in checks. String code-unit length checks now use safe code-point bounds, regex and literal checks avoid patterns that would reject accepted values under Unicode matching, and cardinality checks reject non-finite bounds instead of emitting invalid schemas. Custom check exporters can mark a fragment as approximate by returning `[schema, true]`; `oneOf` then falls back to `anyOf`, and approximate record-key patterns are not used as `patternProperties` selectors.
 
 Built-in checks whose exported constraints can be looser than their runtime checks, including approximations that predate this change:
 

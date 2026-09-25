@@ -175,9 +175,9 @@ function isExact(exactness: Exactness, seen = new Set<ReadonlyArray<Exactness>>(
   return exactness.every((dependency) => isExact(dependency, seen))
 }
 
-function isInexactCheckOutput(
+function isApproximateCheckOutput(
   output: SchemaRepresentation.ToJsonSchema.CheckOutput
-): output is readonly [schema: JsonSchema.JsonSchema, exact: false] {
+): output is readonly [schema: JsonSchema.JsonSchema, approximate: true] {
   return Array.isArray(output)
 }
 
@@ -307,7 +307,7 @@ function compileJsonSchema(
         recur(schema, [...path, "representation", "schemas", index], dependencies)
       ) ?? []
       const result = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
-      const approximate = isInexactCheckOutput(result)
+      const approximate = isApproximateCheckOutput(result)
       if (approximate) {
         dependencies.push(false)
       }

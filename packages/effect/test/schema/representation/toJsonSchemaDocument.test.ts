@@ -510,7 +510,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         checks: [{
           _tag: "Filter",
           aborted: false,
-          annotations: { toJsonSchema: () => [{ minLength: 1 }, false] }
+          annotations: { toJsonSchema: () => [{ minLength: 1 }, true] }
         }]
       }
       assert.deepStrictEqual(
@@ -560,7 +560,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         checks: [{
           _tag: "Filter",
           aborted: false,
-          annotations: { toJsonSchema: () => [{ minLength: 1 }, false] }
+          annotations: { toJsonSchema: () => [{ minLength: 1 }, true] }
         }]
       }
       assert.deepStrictEqual(
@@ -741,7 +741,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         checks: [{
           _tag: "Filter",
           aborted: false,
-          annotations: { toJsonSchema: () => [{ minLength: 1 }, false] }
+          annotations: { toJsonSchema: () => [{ minLength: 1 }, true] }
         }]
       }
       const dependent: SchemaRepresentation.Representation = {
@@ -857,7 +857,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
               checks: [{
                 _tag: "Filter",
                 aborted: false,
-                annotations: { toJsonSchema: () => [{ pattern: "^a" }, false] }
+                annotations: { toJsonSchema: () => [{ pattern: "^a" }, true] }
               }]
             },
             type: NumberRepresentation
@@ -913,7 +913,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         checks: [{
           _tag: "Filter",
           aborted: false,
-          annotations: { toJsonSchema: () => [{ minLength: 1 }, false] }
+          annotations: { toJsonSchema: () => [{ minLength: 1 }, true] }
         }]
       }
       assert.deepStrictEqual(

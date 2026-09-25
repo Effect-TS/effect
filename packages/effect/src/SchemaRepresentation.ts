@@ -59,9 +59,9 @@ export declare namespace ToJsonSchema {
    * **Details**
    *
    * Return the JSON Schema fragment directly when it represents the check
-   * exactly. Return `[schema, false]` when the fragment is a safe, looser
+   * exactly. Return `[schema, true]` when the fragment is a safe, looser
    * approximation: it must accept every value accepted by the check, but may
-   * accept additional values. Use `[{}, false]` when the constraint is omitted;
+   * accept additional values. Use `[{}, true]` when the constraint is omitted;
    * a bare `{}` declares that the check imposes no constraint.
    *
    * Approximation propagates through enclosing schemas and dependencies listed
@@ -82,7 +82,7 @@ export declare namespace ToJsonSchema {
    *
    * const short = Schema.String.check(Schema.makeFilter(
    *   (value: string) => value.length <= 1,
-   *   { toJsonSchema: () => [{ maxLength: 1 }, false] }
+   *   { toJsonSchema: () => [{ maxLength: 1 }, true] }
    * ))
    * const schema = Schema.Union([short, Schema.Literal("😀")], { mode: "oneOf" })
    * const document = Schema.toJsonSchemaDocument(schema)
@@ -95,14 +95,14 @@ export declare namespace ToJsonSchema {
    * @category models
    * @since 4.0.0
    */
-  export type CheckOutput = JsonSchema.JsonSchema | readonly [schema: JsonSchema.JsonSchema, exact: false]
+  export type CheckOutput = JsonSchema.JsonSchema | readonly [schema: JsonSchema.JsonSchema, approximate: true]
 
   /**
    * Compiles a check to a JSON Schema fragment.
    *
    * **Details**
    *
-   * Return a fragment for an exact translation or `[fragment, false]` for a safe,
+   * Return a fragment for an exact translation or `[fragment, true]` for a safe,
    * looser approximation. Dependencies in `representation.schemas` are compiled
    * into the input's `schemas` array; their approximation status propagates automatically.
    *

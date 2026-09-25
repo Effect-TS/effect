@@ -567,7 +567,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
         checks: [{
           _tag: "Filter",
           aborted: false,
-          annotations: { toJsonSchema: () => [{ minLength: 1 }, false] }
+          annotations: { toJsonSchema: () => [{ minLength: 1 }, true] }
         }]
       }
       const output = SchemaRepresentation.toJsonSchemaMultiDocument({

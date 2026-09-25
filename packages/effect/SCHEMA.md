@@ -5277,7 +5277,7 @@ JavaScript RegExp flags, and property checks applied before versus after decodin
 When a `oneOf` branch has a known approximation, the compiler emits `anyOf` so
 that newly overlapping branches cannot reject valid values. It retains `oneOf`
 when all branches are exact. Custom `toJsonSchema` callbacks declare approximate
-results with `[schema, false]`; see [Check exporters and approximation](#check-exporters-and-approximation).
+results with `[schema, true]`; see [Check exporters and approximation](#check-exporters-and-approximation).
 
 The result is a data structure including:
 
@@ -6263,12 +6263,12 @@ Callback authors are responsible for the semantics of their output.
 
 Check-level `toJsonSchema` callbacks return `SchemaRepresentation.ToJsonSchema.CheckOutput`:
 
-| Return value      | Meaning                                                                      |
-| ----------------- | ---------------------------------------------------------------------------- |
-| `schema`          | The fragment represents the check exactly.                                   |
-| `[schema, false]` | The fragment accepts every value accepted by the check, and may accept more. |
+| Return value     | Meaning                                                                      |
+| ---------------- | ---------------------------------------------------------------------------- |
+| `schema`         | The fragment represents the check exactly.                                   |
+| `[schema, true]` | The fragment accepts every value accepted by the check, and may accept more. |
 
-Use the tightest safe approximation available. Return `[{}, false]` when the
+Use the tightest safe approximation available. Return `[{}, true]` when the
 constraint must be omitted. Returning a bare `{}` instead declares that the
 check imposes no constraint. The compiler trusts this declaration; it does not
 prove that a custom export is exact or safely looser.
