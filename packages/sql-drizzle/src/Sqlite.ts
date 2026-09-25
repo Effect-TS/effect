@@ -6,12 +6,13 @@ import type { SqlError } from "@effect/sql/SqlError"
 import type { DrizzleConfig } from "drizzle-orm"
 import { QueryPromise } from "drizzle-orm/query-promise"
 import { SQLiteSelectBase } from "drizzle-orm/sqlite-core"
+import { SQLiteCountBuilder } from "drizzle-orm/sqlite-core/query-builders/count"
 import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy"
 import { drizzle } from "drizzle-orm/sqlite-proxy"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { makeRemoteCallback, patch } from "./internal/patch.js"
+import { makeRemoteCallback, patch, patchCount } from "./internal/patch.js"
 
 /**
  * @since 1.0.0
@@ -65,5 +66,12 @@ export const layerWithConfig: (config: DrizzleConfig) => Layer.Layer<SqliteDrizz
 declare module "drizzle-orm" {
   export interface QueryPromise<T> extends Effect.Effect<T, SqlError> {}
 }
+
+declare module "drizzle-orm/sqlite-core/query-builders/count" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  export interface SQLiteCountBuilder<TSession = any> extends Effect.Effect<number, SqlError> {}
+}
+
 patch(QueryPromise.prototype)
 patch(SQLiteSelectBase.prototype)
+patchCount(SQLiteCountBuilder.prototype)
