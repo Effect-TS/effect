@@ -327,40 +327,22 @@ export const make = (
         compiler,
         transactionAcquirer,
         onCommitFailure: (conn) =>
-          Effect.flatMap(
-            Effect.exit(Effect.flatMap(
-              connection.isTransaction()
-                ? conn.executeUnprepared("ROLLBACK", [], undefined)
-                : Effect.void,
-              () =>
-                connection.isTransaction()
-                  ? Effect.fail(
-                    new SqlError({
-                      reason: new ConnectionError({
-                        message: "SQLite transaction remains open after rollback",
-                        operation: "rollback",
-                        cause: new Error("ROLLBACK left the connection in a transaction")
-                      })
-                    })
-                  )
-                  : Effect.void
-            )),
-            (exit) => {
-              if (exit._tag === "Success") return Effect.void
-              return Effect.andThen(
+          connection.isTransaction()
+            ? conn.executeUnprepared("ROLLBACK", [], undefined).pipe(
+              Effect.asVoid,
+              Effect.tapCause((cause) =>
                 Effect.sync(() => {
                   poisoned = new SqlError({
                     reason: new ConnectionError({
                       message: "SQLite connection cannot be reused after failed COMMIT cleanup",
                       operation: "rollback",
-                      cause: exit.cause
+                      cause
                     })
                   })
-                }),
-                Effect.failCause(exit.cause)
+                })
               )
-            }
-          ),
+            )
+            : Effect.void,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [

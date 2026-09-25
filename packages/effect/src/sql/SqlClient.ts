@@ -9,7 +9,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -199,12 +198,9 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     acquireConnection: Effect.flatMap(
       Scope.make(),
       (scope) =>
-        Effect.map(
-          Effect.onExit(
-            Scope.provide(transactionAcquirer!, scope),
-            (exit) => Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void
-          ),
-          (conn) => [scope, conn] as const
+        Scope.provide(transactionAcquirer!, scope).pipe(
+          Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause))),
+          Effect.map((conn) => [scope, conn] as const)
         )
     ),
     begin: (conn) => control(conn, beginTransaction),
@@ -344,20 +340,11 @@ export const makeWithTransaction = <I, S>(options: {
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
                             span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
-                            effect = options.onCommitFailure
-                              ? Effect.flatMap(Effect.exit(Effect.orDie(options.commit(conn))), (commitExit) => {
-                                if (Exit.isSuccess(commitExit)) return Effect.void
-                                return Effect.flatMap(
-                                  Effect.exit(Effect.orDie(options.onCommitFailure!(conn))),
-                                  (cleanupExit) =>
-                                    Effect.failCause(
-                                      Exit.isFailure(cleanupExit)
-                                        ? Cause.combine(commitExit.cause, cleanupExit.cause)
-                                        : commitExit.cause
-                                    )
-                                )
-                              })
-                              : Effect.orDie(options.commit(conn))
+                            const onCommitFailure = options.onCommitFailure
+                            effect = Effect.orDie(options.commit(conn))
+                            if (onCommitFailure) {
+                              effect = Effect.onError(effect, () => Effect.orDie(onCommitFailure(conn)))
+                            }
                           } else {
                             span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
                             effect = Effect.void
