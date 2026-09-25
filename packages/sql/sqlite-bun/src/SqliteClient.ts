@@ -139,7 +139,7 @@ export const make = (
         options.filename.startsWith("file:")
           ? constants.SQLITE_OPEN_URI |
             (openOptions.readonly ? constants.SQLITE_OPEN_READONLY : 0) |
-            (openOptions.readwrite ? constants.SQLITE_OPEN_READWRITE : 0) |
+            (openOptions.readwrite || openOptions.create ? constants.SQLITE_OPEN_READWRITE : 0) |
             (openOptions.create ? constants.SQLITE_OPEN_CREATE : 0)
           : openOptions
       )
