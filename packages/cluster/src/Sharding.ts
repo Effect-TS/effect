@@ -1299,8 +1299,8 @@ const make = Effect.gen(function*() {
             streamBufferSize: isStream && options?.asMailbox ? 1 : options?.streamBufferSize,
             context
           }) as Effect.Effect<any, any>
-          // Re-signal abandonment in the caller or stream consumer, preserving its mask.
-          const acquired = Effect.onError(response, ClusterAbandon.reSignal)
+          // Signal the owner on abandonment in the caller or stream consumer, preserving its mask.
+          const acquired = Effect.onError(response, ClusterAbandon.interruptOwner)
           if (!isStream) return acquired
           if (options?.asMailbox) {
             // Mailbox.fromStream inherits the caller's mask and turns scope cancellation into a clean end.
@@ -1319,7 +1319,7 @@ const make = Effect.gen(function*() {
               }))
           }
           return Stream.unwrapScoped(Effect.map(acquired, Mailbox.toStream)).pipe(
-            Stream.onError(ClusterAbandon.reSignal)
+            Stream.onError(ClusterAbandon.interruptOwner)
           )
         }
         const proxyClient: any = {}
