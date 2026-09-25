@@ -211,7 +211,44 @@ describe("Client", () => {
         assert.match(Cause.pretty(transaction.cause), /cannot be reused after failed COMMIT cleanup/i)
         assert.match(Cause.pretty(transaction.cause), /injected rollback failure/i)
       }
+      // A failed transaction acquisition must not strand the semaphore permit.
+      const nextQuery = yield* Effect.exit(sql`SELECT * FROM parent`)
+      assert.isTrue(Exit.isFailure(nextQuery))
+      if (Exit.isFailure(nextQuery)) {
+        assert.match(Cause.pretty(nextQuery.cause), /cannot be reused after failed COMMIT cleanup/i)
+      }
+      const nextTransaction = yield* Effect.exit(sql.withTransaction(Effect.sync(() => {
+        bodyRan = true
+      })))
+      assert.isTrue(Exit.isFailure(nextTransaction))
+      if (Exit.isFailure(nextTransaction)) {
+        assert.match(Cause.pretty(nextTransaction.cause), /cannot be reused after failed COMMIT cleanup/i)
+      }
+      assert.isFalse(bodyRan)
       assert.strictEqual(rollbackAttempts, 1)
+    }))
+
+  it.effect("does not poison a connection already rolled back before failed commit cleanup", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
+      yield* sql`INSERT INTO items VALUES (1)`
+
+      const failedCommit = yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+        const insert = yield* Effect.exit(sql`INSERT OR ROLLBACK INTO items VALUES (1)`)
+        assert.isTrue(Exit.isFailure(insert))
+        if (Exit.isFailure(insert)) {
+          assert.match(Cause.pretty(insert.cause), /unique constraint failed/i)
+        }
+      })))
+      assert.isTrue(Exit.isFailure(failedCommit))
+      if (Exit.isFailure(failedCommit)) {
+        assert.match(Cause.pretty(failedCommit.cause), /no transaction is active/i)
+      }
+
+      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [{ id: 1 }])
+      yield* sql.withTransaction(sql`INSERT INTO items VALUES (2)`)
+      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [{ id: 1 }, { id: 2 }])
     }))
 
   it.effect("withTransaction rollback", () =>
