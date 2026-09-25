@@ -188,6 +188,7 @@ export const make: (
 
   const client = Context.get(services, HttpClient.HttpClient).pipe(
     HttpClient.tap((response) => Effect.ignore(response.arrayBuffer)),
+    HttpClient.tapError((error) => error.response ? Effect.ignore(error.response.arrayBuffer) : Effect.void),
     HttpClient.filterStatusOk,
     HttpClient.transformResponse(Effect.provideService(HttpClient.TracerPropagationEnabled, false)),
     HttpClient.retryTransient({ schedule: policy, times: 3 })
