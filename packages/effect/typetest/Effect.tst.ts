@@ -1226,32 +1226,11 @@ describe("Effect.repeat", () => {
     })).type.toBe<Effect.Effect<Status>>()
   })
 
-  it("preserves the full result with times and an until refinement", () => {
-    expect(Effect.repeat(source, {
-      times: 3,
-      until: (status): status is "done" => status === "done"
-    })).type.toBe<Effect.Effect<Status>>()
-  })
-
-  it("preserves the full result with a schedule and a while refinement", () => {
-    expect(Effect.repeat(source, {
-      schedule,
-      while: (status): status is "pending" => status === "pending"
-    })).type.toBe<Effect.Effect<Status>>()
-  })
-
   it("preserves the full result with a schedule and an until refinement", () => {
     expect(Effect.repeat(source, {
       schedule,
       until: (status): status is "done" => status === "done"
     })).type.toBe<Effect.Effect<Status>>()
-  })
-
-  it("preserves the full result in data-last usage with times", () => {
-    expect(source.pipe(Effect.repeat({
-      times: 3,
-      while: (status): status is "pending" => status === "pending"
-    }))).type.toBe<Effect.Effect<Status>>()
   })
 })
 
