@@ -128,6 +128,24 @@ describe("Tool", () => {
         strictEqual(results[0].encodedResult, "404")
       }))
 
+    it.effect("should fail the extracted return-mode stream on invalid result encoding", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(Tool.make("Positive", {
+          failureMode: "return",
+          success: Schema.Number.check(Schema.isGreaterThan(0))
+        }))
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          Positive: () => Effect.succeed(-1)
+        })))
+        const inner = yield* handlers.handle("Positive", {})
+        const error = yield* Stream.runCollect(inner).pipe(Effect.flip)
+
+        strictEqual(error._tag, "AiError")
+        strictEqual(error.module, "Toolkit")
+        strictEqual(error.method, "Positive.handle")
+        strictEqual(error.reason._tag, "ToolResultEncodingError")
+      }))
+
     it.effect("should return tool call handler failures with failure mode return using OpenAI transformer", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)
