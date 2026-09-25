@@ -78,6 +78,7 @@ export const layerAuthMiddleware: Layer.Layer<
  */
 export const layerRpcHandlers = (options: {
   readonly remoteId: RemoteId
+  readonly authorizeIdentity?: (publicKey: string) => Effect.Effect<void, EventLogProtocolError>
   readonly getOrCreateSessionAuthBinding: (
     publicKey: string,
     signingPublicKey: Uint8Array<ArrayBuffer>
@@ -138,6 +139,9 @@ export const layerRpcHandlers = (options: {
           })
         }
         yield* Cache.invalidate(clientChallenges, client.id)
+        if (options.authorizeIdentity) {
+          yield* options.authorizeIdentity(request.publicKey)
+        }
         const signingPublicKey = yield* Cache.get(
           persistedSigningPublicKeys,
           new SessionAuthCacheKey({
