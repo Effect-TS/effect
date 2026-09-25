@@ -260,7 +260,7 @@ describe("toCodecOpenAI", () => {
     })
 
     it("String + pattern", () => {
-      assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/)), {
+      assertJsonSchema(Schema.String.check(Schema.isPattern(/^a/u)), {
         "type": "string",
         "description": `a string matching the RegExp ^a`,
         "pattern": "^a"
