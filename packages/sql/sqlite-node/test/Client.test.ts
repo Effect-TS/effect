@@ -3,6 +3,7 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Duration, Effect, Exit, FileSystem, Option } from "effect"
 import { Reactivity } from "effect/reactivity"
+import { ConnectionError, SqlError } from "effect/sql/SqlError"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -134,6 +135,83 @@ describe("Client", () => {
       assert.isTrue(bodyRan)
       assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
       assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
+    }))
+
+  it.effect("preserves an in-memory database after recovering from a failed commit", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+      yield* sql`PRAGMA foreign_keys = ON`
+      yield* sql`CREATE TABLE parent (id INTEGER PRIMARY KEY)`
+      yield* sql`CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)`
+      yield* sql`INSERT INTO parent VALUES (1)`
+
+      const failedCommit = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO child VALUES (999)`))
+      assert.isTrue(Exit.isFailure(failedCommit))
+      if (!Exit.isFailure(failedCommit)) return
+      assert.match(Cause.pretty(failedCommit.cause), /foreign key constraint failed/i)
+
+      assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
+      yield* sql.withTransaction(sql`INSERT INTO child VALUES (1)`)
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [{ parent_id: 1 }])
+    }))
+
+  it.effect("poisons the connection when failed-commit cleanup fails", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`PRAGMA foreign_keys = ON`
+      yield* sql`CREATE TABLE parent (id INTEGER PRIMARY KEY)`
+      yield* sql`CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)`
+
+      // Reserve lends the same SQLite connection used by transactions. Fail only
+      // the cleanup ROLLBACK, leaving the deferred constraint failure real.
+      const conn = yield* Effect.scoped(sql.reserve)
+      const executeUnprepared = conn.executeUnprepared
+      let rollbackAttempts = 0
+      Object.defineProperty(conn, "executeUnprepared", {
+        configurable: true,
+        value: (...args: Parameters<typeof executeUnprepared>) => {
+          if (args[0] === "ROLLBACK") {
+            rollbackAttempts++
+            return Effect.fail(
+              new SqlError({
+                reason: new ConnectionError({
+                  message: "injected rollback failure",
+                  operation: "rollback",
+                  cause: new Error("injected rollback failure")
+                })
+              })
+            )
+          }
+          return executeUnprepared(...args)
+        }
+      })
+
+      const failedCommit = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO child VALUES (999)`))
+      assert.isTrue(Exit.isFailure(failedCommit))
+      if (!Exit.isFailure(failedCommit)) return
+      assert.strictEqual(rollbackAttempts, 1)
+      const cause = Cause.pretty(failedCommit.cause)
+      assert.match(cause, /foreign key constraint failed/i)
+      assert.match(cause, /injected rollback failure/i)
+
+      const query = yield* Effect.exit(sql`SELECT * FROM parent`)
+      assert.isTrue(Exit.isFailure(query))
+      if (Exit.isFailure(query)) {
+        assert.match(Cause.pretty(query.cause), /cannot be reused after failed COMMIT cleanup/i)
+        assert.match(Cause.pretty(query.cause), /injected rollback failure/i)
+      }
+      let bodyRan = false
+      const transaction = yield* Effect.exit(sql.withTransaction(Effect.sync(() => {
+        bodyRan = true
+      })))
+      assert.isFalse(bodyRan)
+      assert.isTrue(Exit.isFailure(transaction))
+      if (Exit.isFailure(transaction)) {
+        assert.match(Cause.pretty(transaction.cause), /cannot be reused after failed COMMIT cleanup/i)
+        assert.match(Cause.pretty(transaction.cause), /injected rollback failure/i)
+      }
+      assert.strictEqual(rollbackAttempts, 1)
     }))
 
   it.effect("withTransaction rollback", () =>
