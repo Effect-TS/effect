@@ -82,9 +82,13 @@ export const make = (
       get: (target, property, receiver) =>
         property === "withTransaction"
           ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-            Effect.serviceOption(sqlClient.transactionService).pipe(
+            sqlClient.transactionService.pipe(
+              Effect.serviceOption,
               Effect.flatMap((activeTransaction) =>
-                Option.isSome(activeTransaction) ? nestedTransactionUnsupported : sqlClient.withTransaction(effect)
+                activeTransaction.pipe(Option.match({
+                  onNone: () => sqlClient.withTransaction(effect),
+                  onSome: () => nestedTransactionUnsupported
+                }))
               )
             )
           : Reflect.get(target, property, receiver)

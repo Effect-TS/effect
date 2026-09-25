@@ -18,15 +18,24 @@ import {
   SqlError,
   SqlSyntaxError,
   StatementTimeoutError,
-  UniqueViolation,
   UnknownError
 } from "effect/sql/SqlError"
 import { createConnection } from "node:net"
 
 import type { ClickHouseConfig } from "./ClickHouseNativeConfig.ts"
 
-const CLIENT_PROTOCOL_VERSION = BigInt("54459")
+const CLIENT_PROTOCOL_VERSION = BigInt("54464")
 const SETTINGS_CUSTOM_FLAG = BigInt("2")
+// Source: https://github.com/ClickHouse/ClickHouse/blob/master/src/Common/ErrorCodes.cpp
+const authenticationErrorCodes = [516] as const
+const authorizationErrorCodes = [291, 481, 482, 497, 673, 711] as const
+const constraintErrorCodes = [469] as const
+const deadlockErrorCodes = [473] as const
+const serializationErrorCodes = [650] as const
+const statementTimeoutErrorCodes = [159, 160] as const
+const syntaxErrorCodes = [6, 25, 26, 27, 36, 38, 41, 62, 72, 80] as const
+
+const includesCode = (codes: ReadonlyArray<number>, code: number): boolean => codes.includes(code)
 
 export class ClickHouseNativeError extends Data.TaggedError("ClickHouseNativeError")<{
   readonly cause: unknown
@@ -56,45 +65,33 @@ export const toSqlError = (cause: unknown, operation: string): SqlError => {
   if (!(cause instanceof ClickHouseServerError)) {
     return SqlError.make({ reason: ConnectionError.make(fields) })
   }
-  const server = cause as ClickHouseServerError
-  if (server.code === 36 || server.code === 60 || server.code === 62) {
+  const server = cause
+  if (includesCode(syntaxErrorCodes, server.code)) {
     return SqlError.make({ reason: SqlSyntaxError.make(fields) })
   }
-  if (server.code === 159 || server.code === 160) {
+  if (includesCode(statementTimeoutErrorCodes, server.code)) {
     return SqlError.make({ reason: StatementTimeoutError.make(fields) })
   }
-  if (server.code === 242) {
-    return SqlError.make({ reason: UnknownError.make(fields) })
-  }
-  if (server.code === 469) {
+  if (includesCode(constraintErrorCodes, server.code)) {
     return SqlError.make({ reason: ConstraintError.make(fields) })
   }
-  if (server.code === 473) {
+  if (includesCode(deadlockErrorCodes, server.code)) {
     return SqlError.make({ reason: DeadlockError.make(fields) })
   }
-  if (server.code === 497) {
+  if (includesCode(authorizationErrorCodes, server.code)) {
     return SqlError.make({ reason: AuthorizationError.make(fields) })
   }
-  if (server.code === 516) {
+  if (includesCode(authenticationErrorCodes, server.code)) {
     return SqlError.make({ reason: AuthenticationError.make(fields) })
   }
-  if (server.name.includes("CONSTRAINT")) {
-    return SqlError.make({ reason: ConstraintError.make(fields) })
-  }
-  if (server.name.includes("DEADLOCK")) {
-    return SqlError.make({ reason: DeadlockError.make(fields) })
+  if (includesCode(serializationErrorCodes, server.code)) {
+    return SqlError.make({ reason: SerializationError.make(fields) })
   }
   if (server.name.includes("LOCK_TIMEOUT")) {
     return SqlError.make({ reason: LockTimeoutError.make(fields) })
   }
-  if (server.name.includes("SERIALIZATION") || server.name.includes("TRANSACTION_CONFLICT")) {
+  if (server.name.includes("TRANSACTION_CONFLICT")) {
     return SqlError.make({ reason: SerializationError.make(fields) })
-  }
-  if (server.name.includes("TIMEOUT")) {
-    return SqlError.make({ reason: StatementTimeoutError.make(fields) })
-  }
-  if (server.name.includes("UNIQUE")) {
-    return SqlError.make({ reason: UniqueViolation.make({ ...fields, constraint: server.name }) })
   }
 
   return SqlError.make({ reason: UnknownError.make(fields) })
@@ -487,7 +484,7 @@ const encodeColumnValues = (type: string, values: ReadonlyArray<unknown>): Reado
 
     return Array.flatten([
       [integerBuffer(BigInt("1"), 8)],
-      [integerBuffer(BigInt("1536") | keyType, 8)],
+      [integerBuffer(BigInt("1_536") | keyType, 8)],
       [integerBuffer(BigInt(dictionary.length), 8)],
       encodeColumnValues(lowCardinality, dictionary),
       [integerBuffer(BigInt(values.length), 8)],
@@ -796,29 +793,101 @@ const readException = (reader: NativeReader): Effect.Effect<ClickHouseServerErro
     )
   )
 
-const drainProgress = (reader: NativeReader): Effect.Effect<void, ClickHouseNativeError> =>
+export interface ClickHouseNativeProfileInfo {
+  readonly appliedLimit: boolean
+  readonly blocks: bigint
+  readonly bytes: bigint
+  readonly rows: bigint
+  readonly rowsBeforeLimit: bigint
+}
+
+export interface ClickHouseNativeProgress {
+  readonly elapsedNanoseconds: bigint
+  readonly readBytes: bigint
+  readonly readRows: bigint
+  readonly totalBytesToRead: bigint
+  readonly totalRowsToRead: bigint
+  readonly writtenBytes: bigint
+  readonly writtenRows: bigint
+}
+
+export interface ClickHouseNativeQueryResult {
+  readonly extremes: ReadonlyArray<Record<string, unknown>>
+  readonly logs: ReadonlyArray<Record<string, unknown>>
+  readonly profileEvents: ReadonlyArray<Record<string, unknown>>
+  readonly profileInfo: ReadonlyArray<ClickHouseNativeProfileInfo>
+  readonly progress: ReadonlyArray<ClickHouseNativeProgress>
+  readonly rows: ReadonlyArray<Record<string, unknown>>
+  readonly timezones: ReadonlyArray<string>
+  readonly totals: ReadonlyArray<Record<string, unknown>>
+}
+
+const readProgress = (reader: NativeReader): Effect.Effect<ClickHouseNativeProgress, ClickHouseNativeError> =>
   reader.varUInt.pipe(
-    Effect.andThen(reader.varUInt),
-    Effect.andThen(reader.varUInt),
-    Effect.andThen(reader.varUInt),
-    Effect.andThen(reader.varUInt),
-    Effect.asVoid
+    Effect.flatMap((readRows) =>
+      reader.varUInt.pipe(
+        Effect.flatMap((readBytes) =>
+          reader.varUInt.pipe(
+            Effect.flatMap((totalRowsToRead) =>
+              reader.varUInt.pipe(
+                Effect.flatMap((totalBytesToRead) =>
+                  reader.varUInt.pipe(
+                    Effect.flatMap((writtenRows) =>
+                      reader.varUInt.pipe(
+                        Effect.flatMap((writtenBytes) =>
+                          reader.varUInt.pipe(
+                            Effect.map((elapsedNanoseconds) => ({
+                              elapsedNanoseconds,
+                              readBytes,
+                              readRows,
+                              totalBytesToRead,
+                              totalRowsToRead,
+                              writtenBytes,
+                              writtenRows
+                            }))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
   )
 
-const drainProfileInfo = (reader: NativeReader): Effect.Effect<void, ClickHouseNativeError> =>
+const readProfileInfo = (reader: NativeReader): Effect.Effect<ClickHouseNativeProfileInfo, ClickHouseNativeError> =>
   reader.varUInt.pipe(
-    Effect.andThen(reader.varUInt),
-    Effect.andThen(reader.varUInt),
-    Effect.andThen(reader.byte),
-    Effect.andThen(reader.varUInt),
-    Effect.andThen(reader.byte),
-    Effect.asVoid
+    Effect.flatMap((rows) =>
+      reader.varUInt.pipe(
+        Effect.flatMap((blocks) =>
+          reader.varUInt.pipe(
+            Effect.flatMap((bytes) =>
+              reader.byte.pipe(
+                Effect.flatMap((appliedLimit) =>
+                  reader.varUInt.pipe(
+                    Effect.flatMap((rowsBeforeLimit) =>
+                      reader.byte.pipe(
+                        Effect.as({ appliedLimit: appliedLimit !== 0, blocks, bytes, rows, rowsBeforeLimit })
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
   )
 
 const handshake = (
   socket: Socket,
   config: ClickHouseConfig
-): Effect.Effect<NativeReader, ClickHouseNativeError | ClickHouseServerError, Scope.Scope> =>
+): Effect.Effect<readonly [NativeReader, string], ClickHouseNativeError | ClickHouseServerError, Scope.Scope> =>
   Effect.gen(function*() {
     const reader = yield* makeNativeReader(socket)
     yield* write(
@@ -854,12 +923,27 @@ const handshake = (
         cause: new Error(`ClickHouse server protocol ${serverRevision} is too old`)
       })
     }
-    yield* reader.string
+    const serverTimezone = yield* reader.string
     yield* reader.string
     yield* reader.varUInt
+    const passwordRules = yield* reader.varUInt
+    if (passwordRules > BigInt("256")) {
+      return yield* new ClickHouseNativeError({
+        cause: new Error(`ClickHouse server sent too many password complexity rules: ${passwordRules}`)
+      })
+    }
+    const discardPasswordRules = (remaining: number): Effect.Effect<void, ClickHouseNativeError> =>
+      remaining === 0
+        ? Effect.void
+        : reader.string.pipe(
+          Effect.andThen(reader.string),
+          Effect.andThen(discardPasswordRules(remaining - 1))
+        )
+    yield* discardPasswordRules(Number(passwordRules))
+    yield* reader.bytes(8)
     yield* write(socket, encodePacket(encodeString("")))
 
-    return reader
+    return [reader, serverTimezone]
   })
 
 const writeQuery = (
@@ -887,14 +971,26 @@ const writeQuery = (
       )
   }).pipe(Effect.flatMap((payload) => write(socket, payload)))
 
+const emptyResult: ClickHouseNativeQueryResult = {
+  extremes: [],
+  logs: [],
+  profileEvents: [],
+  profileInfo: [],
+  progress: [],
+  rows: [],
+  timezones: [],
+  totals: []
+}
+
 const readResults = (
   reader: NativeReader,
-  rows: ReadonlyArray<Record<string, unknown>> = []
-): Effect.Effect<ReadonlyArray<Record<string, unknown>>, ClickHouseNativeError | ClickHouseServerError> =>
+  onTimezone: (timezone: string) => Effect.Effect<void>,
+  result: ClickHouseNativeQueryResult = emptyResult
+): Effect.Effect<ClickHouseNativeQueryResult, ClickHouseNativeError | ClickHouseServerError> =>
   reader.varUInt.pipe(
     Effect.flatMap((packet) => {
       if (packet === BigInt("5")) {
-        return Effect.succeed(rows)
+        return Effect.succeed(result)
       }
       if (packet === BigInt("2")) {
         return readException(reader).pipe(Effect.flatMap(Effect.fail))
@@ -902,20 +998,71 @@ const readResults = (
       if (packet === BigInt("1")) {
         return reader.string.pipe(
           Effect.andThen(readBlock(reader)),
-          Effect.flatMap((block) => readResults(reader, Array.appendAll(rows, rowsFromBlock(block))))
+          Effect.flatMap((block) =>
+            readResults(reader, onTimezone, { ...result, rows: Array.appendAll(result.rows, rowsFromBlock(block)) })
+          )
         )
       }
       if (packet === BigInt("3")) {
-        return drainProgress(reader).pipe(Effect.andThen(readResults(reader, rows)))
+        return readProgress(reader).pipe(
+          Effect.flatMap((progress) =>
+            readResults(reader, onTimezone, { ...result, progress: Array.append(result.progress, progress) })
+          )
+        )
       }
       if (packet === BigInt("6")) {
-        return drainProfileInfo(reader).pipe(Effect.andThen(readResults(reader, rows)))
+        return readProfileInfo(reader).pipe(
+          Effect.flatMap((profileInfo) =>
+            readResults(reader, onTimezone, { ...result, profileInfo: Array.append(result.profileInfo, profileInfo) })
+          )
+        )
+      }
+      if (packet === BigInt("7") || packet === BigInt("8")) {
+        return reader.string.pipe(
+          Effect.andThen(readBlock(reader)),
+          Effect.flatMap((block) =>
+            readResults(
+              reader,
+              onTimezone,
+              packet === BigInt("7")
+                ? { ...result, totals: Array.appendAll(result.totals, rowsFromBlock(block)) }
+                : { ...result, extremes: Array.appendAll(result.extremes, rowsFromBlock(block)) }
+            )
+          )
+        )
       }
       if (packet === BigInt("11")) {
-        return reader.string.pipe(Effect.andThen(reader.string), Effect.andThen(readResults(reader, rows)))
+        return reader.string.pipe(
+          Effect.andThen(reader.string),
+          Effect.andThen(readResults(reader, onTimezone, result))
+        )
       }
       if (packet === BigInt("14")) {
-        return reader.string.pipe(Effect.andThen(readBlock(reader)), Effect.andThen(readResults(reader, rows)))
+        return reader.string.pipe(
+          Effect.andThen(readBlock(reader)),
+          Effect.flatMap((block) =>
+            readResults(reader, onTimezone, {
+              ...result,
+              profileEvents: Array.appendAll(result.profileEvents, rowsFromBlock(block))
+            })
+          )
+        )
+      }
+      if (packet === BigInt("17")) {
+        return reader.string.pipe(
+          Effect.tap(onTimezone),
+          Effect.flatMap((timezone) =>
+            readResults(reader, onTimezone, { ...result, timezones: Array.append(result.timezones, timezone) })
+          )
+        )
+      }
+      if (packet === BigInt("10")) {
+        return reader.string.pipe(
+          Effect.andThen(readBlock(reader)),
+          Effect.flatMap((block) =>
+            readResults(reader, onTimezone, { ...result, logs: Array.appendAll(result.logs, rowsFromBlock(block)) })
+          )
+        )
       }
 
       return new ClickHouseNativeError({ cause: new Error(`Unsupported ClickHouse server packet ${packet}`) })
@@ -923,7 +1070,8 @@ const readResults = (
   )
 
 const readInsertHeader = (
-  reader: NativeReader
+  reader: NativeReader,
+  onTimezone: (timezone: string) => Effect.Effect<void>
 ): Effect.Effect<ReadonlyArray<NativeColumn>, ClickHouseNativeError | ClickHouseServerError> =>
   reader.varUInt.pipe(
     Effect.flatMap((packet) => {
@@ -934,16 +1082,28 @@ const readInsertHeader = (
         return reader.string.pipe(Effect.andThen(readBlock(reader)))
       }
       if (packet === BigInt("3")) {
-        return drainProgress(reader).pipe(Effect.andThen(readInsertHeader(reader)))
+        return readProgress(reader).pipe(Effect.andThen(readInsertHeader(reader, onTimezone)))
       }
       if (packet === BigInt("6")) {
-        return drainProfileInfo(reader).pipe(Effect.andThen(readInsertHeader(reader)))
+        return readProfileInfo(reader).pipe(Effect.andThen(readInsertHeader(reader, onTimezone)))
       }
       if (packet === BigInt("11")) {
-        return reader.string.pipe(Effect.andThen(reader.string), Effect.andThen(readInsertHeader(reader)))
+        return reader.string.pipe(
+          Effect.andThen(reader.string),
+          Effect.andThen(readInsertHeader(reader, onTimezone))
+        )
       }
       if (packet === BigInt("14")) {
-        return reader.string.pipe(Effect.andThen(readBlock(reader)), Effect.andThen(readInsertHeader(reader)))
+        return reader.string.pipe(
+          Effect.andThen(readBlock(reader)),
+          Effect.andThen(readInsertHeader(reader, onTimezone))
+        )
+      }
+      if (packet === BigInt("17")) {
+        return reader.string.pipe(
+          Effect.tap(onTimezone),
+          Effect.andThen(readInsertHeader(reader, onTimezone))
+        )
       }
 
       return new ClickHouseNativeError({
@@ -952,13 +1112,14 @@ const readInsertHeader = (
     })
   )
 
-const execute = (
+const executeWithResult = (
   socket: Socket,
   reader: NativeReader,
   sql: string,
   parameters: ReadonlyArray<unknown>,
-  queryId: string
-): Effect.Effect<ReadonlyArray<Record<string, unknown>>, ClickHouseNativeError | ClickHouseServerError> =>
+  queryId: string,
+  onTimezone: (timezone: string) => Effect.Effect<void>
+): Effect.Effect<ClickHouseNativeQueryResult, ClickHouseNativeError | ClickHouseServerError> =>
   writeQuery(socket, sql, parameters, queryId).pipe(
     Effect.andThen(write(
       socket,
@@ -968,15 +1129,26 @@ const execute = (
         encodeEmptyBlock()
       ]))
     )),
-    Effect.andThen(readResults(reader))
+    Effect.andThen(readResults(reader, onTimezone))
   )
+
+const execute = (
+  socket: Socket,
+  reader: NativeReader,
+  sql: string,
+  parameters: ReadonlyArray<unknown>,
+  queryId: string,
+  onTimezone: (timezone: string) => Effect.Effect<void>
+): Effect.Effect<ReadonlyArray<Record<string, unknown>>, ClickHouseNativeError | ClickHouseServerError> =>
+  executeWithResult(socket, reader, sql, parameters, queryId, onTimezone).pipe(Effect.map((result) => result.rows))
 
 const insert = (
   socket: Socket,
   reader: NativeReader,
   sql: string,
   rows: ReadonlyArray<Record<string, unknown>>,
-  queryId: string
+  queryId: string,
+  onTimezone: (timezone: string) => Effect.Effect<void>
 ): Effect.Effect<void, ClickHouseNativeError | ClickHouseServerError> =>
   rows.length === 0
     ? Effect.void
@@ -989,7 +1161,7 @@ const insert = (
           encodeEmptyBlock()
         ]))
       )),
-      Effect.andThen(readInsertHeader(reader)),
+      Effect.andThen(readInsertHeader(reader, onTimezone)),
       Effect.flatMap((columns) =>
         Effect.try({
           catch: (cause) => new ClickHouseNativeError({ cause }),
@@ -1014,7 +1186,7 @@ const insert = (
                   ]))
                 )
               ),
-              Effect.andThen(readResults(reader)),
+              Effect.andThen(readResults(reader, onTimezone)),
               Effect.asVoid
             )
           )
@@ -1027,11 +1199,17 @@ export interface ClickHouseNativeClient {
     sql: string,
     parameters?: ReadonlyArray<unknown>
   ) => Effect.Effect<ReadonlyArray<Record<string, unknown>>, SqlError, Crypto.Crypto>
+  readonly executeWithResult: (
+    sql: string,
+    parameters?: ReadonlyArray<unknown>
+  ) => Effect.Effect<ClickHouseNativeQueryResult, SqlError, Crypto.Crypto>
   readonly insert: (
     sql: string,
     rows: ReadonlyArray<Record<string, unknown>>
   ) => Effect.Effect<void, SqlError, Crypto.Crypto>
   readonly ping: Effect.Effect<void, SqlError>
+  /** The latest server session timezone, updated by `Server::TimezoneUpdate`. */
+  readonly serverTimezone: Effect.Effect<string>
 }
 
 export const makeClickHouseNativeClient = (
@@ -1039,19 +1217,28 @@ export const makeClickHouseNativeClient = (
 ): Effect.Effect<ClickHouseNativeClient, SqlError, Scope.Scope> =>
   Effect.gen(function*() {
     const socket = yield* Effect.acquireRelease(connect(config), close)
-    const reader = yield* handshake(socket, config)
+    const [reader, initialTimezone] = yield* handshake(socket, config)
+    const serverTimezone = yield* Ref.make(initialTimezone)
+    const onTimezone = (timezone: string) => serverTimezone.pipe(Ref.set(timezone))
     const executeWithId = (sql: string, parameters: ReadonlyArray<unknown> = []) =>
       Crypto.Crypto.pipe(
         Effect.flatMap((crypto) => crypto.randomUUIDv4),
         Effect.mapError((cause) => new ClickHouseNativeError({ cause })),
-        Effect.flatMap((queryId) => execute(socket, reader, sql, parameters, queryId)),
+        Effect.flatMap((queryId) => execute(socket, reader, sql, parameters, queryId, onTimezone)),
         Effect.mapError((cause) => toSqlError(cause, "execute"))
+      )
+    const executeWithResultWithId = (sql: string, parameters: ReadonlyArray<unknown> = []) =>
+      Crypto.Crypto.pipe(
+        Effect.flatMap((crypto) => crypto.randomUUIDv4),
+        Effect.mapError((cause) => new ClickHouseNativeError({ cause })),
+        Effect.flatMap((queryId) => executeWithResult(socket, reader, sql, parameters, queryId, onTimezone)),
+        Effect.mapError((cause) => toSqlError(cause, "executeWithResult"))
       )
     const insertWithId = (sql: string, rows: ReadonlyArray<Record<string, unknown>>) =>
       Crypto.Crypto.pipe(
         Effect.flatMap((crypto) => crypto.randomUUIDv4),
         Effect.mapError((cause) => new ClickHouseNativeError({ cause })),
-        Effect.flatMap((queryId) => insert(socket, reader, sql, rows, queryId)),
+        Effect.flatMap((queryId) => insert(socket, reader, sql, rows, queryId, onTimezone)),
         Effect.mapError((cause) => toSqlError(cause, "insert"))
       )
     const ping = write(socket, encodePacket([encodeVarUInt(BigInt("4"))])).pipe(
@@ -1068,7 +1255,13 @@ export const makeClickHouseNativeClient = (
       Effect.mapError((cause) => toSqlError(cause, "ping"))
     )
 
-    return { execute: executeWithId, insert: insertWithId, ping }
+    return {
+      execute: executeWithId,
+      executeWithResult: executeWithResultWithId,
+      insert: insertWithId,
+      ping,
+      serverTimezone: serverTimezone.pipe(Ref.get)
+    }
   }).pipe(Effect.mapError((cause) => toSqlError(cause, "connect")))
 
 export const withClickHouseNative = <A, E, R>(
