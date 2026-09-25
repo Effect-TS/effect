@@ -9,6 +9,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -142,6 +143,8 @@ export declare namespace SqlClient {
     readonly beginTransaction?: string | undefined
     readonly rollback?: string | undefined
     readonly commit?: string | undefined
+    /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
+    readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     readonly savepoint?: ((name: string) => string) | undefined
     /**
      * SQL to release a nested savepoint after success or a successful rollback.
@@ -203,6 +206,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
       : undefined,
     commit: (conn) => control(conn, commit),
+    onCommitFailure: options.onCommitFailure,
     rollback: (conn) => control(conn, rollback),
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
   })
@@ -287,6 +291,8 @@ export const makeWithTransaction = <I, S>(options: {
    */
   readonly releaseSavepoint?: ((conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>) | undefined
   readonly commit: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
+  /** Driver-specific recovery before the connection is released after a failed COMMIT. */
+  readonly onCommitFailure?: ((conn: NoInfer<S>) => Effect.Effect<void, SqlError>) | undefined
   readonly rollback: (conn: NoInfer<S>) => Effect.Effect<void, SqlError>
   readonly rollbackSavepoint: (conn: NoInfer<S>, id: number) => Effect.Effect<void, SqlError>
 }) => {
@@ -331,7 +337,20 @@ export const makeWithTransaction = <I, S>(options: {
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
                             span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
-                            effect = Effect.orDie(options.commit(conn))
+                            effect = options.onCommitFailure
+                              ? Effect.flatMap(Effect.exit(Effect.orDie(options.commit(conn))), (commitExit) => {
+                                if (Exit.isSuccess(commitExit)) return Effect.void
+                                return Effect.flatMap(
+                                  Effect.exit(Effect.orDie(options.onCommitFailure!(conn))),
+                                  (cleanupExit) =>
+                                    Effect.failCause(
+                                      Exit.isFailure(cleanupExit)
+                                        ? Cause.combine(commitExit.cause, cleanupExit.cause)
+                                        : commitExit.cause
+                                    )
+                                )
+                              })
+                              : Effect.orDie(options.commit(conn))
                           } else {
                             span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
                             effect = Effect.void

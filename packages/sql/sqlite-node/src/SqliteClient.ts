@@ -27,7 +27,7 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
-import { classifySqliteError, SqlError } from "effect/sql/SqlError"
+import { classifySqliteError, ConnectionError, SqlError } from "effect/sql/SqlError"
 import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
 import { backup as backupDatabase, DatabaseSync } from "node:sqlite"
@@ -112,6 +112,7 @@ export interface SqliteClientConfig {
 }
 
 interface SqliteConnection extends Connection {
+  readonly isTransaction: () => boolean
   readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 }
@@ -251,6 +252,7 @@ export const make = (
       ) => Effect.flatMap(prepare(sql), (statement) => runStatementValuesUnprepared(statement, params))
 
       return identity<SqliteConnection>({
+        isTransaction: () => db.isTransaction,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)
@@ -303,17 +305,19 @@ export const make = (
 
     const semaphore = yield* Semaphore.make(1)
     const connection = yield* makeConnection
+    let poisoned: SqlError | undefined
+    const available = Effect.suspend(() => poisoned ? Effect.fail(poisoned) : Effect.succeed(connection))
 
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
+    const acquirer = semaphore.withPermits(1)(available)
     const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
       const fiber = Fiber.getCurrent()!
       const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      return Effect.as(
+      return Effect.andThen(
         Effect.tap(
           restore(semaphore.take(1)),
           () => Scope.addFinalizer(scope, semaphore.release(1))
         ),
-        connection
+        available
       )
     })
 
@@ -322,6 +326,39 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        onCommitFailure: (conn) =>
+          Effect.flatMap(
+            Effect.exit(Effect.flatMap(
+              conn.executeUnprepared("ROLLBACK", [], undefined),
+              () =>
+                connection.isTransaction()
+                  ? Effect.fail(
+                    new SqlError({
+                      reason: new ConnectionError({
+                        message: "SQLite transaction remains open after rollback",
+                        operation: "rollback",
+                        cause: new Error("ROLLBACK left the connection in a transaction")
+                      })
+                    })
+                  )
+                  : Effect.void
+            )),
+            (exit) => {
+              if (exit._tag === "Success") return Effect.void
+              return Effect.andThen(
+                Effect.sync(() => {
+                  poisoned = new SqlError({
+                    reason: new ConnectionError({
+                      message: "SQLite connection cannot be reused after failed COMMIT cleanup",
+                      operation: "rollback",
+                      cause: exit.cause
+                    })
+                  })
+                }),
+                Effect.failCause(exit.cause)
+              )
+            }
+          ),
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [
