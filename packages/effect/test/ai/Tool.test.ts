@@ -1,12 +1,38 @@
 import { describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, DateTime, Effect, Fiber, identity, Latch, Schema, Stream } from "effect"
+import { Context, DateTime, Effect, Fiber, identity, Latch, Schema, SchemaGetter, Stream } from "effect"
 import { AiError, LanguageModel, Response, Tool, Toolkit } from "effect/ai"
 import { TestClock } from "effect/testing"
 import * as TestUtils from "./utils.ts"
 
 describe("Tool", () => {
   describe("User Defined", () => {
+    it.effect("decodes parameters with services provided to the outer handle Effect", () =>
+      Effect.gen(function*() {
+        class Decoder extends Context.Service<Decoder, { readonly value: number }>()("test/ToolkitDecoder") {}
+        const parameter = Schema.String.pipe(Schema.decodeTo(Schema.Number, {
+          decode: SchemaGetter.transformEffect(() => Effect.map(Decoder, (decoder) => decoder.value)),
+          encode: SchemaGetter.transform(String)
+        }))
+        const toolkit = Toolkit.make(Tool.make("Decode", {
+          parameters: Schema.Struct({ n: parameter }),
+          success: Schema.Number
+        }))
+        const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+          Decode: ({ n }) => Effect.succeed(n)
+        })))
+
+        // Different service values in the two phases show which one decodes
+        // the parameters. The Stream's declared requirement is still provided.
+        const stream = yield* handlers.handle("Decode", { n: "1" }).pipe(
+          Effect.provideService(Decoder, { value: 42 })
+        )
+        const results = yield* Stream.runCollect(stream).pipe(
+          Effect.provideService(Decoder, { value: 1 })
+        )
+        strictEqual(results[0]?.result, 42)
+      }))
+
     it.effect("should return tool call handler successes", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(FailureModeReturn)
