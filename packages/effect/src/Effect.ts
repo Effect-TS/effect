@@ -7505,11 +7505,12 @@ export declare namespace Repeat {
    * @since 2.0.0
    */
   export type Return<R, E, A, O extends Options<A>> = Effect<
-    O extends { schedule: Schedule<infer _O, infer _I, infer _E, infer _R> } ? A
-      : O extends { times: number } ? A
+    O extends unknown ? "schedule" extends keyof O ? A
+      : "times" extends keyof O ? A
       : O extends { until: Predicate.Refinement<A, infer B> } ? B
       : O extends { while: Predicate.Refinement<A, infer B> } ? Exclude<A, B>
-      : A,
+      : A
+      : never,
     | E
     | (O extends { schedule: Schedule<infer _Out, infer _I, infer E, infer _R> } ? E
       : never)
