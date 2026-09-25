@@ -368,7 +368,7 @@ describe("deferred self-completion", () => {
             assert.deepStrictEqual(result, Exit.succeed("ok"))
             assert.deepStrictEqual(events, ["start-1", "cleanup-start", "cleanup-end", "end-1", "start-2", "end-2"])
           }
-        }).pipe(Effect.provide(layer))
+        }).pipe(Effect.ensuring(release.open), Effect.provide(layer))
       }), 5_000)
   }
 })

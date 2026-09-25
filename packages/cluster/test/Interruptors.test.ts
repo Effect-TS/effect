@@ -40,4 +40,25 @@ describe("interruptors", () => {
       assert(Exit.isInterrupted(exit))
       assert.isFalse(Teardown.isActive(address))
     }))
+  it("does not classify a different entity with the same delimited key as active", () => {
+    const teardown = make()
+    const first = EntityAddress.make({
+      entityType: EntityType.EntityType.make("tenant:a"),
+      entityId: EntityId.make("b"),
+      shardId: address.shardId
+    })
+    const second = EntityAddress.make({
+      entityType: EntityType.EntityType.make("tenant"),
+      entityId: EntityId.make("a:b"),
+      shardId: address.shardId
+    })
+    teardown.acquireEntity(first)
+    try {
+      assert.isTrue(teardown.isActive(first))
+      assert.isFalse(teardown.isActive(second))
+    } finally {
+      teardown.releaseEntity(first)
+    }
+    assert.isFalse(teardown.isActive(first))
+  })
 })

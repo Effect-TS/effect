@@ -262,6 +262,7 @@ const ShutdownActivityWorkflow = Workflow.make({
   success: Schema.String,
   idempotencyKey: ({ id }) => id
 })
+const ShutdownHandoffGate = DurableDeferred.make("ClusterIntegrationShutdownHandoffGate")
 const ShutdownSuspendActivityWorkflow = Workflow.make({
   name: "ClusterIntegrationShutdownSuspendActivity",
   payload: { id: Schema.String },
@@ -276,6 +277,7 @@ const activityHandoffState = {
   wasPersisted: false,
   faultRelease: Effect.unsafeMakeLatch(true),
   runs: new Map<string, number>(),
+  completedOn: new Map<string, string>(),
   compensations: new Set<string>(),
   resourceEvents: new Map<string, Array<"acquire" | "release">>()
 }
@@ -287,6 +289,7 @@ const resetActivityHandoffState = (id: string, faultReleaseOpen = true) => {
   activityHandoffState.wasPersisted = false
   activityHandoffState.faultRelease = Effect.unsafeMakeLatch(faultReleaseOpen)
   activityHandoffState.runs.delete(id)
+  activityHandoffState.completedOn.delete(id)
   activityHandoffState.compensations.delete(id)
   activityHandoffState.resourceEvents.set(id, [])
 }
@@ -296,7 +299,8 @@ const shutdownLayer = <Name extends string>(
     Schema.Struct<{ id: typeof Schema.String }>,
     typeof Schema.String,
     typeof Schema.Never
-  >
+  >,
+  handoff = false
 ) =>
   workflow.toLayer(({ id }) =>
     Effect.gen(function*() {
@@ -309,10 +313,15 @@ const shutdownLayer = <Name extends string>(
       ).pipe(Workflow.provideScope)
       yield* activityHandoffState.ready.open
       yield* activityHandoffState.start.await
+      if (handoff) yield* DurableDeferred.await(ShutdownHandoffGate)
+      const runner = handoff ? yield* Effect.serviceOption(Entity.CurrentRunnerAddress) : Option.none()
       return yield* Activity.make({
         name: "ShutdownActivity",
         success: Schema.String,
         execute: Effect.sync(() => {
+          if (Option.isSome(runner)) {
+            activityHandoffState.completedOn.set(id, runner.value.host + ":" + runner.value.port)
+          }
           activityHandoffState.runs.set(id, (activityHandoffState.runs.get(id) ?? 0) + 1)
           return `completed:${id}`
         })
@@ -502,7 +511,10 @@ describe("cluster workflow integration", () => {
         const cluster = yield* make({
           backend,
           config: { entityTerminationTimeout: 100 },
-          entities: ShutdownActivityWorkflowLayer.pipe(Layer.provide(ClusterWorkflowEngine.layer), Layer.orDie)
+          entities: shutdownLayer(ShutdownActivityWorkflow, true).pipe(
+            Layer.provide(ClusterWorkflowEngine.layer),
+            Layer.orDie
+          )
         })
         yield* cluster.start(3)
         yield* cluster.waitForStableAssignments()
@@ -513,8 +525,11 @@ describe("cluster workflow integration", () => {
         )
         const owner = workflowOwner(cluster, executionId)
         assert.isDefined(owner)
-        const stopping = yield* cluster.stop(owner!).pipe(Effect.forkScoped)
         yield* activityHandoffState.start.open
+        yield* waitForSuspended(cluster, ShutdownActivityWorkflow, executionId)
+        assert.strictEqual(activityHandoffState.runs.get(id), undefined)
+        yield* cluster.stop(owner!)
+        yield* cluster.waitForStableAssignments()
         yield* cluster.waitUntil(
           "The shutdown activity workflow was not handed to another runner",
           Effect.sync(() => {
@@ -522,9 +537,19 @@ describe("cluster workflow integration", () => {
             return next !== undefined && next !== owner
           })
         )
+        const nextOwner = workflowOwner(cluster, executionId)
+        assert.isDefined(nextOwner)
+        const token = DurableDeferred.tokenFromExecutionId(ShutdownHandoffGate, {
+          workflow: ShutdownActivityWorkflow,
+          executionId
+        })
+        yield* withWorkflow(cluster, DurableDeferred.succeed(ShutdownHandoffGate, { token, value: undefined }))
         const result = yield* waitForComplete(cluster, ShutdownActivityWorkflow, executionId)
-        yield* Fiber.join(stopping)
         assert.deepStrictEqual(result.exit, Exit.succeed(`completed:${id}`))
+        assert.strictEqual(
+          activityHandoffState.completedOn.get(id),
+          nextOwner!.address.host + ":" + nextOwner!.address.port
+        )
         assert.strictEqual(activityHandoffState.runs.get(id), 1)
         assert.strictEqual((yield* cluster.messageCounts()).unprocessed, 0)
       }))
