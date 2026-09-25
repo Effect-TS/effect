@@ -113,6 +113,29 @@ describe("Client", () => {
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
     }))
 
+  it.effect("cleans up a failed deferred-constraint commit before reusing the connection", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`PRAGMA foreign_keys = ON`
+      yield* sql`CREATE TABLE parent (id INTEGER PRIMARY KEY)`
+      yield* sql`CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)`
+
+      const failedCommit = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO child VALUES (999)`))
+      assert.isTrue(Exit.isFailure(failedCommit))
+      if (!Exit.isFailure(failedCommit)) return
+      assert.match(Cause.pretty(failedCommit.cause), /foreign key constraint failed/i)
+
+      let bodyRan = false
+      const next = yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+        bodyRan = true
+        yield* sql`INSERT INTO parent VALUES (1)`
+      })))
+      assert.isTrue(Exit.isSuccess(next), Exit.isFailure(next) ? Cause.pretty(next.cause) : undefined)
+      assert.isTrue(bodyRan)
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
+    }))
+
   it.effect("withTransaction rollback", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
