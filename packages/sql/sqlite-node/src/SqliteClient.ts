@@ -15,12 +15,10 @@
  * @since 4.0.0
  */
 import * as Cache from "effect/Cache"
-import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
@@ -28,7 +26,7 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
-import { classifySqliteError, ConnectionError, SqlError } from "effect/sql/SqlError"
+import { classifySqliteError, SqlError } from "effect/sql/SqlError"
 import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
 import { backup as backupDatabase, DatabaseSync } from "node:sqlite"
@@ -304,49 +302,11 @@ export const make = (
       })
     })
 
-    const semaphore = yield* Semaphore.make(1)
     const connection = yield* makeConnection
-    let poisoned: SqlError | undefined
-    const markPoisoned = (cause: Cause.Cause<SqlError>) =>
-      Effect.sync(() => {
-        poisoned = new SqlError({
-          reason: new ConnectionError({
-            message: "SQLite connection cannot be reused after failed COMMIT cleanup",
-            operation: "rollback",
-            cause
-          })
-        })
-      })
-    const available = Effect.suspend(() => {
-      if (!poisoned) return Effect.succeed(connection)
-      if (!connection.isTransaction()) {
-        poisoned = undefined
-        return Effect.succeed(connection)
-      }
-      return connection.executeUnprepared("ROLLBACK", [], undefined).pipe(
-        Effect.matchCauseEffect({
-          onFailure: (cause) => Effect.andThen(markPoisoned(cause), () => Effect.fail(poisoned!)),
-          onSuccess: () =>
-            Effect.suspend(() => {
-              if (connection.isTransaction()) return Effect.fail(poisoned!)
-              poisoned = undefined
-              return Effect.succeed(connection)
-            })
-        })
-      )
-    })
-
-    const acquirer = semaphore.withPermits(1)(available)
-    const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      return Effect.andThen(
-        Effect.tap(
-          restore(semaphore.take(1)),
-          () => Scope.addFinalizer(scope, semaphore.release(1))
-        ),
-        available
-      )
+    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+      connection: Effect.succeed(connection),
+      semaphore: yield* Semaphore.make(1),
+      isTransaction: (conn) => conn.isTransaction()
     })
 
     return Object.assign(
@@ -354,13 +314,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
-        onCommitFailure: (conn) =>
-          connection.isTransaction()
-            ? conn.executeUnprepared("ROLLBACK", [], undefined).pipe(
-              Effect.asVoid,
-              Effect.tapCause(markPoisoned)
-            )
-            : Effect.void,
+        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [

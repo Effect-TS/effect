@@ -21,7 +21,6 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
@@ -113,6 +112,10 @@ interface SqliteConnection extends Connection {
   readonly import: (data: Uint8Array) => Effect.Effect<void, SqlError>
 }
 
+interface SqliteMemoryConnection extends SqliteConnection {
+  readonly isTransaction: () => boolean
+}
+
 const initModule = Effect.runSync(
   Effect.cached(Effect.promise(() => SQLiteESMFactory()))
 )
@@ -197,7 +200,8 @@ export const makeMemory = (
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
         })
 
-      return identity<SqliteConnection>({
+      return identity<SqliteMemoryConnection>({
+        isTransaction: () => sqlite3.get_autocommit(db) === 0,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)
@@ -255,18 +259,10 @@ export const makeMemory = (
 
     const semaphore = yield* Semaphore.make(1)
     const connection = yield* makeConnection
-
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
-    const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      return Effect.as(
-        Effect.tap(
-          restore(semaphore.take(1)),
-          () => Scope.addFinalizer(scope, semaphore.release(1))
-        ),
-        connection
-      )
+    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+      connection: Effect.succeed(connection),
+      semaphore,
+      isTransaction: (conn) => conn.isTransaction()
     })
 
     return Object.assign(
@@ -274,6 +270,7 @@ export const makeMemory = (
         acquirer,
         compiler,
         transactionAcquirer,
+        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -433,21 +430,17 @@ export const make = (
 
     const connectionRef = yield* ScopedRef.fromAcquire(makeConnection)
 
-    const semaphore = yield* Semaphore.make(1)
-    const acquirer = semaphore.withPermits(1)(ScopedRef.get(connectionRef))
-    const transactionAcquirer = Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      yield* restore(semaphore.take(1))
-      yield* Scope.addFinalizer(scope, semaphore.release(1))
-      return yield* ScopedRef.get(connectionRef)
-    }))
+    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+      connection: ScopedRef.get(connectionRef),
+      semaphore: yield* Semaphore.make(1)
+    })
 
     return Object.assign(
       (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
+        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
