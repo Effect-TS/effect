@@ -186,10 +186,16 @@ export const make: (
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
   let disabledUntil: number | undefined = undefined
 
-  const client = HttpClient.filterStatusOk(HttpClient.withScope(Context.get(services, HttpClient.HttpClient))).pipe(
+  const client = HttpClient.filterStatusOk(Context.get(services, HttpClient.HttpClient)).pipe(
     HttpClient.transformResponse(Effect.provideService(HttpClient.TracerPropagationEnabled, false)),
-    // Close each attempt before retrying, including failed status responses.
-    HttpClient.transformResponse(Effect.scoped),
+    HttpClient.transformResponse((effect) =>
+      effect.pipe(
+        Effect.tap((response) => Effect.ignore(response.arrayBuffer)),
+        Effect.tapError((error) =>
+          error.response === undefined ? Effect.void : Effect.ignore(error.response.arrayBuffer)
+        )
+      )
+    ),
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
