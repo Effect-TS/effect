@@ -938,6 +938,40 @@ describe("OpenApi", () => {
             }
           })
         })
+
+        it("Schema.Literal annotations", () => {
+          const api = HttpApi.make("Api").add(
+            HttpApiGroup.make("group").add(
+              HttpApiEndpoint.get("endpoint")`/`
+                .addSuccess(Schema.Literal("a", "b").annotations({ title: "Letter" }))
+            )
+          )
+          expectSpecPaths(api, {
+            "/": {
+              "get": {
+                "tags": ["group"],
+                "operationId": "group.endpoint",
+                "parameters": [],
+                "security": [],
+                "responses": {
+                  "200": {
+                    "description": "Success",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "string",
+                          "enum": ["a", "b"],
+                          "title": "Letter"
+                        }
+                      }
+                    }
+                  },
+                  "400": HttpApiDecodeError
+                }
+              }
+            }
+          })
+        })
       })
 
       describe("addSuccess + withEncoding", () => {
