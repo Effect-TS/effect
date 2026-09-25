@@ -15,6 +15,7 @@
  * @since 4.0.0
  */
 import * as Cache from "effect/Cache"
+import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -306,7 +307,34 @@ export const make = (
     const semaphore = yield* Semaphore.make(1)
     const connection = yield* makeConnection
     let poisoned: SqlError | undefined
-    const available = Effect.suspend(() => poisoned ? Effect.fail(poisoned) : Effect.succeed(connection))
+    const markPoisoned = (cause: Cause.Cause<SqlError>) =>
+      Effect.sync(() => {
+        poisoned = new SqlError({
+          reason: new ConnectionError({
+            message: "SQLite connection cannot be reused after failed COMMIT cleanup",
+            operation: "rollback",
+            cause
+          })
+        })
+      })
+    const available = Effect.suspend(() => {
+      if (!poisoned) return Effect.succeed(connection)
+      if (!connection.isTransaction()) {
+        poisoned = undefined
+        return Effect.succeed(connection)
+      }
+      return connection.executeUnprepared("ROLLBACK", [], undefined).pipe(
+        Effect.matchCauseEffect({
+          onFailure: (cause) => Effect.andThen(markPoisoned(cause), () => Effect.fail(poisoned!)),
+          onSuccess: () =>
+            Effect.suspend(() => {
+              if (connection.isTransaction()) return Effect.fail(poisoned!)
+              poisoned = undefined
+              return Effect.succeed(connection)
+            })
+        })
+      )
+    })
 
     const acquirer = semaphore.withPermits(1)(available)
     const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
@@ -330,17 +358,7 @@ export const make = (
           connection.isTransaction()
             ? conn.executeUnprepared("ROLLBACK", [], undefined).pipe(
               Effect.asVoid,
-              Effect.tapCause((cause) =>
-                Effect.sync(() => {
-                  poisoned = new SqlError({
-                    reason: new ConnectionError({
-                      message: "SQLite connection cannot be reused after failed COMMIT cleanup",
-                      operation: "rollback",
-                      cause
-                    })
-                  })
-                })
-              )
+              Effect.tapCause(markPoisoned)
             )
             : Effect.void,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
