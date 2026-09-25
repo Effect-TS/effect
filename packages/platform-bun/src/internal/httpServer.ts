@@ -15,6 +15,7 @@ import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
 import * as UrlParams from "@effect/platform/UrlParams"
 import type { Server as BunServer, ServerWebSocket, WebSocketServeOptions } from "bun"
+import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -442,7 +443,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
               },
               Effect.scoped,
               Effect.onExit((exit) => {
-                ws.close(exit._tag === "Success" ? 1000 : 1011)
+                ws.close(exit._tag === "Success" ? 1000 : Cause.isInterruptedOnly(exit.cause) ? 1012 : 1011)
                 return Effect.void
               }),
               Effect.raceFirst(Deferred.await(closeDeferred)),
