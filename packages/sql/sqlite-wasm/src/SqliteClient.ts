@@ -257,11 +257,9 @@ export const makeMemory = (
       })
     })
 
-    const semaphore = yield* Semaphore.make(1)
-    const connection = yield* makeConnection
     const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
-      connection: Effect.succeed(connection),
-      semaphore,
+      connection: Effect.succeed(yield* makeConnection),
+      semaphore: yield* Semaphore.make(1),
       isTransaction: (conn) => conn.isTransaction()
     })
 
@@ -281,9 +279,9 @@ export const makeMemory = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: semaphore.withPermits(1)(connection.export),
+        export: Effect.scoped(Effect.flatMap(transactionAcquirer, (conn) => conn.export)),
         import(data: Uint8Array) {
-          return semaphore.withPermits(1)(connection.import(data))
+          return Effect.scoped(Effect.flatMap(transactionAcquirer, (conn) => conn.import(data)))
         }
       }
     )
