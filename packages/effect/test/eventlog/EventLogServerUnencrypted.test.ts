@@ -236,3 +236,113 @@ it.effect("Authenticate accepts an identity allowed by authorizeIdentity", () =>
     )
     assert.deepStrictEqual(yield* Ref.get(calls), [identity.publicKey])
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate re-checks the identity policy when the session binding is cached", () =>
+  Effect.gen(function*() {
+    const allow = yield* Ref.make(true)
+    const policyCalls = yield* Ref.make<ReadonlyArray<string>>([])
+    const bindingCalls = yield* Ref.make<ReadonlyArray<string>>([])
+    const inner = yield* EventLogServerUnencrypted.makeStorageMemory
+    const storage = EventLogServerUnencrypted.Storage.of({
+      ...inner,
+      getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
+        Ref.update(bindingCalls, (existing) => [...existing, publicKey]).pipe(
+          Effect.andThen(inner.getOrCreateSessionAuthBinding(publicKey, signingPublicKey))
+        )
+    })
+    const authorization: EventLogServerUnencrypted.EventLogServerAuthorization["Service"] = {
+      authorizeWrite: () => Effect.void,
+      authorizeRead: () => Effect.void,
+      authorizeIdentity: ({ publicKey }) =>
+        Ref.update(policyCalls, (existing) => [...existing, publicKey]).pipe(
+          Effect.andThen(Ref.get(allow)),
+          Effect.andThen((allowed) =>
+            allowed
+              ? Effect.void
+              : Effect.fail(
+                new EventLogServerUnencrypted.EventLogServerAuthError({
+                  reason: "Forbidden",
+                  publicKey,
+                  message: "Identity denied"
+                })
+              )
+          )
+        )
+    }
+    const client = yield* makeAuthClient({ storage, authorization })
+    const identity = yield* EventLog.makeIdentity
+
+    const hello1 = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity,
+        challenge: hello1.challenge,
+        remoteId: hello1.remoteId
+      })
+    )
+    assert.deepStrictEqual(yield* Ref.get(bindingCalls), [identity.publicKey])
+
+    yield* Ref.set(allow, false)
+    const hello2 = yield* client["EventLog.Hello"]()
+    const result = yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity,
+        challenge: hello2.challenge,
+        remoteId: hello2.remoteId
+      })
+    ).pipe(
+      Effect.match({
+        onFailure: (error) => ({ tag: "Failed" as const, error }),
+        onSuccess: () => ({ tag: "Succeeded" as const })
+      })
+    )
+    assert.strictEqual(result.tag, "Failed")
+    if (result.tag === "Failed") {
+      assert.strictEqual(result.error._tag, "EventLogProtocolError")
+      assert.strictEqual(result.error.code, "Forbidden")
+    }
+    assert.deepStrictEqual(yield* Ref.get(policyCalls), [identity.publicKey, identity.publicKey])
+    assert.deepStrictEqual(yield* Ref.get(bindingCalls), [identity.publicKey])
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate preserves Unauthorized policy failures across the RPC transport", () =>
+  Effect.gen(function*() {
+    const storage = yield* EventLogServerUnencrypted.makeStorageMemory
+    const client = yield* makeAuthClient({
+      storage,
+      authorization: {
+        authorizeWrite: () => Effect.void,
+        authorizeRead: () => Effect.void,
+        authorizeIdentity: ({ publicKey }) =>
+          Effect.fail(
+            new EventLogServerUnencrypted.EventLogServerAuthError({
+              reason: "Unauthorized",
+              publicKey,
+              message: "Identity not provisioned"
+            })
+          )
+      }
+    })
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    const result = yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity,
+        challenge: hello.challenge,
+        remoteId: hello.remoteId
+      })
+    ).pipe(
+      Effect.match({
+        onFailure: (error) => ({ tag: "Failed" as const, error }),
+        onSuccess: () => ({ tag: "Succeeded" as const })
+      })
+    )
+    assert.strictEqual(result.tag, "Failed")
+    if (result.tag === "Failed") {
+      assert.strictEqual(result.error._tag, "EventLogProtocolError")
+      assert.strictEqual(result.error.requestTag, "Authenticate")
+      assert.strictEqual(result.error.code, "Unauthorized")
+      assert.strictEqual(result.error.publicKey, identity.publicKey)
+      assert.strictEqual(result.error.message, "Identity not provisioned")
+    }
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
