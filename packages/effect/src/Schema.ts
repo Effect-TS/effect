@@ -5116,7 +5116,7 @@ export function brand<B extends string>(identifier: B) {
  * @category branding
  * @since 3.10.0
  */
-export function fromBrand<A extends Brand.Brand<any>>(identifier: string, ctor: Brand.Constructor<A>) {
+export function fromBrand<A extends Brand.Brand<any, any>>(identifier: string, ctor: Brand.Constructor<A>) {
   return <S extends Top & { readonly "Type": Brand.Brand.Unbranded<A> }>(
     self: S
   ): brand<S["Rebuild"], Brand.Brand.Keys<A>> => {
