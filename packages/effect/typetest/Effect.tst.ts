@@ -1219,11 +1219,15 @@ describe("Effect.repeat", () => {
     })).type.toBe<Effect.Effect<"done">>()
   })
 
-  it("preserves the full result with times and a while refinement", () => {
-    expect(Effect.repeat(source, {
+  it("preserves the full result with optional times and a while refinement", () => {
+    const options: {
+      times?: number
+      while: (status: Status) => status is "pending"
+    } = {
       times: 3,
       while: (status): status is "pending" => status === "pending"
-    })).type.toBe<Effect.Effect<Status>>()
+    }
+    expect(Effect.repeat(source, options)).type.toBe<Effect.Effect<Status>>()
   })
 
   it("preserves the full result with a schedule and an until refinement", () => {
