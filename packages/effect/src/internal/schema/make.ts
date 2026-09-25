@@ -6,6 +6,8 @@ import * as SchemaParser from "../../SchemaParser.ts"
 /** @internal */
 export const TypeId = "~effect/Schema/Schema"
 
+const RebuildOptions = Symbol()
+
 const SchemaProto = {
   [TypeId]: TypeId,
   get make() {
@@ -34,6 +36,9 @@ const SchemaProto = {
   },
   check(this: Schema.Top, ...checks: readonly [SchemaAST.Check<unknown>, ...Array<SchemaAST.Check<unknown>>]) {
     return this.rebuild(SchemaAST.appendChecks(this.ast, checks))
+  },
+  rebuild(this: Schema.Top, ast: SchemaAST.AST) {
+    return make(ast, (this as any)[RebuildOptions])
   }
 }
 
@@ -49,7 +54,7 @@ export function make<S extends Schema.Constraint>(ast: S["ast"], options?: objec
   } else {
     Object.assign(self, options)
   }
+  self[RebuildOptions] = options
   self.ast = ast
-  self.rebuild = (ast: SchemaAST.AST) => make(ast, options)
   return self
 }
