@@ -232,6 +232,17 @@ describe("SchemaRepresentation built-in string revivers", () => {
     })
   })
 
+  it("revives isAscii", () => {
+    assertFilterReviver({
+      schema: Schema.String.check(Schema.isAscii()),
+      id: "effect/schema/isAscii",
+      payload: null,
+      reviver: SchemaRepresentation.isAsciiReviver,
+      valid: "ascii only",
+      invalid: "caf\u00e9"
+    })
+  })
+
   it("revives isBase64", () => {
     assertFilterReviver({
       schema: Schema.String.check(Schema.isBase64()),
