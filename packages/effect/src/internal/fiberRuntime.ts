@@ -962,6 +962,8 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
           } else if (op._op === OpCodes.OP_ASYNC) {
             // Terminate this evaluation, async resumption will continue evaluation:
             effect = null
+          } else {
+            absurd(op as never)
           }
         } else {
           this.currentRuntimeFlags = pipe(this.currentRuntimeFlags, runtimeFlags_.enable(runtimeFlags_.WindDown))

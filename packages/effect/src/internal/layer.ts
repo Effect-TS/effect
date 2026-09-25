@@ -8,7 +8,7 @@ import type * as Exit from "../Exit.js"
 import type { FiberRef } from "../FiberRef.js"
 import * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
-import { constTrue, dual, pipe } from "../Function.js"
+import { absurd, constTrue, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import type * as Layer from "../Layer.js"
 import type * as ManagedRuntime from "../ManagedRuntime.js"
@@ -490,6 +490,9 @@ const makeBuilder = <RIn, E, ROut>(
           )
         }
       )
+    }
+    default: {
+      return absurd(op)
     }
   }
 }
