@@ -139,6 +139,7 @@ describe("Client", () => {
       yield* sql`PRAGMA foreign_keys = ON`
       yield* sql`CREATE TABLE parent (id INTEGER PRIMARY KEY)`
       yield* sql`CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)`
+      yield* sql`INSERT INTO parent VALUES (1)`
 
       // Reserve lends the same SQLite connection used by transactions. Fail only
       // the cleanup ROLLBACK, leaving the deferred constraint failure real.
@@ -172,24 +173,35 @@ describe("Client", () => {
       assert.match(cause, /foreign key constraint failed/i)
       assert.match(cause, /injected rollback failure/i)
 
-      const query = yield* Effect.exit(sql`SELECT * FROM parent`)
-      assert.isTrue(Exit.isFailure(query))
-      if (Exit.isFailure(query)) {
-        assert.match(Cause.pretty(query.cause), /cannot be reused after failed COMMIT cleanup/i)
-      }
       let bodyRan = false
-      const transaction = yield* Effect.exit(sql.withTransaction(Effect.sync(() => {
-        bodyRan = true
-      })))
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const query = yield* Effect.exit(sql`SELECT * FROM parent`)
+        assert.isTrue(Exit.isFailure(query))
+        if (Exit.isFailure(query)) {
+          assert.match(Cause.pretty(query.cause), /cannot be reused after failed COMMIT cleanup/i)
+        }
+        const transaction = yield* Effect.exit(sql.withTransaction(Effect.sync(() => {
+          bodyRan = true
+        })))
+        assert.isTrue(Exit.isFailure(transaction))
+      }
       assert.isFalse(bodyRan)
-      assert.isTrue(Exit.isFailure(transaction))
-      // A failed transaction acquisition must not strand the semaphore permit.
-      const nextQuery = yield* Effect.exit(sql`SELECT * FROM parent`)
-      assert.isTrue(Exit.isFailure(nextQuery))
       // Retry cleanup after the transient failure clears, without replacing the database.
       failRollback = false
+      assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
       assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
-      yield* sql.withTransaction(sql`INSERT INTO parent VALUES (1)`)
+      yield* sql.withTransaction(sql`INSERT INTO child VALUES (1)`)
+    }))
+
+  it.effect("does not roll back an explicit BEGIN on ordinary acquisition", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
+      yield* sql`BEGIN`
+      yield* sql`INSERT INTO items VALUES (1)`
+      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [{ id: 1 }])
+      yield* sql`ROLLBACK`
+      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [])
     }))
 
   it.effect("does not poison a connection already rolled back before failed commit cleanup", () =>
