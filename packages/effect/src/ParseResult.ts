@@ -1120,7 +1120,36 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return fromRefinement(ast, Predicate.isNotNullable)
+        const makeUnexpectedPropertyIssue = (input: { [x: PropertyKey]: unknown }, key: PropertyKey) =>
+          new Pointer(key, input, new Unexpected(input[key], `is unexpected, expected: never`))
+
+        return (input, options) => {
+          if (!Predicate.isNotNullable(input)) {
+            return Either.left(new Type(ast, input))
+          }
+          // Only plain objects have "excess properties"; other non-nullish
+          // values (strings, numbers, arrays) pass through unchanged since {}
+          // accepts them.
+          if (!Predicate.isRecord(input)) {
+            return Either.right(input)
+          }
+          // "preserve" keeps the input (and all its properties) as-is.
+          if (options?.onExcessProperty === "preserve") {
+            return Either.right(input)
+          }
+          // "error": every own key is unexpected for an empty struct.
+          if (options?.onExcessProperty === "error") {
+            const keys = Reflect.ownKeys(input)
+            if (Arr.isNonEmptyArray(keys)) {
+              const issues = options.errors === "all"
+                ? sortByIndex(Arr.map(keys, (key, i) => [i, makeUnexpectedPropertyIssue(input, key)]))
+                : makeUnexpectedPropertyIssue(input, keys[0])
+              return Either.left(new Composite(ast, input, issues, {}))
+            }
+          }
+          // "ignore" (or "error" with no excess keys): strip everything to an empty object.
+          return Either.right({})
+        }
       }
 
       const propertySignatures: Array<readonly [Parser, AST.PropertySignature]> = []
