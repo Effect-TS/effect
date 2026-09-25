@@ -2783,21 +2783,6 @@ export const Objects: new(
     this.propertySignatures = propertySignatures
     this.indexSignatures = indexSignatures
     this.encodingChecks = encodingChecks
-
-    // Duplicate property signatures
-    const seen = new Set<PropertyKey>()
-    const duplicates: Array<PropertyKey> = []
-    for (const propertySignature of propertySignatures) {
-      const name = propertySignature.name
-      if (seen.has(name)) {
-        duplicates.push(name)
-      } else {
-        seen.add(name)
-      }
-    }
-    if (duplicates.length > 0) {
-      throw new Error(`Duplicate identifiers: ${JSON.stringify(duplicates)}. ts(2300)`)
-    }
   }
   /** @internal */
   getParser(
@@ -3245,6 +3230,11 @@ export function structWithRest(ast: Objects, records: ReadonlyArray<Objects>): O
   let indexSignatures = ast.indexSignatures
   let checks = ast.checks
   for (const record of records) {
+    for (const propertySignature of record.propertySignatures) {
+      if (propertySignatures.some((ps) => ps.name === propertySignature.name)) {
+        throw new Error(`Duplicate identifier: ${JSON.stringify(propertySignature.name)}. ts(2300)`)
+      }
+    }
     propertySignatures = propertySignatures.concat(record.propertySignatures)
     indexSignatures = indexSignatures.concat(record.indexSignatures)
     checks = combineChecks(checks, record.checks)
@@ -4495,12 +4485,14 @@ function parseParameter(ast: AST): {
   function go(ast: AST) {
     switch (ast._tag) {
       case "Literal":
-        if (Predicate.isPropertyKey(ast.literal)) {
+        if (Predicate.isPropertyKey(ast.literal) && !literals.includes(ast.literal)) {
           literals.push(ast.literal)
         }
         return
       case "UniqueSymbol":
-        literals.push(ast.symbol)
+        if (!literals.includes(ast.symbol)) {
+          literals.push(ast.symbol)
+        }
         return
       case "Never":
         return
