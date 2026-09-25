@@ -186,6 +186,24 @@ describe("SchemaAOTCompiler", { concurrent: false }, () => {
     assert.strictEqual(source.match(/function d\d+\(ast,resolve,operation\)/g)?.length, 2)
   })
 
+  it("preserves required, optional, and __proto__ property presence checks", () => {
+    const schema = Schema.Struct({
+      required: Schema.UndefinedOr(Schema.String),
+      plain: Schema.String,
+      optional: Schema.optionalKey(Schema.String),
+      ["__proto__"]: Schema.String
+    })
+    const decode = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode"] }])
+    assert.include(decode, "if(!(\"required\" in i))return I")
+    assert.notInclude(decode, "if(!(\"plain\" in i))")
+    assert.notInclude(decode, "if(!(\"optional\" in i))")
+    assert.include(decode, "if(\"optional\" in i){")
+    assert.include(decode, "if(!(Object.hasOwn(i,\"__proto__\")))return I")
+
+    const guard = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["is"] }])
+    assert.include(guard, "if(!(\"required\" in i))return false")
+  })
+
   it("runs generated decoders without dynamic code generation", () => {
     const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-test-", import.meta.url)))
     try {

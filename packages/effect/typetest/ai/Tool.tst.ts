@@ -1,8 +1,25 @@
-import { Schema } from "effect"
-import { type AiError, Tool } from "effect/ai"
+import { Effect, Schema, type Stream } from "effect"
+import { type AiError, Tool, Toolkit } from "effect/ai"
 import { describe, expect, it } from "tstyche"
 
 describe("Tool", () => {
+  it("exposes result encoding failures on the extracted return-mode stream", () => {
+    const positive = Tool.make("Positive", {
+      failureMode: "return",
+      success: Schema.Number.check(Schema.isGreaterThan(0)),
+      failure: Schema.String
+    })
+    const toolkit = Toolkit.make(positive)
+    const handled = toolkit.pipe(Effect.provide(toolkit.toLayer({
+      Positive: () => Effect.succeed(-1)
+    })))
+
+    Effect.map(handled, (handlers) =>
+      Effect.map(handlers.handle("Positive", {}), (inner) => {
+        expect<[Stream.Error<typeof inner>]>().type.toBe<[AiError.AiError]>()
+      }))
+  })
+
   describe("failure results", () => {
     const failure = Schema.NumberFromString
     const errorTool = Tool.make("ErrorMode", { failure })

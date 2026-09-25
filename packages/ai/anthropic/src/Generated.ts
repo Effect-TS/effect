@@ -7718,7 +7718,7 @@ export type BetaMessage = {
     readonly "cache_creation": BetaCacheCreation | null
     readonly "cache_creation_input_tokens": number | null
     readonly "cache_read_input_tokens": number | null
-    readonly "inference_geo": string | null
+    readonly "inference_geo"?: string | null
     readonly "input_tokens": number
     readonly "iterations"?: BetaIterationsUsage
     readonly "output_tokens": number
@@ -7782,11 +7782,13 @@ export const BetaMessage = Schema.Struct({
       "description": "The number of input tokens read from the cache.",
       "default": null
     }),
-    "inference_geo": Schema.Union([Schema.String, Schema.Null]).annotate({
-      "title": "Inference Geo",
-      "description": "The geographic region where inference was performed for this request.",
-      "default": null
-    }),
+    "inference_geo": Schema.optionalKey(
+      Schema.Union([Schema.String, Schema.Null]).annotate({
+        "title": "Inference Geo",
+        "description": "The geographic region where inference was performed for this request.",
+        "default": null
+      })
+    ),
     "input_tokens": Schema.Number.annotate({
       "title": "Input Tokens",
       "description": "The number of input tokens which were used."
@@ -7872,7 +7874,7 @@ export type Message = {
     readonly "cache_creation": CacheCreation | null
     readonly "cache_creation_input_tokens": number | null
     readonly "cache_read_input_tokens": number | null
-    readonly "inference_geo": string | null
+    readonly "inference_geo"?: string | null
     readonly "input_tokens": number
     readonly "output_tokens": number
     readonly "server_tool_use"?: ServerToolUsage | null
@@ -7933,11 +7935,13 @@ export const Message = Schema.Struct({
       "description": "The number of input tokens read from the cache.",
       "default": null
     }),
-    "inference_geo": Schema.Union([Schema.String, Schema.Null]).annotate({
-      "title": "Inference Geo",
-      "description": "The geographic region where inference was performed for this request.",
-      "default": null
-    }),
+    "inference_geo": Schema.optionalKey(
+      Schema.Union([Schema.String, Schema.Null]).annotate({
+        "title": "Inference Geo",
+        "description": "The geographic region where inference was performed for this request.",
+        "default": null
+      })
+    ),
     "input_tokens": Schema.Number.annotate({
       "title": "Input Tokens",
       "description": "The number of input tokens which were used."

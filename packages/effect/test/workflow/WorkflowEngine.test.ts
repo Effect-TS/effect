@@ -343,6 +343,33 @@ describe("WorkflowEngine", () => {
       ))
     ))
 
+  it.effect("distinguishes workflow tags and idempotency keys at string boundaries", () =>
+    Effect.gen(function*() {
+      const makeWorkflow = (tag: string) =>
+        Workflow.make(tag, {
+          payload: { key: Schema.String, value: Schema.Number },
+          idempotencyKey: ({ key }) => key
+        })
+
+      for (
+        const [leftTag, leftKey, rightTag, rightKey] of [
+          ["Order", "Pay-42", "Order-Pay", "42"],
+          ["Order", "Pay:42", "Order:Pay", "42"],
+          ["", "-", "-", ""],
+          ["A\"", "B\\", "A\"-B", "\\"]
+        ]
+      ) {
+        const left = makeWorkflow(leftTag)
+        const right = makeWorkflow(rightTag)
+        const leftId = yield* left.executionId({ key: leftKey, value: 1 })
+        const rightId = yield* right.executionId({ key: rightKey, value: 1 })
+
+        assert.notStrictEqual(leftId, rightId)
+        assert.strictEqual(yield* left.executionId({ key: leftKey, value: 1 }), leftId)
+        assert.strictEqual(yield* left.executionId({ key: leftKey, value: 2 }), leftId)
+      }
+    }))
+
   it.effect("supports class extension", () =>
     Effect.gen(function*() {
       const result = yield* ClassWorkflow.execute({ value: 1 })

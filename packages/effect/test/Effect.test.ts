@@ -675,6 +675,16 @@ describe("Effect", () => {
         assert.strictEqual(result, 1)
         return result + this.b
       }).pipe(Effect.runPromise).then((_) => assert.deepStrictEqual(_, 3)))
+
+    it("iterator yields the effect once, then completes with the sent value", () => {
+      const effect = Effect.succeed(1)
+      const iterator = effect[Symbol.iterator]()
+      const yielded = iterator.next()
+      const returned = iterator.next(2)
+      assert.deepStrictEqual({ ...yielded }, { value: effect, done: false })
+      assert.deepStrictEqual({ ...returned }, { value: 2, done: true })
+      assert.deepStrictEqual({ ...iterator.next(3) }, { value: 3, done: true })
+    })
   })
 
   describe("forEach", () => {
@@ -1974,6 +1984,20 @@ describe("Effect", () => {
   })
 
   describe("interruption", () => {
+    it("a map callback that interrupts its own fiber skips the next map", () => {
+      let ran = false
+      const exit = Effect.runSyncExit(
+        Effect.sync(() => 0).pipe(
+          Effect.map(() => Fiber.getCurrent()!.interruptUnsafe()),
+          Effect.map(() => {
+            ran = true
+          })
+        )
+      )
+      assert.isFalse(ran)
+      assert.isTrue(Exit.hasInterrupts(exit))
+    })
+
     it.effect("sync forever is interruptible", () =>
       Effect.gen(function*() {
         const fiber = yield* pipe(Effect.succeed(1), Effect.forever, Effect.forkChild)
@@ -2571,10 +2595,63 @@ describe("Effect", () => {
         Effect.timeoutOption(50)
       )
     })
+
+    it("lazily nested map continuations", () => {
+      const loop = (n: number): Effect.Effect<number> =>
+        n === 0 ? Effect.succeed(0) : Effect.map(Effect.suspend(() => loop(n - 1)), (n) => n + 1)
+      assert.strictEqual(Effect.runSync(loop(100_000)), 100_000)
+    })
   })
 
   describe("finalization", () => {
     const ExampleError = new Error("Oh noes!")
+
+    const throwing = (): never => {
+      throw "finalizer defect"
+    }
+
+    it.effect("onExit preserves the original failure when the finalizer throws", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.fail("body failure").pipe(Effect.onExit(throwing), Effect.exit)
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("body failure"), Cause.die("finalizer defect")))
+        )
+      }))
+
+    it.effect("onExit reports a thrown finalizer on success", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.succeed(1).pipe(Effect.onExit(throwing), Effect.exit)
+        assert.deepStrictEqual(result, Exit.die("finalizer defect"))
+      }))
+
+    it.effect("an outer onInterrupt still sees the interruption after an inner finalizer throws", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        const result = yield* Effect.interrupt.pipe(
+          Effect.onExit(throwing),
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          ),
+          Effect.exit
+        )
+        assert.isTrue(finalized)
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) {
+          assert.deepStrictEqual(result.cause.reasons.map((reason) => reason._tag), ["Interrupt", "Die"])
+          assert.deepStrictEqual(result.cause.reasons[1], Cause.die("finalizer defect").reasons[0])
+        }
+      }))
+
+    it("nested throwing finalizers do not overflow the stack", () => {
+      let program: Effect.Effect<unknown> = Effect.succeed(1)
+      for (let i = 0; i < 20_000; i++) {
+        program = Effect.onExit(Effect.exit(program), throwing)
+      }
+      assert.deepStrictEqual(Effect.runSyncExit(program), Exit.die("finalizer defect"))
+    })
 
     it.effect("fail ensuring", () =>
       Effect.gen(function*() {
@@ -3076,6 +3153,8 @@ describe("Effect", () => {
       }
       assert.strictEqual(Effect.runSync(Effect.match(Effect.succeed(1), options)), 42)
       assert.strictEqual(Effect.runSync(Effect.match(Effect.fail("error"), options)), 42)
+      assert.strictEqual(Effect.runSync(Effect.matchCause(Effect.succeed(1), options)), 42)
+      assert.strictEqual(Effect.runSync(Effect.matchCause(Effect.fail("error"), options)), 42)
       const boom = new Error("boom")
       assertExitDefect(
         Effect.runSyncExit(Effect.match(Effect.succeed(1), {
@@ -3084,6 +3163,26 @@ describe("Effect", () => {
             throw boom
           }
         })),
+        boom
+      )
+    })
+
+    it("passes only the outcome to handlers", () => {
+      function handler(_outcome: unknown) {
+        // eslint-disable-next-line prefer-rest-params
+        return arguments.length
+      }
+      const options = { onFailure: handler, onSuccess: handler }
+      for (const source of [Effect.succeed(1), Effect.fail("error")]) {
+        assert.strictEqual(Effect.runSync(Effect.match(source, options)), 1)
+        assert.strictEqual(Effect.runSync(Effect.matchCause(source, options)), 1)
+      }
+    })
+
+    it("passes defects through without calling onFailure", () => {
+      const boom = new Error("boom")
+      assertExitDefect(
+        Effect.runSyncExit(Effect.match(Effect.die(boom), { onFailure: () => "handled", onSuccess: () => "ok" })),
         boom
       )
     })
@@ -3752,6 +3851,47 @@ describe("Effect", () => {
 
           assert.deepStrictEqual(yield* Fiber.join(joined), Option.some(1))
         }))
+
+      it.effect("commits wake the waiters of refs they write, not refs they read", () =>
+        Effect.gen(function*() {
+          const gate = TxRef.makeUnsafe(0)
+          const other = TxRef.makeUnsafe(0)
+          let runs = 0
+          const waiter = yield* Effect.tx(Effect.gen(function*() {
+            runs++
+            const value = yield* TxRef.get(gate)
+            if (value === 0) return yield* Effect.txRetry
+            return value
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+
+          yield* Effect.tx(Effect.gen(function*() {
+            yield* TxRef.get(gate)
+            yield* TxRef.set(other, 1)
+          }))
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.strictEqual(runs, 1, "reading a ref should not wake its waiters")
+
+          yield* Effect.tx(TxRef.set(gate, 0))
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.strictEqual(runs, 2, "writing the same value should wake its waiters")
+
+          yield* Effect.tx(TxRef.set(gate, 1))
+          assert.strictEqual(yield* Fiber.join(waiter), 1)
+        }))
+
+      it.effect("a write of -0 over 0 is published and wakes its waiters", () =>
+        Effect.gen(function*() {
+          const zero = TxRef.makeUnsafe(0)
+          const negativeZero = yield* Effect.tx(Effect.gen(function*() {
+            const value = yield* TxRef.get(zero)
+            if (Object.is(value, 0)) return yield* Effect.txRetry
+            return 1 / value
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Effect.tx(TxRef.set(zero, -0))
+
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.deepStrictEqual(negativeZero.pollUnsafe(), Exit.succeed(-Infinity), "-0 over 0 never woke its waiter")
+        }))
     })
   })
 
@@ -3795,6 +3935,20 @@ describe("Effect", () => {
       assert.strictEqual(traced.length, 2)
       assert.strictEqual(named.length, 3)
       assert.strictEqual(untraced.length, 2)
+    })
+
+    it.effect("should reuse the definition frame across calls", () => {
+      const fn = Effect.fn("traced")(function*() {
+        return (yield* References.CurrentStackFrame)!
+      })
+      return Effect.gen(function*() {
+        const first = yield* fn()
+        const second = yield* fn()
+        assert.strictEqual(first.parent?.name, "traced (definition)")
+        assert.include(first.parent?.stack(), "Effect.test.ts")
+        assert.strictEqual(first.parent?.stack(), second.parent?.stack())
+        assert.notStrictEqual(first.stack(), second.stack())
+      })
     })
   })
 

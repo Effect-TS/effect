@@ -301,27 +301,35 @@ describe("Cause", () => {
   })
 
   describe("squash", () => {
-    it("returns the first Fail error", () => {
-      assert.strictEqual(Cause.squash(Cause.fail("error")), "error")
+    it("returns the first Fail even after an interrupt and a defect", () => {
+      const cause = Cause.fromReasons([
+        Cause.makeInterruptReason(1),
+        Cause.makeDieReason("defect"),
+        Cause.makeFailReason("first"),
+        Cause.makeFailReason("second")
+      ])
+      assert.strictEqual(Cause.squash(cause), "first")
     })
 
-    it("returns the first Die defect when no Fail", () => {
-      assert.strictEqual(Cause.squash(Cause.die("defect")), "defect")
+    it("returns the first Die when there are no Fails", () => {
+      const cause = Cause.fromReasons([
+        Cause.makeInterruptReason(1),
+        Cause.makeDieReason("first"),
+        Cause.makeDieReason("second")
+      ])
+      assert.strictEqual(Cause.squash(cause), "first")
     })
 
-    it("returns an Error for interrupt-only cause", () => {
+    it("reports an interrupt-only cause", () => {
       const result = Cause.squash(Cause.interrupt(1))
       assert.ok(result instanceof Error)
+      assert.strictEqual(result.message, "All fibers interrupted without error")
     })
 
-    it("returns an Error for empty cause", () => {
+    it("reports an empty cause", () => {
       const result = Cause.squash(Cause.empty)
       assert.ok(result instanceof Error)
-    })
-
-    it("prefers Fail over Die", () => {
-      const combined = Cause.combine(Cause.die("defect"), Cause.fail("error"))
-      assert.strictEqual(Cause.squash(combined), "error")
+      assert.strictEqual(result.message, "Empty cause")
     })
   })
 
@@ -585,6 +593,18 @@ describe("Cause", () => {
     it("handles empty cause", () => {
       const errors = Cause.prettyErrors(Cause.empty)
       assert.ok(Array.isArray(errors))
+    })
+
+    it("restores Error.stackTraceLimit when formatting a reason throws", () => {
+      const limit = Error.stackTraceLimit
+      const error = new Error("boom")
+      Object.defineProperty(error, "stack", {
+        get() {
+          throw new Error("stack getter")
+        }
+      })
+      assert.throws(() => Cause.prettyErrors(Cause.fail(error)), /stack getter/)
+      assert.strictEqual(Error.stackTraceLimit, limit)
     })
   })
 

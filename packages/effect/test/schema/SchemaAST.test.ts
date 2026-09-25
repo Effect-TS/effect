@@ -388,6 +388,9 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates("c", ast.types), [ast.types[2]])
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
       deepStrictEqual(SchemaAST.getCandidates(undefined, ast.types), [])
+
+      const reversed = Schema.Union([Schema.String, Schema.Literal("b")]).ast
+      deepStrictEqual(SchemaAST.getCandidates("c", reversed.types), [reversed.types[0]])
     })
 
     it("Literals", () => {
@@ -495,6 +498,35 @@ describe("SchemaAST", () => {
       const candidates = SchemaAST.getCandidates(input, ast.types)
       Reflect.set(candidates, candidates.length, ast.types[1])
       deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
+    })
+
+    it("should reuse the candidates of a runtime type without literals", () => {
+      const schema = Schema.NullOr(Schema.Struct({ a: Schema.Number }))
+      const ast = schema.ast
+      const candidates = SchemaAST.getCandidates({ a: 1 }, ast.types)
+      deepStrictEqual(candidates, [ast.types[0]])
+      strictEqual(SchemaAST.getCandidates({ b: 2 }, ast.types), candidates)
+      strictEqual(Object.isFrozen(candidates), true)
+      deepStrictEqual(SchemaAST.getCandidates(null, ast.types), [ast.types[1]])
+    })
+
+    it("should reuse non-discriminated candidates of a tagged union", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.tag("a"), a: Schema.String }),
+        Schema.Struct({ b: Schema.Number }),
+        Schema.String,
+        Schema.Literal(1)
+      ])
+      const ast = schema.ast
+      const strings = SchemaAST.getCandidates("x", ast.types)
+      deepStrictEqual(strings, [ast.types[2]])
+      strictEqual(SchemaAST.getCandidates("y", ast.types), strings)
+      strictEqual(Object.isFrozen(strings), true)
+      const objects = SchemaAST.getCandidates({ _tag: "c" }, ast.types)
+      deepStrictEqual(objects, [ast.types[1]])
+      strictEqual(SchemaAST.getCandidates({ _tag: "d" }, ast.types), objects)
+      strictEqual(Object.isFrozen(objects), true)
+      deepStrictEqual(SchemaAST.getCandidates({ _tag: "a" }, ast.types), [ast.types[0], ast.types[1]])
     })
 
     it("should handle candidates with different sentinel keys", () => {

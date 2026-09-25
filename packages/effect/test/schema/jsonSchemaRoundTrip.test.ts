@@ -1,7 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import type { Options as AjvOptions } from "ajv"
 import { Exit, JsonSchema, Schema, SchemaRepresentation } from "effect"
-import { throws } from "../utils/assert.ts"
 
 // oxlint-disable-next-line @typescript-eslint/no-require-imports
 const Ajv2020 = require("ajv/dist/2020")
@@ -79,6 +78,26 @@ function assertRepresentationRoundTrip(
     inputs
   )
   assertJsonSchemaEquivalent(emitted, Schema.toJsonSchemaDocument(imported, options), inputs)
+}
+
+function assertLooseRepresentationRoundTrip(
+  schema: Schema.ConstraintDecoder<unknown>,
+  inputs: ReadonlyArray<unknown>,
+  options?: Schema.ToJsonSchemaOptions
+): Schema.Top {
+  const emitted = Schema.toJsonSchemaDocument(schema, options)
+  const imported = SchemaRepresentation.fromJsonSchemaDocument(emitted, { patterns: "apply" })
+  const decodeSource = Schema.decodeUnknownExit(schema, { onExcessProperty: "error" })
+  const decodeImported = Schema.decodeUnknownExit(imported as unknown as Schema.ConstraintDecoder<unknown>, {
+    onExcessProperty: "error"
+  })
+  for (const input of inputs) {
+    if (Exit.isSuccess(decodeSource(input))) {
+      assert.isTrue(Exit.isSuccess(decodeImported(input)), `Import rejects ${JSON.stringify(input)}`)
+    }
+  }
+  assertJsonSchemaEquivalent(emitted, Schema.toJsonSchemaDocument(imported, options), inputs)
+  return imported
 }
 
 describe("JSON Schema round-trip laws", () => {
@@ -241,17 +260,18 @@ describe("JSON Schema round-trip laws", () => {
       )
     })
 
-    it("preserves closed pattern records but rejects their open export", () => {
+    it("imports the loose default export of approximate pattern records", () => {
       const schema = Schema.Record(Schema.String.check(Schema.isUppercased()), Schema.Finite)
+      const inputs = [{}, { A: 1 }, { A: "a" }, { a: 1 }, { a: "a" }, []]
       assertRepresentationRoundTrip(
         schema,
-        [{}, { A: 1 }, { A: "a" }, { a: 1 }, { a: "a" }, []]
+        inputs
       )
       const emitted = Schema.toJsonSchemaDocument(schema)
-      throws(
-        () => SchemaRepresentation.fromJsonSchemaDocument(emitted, { patterns: "apply" }),
-        `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]`
-      )
+      assert.deepStrictEqual(emitted.schema, { type: "object", additionalProperties: true })
+      const imported = assertLooseRepresentationRoundTrip(schema, inputs)
+      assert.isFalse(Schema.is(schema)({ A: "a" }))
+      assert.isTrue(Schema.is(imported)({ A: "a" }))
     })
 
     it("handles conjunctive key patterns permissively", () => {
@@ -348,18 +368,15 @@ describe("JSON Schema round-trip laws", () => {
       )
     })
 
-    it("rejects exported pattern and string indexes", () => {
-      const emitted = Schema.toJsonSchemaDocument(
-        Schema.StructWithRest(Schema.Struct({}), [
-          Schema.Record(Schema.String.check(Schema.isUppercased()), Schema.Finite),
-          Schema.Record(Schema.String, Schema.Boolean)
-        ]),
-        { onExcessProperty: "error" }
-      )
-      throws(
-        () => SchemaRepresentation.fromJsonSchemaDocument(emitted, { patterns: "apply" }),
-        `Cannot import open "patternProperties": unmatched keys cannot be typed correctly.\n  at ["schema"]["allOf"][0]`
-      )
+    it("imports the loose export of approximate pattern and string indexes", () => {
+      const schema = Schema.StructWithRest(Schema.Struct({}), [
+        Schema.Record(Schema.String.check(Schema.isUppercased()), Schema.Finite),
+        Schema.Record(Schema.String, Schema.Boolean)
+      ])
+      const inputs = [{}, { A: true }, { A: 1 }, { a: true }, { a: 1 }, []]
+      const imported = assertLooseRepresentationRoundTrip(schema, inputs, { onExcessProperty: "error" })
+      assert.isFalse(Schema.is(schema)({ A: true }))
+      assert.isTrue(Schema.is(imported)({ A: true }))
     })
 
     it("preserves multiple string indexes", () => {

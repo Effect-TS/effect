@@ -337,6 +337,7 @@ export const make = (
     return Object.assign(
       yield* Client.make({
         acquirer,
+        transactionService: LibsqlTransaction as any,
         compiler,
         spanAttributes,
         transformRows
