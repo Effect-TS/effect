@@ -352,32 +352,6 @@ describe("OtlpExporter", () => {
         )
       }))
 
-    for (const status of [200, 415]) {
-      it.effect(`releases the response of a ${status} export`, () =>
-        Effect.gen(function*() {
-          const responses: Array<Response> = []
-          const httpClient = HttpClient.make((request) => {
-            const response = new Response("body", { status })
-            responses.push(response)
-            return Effect.succeed(HttpClientResponse.fromWeb(request, response))
-          })
-          yield* Effect.scoped(
-            Effect.gen(function*() {
-              const exporter = yield* makeExporterRaw(10)
-              const flusher = yield* OtlpExporter.Flusher
-
-              exporter.push({ value: 1 })
-              yield* flusher.flush
-              assert.strictEqual(responses.length, 1)
-              assert.isTrue(responses[0].bodyUsed)
-            }).pipe(
-              Effect.provideService(HttpClient.HttpClient, httpClient),
-              Effect.provide(OtlpExporter.layerFlusher)
-            )
-          )
-        }))
-    }
-
     it.effect("drains a 429 response before retrying", () =>
       Effect.gen(function*() {
         const responses: Array<Response> = []

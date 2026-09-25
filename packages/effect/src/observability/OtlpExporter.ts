@@ -186,16 +186,10 @@ export const make: (
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
   let disabledUntil: number | undefined = undefined
 
-  const client = HttpClient.filterStatusOk(Context.get(services, HttpClient.HttpClient)).pipe(
+  const client = Context.get(services, HttpClient.HttpClient).pipe(
+    HttpClient.tap((response) => Effect.ignore(response.arrayBuffer)),
+    HttpClient.filterStatusOk,
     HttpClient.transformResponse(Effect.provideService(HttpClient.TracerPropagationEnabled, false)),
-    HttpClient.transformResponse((effect) =>
-      effect.pipe(
-        Effect.tap((response) => Effect.ignore(response.arrayBuffer)),
-        Effect.tapError((error) =>
-          error.response === undefined ? Effect.void : Effect.ignore(error.response.arrayBuffer)
-        )
-      )
-    ),
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
