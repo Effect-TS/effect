@@ -989,8 +989,9 @@ export const makeProtocolSocket = (options?: {
         Effect.raceFirst(Effect.zipRight(
           pinger.timeout,
           Effect.fail(
+            // Pings are only written on an open socket, so this is a read failure, not a connect timeout.
             new Socket.SocketGenericError({
-              reason: "OpenTimeout",
+              reason: "Read",
               cause: new Error("ping timeout")
             })
           )
