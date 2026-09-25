@@ -4220,15 +4220,9 @@ export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annota
   )
 }
 
-function modifyOwnPropertyDescriptors<A extends AST>(
-  ast: A,
-  f: (
-    d: { [P in keyof A]: TypedPropertyDescriptor<A[P]> }
-  ) => void
-): A {
-  const d = Object.getOwnPropertyDescriptors(ast)
-  f(d)
-  return Object.create(Object.getPrototypeOf(ast), d)
+function copy<A extends AST>(ast: A): Types.Mutable<A> {
+  // AST copies preserve the prototype and enumerable values, not property descriptors.
+  return Object.assign(Object.create(Object.getPrototypeOf(ast)), ast)
 }
 
 const contextOwners = new WeakMap<AST, AST>()
@@ -4243,9 +4237,9 @@ export function replaceEncoding<A extends AST>(ast: A, encoding: Encoding | unde
   if (ast.encoding === encoding) {
     return ast
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.encoding.value = encoding
-  })
+  const out = copy(ast)
+  out.encoding = encoding
+  return out
 }
 
 /** @internal */
@@ -4257,10 +4251,9 @@ export function replaceContext<A extends AST>(ast: A, context: Context | undefin
   if (owner.context === context) {
     return owner as A
   }
-  const out = modifyOwnPropertyDescriptors(ast, (d) => {
-    d.context.value = context
-  })
-  contextOwners.set(out, owner)
+  const out = copy(ast)
+  out.context = context
+  contextOwners.set(out as A, owner)
   return out
 }
 
@@ -4275,9 +4268,9 @@ export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.
     const last = ast.checks[ast.checks.length - 1]
     return replaceChecks(ast, Arr.append(ast.checks.slice(0, -1), last.annotate(annotations)))
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.annotations.value = { ...d.annotations.value, ...annotations }
-  })
+  const out = copy(ast)
+  out.annotations = { ...ast.annotations, ...annotations }
+  return out
 }
 
 /** @internal */
@@ -4288,9 +4281,9 @@ export function replaceChecks<A extends AST>(ast: A, checks: Checks | undefined)
   if (ast.checks === checks) {
     return ast
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.checks.value = checks
-  })
+  const out = copy(ast)
+  out.checks = checks
+  return out
 }
 
 /** @internal */
@@ -4600,10 +4593,10 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
       : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
       ? extractStructuralChecks(encodingChecks)
       : undefined
-    return modifyOwnPropertyDescriptors(type, (d) => {
-      d.encodingChecks.value = undefined
-      d.checks.value = combineChecks(type.checks, checks)
-    })
+    const copyOfType = copy(type)
+    copyOfType.encodingChecks = undefined
+    copyOfType.checks = combineChecks(type.checks, checks)
+    return copyOfType
   }
   return type
 })

@@ -28,6 +28,100 @@ describe("SchemaAST", () => {
     })
   })
 
+  describe("AST updates", () => {
+    it("preserves the prototype, children and enumerable symbols when updating a frozen node", () => {
+      const marker = Symbol("marker")
+      class Objects extends SchemaAST.Objects {
+        readonly [marker] = { value: "custom" }
+      }
+      const ast = Object.freeze(new Objects([new SchemaAST.PropertySignature("a", SchemaAST.string)], []))
+      const checks: SchemaAST.Checks = [Schema.isMinProperties(1)]
+      const updated = SchemaAST.replaceChecks(ast, checks)
+
+      strictEqual(updated === ast, false)
+      strictEqual(updated instanceof Objects, true)
+      strictEqual(updated[marker], ast[marker])
+      strictEqual(updated.propertySignatures, ast.propertySignatures)
+      strictEqual(updated.indexSignatures, ast.indexSignatures)
+      strictEqual(updated.checks, checks)
+      strictEqual(ast.checks, undefined)
+      deepStrictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<unknown>>(updated))({ a: "value" }), {
+        a: "value"
+      })
+    })
+
+    it("keeps identity for unchanged checks, encoding and context", () => {
+      const ast = Schema.NumberFromString.check(Schema.isGreaterThan(0)).ast
+
+      strictEqual(SchemaAST.replaceChecks(ast, ast.checks), ast)
+      strictEqual(SchemaAST.replaceEncoding(ast, ast.encoding), ast)
+      strictEqual(SchemaAST.replaceContext(ast, ast.context), ast)
+    })
+
+    it("removes encoding without changing the source or its checks", () => {
+      const ast = Schema.NumberFromString.check(Schema.isGreaterThan(0)).ast
+      const encoding = ast.encoding
+      const updated = SchemaAST.replaceEncoding(ast, undefined)
+
+      strictEqual(updated.encoding, undefined)
+      strictEqual(updated.checks, ast.checks)
+      strictEqual(ast.encoding, encoding)
+      strictEqual(encoding === undefined, false)
+      strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<unknown>>(updated))(1), 1)
+      throws(() => Schema.decodeUnknownSync(Schema.make<Schema.Codec<unknown>>(updated))(-1))
+    })
+
+    it("restores context owners without losing changes made to a contextual node", () => {
+      const ast = Schema.Struct({ a: Schema.String }).ast
+      const context = new SchemaAST.Context(true, false)
+      const contextual = SchemaAST.replaceContext(ast, context)
+      const checks: SchemaAST.Checks = [Schema.isMinProperties(1)]
+      const checked = SchemaAST.replaceChecks(contextual, checks)
+      const restored = SchemaAST.replaceContext(checked, undefined)
+
+      strictEqual(SchemaAST.getContextOwner(contextual), ast)
+      strictEqual(SchemaAST.replaceContext(contextual, undefined), ast)
+      strictEqual(SchemaAST.getContextOwner(checked), checked)
+      strictEqual(restored.checks, checks)
+      strictEqual(restored.context, undefined)
+      strictEqual(checked.context, context)
+      strictEqual(ast.context, undefined)
+    })
+
+    it("shares prepared template data when merging annotations", () => {
+      const ast = Schema.TemplateLiteral(["item-", Schema.String]).ast
+      const annotated = SchemaAST.annotate(ast, { title: "Item" })
+      const updated = SchemaAST.annotate(annotated, { description: "An item identifier" })
+
+      strictEqual(updated.parts, ast.parts)
+      strictEqual(updated.encodedParts, ast.encodedParts)
+      strictEqual(updated.literals, ast.literals)
+      strictEqual(updated.suffixLengths, ast.suffixLengths)
+      deepStrictEqual(updated.annotations, { title: "Item", description: "An item identifier" })
+      strictEqual(annotated.annotations?.description, undefined)
+      strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<unknown>>(updated))("item-a"), "item-a")
+    })
+
+    it("shares the memoized suspended thunk when copying metadata", () => {
+      let calls = 0
+      const ast = new SchemaAST.Suspend(() => {
+        calls++
+        return SchemaAST.string
+      })
+      const annotated = SchemaAST.annotate(ast, { title: "Suspended string" })
+
+      strictEqual(calls, 0)
+      strictEqual(annotated.thunk, ast.thunk)
+      strictEqual(annotated.thunk(), SchemaAST.string)
+      strictEqual(ast.thunk(), SchemaAST.string)
+      strictEqual(calls, 1)
+      throws(
+        () => SchemaAST.replaceChecks(annotated, [Schema.isMinLength(1)]),
+        new Error("Cannot add checks to Suspend")
+      )
+    })
+  })
+
   it("stores constructor defaults directly in the context", () => {
     const defaultValue = Effect.succeed("default")
     const ast = SchemaAST.withConstructorDefault(SchemaAST.string, defaultValue)
