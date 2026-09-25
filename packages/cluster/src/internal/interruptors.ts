@@ -45,7 +45,7 @@ export const make = () => {
 }
 
 const entityKey = (address: EntityAddress): string =>
-  `entity:${address.entityType}:${address.entityId}:${address.shardId.toString()}`
+  `entity:${JSON.stringify([address.entityType, address.entityId, address.shardId.group, address.shardId.id])}`
 
 const shardKey = (shardId: ShardId): string => `shard:${shardId.toString()}`
 
