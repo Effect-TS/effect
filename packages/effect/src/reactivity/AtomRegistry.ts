@@ -384,7 +384,7 @@ class RegistryImpl implements AtomRegistry {
   }
 
   set<R, W>(atom: Atom.Writable<R, W>, value: W): void {
-    atom.write(this.ensureNode(atom).writeContext, value)
+    atom.write(this.ensureNode(atom), value)
   }
 
   setSerializable(key: string, encoded: unknown): void {
@@ -394,20 +394,20 @@ class RegistryImpl implements AtomRegistry {
   modify<R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]): A {
     const node = this.ensureNode(atom)
     const result = f(node.value())
-    atom.write(node.writeContext, result[1])
+    atom.write(node, result[1])
     return result[0]
   }
 
   update<R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W): void {
     const node = this.ensureNode(atom)
-    atom.write(node.writeContext, f(node.value()))
+    atom.write(node, f(node.value()))
   }
 
   refresh = <A>(atom: Atom.Atom<A>): void => {
     if (atom.refresh !== undefined) {
       atom.refresh(this.refresh)
     } else {
-      this.invalidateAtom(atom)
+      this.ensureNode(atom).invalidate()
     }
   }
 
@@ -416,11 +416,12 @@ class RegistryImpl implements AtomRegistry {
     if (options?.immediate) {
       f(node.value())
     }
-    const remove = node.subscribe(function() {
+    const listener = function() {
       f(node._value)
-    })
+    }
+    node.subscribe(listener)
     return () => {
-      remove()
+      node.unsubscribe(listener)
       if (node.canBeRemoved) {
         this.scheduleNodeRemoval(node)
       }
@@ -471,10 +472,6 @@ class RegistryImpl implements AtomRegistry {
       this.scheduleAtomRemoval(atom)
     }
     return new NodeImpl(this, atom)
-  }
-
-  invalidateAtom = <A>(atom: Atom.Atom<A>): void => {
-    this.ensureNode(atom).invalidate()
   }
 
   scheduleAtomRemoval(atom: Atom.Atom<any>): void {
@@ -598,21 +595,27 @@ const NodeState = {
 } as const
 type NodeState = number
 
-class NodeImpl<A> {
+const stateNames: Record<number, "uninitialized" | "stale" | "valid"> = {
+  [NodeState.uninitialized]: "uninitialized",
+  [NodeState.stale]: "stale",
+  [NodeState.valid]: "valid"
+}
+
+class NodeImpl<A> implements Atom.WriteContext<A> {
   constructor(
     registry: RegistryImpl,
     atom: Atom.Atom<A>
   ) {
     this.registry = registry
     this.atom = atom
-    this.writeContext = new WriteContextImpl(registry, this)
+    this.untracked = Symbol.for("effect/reactivity/Atom/untrackedRead") in atom.read
   }
 
   readonly registry: RegistryImpl
   readonly atom: Atom.Atom<A>
+  readonly untracked: boolean
   state: NodeState = NodeState.uninitialized
   lifetime: Lifetime<A> | undefined
-  writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
 
   parents = new Set<NodeImpl<any>>()
@@ -624,16 +627,7 @@ class NodeImpl<A> {
   invalidatedDuringBuild = false
 
   currentState() {
-    switch (this.state) {
-      case NodeState.uninitialized:
-        return "uninitialized"
-      case NodeState.stale:
-        return "stale"
-      case NodeState.valid:
-        return "valid"
-      default:
-        return "removed"
-    }
+    return stateNames[this.state] ?? "removed"
   }
 
   get canBeRemoved(): boolean {
@@ -683,14 +677,7 @@ class NodeImpl<A> {
       this.preserveInitialValueOnBuild = true
       this.state = NodeState.stale
       this._value = value
-
-      if (batchState.phase === BatchPhase.collect) {
-        batchState.notify.add(this)
-      } else {
-        this.notify()
-      }
-
-      return
+      return this.announce()
     }
 
     this.setValue(value)
@@ -700,14 +687,7 @@ class NodeImpl<A> {
     if ((this.state & NodeFlags.initialized) === 0) {
       this.state = NodeState.valid
       this._value = value
-
-      if (batchState.phase === BatchPhase.collect) {
-        batchState.notify.add(this)
-      } else {
-        this.notify()
-      }
-
-      return
+      return this.announce()
     }
 
     this.state = NodeState.valid
@@ -723,12 +703,23 @@ class NodeImpl<A> {
     }
 
     if (this.listeners.size > 0) {
-      if (batchState.phase === BatchPhase.collect) {
-        batchState.notify.add(this)
-      } else {
-        this.notify()
-      }
+      this.announce()
     }
+  }
+
+  announce(): void {
+    if (batchState.phase === BatchPhase.collect) {
+      batchState.notify.add(this)
+    } else {
+      this.notify()
+    }
+  }
+
+  readTracked<B>(atom: Atom.Atom<B>): B {
+    const parent = this.registry.ensureNode(atom)
+    const value = parent.value()
+    this.addParent(parent)
+    return value
   }
 
   addParent(parent: NodeImpl<any>): void {
@@ -792,9 +783,10 @@ class NodeImpl<A> {
   }
 
   disposeLifetime(): void {
-    if (this.lifetime !== undefined) {
-      this.lifetime.dispose()
+    const lifetime = this.lifetime
+    if (lifetime !== undefined) {
       this.lifetime = undefined
+      lifetime.dispose()
     }
 
     if (this.parents.size !== 0) {
@@ -825,9 +817,28 @@ class NodeImpl<A> {
     }
   }
 
-  subscribe(listener: () => void): () => void {
+  subscribe(listener: () => void): void {
     this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
+  }
+
+  unsubscribe(listener: () => void): void {
+    this.listeners.delete(listener)
+  }
+
+  get<T>(atom: Atom.Atom<T>): T {
+    return this.registry.get(atom)
+  }
+
+  set<R, W>(atom: Atom.Writable<R, W>, value: W): void {
+    this.registry.set(atom, value)
+  }
+
+  setSelf(value: A): void {
+    this.setValue(value)
+  }
+
+  refreshSelf(): void {
+    this.invalidate()
   }
 }
 
@@ -856,14 +867,17 @@ function childrenAreActive(children: Set<NodeImpl<any>>): boolean {
 }
 
 interface Lifetime<A> extends Atom.AtomContext {
-  isFn: boolean
   readonly node: NodeImpl<A>
   finalizers: Array<() => void> | undefined
-  disposed: boolean
+  readonly disposed: boolean
   readonly dispose: () => void
 }
 
-const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn"> = {
+const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers"> = {
+  get disposed(): boolean {
+    return (this as Lifetime<any>).node.lifetime !== this
+  },
+
   get registry(): RegistryImpl {
     return (this as Lifetime<any>).node.registry
   },
@@ -875,19 +889,13 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
   },
 
   get<A>(this: Lifetime<any>, atom: Atom.Atom<A>): A {
-    if (this.disposed) {
-      return this.node.registry.get(atom)
-    }
-    const parent = this.node.registry.ensureNode(atom)
-    const value = parent.value()
-    this.node.addParent(parent)
-    return value
+    return this.disposed ? this.node.registry.get(atom) : this.node.readTracked(atom)
   },
 
   result<A, E>(this: Lifetime<any>, atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
     readonly suspendOnWaiting?: boolean | undefined
   }): Effect.Effect<A, E> {
-    if (this.disposed || this.isFn) {
+    if (this.disposed || this.node.untracked) {
       return this.resultOnce(atom, options)
     }
     const result = this.get(atom)
@@ -910,18 +918,10 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
   resultOnce<A, E>(this: Lifetime<any>, atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
     readonly suspendOnWaiting?: boolean | undefined
   }): Effect.Effect<A, E> {
-    return Effect.callback<A, E>((resume) => {
-      const result = this.once(atom)
-      if (result._tag !== "Initial" && !(options?.suspendOnWaiting && result.waiting)) {
-        return resume(Result.toExit(result) as any)
-      }
-      const cancel = this.node.registry.subscribe(atom, (result) => {
-        if (result._tag === "Initial" || (options?.suspendOnWaiting && result.waiting)) return
-        cancel()
-        resume(Result.toExit(result) as any)
-      }, { immediate: false })
-      return Effect.sync(cancel)
-    })
+    return waitFor(this, atom, (result) =>
+      result._tag === "Initial" || (options?.suspendOnWaiting && result.waiting)
+        ? undefined
+        : Result.toExit(result) as Exit.Exit<A, E>)
   },
 
   setResult<A, E, W>(
@@ -935,7 +935,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
   },
 
   some<A>(this: Lifetime<any>, atom: Atom.Atom<Option.Option<A>>): Effect.Effect<A> {
-    if (this.disposed || this.isFn) {
+    if (this.disposed || this.node.untracked) {
       return this.someOnce(atom)
     }
     const result = this.get(atom)
@@ -943,18 +943,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
   },
 
   someOnce<A>(this: Lifetime<any>, atom: Atom.Atom<Option.Option<A>>): Effect.Effect<A> {
-    return Effect.callback<A>((resume) => {
-      const result = this.once(atom)
-      if (Option.isSome(result)) {
-        return resume(Effect.succeed(result.value))
-      }
-      const cancel = this.node.registry.subscribe(atom, (result) => {
-        if (Option.isNone(result)) return
-        cancel()
-        resume(Effect.succeed(result.value))
-      }, { immediate: false })
-      return Effect.sync(cancel)
-    })
+    return waitFor(this, atom, (option) => Option.isSome(option) ? Effect.succeed(option.value) : undefined)
   },
 
   once<A>(this: Lifetime<any>, atom: Atom.Atom<A>): A {
@@ -1024,7 +1013,6 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
   },
 
   dispose(this: Lifetime<any>): void {
-    this.disposed = true
     if (this.finalizers === undefined) {
       return
     }
@@ -1037,48 +1025,31 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
   }
 }
 
+const waitFor = <A, B, E>(
+  lifetime: Lifetime<any>,
+  atom: Atom.Atom<A>,
+  ready: (value: A) => Effect.Effect<B, E> | undefined
+): Effect.Effect<B, E> =>
+  Effect.callback<B, E>((resume) => {
+    const now = ready(lifetime.once(atom))
+    if (now !== undefined) return resume(now)
+    const cancel = lifetime.node.registry.subscribe(atom, (value) => {
+      const next = ready(value)
+      if (next === undefined) return
+      cancel()
+      resume(next)
+    }, { immediate: false })
+    return Effect.sync(cancel)
+  })
+
 const makeLifetime = <A>(node: NodeImpl<A>): Lifetime<A> => {
   function get<A>(atom: Atom.Atom<A>): A {
-    if (get.disposed) {
-      return node.registry.get(atom)
-    } else if (get.isFn) {
-      return node.registry.get(atom)
-    }
-    const parent = node.registry.ensureNode(atom)
-    const value = parent.value()
-    node.addParent(parent)
-    return value
+    return node.lifetime !== get || node.untracked ? node.registry.get(atom) : node.readTracked(atom)
   }
   Object.setPrototypeOf(get, LifetimeProto)
-  get.isFn = false
-  get.disposed = false
   get.finalizers = undefined
   get.node = node
   return get as any
-}
-
-class WriteContextImpl<A> implements Atom.WriteContext<A> {
-  constructor(
-    registry: RegistryImpl,
-    node: NodeImpl<A>
-  ) {
-    this.registry = registry
-    this.node = node
-  }
-  readonly registry: RegistryImpl
-  readonly node: NodeImpl<A>
-  get<A>(atom: Atom.Atom<A>): A {
-    return this.registry.get(atom)
-  }
-  set<R, W>(atom: Atom.Writable<R, W>, value: W) {
-    return this.registry.set(atom, value)
-  }
-  setSelf(value: any) {
-    return this.node.setValue(value)
-  }
-  refreshSelf() {
-    return this.node.invalidate()
-  }
 }
 
 // -----------------------------------------------------------------------------
