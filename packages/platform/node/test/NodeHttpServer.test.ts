@@ -47,6 +47,45 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("keeps routes isolated between independent servers", () =>
+    Effect.gen(function*() {
+      const publicServer = Http.createServer()
+      const internalServer = Http.createServer()
+
+      const Health = Layer.effectDiscard(
+        Effect.flatMap(HttpRouter.HttpRouter, (router) =>
+          router.add("GET", "/health", HttpServerResponse.text("healthy")))
+      )
+      const publicApp = Layer.mergeAll(
+        HttpRouter.add("GET", "/public", HttpServerResponse.text("public")),
+        Health
+      )
+      const internalApp = Layer.mergeAll(
+        HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")),
+        Health
+      )
+
+      yield* Layer.mergeAll(
+        HttpRouter.serve(publicApp, { disableListenLog: true, disableLogger: true }).pipe(
+          Layer.provide(NodeHttpServer.layer(() =>
+            publicServer, { port: 0 }))
+        ),
+        HttpRouter.serve(internalApp, { disableListenLog: true, disableLogger: true }).pipe(
+          Layer.provide(NodeHttpServer.layer(() => internalServer, { port: 0 }))
+        )
+      ).pipe(Layer.build)
+
+      const status = (port: number, path: string) =>
+        Effect.promise(() => fetch("http://localhost:" + port + path).then((response) => response.status))
+
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/public"), 200)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/internal"), 200)
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/health"), 200)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/health"), 200)
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/internal"), 404)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/public"), 404)
+    }))
+
   it.effect("schema", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
