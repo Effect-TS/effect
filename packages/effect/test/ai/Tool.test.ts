@@ -112,8 +112,7 @@ describe("Tool", () => {
           Positive: () => Effect.succeed(-1)
         })))
         const inner = yield* handlers.handle("Positive", {})
-        // The current declaration says this Stream cannot fail; the runtime can.
-        const error = (yield* Stream.runCollect(inner).pipe(Effect.flip)) as AiError.AiError
+        const error = yield* Stream.runCollect(inner).pipe(Effect.flip)
 
         strictEqual(error._tag, "AiError")
         strictEqual(error.module, "Toolkit")
