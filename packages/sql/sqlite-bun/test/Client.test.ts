@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect } from "effect"
+import { Cause, Duration, Effect, Exit } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { rm } from "node:fs/promises"
 
@@ -61,6 +61,29 @@ describe("Client", () => {
         snapshot.close()
       }
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect.skipIf(!isBun)(
+    "recovers a failed deferred commit without losing an in-memory database",
+    () =>
+      Effect.gen(function*() {
+        const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+        const sql = yield* SqliteClient.make({ filename: ":memory:" })
+        yield* sql`PRAGMA foreign_keys = ON`
+        yield* sql`CREATE TABLE parent (id INTEGER PRIMARY KEY)`
+        yield* sql`CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)`
+        yield* sql`INSERT INTO parent VALUES (1)`
+
+        const failedCommit = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO child VALUES (999)`))
+        assert.isTrue(Exit.isFailure(failedCommit))
+        if (!Exit.isFailure(failedCommit)) return
+        assert.match(Cause.pretty(failedCommit.cause), /foreign key constraint failed/i)
+
+        assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
+        assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
+        yield* sql.withTransaction(sql`INSERT INTO child VALUES (1)`)
+        assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [{ parent_id: 1 }])
+      }).pipe(Effect.provide(Reactivity.layer))
+  )
 
   it.effect.skipIf(!isBun)("readonly clients reject writes", () =>
     Effect.gen(function*() {
