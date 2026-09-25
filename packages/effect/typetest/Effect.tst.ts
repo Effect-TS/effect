@@ -15,7 +15,7 @@ import {
   type Option,
   pipe,
   Result,
-  type Schedule,
+  Schedule,
   type Scope,
   type Sink,
   type Stream,
@@ -1199,6 +1199,59 @@ describe("all", () => {
         "dep-1" | "dep-2"
       >
     >()
+  })
+})
+
+describe("Effect.repeat", () => {
+  type Status = "pending" | "done"
+  const source = null as unknown as Effect.Effect<Status>
+  const schedule = Schedule.recurs(3)
+
+  it("narrows the result with an unbounded while refinement", () => {
+    expect(Effect.repeat(source, {
+      while: (status): status is "pending" => status === "pending"
+    })).type.toBe<Effect.Effect<"done">>()
+  })
+
+  it("narrows the result with an unbounded until refinement", () => {
+    expect(Effect.repeat(source, {
+      until: (status): status is "done" => status === "done"
+    })).type.toBe<Effect.Effect<"done">>()
+  })
+
+  it("preserves the full result with times and a while refinement", () => {
+    expect(Effect.repeat(source, {
+      times: 3,
+      while: (status): status is "pending" => status === "pending"
+    })).type.toBe<Effect.Effect<Status>>()
+  })
+
+  it("preserves the full result with times and an until refinement", () => {
+    expect(Effect.repeat(source, {
+      times: 3,
+      until: (status): status is "done" => status === "done"
+    })).type.toBe<Effect.Effect<Status>>()
+  })
+
+  it("preserves the full result with a schedule and a while refinement", () => {
+    expect(Effect.repeat(source, {
+      schedule,
+      while: (status): status is "pending" => status === "pending"
+    })).type.toBe<Effect.Effect<Status>>()
+  })
+
+  it("preserves the full result with a schedule and an until refinement", () => {
+    expect(Effect.repeat(source, {
+      schedule,
+      until: (status): status is "done" => status === "done"
+    })).type.toBe<Effect.Effect<Status>>()
+  })
+
+  it("preserves the full result in data-last usage with times", () => {
+    expect(source.pipe(Effect.repeat({
+      times: 3,
+      while: (status): status is "pending" => status === "pending"
+    }))).type.toBe<Effect.Effect<Status>>()
   })
 })
 
