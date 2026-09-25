@@ -7505,9 +7505,12 @@ export declare namespace Repeat {
    * @since 2.0.0
    */
   export type Return<R, E, A, O extends Options<A>> = Effect<
-    O extends { until: Predicate.Refinement<A, infer B> } ? B
+    O extends unknown ? "schedule" extends keyof O ? A
+      : "times" extends keyof O ? A
+      : O extends { until: Predicate.Refinement<A, infer B> } ? B
       : O extends { while: Predicate.Refinement<A, infer B> } ? Exclude<A, B>
-      : A,
+      : A
+      : never,
     | E
     | (O extends { schedule: Schedule<infer _Out, infer _I, infer E, infer _R> } ? E
       : never)
@@ -14558,6 +14561,7 @@ export class Transaction extends Context.Service<
       {
         readonly version: number
         value: any
+        written: boolean
       }
     >
   }
@@ -14686,8 +14690,9 @@ const awaitPendingTransaction = (state: Transaction["Service"]) =>
   })
 
 function commitTransaction(fiber: Fiber<unknown, unknown>, state: Transaction["Service"]) {
-  for (const [ref, { value }] of state.journal) {
-    if (value !== ref.value) {
+  for (const [ref, { value, written }] of state.journal) {
+    if (!written) continue
+    if (!Object.is(value, ref.value)) {
       ref.version = ref.version + 1
       ref.value = value
     }

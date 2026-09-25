@@ -14,7 +14,7 @@ const makeConnection = (options?: PgConnection.Config) =>
   })
 
 const assertInterruptedOnClose = (
-  scope: Scope.Scope,
+  scope: Scope.Closeable,
   notifications: Queue.Dequeue<PgConnection.Notification, SqlError>
 ) =>
   Effect.gen(function*() {

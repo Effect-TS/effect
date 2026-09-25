@@ -66,7 +66,7 @@ const headerMismatch = (message: string): HttpProtocolSelection => ({
   error: { code: PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE, message }
 })
 
-const PingRpcs = RpcGroup.make(PublicMcpSchema.Ping).middleware(PublicMcpSchema.McpServerClientMiddleware)
+const PingRpcs = RpcGroup.make(PublicMcpSchema.Ping)
 
 /**
  * @internal
@@ -346,6 +346,9 @@ export const make = Effect.fnUntraced(function*(
           })
         }
         protocol = selected
+      } else if (request.tag === "ping") {
+        // An unversioned ping may precede initialize, even with a stateless adapter first.
+        protocol = selectStatefulProtocol(registry.protocols, undefined) ?? registry.protocols[0]
       } else {
         protocol = registry.protocols[0]
       }

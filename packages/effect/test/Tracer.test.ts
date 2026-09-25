@@ -343,6 +343,36 @@ describe("Tracer", () => {
   })
 
   describe("Effect.withParentSpan", () => {
+    it("runs continuations after the region under the restored span", () => {
+      let active: string | undefined
+      const tracer = Tracer.make({
+        span: (options) => new Tracer.NativeSpan(options),
+        context(primitive, fiber) {
+          const previous = active
+          active = fiber.cache.span?.spanId
+          try {
+            return primitive["~effect/Effect/evaluate"](fiber)
+          } finally {
+            active = previous
+          }
+        }
+      })
+      const seen: Array<string | undefined> = []
+      const record = Effect.map(() => {
+        seen.push(active)
+      })
+      Effect.runSync(
+        Effect.sync(() => undefined).pipe(
+          record,
+          Effect.withParentSpan(Tracer.externalSpan({ spanId: "child", traceId: "trace" })),
+          record,
+          Effect.withParentSpan(Tracer.externalSpan({ spanId: "parent", traceId: "trace" })),
+          Effect.withTracer(tracer)
+        )
+      )
+      deepStrictEqual(seen, ["child", "parent"])
+    })
+
     it.effect("should allow setting the parent span for the current span", () =>
       Effect.gen(function*() {
         const span = yield* Effect.currentSpan

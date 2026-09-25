@@ -4,6 +4,9 @@ import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Sch
 import { TestClock } from "effect/testing"
 import { collectGarbage } from "./utils/gc.ts"
 
+const waitUntil = (predicate: () => boolean) =>
+  Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(predicate)), { until: (done) => done })
+
 describe("Pool", () => {
   it.effect("preallocates pool items", () =>
     Effect.gen(function*() {
@@ -72,19 +75,42 @@ describe("Pool", () => {
       strictEqual(item, 1)
     }))
 
-  it.effect("reports failures via get", () =>
+  it.effect("keeps failed background capacity until a borrower reaches it", () =>
     Effect.gen(function*() {
-      const count = yield* Ref.make(0)
-      const get = Effect.acquireRelease(
-        Effect.flatMap(
-          Ref.updateAndGet(count, (n) => n + 1),
-          Effect.fail
-        ),
-        () => Ref.update(count, (n) => n - 1)
-      )
-      const pool = yield* Pool.make({ acquire: get, size: 10 })
-      const values = yield* Effect.all(Effect.replicate(9)(Effect.flip(Pool.get(pool))))
-      deepStrictEqual(Array.from(values), [1, 2, 3, 4, 5, 6, 7, 8, 9])
+      const releaseFailure = yield* Deferred.make<void>()
+      const failed = yield* Deferred.make<void>()
+      let attempts = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.suspend(() => {
+          const attempt = ++attempts
+          return attempt === 2
+            ? Effect.andThen(
+              Deferred.await(releaseFailure),
+              Effect.andThen(
+                Deferred.succeed(failed, undefined),
+                Effect.fail("background")
+              )
+            )
+            : Effect.succeed(attempt)
+        }),
+        min: 2,
+        max: 3,
+        timeToLive: Duration.infinity
+      })
+      yield* waitUntil(() => pool.state.availableHead?.exit._tag === "Success")
+      yield* Deferred.succeed(releaseFailure, undefined)
+      yield* Deferred.await(failed)
+      yield* waitUntil(() => pool.state.items.size === 2)
+      for (let i = 0; i < 5; i++) {
+        strictEqual(yield* Pool.use(pool, Effect.succeed), 1)
+      }
+      strictEqual(attempts, 2)
+      strictEqual(pool.state.items.size, 2)
+      const owner = yield* Scope.make()
+      strictEqual(yield* Scope.provide(Pool.get(pool), owner), 1)
+      strictEqual(yield* Pool.use(pool, Effect.succeed), 3)
+      strictEqual(attempts, 3)
+      yield* Scope.close(owner, Exit.void)
     }))
 
   it.live("blocks when item not available", () =>
@@ -605,9 +631,7 @@ describe("Pool", () => {
       for (let i = 0; i < 10; i++) {
         fibers.push(yield* Effect.forkChild(Pool.get(pool), { startImmediately: true }))
       }
-      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
-        until: (size) => size === fibers.length
-      })
+      yield* waitUntil(() => pool.state.waiters.size === fibers.length)
       yield* Effect.all(fibers.map(Fiber.interrupt), { concurrency: "unbounded", discard: true })
       strictEqual(pool.state.waiters.size, 0)
       strictEqual(pool.state.usage, 1)
@@ -628,9 +652,7 @@ describe("Pool", () => {
       for (let i = 0; i < 10; i++) {
         fibers.push(yield* Effect.forkChild(Effect.scoped(Pool.get(pool)), { startImmediately: true }))
       }
-      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
-        until: (size) => size === fibers.length
-      })
+      yield* waitUntil(() => pool.state.waiters.size === fibers.length)
       yield* Deferred.succeed(acquire, undefined)
       yield* Effect.all(fibers.map(Fiber.join), { concurrency: "unbounded", discard: true })
       strictEqual(pool.state.waiters.size, 0)
@@ -734,18 +756,18 @@ describe("Pool", () => {
         Ref.updateAndGet(allocations, (n) => n + 1),
         () => Ref.update(released, (n) => n + 1)
       ).pipe(
-        Effect.andThen(Effect.fail("boom"))
+        Effect.flatMap((n) => n <= 10 ? Effect.fail("boom") : Effect.succeed(n))
       )
       const pool = yield* Pool.make({ acquire: get, size: 10 }).pipe(
         Scope.provide(scope)
       )
-      yield* Effect.scoped(Pool.get(pool)).pipe(
-        Effect.ignore
-      )
-      strictEqual(yield* Ref.get(allocations), 10)
+      yield* Effect.repeat(Ref.get(released), { until: (n) => n === 10 })
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), 11)
+      strictEqual(yield* Ref.get(allocations), 11)
       strictEqual(yield* Ref.get(released), 10)
+      yield* Scope.close(scope, Exit.void)
     }))
-  it.effect("skips strategy callbacks for failures consumed during finalization", () =>
+  it.effect("runs strategy callbacks for a replacement before failed background cleanup", () =>
     Effect.gen(function*() {
       const cleanupStarted = yield* Deferred.make<void>()
       const resumeCleanup = yield* Deferred.make<void>()
@@ -777,13 +799,12 @@ describe("Pool", () => {
       })
       yield* Effect.addFinalizer(() => Deferred.succeed(resumeCleanup, undefined))
       yield* Deferred.await(cleanupStarted)
-      strictEqual(yield* Effect.flip(Effect.scoped(Pool.get(pool))), "boom")
-      strictEqual(callbacks, 0)
-      yield* Deferred.succeed(resumeCleanup, undefined)
       strictEqual(yield* Effect.scoped(Pool.get(pool)), "replacement")
-      yield* Deferred.await(replacementAcquired)
+      yield* Effect.yieldNow
+      strictEqual(yield* Deferred.isDone(replacementAcquired), true)
       strictEqual(acquired, 2)
       strictEqual(callbacks, 1)
+      yield* Deferred.succeed(resumeCleanup, undefined)
     }))
 
   it.effect("admits one waiter per released lease", () =>
@@ -875,7 +896,7 @@ describe("Pool", () => {
           strictEqual(pool.state.items.size, 0)
         }))
 
-      it.effect("does not requeue failures consumed during asynchronous cleanup", () =>
+      it.effect("retries background failures during asynchronous cleanup without requeueing them", () =>
         Effect.gen(function*() {
           const references: Array<WeakRef<object>> = []
           const control = new WeakRef({})
@@ -903,10 +924,9 @@ describe("Pool", () => {
           })
           yield* Effect.addFinalizer(() => Deferred.succeed(resumeCleanup, undefined))
           yield* Deferred.await(cleanupStarted)
-          assert.isTrue(Exit.isFailure(yield* Effect.exit(Effect.scoped(Pool.get(pool)))))
+          strictEqual(yield* Effect.scoped(Pool.get(pool)), "replacement")
           strictEqual(finalized, 0)
           yield* Deferred.succeed(resumeCleanup, undefined)
-          strictEqual(yield* Effect.scoped(Pool.get(pool)), "replacement")
           strictEqual(acquired, 2)
           strictEqual(finalized, 1)
           assert.lengthOf(references, 1)

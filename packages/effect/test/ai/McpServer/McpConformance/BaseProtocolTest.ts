@@ -241,8 +241,7 @@ export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer
           const message = Schema.decodeUnknownSync(Schema.Struct({
             result: Schema.Struct({ content: Schema.Array(Schema.Struct({ text: Schema.String })) })
           }))(yield* readMcpHttpResponse(response))
-          const serialized = Schema.decodeUnknownSync(Schema.String)(JSON.parse(message.result.content[0].text))
-          assert.deepStrictEqual(JSON.parse(serialized), { context: metadata, client: metadata })
+          assert.deepStrictEqual(JSON.parse(message.result.content[0].text), { context: metadata, client: metadata })
         }))
 
       // Request metadata is defined by https://modelcontextprotocol.io/specification/2025-11-25/basic#meta.
