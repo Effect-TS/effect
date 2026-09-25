@@ -233,7 +233,8 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
       Tool.HandlerError<Tools[Name]>,
       Tool.HandlerServices<Tools[Name]>
     >,
-    AiError.AiError
+    AiError.AiError,
+    Tool.HandlerServices<Tools[Name]>
   >
 }
 
