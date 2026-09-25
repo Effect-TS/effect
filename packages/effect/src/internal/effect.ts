@@ -322,30 +322,33 @@ export const causePrettyErrors = <E>(self: Cause.Cause<E>, options?: {
   const prevStackLimit = getStackTraceLimit()
   if (prevStackLimit !== 0) setStackTraceLimit(1)
 
-  for (const failure of self.reasons) {
-    if (failure._tag === "Interrupt") {
-      interrupts.push(failure)
-      continue
-    }
-    errors.push(
-      causePrettyError(
-        failure._tag === "Die" ? failure.defect : failure.error as any,
-        failure.annotations,
-        options
+  try {
+    for (const failure of self.reasons) {
+      if (failure._tag === "Interrupt") {
+        interrupts.push(failure)
+        continue
+      }
+      errors.push(
+        causePrettyError(
+          failure._tag === "Die" ? failure.defect : failure.error as any,
+          failure.annotations,
+          options
+        )
       )
-    )
-  }
-  if (errors.length === 0) {
-    const cause = new Error("The fiber was interrupted by:")
-    cause.name = "InterruptCause"
-    cause.stack = interruptCauseStack(cause, interrupts)
-    const error = new globalThis.Error("All fibers interrupted without error", { cause })
-    error.name = "InterruptError"
-    error.stack = `${error.name}: ${error.message}`
-    errors.push(causePrettyError(error, interrupts[0].annotations, options))
+    }
+    if (errors.length === 0) {
+      const cause = new Error("The fiber was interrupted by:")
+      cause.name = "InterruptCause"
+      cause.stack = interruptCauseStack(cause, interrupts)
+      const error = new globalThis.Error("All fibers interrupted without error", { cause })
+      error.name = "InterruptError"
+      error.stack = `${error.name}: ${error.message}`
+      errors.push(causePrettyError(error, interrupts[0].annotations, options))
+    }
+  } finally {
+    if (prevStackLimit !== 0) setStackTraceLimit(prevStackLimit)
   }
 
-  if (prevStackLimit !== 0) setStackTraceLimit(prevStackLimit)
   return errors
 }
 
@@ -3955,7 +3958,12 @@ export const scopeTag: Context.Service<Scope.Scope, Scope.Scope> = Context.Servi
 
 /** @internal */
 export const scopeClose = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
-  suspend(() => scopeCloseUnsafe(self, exit_) ?? void_)
+  withFiber((fiber) => {
+    const close = scopeCloseUnsafe(self, exit_)
+    if (close === undefined) return void_
+    fiberEnterUninterruptibleUnsafe(fiber)
+    return close
+  })
 
 /** @internal */
 export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {

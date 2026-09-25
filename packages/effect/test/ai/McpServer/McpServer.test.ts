@@ -243,6 +243,63 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  // https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  // Pings are allowed before the initialize response and require an empty result.
+  for (
+    const protocol of [
+      McpProtocol.v2024_11_05,
+      McpProtocol.v2025_03_26,
+      McpProtocol.v2025_06_18,
+      McpProtocol.v2025_11_25
+    ]
+  ) {
+    for (
+      const protocols of [
+        [protocol],
+        [McpProtocol.v2026_07_28, protocol],
+        [protocol, McpProtocol.v2026_07_28]
+      ] as const
+    ) {
+      it.effect(`answers stdio pings throughout initialization with ${protocols.map((p) => p.protocolVersion)}`, () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeMcpStdioHarness(protocol, protocols)
+          assert.deepStrictEqual(yield* fixture.sendRequest("ping", undefined, 0), {
+            jsonrpc: "2.0",
+            id: 0,
+            result: {}
+          })
+          // A ping must not create a session or enable ordinary requests.
+          assert.property(yield* fixture.sendRequest("tools/list"), "error")
+          const initialized = yield* fixture.sendRequest("initialize", {
+            protocolVersion: protocol.protocolVersion,
+            capabilities: {},
+            clientInfo: { name: "ping-client", version: "1.0.0" }
+          })
+          assert.deepInclude(initialized.result, { protocolVersion: protocol.protocolVersion })
+          assert.deepStrictEqual(yield* fixture.sendRequest("ping", {}, "before-initialized"), {
+            jsonrpc: "2.0",
+            id: "before-initialized",
+            result: {}
+          })
+          yield* fixture.sendNotification("notifications/initialized")
+          assert.deepStrictEqual(yield* fixture.sendRequest("ping", undefined, "after-initialized"), {
+            jsonrpc: "2.0",
+            id: "after-initialized",
+            result: {}
+          })
+        }))
+    }
+  }
+
+  it.effect("does not route explicitly stateless pings to a stateful adapter", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28, [
+        McpProtocol.v2026_07_28,
+        McpProtocol.v2025_11_25
+      ])
+      assert.deepInclude((yield* fixture.sendRequest("ping")).error, { code: -32601 })
+    }))
+
   // Effect delivery contract: an unavailable destination must not leave the caller waiting.
   it.effect("should return from completion notification when the target client is absent", () =>
     Effect.gen(function*() {
@@ -1467,7 +1524,40 @@ describe("McpServer", () => {
           arguments: { value: "ok", typo: true }
         }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
 
-        assert.strictEqual(toolResultText(result), JSON.stringify("ok"))
+        assert.strictEqual(result.structuredContent, "ok")
+      }))
+
+    it.effect("reports all non-strict parameter errors while ignoring unknown keys", () =>
+      Effect.gen(function*() {
+        let handlerInvoked = false
+        const NonStrictTool = Tool.make("NonStrictTool", {
+          parameters: Schema.Struct({ first: Schema.String, second: Schema.Number }),
+          success: Schema.String
+        })
+        const toolkit = Toolkit.make(NonStrictTool)
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            NonStrictTool: () => {
+              handlerInvoked = true
+              return Effect.succeed("ok")
+            }
+          }))
+        )
+
+        for (const args of [{ first: 1, second: "invalid", extra: true }, { extra: true }]) {
+          const error = yield* server.callTool({ name: "NonStrictTool", arguments: args }).pipe(
+            Effect.provideService(McpSchema.McpServerClient, directClient),
+            Effect.flip
+          )
+
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.include(error.message, "[\"first\"]")
+          assert.include(error.message, "[\"second\"]")
+          assert.notInclude(error.message, "[\"extra\"]")
+          assert.isFalse(handlerInvoked)
+        }
       }))
 
     it.effect("registers tools with identified output schemas", () =>
@@ -1553,7 +1643,37 @@ describe("McpServer", () => {
           arguments: { config: { value: "1" } }
         })
         assert.isTrue(handlerInvoked)
-        assert.strictEqual(toolResultText(result), JSON.stringify("1"))
+        assert.strictEqual(toolResultText(result), "1")
+      }))
+
+    it.effect("reports all strict parameter errors without invoking the handler", () =>
+      Effect.gen(function*() {
+        let handlerInvoked = false
+        const { client } = yield* makeToolkitTestClient(TestToolkit.of({
+          ...testToolkitHandlers,
+          StrictObjectTool: () => {
+            handlerInvoked = true
+            return Effect.succeed("unexpected")
+          }
+        }))
+
+        for (const config of [{ value: "1" }, { value: 1 }, {}]) {
+          const error = yield* client["tools/call"]({
+            name: "StrictObjectTool",
+            arguments: { first: true, second: true, config: { ...config, third: true, fourth: true } }
+          }).pipe(Effect.flip)
+
+          assertTrue("code" in error)
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.include(error.message, "Invalid parameters for tool 'StrictObjectTool'")
+          for (const path of ["[\"first\"]", "[\"second\"]", "[\"config\"][\"third\"]", "[\"config\"][\"fourth\"]"]) {
+            assert.include(error.message, path)
+          }
+          if (config.value !== "1") {
+            assert.include(error.message, "[\"config\"][\"value\"]")
+          }
+          assert.isFalse(handlerInvoked)
+        }
       }))
 
     it.effect("dies on strict raw JSON Schema tools before registering any tools", () =>
@@ -1620,6 +1740,64 @@ describe("McpServer", () => {
         assert.deepStrictEqual(server.tools.map(({ tool }) => tool.name), ["ValidTool"])
         assert.deepStrictEqual(existing.content, [{ type: "text", text: "existing" }])
       }))
+
+    describe("dies with a message naming the tool when parameters are not object-rooted", () => {
+      const Echo = Tool.make("echo", {
+        parameters: Schema.Struct({ text: Schema.String }),
+        success: Schema.String
+      })
+      const register = Effect.fnUntraced(function*(invalid: Tool.Any) {
+        const toolkit = Toolkit.make(Echo, invalid)
+        const server = yield* McpServer.McpServer.make
+        const exit = yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({
+            echo: ({ text }: { readonly text: string }) => Effect.succeed(text),
+            [invalid.name]: () => Effect.succeed("ok")
+          } as any)),
+          Effect.exit
+        )
+        assertTrue(exit._tag === "Failure")
+        assert.isTrue(Cause.hasDies(exit.cause))
+        assert.deepStrictEqual(server.tools, [])
+        return String(Cause.squash(exit.cause))
+      })
+
+      it.effect("union of structs", () =>
+        Effect.gen(function*() {
+          const message = yield* register(Tool.make("act", {
+            parameters: Schema.Union([
+              Schema.Struct({ action: Schema.Literal("start"), id: Schema.String }),
+              Schema.Struct({ action: Schema.Literal("stop"), reason: Schema.String })
+            ]),
+            success: Schema.String
+          }))
+          assert.match(
+            message,
+            /cannot register tool 'act': its parameters must encode to a JSON Schema with an object root/
+          )
+          assert.include(message, "Tool.EmptyParams")
+        }))
+
+      it.effect("empty struct", () =>
+        Effect.gen(function*() {
+          const message = yield* register(Tool.make("empty", {
+            parameters: Schema.Struct({}),
+            success: Schema.String
+          }))
+          assert.match(message, /cannot register tool 'empty'/)
+          assert.include(message, "Tool.EmptyParams")
+        }))
+
+      it.effect("raw JSON Schema", () =>
+        Effect.gen(function*() {
+          const message = yield* register(Tool.dynamic("raw", {
+            parameters: { anyOf: [{ type: "object" }, { type: "string" }] },
+            success: Schema.String
+          }))
+          assert.match(message, /cannot register tool 'raw': its raw JSON Schema must have an object root/)
+        }))
+    })
 
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {
@@ -1697,7 +1875,7 @@ describe("McpServer", () => {
           result,
           new McpSchema.CallToolResult({
             isError: false,
-            content: [{ type: "text", text: JSON.stringify("omitted") }]
+            content: [{ type: "text", text: "omitted" }]
           })
         )
       }))
@@ -2510,7 +2688,7 @@ describe("McpServer", () => {
         yield* send(1, {
           _tag: "Request",
           id: 30,
-          tag: "ping",
+          tag: "resources/list",
           payload: {},
           headers: []
         })
@@ -2522,7 +2700,7 @@ describe("McpServer", () => {
         yield* send(1, {
           _tag: "Request",
           id: 31,
-          tag: "ping",
+          tag: "resources/list",
           payload: {},
           headers: []
         })

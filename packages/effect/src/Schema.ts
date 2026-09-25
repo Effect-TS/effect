@@ -2989,6 +2989,58 @@ export interface String extends Bottom<string, string, never, never, SchemaAST.S
  * @since 4.0.0
  */
 export const String: String = make(SchemaAST.string)
+
+/**
+ * Type-level representation of {@link StringForLiteralAutocomplete}.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface StringForLiteralAutocomplete extends
+  Bottom<
+    string & {},
+    string & {},
+    never,
+    never,
+    SchemaAST.String,
+    StringForLiteralAutocomplete
+  >
+{}
+/**
+ * Schema for `string & {}`. Validates that the input is `typeof` `"string"`.
+ *
+ * **When to use**
+ *
+ * Use with {@link Union} and {@link Literals} when a value may be any string
+ * and known literals should stay available for editor autocomplete.
+ *
+ * **Details**
+ *
+ * `string & {}` stays alongside string literals in a union, so editors keep
+ * suggesting those literals. Any string still passes validation. Read the
+ * literals from the {@link Literals} member.
+ *
+ * **Example** (Suggesting known HTTP methods)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const Method = Schema.Union([
+ *   Schema.StringForLiteralAutocomplete,
+ *   Schema.Literals(["GET", "POST"])
+ * ])
+ *
+ * // Type: "GET" | "POST" | (string & {})
+ * Method.make("PATCH") // => "PATCH"
+ * Method.members[1].literals // => ["GET", "POST"]
+ * ```
+ *
+ * @see {@link String} for a schema whose type is plain `string`.
+ * @see {@link Literals} for the known literals to include in the union.
+ * @category schemas
+ * @since 4.0.0
+ */
+export const StringForLiteralAutocomplete: StringForLiteralAutocomplete = String
 /**
  * Type-level representation of {@link Number}.
  *
@@ -15216,6 +15268,11 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  *
  * **Details**
  *
+ * The document describes the encoded side of `Schema.toCodecJson(schema)`.
+ * Use that codec to decode JSON inputs. For example, it decodes JSON `null`
+ * to JavaScript `undefined` for a field defined with `Schema.optional(Schema.String)`.
+ * Decoding the same input with the original schema rejects `null`.
+ *
  * The `options` parameter controls reference extraction and generation details
  * such as excess properties and synthesized check descriptions; it does not
  * change the draft target. The reference policy receives canonical JSON
@@ -15247,6 +15304,25 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  * candidate index value schemas. The Effect decoder enforces the exact
  * key-value association.
  *
+ * **Example** (Decoding JSON with the matching codec)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   name: Schema.optional(Schema.String)
+ * })
+ *
+ * const document = Schema.toJsonSchemaDocument(schema)
+ * const jsonCodec = Schema.toCodecJson(schema)
+ *
+ * Schema.decodeUnknownResult(schema)({ name: null })._tag // => "Failure"
+ * Schema.decodeUnknownSync(jsonCodec)({ name: null }) // => { name: undefined }
+ * Schema.decodeUnknownSync(jsonCodec)({}) // => {}
+ * Schema.encodeSync(jsonCodec)({ name: undefined }) // => { name: null }
+ * ```
+ *
+ * @see {@link toCodecJson} for decoding and encoding the canonical JSON representation
  * @see {@link SchemaRepresentation.toJsonSchemaDocument} for compiling an existing live representation document
  *
  * @category converting

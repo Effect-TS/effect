@@ -1841,7 +1841,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
       )
     }
-    const decodeOptions: SchemaAST.ParseOptions | undefined = strict ? { onExcessProperty: "error" } : undefined
+    const decodeOptions: SchemaAST.ParseOptions = {
+      onExcessProperty: strict ? "error" : "ignore",
+      errors: "all"
+    }
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
@@ -1872,7 +1875,17 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
       rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
-    ).pipe(Effect.orDie)
+    ).pipe(
+      Effect.catchTag("SchemaError", (error) =>
+        Effect.die(
+          rawJsonSchema !== undefined
+            ? `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
+              `(type: "object").\n\n${error.message}`
+            : `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
+              `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
+              `parameters.\n\n${error.message}`
+        ))
+    )
     const mcpTool = new McpTool({
       name: tool.name,
       description: Tool.getDescription(tool),

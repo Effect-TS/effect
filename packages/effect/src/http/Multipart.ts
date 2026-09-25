@@ -578,19 +578,17 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
         })
       )
 
-      return pump.pipe(
-        Effect.flatMap(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Part>, IE | MultipartError> {
-          if (!Arr.isReadonlyArrayNonEmpty(partsBuffer)) {
-            if (Option.isSome(exit)) {
-              return exit.value
-            }
-            return Effect.flatMap(pump, loop)
+      return Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Part>, IE | MultipartError> {
+        if (!Arr.isReadonlyArrayNonEmpty(partsBuffer)) {
+          if (Option.isSome(exit)) {
+            return exit.value
           }
-          const parts = partsBuffer
-          partsBuffer = []
-          return Effect.succeed(parts)
-        })
-      )
+          return Effect.flatMap(pump, loop)
+        }
+        const parts = partsBuffer
+        partsBuffer = []
+        return Effect.succeed(parts)
+      })
     })
   )
 

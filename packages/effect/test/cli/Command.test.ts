@@ -165,6 +165,20 @@ describe("Command", () => {
         assert.include(output, "Run this command?")
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should parse negative numbers as flag and argument values", () =>
+      Effect.gen(function*() {
+        const captured: Array<readonly [number, number, number]> = []
+        const command = Command.make("geo", {
+          lat: Flag.Finite("lat"),
+          lon: Flag.Finite("lon"),
+          offset: Argument.Int("offset")
+        }, ({ lat, lon, offset }) => Effect.sync(() => captured.push([lat, lon, offset])))
+
+        yield* Command.runWith(command, { version: "1.0.0" })(["--lat", "-40.41", "--lon", "-3.70", "-2"])
+
+        assert.deepStrictEqual(captured, [[-40.41, -3.7, -2]])
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should run negative integer flag values with --wizard", () =>
       Effect.gen(function*() {
         const captured: Array<number> = []

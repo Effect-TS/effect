@@ -466,6 +466,8 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  *
  * Finalizers run in the scope's configured order and receive the supplied
  * `Exit`.
+ * By default, finalizers run uninterruptibly, so interrupting the closing fiber
+ * waits for them to finish; a finalizer can explicitly restore interruptibility.
  *
  * **Example** (Running scope finalizers)
  *
@@ -507,7 +509,9 @@ export const close: <A, E>(self: Closeable, exit: Exit<A, E>) => Effect<void> = 
  *
  * **Gotchas**
  *
- * Ignoring the returned effect skips registered finalizers.
+ * Ignoring the returned effect skips registered finalizers. The caller must
+ * run the returned effect uninterruptibly: the scope is already closed, so
+ * interruption during finalization can permanently skip remaining finalizers.
  *
  * @see {@link close} for the usual effectful close operation that always returns an `Effect`
  *

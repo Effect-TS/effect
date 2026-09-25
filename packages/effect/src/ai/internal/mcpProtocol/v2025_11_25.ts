@@ -9,9 +9,10 @@ import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpRuntime from "../mcpRuntime.ts"
 import * as McpSchema from "../mcpSchema/v2025_11_25.ts"
 
-const ClientRequestRpcs = McpSchema.ClientRequestRpcs.middleware(
+// Pings can arrive before initialize and do not require a client session.
+const ClientRequestRpcs = McpSchema.ClientRequestRpcs.omit("ping").middleware(
   PublicMcpSchema.McpServerClientMiddleware
-)
+).add(McpSchema.Ping)
 
 const ClientRpcs = ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
@@ -327,7 +328,7 @@ export const protocol = McpProtocol.make({
             }))),
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
-        const content = yield* Effect.forEach(result.content, projectContent).pipe(
+        const content = yield* Effect.forEach(McpProtocol.unwrapStringStructuredContent(result), projectContent).pipe(
           Effect.mapError(McpProtocol.ProtocolError.fromTool)
         )
         const structuredContent = projectStructuredContent(result.structuredContent)
