@@ -4,6 +4,30 @@ import { describe, it } from "vitest"
 import { deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaAST", () => {
+  describe("mapOrSame", () => {
+    it("returns the original array when no element changes", () => {
+      const input = [{ value: 1 }, { value: 2 }]
+      strictEqual(SchemaAST.mapOrSame(input, (value) => value), input)
+    })
+
+    it("returns all mapped elements when an element changes", () => {
+      const first = { value: 1 }
+      const second = { value: 2 }
+      const third = { value: 3 }
+      const replacement = { value: 4 }
+      const input = [first, second, third]
+      let calls = 0
+      const output = SchemaAST.mapOrSame(input, (value) => {
+        calls++
+        return value === second ? replacement : value
+      })
+
+      deepStrictEqual(output, [first, replacement, third])
+      strictEqual(output === input, false)
+      strictEqual(calls, input.length)
+    })
+  })
+
   it("stores constructor defaults directly in the context", () => {
     const defaultValue = Effect.succeed("default")
     const ast = SchemaAST.withConstructorDefault(SchemaAST.string, defaultValue)

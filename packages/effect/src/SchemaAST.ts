@@ -4385,17 +4385,21 @@ export function brand(ast: AST, brand: string): AST {
 export function mapOrSame<A>(as: Arr.NonEmptyReadonlyArray<A>, f: (a: A) => A): Arr.NonEmptyReadonlyArray<A>
 export function mapOrSame<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
 export function mapOrSame<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
-  let changed = false
-  const out: Array<A> = new Array(as.length)
+  let out: Array<A> | undefined
   for (let i = 0; i < as.length; i++) {
     const a = as[i]
     const fa = f(a)
-    if (fa !== a) {
-      changed = true
+    if (out) {
+      out[i] = fa
+    } else if (fa !== a) {
+      out = new Array(as.length)
+      for (let j = 0; j < i; j++) {
+        out[j] = as[j]
+      }
+      out[i] = fa
     }
-    out[i] = fa
   }
-  return changed ? out : as
+  return out ?? as
 }
 
 /** @internal */
