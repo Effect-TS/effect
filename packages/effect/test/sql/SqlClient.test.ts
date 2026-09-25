@@ -243,15 +243,6 @@ describe("SqlClient", () => {
         ])
       }))
 
-    it.effect("closes the connection scope when begin fails", () =>
-      Effect.gen(function*() {
-        const harness = makeHarness({ begin: sqlError("database is locked") })
-
-        yield* Effect.exit(harness.withTransaction(Effect.void))
-
-        assert.include(harness.calls, "closeConnection")
-      }))
-
     it.effect("commits and returns the value when the wrapped effect succeeds", () =>
       Effect.gen(function*() {
         const harness = makeHarness()

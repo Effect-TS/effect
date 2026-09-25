@@ -290,6 +290,36 @@ describe("toEquivalence", () => {
   })
 
   describe("suspend", () => {
+    it("reuses the compiled recursive body for deeper values", () => {
+      interface Tree {
+        readonly value: number
+        readonly children: ReadonlyArray<Tree>
+      }
+      let derivations = 0
+      const value = Schema.Number.annotate({
+        toEquivalence: () => {
+          derivations++
+          return Equivalence.strictEqual<number>()
+        }
+      })
+      const schema = Schema.Struct({
+        value,
+        children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => schema))
+      })
+      const make = (depth: number, leafValue = 0): Tree => ({
+        value: depth === 0 ? leafValue : depth,
+        children: depth === 0 ? [] : [make(depth - 1, leafValue)]
+      })
+      const equivalence = Schema.toEquivalence(schema)
+
+      strictEqual(derivations, 1)
+      for (const depth of [1, 8, 32]) {
+        assertTrue(equivalence(make(depth), make(depth)))
+        assertFalse(equivalence(make(depth), make(depth, -1)))
+        strictEqual(derivations, 1)
+      }
+    })
+
     it("recursive schema", () => {
       interface A {
         readonly a: string

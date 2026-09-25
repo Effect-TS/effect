@@ -7,7 +7,7 @@
  * The `--` delimiter is handled before tokenization: everything after it is
  * returned as trailing operands so values that look like options are preserved
  * exactly. A lone `-` is also preserved as a value instead of being interpreted
- * as an option.
+ * as an option, as are negative numbers such as `-3` or `-3.70`.
  */
 /**
  * @internal
@@ -46,11 +46,13 @@ export function lex(argv: ReadonlyArray<string>): LexResult {
   }
 }
 
+const negativeNumberRegex = /^-(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/
+
 const lexTokens = (args: ReadonlyArray<string>): ReadonlyArray<Token> => {
   const tokens: Array<Token> = []
 
   for (const arg of args) {
-    if (!arg.startsWith("-")) {
+    if (!arg.startsWith("-") || negativeNumberRegex.test(arg)) {
       tokens.push({ _tag: "Value", value: arg })
     } else if (arg.startsWith("--")) {
       const equalIndex = arg.indexOf("=")

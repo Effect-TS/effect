@@ -17,6 +17,83 @@ describe("Scope", () => {
       }))
   })
 
+  describe("interrupted close", () => {
+    for (const strategy of ["sequential", "parallel"] as const) {
+      it.effect(strategy + ": completes direct close after interruption", () =>
+        Effect.gen(function*() {
+          const scope = Scope.makeUnsafe(strategy)
+          const started = yield* Deferred.make<void>()
+          const release = yield* Deferred.make<void>()
+          const otherStarted = yield* Deferred.make<void>()
+          const ran: Array<string> = []
+
+          yield* Scope.addFinalizer(
+            scope,
+            Effect.gen(function*() {
+              if (strategy === "parallel") {
+                yield* Deferred.succeed(otherStarted, undefined)
+                yield* Deferred.await(release)
+              }
+              ran.push("second")
+            })
+          )
+          yield* Scope.addFinalizer(
+            scope,
+            Effect.gen(function*() {
+              yield* Deferred.succeed(started, undefined)
+              yield* Deferred.await(release)
+              ran.push("first")
+            })
+          )
+
+          const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+          yield* Deferred.await(started)
+          if (strategy === "parallel") yield* Deferred.await(otherStarted)
+          const interrupting = yield* Effect.forkChild(Fiber.interrupt(closing), { startImmediately: true })
+          yield* Effect.yieldNow
+          expect(interrupting.pollUnsafe()).toBeUndefined()
+          yield* Deferred.succeed(release, undefined)
+          yield* Fiber.join(interrupting)
+          yield* Fiber.await(closing)
+          yield* Scope.close(scope, Exit.void)
+          if (strategy === "parallel") ran.sort()
+          expect(ran).toEqual(["first", "second"])
+        }))
+    }
+
+    it.effect("closeUnsafe runs finalizers when its returned effect is masked by the caller", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const ran: Array<string> = []
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            ran.push("second")
+          })
+        )
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.gen(function*() {
+            yield* Deferred.succeed(started, undefined)
+            yield* Deferred.await(release)
+            ran.push("first")
+          })
+        )
+
+        const finalizers = Scope.closeUnsafe(scope, Exit.void)
+        expect(finalizers).toBeDefined()
+        if (finalizers === undefined) throw new Error("expected finalizers")
+        const closing = yield* Effect.forkChild(Effect.uninterruptible(finalizers), { startImmediately: true })
+        yield* Deferred.await(started)
+        const interrupting = yield* Effect.forkChild(Fiber.interrupt(closing), { startImmediately: true })
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(interrupting)
+        expect(ran).toEqual(["first", "second"])
+      }))
+  })
+
   describe("finalizers that throw", () => {
     const reasons = (exit: Exit.Exit<unknown, unknown>) =>
       Exit.isSuccess(exit) ? [] : exit.cause.reasons.map((reason) =>
@@ -90,10 +167,16 @@ describe("Scope", () => {
         const parent = Scope.makeUnsafe()
         const child = Scope.forkUnsafe(parent)
         const entered = yield* Deferred.make<void>()
-        yield* Scope.addFinalizer(child, Deferred.succeed(entered, void 0).pipe(Effect.andThen(Effect.never)))
+        const release = yield* Deferred.make<void>()
+        yield* Scope.addFinalizer(
+          child,
+          Deferred.succeed(entered, void 0).pipe(Effect.andThen(Deferred.await(release)))
+        )
         const fiber = yield* Effect.forkChild(Scope.close(child, Exit.void), { startImmediately: true })
         yield* Deferred.await(entered)
-        yield* Fiber.interrupt(fiber)
+        const interrupting = yield* Effect.forkChild(Fiber.interrupt(fiber), { startImmediately: true })
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(interrupting)
         expect(child.state._tag).toBe("Closed")
         expect(parent.state._tag).toBe("Empty")
       }))

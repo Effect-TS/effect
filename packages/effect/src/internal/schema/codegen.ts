@@ -18,127 +18,129 @@ type Operation = "decode" | "is"
 
 const failureExpression = (operation: Operation): string => operation === "decode" ? "I" : "false"
 
-/** @internal */
-const getEmission = (
-  ast: SchemaAST.AST,
-  depth = 0,
-  local = false,
-  budget = { remaining: maxGeneratedNodes }
-): Emission => {
-  // Count occurrences, not distinct ASTs: shared subgraphs are expanded by the emitter.
-  if (--budget.remaining < 0 || depth > maxGeneratedDepth || !local && ast.encoding !== undefined) return "unsupported"
-  switch (ast._tag) {
-    case "Null":
-    case "Undefined":
-    case "Void":
-    case "Never":
-    case "Any":
-    case "Unknown":
-    case "ObjectKeyword":
-    case "Enum":
-    case "UniqueSymbol":
-    case "Literal":
-    case "String":
-    case "Number":
-    case "Boolean":
-    case "Symbol":
-    case "BigInt":
-      return "is"
-    case "TemplateLiteral": {
-      for (const part of ast.parts) {
-        if (getEmission(part, depth + 1, false, budget) === "unsupported") return "unsupported"
-      }
-      return "is"
-    }
-    case "Arrays": {
-      let isOutputFree = ast.checks === undefined
-      for (const element of ast.elements) {
-        const emission = getEmission(element, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
-      }
-      for (const element of ast.rest) {
-        const emission = getEmission(element, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
-      }
-      return isOutputFree ? "is" : "decode"
-    }
-    case "Objects": {
-      let isOutputFree = ast.checks === undefined
-      for (const property of ast.propertySignatures) {
-        const emission = getEmission(property.type, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
-      }
-      for (const signature of ast.indexSignatures) {
-        const key = getEmission(SchemaAST.parameterFromPropertyKey(signature.parameter), depth + 1, false, budget)
-        const value = getEmission(signature.type, depth + 1, false, budget)
-        if (key === "unsupported" || value === "unsupported") return "unsupported"
-        if (key === "decode" || value === "decode") isOutputFree = false
-      }
-      return isOutputFree ? "is" : "decode"
-    }
+type Facts = {
+  supported: boolean
+  outputFree: boolean
+  makeSafe: boolean
+  nodes: number
+  height: number
+}
+
+const factsCache = new WeakMap<SchemaAST.AST, Facts>()
+
+const unsupportedFacts: Facts = { supported: false, outputFree: false, makeSafe: false, nodes: 1, height: 0 }
+
+const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
+  ast._tag !== "Union" && ast._tag !== "Declaration" && ast._tag !== "Suspend" &&
+  (ast._tag !== "Objects" || ast.indexSignatures.length === 0) &&
+  ast.encoding === undefined &&
+  ast.context?.constructorDefault === undefined
+
+const addChild = (
+  facts: Facts,
+  child: SchemaAST.AST,
+  depth: number,
+  budget: { remaining: number }
+): boolean => {
+  if (child.encoding !== undefined || child._tag === "Declaration" || child._tag === "Suspend") {
+    facts.supported = false
+    return false
+  }
+  switch (child._tag) {
+    case "TemplateLiteral":
+    case "Arrays":
+    case "Objects":
     case "Union": {
-      let isOutputFree = ast.checks === undefined
-      for (const type of ast.types) {
-        const emission = getEmission(type, depth + 1, false, budget)
-        if (emission === "unsupported") return "unsupported"
-        if (emission === "decode") isOutputFree = false
+      const childFacts = getFacts(child, depth, budget)
+      if (childFacts === undefined) return false
+      if (!childFacts.supported) {
+        facts.supported = false
+        return false
       }
-      return isOutputFree ? "is" : "decode"
+      if (!childFacts.outputFree) facts.outputFree = false
+      if (!childFacts.makeSafe) facts.makeSafe = false
+      facts.nodes += childFacts.nodes
+      if (childFacts.height >= facts.height) facts.height = childFacts.height + 1
+      return true
     }
-    case "Declaration":
-    case "Suspend":
-      return "unsupported"
+    default:
+      if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
+      if (!isMakeSafeNode(child)) facts.makeSafe = false
+      facts.nodes++
+      if (facts.height === 0) facts.height = 1
+      return true
   }
 }
 
-const isMakeSafe = (
+const stop = (ast: SchemaAST.AST, facts: Facts): Facts | undefined => {
+  if (facts.supported) return undefined
+  factsCache.set(ast, unsupportedFacts)
+  return unsupportedFacts
+}
+
+const getFacts = (
   ast: SchemaAST.AST,
   depth = 0,
   budget = { remaining: maxGeneratedNodes }
-): boolean => {
-  if (
-    --budget.remaining < 0 ||
-    depth > maxGeneratedDepth ||
-    ast.encoding !== undefined ||
-    ast.context?.constructorDefault !== undefined ||
-    SchemaAST.getConstructorDescriptor(ast) !== undefined
-  ) {
-    return false
+): Facts | undefined => {
+  const cached = factsCache.get(ast)
+  if (cached !== undefined) {
+    budget.remaining -= cached.nodes
+    return budget.remaining < 0 || depth + cached.height > maxGeneratedDepth ? undefined : cached
   }
+  if (--budget.remaining < 0 || depth > maxGeneratedDepth) return undefined
+  const facts: Facts = { supported: true, outputFree: true, makeSafe: true, nodes: 1, height: 0 }
+  const next = depth + 1
   switch (ast._tag) {
-    case "Null":
-    case "Undefined":
-    case "Void":
-    case "Never":
-    case "Any":
-    case "Unknown":
-    case "ObjectKeyword":
-    case "Enum":
-    case "UniqueSymbol":
-    case "Literal":
-    case "String":
-    case "Number":
-    case "Boolean":
-    case "Symbol":
-    case "BigInt":
-      return true
     case "TemplateLiteral":
-      return ast.parts.every((part) => isMakeSafe(part, depth + 1, budget))
+      for (const part of ast.parts) {
+        if (!addChild(facts, part, next, budget)) return stop(ast, facts)
+      }
+      break
     case "Arrays":
-      return ast.elements.every((element) => isMakeSafe(element, depth + 1, budget)) &&
-        ast.rest.every((element) => isMakeSafe(element, depth + 1, budget))
+      for (const element of ast.elements) {
+        if (!addChild(facts, element, next, budget)) return stop(ast, facts)
+      }
+      for (const element of ast.rest) {
+        if (!addChild(facts, element, next, budget)) return stop(ast, facts)
+      }
+      break
     case "Objects":
-      return ast.indexSignatures.length === 0 &&
-        ast.propertySignatures.every((property) => isMakeSafe(property.type, depth + 1, budget))
+      for (const property of ast.propertySignatures) {
+        if (!addChild(facts, property.type, next, budget)) return stop(ast, facts)
+      }
+      for (const signature of ast.indexSignatures) {
+        if (
+          !addChild(facts, SchemaAST.parameterFromPropertyKey(signature.parameter), next, budget) ||
+          !addChild(facts, signature.type, next, budget)
+        ) return stop(ast, facts)
+      }
+      break
     case "Union":
-    case "Declaration":
-    case "Suspend":
-      return false
+      for (const type of ast.types) {
+        if (!addChild(facts, type, next, budget)) return stop(ast, facts)
+      }
+      break
   }
+  facts.outputFree = ast._tag === "Arrays" || ast._tag === "Objects" || ast._tag === "Union"
+    ? ast.checks === undefined && facts.outputFree
+    : true
+  facts.makeSafe = facts.makeSafe && isMakeSafeNode(ast)
+  factsCache.set(ast, facts)
+  return facts
 }
+
+/** @internal */
+const getEmission = (ast: SchemaAST.AST, depth = 0, local = false): Emission => {
+  if (!local && ast.encoding !== undefined || ast._tag === "Declaration" || ast._tag === "Suspend") {
+    return "unsupported"
+  }
+  const facts = getFacts(ast, depth)
+  if (facts === undefined || !facts.supported) return "unsupported"
+  return facts.outputFree ? "is" : "decode"
+}
+
+const isMakeSafe = (ast: SchemaAST.AST): boolean => getFacts(ast)?.makeSafe ?? false
 
 const shouldCompileMake = (ast: SchemaAST.AST): ast is SchemaAST.Arrays | SchemaAST.Objects =>
   (ast._tag === "Arrays" && ast.elements.length === 0 && ast.rest.length === 1 ||

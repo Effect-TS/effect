@@ -30,7 +30,7 @@ describe("ShardingConfig", () => {
       assert.strictEqual(config.maxResidentEntities, "unbounded")
     }))
 
-  it.effect("treats the optional listen address as an atomic group", () =>
+  it.effect("omits the optional listen address when its host is absent", () =>
     Effect.gen(function*() {
       const defaults = yield* ShardingConfig.config.parse(ConfigProvider.fromUnknown({}))
       assert.ok(Option.isNone(defaults.runnerListenAddress))
@@ -45,12 +45,8 @@ describe("ShardingConfig", () => {
 
       const missingHost = yield* ShardingConfig.config.parse(
         ConfigProvider.fromUnknown({ listenPort: "8080" })
-      ).pipe(Effect.flip)
-      assert.strictEqual(
-        missingHost.cause.message,
-        `Expected string
-  at ["listenHost"]`
       )
+      assert.deepStrictEqual(missingHost.runnerListenAddress, Option.none())
 
       const invalidPort = yield* ShardingConfig.config.parse(
         ConfigProvider.fromUnknown({ listenHost: "0.0.0.0", listenPort: "invalid" })

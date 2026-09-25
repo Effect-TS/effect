@@ -11,12 +11,10 @@ import { RpcLayer, User } from "./fixtures/rpc-schemas.ts"
 
 describe("RpcServer", () => {
   // http ndjson
-  const HttpProtocol = RpcServer.layerProtocolHttp({ path: "/rpc" }).pipe(
-    Layer.provide(HttpRouter.layer)
-  )
-  const HttpNdjsonServer = RpcLayer.pipe(
-    Layer.provideMerge(HttpProtocol),
-    Layer.provide(HttpRouter.serve(HttpProtocol, { disableListenLog: true, disableLogger: true }))
+  const HttpProtocol = RpcServer.layerProtocolHttp({ path: "/rpc" })
+  const HttpNdjsonServer = HttpRouter.serve(
+    RpcLayer.pipe(Layer.provideMerge(HttpProtocol)),
+    { disableListenLog: true, disableLogger: true }
   )
   const HttpNdjsonClient = UsersClient.layer.pipe(
     Layer.provide(
@@ -53,12 +51,10 @@ describe("RpcServer", () => {
   )
 
   // websocket
-  const WsProtocol = RpcServer.layerProtocolWebsocket({ path: "/rpc" }).pipe(
-    Layer.provide(HttpRouter.layer)
-  )
-  const HttpWsServer = RpcLayer.pipe(
-    Layer.provideMerge(WsProtocol),
-    Layer.provide(HttpRouter.serve(WsProtocol, { disableListenLog: true, disableLogger: true }))
+  const WsProtocol = RpcServer.layerProtocolWebsocket({ path: "/rpc" })
+  const HttpWsServer = HttpRouter.serve(
+    RpcLayer.pipe(Layer.provideMerge(WsProtocol)),
+    { disableListenLog: true, disableLogger: true }
   )
   const HttpWsClient = UsersClient.layer.pipe(
     Layer.provide(RpcClient.layerProtocolSocket()),
