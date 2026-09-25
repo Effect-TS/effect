@@ -295,16 +295,33 @@ describe("HttpClient", () => {
 
   it.effect("followRedirects", () =>
     Effect.gen(function*() {
+      const requests: Array<{ readonly url: string; readonly init: RequestInit | undefined }> = []
+      const fetch: typeof globalThis.fetch = (input, init) => {
+        const url = typeof input === "string" || input instanceof URL ? input.toString() : input.url
+        requests.push({ url, init })
+        if (requests.length === 1) {
+          return Promise.resolve(new Response(null, {
+            status: 302,
+            headers: { location: "/redirected" }
+          }))
+        }
+        return Promise.resolve(new Response("ok"))
+      }
       const defaultClient = yield* HttpClient.HttpClient
       const client = defaultClient.pipe(HttpClient.followRedirects())
 
-      const response = yield* client.get("https://google.com/")
-      strictEqual(response.request.url, "https://www.google.com/")
+      const response = yield* client.get("https://example.com/")
+      strictEqual(response.request.url, "https://example.com/redirected")
+      strictEqual(requests.length, 2)
+      strictEqual(requests[0]!.url, "https://example.com/")
+      strictEqual(requests[0]!.init?.redirect, "manual")
+      strictEqual(requests[1]!.url, "https://example.com/redirected")
+      strictEqual(requests[1]!.init?.redirect, "manual")
     }).pipe(
-      it.flakyTest,
       Effect.provide(FetchHttpClient.layer),
+      Effect.provideService(FetchHttpClient.Fetch, fetch),
       Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" })
-    ), 30000)
+    ))
 
   it.effect("fetch removes content-length header", () => {
     let headers: globalThis.RequestInit["headers"] | undefined
