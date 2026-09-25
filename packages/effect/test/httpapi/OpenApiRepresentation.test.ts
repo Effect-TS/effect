@@ -9,7 +9,7 @@ describe("OpenApi representation v2 consumer", () => {
 
     assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
       AdditionalDate: { $ref: "#/components/schemas/AdditionalDateEncoded" },
-      AdditionalDateEncoded: { type: "string" }
+      AdditionalDateEncoded: { type: "string", format: "date-time" }
     })
   })
 
@@ -23,11 +23,11 @@ describe("OpenApi representation v2 consumer", () => {
     const spec = OpenApi.fromApi(Api, { referencePolicy: () => undefined })
 
     assert.deepStrictEqual(spec.components.schemas, {
-      AdditionalDate: { type: "string" }
+      AdditionalDate: { type: "string", format: "date-time" }
     })
     assert.deepStrictEqual(
       spec.paths["/date"]?.get?.responses[200]?.content?.["application/json"]?.schema,
-      { type: "string" }
+      { type: "string", format: "date-time" }
     )
   })
 
@@ -40,7 +40,7 @@ describe("OpenApi representation v2 consumer", () => {
 
     assert.deepStrictEqual(
       OpenApi.fromApi(Api).paths["/date"]?.get?.responses[200]?.content?.["application/json"]?.schema,
-      { type: "string" }
+      { type: "string", format: "date-time" }
     )
   })
 

@@ -9157,7 +9157,7 @@ export interface Date extends declare<globalThis.Date> {
   readonly "Rebuild": Date
 }
 
-const DateString = String.annotate({ expected: "a string that will be decoded as a Date" })
+const DateString = String.annotate({ expected: "a string that will be decoded as a Date", format: "date-time" })
 /**
  * Schema for valid JavaScript `Date` objects.
  *
