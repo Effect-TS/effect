@@ -230,7 +230,7 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
   ) => Effect.Effect<
     Stream.Stream<
       Tool.HandlerResult<Tools[Name]>,
-      Tool.HandlerError<Tools[Name]>,
+      Tool.HandlerError<Tools[Name]> | AiError.AiError,
       Tool.HandlerServices<Tools[Name]>
     >,
     AiError.AiError
