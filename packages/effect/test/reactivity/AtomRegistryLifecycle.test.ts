@@ -215,4 +215,14 @@ describe("AtomRegistry", { concurrent: false }, () => {
     assert.deepStrictEqual(seen, ["a1", "b1"])
     r.dispose()
   })
+
+  it("dispose leaves no idle-TTL timers", async () => {
+    const parent = Atom.make(0)
+    const child = Atom.make((get) => get(parent) + 1)
+    const r = AtomRegistry.make({ defaultIdleTTL: 60_000 })
+    r.mount(child)
+    await Effect.runPromise(Effect.yieldNow)
+    r.dispose()
+    assert.strictEqual(vitest.getTimerCount(), 0)
+  })
 })

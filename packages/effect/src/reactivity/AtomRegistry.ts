@@ -367,8 +367,7 @@ class RegistryImpl implements AtomRegistry {
 
   readonly nodes = new Map<Atom.Atom<any> | string, NodeImpl<any>>()
   readonly preloadedSerializable = new Map<string, unknown>()
-  readonly timeoutBuckets = new Map<number, readonly [nodes: Set<NodeImpl<any>>, handle: number]>()
-  readonly nodeTimeoutBucket = new Map<NodeImpl<any>, number>()
+  readonly idleBuckets = new Map<number, IdleBucket>()
   disposed = false
 
   getNodes() {
@@ -419,7 +418,7 @@ class RegistryImpl implements AtomRegistry {
     return () => {
       node.unsubscribe(listener)
       if (node.canBeRemoved) {
-        this.scheduleNodeRemoval(node)
+        this.holdUntilTurnEnds(node)
       }
     }
   }
@@ -439,8 +438,9 @@ class RegistryImpl implements AtomRegistry {
       node = this.createNode(atom)
       this.nodes.set(key, node)
       this.onNodeAdded?.(node)
-    } else if (this.atomHasTtl(atom)) {
-      this.removeNodeTimeout(node)
+    } else if (node.idleBucket !== undefined) {
+      this.leaveIdleBucket(node, node.idleBucket)
+      this.holdUntilTurnEnds(node)
     }
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
       const encoded = this.preloadedSerializable.get(key)
@@ -464,116 +464,116 @@ class RegistryImpl implements AtomRegistry {
       throw new Error(`Cannot access Atom ${atom}: registry is disposed`)
     }
 
+    const node = new NodeImpl(this, atom)
     if (!atom.keepAlive) {
-      this.scheduleAtomRemoval(atom)
+      this.holdUntilTurnEnds(node)
     }
-    return new NodeImpl(this, atom)
+    return node
   }
 
-  scheduleAtomRemoval(atom: Atom.Atom<any>): void {
-    this.dispatcher.scheduleTask(() => {
-      const node = this.nodes.get(atomKey(atom))
-      if (node !== undefined && node.canBeRemoved) {
-        this.removeNode(node)
+  unheld: Array<NodeImpl<any>> = []
+
+  holdUntilTurnEnds(node: NodeImpl<any>): void {
+    if (this.unheld.length === 0) {
+      this.dispatcher.scheduleTask(this.endTurn, 0)
+    }
+    this.unheld.push(node)
+  }
+
+  leaveIdleBucket(node: NodeImpl<any>, bucket: IdleBucket): void {
+    node.idleBucket = undefined
+    bucket.nodes.delete(node)
+    if (bucket.nodes.size === 0) {
+      clearTimeout(bucket.handle)
+      this.idleBuckets.delete(bucket.time)
+    }
+  }
+
+  endTurn = (): void => {
+    const unheld = this.unheld
+    this.unheld = []
+    let failure: unknown = noFailure
+    for (let i = 0; i < unheld.length; i++) {
+      const node = unheld[i]
+      if (node.canBeRemoved && node.idleBucket === undefined) {
+        failure = attempt(failure, this.removeNode, this, node)
       }
-    }, 0)
+    }
+    rethrow(failure)
   }
 
-  scheduleNodeRemoval(node: NodeImpl<any>): void {
-    this.dispatcher.scheduleTask(() => {
-      if (node.canBeRemoved) {
-        this.removeNode(node)
-      }
-    }, 0)
-  }
-
-  removeNode(node: NodeImpl<any>): void {
+  removeNode(node: NodeImpl<any>, idle?: number): void {
     if (this.atomHasTtl(node.atom)) {
-      this.setNodeTimeout(node)
+      this.setNodeTimeout(node, idle)
     } else {
       this.nodes.delete(atomKey(node.atom))
-      node.remove()
+      node.remove(idle)
       this.onNodeRemoved?.(node)
     }
   }
 
-  setNodeTimeout(node: NodeImpl<any>): void {
-    if (this.nodeTimeoutBucket.has(node)) {
-      return
-    }
+  setNodeTimeout(node: NodeImpl<any>, idle: number | undefined): void {
+    if (node.idleBucket !== undefined) return
 
     let idleTTL = node.atom.idleTTL ?? this.defaultIdleTTL!
-    if (this.#currentSweepTTL !== null) {
-      idleTTL -= this.#currentSweepTTL
+    if (idle !== undefined) {
+      idleTTL -= idle
       if (idleTTL <= 0) {
         this.nodes.delete(atomKey(node.atom))
-        node.remove()
+        node.remove(idle)
         this.onNodeRemoved?.(node)
         return
       }
     }
-    const ttl = Math.ceil(idleTTL! / this.timeoutResolution) * this.timeoutResolution
+    const ttl = Math.ceil(idleTTL / this.timeoutResolution) * this.timeoutResolution
     const timestamp = Date.now() + ttl
-    const bucket = timestamp - (timestamp % this.timeoutResolution) + this.timeoutResolution
+    const time = timestamp - (timestamp % this.timeoutResolution) + this.timeoutResolution
 
-    let entry = this.timeoutBuckets.get(bucket)
-    if (entry === undefined) {
-      entry = [
-        new Set<NodeImpl<any>>(),
-        setTimeout(() => this.sweepBucket(bucket), bucket - Date.now()) as any
-      ]
-      this.timeoutBuckets.set(bucket, entry)
+    let bucket = this.idleBuckets.get(time)
+    if (bucket === undefined) {
+      const created: IdleBucket = {
+        time,
+        nodes: new Set(),
+        handle: setTimeout(() => this.sweepBucket(created), time - Date.now())
+      }
+      this.idleBuckets.set(time, created)
+      bucket = created
     }
-    entry[0].add(node)
-    this.nodeTimeoutBucket.set(node, bucket)
+    bucket.nodes.add(node)
+    node.idleBucket = bucket
   }
 
-  removeNodeTimeout(node: NodeImpl<any>): void {
-    const bucket = this.nodeTimeoutBucket.get(node)
-    if (bucket === undefined) return
-    this.nodeTimeoutBucket.delete(node)
-    this.scheduleNodeRemoval(node)
-
-    const [nodes, handle] = this.timeoutBuckets.get(bucket)!
-    nodes.delete(node)
-    if (nodes.size === 0) {
-      clearTimeout(handle)
-      this.timeoutBuckets.delete(bucket)
-    }
-  }
-
-  #currentSweepTTL: number | null = null
-  sweepBucket(bucket: number): void {
-    const nodes = this.timeoutBuckets.get(bucket)![0]
-    this.timeoutBuckets.delete(bucket)
+  sweepBucket(bucket: IdleBucket): void {
+    this.idleBuckets.delete(bucket.time)
     let failure: unknown = noFailure
-    for (const node of nodes) {
-      failure = attempt(failure, this.sweepNode, this, node)
+    for (const node of bucket.nodes) {
+      failure = attempt(failure, this.releaseIdle, this, node)
     }
     rethrow(failure)
-  }
-
-  sweepNode(node: NodeImpl<any>): void {
-    this.nodeTimeoutBucket.delete(node)
-    if (!node.canBeRemoved) return
-    this.nodes.delete(atomKey(node.atom))
-    this.onNodeRemoved?.(node)
-    this.#currentSweepTTL = node.atom.idleTTL ?? this.defaultIdleTTL!
-    node.remove()
-    this.#currentSweepTTL = null
   }
 
   reset(): void {
-    this.timeoutBuckets.forEach(([, handle]) => clearTimeout(handle))
-    this.timeoutBuckets.clear()
-    this.nodeTimeoutBucket.clear()
+    this.idleBuckets.forEach((bucket) => clearTimeout(bucket.handle))
+    this.idleBuckets.clear()
+    this.unheld = []
     let failure: unknown = noFailure
     for (const node of this.nodes.values()) {
-      failure = attempt(failure, node.remove, node, undefined)
-      this.onNodeRemoved?.(node)
+      failure = attempt(failure, this.destroy, this, node)
     }
     this.nodes.clear()
     rethrow(failure)
+  }
+
+  releaseIdle(node: NodeImpl<any>): void {
+    node.idleBucket = undefined
+    this.nodes.delete(atomKey(node.atom))
+    this.onNodeRemoved?.(node)
+    node.remove(node.atom.idleTTL ?? this.defaultIdleTTL!)
+  }
+
+  destroy(node: NodeImpl<any>): void {
+    node.end()
+    this.onNodeRemoved?.(node)
   }
 
   dispose(): void {
@@ -601,6 +601,12 @@ const attempt = <A, B>(failure: unknown, step: (this: A, b: B) => void, a: A, b:
 
 const rethrow = (failure: unknown): void => {
   if (failure !== noFailure) throw failure
+}
+
+interface IdleBucket {
+  readonly nodes: Set<NodeImpl<any>>
+  readonly time: number
+  readonly handle: ReturnType<typeof setTimeout>
 }
 
 const NodeFlags = {
@@ -644,6 +650,7 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
   parents = new Set<NodeImpl<any>>()
   children = new Set<NodeImpl<any>>()
   listeners = new Set<() => void>()
+  idleBucket: IdleBucket | undefined = undefined
   observedChildren = 0
   invalidatedDuringBuild = false
 
@@ -715,7 +722,7 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
       this.parents.delete(parent)
       parent.removeChild(this, this.isObserved)
       if (parent.canBeRemoved) {
-        this.registry.scheduleNodeRemoval(parent)
+        this.registry.holdUntilTurnEnds(parent)
       }
     }
   }
@@ -849,20 +856,31 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
     }
   }
 
-  remove() {
-    const observed = this.isObserved
+  end(): void {
     this.state = NodeState.removed
     this.listeners.clear()
-    let failure = attempt(noFailure, this.disposeLifetime, this, undefined)
+    if (this.idleBucket !== undefined) {
+      this.registry.leaveIdleBucket(this, this.idleBucket)
+    }
+    this.disposeLifetime()
+  }
+
+  remove(idle?: number) {
+    const observed = this.isObserved
+    let failure = attempt(noFailure, this.end, this, undefined)
     const parents = this.parents
     this.parents = new Set()
     for (const parent of parents) {
       parent.removeChild(this, observed)
-      if (parent.canBeRemoved) {
-        failure = attempt(failure, this.registry.removeNode, this.registry, parent)
-      }
+      failure = attempt(failure, parent.releaseIfUnheld, parent, idle)
     }
     rethrow(failure)
+  }
+
+  releaseIfUnheld(idle: number | undefined): void {
+    if (this.canBeRemoved) {
+      this.registry.removeNode(this, idle)
+    }
   }
 
   subscribe(listener: () => void): void {
