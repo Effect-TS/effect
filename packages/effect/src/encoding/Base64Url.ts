@@ -23,7 +23,7 @@ import { EncodingError } from "./EncodingError.ts"
  * **Example** (Encoding URL-safe Base64)
  *
  * ```ts import.meta.vitest
- * import * as Base64Url from "effect/encoding/Base64Url"
+ * import { Base64Url } from "effect/encoding"
  *
  * Base64Url.encode("hello?") // => "aGVsbG8_"
  *
@@ -56,8 +56,8 @@ export const encode: (input: Uint8Array | string) => string = (input) =>
  * **Example** (Decoding URL-safe Base64 bytes)
  *
  * ```ts import.meta.vitest
- * import * as Base64Url from "effect/encoding/Base64Url"
- * import * as Result from "effect/Result"
+ * import { Result } from "effect"
+ * import { Base64Url } from "effect/encoding"
  *
  * Base64Url.decode("SGVsbG8_") // => Result.succeed(new Uint8Array([72, 101, 108, 108, 111, 63]))
  * ```
@@ -110,8 +110,8 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
  * **Example** (Decoding URL-safe Base64 strings)
  *
  * ```ts import.meta.vitest
- * import * as Base64Url from "effect/encoding/Base64Url"
- * import * as Result from "effect/Result"
+ * import { Result } from "effect"
+ * import { Base64Url } from "effect/encoding"
  *
  * Base64Url.decodeString("aGVsbG8_") // => Result.succeed("hello?")
  * ```
