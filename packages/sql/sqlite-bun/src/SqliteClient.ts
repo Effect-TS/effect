@@ -13,7 +13,7 @@
  *
  * @since 4.0.0
  */
-import { Database } from "bun:sqlite"
+import { constants, Database } from "bun:sqlite"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -129,11 +129,20 @@ export const make = (
 
     const makeConnection = Effect.gen(function*() {
       const readonly = options.readonly === true
-      const db = new Database(options.filename, {
+      const openOptions = {
         readonly,
         readwrite: readonly ? false : options.readwrite ?? true,
         create: readonly ? false : options.create ?? true
-      } as any)
+      }
+      const db = new Database(
+        options.filename,
+        options.filename.startsWith("file:")
+          ? constants.SQLITE_OPEN_URI |
+            (openOptions.readonly ? constants.SQLITE_OPEN_READONLY : 0) |
+            (openOptions.readwrite || openOptions.create ? constants.SQLITE_OPEN_READWRITE : 0) |
+            (openOptions.create ? constants.SQLITE_OPEN_CREATE : 0)
+          : openOptions
+      )
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
       const busyTimeout = Math.min(
         MAX_BUSY_TIMEOUT,
