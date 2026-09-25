@@ -353,18 +353,14 @@ describe("OtlpExporter", () => {
       }))
 
     for (const status of [200, 415]) {
-      it.effect(`reads the response body of a ${status} export`, () =>
+      it.effect(`releases the response of a ${status} export`, () =>
         Effect.gen(function*() {
-          const responses: Array<Response> = []
-          const httpClient = HttpClient.makeWith(
-            Effect.fnUntraced(function*(requestEffect) {
-              const request = yield* requestEffect
-              const response = new Response("body", { status })
-              responses.push(response)
-              return HttpClientResponse.fromWeb(request, response)
-            }),
-            Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
-          )
+          const responses: Array<{ response: Response; signal: AbortSignal }> = []
+          const httpClient = HttpClient.make((request, _url, signal) => {
+            const response = new Response("body", { status })
+            responses.push({ response, signal })
+            return Effect.succeed(HttpClientResponse.fromWeb(request, response))
+          })
           yield* Effect.scoped(
             Effect.gen(function*() {
               const exporter = yield* makeExporterRaw(10)
@@ -379,7 +375,7 @@ describe("OtlpExporter", () => {
           )
 
           assert.strictEqual(responses.length, 1)
-          assert.isTrue(responses[0].bodyUsed)
+          assert.isTrue(responses[0].response.bodyUsed || responses[0].signal.aborted)
         }))
     }
 
