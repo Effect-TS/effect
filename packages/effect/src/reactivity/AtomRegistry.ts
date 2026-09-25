@@ -693,16 +693,21 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
     const lifetime = makeLifetime(this)
     this.lifetime = lifetime
     const failure = superseded === undefined ? noFailure : attempt(noFailure, superseded.dispose, superseded, undefined)
-    const read = lifetime.read = new Set()
     let value: A
+    let inOrder: number
+    let read: Set<NodeImpl<any>> | undefined
     try {
       value = this.atom.read(lifetime)
     } finally {
+      inOrder = lifetime.inOrder
+      read = lifetime.read
+      lifetime.inOrder = -1
       lifetime.read = undefined
+      lifetime.order = undefined
     }
     if (this.lifetime === lifetime) {
-      if (read.size !== this.parents.size) {
-        this.dropUnread(read)
+      if (read !== undefined || inOrder !== this.parents.size) {
+        this.dropUnread(read, inOrder)
       }
       if ((this.state & NodeFlags.waitingForValue) !== 0) {
         if (this.preserveInitialValueOnBuild) {
@@ -716,15 +721,26 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
     rethrow(failure)
   }
 
-  dropUnread(read: Set<NodeImpl<any>>): void {
+  dropUnread(read: Set<NodeImpl<any>> | undefined, inOrder: number): void {
     for (const parent of this.parents) {
-      if (read.has(parent)) continue
+      if (read === undefined ? inOrder-- > 0 : read.has(parent)) continue
       this.parents.delete(parent)
       parent.removeChild(this, this.isObserved)
       if (parent.canBeRemoved) {
         this.registry.holdUntilTurnEnds(parent)
       }
     }
+  }
+
+  readSoFar(lifetime: BuildReads): Set<NodeImpl<any>> {
+    if (lifetime.read === undefined) {
+      const read = lifetime.read = new Set()
+      for (const parent of this.parents) {
+        if (read.size === lifetime.inOrder) break
+        read.add(parent)
+      }
+    }
+    return lifetime.read
   }
 
   valueOption(): Option.Option<A> {
@@ -776,9 +792,17 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
   readTracked<B>(atom: Atom.Atom<B>, lifetime: BuildReads): B {
     const parent = this.registry.ensureNode(atom)
     const value = parent.value()
-    if (lifetime.read !== undefined) {
-      if (lifetime.read.has(parent)) return value
-      lifetime.read.add(parent)
+    if (lifetime.inOrder >= 0) {
+      if (lifetime.read === undefined) {
+        lifetime.order ??= this.parents.values()
+        if (lifetime.order.next().value === parent) {
+          lifetime.inOrder++
+          return value
+        }
+      }
+      const read = this.readSoFar(lifetime)
+      if (read.has(parent)) return value
+      read.add(parent)
     }
     if (this.parents.has(parent)) return value
     this.parents.add(parent)
@@ -797,7 +821,7 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
   }
 
   invalidate(): void {
-    if (this.lifetime?.read !== undefined && batchState.phase === BatchPhase.collect) {
+    if (this.lifetime !== undefined && this.lifetime.inOrder >= 0 && batchState.phase === BatchPhase.collect) {
       this.invalidatedDuringBuild = true
     }
     if (this.state === NodeState.valid) {
@@ -829,8 +853,8 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
 
   isAffectedByChangeOf(parent: NodeImpl<any>): boolean {
     const lifetime = this.lifetime
-    if (lifetime?.read !== undefined) {
-      return lifetime.read.has(parent)
+    if (lifetime !== undefined && lifetime.inOrder >= 0) {
+      return this.readSoFar(lifetime).has(parent)
     }
     return this.state === NodeState.valid || this.isObserved
   }
@@ -915,6 +939,8 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
 }
 
 interface BuildReads {
+  inOrder: number
+  order: Iterator<NodeImpl<any>> | undefined
   read: Set<NodeImpl<any>> | undefined
 }
 
@@ -925,7 +951,7 @@ interface Lifetime<A> extends Atom.AtomContext, BuildReads {
   readonly dispose: () => void
 }
 
-const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "read"> = {
+const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "inOrder" | "order" | "read"> = {
   get disposed(): boolean {
     return (this as Lifetime<any>).node.lifetime !== this
   },
@@ -1103,6 +1129,8 @@ const makeLifetime = <A>(node: NodeImpl<A>): Lifetime<A> => {
   Object.setPrototypeOf(get, LifetimeProto)
   get.finalizers = undefined
   get.node = node
+  get.inOrder = 0
+  get.order = undefined as Iterator<NodeImpl<any>> | undefined
   get.read = undefined as Set<NodeImpl<any>> | undefined
   return get as any
 }
