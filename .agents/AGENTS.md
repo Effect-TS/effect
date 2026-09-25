@@ -8,7 +8,7 @@ This is the Effect TypeScript monorepo. The git base branch is `main`; use `pnpm
   `packages/tools`; standalone packages also live directly under `packages`.
 - Package tests and type tests live beside source in `test` and `typetest` directories.
 - AI documentation sources are in `ai-docs/src`.
-- Changesets are in `.changeset`.
+- Changesets (change intents in the changesets format) are in `.changeset`; `pnpm change` records one and `pnpm change status` previews the release plan.
 - Migration sources (v3-to-v4) are in `migration/annotations`.
 - Inspect nearby code before editing.
 

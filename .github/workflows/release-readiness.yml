@@ -1,0 +1,45 @@
+name: Release readiness
+on:
+  schedule:
+    # Registry validation of a staged upload takes minutes; poll on the same order.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false # Never interrupt a run that may be pushing the publish branch
+
+permissions: {}
+
+# Once every staged version of a release has passed the registry's validation,
+# open (or refresh) "Publish Packages (rc)" with the release manifest. Merging
+# that PR authorises publication of exactly the pinned staged tarballs. This
+# job never builds, versions, stages or approves anything.
+jobs:
+  readiness:
+    if: github.repository_owner == 'Effect-Ts'
+    name: Open the publish pull request when the release is ready
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          # lastCommitTouching(.changeset/ledger.yaml) needs history, not a shallow clone.
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Open or refresh the publish pull request
+        env:
+          GH_TOKEN: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
+          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
+        run: |
+          gh auth setup-git
+          pnpm --silent release readiness --tag rc

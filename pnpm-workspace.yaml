@@ -26,11 +26,95 @@ allowBuilds:
   tree-sitter-typescript: false
   workerd: false
 
-patchedDependencies:
-  '@changesets/get-github-info@1.0.1': patches/@changesets__get-github-info@1.0.1.patch
 
 overrides:
   # jsdom 30.1.0 fails under Bun when Vitest installs its window error handler.
   # Remove after a later jsdom release passes the Atom React and Solid suites under Bun.
   # Upstream changes: https://github.com/jsdom/jsdom/compare/v30.0.1...v30.1.0
   jsdom: ~30.0.1
+
+# Native pnpm versioning (replaces .changeset/config.json). `pnpm change` records
+# intents, `pnpm version -r` applies them, `pnpm release` drives CI.
+versioning:
+  # The published packages release together at one shared version.
+  fixed:
+    - - effect
+      - "@effect/ai-anthropic"
+      - "@effect/ai-openai"
+      - "@effect/ai-typesafe"
+      - "@effect/ai-openai-compat"
+      - "@effect/ai-openrouter"
+      - "@effect/atom-react"
+      - "@effect/atom-solid"
+      - "@effect/atom-vue"
+      - "@effect/docgen"
+      - "@effect/doctest"
+      - "@effect/openapi-generator"
+      - "@effect/opentelemetry"
+      - "@effect/platform-browser"
+      - "@effect/platform-bun"
+      - "@effect/platform-deno"
+      - "@effect/platform-node"
+      - "@effect/platform-node-shared"
+      - "@effect/sql-clickhouse"
+      - "@effect/sql-d1"
+      - "@effect/sql-libsql"
+      - "@effect/sql-mssql"
+      - "@effect/sql-mysql2"
+      - "@effect/sql-pg"
+      - "@effect/sql-pglite"
+      - "@effect/sql-sqlite-bun"
+      - "@effect/sql-sqlite-do"
+      - "@effect/sql-sqlite-node"
+      - "@effect/sql-sqlite-react-native"
+      - "@effect/sql-sqlite-wasm"
+      - "@effect/vitest"
+  # Private tooling never releases and never pulls a bump "via dependencies".
+  ignore:
+    - ai-docs
+    - scratchpad
+    - scripts
+    - "@effect/ai-codegen"
+    - "@effect/ai-docgen"
+    - "@effect/api-diff"
+    - "@effect/bundle"
+    - "@effect/jsdocs"
+    - "@effect/oxc"
+    - "@effect/release"
+    - "@effect/utils"
+  # Every fixed-group member on the rc lane: X.Y.Z-rc.N prereleases. Move the
+  # whole group back with `pnpm lane main --filter <pkg>` to release 4.0.0.
+  lanes:
+    effect: rc
+    "@effect/ai-anthropic": rc
+    "@effect/ai-openai": rc
+    "@effect/ai-typesafe": rc
+    "@effect/ai-openai-compat": rc
+    "@effect/ai-openrouter": rc
+    "@effect/atom-react": rc
+    "@effect/atom-solid": rc
+    "@effect/atom-vue": rc
+    "@effect/docgen": rc
+    "@effect/doctest": rc
+    "@effect/openapi-generator": rc
+    "@effect/opentelemetry": rc
+    "@effect/platform-browser": rc
+    "@effect/platform-bun": rc
+    "@effect/platform-deno": rc
+    "@effect/platform-node": rc
+    "@effect/platform-node-shared": rc
+    "@effect/sql-clickhouse": rc
+    "@effect/sql-d1": rc
+    "@effect/sql-libsql": rc
+    "@effect/sql-mssql": rc
+    "@effect/sql-mysql2": rc
+    "@effect/sql-pg": rc
+    "@effect/sql-pglite": rc
+    "@effect/sql-sqlite-bun": rc
+    "@effect/sql-sqlite-do": rc
+    "@effect/sql-sqlite-node": rc
+    "@effect/sql-sqlite-react-native": rc
+    "@effect/sql-sqlite-wasm": rc
+    "@effect/vitest": rc
+  changelog:
+    storage: repository

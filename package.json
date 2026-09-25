@@ -29,17 +29,14 @@
     "ai-docgen": "effect-ai-docgen ai-docs/src -o LLMS.md",
     "ai-docgen:watch": "pnpm ai-docgen --watch",
     "api-diff": "pnpm --dir packages/tools/api-diff exec node src/bin.ts",
-    "test-types": "tstyche --target '>=5.9'",
-    "changeset-version": "changeset version",
-    "changeset-publish": "node scripts/set-strip-internal.mjs && pnpm codemod && pnpm build && changeset publish"
+    "release": "pnpm --dir packages/tools/release exec node src/bin.ts",
+    "test-types": "tstyche --target '>=5.9'"
   },
   "devDependencies": {
     "@babel/cli": "^8.0.6",
     "@babel/core": "^8.0.6",
     "@babel/plugin-transform-export-namespace-from": "^8.0.1",
     "@babel/plugin-transform-modules-commonjs": "^8.0.1",
-    "@changesets/changelog-github": "1.0.1",
-    "@changesets/cli": "3.0.3",
     "@effect/ai-docgen": "workspace:^",
     "@effect/bundle": "workspace:^",
     "@effect/docgen": "workspace:^",

@@ -9,42 +9,87 @@ concurrency:
 
 permissions: {}
 
+# On every push to main, route first decides whether to update the version PR,
+# stage built packages, or do nothing. Publishing approval and the website
+# deployment that follows it remain pending in EFF-1455.
 jobs:
-  release:
+  route:
     if: github.repository_owner == 'Effect-Ts'
-    name: Release
+    name: Decide release route
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.route.outputs.tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Decide route
+        id: route
+        env:
+          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
+        run: |
+          set -euo pipefail
+          route="$(pnpm --silent release route)"
+          echo "$route"
+          echo "tag=$(echo "$route" | jq -r '._tag')" >> "$GITHUB_OUTPUT"
+
+  version:
+    needs: route
+    if: needs.route.outputs.tag == 'Version'
+    name: Update version pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Create or update the version pull request
+        env:
+          GH_TOKEN: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
+        run: |
+          gh auth setup-git
+          pnpm --silent release run --tag rc --expect Version
+
+  stage:
+    needs: route
+    if: needs.route.outputs.tag == 'Stage'
+    name: Stage packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          # This is required to ensure the `GITHUB_TOKEN` we provide below is
-          # **always** used when pushing updates to the changesets release branch.
-          # Otherwise the default token will be used, and actions on that versioned
-          # release branch will not be triggered.
           persist-credentials: false
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - name: Upgrade npm for OIDC support
-        run: npm install -g npm@11
-      - name: Create Release Pull Request or Publish
-        id: changesets
-        uses: changesets/action@d0ee272882939fa35f22d979828acb7e61e0bd47 # v2.0.0-next.4
-        with:
-          version-script: pnpm changeset-version
-          publish-script: pnpm changeset-publish
-          # Use a personal access token instead of the one that GitHub generates
-          # automatically to ensure workflows get triggered on the changesets
-          # release branch.
-          github-token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
-      - name: Deploy website
-        if: steps.changesets.outputs.published == 'true'
-        uses: ./.github/actions/deploy-website
-        with:
-          channel: v4
-          dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
-          revision: ${{ github.sha }}
+      - name: Set strip internals config
+        run: node scripts/set-strip-internal.mjs
+      - name: Run codemods
+        run: pnpm codemod
+      - name: Build packages
+        env:
+          # Leave memory for the runner and package builds on the 8 GB runner.
+          # The native TypeScript compiler uses Go's soft memory limit.
+          GOMEMLIMIT: 4GiB
+        run: pnpm build
+      - name: Stage packages on npm
+        env:
+          NPM_STAGE_TOKEN: ${{ secrets.NPM_STAGE_TOKEN }}
+        run: pnpm --silent release run --tag rc --expect Stage
