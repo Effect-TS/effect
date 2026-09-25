@@ -1,17 +1,18 @@
 /**
  * @since 1.0.0
  */
-import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcServer from "@effect/rpc/RpcServer"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as FiberId from "effect/FiberId"
 import { constant } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
-import type * as ClusterError from "./ClusterError.js"
+import * as ClusterError from "./ClusterError.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
 import * as Reply from "./Reply.js"
@@ -23,24 +24,20 @@ import { ShardingConfig } from "./ShardingConfig.js"
 
 const constVoid = constant(Effect.void)
 
-const serializeDefectReply = <R extends Rpc.Any>(
-  reply: Reply.ReplyWithContext<R>,
-  defect: unknown
-): Effect.Effect<Reply.ReplyEncoded<any>> =>
-  Effect.orDie(Reply.serialize(Reply.ReplyWithContext.fromDefect({
-    id: reply.reply.id,
-    requestId: reply.reply.requestId,
-    defect
-  })))
-
-const serializeReply = <R extends Rpc.Any>(
-  reply: Reply.ReplyWithContext<R>
-): Effect.Effect<Reply.ReplyEncoded<any>> =>
-  Effect.catchTag(
-    Reply.serialize(reply),
-    "MalformedMessage",
-    (error) => serializeDefectReply(reply, error)
+const hasInterruptor = (cause: Cause.Cause<unknown>, id: number): boolean =>
+  Option.isSome(
+    Cause.find(cause, (cause) =>
+      cause._tag === "Interrupt" && Array.from(FiberId.ids(cause.fiberId)).includes(id)
+        ? Option.some(cause)
+        : Option.none())
   )
+
+// Shutdown, termination timeout and disconnects carry the transient marker.
+// Caller cancellation takes precedence, even when both markers are present.
+const isTransientInterrupt = (exit: Exit.Exit<unknown, unknown>): boolean =>
+  Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause) &&
+  hasInterruptor(exit.cause, RpcServer.fiberIdTransientInterrupt.id) &&
+  !hasInterruptor(exit.cause, RpcServer.fiberIdClientInterrupt.id)
 
 /**
  * @since 1.0.0
@@ -52,16 +49,12 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
 
   return {
     Ping: () => Effect.void,
-    Notify: ({ envelope }) =>
-      sharding.notify(
-        envelope._tag === "Request"
-          ? new Message.IncomingRequest({
-            envelope,
-            respond: constVoid,
-            lastSentReply: Option.none()
-          })
-          : new Message.IncomingEnvelope({ envelope })
-      ),
+    Notify: ({ envelope, persisted }) => {
+      const message = envelope._tag === "Request"
+        ? new Message.IncomingRequest({ envelope, respond: constVoid, lastSentReply: Option.none() })
+        : new Message.IncomingEnvelope({ envelope })
+      return persisted ? sharding.notify(message) : sharding.send(message)
+    },
     Effect: ({ persisted, request }) => {
       let replyEncoded:
         | Effect.Effect<
@@ -76,7 +69,11 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
         envelope: request,
         lastSentReply: Option.none(),
         respond(reply) {
-          resume(serializeReply(reply))
+          if (!persisted && reply.reply._tag === "WithExit" && isTransientInterrupt(reply.reply.exit)) {
+            resume(Effect.fail(new ClusterError.EntityNotAssignedToRunner({ address: request.address })))
+            return Effect.void
+          }
+          resume(Reply.serializeOrDefect(reply))
           return Effect.void
         }
       })
@@ -131,27 +128,22 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
             envelope: request,
             lastSentReply: Option.none(),
             respond(reply) {
-              return Reply.serialize(reply).pipe(
-                Effect.flatMap((reply) => {
-                  mailbox.unsafeOffer(reply)
-                  return Effect.void
-                }),
-                Effect.catchTag("MalformedMessage", (error) =>
-                  Effect.flatMap(serializeDefectReply(reply, error), (reply) => {
-                    mailbox.unsafeOffer(reply)
-                    mailbox.unsafeDone(Exit.void)
-                    return Effect.void
-                  }))
-              )
+              if (!persisted && reply.reply._tag === "WithExit" && isTransientInterrupt(reply.reply.exit)) {
+                return mailbox.fail(new ClusterError.EntityNotAssignedToRunner({ address: request.address }))
+              }
+              return Effect.map(Reply.serializeOrDefect(reply), (reply) => {
+                mailbox.unsafeOffer(reply)
+                if (reply._tag === "WithExit") {
+                  mailbox.unsafeDone(Exit.void)
+                }
+              })
             }
           })
           return Effect.as(
             persisted ?
               Effect.zipRight(
                 storage.registerReplyHandler(message).pipe(
-                  Effect.onError((cause) =>
-                    mailbox.failCause(cause)
-                  ),
+                  Effect.onError((cause) => mailbox.failCause(cause)),
                   Effect.forkScoped,
                   Effect.interruptible
                 ),

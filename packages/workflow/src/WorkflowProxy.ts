@@ -61,7 +61,8 @@ export const toRpcGroup = <
         success: workflow.successSchema
       }).annotateContext(workflow.annotations),
       Rpc.make(`${prefix}${workflow.name}Discard`, {
-        payload: workflow.payloadSchema
+        payload: workflow.payloadSchema,
+        success: Schema.String
       }).annotateContext(workflow.annotations),
       Rpc.make(`${prefix}${workflow.name}Resume`, { payload: ResumePayload })
         .annotateContext(workflow.annotations)
@@ -80,7 +81,7 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
   infer _Error
 > ?
     | Rpc.Rpc<`${Prefix}${_Name}`, _Payload, _Success, _Error>
-    | Rpc.Rpc<`${Prefix}${_Name}Discard`, _Payload>
+    | Rpc.Rpc<`${Prefix}${_Name}Discard`, _Payload, typeof Schema.String>
     | Rpc.Rpc<`${Prefix}${_Name}Resume`, typeof ResumePayload>
   : never
 
@@ -135,6 +136,7 @@ export const toHttpApiGroup = <const Name extends string, const Workflows extend
     ).add(
       HttpApiEndpoint.post(workflow.name + "Discard", `${path}/discard`)
         .setPayload(workflow.payloadSchema)
+        .addSuccess(Schema.String)
         .annotateContext(workflow.annotations)
     ).add(
       HttpApiEndpoint.post(workflow.name + "Resume", `${path}/resume`)
@@ -179,7 +181,7 @@ export type ConvertHttpApi<Workflows extends Workflow.Any> = Workflows extends W
       never,
       _Payload["Type"],
       never,
-      void,
+      string,
       never,
       _Payload["Context"]
     >
