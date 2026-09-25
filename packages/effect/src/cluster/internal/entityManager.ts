@@ -297,7 +297,9 @@ export const make = Effect.fnUntraced(function*<
                   )
                 ).pipe(
                   Effect.flatMap(() => {
-                    processedRequestIds.add(request.message.envelope.requestId)
+                    if (storageEnabled) {
+                      processedRequestIds.add(request.message.envelope.requestId)
+                    }
                     activeRequests.delete(Snowflake.Snowflake(response.requestId))
 
                     // ensure that the reaper does not remove the entity as we haven't
