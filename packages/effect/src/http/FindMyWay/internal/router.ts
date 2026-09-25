@@ -844,28 +844,16 @@ function trimLastSlash(path: string): Router.PathInput {
   return path as Router.PathInput
 }
 
-// Compile safe, unique parameter names into a stable null-prototype shape.
-// Other names and codegen-restricted runtimes use assignment.
-const safeParamName = /^[A-Za-z_$][A-Za-z0-9_$]*$/
-const isCompilableParamName = (name: string): boolean => name !== "__proto__" && safeParamName.test(name)
-
+// Params are built by assignment rather than with `new Function`: string code
+// generation is rejected (and reported) under CSP `unsafe-eval` restrictions and
+// in runtimes such as Cloudflare Workers, and V8 keeps null-prototype objects in
+// dictionary mode either way, so a compiled literal is not faster.
 function compileCreateParams(
   params: ReadonlyArray<string>
 ): (paramsArray: ReadonlyArray<string>) => Record<string, string> {
   const len = params.length
   if (len === 0) {
     return () => Object.create(null)
-  }
-  if (params.every(isCompilableParamName) && new Set(params).size === len) {
-    try {
-      // eslint-disable-next-line no-new-func
-      return new Function(
-        "a",
-        `return {__proto__:null,${params.map((name, i) => `${name}:a[${i}]`).join(",")}}`
-      ) as (paramsArray: ReadonlyArray<string>) => Record<string, string>
-    } catch {
-      // Use assignment when CSP blocks Function construction.
-    }
   }
   return function(paramsArray) {
     const paramsObject: Record<string, string> = Object.create(null)
