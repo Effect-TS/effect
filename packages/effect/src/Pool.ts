@@ -557,8 +557,7 @@ const getSlowWith = <A, E, X, R>(
         state.usage--
         return internal.interrupt
       }
-      // Prefer a healthy item. A failed placeholder is only consumed, to make
-      // room for a fresh acquisition, when the pool cannot otherwise grow.
+      // Replace failed slots only when the pool cannot grow.
       const item = firstHealthyAvailable(self) ??
         (targetSize(self) <= activeSize(self) ? state.availableHead : undefined)
       if (item === undefined) {
@@ -920,9 +919,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           addAvailable(self, item)
           return self.config.strategy === strategyNoop ? Effect.succeed(item) : Effect.as(onAcquire, item)
         }
-        // Hand the failure to a waiting borrower before the resize wakes it,
-        // unless a healthy item can serve that borrower. Otherwise keep it as a
-        // placeholder that holds its slot until a borrower needs it.
+        // Deliver a waiting borrower its own failure; otherwise retain the slot.
         const waiter = firstHealthyAvailable(self) === undefined ? self.state.waiters.values().next().value : undefined
         if (waiter !== undefined) {
           waiter(exit)
@@ -930,8 +927,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           self.state.items.add(item)
           addAvailable(self, item)
         }
-        // Clean up in the background so a slow finalizer cannot block the
-        // replacement acquisition.
+        // Do not let cleanup delay a replacement acquisition.
         return Effect.as(
           Effect.forkIn(Effect.andThen(item.finalizer, onAcquire), self.state.scope, { startImmediately: true }),
           item

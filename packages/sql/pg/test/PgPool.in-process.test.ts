@@ -54,8 +54,7 @@ describe("PgPool failed startup", () => {
           }
         })
 
-        // Keep the healthy session leased while the failed background startup
-        // is put on the available list without a waiting borrower.
+        // Keep the healthy session leased so the failure becomes a placeholder.
         const healthy = yield* pool.get
         yield* waitFor(() => backgroundStarted)
         yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 400)))
