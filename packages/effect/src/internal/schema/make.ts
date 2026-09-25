@@ -8,6 +8,21 @@ export const TypeId = "~effect/Schema/Schema"
 
 const SchemaProto = {
   [TypeId]: TypeId,
+  get make() {
+    const value = SchemaParser.make(this as any)
+    Object.defineProperty(this, "make", { value, enumerable: true })
+    return value
+  },
+  get makeEffect() {
+    const value = SchemaParser.makeEffect(this as any)
+    Object.defineProperty(this, "makeEffect", { value, enumerable: true })
+    return value
+  },
+  get makeOption() {
+    const value = SchemaParser.makeOption(this as any)
+    Object.defineProperty(this, "makeOption", { value, enumerable: true })
+    return value
+  },
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
   },
@@ -36,8 +51,5 @@ export function make<S extends Schema.Constraint>(ast: S["ast"], options?: objec
   }
   self.ast = ast
   self.rebuild = (ast: SchemaAST.AST) => make(ast, options)
-  self.makeEffect = SchemaParser.makeEffect(self)
-  self.make = SchemaParser.make(self)
-  self.makeOption = SchemaParser.makeOption(self)
   return self
 }
