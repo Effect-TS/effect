@@ -198,7 +198,14 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     spanAttributes: options.spanAttributes,
     acquireConnection: Effect.flatMap(
       Scope.make(),
-      (scope) => Effect.map(Scope.provide(transactionAcquirer!, scope), (conn) => [scope, conn] as const)
+      (scope) =>
+        Effect.map(
+          Effect.onExit(
+            Scope.provide(transactionAcquirer!, scope),
+            (exit) => Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void
+          ),
+          (conn) => [scope, conn] as const
+        )
     ),
     begin: (conn) => control(conn, beginTransaction),
     savepoint: (conn, id) => control(conn, savepoint(`effect_sql_${id}`)),

@@ -329,7 +329,9 @@ export const make = (
         onCommitFailure: (conn) =>
           Effect.flatMap(
             Effect.exit(Effect.flatMap(
-              conn.executeUnprepared("ROLLBACK", [], undefined),
+              connection.isTransaction()
+                ? conn.executeUnprepared("ROLLBACK", [], undefined)
+                : Effect.void,
               () =>
                 connection.isTransaction()
                   ? Effect.fail(
