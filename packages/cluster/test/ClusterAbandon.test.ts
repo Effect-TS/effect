@@ -30,13 +30,13 @@ describe("clusterAbandon", () => {
     }).pipe(Effect.provide(MemoryLive)))
 
   for (const owner of ["none", "active", "inactive"] as const) {
-    it.effect(`reSignal permits recovery only outside an active owner (owner=${owner})`, () =>
+    it.effect(`interruptOwner permits recovery only outside an active owner (owner=${owner})`, () =>
       Effect.gen(function*() {
         const cause = yield* abandonmentCause
         let recovered = false
         let continued = false
         const recovery = Effect.failCause(cause).pipe(
-          Effect.onError(Abandon.reSignal),
+          Effect.onError(Abandon.interruptOwner),
           Effect.catchAllCause((cause) =>
             Effect.sync(() => {
               assert.isTrue(Abandon.isCause(cause))
