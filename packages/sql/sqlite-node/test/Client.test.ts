@@ -3,6 +3,7 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Duration, Effect, Exit, FileSystem, Option } from "effect"
 import { Reactivity } from "effect/reactivity"
+import { ConnectionError, SqlError } from "effect/sql/SqlError"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -111,6 +112,96 @@ describe("Client", () => {
       yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
       const rows = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
+    }))
+
+  it.effect("recovers a failed deferred commit without losing an in-memory database", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" }).pipe(Effect.provide(Reactivity.layer))
+      yield* sql`PRAGMA foreign_keys = ON`
+      yield* sql`CREATE TABLE parent (id INTEGER PRIMARY KEY)`
+      yield* sql`CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)`
+      yield* sql`INSERT INTO parent VALUES (1)`
+
+      const failedCommit = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO child VALUES (999)`))
+      assert.isTrue(Exit.isFailure(failedCommit))
+      if (!Exit.isFailure(failedCommit)) return
+      assert.match(Cause.pretty(failedCommit.cause), /foreign key constraint failed/i)
+
+      assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
+      yield* sql.withTransaction(sql`INSERT INTO child VALUES (1)`)
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [{ parent_id: 1 }])
+    }))
+
+  it.effect("poisons the connection when failed-commit cleanup fails", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`PRAGMA foreign_keys = ON`
+      yield* sql`CREATE TABLE parent (id INTEGER PRIMARY KEY)`
+      yield* sql`CREATE TABLE child (parent_id INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)`
+      yield* sql`INSERT INTO parent VALUES (1)`
+
+      // Reserve lends the same SQLite connection used by transactions. Fail only
+      // the cleanup ROLLBACK, leaving the deferred constraint failure real.
+      const conn = yield* Effect.scoped(sql.reserve)
+      const executeUnprepared = conn.executeUnprepared
+      let failRollback = true
+      Object.defineProperty(conn, "executeUnprepared", {
+        configurable: true,
+        value: (...args: Parameters<typeof executeUnprepared>) => {
+          if (args[0] === "ROLLBACK" && failRollback) {
+            return Effect.fail(
+              new SqlError({
+                reason: new ConnectionError({
+                  message: "injected rollback failure",
+                  operation: "rollback",
+                  cause: new Error("injected rollback failure")
+                })
+              })
+            )
+          }
+          return executeUnprepared(...args)
+        }
+      })
+
+      const failedCommit = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO child VALUES (999)`))
+      assert.isTrue(Exit.isFailure(failedCommit))
+      if (!Exit.isFailure(failedCommit)) return
+      const cause = Cause.pretty(failedCommit.cause)
+      assert.match(cause, /foreign key constraint failed/i)
+      assert.match(cause, /injected rollback failure/i)
+
+      const query = yield* Effect.exit(sql`SELECT * FROM parent`)
+      assert.isTrue(Exit.isFailure(query))
+      if (Exit.isFailure(query)) {
+        assert.match(Cause.pretty(query.cause), /cannot be reused after failed COMMIT cleanup/i)
+      }
+      const transaction = yield* Effect.exit(sql.withTransaction(Effect.die("transaction body ran")))
+      assert.isTrue(Exit.isFailure(transaction))
+      const queryAfterTransaction = yield* Effect.exit(sql`SELECT * FROM parent`)
+      assert.isTrue(Exit.isFailure(queryAfterTransaction))
+      // Retry cleanup after the transient failure clears, without replacing the database.
+      failRollback = false
+      assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
+    }))
+
+  it.effect("does not poison a connection already rolled back before failed commit cleanup", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
+
+      const failedCommit = yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO items VALUES (1)`
+        const insert = yield* Effect.exit(sql`INSERT OR ROLLBACK INTO items VALUES (1)`)
+        assert.isTrue(Exit.isFailure(insert))
+      })))
+      assert.isTrue(Exit.isFailure(failedCommit))
+      if (Exit.isFailure(failedCommit)) {
+        assert.match(Cause.pretty(failedCommit.cause), /no transaction is active/i)
+      }
+
+      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [])
     }))
 
   it.effect("withTransaction rollback", () =>

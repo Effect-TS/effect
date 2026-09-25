@@ -6616,9 +6616,9 @@ export function isTrimmed(annotations?: Annotations.Filter) {
  *
  * JSON Schema:
  *
- * JSON Schema receives the RegExp source as a `pattern`. JavaScript flags are
- * not represented, so validation can differ when the RegExp uses flags or
- * relies on JavaScript's non-Unicode behavior.
+ * Unless annotations override `toJsonSchema`, JSON Schema receives a `pattern`
+ * only when the JavaScript RegExp uses the Unicode flag and its other flags are
+ * `d`, `g`, or `y`. Sticky patterns are anchored at the start of the string.
  *
  * Arbitrary:
  *
@@ -6634,10 +6634,12 @@ export function isPattern(
 ): SchemaAST.Filter<string> {
   const source = regExp.source
   const flags = regExp.flags
+  const canExport = /^[dg]*uy?$/.test(flags)
   const runtimeRegExp = flags === ""
     ? `new RegExp(${format(source)})`
     : `new RegExp(${format(source)}, ${format(flags)})`
   return SchemaAST.isPattern(regExp, {
+    toJsonSchema: () => canExport ? { pattern: flags.endsWith("y") ? `^(?:${source})` : source } : [{}, true],
     toCode: () => ({ runtime: `Schema.isPattern(${runtimeRegExp})` }),
     ...annotations
   })
@@ -6906,13 +6908,25 @@ export function isBase64Url(annotations?: Annotations.Filter) {
     }
   )
 }
+
+function literalToJsonSchema(
+  literal: string,
+  original: string,
+  pattern: string
+): SchemaRepresentation.ToJsonSchema.CheckOutput {
+  if (literal.length === 0) return original.length === 0 ? {} : [{}, true]
+  const constraint = { pattern: new globalThis.RegExp(pattern).source }
+  return literal === original ? constraint : [constraint, true]
+}
+
 /**
  * Validates at runtime that a string starts with the specified literal prefix.
  *
  * **Details**
  *
  * RegExp metacharacters in the prefix are escaped in JSON Schema and arbitrary
- * metadata so that the generated patterns retain literal `startsWith` semantics.
+ * metadata. If the prefix ends with a high surrogate, the JSON Schema pattern
+ * omits that code unit so Unicode matching cannot reject a valid string.
  *
  * @category validation
  * @since 4.0.0
@@ -6920,6 +6934,7 @@ export function isBase64Url(annotations?: Annotations.Filter) {
 export function isStartingWith(startsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(startsWith)
   const regExp = new globalThis.RegExp(`^${RegExp_.escape(startsWith)}`)
+  const jsonSchemaLiteral = startsWith.replace(/[\uD800-\uDBFF]$/, "")
   return makeFilter(
     (s: string) => s.startsWith(startsWith),
     {
@@ -6928,7 +6943,7 @@ export function isStartingWith(startsWith: string, annotations?: Annotations.Fil
         id: "effect/schema/isStartingWith",
         payload: { startsWith }
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => literalToJsonSchema(jsonSchemaLiteral, startsWith, `^${RegExp_.escape(jsonSchemaLiteral)}`),
       toCode: () => ({ runtime: `Schema.isStartingWith(${format(startsWith)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
@@ -6943,7 +6958,8 @@ export function isStartingWith(startsWith: string, annotations?: Annotations.Fil
  * **Details**
  *
  * RegExp metacharacters in the suffix are escaped in JSON Schema and arbitrary
- * metadata so that the generated patterns retain literal `endsWith` semantics.
+ * metadata. If the suffix begins with a low surrogate, the JSON Schema pattern
+ * omits that code unit so Unicode matching cannot reject a valid string.
  *
  * @category validation
  * @since 4.0.0
@@ -6951,6 +6967,7 @@ export function isStartingWith(startsWith: string, annotations?: Annotations.Fil
 export function isEndingWith(endsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(endsWith)
   const regExp = new globalThis.RegExp(`${RegExp_.escape(endsWith)}$`)
+  const jsonSchemaLiteral = endsWith.replace(/^[\uDC00-\uDFFF]/, "")
   return makeFilter(
     (s: string) => s.endsWith(endsWith),
     {
@@ -6959,7 +6976,7 @@ export function isEndingWith(endsWith: string, annotations?: Annotations.Filter)
         id: "effect/schema/isEndingWith",
         payload: { endsWith }
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => literalToJsonSchema(jsonSchemaLiteral, endsWith, `${RegExp_.escape(jsonSchemaLiteral)}$`),
       toCode: () => ({ runtime: `Schema.isEndingWith(${format(endsWith)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
@@ -6974,8 +6991,9 @@ export function isEndingWith(endsWith: string, annotations?: Annotations.Filter)
  * **Details**
  *
  * RegExp metacharacters in the substring are escaped in JSON Schema and
- * arbitrary metadata so that the generated patterns retain literal `includes`
- * semantics.
+ * arbitrary metadata. A leading low surrogate or trailing high surrogate is
+ * omitted from the JSON Schema pattern so Unicode matching cannot reject a
+ * valid string.
  *
  * @category validation
  * @since 4.0.0
@@ -6983,6 +7001,7 @@ export function isEndingWith(endsWith: string, annotations?: Annotations.Filter)
 export function isIncluding(includes: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(includes)
   const regExp = new globalThis.RegExp(RegExp_.escape(includes))
+  const jsonSchemaLiteral = includes.replace(/^[\uDC00-\uDFFF]|[\uD800-\uDBFF]$/g, "")
   return makeFilter(
     (s: string) => s.includes(includes),
     {
@@ -6991,7 +7010,7 @@ export function isIncluding(includes: string, annotations?: Annotations.Filter) 
         id: "effect/schema/isIncluding",
         payload: { includes }
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => literalToJsonSchema(jsonSchemaLiteral, includes, RegExp_.escape(jsonSchemaLiteral)),
       toCode: () => ({ runtime: `Schema.isIncluding(${format(includes)})` }),
       arbitraryConstraint: {
         patterns: [{ source: regExp.source, flags: regExp.flags }]
@@ -7024,7 +7043,7 @@ export function isUppercased(annotations?: Annotations.Filter) {
         id: "effect/schema/isUppercased",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, true],
       toCode: () => ({ runtime: "Schema.isUppercased()" }),
       arbitraryConstraint: {
         patterns: [{ source: UPPERCASED_PATTERN, flags: "" }]
@@ -7057,7 +7076,7 @@ export function isLowercased(annotations?: Annotations.Filter) {
         id: "effect/schema/isLowercased",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, true],
       toCode: () => ({ runtime: "Schema.isLowercased()" }),
       arbitraryConstraint: {
         patterns: [{ source: LOWERCASED_PATTERN, flags: "" }]
@@ -7090,7 +7109,7 @@ export function isCapitalized(annotations?: Annotations.Filter) {
         id: "effect/schema/isCapitalized",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, true],
       toCode: () => ({ runtime: "Schema.isCapitalized()" }),
       arbitraryConstraint: {
         patterns: [{ source: CAPITALIZED_PATTERN, flags: "" }]
@@ -7123,7 +7142,7 @@ export function isUncapitalized(annotations?: Annotations.Filter) {
         id: "effect/schema/isUncapitalized",
         payload: null
       },
-      toJsonSchema: () => ({ pattern: regExp.source }),
+      toJsonSchema: () => [{ pattern: regExp.source }, true],
       toCode: () => ({ runtime: "Schema.isUncapitalized()" }),
       arbitraryConstraint: {
         patterns: [{ source: UNCAPITALIZED_PATTERN, flags: "" }]
@@ -7607,7 +7626,7 @@ export function isInt(annotations?: Annotations.Filter) {
         id: "effect/schema/isInt",
         payload: null
       },
-      toJsonSchema: () => ({ type: "integer" }),
+      toJsonSchema: () => [{ type: "integer" }, true],
       toCode: () => ({ runtime: "Schema.isInt()" }),
       arbitraryConstraint: {
         number: "integer"
@@ -7751,7 +7770,7 @@ export const isGreaterThanDate: (
         id: "effect/schema/isGreaterThanDate",
         payload: { exclusiveMinimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isGreaterThanDate(${formatDateRuntime(exclusiveMinimum)})` })
     }
   }
@@ -7786,7 +7805,7 @@ export const isGreaterThanOrEqualToDate: (
         id: "effect/schema/isGreaterThanOrEqualToDate",
         payload: { minimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isGreaterThanOrEqualToDate(${formatDateRuntime(minimum)})` })
     }
   }
@@ -7815,7 +7834,7 @@ export const isLessThanDate: (
         id: "effect/schema/isLessThanDate",
         payload: { exclusiveMaximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isLessThanDate(${formatDateRuntime(exclusiveMaximum)})` })
     }
   }
@@ -7850,7 +7869,7 @@ export const isLessThanOrEqualToDate: (
         id: "effect/schema/isLessThanOrEqualToDate",
         payload: { maximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isLessThanOrEqualToDate(${formatDateRuntime(maximum)})` })
     }
   }
@@ -7894,7 +7913,7 @@ export const isBetweenDate: (options: {
         id: "effect/schema/isBetweenDate",
         payload
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({
         runtime: `Schema.isBetweenDate({ minimum: ${formatDateRuntime(options.minimum)}, maximum: ${
           formatDateRuntime(options.maximum)
@@ -7927,7 +7946,7 @@ export const isGreaterThanBigInt: (
         id: "effect/schema/isGreaterThanBigInt",
         payload: { exclusiveMinimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isGreaterThanBigInt(${format(exclusiveMinimum)})` })
     }
   }
@@ -7957,7 +7976,7 @@ export const isGreaterThanOrEqualToBigInt: (
         id: "effect/schema/isGreaterThanOrEqualToBigInt",
         payload: { minimum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isGreaterThanOrEqualToBigInt(${format(minimum)})` })
     }
   }
@@ -7986,7 +8005,7 @@ export const isLessThanBigInt: (
         id: "effect/schema/isLessThanBigInt",
         payload: { exclusiveMaximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isLessThanBigInt(${format(exclusiveMaximum)})` })
     }
   }
@@ -8016,7 +8035,7 @@ export const isLessThanOrEqualToBigInt: (
         id: "effect/schema/isLessThanOrEqualToBigInt",
         payload: { maximum: encoded }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isLessThanOrEqualToBigInt(${format(maximum)})` })
     }
   }
@@ -8055,7 +8074,7 @@ export const isBetweenBigInt: (options: {
         id: "effect/schema/isBetweenBigInt",
         payload
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({
         runtime: `Schema.isBetweenBigInt({ minimum: ${format(options.minimum)}, maximum: ${
           format(options.maximum)
@@ -8064,6 +8083,7 @@ export const isBetweenBigInt: (options: {
     }
   }
 })
+
 /**
  * Validates that a value has at least the specified length. Works with strings
  * and arrays.
@@ -8072,9 +8092,11 @@ export const isBetweenBigInt: (options: {
  *
  * JSON Schema:
  *
- * For arrays, this check corresponds to `minItems`. For strings, it corresponds
- * to `minLength`. JavaScript counts UTF-16 code units while JSON Schema counts
- * Unicode code points, so the two validations can differ for some strings.
+ * The bound must be finite; it is rounded down and clamped to zero. For arrays,
+ * this check corresponds to `minItems`. JavaScript counts UTF-16 code units
+ * while JSON Schema counts Unicode code points, so strings use
+ * `minLength: Math.ceil(minLength / 2)`, the tightest lower bound that cannot
+ * reject a string accepted by this check.
  *
  * Arbitrary:
  *
@@ -8097,7 +8119,11 @@ export const isBetweenBigInt: (options: {
  * @since 4.0.0
  */
 export function isMinLength(minLength: number, annotations?: Annotations.Filter) {
-  minLength = Math.max(0, Math.floor(minLength))
+  minLength = normalizeCardinality(minLength)
+  return makeIsMinLength(minLength, Math.ceil(minLength / 2), annotations)
+}
+
+function makeIsMinLength(minLength: number, minCodePoints: number, annotations?: Annotations.Filter) {
   return makeFilter<{ readonly length: number }>(
     (input) => input.length >= minLength,
     {
@@ -8106,7 +8132,16 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
         id: "effect/schema/isMinLength",
         payload: { minLength }
       },
-      toJsonSchema: ({ type }) => type === "array" ? { minItems: minLength } : { minLength },
+      toJsonSchema: ({ type }) =>
+        type === "string"
+          ? minLength <= 1
+            ? { minLength: minCodePoints }
+            : [{ minLength: minCodePoints }, true]
+          : type === "array"
+          ? { minItems: minLength }
+          : type === undefined
+          ? [{ minLength: minCodePoints, minItems: minLength }, true]
+          : [{}, true],
       toCode: () => ({ runtime: `Schema.isMinLength(${minLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8136,7 +8171,7 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
  * @since 4.0.0
  */
 export function isNonEmpty(annotations?: Annotations.Filter) {
-  return isMinLength(1, annotations)
+  return makeIsMinLength(1, 1, annotations)
 }
 /**
  * Validates that a value has at most the specified length. Works with strings
@@ -8146,8 +8181,10 @@ export function isNonEmpty(annotations?: Annotations.Filter) {
  *
  * JSON Schema:
  *
- * This check corresponds to the `maxLength` constraint for strings or the
- * `maxItems` constraint for arrays in JSON Schema.
+ * The bound must be finite; it is rounded down and clamped to zero. This check
+ * corresponds to `maxItems` for arrays. Strings use the same bound for
+ * `maxLength`, which cannot reject a string accepted by this check because a
+ * string has no more code points than UTF-16 code units.
  *
  * Arbitrary:
  *
@@ -8159,7 +8196,7 @@ export function isNonEmpty(annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isMaxLength(maxLength: number, annotations?: Annotations.Filter) {
-  maxLength = Math.max(0, Math.floor(maxLength))
+  maxLength = normalizeCardinality(maxLength)
   return makeFilter<{ readonly length: number }>(
     (input) => input.length <= maxLength,
     {
@@ -8168,7 +8205,14 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
         id: "effect/schema/isMaxLength",
         payload: { maxLength }
       },
-      toJsonSchema: ({ type }) => type === "array" ? { maxItems: maxLength } : { maxLength },
+      toJsonSchema: ({ type }) =>
+        type === "string"
+          ? maxLength === 0 ? { maxLength } : [{ maxLength }, true]
+          : type === "array"
+          ? { maxItems: maxLength }
+          : type === undefined
+          ? [{ maxLength, maxItems: maxLength }, true]
+          : [{}, true],
       toCode: () => ({ runtime: `Schema.isMaxLength(${maxLength})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8186,10 +8230,11 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
  *
  * JSON Schema:
  *
- * For arrays, this check corresponds to `minItems` and `maxItems`. For strings,
- * it corresponds to `minLength` and `maxLength`. JavaScript counts UTF-16 code
- * units while JSON Schema counts Unicode code points, so the two validations
- * can differ for some strings.
+ * Both bounds must be finite; they are rounded down and clamped to zero. Arrays
+ * use the same bounds for `minItems` and `maxItems`. JavaScript counts UTF-16
+ * code units while JSON Schema counts Unicode code points, so strings use
+ * `Math.ceil(minimum / 2)` for `minLength` and `maximum` for `maxLength`. These
+ * are the tightest bounds that cannot reject a string accepted by this check.
  *
  * Arbitrary:
  *
@@ -8201,8 +8246,8 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
  * @since 4.0.0
  */
 export function isBetweenLength(minimum: number, maximum: number, annotations?: Annotations.Filter) {
-  minimum = Math.max(0, Math.floor(minimum))
-  maximum = Math.max(0, Math.floor(maximum))
+  minimum = normalizeCardinality(minimum)
+  maximum = normalizeCardinality(maximum)
   return makeFilter<{ readonly length: number }>(
     (input) => input.length >= minimum && input.length <= maximum,
     {
@@ -8215,9 +8260,20 @@ export function isBetweenLength(minimum: number, maximum: number, annotations?: 
         payload: { minimum, maximum }
       },
       toJsonSchema: ({ type }) =>
-        type === "array"
-          ? { allOf: [{ minItems: minimum }, { maxItems: maximum }] }
-          : { allOf: [{ minLength: minimum }, { maxLength: maximum }] },
+        type === "string"
+          ? maximum === 0 || Math.ceil(minimum / 2) > maximum
+            ? { minLength: Math.ceil(minimum / 2), maxLength: maximum }
+            : [{ minLength: Math.ceil(minimum / 2), maxLength: maximum }, true]
+          : type === "array"
+          ? { minItems: minimum, maxItems: maximum }
+          : type === undefined
+          ? [{
+            minLength: Math.ceil(minimum / 2),
+            maxLength: maximum,
+            minItems: minimum,
+            maxItems: maximum
+          }, true]
+          : [{}, true],
       toCode: () => ({ runtime: `Schema.isBetweenLength(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8233,8 +8289,9 @@ export function isBetweenLength(minimum: number, maximum: number, annotations?: 
  *
  * **Details**
  *
- * The bound is rounded down and clamped to zero. This check corresponds to
- * `minLength` in JSON Schema and guides arbitrary generation by code point count.
+ * The bound must be finite; it is rounded down and clamped to zero. This check
+ * corresponds to `minLength` in JSON Schema and guides arbitrary generation by
+ * code point count.
  *
  * **Gotchas**
  *
@@ -8249,7 +8306,7 @@ export function isBetweenLength(minimum: number, maximum: number, annotations?: 
  * @since 4.0.0
  */
 export function isMinCodePoints(minCodePoints: number, annotations?: Annotations.Filter) {
-  minCodePoints = Math.max(0, Math.floor(minCodePoints))
+  minCodePoints = normalizeCardinality(minCodePoints)
   return makeFilter<string>(
     (input) => countCodePointsUpTo(input, minCodePoints) >= minCodePoints,
     {
@@ -8270,8 +8327,9 @@ export function isMinCodePoints(minCodePoints: number, annotations?: Annotations
  *
  * **Details**
  *
- * The bound is rounded down and clamped to zero. This check corresponds to
- * `maxLength` in JSON Schema and guides arbitrary generation by code point count.
+ * The bound must be finite; it is rounded down and clamped to zero. This check
+ * corresponds to `maxLength` in JSON Schema and guides arbitrary generation by
+ * code point count.
  *
  * **Gotchas**
  *
@@ -8286,7 +8344,7 @@ export function isMinCodePoints(minCodePoints: number, annotations?: Annotations
  * @since 4.0.0
  */
 export function isMaxCodePoints(maxCodePoints: number, annotations?: Annotations.Filter) {
-  maxCodePoints = Math.max(0, Math.floor(maxCodePoints))
+  maxCodePoints = normalizeCardinality(maxCodePoints)
   return makeFilter<string>(
     (input) => countCodePointsUpTo(input, maxCodePoints + 1) <= maxCodePoints,
     {
@@ -8307,9 +8365,9 @@ export function isMaxCodePoints(maxCodePoints: number, annotations?: Annotations
  *
  * **Details**
  *
- * Bounds are rounded down and clamped to zero. Equal bounds require an exact
- * count. This check corresponds to `minLength` and `maxLength` in JSON Schema
- * and guides arbitrary generation by code point count.
+ * Bounds must be finite; they are rounded down and clamped to zero. Equal bounds
+ * require an exact count. This check corresponds to `minLength` and `maxLength`
+ * in JSON Schema and guides arbitrary generation by code point count.
  *
  * **Gotchas**
  *
@@ -8324,8 +8382,8 @@ export function isMaxCodePoints(maxCodePoints: number, annotations?: Annotations
  * @since 4.0.0
  */
 export function isBetweenCodePoints(minimum: number, maximum: number, annotations?: Annotations.Filter) {
-  minimum = Math.max(0, Math.floor(minimum))
-  maximum = Math.max(0, Math.floor(maximum))
+  minimum = normalizeCardinality(minimum)
+  maximum = normalizeCardinality(maximum)
   return makeFilter<string>(
     (input) => {
       const count = countCodePointsUpTo(input, maximum + 1)
@@ -8356,11 +8414,20 @@ function countCodePointsUpTo(input: string, limit: number): number {
   return count
 }
 
+function normalizeCardinality(value: number): number {
+  if (!globalThis.Number.isFinite(value)) {
+    throw new globalThis.RangeError(`Expected a finite number, got ${value}`)
+  }
+  return Math.max(0, Math.floor(value))
+}
+
 /**
  * Validates that a value has at least the specified size. Works with values
  * that have a `size` property, such as `Set` or `Map`.
  *
  * **Details**
+ *
+ * The bound must be finite; it is rounded down and clamped to zero.
  *
  * JSON Schema:
  *
@@ -8375,7 +8442,7 @@ function countCodePointsUpTo(input: string, limit: number): number {
  * @since 4.0.0
  */
 export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
-  minSize = Math.max(0, Math.floor(minSize))
+  minSize = normalizeCardinality(minSize)
   return makeFilter<{ readonly size: number }>(
     (input) => input.size >= minSize,
     {
@@ -8384,7 +8451,7 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
         id: "effect/schema/isMinSize",
         payload: { minSize }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isMinSize(${minSize})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8400,6 +8467,8 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
  *
  * **Details**
  *
+ * The bound must be finite; it is rounded down and clamped to zero.
+ *
  * JSON Schema:
  *
  * This check does not have a direct JSON Schema equivalent, as it applies to
@@ -8413,7 +8482,7 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
-  maxSize = Math.max(0, Math.floor(maxSize))
+  maxSize = normalizeCardinality(maxSize)
   return makeFilter<{ readonly size: number }>(
     (input) => input.size <= maxSize,
     {
@@ -8422,7 +8491,7 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
         id: "effect/schema/isMaxSize",
         payload: { maxSize }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isMaxSize(${maxSize})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8438,6 +8507,8 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
  *
  * **Details**
  *
+ * Both bounds must be finite; they are rounded down and clamped to zero.
+ *
  * JSON Schema:
  *
  * This check does not have a direct JSON Schema equivalent, as it applies to
@@ -8451,8 +8522,8 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
  * @since 4.0.0
  */
 export function isBetweenSize(minimum: number, maximum: number, annotations?: Annotations.Filter) {
-  minimum = Math.max(0, Math.floor(minimum))
-  maximum = Math.max(0, Math.floor(maximum))
+  minimum = normalizeCardinality(minimum)
+  maximum = normalizeCardinality(maximum)
   return makeFilter<{ readonly size: number }>(
     (input) => input.size >= minimum && input.size <= maximum,
     {
@@ -8464,7 +8535,7 @@ export function isBetweenSize(minimum: number, maximum: number, annotations?: An
         id: "effect/schema/isBetweenSize",
         payload: { minimum, maximum }
       },
-      toJsonSchema: () => ({}),
+      toJsonSchema: () => [{}, true],
       toCode: () => ({ runtime: `Schema.isBetweenSize(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8482,6 +8553,8 @@ export function isBetweenSize(minimum: number, maximum: number, annotations?: An
  *
  * **Details**
  *
+ * The bound must be finite; it is rounded down and clamped to zero.
+ *
  * JSON Schema:
  *
  * This check corresponds to `minProperties` in JSON Schema. Effect applies the
@@ -8497,7 +8570,7 @@ export function isBetweenSize(minimum: number, maximum: number, annotations?: An
  * @since 4.0.0
  */
 export function isMinProperties(minProperties: number, annotations?: Annotations.Filter) {
-  minProperties = Math.max(0, Math.floor(minProperties))
+  minProperties = normalizeCardinality(minProperties)
   return makeFilter<object>(
     (input) => Reflect.ownKeys(input).length >= minProperties,
     {
@@ -8506,7 +8579,7 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
         id: "effect/schema/isMinProperties",
         payload: { minProperties }
       },
-      toJsonSchema: () => ({ minProperties }),
+      toJsonSchema: ({ type }) => type === "object" ? { minProperties } : [{ minProperties }, true],
       toCode: () => ({ runtime: `Schema.isMinProperties(${minProperties})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8521,6 +8594,8 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
  * This includes both string and symbol keys when counting properties.
  *
  * **Details**
+ *
+ * The bound must be finite; it is rounded down and clamped to zero.
  *
  * JSON Schema:
  *
@@ -8537,7 +8612,7 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
  * @since 4.0.0
  */
 export function isMaxProperties(maxProperties: number, annotations?: Annotations.Filter) {
-  maxProperties = Math.max(0, Math.floor(maxProperties))
+  maxProperties = normalizeCardinality(maxProperties)
   return makeFilter<object>(
     (input) => Reflect.ownKeys(input).length <= maxProperties,
     {
@@ -8546,7 +8621,7 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
         id: "effect/schema/isMaxProperties",
         payload: { maxProperties }
       },
-      toJsonSchema: () => ({ maxProperties }),
+      toJsonSchema: ({ type }) => type === "object" ? { maxProperties } : [{ maxProperties }, true],
       toCode: () => ({ runtime: `Schema.isMaxProperties(${maxProperties})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8561,6 +8636,8 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
  * This includes both string and symbol keys when counting properties.
  *
  * **Details**
+ *
+ * Both bounds must be finite; they are rounded down and clamped to zero.
  *
  * JSON Schema:
  *
@@ -8577,8 +8654,8 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
  * @since 4.0.0
  */
 export function isBetweenProperties(minimum: number, maximum: number, annotations?: Annotations.Filter) {
-  minimum = Math.max(0, Math.floor(minimum))
-  maximum = Math.max(0, Math.floor(maximum))
+  minimum = normalizeCardinality(minimum)
+  maximum = normalizeCardinality(maximum)
   return makeFilter<object>(
     (input) => Reflect.ownKeys(input).length >= minimum && Reflect.ownKeys(input).length <= maximum,
     {
@@ -8590,7 +8667,10 @@ export function isBetweenProperties(minimum: number, maximum: number, annotation
         id: "effect/schema/isBetweenProperties",
         payload: { minimum, maximum }
       },
-      toJsonSchema: () => ({ minProperties: minimum, maxProperties: maximum }),
+      toJsonSchema: ({ type }) =>
+        type === "object"
+          ? { minProperties: minimum, maxProperties: maximum }
+          : [{ minProperties: minimum, maxProperties: maximum }, true],
       toCode: () => ({ runtime: `Schema.isBetweenProperties(${minimum}, ${maximum})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitraryConstraint: {
@@ -8645,7 +8725,8 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
         payload: null,
         schemas: [propertyNames.ast]
       },
-      toJsonSchema: ({ schemas }) => ({ propertyNames: schemas[0] }),
+      toJsonSchema: ({ schemas, type }) =>
+        type === "object" ? { propertyNames: schemas[0] } : [{ propertyNames: schemas[0] }, true],
       toCode: ({ schemas }) => ({ runtime: `Schema.isPropertyNames(${schemas[0].runtime})` }),
       [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       ...annotations
@@ -15291,15 +15372,17 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  * JSON Schema generation is best-effort. String length uses Unicode code points
  * in JSON Schema and UTF-16 code units in Effect. A generated `pattern` cannot
  * retain JavaScript RegExp flags. Object property checks apply to the original
- * input in JSON Schema but to the decoded object in Effect. `oneOf` can also
- * reject values accepted by overlapping Effect union members. Custom
- * `toJsonSchema` annotations are the annotation author's responsibility. When
+ * input in JSON Schema but to the decoded object in Effect. When a `oneOf`
+ * branch contains a known approximation, the compiler emits `anyOf` so that
+ * the approximation cannot create a false rejection. Unions with only exact
+ * branches retain `oneOf`. Custom `toJsonSchema` callbacks return `[schema, true]` for safe,
+ * looser approximations and are responsible for the semantics they declare. When
  * canonical JSON derivation adds an artificial transformation, checks and
  * annotations on its source node are not copied to the JSON target, so they do
  * not appear in the emitted document. Opaque declarations without a structural
  * codec are represented by an unconstrained JSON Schema. The default
  * `onExcessProperty: "ignore"` matches the decoder default and leaves
- * unrepresentable index-signature keys open. In `"error"` mode, the compiler
+ * index-signature keys without exact selectors open. In `"error"` mode, the compiler
  * constrains those keys with `propertyNames` and applies a permissive choice of
  * candidate index value schemas. The Effect decoder enforces the exact
  * key-value association.
@@ -16128,11 +16211,21 @@ export declare namespace Annotations {
     /**
      * Compiles this filter to a JSON Schema fragment.
      *
+     * **Details**
+     *
+     * Return the fragment directly for an exact translation or `[fragment, true]`
+     * for a safe, looser approximation. Use `[{}, true]` to omit the constraint.
+     * Approximation propagates from `representation.schemas` automatically. It
+     * makes enclosing `oneOf` unions export as `anyOf` and prevents approximate
+     * record-key patterns from selecting `patternProperties` values.
+     *
      * **Gotchas**
      *
-     * Treat the input schemas as immutable. The returned value must be a valid JSON Schema object graph and must not be
-     * mutated after this function returns. Return a new object graph to produce different output during a later
-     * compilation.
+     * The compiler trusts the declared semantics. Treat the input schemas as immutable. The returned fragment must be
+     * a valid JSON Schema object graph and must not be mutated after this function returns. Return a new object graph
+     * to produce different output during a later compilation.
+     *
+     * @see {@link SchemaRepresentation.ToJsonSchema.CheckOutput} for the result contract
      */
     readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined
     readonly toCode?: SchemaRepresentation.Generation.Check | undefined

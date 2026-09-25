@@ -1869,6 +1869,8 @@ export const withRefresh: {
 /**
  * Adds stale-while-revalidate refresh behavior to an async result atom.
  *
+ * **Details**
+ *
  * Returns the current result and defers stale-source revalidation until after the read.
  * Skips revalidation if the source becomes fresh or the atom is disposed.
  * Manual refreshes still forward to the source. `revalidateOnMount` controls

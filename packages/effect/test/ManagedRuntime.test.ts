@@ -1,6 +1,6 @@
 import { assert, describe, it, test } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Context, Deferred, Effect, Exit, Fiber, Layer, ManagedRuntime, Scope } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Layer, ManagedRuntime, Pool, Scope } from "effect"
 
 describe("ManagedRuntime", () => {
   test("memoizes the layer build", async () => {
@@ -70,6 +70,59 @@ describe("ManagedRuntime", () => {
     assert(exit)
     assert.isTrue(Exit.hasInterrupts(exit))
   })
+
+  for (const method of ["disposeEffect", "dispose"] as const) {
+    it(`finishes request cleanup before releasing layer resources with ${method}`, async () => {
+      const events = await Effect.runPromise(Effect.gen(function*() {
+        const Database = Context.Service<Pool.Pool<number>>("Database")
+        const gate = yield* Deferred.make<void>()
+        const started = yield* Deferred.make<void>()
+        const events: Array<string> = []
+        const layer = Layer.effect(
+          Database,
+          Pool.make({
+            size: 1,
+            acquire: Effect.acquireRelease(
+              Effect.succeed(1),
+              () =>
+                Effect.sync(() => {
+                  events.push("pool closed")
+                })
+            )
+          })
+        )
+        const runtime = ManagedRuntime.make(layer)
+        yield* runtime.contextEffect
+
+        runtime.runFork(Effect.gen(function*() {
+          const pool = yield* Database
+          yield* Deferred.succeed(started, undefined)
+          return yield* Effect.ensuring(
+            Effect.never,
+            Effect.gen(function*() {
+              yield* Deferred.await(gate)
+              const exit = yield* Effect.exit(Effect.scoped(Pool.get(pool)))
+              events.push(`request cleanup: ${exit._tag}`)
+            })
+          )
+        }))
+        yield* Deferred.await(started)
+
+        if (method === "disposeEffect") {
+          const disposing = yield* Effect.forkChild(runtime.disposeEffect, { startImmediately: true })
+          yield* Deferred.succeed(gate, undefined)
+          yield* Fiber.join(disposing)
+        } else {
+          const disposing = runtime.dispose()
+          yield* Deferred.succeed(gate, undefined)
+          yield* Effect.promise(() => disposing)
+        }
+        return events
+      }))
+
+      assert.deepEqual(events, ["request cleanup: Success", "pool closed"])
+    })
+  }
 
   it("completes sequential layer finalizers when disposeEffect is interrupted", async () => {
     const ran = await Effect.runPromise(Effect.gen(function*() {
