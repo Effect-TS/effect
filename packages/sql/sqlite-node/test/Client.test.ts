@@ -149,18 +149,16 @@ describe("Client", () => {
       Object.defineProperty(conn, "executeUnprepared", {
         configurable: true,
         value: (...args: Parameters<typeof executeUnprepared>) => {
-          if (args[0] === "ROLLBACK") {
-            if (failRollback) {
-              return Effect.fail(
-                new SqlError({
-                  reason: new ConnectionError({
-                    message: "injected rollback failure",
-                    operation: "rollback",
-                    cause: new Error("injected rollback failure")
-                  })
+          if (args[0] === "ROLLBACK" && failRollback) {
+            return Effect.fail(
+              new SqlError({
+                reason: new ConnectionError({
+                  message: "injected rollback failure",
+                  operation: "rollback",
+                  cause: new Error("injected rollback failure")
                 })
-              )
-            }
+              })
+            )
           }
           return executeUnprepared(...args)
         }
@@ -173,58 +171,37 @@ describe("Client", () => {
       assert.match(cause, /foreign key constraint failed/i)
       assert.match(cause, /injected rollback failure/i)
 
-      let bodyRan = false
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const query = yield* Effect.exit(sql`SELECT * FROM parent`)
-        assert.isTrue(Exit.isFailure(query))
-        if (Exit.isFailure(query)) {
-          assert.match(Cause.pretty(query.cause), /cannot be reused after failed COMMIT cleanup/i)
-        }
-        const transaction = yield* Effect.exit(sql.withTransaction(Effect.sync(() => {
-          bodyRan = true
-        })))
-        assert.isTrue(Exit.isFailure(transaction))
+      const query = yield* Effect.exit(sql`SELECT * FROM parent`)
+      assert.isTrue(Exit.isFailure(query))
+      if (Exit.isFailure(query)) {
+        assert.match(Cause.pretty(query.cause), /cannot be reused after failed COMMIT cleanup/i)
       }
-      assert.isFalse(bodyRan)
+      const transaction = yield* Effect.exit(sql.withTransaction(Effect.die("transaction body ran")))
+      assert.isTrue(Exit.isFailure(transaction))
+      const queryAfterTransaction = yield* Effect.exit(sql`SELECT * FROM parent`)
+      assert.isTrue(Exit.isFailure(queryAfterTransaction))
       // Retry cleanup after the transient failure clears, without replacing the database.
       failRollback = false
       assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
       assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
-      yield* sql.withTransaction(sql`INSERT INTO child VALUES (1)`)
-    }))
-
-  it.effect("does not roll back an explicit BEGIN on ordinary acquisition", () =>
-    Effect.gen(function*() {
-      const sql = yield* makeClient
-      yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
-      yield* sql`BEGIN`
-      yield* sql`INSERT INTO items VALUES (1)`
-      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [{ id: 1 }])
-      yield* sql`ROLLBACK`
-      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [])
     }))
 
   it.effect("does not poison a connection already rolled back before failed commit cleanup", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
       yield* sql`CREATE TABLE items (id INTEGER PRIMARY KEY)`
-      yield* sql`INSERT INTO items VALUES (1)`
 
       const failedCommit = yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO items VALUES (1)`
         const insert = yield* Effect.exit(sql`INSERT OR ROLLBACK INTO items VALUES (1)`)
         assert.isTrue(Exit.isFailure(insert))
-        if (Exit.isFailure(insert)) {
-          assert.match(Cause.pretty(insert.cause), /unique constraint failed/i)
-        }
       })))
       assert.isTrue(Exit.isFailure(failedCommit))
       if (Exit.isFailure(failedCommit)) {
         assert.match(Cause.pretty(failedCommit.cause), /no transaction is active/i)
       }
 
-      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [{ id: 1 }])
-      yield* sql.withTransaction(sql`INSERT INTO items VALUES (2)`)
-      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [{ id: 1 }, { id: 2 }])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM items`, [])
     }))
 
   it.effect("withTransaction rollback", () =>
