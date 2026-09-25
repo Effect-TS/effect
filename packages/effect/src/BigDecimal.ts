@@ -161,11 +161,11 @@ export const normalize = (self: BigDecimal): BigDecimal => {
 
       if (trail === 0) {
         self.normalized = self
+      } else {
+        const value = BigInt(digits.substring(0, digits.length - trail))
+        const scale = self.scale - trail
+        self.normalized = unsafeMakeNormalized(value, scale)
       }
-
-      const value = BigInt(digits.substring(0, digits.length - trail))
-      const scale = self.scale - trail
-      self.normalized = unsafeMakeNormalized(value, scale)
     }
   }
 
