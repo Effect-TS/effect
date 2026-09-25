@@ -4581,9 +4581,6 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
  * @since 4.0.0
  */
 export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
-  if (ast.encoding) {
-    return toType(replaceEncoding(ast, undefined))
-  }
   const out: any = ast
   const type = out.recur?.(toType) ?? out
   const encodingChecks: Checks | undefined = type.encodingChecks
@@ -4594,11 +4591,12 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
       ? extractStructuralChecks(encodingChecks)
       : undefined
     const copyOfType = copy(type)
+    copyOfType.encoding = undefined
     copyOfType.encodingChecks = undefined
     copyOfType.checks = combineChecks(type.checks, checks)
     return copyOfType
   }
-  return type
+  return type.encoding ? replaceEncoding(type, undefined) : type
 })
 
 /**
