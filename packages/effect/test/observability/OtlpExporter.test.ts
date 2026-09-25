@@ -352,38 +352,41 @@ describe("OtlpExporter", () => {
         )
       }))
 
-    it.effect("drains a 429 response before retrying", () =>
-      Effect.gen(function*() {
-        const responses: Array<Response> = []
-        const httpClient = HttpClient.make((request) => {
-          const response = new Response("body", {
-            status: responses.length === 0 ? 429 : 200,
-            headers: { "retry-after": "1" }
+    for (const filterStatus of [false, true]) {
+      it.effect(`drains a 429 response before retrying${filterStatus ? " from a status-filtered client" : ""}`, () =>
+        Effect.gen(function*() {
+          const responses: Array<Response> = []
+          const rawClient = HttpClient.make((request) => {
+            const response = new Response("body", {
+              status: responses.length === 0 ? 429 : 200,
+              headers: { "retry-after": "1" }
+            })
+            responses.push(response)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, response))
           })
-          responses.push(response)
-          return Effect.succeed(HttpClientResponse.fromWeb(request, response))
-        })
-        yield* Effect.scoped(
-          Effect.gen(function*() {
-            const exporter = yield* makeExporterRaw(10)
-            const flusher = yield* OtlpExporter.Flusher
+          const httpClient = filterStatus ? HttpClient.filterStatusOk(rawClient) : rawClient
+          yield* Effect.scoped(
+            Effect.gen(function*() {
+              const exporter = yield* makeExporterRaw(10)
+              const flusher = yield* OtlpExporter.Flusher
 
-            exporter.push({ value: 1 })
-            const flush = yield* Effect.forkChild(flusher.flush)
-            yield* yieldNowN(3)
-            assert.strictEqual(responses.length, 1)
-            assert.isTrue(responses[0].bodyUsed)
+              exporter.push({ value: 1 })
+              const flush = yield* Effect.forkChild(flusher.flush)
+              yield* yieldNowN(3)
+              assert.strictEqual(responses.length, 1)
+              assert.isTrue(responses[0].bodyUsed)
 
-            yield* TestClock.adjust("1 second")
-            yield* Fiber.join(flush)
-            assert.strictEqual(responses.length, 2)
-            assert.isTrue(responses[1].bodyUsed)
-          }).pipe(
-            Effect.provideService(HttpClient.HttpClient, httpClient),
-            Effect.provide(OtlpExporter.layerFlusher)
+              yield* TestClock.adjust("1 second")
+              yield* Fiber.join(flush)
+              assert.strictEqual(responses.length, 2)
+              assert.isTrue(responses[1].bodyUsed)
+            }).pipe(
+              Effect.provideService(HttpClient.HttpClient, httpClient),
+              Effect.provide(OtlpExporter.layerFlusher)
+            )
           )
-        )
-      }))
+        }))
+    }
 
     it.effect("keeps exporting when reading a successful response body fails", () =>
       Effect.gen(function*() {
