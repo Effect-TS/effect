@@ -652,6 +652,7 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
   listeners = new Set<() => void>()
   idleBucket: IdleBucket | undefined = undefined
   observedChildren = 0
+  current = false
   invalidatedDuringBuild = false
 
   currentState() {
@@ -714,7 +715,7 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
           this.preserveInitialValueOnBuild = false
           this.state = NodeState.valid
         } else {
-          this.setValue(value)
+          this.commitValue(value)
         }
       }
     }
@@ -762,6 +763,13 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
   }
 
   setValue(value: A): void {
+    if (this.state !== NodeState.valid) {
+      for (const parent of this.parents) parent.current = true
+    }
+    this.commitValue(value)
+  }
+
+  commitValue(value: A): void {
     if ((this.state & NodeFlags.initialized) === 0) {
       this.state = NodeState.valid
       this._value = value
@@ -792,6 +800,7 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
   readTracked<B>(atom: Atom.Atom<B>, lifetime: BuildReads): B {
     const parent = this.registry.ensureNode(atom)
     const value = parent.value()
+    parent.current = true
     if (lifetime.inOrder >= 0) {
       if (lifetime.read === undefined) {
         lifetime.order ??= this.parents.values()
@@ -839,16 +848,17 @@ class NodeImpl<A> implements Atom.WriteContext<A> {
   }
 
   invalidateChildren(): void {
-    for (const first of this.children) {
-      if (!first.isAffectedByChangeOf(this)) continue
-      const children = Array.from(this.children)
-      let failure: unknown = noFailure
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i]
-        if (child.isAffectedByChangeOf(this)) failure = attempt(failure, child.invalidate, child, undefined)
-      }
-      return rethrow(failure)
+    if (!this.current && this.observedChildren === 0) return
+    this.current = false
+    const children = Array.from(this.children)
+    let failure: unknown = noFailure
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      if (!child.isAffectedByChangeOf(this)) continue
+      if ((child.lifetime?.inOrder ?? -1) >= 0) this.current = true
+      failure = attempt(failure, child.invalidate, child, undefined)
     }
+    rethrow(failure)
   }
 
   isAffectedByChangeOf(parent: NodeImpl<any>): boolean {
