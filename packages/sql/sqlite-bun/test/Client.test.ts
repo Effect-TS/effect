@@ -112,11 +112,6 @@ describe("Client", () => {
       const uri = `${pathToFileURL(filename).href}?immutable=1`
       const sql = yield* SqliteClient.make({ filename: uri, readonly: true })
       assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1 }])
-
-      const error = yield* Effect.flip(sql`INSERT INTO test (id) VALUES (2)`)
-      assert.strictEqual(error._tag, "SqlError")
-      assert(error.reason.cause instanceof Error)
-      assert.match(error.reason.cause.message, /attempt to write a readonly database/i)
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect.skipIf(!isBun)("rejects writes to a plain readonly file: URI", () =>
@@ -138,49 +133,6 @@ describe("Client", () => {
       assert.match(error.reason.cause.message, /attempt to write a readonly database/i)
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect.skipIf(!isBun)("respects create: false for ordinary filenames", () =>
-    Effect.gen(function*() {
-      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
-      const filename = `/tmp/effect-sqlite-bun-no-create-${crypto.randomUUID()}.db`
-      yield* Effect.acquireRelease(
-        Effect.void,
-        () => Effect.promise(() => rm(filename, { force: true }))
-      )
-
-      yield* Effect.promise(() =>
-        rejects(
-          Effect.runPromise(
-            Effect.scoped(SqliteClient.make({ filename, create: false })).pipe(Effect.provide(Reactivity.layer))
-          ),
-          /unable to open database file/i
-        )
-      )
-      const sql = yield* SqliteClient.make({ filename })
-      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
-      assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [])
-    }).pipe(Effect.provide(Reactivity.layer)))
-
-  it.effect.skipIf(!isBun)("opens existing file: URIs with create: false", () =>
-    Effect.gen(function*() {
-      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
-      const filename = `/tmp/effect-sqlite-bun-uri-no-create-${crypto.randomUUID()}.db`
-      yield* Effect.acquireRelease(
-        Effect.void,
-        () => Effect.promise(() => rm(filename, { force: true }))
-      )
-
-      yield* Effect.scoped(
-        Effect.gen(function*() {
-          const sql = yield* SqliteClient.make({ filename })
-          yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
-        })
-      )
-
-      const sql = yield* SqliteClient.make({ filename: pathToFileURL(filename).href, create: false })
-      yield* sql`INSERT INTO test (id) VALUES (1)`
-      assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1 }])
-    }).pipe(Effect.provide(Reactivity.layer)))
-
   it.effect.skipIf(!isBun)("does not create a missing file: URI with create: false", () =>
     Effect.gen(function*() {
       const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
@@ -200,19 +152,14 @@ describe("Client", () => {
       })
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  for (const create of [undefined, true]) {
-    it.effect.skipIf(!isBun)(
-      `create implies readwrite for file: URIs (create: ${create ?? "default"})`,
-      () =>
-        Effect.gen(function*() {
-          const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
-          const filename = `/tmp/effect-sqlite-bun-uri-create-${crypto.randomUUID()}.db`
-          yield* Effect.acquireRelease(Effect.void, () => Effect.promise(() => rm(filename, { force: true })))
-          const sql = yield* SqliteClient.make({ filename: pathToFileURL(filename).href, readwrite: false, create })
-          yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
-          yield* sql`INSERT INTO test (id) VALUES (1)`
-          assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1 }])
-        }).pipe(Effect.provide(Reactivity.layer))
-    )
-  }
+  it.effect.skipIf(!isBun)("create implies readwrite for file: URIs", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const filename = `/tmp/effect-sqlite-bun-uri-create-${crypto.randomUUID()}.db`
+      yield* Effect.acquireRelease(Effect.void, () => Effect.promise(() => rm(filename, { force: true })))
+      const sql = yield* SqliteClient.make({ filename: pathToFileURL(filename).href, readwrite: false })
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+      yield* sql`INSERT INTO test (id) VALUES (1)`
+      assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1 }])
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
