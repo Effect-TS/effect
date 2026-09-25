@@ -2,9 +2,6 @@
  * Defines the provider-neutral service for structured decisions.
  * `decide` encodes one input as JSON, sends its named decisions in one provider
  * call, and validates the answers. Failures are reported as `AiError` values.
- *
- * @see {@link make} for constructing a decision model service from a provider
- *
  * @stability unstable
  * @since 4.0.0
  */
@@ -16,9 +13,9 @@ import * as AiError from "./AiError.ts"
 import type * as Decision from "./Decision.ts"
 
 /**
- * Service key for answering decisions about an input.
+ * Service key for answering decisions about an input. Create implementations
+ * with `make`.
  *
- * @see {@link make} for constructing a decision model service from a provider
  * @see {@link decide} for answering a definition through the current service
  *
  * @stability unstable
@@ -325,6 +322,8 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * sum to 1 within `1e-6`, optional confidence must be in `[0, 1]`, and ratings must be
  * in `[0, criteria.length - 1]`. Invalid answers fail with
  * `AiError.InvalidOutputError`; encoding failures use `AiError.InvalidUserInputError`.
+ *
+ * **Details**
  *
  * Providers that round each probability to `probabilityPrecision` decimal
  * places may return distributions whose sum drifts from 1 by up to half a unit

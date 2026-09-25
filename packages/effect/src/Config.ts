@@ -193,7 +193,7 @@ export const map: {
  *
  * **When to use**
  *
- * When you want to maintain 2 sets of env vars with different names, and switch
+ * Use when you want to maintain 2 sets of env vars with different names, and switch
  * between whole sets based on a single dedicated env var. Or when you want to
  * provide a variety of environment variable names (`PORT`, `BACKEND_PORT`,
  * `API_PORT`) in order of preference for a specific configuration option, such
