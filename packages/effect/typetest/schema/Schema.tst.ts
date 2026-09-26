@@ -1890,6 +1890,28 @@ describe("Schema", () => {
         Schema.Codec<number & Brand.Brand<"Int"> & Brand.Brand<"Positive">, number>
       >()
     })
+
+    it("should keep the keys of a distributed union brand", () => {
+      type MIDIPortType = "input" | "output"
+      type Id<TPortType extends MIDIPortType> = TPortType extends MIDIPortType
+        ? Brand.Branded<string, "MIDIPortId"> & Brand.Brand<TPortType>
+        : never
+
+      type InputOrOutputMidiPortId = Id<MIDIPortType>
+      const InputOrOutputMidiPortId = Brand.check<InputOrOutputMidiPortId>(
+        Schema.isTrimmed(),
+        Schema.isMinLength(5)
+      )
+
+      const schema = Schema.String.pipe(Schema.fromBrand("InputOrOutputMidiPortId", InputOrOutputMidiPortId))
+      expect(schema).type.toBe<Schema.brand<Schema.String, "MIDIPortId" | "input" | "output">>()
+      expect(Schema.revealCodec(schema)).type.toBe<
+        Schema.Codec<
+          string & Brand.Brand<"MIDIPortId"> & Brand.Brand<"input"> & Brand.Brand<"output">,
+          string
+        >
+      >()
+    })
   })
 
   describe("fieldsAssign", () => {
