@@ -17,7 +17,6 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
@@ -81,6 +80,15 @@ const classifyError = (
     }
   }
   return fallback === "connection" ? new ConnectionError(props) : new UnknownError(props)
+}
+
+// The compiler renders placeholders as `{p1: Type}`, `{p2: Type}`, ...
+const toQueryParams = (params: ReadonlyArray<unknown>) => {
+  const paramsObj: Record<string, unknown> = {}
+  for (let i = 0; i < params.length; i++) {
+    paramsObj[`p${i + 1}`] = params[i]
+  }
+  return paramsObj
 }
 
 /**
@@ -213,16 +221,22 @@ export const make = (
         this.conn = conn
       }
 
+      private killQuery(queryId: string) {
+        return Effect.promise(() =>
+          this.conn.command({
+            query: "KILL QUERY WHERE query_id = {queryId:String}",
+            query_params: { queryId }
+          })
+        )
+      }
+
       private runRaw(sql: string, params: ReadonlyArray<unknown>, format: Clickhouse.DataFormat = "JSON") {
-        const paramsObj: Record<string, unknown> = {}
-        for (let i = 0; i < params.length; i++) {
-          paramsObj[`p${i + 1}`] = params[i]
-        }
-        return Effect.withFiber<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((fiber) => {
-          const method = fiber.getRef(ClientMethod)
-          return Effect.callback<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((resume) => {
-            const queryId = fiber.getRef(QueryId) ?? Crypto.randomUUID()
-            const settings = fiber.getRef(ClickhouseSettings)
+        const paramsObj = toQueryParams(params)
+        return Effect.gen({ self: this }, function*() {
+          const method = yield* ClientMethod
+          const queryId = (yield* QueryId) ?? Crypto.randomUUID()
+          const settings = yield* ClickhouseSettings
+          return yield* Effect.callback<Clickhouse.ResultSet<"JSON"> | Clickhouse.CommandResult, SqlError>((resume) => {
             const controller = new AbortController()
             if (method === "command") {
               this.conn.command({
@@ -260,12 +274,7 @@ export const make = (
             }
             return Effect.suspend(() => {
               controller.abort()
-              return Effect.promise(() =>
-                this.conn.command({
-                  query: "KILL QUERY WHERE query_id = {queryId:String}",
-                  query_params: { queryId }
-                })
-              )
+              return this.killQuery(queryId)
             })
           })
         })
@@ -339,6 +348,35 @@ export const make = (
           Stream.flattenIterable
         )
       }
+      insertQuery<T = unknown>(options: {
+        readonly table: string
+        readonly values: Clickhouse.InsertValues<Readable, T>
+        readonly format?: Clickhouse.DataFormat
+        readonly columns?: NonNullable<Clickhouse.InsertParams<Readable, T>["columns"]>
+      }) {
+        return Effect.gen({ self: this }, function*() {
+          const queryId = (yield* QueryId) ?? Crypto.randomUUID()
+          const settings = yield* ClickhouseSettings
+          const controller = new AbortController()
+          return yield* Effect.callback<Clickhouse.InsertResult, SqlError>((resume) => {
+            this.conn.insert({
+              format: "JSONEachRow",
+              ...options,
+              abort_signal: controller.signal,
+              query_id: queryId,
+              clickhouse_settings: settings
+            }).then(
+              (result) => resume(Effect.succeed(result)),
+              (cause) =>
+                resume(Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to insert data", "insert") })))
+            )
+            return Effect.suspend(() => {
+              controller.abort()
+              return this.killQuery(queryId)
+            })
+          })
+        })
+      }
     }
 
     const connection = new ConnectionImpl(client)
@@ -370,32 +408,7 @@ export const make = (
           readonly format?: Clickhouse.DataFormat
           readonly columns?: NonNullable<Clickhouse.InsertParams<Readable, T>["columns"]>
         }) {
-          return Effect.callback<Clickhouse.InsertResult, SqlError>((resume) => {
-            const fiber = Fiber.getCurrent()!
-            const queryId = fiber.getRef(QueryId) ?? Crypto.randomUUID()
-            const settings = fiber.getRef(ClickhouseSettings)
-            const controller = new AbortController()
-            client.insert({
-              format: "JSONEachRow",
-              ...options,
-              abort_signal: controller.signal,
-              query_id: queryId,
-              clickhouse_settings: settings
-            }).then(
-              (result) => resume(Effect.succeed(result)),
-              (cause) =>
-                resume(Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to insert data", "insert") })))
-            )
-            return Effect.suspend(() => {
-              controller.abort()
-              return Effect.promise(() =>
-                client.command({
-                  query: "KILL QUERY WHERE query_id = {queryId:String}",
-                  query_params: { queryId }
-                })
-              )
-            })
-          })
+          return connection.insertQuery(options)
         },
         withQueryId: dual(
           2,
@@ -413,7 +426,7 @@ export const make = (
   })
 
 /**
- * Fiber reference read by the low-level ClickHouse connection to choose query
+ * Context reference read by the low-level ClickHouse connection to choose query
  * or command execution for statements; defaults to `query`.
  *
  * @category services
@@ -427,7 +440,7 @@ export const ClientMethod = Context.Reference<"query" | "command" | "insert">(
 )
 
 /**
- * Fiber reference for the ClickHouse `query_id` applied to queries and
+ * Context reference for the ClickHouse `query_id` applied to queries and
  * inserts; a random UUID is generated when no query ID is set.
  *
  * @category services
@@ -439,7 +452,7 @@ export const QueryId = Context.Reference<string | undefined>(
 )
 
 /**
- * Fiber reference containing ClickHouse settings to attach to queries,
+ * Context reference containing ClickHouse settings to attach to queries,
  * commands, and inserts.
  *
  * @category services

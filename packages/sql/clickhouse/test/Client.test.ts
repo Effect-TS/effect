@@ -1,5 +1,5 @@
 import { ClickhouseClient } from "@effect/sql-clickhouse"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, beforeEach, describe, it } from "@effect/vitest"
 import { Effect, Fiber } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Statement from "effect/sql/Statement"
@@ -9,13 +9,18 @@ import { vi } from "vitest"
 let closeCalls = 0
 let connectImmediately = false
 const commandCalls: Array<Record<string, unknown>> = []
+const queryCalls: Array<Record<string, unknown>> = []
 const insertCalls: Array<Record<string, unknown>> = []
+let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
 vi.mock("@clickhouse/client", () => ({
   createClient: () => ({
     ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
-    query: () => new Promise(() => {}),
+    query: (options: Record<string, unknown>) => {
+      queryCalls.push(options)
+      return queryImpl ? queryImpl(options) : new Promise(() => {})
+    },
     insert: (options: Record<string, unknown>) => {
       insertCalls.push(options)
       return insertImpl ? insertImpl(options) : new Promise(() => {})
@@ -32,6 +37,14 @@ vi.mock("@clickhouse/client", () => ({
 }))
 
 describe("ClickhouseClient", { concurrent: false }, () => {
+  beforeEach(() => {
+    connectImmediately = false
+    commandCalls.length = 0
+    queryCalls.length = 0
+    insertCalls.length = 0
+    queryImpl = undefined
+    insertImpl = undefined
+  })
   it("preserves fractional JavaScript numbers in inferred parameters", () => {
     const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
     const [query] = sql`SELECT ${1.5}`.compile()
@@ -115,7 +128,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
   it.effect("passes column selection to insertQuery", () =>
     Effect.gen(function*() {
       connectImmediately = true
-      insertCalls.length = 0
       insertImpl = () => Promise.resolve({ executed: true, query_id: "" })
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
 
@@ -127,5 +139,24 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       assert.strictEqual(insertCalls[0].format, "JSONEachRow")
       assert.deepStrictEqual(insertCalls[0].columns, ["name"])
       assert.deepStrictEqual(insertCalls[1].columns, { except: ["id"] })
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("uses a custom query id and settings only for the query they are set on", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      queryImpl = () => Promise.resolve({ json: () => Promise.resolve({ data: [] }) })
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+
+      yield* client`SELECT 1`.pipe(
+        client.withQueryId("first-id"),
+        client.withClickhouseSettings({ max_block_size: "100" })
+      )
+      yield* client`SELECT 2`
+
+      assert.strictEqual(queryCalls.length, 2)
+      assert.strictEqual(queryCalls[0].query_id, "first-id")
+      assert.deepStrictEqual(queryCalls[0].clickhouse_settings, { max_block_size: "100" })
+      assert.notStrictEqual(queryCalls[1].query_id, "first-id")
+      assert.deepStrictEqual(queryCalls[1].clickhouse_settings, {})
     }).pipe(Effect.provide(Reactivity.layer)))
 })
