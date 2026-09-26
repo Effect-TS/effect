@@ -79,6 +79,32 @@ const readLineDisposed = Effect.gen(function*() {
   return { line, duringTtl, dataListeners: process.stdin.listenerCount("data") }
 })
 
+// The fixture's stdin is a pipe, so pretend it is a TTY and record raw mode
+// changes instead.
+const rawModeCalls: Array<boolean> = []
+const simulateTty = Effect.sync(() => {
+  process.stdin.isTTY = true
+  process.stdin.setRawMode = (mode) => {
+    rawModeCalls.push(mode)
+    return process.stdin
+  }
+})
+
+const ttyReadLine = Effect.gen(function*() {
+  yield* simulateTty
+  const terminal = yield* Terminal.Terminal
+  const line = yield* terminal.readLine
+  return { line, rawMode: rawModeCalls.slice() }
+})
+
+const ttyReadInput = Effect.gen(function*() {
+  yield* simulateTty
+  const terminal = yield* Terminal.Terminal
+  const input = yield* Effect.scoped(Effect.flatMap(terminal.readInput, Queue.take))
+  yield* Effect.sleep("20 millis")
+  return { input: Option.getOrNull(input.input), rawMode: rawModeCalls.slice() }
+})
+
 const mode = process.argv[2]
 const program = Effect.gen(function*() {
   if (mode === "prompts") {
@@ -95,6 +121,10 @@ const program = Effect.gen(function*() {
     return yield* readLineAfterEnd
   } else if (mode === "read-line-disposed") {
     return yield* readLineDisposed
+  } else if (mode === "tty-read-line") {
+    return yield* ttyReadLine
+  } else if (mode === "tty-read-input") {
+    return yield* ttyReadInput
   }
   return yield* Effect.die(`Unknown mode: ${mode}`)
 })
