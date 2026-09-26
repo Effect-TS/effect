@@ -1911,7 +1911,8 @@ describe("Schema", () => {
           string
         >
       >()
-    })  })
+    })
+  })
 
   describe("fieldsAssign", () => {
     it("Struct", () => {
