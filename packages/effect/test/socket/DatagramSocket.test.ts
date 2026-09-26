@@ -1,0 +1,773 @@
+import { assert, describe, it } from "@effect/vitest"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
+import * as NetAddress from "effect/net/NetAddress"
+import * as Scope from "effect/Scope"
+import * as DatagramSocket from "effect/socket/DatagramSocket"
+import { TestClock } from "effect/testing"
+
+const bytes = (text: string) => new TextEncoder().encode(text)
+const address = NetAddress.inetAddressFromNativeUnsafe("127.0.0.1", 1234)
+const failure = () =>
+  new DatagramSocket.DatagramSocketError({
+    reason: new DatagramSocket.DatagramSocketReadError({ kind: "Unknown", cause: new Error("read") })
+  })
+
+class TestHandle implements DatagramSocket.NativeHandle {
+  readonly address = { host: "127.0.0.1", port: 1234 }
+  events!: DatagramSocket.NativeEvents
+  sends: Array<{ payload: Uint8Array; destination?: DatagramSocket.NativeAddress | undefined }> = []
+  closes = 0
+  leaves = 0
+  joins = 0
+  failAt = 0
+  sendCount = 0
+  deferSends = false
+  omitIndex = false
+  pending: Array<(error?: DatagramSocket.DatagramSocketError) => void> = []
+  private sendError() {
+    return new DatagramSocket.DatagramSocketError({
+      reason: new DatagramSocket.DatagramSocketWriteError({ kind: "Unknown", cause: new Error("send") })
+    })
+  }
+  readonly send: DatagramSocket.NativeHandle["send"] = (payload, destination, done) => {
+    const error = ++this.sendCount === this.failAt ? this.sendError() : undefined
+    if (error === undefined) this.sends.push({ payload, destination })
+    if (this.deferSends) this.pending.push((override) => done(override ?? error))
+    else done(error)
+  }
+  readonly sendMany: DatagramSocket.NativeHandle["sendMany"] = (payloads, destinations, done) => {
+    let error: DatagramSocket.DatagramSocketError | undefined
+    let index: number | undefined
+    for (let i = 0; i < payloads.length; i++) {
+      if (++this.sendCount === this.failAt) {
+        error = this.sendError()
+        index = this.omitIndex ? undefined : i
+        break
+      }
+      this.sends.push({ payload: payloads[i]!, destination: destinations[i] })
+    }
+    if (this.deferSends) this.pending.push((override) => done(override ?? error, override ? undefined : index))
+    else done(error, index)
+  }
+  readonly joinMulticast: DatagramSocket.NativeHandle["joinMulticast"] = () =>
+    Effect.sync(() => {
+      this.joins++
+      return () =>
+        Effect.sync(() => {
+          this.leaves++
+        })
+    })
+  close() {
+    this.closes++
+  }
+  packet(text: string, host = "127.0.0.1", port = 9876) {
+    this.events.onPacket(bytes(text), host, port)
+  }
+  error(error = failure()) {
+    this.events.onReadError(error)
+  }
+}
+
+// A handle that sends synchronously, as Bun does
+class SyncHandle extends TestHandle {
+  tried: Array<Uint8Array> = []
+  refuse = false
+  readonly trySend: DatagramSocket.NativeHandle["trySend"] = (payload) => {
+    this.tried.push(payload)
+    return !this.refuse
+  }
+}
+
+const fixture = (
+  options?: DatagramSocket.ReceiveBufferOptions & {
+    readonly onError?: (error: DatagramSocket.DatagramSocketError) => void
+  }
+) => {
+  const handles: Array<TestHandle> = []
+  return Effect.map(
+    DatagramSocket.fromNativeHandle((events) =>
+      Effect.sync(() => {
+        const handle = new TestHandle()
+        handle.events = events
+        handles.push(handle)
+        return handle
+      }), { receiveBuffer: options, onError: options?.onError }),
+    (socket) => ({ socket, handles })
+  )
+}
+
+const texts = (batch: ReadonlyArray<DatagramSocket.Datagram>) =>
+  batch.map((packet) => new TextDecoder().decode(packet.payload))
+
+const delayedOpen = Effect.gen(function*() {
+  const firstStarted = yield* Deferred.make<void>()
+  const secondStarted = yield* Deferred.make<void>()
+  const pending: Array<{ resolve: (handle: TestHandle) => void; reject: (error: Error) => void }> = []
+  const socket = yield* DatagramSocket.fromNativeHandle((events) =>
+    Effect.promise(() =>
+      new Promise<TestHandle>((resolve, reject) => {
+        const count = pending.push({
+          resolve: (handle) => {
+            handle.events = events
+            resolve(handle)
+          },
+          reject
+        })
+        Effect.runSync(Deferred.succeed(count === 1 ? firstStarted : secondStarted, undefined))
+      })
+    )
+  )
+  return { socket, pending, firstStarted, secondStarted }
+})
+
+describe("DatagramSocket native handle", () => {
+  for (const fails of [false, true]) {
+    it.effect(
+      fails ? "releases reader ownership when an orphaned open fails" : "waits for an orphaned open before rebinding",
+      () =>
+        Effect.scoped(Effect.gen(function*() {
+          const { socket, pending, firstStarted, secondStarted } = yield* delayedOpen
+          const first = yield* socket.reader.pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Deferred.await(firstStarted)
+          const interrupted = yield* Fiber.interrupt(first).pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Effect.yieldNow
+          assert.isDefined(interrupted.pollUnsafe(), "interruption must finish before open resolves")
+          const second = yield* socket.reader.pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Effect.yieldNow
+          assert.strictEqual(pending.length, 1, "a retry must not overlap an orphaned open")
+          const old = new TestHandle()
+          if (fails) pending[0]!.reject(new Error("bind failed"))
+          else pending[0]!.resolve(old)
+          yield* Deferred.await(secondStarted)
+          assert.strictEqual(pending.length, 2)
+          if (!fails) assert.strictEqual(old.closes, 1)
+          pending[1]!.resolve(new TestHandle())
+          yield* Fiber.join(second)
+        }))
+    )
+  }
+
+  it.effect("serves concurrent pulls in FIFO order", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const second = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      handles[0]!.packet("first")
+      yield* Effect.yieldNow
+      assert.isDefined(first.pollUnsafe(), "first waiter must receive the first packet")
+      assert.deepStrictEqual(texts(yield* Fiber.join(first)), ["first"])
+      assert.isUndefined(second.pollUnsafe())
+      handles[0]!.packet("second")
+      assert.deepStrictEqual(texts(yield* Fiber.join(second)), ["second"])
+    })))
+
+  it.effect("fails every parked pull on scope close", () =>
+    Effect.gen(function*() {
+      const { socket } = yield* fixture()
+      const scope = yield* Scope.make()
+      const reader = yield* socket.reader.pipe(Scope.provide(scope))
+      const first = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const second = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      yield* Scope.close(scope, Exit.void)
+      yield* Effect.yieldNow
+      assert.isDefined(first.pollUnsafe(), "scope close must wake the first waiter")
+      assert.isDefined(second.pollUnsafe(), "scope close must wake the second waiter")
+      assert.include(JSON.stringify(yield* Fiber.join(first)), "DatagramSocketClosedError")
+      assert.include(JSON.stringify(yield* Fiber.join(second)), "DatagramSocketClosedError")
+    }))
+
+  it.effect("fails the slot and queued waiters with the same terminal read error", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const first = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      assert.isUndefined(first.pollUnsafe(), "the first pull occupies the waiter slot")
+      const second = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      assert.isUndefined(second.pollUnsafe(), "the second pull waits behind the slot")
+      const error = failure()
+      handles[0]!.error(error)
+      yield* Effect.yieldNow
+      assert.isDefined(first.pollUnsafe(), "read error must wake the first waiter")
+      assert.isDefined(second.pollUnsafe(), "read error must wake the second waiter")
+      const a = yield* Fiber.join(first)
+      const b = yield* Fiber.join(second)
+      assert.isTrue(Exit.isFailure(a))
+      assert.deepStrictEqual(a, b)
+      assert.deepStrictEqual(yield* Effect.exit(reader.pull), a)
+      assert.include(JSON.stringify(a), "DatagramSocketReadError")
+    })))
+
+  it.effect("does not let an interrupted pull swallow the next packet", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(first)
+      handles[0]!.packet("next")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
+    })))
+
+  it.effect("delivers to a masked parked pull before applying its interruption", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const received: Array<string> = []
+      const waiting = yield* Effect.uninterruptible(Effect.gen(function*() {
+        received.push(...texts(yield* reader.pull))
+      })).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      waiting.interruptUnsafe()
+      assert.isUndefined(waiting.pollUnsafe(), "a masked pull must remain parked")
+      handles[0]!.packet("masked")
+      const exit = yield* Fiber.await(waiting)
+      assert.deepStrictEqual(received, ["masked"])
+      assert.isTrue(Exit.hasInterrupts(exit))
+      handles[0]!.packet("next")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
+    })))
+
+  it.effect("removes a waiter after a deferred self-interrupt", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const interrupted = yield* Effect.gen(function*() {
+        Fiber.getCurrent()!.interruptUnsafe()
+        yield* reader.pull
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(interrupted)))
+      handles[0]!.packet("next")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
+    })))
+
+  it.effect("cleans up pulls lost to timeout and race", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      let timeoutStarted = false
+      const timeoutFiber = yield* Effect.exit(Effect.timeout(
+        Effect.gen(function*() {
+          timeoutStarted = true
+          return yield* reader.pull
+        }),
+        10
+      )).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      assert.isTrue(timeoutStarted)
+      yield* TestClock.adjust(10)
+      const timedOut = yield* Fiber.join(timeoutFiber)
+      assert.isTrue(Exit.isFailure(timedOut))
+      handles[0]!.packet("after timeout")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["after timeout"])
+      const winner = yield* Deferred.make<string>()
+      let raceStarted = false
+      const raced = yield* Effect.race(
+        Effect.gen(function*() {
+          raceStarted = true
+          return yield* reader.pull
+        }),
+        Deferred.await(winner)
+      ).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isTrue(raceStarted)
+      assert.isUndefined(raced.pollUnsafe())
+      yield* Deferred.succeed(winner, "winner")
+      assert.strictEqual(yield* Fiber.join(raced), "winner")
+      handles[0]!.packet("after losers")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["after losers"])
+    })))
+
+  it.effect("resumes a parked pull inside a tracing span", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const waiting = yield* reader.pull.pipe(
+        Effect.withSpan("datagram parked pull"),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(waiting.pollUnsafe())
+      handles[0]!.packet("traced")
+      assert.deepStrictEqual(texts(yield* Fiber.join(waiting)), ["traced"])
+      handles[0]!.packet("next")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["next"])
+    })))
+
+  it.effect("removes a promoted waiter when it is interrupted", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const promoted = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const last = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(first)
+      yield* Fiber.interrupt(promoted)
+      handles[0]!.packet("for last")
+      assert.deepStrictEqual(texts(yield* Fiber.join(last)), ["for last"])
+      handles[0]!.packet("not swallowed")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["not swallowed"])
+    })))
+
+  it.effect("keeps FIFO order when a waiting pull is promoted", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const cancelled = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const first = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const second = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(cancelled)
+      const third = yield* reader.pull.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      const handle = handles[0]!
+      handle.packet("first")
+      assert.deepStrictEqual(texts(yield* Fiber.join(first)), ["first"])
+      assert.isUndefined(second.pollUnsafe())
+      assert.isUndefined(third.pollUnsafe())
+      handle.packet("second")
+      assert.deepStrictEqual(texts(yield* Fiber.join(second)), ["second"])
+      handle.packet("third")
+      assert.deepStrictEqual(texts(yield* Fiber.join(third)), ["third"])
+    })))
+
+  it.effect("slides fresh payloads and sender addresses without mutating returned datagrams", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture({ capacity: 2, strategy: "sliding" })
+      const reader = yield* socket.reader
+      const handle = handles[0]!
+      handle.packet("retained", "127.0.0.1", 1001)
+      const [retained] = yield* reader.pull
+      const cachedAddress = retained.address
+      handle.packet("evicted", "127.0.0.2", 1002)
+      handle.packet("middle", "127.0.0.3", 1003)
+      handle.packet("new", "127.0.0.4", 1004)
+      const batch = yield* reader.pull
+      assert.deepStrictEqual(texts(batch), ["middle", "new"])
+      assert.strictEqual(batch[0].address.port, 1003)
+      assert.strictEqual(batch[1].address.port, 1004)
+      assert.strictEqual(NetAddress.formatNativeHost(batch[0].address, new Map()), "127.0.0.3")
+      assert.strictEqual(NetAddress.formatNativeHost(batch[1].address, new Map()), "127.0.0.4")
+      assert.strictEqual(reader.dropped(), 1)
+      // Force later overflow after the batch has escaped the queue, too.
+      handle.packet("old", "127.0.0.5", 1005)
+      handle.packet("later", "127.0.0.6", 1006)
+      handle.packet("latest", "127.0.0.7", 1007)
+      assert.deepStrictEqual(texts(batch), ["middle", "new"])
+      assert.strictEqual(batch[0].address.port, 1003)
+      assert.strictEqual(batch[1].address.port, 1004)
+      assert.deepStrictEqual(texts([retained]), ["retained"])
+      assert.strictEqual(retained.address, cachedAddress)
+      assert.strictEqual(retained.address.port, 1001)
+      assert.deepStrictEqual(texts(yield* reader.pull), ["later", "latest"])
+    })))
+  for (const strategy of ["dropping", "sliding"] as const) {
+    it.effect(`overflow using ${strategy}`, () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { socket, handles } = yield* fixture({ capacity: 2, strategy })
+        const reader = yield* socket.reader
+        const handle = handles[0]!
+        handle.packet("a")
+        handle.packet("b")
+        handle.packet("c")
+        assert.deepStrictEqual(texts(yield* reader.pull), strategy === "dropping" ? ["a", "b"] : ["b", "c"])
+        assert.strictEqual(reader.dropped(), 1)
+        handle.packet("d")
+        assert.deepStrictEqual(texts(yield* reader.pull), ["d"])
+        assert.strictEqual(reader.dropped(), 1)
+      })))
+  }
+
+  it.effect("delivers queued packets before a sticky read error", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const error = failure()
+      handles[0]!.packet("queued")
+      handles[0]!.error(error)
+      assert.deepStrictEqual(texts(yield* reader.pull), ["queued"])
+      assert.strictEqual(Exit.isFailure(yield* Effect.exit(reader.pull)), true)
+      assert.deepStrictEqual(yield* Effect.exit(reader.pull), yield* Effect.exit(reader.pull))
+    })))
+
+  it.effect("delivers packets through a detached native callback", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const { onPacket } = handles[0]!.events
+      onPacket(bytes("detached"), "127.0.0.2", 9876)
+      const [packet] = yield* reader.pull
+      assert.deepStrictEqual(texts([packet]), ["detached"])
+      assert.strictEqual(packet.address.port, 9876)
+    })))
+
+  it.effect("keeps a detached read-error callback terminal after draining packets", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      handles[0]!.packet("queued")
+      const { onReadError } = handles[0]!.events
+      onReadError(failure())
+      assert.deepStrictEqual(texts(yield* reader.pull), ["queued"])
+      const first = yield* Effect.exit(reader.pull)
+      assert.isTrue(Exit.isFailure(first))
+      assert.include(JSON.stringify(first), "DatagramSocketReadError")
+      assert.deepStrictEqual(yield* Effect.exit(reader.pull), first)
+    })))
+
+  it.effect("keeps a detached native-close callback terminal after draining packets", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      handles[0]!.packet("queued")
+      const { onClose } = handles[0]!.events
+      onClose()
+      assert.deepStrictEqual(texts(yield* reader.pull), ["queued"])
+      const first = yield* Effect.exit(reader.pull)
+      assert.isTrue(Exit.isFailure(first))
+      assert.include(JSON.stringify(first), "DatagramSocketClosedError")
+      assert.deepStrictEqual(yield* Effect.exit(reader.pull), first)
+    })))
+
+  it.effect("forwards detached nonterminal errors without failing the reader", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const reported: Array<DatagramSocket.DatagramSocketError> = []
+      const { socket, handles } = yield* fixture({ onError: (error) => reported.push(error) })
+      const reader = yield* socket.reader
+      const error = failure()
+      const { onError } = handles[0]!.events
+      onError(error)
+      assert.deepStrictEqual(reported, [error])
+      handles[0]!.packet("still open")
+      assert.deepStrictEqual(texts(yield* reader.pull), ["still open"])
+    })))
+
+  it.effect("discards queued packets without counting them as overflow", () =>
+    Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const scope = yield* Scope.make()
+      const reader = yield* socket.reader.pipe(Scope.provide(scope))
+      handles[0]!.packet("discard")
+      assert.strictEqual(reader.dropped(), 0)
+      yield* Scope.close(scope, Exit.void)
+      assert.strictEqual(reader.dropped(), 0)
+      assert.strictEqual(handles[0]!.closes, 1)
+    }))
+
+  it.effect("fails a parked pull on scope close", () =>
+    Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const scope = yield* Scope.make()
+      const reader = yield* socket.reader.pipe(Scope.provide(scope))
+      const pending = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      handles[0]!.packet("discard")
+      assert.isTrue(Exit.isSuccess(yield* Fiber.join(pending)))
+      const parked = yield* reader.pull.pipe(Effect.exit, Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      yield* Scope.close(scope, Exit.void)
+      assert.include(JSON.stringify(yield* Fiber.join(parked)), "DatagramSocketClosedError")
+      assert.strictEqual(handles[0]!.closes, 1)
+    }))
+
+  it.effect("waits for the first reader to release before rebinding", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const scope = yield* Scope.make()
+      yield* socket.reader.pipe(Scope.provide(scope))
+      const second = yield* socket.reader.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      assert.strictEqual(handles.length, 1)
+      yield* Scope.close(scope, Exit.void)
+      yield* Fiber.join(second)
+      assert.strictEqual(handles.length, 2)
+      assert.strictEqual(handles[0]!.closes, 1)
+    })))
+
+  it.effect("waits for a reader before writing", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const writer = yield* socket.writer
+      const send = yield* writer.write({ payload: "hello", address }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      assert.strictEqual(handles.length, 0)
+      yield* socket.reader
+      yield* Fiber.join(send)
+      assert.deepStrictEqual(handles[0]!.sends[0]!.payload, bytes("hello"))
+    })))
+
+  it.effect("completes a write through trySend, and falls back to send when it refuses", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const handles: Array<SyncHandle> = []
+      const socket = yield* DatagramSocket.fromNativeHandle((events) =>
+        Effect.sync(() => {
+          const handle = new SyncHandle()
+          handle.events = events
+          handles.push(handle)
+          return handle
+        })
+      )
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      yield* writer.write({ payload: "now", address })
+      assert.deepStrictEqual(handle.tried.map((payload) => new TextDecoder().decode(payload)), ["now"])
+      assert.strictEqual(handle.sends.length, 0)
+      handle.refuse = true
+      yield* writer.write({ payload: "later", address })
+      assert.strictEqual(handle.tried.length, 2)
+      assert.deepStrictEqual(handle.sends.map((send) => new TextDecoder().decode(send.payload)), ["later"])
+      assert.strictEqual(handle.sends[0]!.destination?.host, "127.0.0.1")
+    })))
+
+  it.effect("reports a failed write's destination and stops writeAll at the first failure", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      handle.failAt = 1
+      const exit = yield* Effect.exit(writer.write({ payload: "one", address }))
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) {
+        const error = exit.cause
+        assert.include(JSON.stringify(error), "127.0.0.1")
+      }
+      handle.failAt = 3
+      const batch = [{ payload: "a", address }, { payload: "b", address }, { payload: "c", address }] as const
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(writer.writeAll(batch))))
+      assert.strictEqual(handle.sends.length, 1)
+    })))
+
+  it.effect("waits for the runtime to report a send and enriches a deferred failure", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      handle.deferSends = true
+      const first = yield* writer.write({ payload: "first", address }).pipe(
+        Effect.exit,
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(first.pollUnsafe())
+      assert.strictEqual(handle.pending.length, 1)
+      handle.pending.shift()!()
+      assert.isTrue(Exit.isSuccess(yield* Fiber.join(first)))
+      const second = yield* writer.write({ payload: "second", address }).pipe(
+        Effect.exit,
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(second.pollUnsafe())
+      assert.strictEqual(handle.pending.length, 1)
+      handle.pending.shift()!(
+        new DatagramSocket.DatagramSocketError({
+          reason: new DatagramSocket.DatagramSocketWriteError({ kind: "Unknown", cause: new Error("late failure") })
+        })
+      )
+      const exit = yield* Fiber.join(second)
+      assert.isTrue(Exit.isFailure(exit))
+      assert.include(JSON.stringify(exit), "127.0.0.1")
+    })))
+
+  it.effect("resumes a parked writeAll and reports a deferred batch failure's destination", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      handle.deferSends = true
+      const first = yield* writer.writeAll([{ payload: "a", address }, { payload: "b", address }]).pipe(
+        Effect.exit,
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(first.pollUnsafe(), "writeAll must wait for the runtime to report the batch")
+      assert.strictEqual(handle.pending.length, 1)
+      handle.pending.shift()!()
+      assert.isTrue(Exit.isSuccess(yield* Fiber.join(first)))
+      handle.failAt = 4
+      const destination = NetAddress.inetAddressFromNativeUnsafe("127.0.0.2", 2345)
+      const second = yield* writer.writeAll([{ payload: "c", address }, { payload: "d", address: destination }]).pipe(
+        Effect.exit,
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(second.pollUnsafe())
+      handle.pending.shift()!()
+      const exit = yield* Fiber.join(second)
+      assert.isTrue(Exit.isFailure(exit))
+      assert.include(JSON.stringify(exit), "127.0.0.2")
+    })))
+
+  for (const batch of [false, true]) {
+    const name = batch ? "writeAll" : "write"
+    const send = (writer: DatagramSocket.Writer, payload: string) =>
+      batch ? writer.writeAll([{ payload, address }]) : writer.write({ payload, address })
+
+    it.effect(`ignores a late completion after its parked ${name} is interrupted`, () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { socket, handles } = yield* fixture()
+        yield* socket.reader
+        const writer = yield* socket.writer
+        const handle = handles[0]!
+        handle.deferSends = true
+        const release = yield* Deferred.make<void>()
+        let written: Exit.Exit<void, DatagramSocket.DatagramSocketError> | undefined
+        // The fiber outlives its interrupted write and parks again, so a late
+        // completion that still resumed it would end the await early
+        const fiber = yield* Effect.uninterruptible(Effect.gen(function*() {
+          written = yield* Effect.exit(Effect.interruptible(send(writer, "interrupted")))
+          yield* Deferred.await(release)
+        })).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        assert.strictEqual(handle.pending.length, 1)
+        fiber.interruptUnsafe()
+        assert.isDefined(written, "interruption must not wait for the runtime")
+        assert.isTrue(Exit.hasInterrupts(written!))
+        handle.pending.shift()!()
+        yield* Effect.yieldNow
+        assert.isUndefined(fiber.pollUnsafe(), "a late completion must not resume the fiber")
+        yield* Deferred.succeed(release, undefined)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+        handle.deferSends = false
+        yield* send(writer, "next")
+        assert.deepStrictEqual(handle.sends.map(({ payload }) => new TextDecoder().decode(payload)), [
+          "interrupted",
+          "next"
+        ])
+      })))
+
+    it.effect(`completes a masked parked ${name} before applying its interruption`, () =>
+      Effect.scoped(Effect.gen(function*() {
+        const { socket, handles } = yield* fixture()
+        yield* socket.reader
+        const writer = yield* socket.writer
+        const handle = handles[0]!
+        handle.deferSends = true
+        let completed = false
+        const waiting = yield* Effect.uninterruptible(Effect.gen(function*() {
+          yield* send(writer, "masked")
+          completed = true
+        })).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        waiting.interruptUnsafe()
+        assert.isUndefined(waiting.pollUnsafe(), "a masked write must stay parked")
+        handle.pending.shift()!()
+        const exit = yield* Fiber.await(waiting)
+        assert.isTrue(completed)
+        assert.isTrue(Exit.hasInterrupts(exit))
+      })))
+  }
+
+  for (const omitIndex of [false, true]) {
+    it.effect(
+      omitIndex ? "leaves a batch failure address unset without an index" : "reports the failing batch destination",
+      () =>
+        Effect.scoped(Effect.gen(function*() {
+          const { socket, handles } = yield* fixture()
+          yield* socket.reader
+          const writer = yield* socket.writer
+          const handle = handles[0]!
+          handle.failAt = 2
+          handle.omitIndex = omitIndex
+          const destination = NetAddress.inetAddressFromNativeUnsafe("127.0.0.2", 2345)
+          const exit = yield* Effect.exit(writer.writeAll([
+            { payload: "first", address },
+            { payload: "second", address: destination },
+            { payload: "third", address }
+          ]))
+          assert.isTrue(Exit.isFailure(exit))
+          assert.strictEqual(handle.sends.length, 1)
+          assert.strictEqual(handle.sendCount, 2)
+          if (omitIndex) assert.notInclude(JSON.stringify(exit), "\"address\"")
+          else assert.include(JSON.stringify(exit), "127.0.0.2")
+        }))
+    )
+  }
+
+  it.effect("ignores errors thrown by onError", () =>
+    Effect.scoped(Effect.gen(function*() {
+      let count = 0
+      const { socket, handles } = yield* fixture({
+        onError: () => {
+          count++
+          throw new Error("listener")
+        }
+      })
+      yield* socket.reader
+      handles[0]!.events.onError(failure())
+      handles[0]!.events.onError(failure())
+      assert.strictEqual(count, 2)
+    })))
+
+  it.effect("leaves a multicast group when its scope closes", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const group = NetAddress.ipv4FromBytesUnsafe(new Uint8Array([224, 0, 0, 1])) as NetAddress.MulticastAddress<
+        NetAddress.Ipv4Address
+      >
+      yield* Effect.scoped(reader.joinMulticast({ group }))
+      assert.strictEqual(handles[0]!.joins, 1)
+      assert.strictEqual(handles[0]!.leaves, 1)
+    })))
+
+  it.effect("caches the bound address and reply destination without eager parsing", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      assert.strictEqual(reader.address, reader.address)
+      const handle = handles[0]!
+      handle.packet("reply", "127.0.0.2", 3000)
+      const [packet] = yield* reader.pull
+      assert.strictEqual(packet.address, packet.address)
+      const writer = yield* socket.writer
+      yield* writer.write({ payload: packet.payload, address: packet })
+      assert.strictEqual(handle.sends[0]!.destination?.host, "127.0.0.2")
+      assert.strictEqual(handle.sends[0]!.destination?.port, 3000)
+    })))
+
+  it.effect("closes a handle that arrives after interrupted acquisition", () =>
+    Effect.scoped(Effect.gen(function*() {
+      let finish!: (handle: TestHandle) => void
+      const opened = yield* Deferred.make<void>()
+      const handle = new TestHandle()
+      const socket = yield* DatagramSocket.fromNativeHandle((events) => {
+        handle.events = events
+        return Effect.promise(() =>
+          new Promise<TestHandle>((resolve) => {
+            finish = resolve
+            Effect.runSync(Deferred.succeed(opened, undefined))
+          })
+        )
+      })
+      const fiber = yield* socket.reader.pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Deferred.await(opened)
+      const interrupted = yield* Fiber.interrupt(fiber).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Effect.yieldNow
+      assert.isDefined(interrupted.pollUnsafe())
+      finish(handle)
+      yield* Fiber.join(interrupted)
+      yield* Effect.yieldNow
+      assert.strictEqual(handle.closes, 1)
+    })))
+})

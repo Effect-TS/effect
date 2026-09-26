@@ -58,6 +58,7 @@
     }
   },
   "scripts": {
+    "benchmark:datagram": "node benchmark/DatagramSocket.ts",
     "benchmark:socket": "node benchmark/Socket.ts",
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",
