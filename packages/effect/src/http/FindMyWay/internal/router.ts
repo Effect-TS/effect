@@ -844,10 +844,6 @@ function trimLastSlash(path: string): Router.PathInput {
   return path as Router.PathInput
 }
 
-// Params are built by assignment rather than with `new Function`: string code
-// generation is rejected (and reported) under CSP `unsafe-eval` restrictions and
-// in runtimes such as Cloudflare Workers, and V8 keeps null-prototype objects in
-// dictionary mode either way, so a compiled literal is not faster.
 function makeCreateParams(
   params: ReadonlyArray<string>
 ): (paramsArray: ReadonlyArray<string>) => Record<string, string> {
