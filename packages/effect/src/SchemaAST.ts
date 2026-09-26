@@ -2783,21 +2783,6 @@ export const Objects: new(
     this.propertySignatures = propertySignatures
     this.indexSignatures = indexSignatures
     this.encodingChecks = encodingChecks
-
-    // Duplicate property signatures
-    const seen = new Set<PropertyKey>()
-    const duplicates: Array<PropertyKey> = []
-    for (const propertySignature of propertySignatures) {
-      const name = propertySignature.name
-      if (seen.has(name)) {
-        duplicates.push(name)
-      } else {
-        seen.add(name)
-      }
-    }
-    if (duplicates.length > 0) {
-      throw new Error(`Duplicate identifiers: ${JSON.stringify(duplicates)}. ts(2300)`)
-    }
   }
   /** @internal */
   getParser(
@@ -3245,6 +3230,11 @@ export function structWithRest(ast: Objects, records: ReadonlyArray<Objects>): O
   let indexSignatures = ast.indexSignatures
   let checks = ast.checks
   for (const record of records) {
+    for (const propertySignature of record.propertySignatures) {
+      if (propertySignatures.some((ps) => ps.name === propertySignature.name)) {
+        throw new Error(`Duplicate identifier: ${JSON.stringify(propertySignature.name)}. ts(2300)`)
+      }
+    }
     propertySignatures = propertySignatures.concat(record.propertySignatures)
     indexSignatures = indexSignatures.concat(record.indexSignatures)
     checks = combineChecks(checks, record.checks)
@@ -4230,15 +4220,9 @@ export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annota
   )
 }
 
-function modifyOwnPropertyDescriptors<A extends AST>(
-  ast: A,
-  f: (
-    d: { [P in keyof A]: TypedPropertyDescriptor<A[P]> }
-  ) => void
-): A {
-  const d = Object.getOwnPropertyDescriptors(ast)
-  f(d)
-  return Object.create(Object.getPrototypeOf(ast), d)
+function copy<A extends AST>(ast: A): Types.Mutable<A> {
+  // AST copies preserve the prototype and enumerable values, not property descriptors.
+  return Object.assign(Object.create(Object.getPrototypeOf(ast)), ast)
 }
 
 const contextOwners = new WeakMap<AST, AST>()
@@ -4253,9 +4237,9 @@ export function replaceEncoding<A extends AST>(ast: A, encoding: Encoding | unde
   if (ast.encoding === encoding) {
     return ast
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.encoding.value = encoding
-  })
+  const out = copy(ast)
+  out.encoding = encoding
+  return out
 }
 
 /** @internal */
@@ -4267,10 +4251,9 @@ export function replaceContext<A extends AST>(ast: A, context: Context | undefin
   if (owner.context === context) {
     return owner as A
   }
-  const out = modifyOwnPropertyDescriptors(ast, (d) => {
-    d.context.value = context
-  })
-  contextOwners.set(out, owner)
+  const out = copy(ast)
+  out.context = context
+  contextOwners.set(out as A, owner)
   return out
 }
 
@@ -4285,9 +4268,9 @@ export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.
     const last = ast.checks[ast.checks.length - 1]
     return replaceChecks(ast, Arr.append(ast.checks.slice(0, -1), last.annotate(annotations)))
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.annotations.value = { ...d.annotations.value, ...annotations }
-  })
+  const out = copy(ast)
+  out.annotations = { ...ast.annotations, ...annotations }
+  return out
 }
 
 /** @internal */
@@ -4298,9 +4281,9 @@ export function replaceChecks<A extends AST>(ast: A, checks: Checks | undefined)
   if (ast.checks === checks) {
     return ast
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.checks.value = checks
-  })
+  const out = copy(ast)
+  out.checks = checks
+  return out
 }
 
 /** @internal */
@@ -4395,17 +4378,21 @@ export function brand(ast: AST, brand: string): AST {
 export function mapOrSame<A>(as: Arr.NonEmptyReadonlyArray<A>, f: (a: A) => A): Arr.NonEmptyReadonlyArray<A>
 export function mapOrSame<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
 export function mapOrSame<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
-  let changed = false
-  const out: Array<A> = new Array(as.length)
+  let out: Array<A> | undefined
   for (let i = 0; i < as.length; i++) {
     const a = as[i]
     const fa = f(a)
-    if (fa !== a) {
-      changed = true
+    if (out) {
+      out[i] = fa
+    } else if (fa !== a) {
+      out = new Array(as.length)
+      for (let j = 0; j < i; j++) {
+        out[j] = as[j]
+      }
+      out[i] = fa
     }
-    out[i] = fa
   }
-  return changed ? out : as
+  return out ?? as
 }
 
 /** @internal */
@@ -4495,12 +4482,14 @@ function parseParameter(ast: AST): {
   function go(ast: AST) {
     switch (ast._tag) {
       case "Literal":
-        if (Predicate.isPropertyKey(ast.literal)) {
+        if (Predicate.isPropertyKey(ast.literal) && !literals.includes(ast.literal)) {
           literals.push(ast.literal)
         }
         return
       case "UniqueSymbol":
-        literals.push(ast.symbol)
+        if (!literals.includes(ast.symbol)) {
+          literals.push(ast.symbol)
+        }
         return
       case "Never":
         return
@@ -4592,9 +4581,6 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
  * @since 4.0.0
  */
 export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
-  if (ast.encoding) {
-    return toType(replaceEncoding(ast, undefined))
-  }
   const out: any = ast
   const type = out.recur?.(toType) ?? out
   const encodingChecks: Checks | undefined = type.encodingChecks
@@ -4604,12 +4590,13 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
       : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
       ? extractStructuralChecks(encodingChecks)
       : undefined
-    return modifyOwnPropertyDescriptors(type, (d) => {
-      d.encodingChecks.value = undefined
-      d.checks.value = combineChecks(type.checks, checks)
-    })
+    const copyOfType = copy(type)
+    copyOfType.encoding = undefined
+    copyOfType.encodingChecks = undefined
+    copyOfType.checks = combineChecks(type.checks, checks)
+    return copyOfType
   }
-  return type
+  return type.encoding ? replaceEncoding(type, undefined) : type
 })
 
 /**

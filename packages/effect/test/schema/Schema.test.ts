@@ -622,35 +622,16 @@ Missing key
   })
 
   describe("Struct", () => {
-    it("should throw an error if there are duplicate property signatures", () => {
-      throws(
-        () =>
-          new SchemaAST.Objects(
-            [
-              new SchemaAST.PropertySignature("a", Schema.String.ast),
-              new SchemaAST.PropertySignature("b", Schema.String.ast),
-              new SchemaAST.PropertySignature("c", Schema.String.ast),
-              new SchemaAST.PropertySignature("a", Schema.String.ast),
-              new SchemaAST.PropertySignature("c", Schema.String.ast)
-            ],
-            []
-          ),
-        new Error(`Duplicate identifiers: ["a","c"]. ts(2300)`)
+    it("allows duplicate property signatures in the low-level AST constructor", () => {
+      const ast = new SchemaAST.Objects(
+        [
+          new SchemaAST.PropertySignature("a", Schema.String.ast),
+          new SchemaAST.PropertySignature("b", Schema.String.ast),
+          new SchemaAST.PropertySignature("a", Schema.Number.ast)
+        ],
+        []
       )
-    })
-
-    it("should throw an error if a large struct has duplicate property signatures", () => {
-      throws(
-        () =>
-          new SchemaAST.Objects(
-            Array.from(
-              { length: 32 },
-              (_, index) => new SchemaAST.PropertySignature(`field${index === 31 ? 0 : index}`, Schema.String.ast)
-            ),
-            []
-          ),
-        new Error(`Duplicate identifiers: ["field0"]. ts(2300)`)
-      )
+      deepStrictEqual(ast.propertySignatures.map((propertySignature) => propertySignature.name), ["a", "b", "a"])
     })
 
     describe("onExcessProperty", () => {
@@ -4205,6 +4186,11 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     describe("Literals keys", () => {
+      it("deduplicates repeated literal keys", () => {
+        const schema = Schema.Record(Schema.Literals(["a", "a", "b"]), Schema.Number)
+        deepStrictEqual(schema.ast.propertySignatures.map((propertySignature) => propertySignature.name), ["a", "b"])
+      })
+
       it("Record(Literals, Number)", async () => {
         const schema = Schema.Record(Schema.Literals(["a", "b"]), Schema.Number)
         const asserts = new TestSchema.Asserts(schema)
@@ -5008,6 +4994,17 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("StructWithRest", () => {
+    it("should throw an error if there are duplicate property signatures", () => {
+      throws(
+        () =>
+          Schema.StructWithRest(
+            Schema.Struct({ a: Schema.String }),
+            [Schema.Record(Schema.Literals(["a", "b"]), Schema.Number)]
+          ),
+        new Error(`Duplicate identifier: "a". ts(2300)`)
+      )
+    })
+
     it("should throw an error if there are encodings", () => {
       throws(
         () =>
