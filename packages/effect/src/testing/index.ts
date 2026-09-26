@@ -17,4 +17,9 @@ export * as TestConsole from "./TestConsole.ts"
 /**
  * @since 4.0.0
  */
+export * as TestCrypto from "./TestCrypto.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as TestSchema from "./TestSchema.ts"
