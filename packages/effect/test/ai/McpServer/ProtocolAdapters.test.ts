@@ -374,6 +374,11 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
           })
       })
       yield* server.addTool({
+        tool: makeTool("internal-failure", "Fails with an internal error"),
+        annotations: Context.empty(),
+        handle: () => Effect.fail(new McpSchema.InternalError({ message: "database unavailable" }))
+      })
+      yield* server.addTool({
         tool: makeTool("arguments", "Argument normalization probe"),
         annotations: Context.empty(),
         handle: (payload) =>
@@ -1925,6 +1930,30 @@ describe("McpServer protocol adapters", () => {
       )
       assert.strictEqual(fixture.state.audioInvocations, 1)
       assert.strictEqual(fixture.state.resourceLinkInvocations, 1)
+    }))
+
+  it.effect("should not report a tool's internal error as invalid params", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+      const current = yield* initialize(fixture.post, "2025-11-25")
+      const currentResult = resultOf(yield* current.request("tools/call", { name: "internal-failure" }))
+      assert.isTrue(currentResult.isError)
+      assert.deepStrictEqual(currentResult.content, [{ type: "text", text: "database unavailable" }])
+
+      for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const error = errorOf(yield* client.request("tools/call", { name: "internal-failure" }))
+        assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
+        assert.strictEqual(error.message, "database unavailable")
+      }
+
+      const response = yield* fixture.post(
+        modernRequest(51, "tools/call", { name: "internal-failure", arguments: {} }),
+        { ...modernHeaders("tools/call"), "Mcp-Name": "internal-failure" }
+      )
+      const modernResult = resultOf(yield* readJsonRpcResponse(response))
+      assert.isTrue(modernResult.isError)
+      assert.deepStrictEqual(modernResult.content, [{ type: "text", text: "database unavailable" }])
     }))
 
   it.effect("should reject invalid structured content at the protocol serialization boundary", () =>

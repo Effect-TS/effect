@@ -1971,6 +1971,29 @@ describe("McpServer", () => {
         assert.deepStrictEqual(logged, [])
       }))
 
+    it.effect("encodes declared Error failures without a message", () =>
+      Effect.gen(function*() {
+        class NoteNotFound extends Schema.TaggedError<NoteNotFound>()("NoteNotFound", {
+          id: Schema.String
+        }) {}
+        const toolkit = Toolkit.make(Tool.make("GetNote", {
+          parameters: Schema.Struct({ id: Schema.String }),
+          failure: NoteNotFound
+        }))
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerToolkit(toolkit).pipe(
+          Effect.provideService(McpServer.McpServer, server),
+          Effect.provide(toolkit.toLayer({ GetNote: ({ id }) => Effect.fail(new NoteNotFound({ id })) }))
+        )
+        const result = yield* server.callTool({ name: "GetNote", arguments: { id: "n1" } }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+
+        assert.isTrue(result.isError)
+        assert.isUndefined(result.structuredContent)
+        assert.strictEqual(toolResultText(result), JSON.stringify({ _tag: "NoteNotFound", id: "n1" }))
+      }))
+
     it.effect("scrubs and records serialization failures in declared non-Error failures", () =>
       Effect.gen(function*() {
         const { client, logged, reported } = yield* makeToolkitTestClient(TestToolkit.of({
