@@ -974,7 +974,6 @@ function toEncodingAST(ast: SchemaAST.AST, _tag: HttpApiSchema.Encoding["_tag"])
     case "Uint8Array":
       return Uint8ArrayEncoding.ast
     case "Text":
-      return Schema.String.ast
     case "FormUrlEncoded":
     case "Json":
       return ast

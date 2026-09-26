@@ -323,6 +323,53 @@ describe("OpenApi", () => {
     assert.property(streamExtension, "errorSchema")
   })
 
+  it("emits the encoded schema of text bodies", () => {
+    class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}) {}
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          payload: Schema.String.check(Schema.isPattern(/^[a-z]+$/u)).pipe(HttpApiSchema.asText()),
+          success: Schema.Literal("Created").pipe(HttpApiSchema.asText()),
+          error: [
+            Schema.Literal("Bad Request").pipe(HttpApiSchema.asText(), HttpApiSchema.status(400)),
+            Schema.Literal("Invalid Cursor").pipe(HttpApiSchema.asText(), HttpApiSchema.status(400)),
+            Schema.Literal("Not Found").pipe(
+              Schema.decodeTo(
+                NotFound,
+                SchemaTransformation.transform({
+                  decode: () => ({ _tag: "NotFound" as const }),
+                  encode: () => "Not Found" as const
+                })
+              ),
+              HttpApiSchema.asText(),
+              HttpApiSchema.status(404)
+            )
+          ]
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const operation = spec.paths["/create"]?.post
+
+    assert.deepStrictEqual(operation?.requestBody?.content["text/plain"]?.schema, {
+      type: "string",
+      pattern: "^[a-z]+$"
+    })
+    assert.deepStrictEqual(operation?.responses[200]?.content?.["text/plain"]?.schema, {
+      type: "string",
+      enum: ["Created"]
+    })
+    assert.deepStrictEqual(operation?.responses[400]?.content?.["text/plain"]?.schema, {
+      type: "string",
+      enum: ["Bad Request", "Invalid Cursor"]
+    })
+    assert.deepStrictEqual(operation?.responses[404]?.content?.["text/plain"]?.schema, {
+      $ref: "#/components/schemas/NotFoundEncoded"
+    })
+    assert.deepStrictEqual(spec.components.schemas.NotFoundEncoded, { type: "string", enum: ["Not Found"] })
+  })
+
   it("emits encoded success response headers", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
