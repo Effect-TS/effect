@@ -152,6 +152,30 @@ describe("OpenApi representation v2 consumer", () => {
     })
   })
 
+  it("retains referenced parameter schemas without emitting the parameter container", () => {
+    const Filter = Schema.Struct({ value: Schema.String }).annotate({ identifier: "Filter" })
+    const Query = Schema.Struct({ filter: Filter }).annotate({ identifier: "Query" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("list", "/list", { query: Query })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/list"]?.get?.parameters, [
+      { name: "filter", in: "query", required: true, schema: { $ref: "#/components/schemas/Filter" } }
+    ])
+    assert.deepStrictEqual(spec.components.schemas, {
+      Filter: {
+        type: "object",
+        properties: { value: { type: "string" } },
+        required: ["value"],
+        additionalProperties: false
+      }
+    })
+  })
+
   it("caches generated specs by API and options identity", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
