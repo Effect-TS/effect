@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { type Context, Schema } from "effect"
+import { type Context, Effect, Schema } from "effect"
 import {
   HttpApi,
   HttpApiEndpoint,
@@ -111,6 +111,28 @@ describe("OpenApi", () => {
     assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [
       { name: "second", in: "query", required: true, schema: { type: "string", enum: ["second"] } },
       { name: "first", in: "query", required: true, schema: { type: "string", enum: ["first"] } }
+    ])
+  })
+
+  it("marks parameters optional when their encoded key is optional", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("list", "/list", {
+          query: {
+            limit: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("10"))),
+            search: Schema.String
+          },
+          headers: {
+            "x-page-size": Schema.FiniteFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("10")))
+          }
+        })
+      )
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/list"]?.get?.parameters, [
+      { name: "x-page-size", in: "header", required: false, schema: { type: "string" } },
+      { name: "limit", in: "query", required: false, schema: { type: "string" } },
+      { name: "search", in: "query", required: true, schema: { type: "string" } }
     ])
   })
 
@@ -283,6 +305,25 @@ describe("OpenApi", () => {
         required: true
       },
       "x-optional": {
+        schema: { type: "string" },
+        required: false
+      }
+    })
+  })
+
+  it("marks response headers optional when their encoded key is optional", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("success", "/success", {
+          success: HttpApiSchema.WithHeaders(Schema.String, {
+            "X-Total": Schema.FiniteFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("0")))
+          })
+        })
+      )
+    )
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).paths["/success"]?.get?.responses[200]?.headers, {
+      "x-total": {
         schema: { type: "string" },
         required: false
       }
