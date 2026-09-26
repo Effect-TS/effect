@@ -13,6 +13,7 @@
     "@effect/platform-bun": "workspace:*",
     "@effect/platform-node": "workspace:*",
     "@effect/sql-clickhouse": "workspace:*",
+    "@effect/sql-clickhouse-native": "workspace:*",
     "@effect/sql-d1": "workspace:*",
     "@effect/sql-libsql": "workspace:*",
     "@effect/sql-mssql": "workspace:*",

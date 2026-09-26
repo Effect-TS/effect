@@ -20,6 +20,7 @@
     { "path": "packages/platform/node" },
     { "path": "packages/platform/node-shared" },
     { "path": "packages/sql/clickhouse" },
+    { "path": "packages/sql/clickhouse-native" },
     { "path": "packages/sql/d1" },
     { "path": "packages/sql/libsql" },
     { "path": "packages/sql/mysql2" },
