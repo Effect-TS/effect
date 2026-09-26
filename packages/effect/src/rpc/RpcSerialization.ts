@@ -171,10 +171,14 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
             if (isBufferSizeExceeded(nlIndex - position, maxBufferSize)) {
               failMaxBufferSize(maxBufferSize)
             }
-            const item = JSON.parse(buffer.slice(position, nlIndex))
-            items.push(item)
+            const line = buffer.slice(position, nlIndex)
             position = nlIndex + 1
             nlIndex = buffer.indexOf("\n", position)
+            try {
+              items.push(JSON.parse(line))
+            } catch {
+              continue
+            }
           }
           buffer = buffer.slice(position)
           if (isBufferSizeExceeded(buffer.length, maxBufferSize)) {
@@ -297,7 +301,9 @@ function decodeJsonRpcRaw(
     }
     const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
     for (let i = 0; i < decoded.length; i++) {
-      const message = decodeJsonRpcMessage(decoded[i])
+      const item = decoded[i]
+      if (!Predicate.isObject(item)) continue
+      const message = decodeJsonRpcMessage(item)
       messages.push(message)
       if (message._tag === "Request" && !message.isNotification) {
         batch.size++
@@ -306,13 +312,15 @@ function decodeJsonRpcRaw(
     }
     return messages
   }
-  return [decodeJsonRpcMessage(decoded)]
+  return Predicate.isObject(decoded) ? [decodeJsonRpcMessage(decoded)] : []
 }
 
 function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded {
   if (Object.hasOwn(decoded, "method")) {
     const request = decoded as JsonRpcRequest
-    if (Predicate.isNullish(request.id) && request.method.startsWith("@effect/rpc/")) {
+    if (
+      Predicate.isNullish(request.id) && Predicate.isString(request.method) && request.method.startsWith("@effect/rpc/")
+    ) {
       const tag = request.method.slice("@effect/rpc/".length) as
         | RpcMessage.FromServerEncoded["_tag"]
         | Exclude<RpcMessage.FromClientEncoded["_tag"], "Request">
