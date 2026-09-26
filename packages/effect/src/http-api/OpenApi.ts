@@ -438,7 +438,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
                 op.responses[status].headers ??= {}
                 InternalRecord.assignProperty(op.responses[status].headers, name, {
                   schema: {},
-                  required: !SchemaAST.isOptional(ps.type)
+                  required: !SchemaAST.isOptional(SchemaAST.getLastEncoding(ps.type))
                 })
                 pathOps.push({
                   _tag: "parameter",
@@ -535,7 +535,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
                 name: String(ps.name),
                 in: i,
                 schema: {},
-                required: i === "path" || !SchemaAST.isOptional(ps.type)
+                required: i === "path" || !SchemaAST.isOptional(SchemaAST.getLastEncoding(ps.type))
               })
               pathOps.push({
                 _tag: "parameter",
