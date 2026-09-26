@@ -22,6 +22,11 @@ describe("Brand", () => {
 
     type PositiveInt = number & Brand.Brand<"Int"> & Brand.Brand<"Positive">
     expect<Brand.Brand.Keys<PositiveInt>>().type.toBe<"Int" | "Positive">()
+
+    type Distributed =
+      | (Brand.Branded<string, "MIDIPortId"> & Brand.Brand<"input">)
+      | (Brand.Branded<string, "MIDIPortId"> & Brand.Brand<"output">)
+    expect<Brand.Brand.Keys<Distributed>>().type.toBe<"MIDIPortId" | "input" | "output">()
   })
 
   it("Brands", () => {
