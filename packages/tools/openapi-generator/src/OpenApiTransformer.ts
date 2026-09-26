@@ -100,6 +100,28 @@ const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, stre
 }
 
 /**
+ * Renders the query parameter pipeline shared by every generated request path.
+ *
+ * Non-exploded form arrays encode their elements before joining them. Operations
+ * without these parameters keep the existing structured URL parameter pipeline.
+ */
+const queryParamsPipelineSource = (operation: ParsedOperation, paramsAccessor: string): string | undefined => {
+  if (operation.urlParams.length === 0) {
+    return undefined
+  }
+  const props = operation.urlParams.map((param) =>
+    `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}] as any`
+  )
+  if (operation.urlParamsCsv.length > 0) {
+    return `__setFormQueryParams({ ${props.join(", ")} }, ${JSON.stringify(operation.urlParamsCsv)})`
+  }
+  return `HttpClientRequest.setUrlParams({ ${props.join(", ")} })`
+}
+
+const hasCsvUrlParams = (operations: ReadonlyArray<ParsedOperation>): boolean =>
+  operations.some((operation) => operation.urlParamsCsv.length > 0)
+
+/**
  * Create the transformer used for schema-backed HttpClient output.
  *
  * **Details**
@@ -275,6 +297,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (hasCsvUrlParams(operations)) {
+      helpers.push(formQueryArraySource)
+    }
     if (operations.some((operation) => operation.pathIds.length > 0)) {
       helpers.push(pathRequestSource)
     }
@@ -350,12 +375,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -416,11 +438,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -458,11 +478,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -515,6 +533,9 @@ export const make = (
         `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
         `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
       )
+      if (hasCsvUrlParams(operations)) {
+        imports.push(`import * as UrlParams from "effect/http/UrlParams"`)
+      }
       return imports.join("\n")
     },
     toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
@@ -707,6 +728,9 @@ ${clientErrorSource(name)}`
     }
 
     const helpers: Array<string> = [commonSource]
+    if (hasCsvUrlParams(operations)) {
+      helpers.push(formQueryArraySource)
+    }
     if (operations.some((operation) => operation.pathIds.length > 0)) {
       helpers.push(pathRequestSource)
     }
@@ -787,12 +811,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -852,11 +873,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -894,11 +913,9 @@ export const make = (
 
     if (operation.params) {
       const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-      if (operation.urlParams.length > 0) {
-        const props = operation.urlParams.map(
-          (param) => `"${param}": ${paramsAccessor}["${param}"] as any`
-        )
-        pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
+      const queryParamsPipeline = queryParamsPipelineSource(operation, paramsAccessor)
+      if (queryParamsPipeline !== undefined) {
+        pipeline.push(queryParamsPipeline)
       }
       if (operation.headers.length > 0) {
         const props = operation.headers.map(
@@ -945,6 +962,9 @@ export const make = (
         `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
         `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
       )
+      if (hasCsvUrlParams(operations)) {
+        imports.push(`import * as UrlParams from "effect/http/UrlParams"`)
+      }
       return imports.join("\n")
     },
     toTypes: (importName, name, parsed) => operationsToInterface(importName, name, parsed.operations),
@@ -998,6 +1018,22 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
     }
     return Effect.succeed(method(path))
   })`
+
+const formQueryArraySource = `const __setFormQueryParams = (
+    params: Record<string, unknown>,
+    csvNames: ReadonlyArray<string>,
+  ) => (request: HttpClientRequest.HttpClientRequest): HttpClientRequest.HttpClientRequest => {
+    let query = UrlParams.empty
+    for (const [name, value] of Object.entries(params)) {
+      const comma = csvNames.includes(name) && Array.isArray(value) && value.every((item) =>
+        item === null || item === undefined || typeof item === "string" || typeof item === "number" || typeof item === "boolean"
+      )
+      query = UrlParams.appendAll(query, UrlParams.fromInput({ [name]: value } as any, {
+        arrayFormat: comma ? "comma" : "repeat",
+      }))
+    }
+    return HttpClientRequest.setUrlParams(request, query)
+  }`
 
 const commonSource = `const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(

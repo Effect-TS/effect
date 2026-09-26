@@ -1141,6 +1141,22 @@ export interface OpenAPISpecParameter {
   schema: object
   required: boolean
   description?: string
+  /**
+   * Serialization style used to encode the parameter value.
+   *
+   * **Details**
+   *
+   * Defaults to `"form"` for query parameters and `"simple"` for path and header parameters.
+   */
+  style?: "matrix" | "label" | "form" | "simple" | "spaceDelimited" | "pipeDelimited" | "deepObject"
+  /**
+   * Whether array and object values produce one parameter per field or a single delimited value.
+   *
+   * **Details**
+   *
+   * Defaults to `true` for the `"form"` style and `false` for every other style.
+   */
+  explode?: boolean
 }
 
 /**
