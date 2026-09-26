@@ -2710,6 +2710,50 @@ describe("McpServer", () => {
   })
 
   describe("stdio", () => {
+    it.effect("should give each layerStdio server its own protocol in one layer graph", () =>
+      Effect.gen(function*() {
+        const encoder = new TextEncoder()
+        const decoder = new TextDecoder()
+        const initialize = (id: number) =>
+          encoder.encode(`${
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id,
+              method: "initialize",
+              params: {
+                protocolVersion: "2025-11-25",
+                capabilities: {},
+                clientInfo: { name: "TestClient", version: "1.0.0" }
+              }
+            })
+          }\n`)
+        const makeStdio = (id: number, stdout: Queue.Queue<string | Uint8Array>) =>
+          Stdio.layerTest({
+            stdin: Stream.make(initialize(id)).pipe(Stream.concat(Stream.never)),
+            stdout: () => Sink.forEach((chunk) => Queue.offer(stdout, chunk))
+          })
+        const server = (name: string) =>
+          McpServer.layerStdio({ name, version: "1.0.0", protocols: [McpProtocol.v2025_11_25] })
+        const read = (stdout: Queue.Queue<string | Uint8Array>) =>
+          Queue.take(stdout).pipe(
+            Effect.map((chunk) => JSON.parse(typeof chunk === "string" ? chunk : decoder.decode(chunk)))
+          )
+
+        const stdoutA = yield* Queue.unbounded<string | Uint8Array>()
+        const stdoutB = yield* Queue.unbounded<string | Uint8Array>()
+        yield* Layer.build(Layer.mergeAll(
+          server("A").pipe(Layer.provide(makeStdio(1, stdoutA))),
+          server("B").pipe(Layer.provide(makeStdio(2, stdoutB)))
+        ))
+
+        const responseA = yield* read(stdoutA)
+        const responseB = yield* read(stdoutB)
+        strictEqual(responseA.id, 1)
+        strictEqual(responseA.result.serverInfo.name, "A")
+        strictEqual(responseB.id, 2)
+        strictEqual(responseB.result.serverInfo.name, "B")
+      }))
+
     it.effect("should deliver stateless request notifications over stdio", () =>
       Effect.gen(function*() {
         const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
