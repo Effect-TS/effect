@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
+import { Clock, Duration, Effect, Fiber, Layer, Redacted, Ref, Schema, Stream } from "effect"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
@@ -141,6 +141,74 @@ Missing key
     }))
 
   describe("tracer", () => {
+    it.effect("redacts query values in both URL attributes without changing the transport URL", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: URL | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+        const secret = Redacted.make("secret &+#/é")
+        const request = HttpClientRequest.get("https://example.test/path?token=existing#fragment").pipe(
+          HttpClientRequest.setUrlParam("token", secret),
+          HttpClientRequest.appendUrlParam("token", "public"),
+          HttpClientRequest.appendUrlParam("token", secret),
+          HttpClientRequest.setUrlParams({ nested: { token: secret }, page: 2 }),
+          HttpClientRequest.appendUrlParams({ array: [secret, "visible"] })
+        )
+
+        yield* client.execute(request).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(sentUrl !== undefined)
+        assert(clientSpan !== undefined)
+        assert.deepStrictEqual(sentUrl.searchParams.getAll("token"), [
+          "existing",
+          Redacted.value(secret),
+          "public",
+          Redacted.value(secret)
+        ])
+        assert.strictEqual(sentUrl.searchParams.get("nested[token]"), Redacted.value(secret))
+        assert.deepStrictEqual(sentUrl.searchParams.getAll("array"), [Redacted.value(secret), "visible"])
+        const query = "token=existing&nested%5Btoken%5D=<redacted>&page=2&token=<redacted>" +
+          "&token=public&token=<redacted>&array=<redacted>&array=visible"
+        assert.strictEqual(clientSpan.attributes.get("url.query"), query)
+        assert.strictEqual(clientSpan.attributes.get("url.full"), `https://example.test/path?${query}#fragment`)
+        assert.strictEqual(clientSpan.attributes.get("url.path"), "/path")
+        assert.strictEqual(clientSpan.attributes.get("url.scheme"), "https")
+        assert.strictEqual(request.urlParams.params.find(([key]) => key === "token")?.[1], secret)
+        assert.isFalse(JSON.stringify(request).includes("secret"))
+      }))
+
+    it.effect("keeps ordinary URL attributes unchanged and omits an empty query", () =>
+      Effect.gen(function*() {
+        const spans: Array<Tracer.NativeSpan> = []
+        const tracer = Tracer.make({
+          span(options) {
+            const span = new Tracer.NativeSpan(options)
+            spans.push(span)
+            return span
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        )
+        yield* client.get("https://example.test/path?text=a%20b#fragment").pipe(
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* client.get("https://example.test/path").pipe(Effect.provideService(Tracer.Tracer, tracer))
+        assert.strictEqual(spans[0].attributes.get("url.full"), "https://example.test/path?text=a%20b#fragment")
+        assert.strictEqual(spans[0].attributes.get("url.query"), "text=a%20b")
+        assert.strictEqual(spans[1].attributes.get("url.full"), "https://example.test/path")
+        assert.isFalse(spans[1].attributes.has("url.query"))
+      }))
+
     it.effect("includes request and response headers by default", () =>
       Effect.gen(function*() {
         let clientSpan: Tracer.NativeSpan | undefined

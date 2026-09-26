@@ -1,11 +1,25 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Schema, Stream } from "effect"
+import { Cause, Effect, Redacted, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 
 describe("HttpApiClient", () => {
+  it("unwraps redacted query values in URL builders with and without a base URL", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("users").add(HttpApiEndpoint.get("get", "/users", {
+        query: Schema.Struct({ token: Schema.Redacted(Schema.String) })
+      }))
+    )
+    const request = { query: { token: Redacted.make("secret &+#/é") } }
+    assert.strictEqual(HttpApiClient.urlBuilder(Api).users.get(request), "/users?token=secret+%26%2B%23%2F%C3%A9")
+    assert.strictEqual(
+      HttpApiClient.urlBuilder(Api, { baseUrl: "https://example.test" }).users.get(request),
+      "https://example.test/users?token=secret+%26%2B%23%2F%C3%A9"
+    )
+  })
+
   describe("ParseOptions", () => {
     const Fields = { firstName: Schema.String, lastName: Schema.String }
     const Person = Schema.Struct(Fields)
