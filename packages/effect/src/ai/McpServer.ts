@@ -26,7 +26,7 @@ import { appendPreResponseHandlerUnsafe } from "../http/HttpEffect.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
-import type * as JsonSchema from "../JsonSchema.ts"
+import * as JsonSchema from "../JsonSchema.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
@@ -1942,14 +1942,38 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// MCP requires an object root, so a top-level `$ref` is inlined.
+// MCP requires an object root, so a top-level `$ref` is inlined, and only the
+// definitions the inlined schema still reaches are published.
 const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.JsonSchema => {
   const document = InternalStructuredOutput.resolveTopLevelReference(
     Schema.toJsonSchemaDocument(schema, { onExcessProperty: strict ? "error" : "ignore" })
   )
-  return Object.keys(document.definitions).length === 0
+  const reached = reachableDefinitions(document.schema, document.definitions)
+  return reached.size === 0
     ? document.schema
-    : { ...document.schema, $defs: document.definitions }
+    : {
+      ...document.schema,
+      $defs: Object.fromEntries(Object.entries(document.definitions).filter(([key]) => reached.has(key)))
+    }
+}
+
+const reachableDefinitions = (
+  schema: JsonSchema.JsonSchema,
+  definitions: JsonSchema.Definitions
+): Set<string> => {
+  const reached = new Set<string>()
+  const visit = (schema: JsonSchema.JsonSchema): void => {
+    JsonSchema.rewriteRefs(schema, ($ref) => {
+      const key = JsonSchema.getReferenceKey($ref)
+      if (key !== undefined && !reached.has(key) && Object.hasOwn(definitions, key)) {
+        reached.add(key)
+        visit(definitions[key])
+      }
+      return $ref
+    })
+  }
+  visit(schema)
+  return reached
 }
 
 /**
