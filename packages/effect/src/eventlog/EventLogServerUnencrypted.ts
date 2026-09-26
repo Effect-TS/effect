@@ -148,6 +148,17 @@ export const layerRpcHandlers: Layer.Layer<
 
   return EventLogServer.layerRpcHandlers({
     remoteId,
+    authorizeIdentity: (publicKey) =>
+      auth.authorizeIdentity({ publicKey }).pipe(
+        Effect.mapError((error) =>
+          new EventLogProtocolError({
+            requestTag: "Authenticate",
+            publicKey,
+            code: error.reason === "Forbidden" ? "Forbidden" : "Unauthorized",
+            message: error.message
+          })
+        )
+      ),
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
     onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys) {
