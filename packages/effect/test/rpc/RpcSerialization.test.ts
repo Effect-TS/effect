@@ -220,6 +220,25 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(encoded), [{ _tag, requestId }])
   })
 
+  it.each(
+    [
+      ["jsonRpc", RpcSerialization.jsonRpc({ controlMessages: false })],
+      ["ndJsonRpc", RpcSerialization.ndJsonRpc({ controlMessages: false })]
+    ] as const
+  )("%s decodes control methods as notifications when controlMessages is false", (_, serialization) => {
+    const parser = serialization.makeUnsafe()
+    const encoded = JSON.stringify({ jsonrpc: "2.0", method: "@effect/rpc/Eof" }) + "\n"
+
+    assert.deepStrictEqual(parser.decode(encoded), [{
+      _tag: "Request",
+      id: "",
+      tag: "@effect/rpc/Eof",
+      payload: null,
+      headers: [],
+      isNotification: true
+    }])
+  })
+
   describe("jsonRpc inherited properties", { concurrent: false }, () => {
     afterEach(() => {
       delete objectPrototype["method"]

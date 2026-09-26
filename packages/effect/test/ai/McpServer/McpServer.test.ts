@@ -300,6 +300,21 @@ describe("McpServer", () => {
       assert.deepInclude((yield* fixture.sendRequest("ping")).error, { code: -32601 })
     }))
 
+  // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#stdio
+  // `@effect/rpc/*` control messages are internal to Effect RPC, not MCP wire methods.
+  it.effect("should treat Effect RPC control methods from stdio clients as unknown notifications", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25)
+      yield* fixture.initialize()
+      yield* fixture.sendNotification("@effect/rpc/Ping")
+      yield* fixture.sendNotification("@effect/rpc/Eof")
+      const response = yield* fixture.sendRequest("ping", {}, "after-control")
+      assert.deepInclude(response, { id: "after-control", result: {} })
+      // Only the initialize and ping responses reach stdout; no `@effect/rpc/Pong`.
+      assert.deepInclude(yield* fixture.takeFrame, { id: 1 })
+      assert.deepStrictEqual(yield* fixture.takeFrame, response)
+    }))
+
   // Effect delivery contract: an unavailable destination must not leave the caller waiting.
   it.effect("should return from completion notification when the target client is absent", () =>
     Effect.gen(function*() {
