@@ -245,6 +245,11 @@ export const setIdleTTL: {
 
 const removeTtl = setIdleTTL(0)
 
+const untrackedRead = <A extends Writable<any, any>>(atom: A): A => {
+  Object.defineProperty(atom.read, Symbol.for("effect/reactivity/Atom/untrackedRead"), { value: true })
+  return atom
+}
+
 const AtomProto = {
   [TypeId]: TypeId,
   equals: Object.is,
@@ -353,7 +358,7 @@ const makeFnRuntime = (
       arg,
     options
   )
-  return writable((get) => {
+  return untrackedRead(writable((get) => {
     get.get(argAtom)
     const previous = get.self<AsyncResult.AsyncResult<any, any>>()
     const runtimeResult = get.get(self)
@@ -361,7 +366,7 @@ const makeFnRuntime = (
       return AsyncResult.replacePrevious(runtimeResult, previous)
     }
     return read(get, runtimeResult.value)
-  }, write)
+  }, write))
 }
 
 const WritableProto = {
@@ -564,15 +569,18 @@ function makeEffect<A, E>(
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
   const scope = Scope.makeUnsafe()
   ctx.addFinalizer(() => {
-    Effect.runForkWith(services)(Scope.close(scope, Exit.void))
+    const close = Scope.closeUnsafe(scope, Exit.void)
+    if (close !== undefined) {
+      Effect.runForkWith(services)(close, constUninterruptible)
+    }
   })
   let syncResult: AsyncResult.AsyncResult<A, E> | undefined
   let isAsync = false
   const cancel = runCallbackSync(
-    services.pipe(
-      Context.add(Scope.Scope, scope),
-      Context.add(AtomRegistry, ctx.registry),
-      Context.add(Scheduler.Scheduler, ctx.registry.scheduler)
+    Context.add(
+      Context.add(Context.add(services, Scope.Scope, scope), AtomRegistry, ctx.registry),
+      Scheduler.Scheduler,
+      ctx.registry.scheduler
     ),
     effect,
     function(exit) {
@@ -594,6 +602,8 @@ function makeEffect<A, E>(
   }
   return AsyncResult.waiting(initialValue)
 }
+
+const constUninterruptible = { uninterruptible: true }
 
 function runCallbackSync<R, A, E, ER = never>(
   services: Context.Context<R>,
@@ -891,7 +901,6 @@ function makeStream<A, E>(
   services = Context.empty()
 ): AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError> {
   const previous = ctx.self<AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError>>()
-  services = Context.add(services, AtomRegistry, ctx.registry)
 
   const run = Effect.scopedWith((scope) =>
     Effect.flatMap(Channel.toPullScoped(stream.channel, scope), (pull) =>
@@ -930,10 +939,7 @@ function makeStream<A, E>(
   )
 
   const cancel = runCallbackSync(
-    services.pipe(
-      Context.add(AtomRegistry, ctx.registry),
-      Context.add(Scheduler.Scheduler, ctx.registry.scheduler)
-    ),
+    Context.add(Context.add(services, AtomRegistry, ctx.registry), Scheduler.Scheduler, ctx.registry.scheduler),
     run,
     constVoid,
     false
@@ -1111,8 +1117,7 @@ const makeFnSync = <Arg, A>(f: (arg: Arg, get: FnContext) => A, options?: {
 }): Writable<Option.Option<A> | A, Arg> => {
   const argAtom = removeTtl(state<[number, Arg]>([0, undefined as any]))
   const hasInitialValue = options?.initialValue !== undefined
-  return writable(function(get) {
-    ;(get as any).isFn = true
+  return untrackedRead(writable(function(get) {
     const [counter, arg] = get.get(argAtom)
     if (counter === 0) {
       return hasInitialValue ? options.initialValue : Option.none()
@@ -1123,7 +1128,7 @@ const makeFnSync = <Arg, A>(f: (arg: Arg, get: FnContext) => A, options?: {
       ctx.set(argAtom, [ctx.get(argAtom)[0] + 1, arg as Arg])
       ctx.refreshSelf()
     })
-  })
+  }))
 }
 
 /**
@@ -1222,7 +1227,7 @@ const makeFn = <Arg, E, A>(
   }
 ): AtomResultFn<Arg, A, E | Cause.NoSuchElementError> => {
   const [read, write] = makeResultFn(f, options)
-  return writable(read, write) as any
+  return untrackedRead(writable(read, write)) as any
 }
 
 function makeResultFn<Arg, E, A>(
@@ -1248,8 +1253,7 @@ function makeResultFn<Arg, E, A>(
     get: AtomContext,
     services?: Context.Context<any>
   ): AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError> {
-    const fibers = fibersAtom ? get(fibersAtom) : undefined
-    ;(get as any).isFn = true
+    const fibers = fibersAtom ? get.get(fibersAtom) : undefined
     const [counter, arg] = get.get(argAtom)
     if (counter === 0) {
       return initialValue
@@ -1433,12 +1437,12 @@ export const family = typeof WeakRef === "undefined" || typeof FinalizationRegis
       MutableHashMap.remove(atoms, arg)
     })
     return function(arg) {
-      const atomEntry = MutableHashMap.get(atoms, arg).pipe(
-        Option.flatMapNullishOr((ref) => ref.deref())
-      )
-
+      const atomEntry = MutableHashMap.get(atoms, arg)
       if (atomEntry._tag === "Some") {
-        return atomEntry.value
+        const atom = atomEntry.value.deref()
+        if (atom !== undefined) {
+          return atom
+        }
       }
       const newAtom = f(arg)
       MutableHashMap.set(atoms, arg, new WeakRef(newAtom))
