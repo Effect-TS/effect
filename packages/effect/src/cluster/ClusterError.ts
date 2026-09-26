@@ -121,6 +121,16 @@ export class PersistenceError extends Schema.Error<PersistenceError>(`${TypeId}/
   readonly [TypeId] = TypeId
 
   /**
+   * Returns `true` when the value is a `PersistenceError` error.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  static is(u: unknown): u is PersistenceError {
+    return hasProperty(u, TypeId) && isTagged(u, "PersistenceError")
+  }
+
+  /**
    * Maps failures from the supplied effect into `PersistenceError` values.
    *
    * @stability unstable
@@ -150,6 +160,16 @@ export class RunnerNotRegistered extends Schema.Error<RunnerNotRegistered>(`${Ty
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
+
+  /**
+   * Returns `true` when the value is a `RunnerNotRegistered` error.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  static is(u: unknown): u is RunnerNotRegistered {
+    return hasProperty(u, TypeId) && isTagged(u, "RunnerNotRegistered")
+  }
 }
 
 /**
