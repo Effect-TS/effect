@@ -733,9 +733,7 @@ function makePropertiesRepresentation(
         .filter((property) => select?.(property) ?? true)
         .map((property) => ({
           ...property,
-          name: String(property.name),
-          // In an HTTP property container, Undefined represents an absent key rather than a JSON null value.
-          type: withoutUndefined(property.type, references)
+          name: String(property.name)
         }))
       : [],
     indexSignatures: [],
@@ -756,65 +754,6 @@ function resolveRepresentation(
   return target === undefined
     ? representation
     : resolveRepresentation(target, references, new Set(seen).add(representation.$ref))
-}
-
-function withoutUndefined(
-  representation: SchemaRepresentation.Representation,
-  references: SchemaRepresentation.References,
-  seen = new Set<string>()
-): SchemaRepresentation.Representation {
-  switch (representation._tag) {
-    case "Undefined":
-      return {
-        _tag: "Never",
-        checks: representation.checks,
-        annotations: representation.annotations
-      }
-    case "Suspend": {
-      const thunk = withoutUndefined(representation.thunk, references, seen)
-      return thunk === representation.thunk ? representation : { ...representation, thunk }
-    }
-    case "Reference": {
-      if (seen.has(representation.$ref)) return representation
-      const target = references[representation.$ref]
-      if (target === undefined) return representation
-      const nextSeen = new Set(seen).add(representation.$ref)
-      const normalized = withoutUndefined(target, references, nextSeen)
-      return normalized === target ? representation : normalized
-    }
-    case "Union": {
-      let changed = false
-      const types: Array<SchemaRepresentation.Representation> = []
-      for (const type of representation.types) {
-        if (resolveRepresentation(type, references, seen)._tag === "Undefined") {
-          changed = true
-          continue
-        }
-        const normalized = withoutUndefined(type, references, seen)
-        if (normalized !== type) changed = true
-        types.push(normalized)
-      }
-      if (!changed) return representation
-      if (types.length === 0) {
-        return {
-          _tag: "Never",
-          checks: representation.checks,
-          annotations: representation.annotations
-        }
-      }
-      if (
-        types.length === 1 &&
-        representation.options === undefined &&
-        representation.annotations === undefined &&
-        representation.checks.length === 0
-      ) {
-        return types[0]
-      }
-      return { ...representation, types }
-    }
-    default:
-      return representation
-  }
 }
 
 function selectReferences(

@@ -124,8 +124,7 @@ describe("OpenApi", () => {
           query: {
             limit: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("10"))),
             offset: Schema.FiniteFromString.pipe(Schema.withDecodingDefault(Effect.succeed("0"))),
-            search: Schema.String.annotateKey({ description: "Search text" }),
-            empty: Schema.optional(Schema.Null)
+            search: Schema.String.annotateKey({ description: "Search text" })
           },
           headers: {
             "x-page-size": Schema.FiniteFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("10")))
@@ -138,14 +137,18 @@ describe("OpenApi", () => {
       { name: "cursor", in: "path", required: true, schema: { type: "string" } },
       { name: "x-page-size", in: "header", required: false, schema: { type: "string" } },
       { name: "limit", in: "query", required: false, schema: { type: "string" } },
-      { name: "offset", in: "query", required: false, schema: { type: "string" } },
+      {
+        name: "offset",
+        in: "query",
+        required: false,
+        schema: { anyOf: [{ type: "string" }, { type: "null" }] }
+      },
       {
         name: "search",
         in: "query",
         required: true,
         schema: { type: "string", allOf: [{ description: "Search text" }] }
-      },
-      { name: "empty", in: "query", required: false, schema: { type: "string", enum: ["null"] } }
+      }
     ])
   })
 
@@ -365,7 +368,7 @@ describe("OpenApi", () => {
         required: false
       },
       "x-offset": {
-        schema: { type: "string" },
+        schema: { anyOf: [{ type: "string" }, { type: "null" }] },
         required: false
       }
     })
