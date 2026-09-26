@@ -19,8 +19,6 @@ import * as InternalRecord from "../internal/record.ts"
 import * as InternalToCodec from "../internal/schema/toCodec.ts"
 import * as InternalToJsonSchemaDocument from "../internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "../internal/schema/toRepresentation.ts"
-import * as JsonPatch from "../JsonPatch.ts"
-import { escapeToken } from "../JsonPointer.ts"
 import * as JsonSchema from "../JsonSchema.ts"
 import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
@@ -316,6 +314,19 @@ export function fromApi<Id extends string, Groups extends HttpApiGroup.Constrain
   return spec
 }
 
+type SchemaOp =
+  | {
+    readonly _tag: "schema"
+    readonly ast: SchemaAST.AST
+    readonly target: JsonSchema.JsonSchema
+  }
+  | {
+    readonly _tag: "properties"
+    readonly ast: SchemaAST.AST
+    readonly select?: ((property: SchemaRepresentation.PropertySignature) => boolean) | undefined
+    readonly apply: (property: SchemaRepresentation.PropertySignature, schema: JsonSchema.JsonSchema) => void
+  }
+
 function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<Id, Groups>,
   options: SchemaRepresentation.ToRepresentationOptions
@@ -335,20 +346,16 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
     tags: []
   }
 
-  const pathOps: Array<
-    {
-      readonly _tag: "schema"
-      readonly ast: SchemaAST.AST
-      readonly path: ReadonlyArray<string>
-    } | {
-      readonly _tag: "parameter"
-      readonly ast: SchemaAST.AST
-      readonly path: ReadonlyArray<string>
-    }
-  > = []
+  const schemaOps: Array<SchemaOp> = []
   const pathOperations = new Set<string>()
   const operationIds = new Set<string>()
   const finalizeOperations: Array<() => void> = []
+
+  function registerSchema(ast: SchemaAST.AST): JsonSchema.JsonSchema {
+    const target: JsonSchema.JsonSchema = {}
+    schemaOps.push({ _tag: "schema", ast, target })
+    return target
+  }
 
   processAnnotation(api.annotations, Title, (title) => {
     spec.info.title = title
@@ -419,9 +426,6 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       const method = endpoint.method.toLowerCase() as Lowercase<HttpMethod.HttpMethod>
       const isQuery = method === "query"
       const operationKey = isQuery ? "QUERY" : method
-      const operationPath = isQuery
-        ? ["paths", path, "x-oai-additionalOperations", operationKey]
-        : ["paths", path, operationKey]
 
       function processResponseBodies(bodies: ResponseBodies, defaultDescription: () => string) {
         for (const [status, { content, descriptions, headers, streamContent }] of bodies) {
@@ -430,38 +434,28 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
             description
           })
           for (const schema of headers) {
-            const ast = SchemaAST.getLastEncoding(schema.ast)
-            if (SchemaAST.isObjects(ast)) {
-              for (const ps of ast.propertySignatures) {
-                const name = String(ps.name).toLowerCase()
-                if (name === "content-type") continue
+            schemaOps.push({
+              _tag: "properties",
+              ast: schema.ast,
+              select: (property) => String(property.name).toLowerCase() !== "content-type",
+              apply(property, schema) {
+                const name = String(property.name).toLowerCase()
                 op.responses[status].headers ??= {}
                 InternalRecord.assignProperty(op.responses[status].headers, name, {
-                  schema: {},
-                  required: !SchemaAST.isOptional(SchemaAST.getLastEncoding(ps.type))
-                })
-                pathOps.push({
-                  _tag: "parameter",
-                  ast: ps.type,
-                  path: [...operationPath, "responses", String(status), "headers", name, "schema"]
+                  schema,
+                  required: !property.isOptional
                 })
               }
-            }
+            })
           }
           if (content !== undefined) {
             content.forEach((map, encoding) => {
               map.forEach((schemas, contentType) => {
                 const asts = Array.from(schemas, SchemaAST.getAST)
                 const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts)
-
-                pathOps.push({
-                  _tag: "schema",
-                  ast: toEncodingAST(ast, encoding),
-                  path: [...operationPath, "responses", String(status), "content", contentType, "schema"]
-                })
                 op.responses[status].content ??= {}
                 InternalRecord.assignProperty(op.responses[status].content, contentType, {
-                  schema: {}
+                  schema: registerSchema(toEncodingAST(ast, encoding))
                 })
               })
             })
@@ -470,43 +464,12 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
             streamContent.forEach((stream, contentType) => {
               op.responses[status].content ??= {}
               if (HttpApiSchema.isStreamSse(stream)) {
-                pathOps.push({
-                  _tag: "schema",
-                  ast: SchemaAST.getAST(stream.events),
-                  path: [...operationPath, "responses", String(status), "content", contentType, "schema"]
-                })
-                pathOps.push({
-                  _tag: "schema",
-                  ast: SchemaAST.getAST(Schema.toCodecJson(Schema.Cause(stream.error, Schema.Defect()))),
-                  path: [
-                    ...operationPath,
-                    "responses",
-                    String(status),
-                    "content",
-                    contentType,
-                    "x-effect-stream",
-                    "causeSchema"
-                  ]
-                })
-                pathOps.push({
-                  _tag: "schema",
-                  ast: SchemaAST.getAST(stream.error),
-                  path: [
-                    ...operationPath,
-                    "responses",
-                    String(status),
-                    "content",
-                    contentType,
-                    "x-effect-stream",
-                    "errorSchema"
-                  ]
-                })
                 InternalRecord.assignProperty(op.responses[status].content, contentType, {
-                  schema: {},
+                  schema: registerSchema(stream.events.ast),
                   "x-effect-stream": {
                     encoding: "sse",
-                    causeSchema: {},
-                    errorSchema: {},
+                    causeSchema: registerSchema(Schema.Cause(stream.error, Schema.Defect()).ast),
+                    errorSchema: registerSchema(stream.error.ast),
                     failureEvent: reservedStreamFailureEvent
                   }
                 })
@@ -528,22 +491,18 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
 
       function processParameters(schema: Schema.Constraint | undefined, i: OpenAPISpecParameter["in"]) {
         if (schema) {
-          const ast = SchemaAST.getLastEncoding(schema.ast)
-          if (SchemaAST.isObjects(ast)) {
-            for (const ps of ast.propertySignatures) {
+          schemaOps.push({
+            _tag: "properties",
+            ast: schema.ast,
+            apply(property, schema) {
               op.parameters.push({
-                name: String(ps.name),
+                name: String(property.name),
                 in: i,
-                schema: {},
-                required: i === "path" || !SchemaAST.isOptional(SchemaAST.getLastEncoding(ps.type))
-              })
-              pathOps.push({
-                _tag: "parameter",
-                ast: ps.type,
-                path: [...operationPath, "parameters", String(op.parameters.length - 1), "schema"]
+                schema,
+                required: i === "path" || !property.isOptional
               })
             }
-          }
+          })
         }
       }
 
@@ -610,13 +569,8 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
           for (const [contentType, { encoding, schemas }] of schemasByContentType) {
             const asts = schemas.map(SchemaAST.getAST)
             const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts)
-            pathOps.push({
-              _tag: "schema",
-              ast: toEncodingAST(ast, encoding._tag),
-              path: [...operationPath, "requestBody", "content", contentType, "schema"]
-            })
             InternalRecord.assignProperty(content, contentType, {
-              schema: {}
+              schema: registerSchema(toEncodingAST(ast, encoding._tag))
             })
           }
           op.requestBody = { content, required: true }
@@ -688,50 +642,12 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         if (Object.hasOwn(spec.components.schemas, identifier)) {
           throw new globalThis.Error(`Duplicate component schema identifier: ${identifier}`)
         }
-        InternalRecord.assignProperty(spec.components.schemas, identifier, {})
-        pathOps.push({
-          _tag: "schema",
-          ast: componentSchema.ast,
-          path: ["components", "schemas", identifier]
-        })
+        InternalRecord.assignProperty(spec.components.schemas, identifier, registerSchema(componentSchema.ast))
       }
     })
   })
 
-  function escapePath(path: ReadonlyArray<string>): string {
-    return "/" + path.map(escapeToken).join("/")
-  }
-
-  if (Arr.isArrayNonEmpty(pathOps)) {
-    const jsonSchemaMultiDocument = JsonSchema.toMultiDocumentOpenApi3_1(
-      InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
-        InternalToRepresentation.toRepresentations(
-          Arr.map(pathOps, (op) => InternalToCodec.toCodecJsonAST(op.ast)),
-          options
-        ),
-        { onExcessProperty: "error" }
-      )
-    )
-    const patchOps: Array<JsonPatch.JsonPatchOperation> = pathOps.map((op, i) => {
-      const oppath = escapePath(op.path)
-      const value = jsonSchemaMultiDocument.schemas[i]
-      return {
-        op: "replace",
-        path: oppath,
-        value: value as Schema.Json
-      }
-    })
-
-    Object.entries(jsonSchemaMultiDocument.definitions).forEach(([name, definition]) => {
-      patchOps.push({
-        op: "add",
-        path: escapePath(["components", "schemas", name]),
-        value: definition as Schema.Json
-      })
-    })
-
-    spec = JsonPatch.apply(patchOps, spec as any) as any
-  }
+  compileSchemaOps(schemaOps, options, spec.components.schemas)
 
   for (const finalize of finalizeOperations) {
     finalize()
@@ -754,6 +670,210 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   })
 
   return spec
+}
+
+function compileSchemaOps(
+  schemaOps: Array<SchemaOp>,
+  options: SchemaRepresentation.ToRepresentationOptions,
+  components: JsonSchema.Definitions
+): void {
+  if (!Arr.isArrayNonEmpty(schemaOps)) return
+
+  const document = InternalToRepresentation.toRepresentations(
+    Arr.map(schemaOps, (op) => op._tag === "schema" ? InternalToCodec.toCodecJsonAST(op.ast) : op.ast),
+    options
+  )
+  const representations = Arr.map(document.representations, (representation, index) => {
+    const op = schemaOps[index]
+    return op._tag === "schema"
+      ? representation
+      : makePropertiesRepresentation(representation, document.references, op.select)
+  })
+  const references = selectReferences(representations, document.references)
+  const jsonSchemaMultiDocument = JsonSchema.toMultiDocumentOpenApi3_1(
+    InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
+      { representations, references },
+      { onExcessProperty: "error" }
+    )
+  )
+
+  for (let index = 0; index < schemaOps.length; index++) {
+    const op = schemaOps[index]
+    const schema = jsonSchemaMultiDocument.schemas[index]
+    if (op._tag === "schema") {
+      InternalRecord.assignProperties(op.target, schema)
+      continue
+    }
+    const representation = representations[index]
+    if (representation._tag !== "Objects") {
+      throw new globalThis.Error("Expected an object representation for HTTP properties")
+    }
+    // These schemas come from the synthetic Objects below, without root checks or annotations.
+    const properties = schema.properties as Record<string, JsonSchema.JsonSchema>
+    for (const property of representation.propertySignatures) {
+      op.apply(property, properties[String(property.name)])
+    }
+  }
+
+  for (const [name, definition] of Object.entries(jsonSchemaMultiDocument.definitions)) {
+    InternalRecord.assignProperty(components, name, definition)
+  }
+}
+
+function makePropertiesRepresentation(
+  representation: SchemaRepresentation.Representation,
+  references: SchemaRepresentation.References,
+  select: ((property: SchemaRepresentation.PropertySignature) => boolean) | undefined
+): SchemaRepresentation.Objects {
+  const resolved = resolveRepresentation(representation, references)
+  return {
+    _tag: "Objects",
+    propertySignatures: resolved._tag === "Objects"
+      ? resolved.propertySignatures
+        .filter((property) => select?.(property) ?? true)
+        .map((property) => ({
+          ...property,
+          name: String(property.name),
+          // In an HTTP property container, Undefined represents an absent key rather than a JSON null value.
+          type: withoutUndefined(property.type, references)
+        }))
+      : [],
+    indexSignatures: [],
+    checks: []
+  }
+}
+
+function resolveRepresentation(
+  representation: SchemaRepresentation.Representation,
+  references: SchemaRepresentation.References,
+  seen = new Set<string>()
+): SchemaRepresentation.Representation {
+  if (representation._tag === "Suspend") {
+    return resolveRepresentation(representation.thunk, references, seen)
+  }
+  if (representation._tag !== "Reference" || seen.has(representation.$ref)) return representation
+  const target = references[representation.$ref]
+  return target === undefined
+    ? representation
+    : resolveRepresentation(target, references, new Set(seen).add(representation.$ref))
+}
+
+function withoutUndefined(
+  representation: SchemaRepresentation.Representation,
+  references: SchemaRepresentation.References,
+  seen = new Set<string>()
+): SchemaRepresentation.Representation {
+  switch (representation._tag) {
+    case "Undefined":
+      return {
+        _tag: "Never",
+        checks: representation.checks,
+        annotations: representation.annotations
+      }
+    case "Suspend": {
+      const thunk = withoutUndefined(representation.thunk, references, seen)
+      return thunk === representation.thunk ? representation : { ...representation, thunk }
+    }
+    case "Reference": {
+      if (seen.has(representation.$ref)) return representation
+      const target = references[representation.$ref]
+      if (target === undefined) return representation
+      const nextSeen = new Set(seen).add(representation.$ref)
+      const normalized = withoutUndefined(target, references, nextSeen)
+      return normalized === target ? representation : normalized
+    }
+    case "Union": {
+      let changed = false
+      const types: Array<SchemaRepresentation.Representation> = []
+      for (const type of representation.types) {
+        if (resolveRepresentation(type, references, seen)._tag === "Undefined") {
+          changed = true
+          continue
+        }
+        const normalized = withoutUndefined(type, references, seen)
+        if (normalized !== type) changed = true
+        types.push(normalized)
+      }
+      if (!changed) return representation
+      if (types.length === 0) {
+        return {
+          _tag: "Never",
+          checks: representation.checks,
+          annotations: representation.annotations
+        }
+      }
+      if (
+        types.length === 1 &&
+        representation.options === undefined &&
+        representation.annotations === undefined &&
+        representation.checks.length === 0
+      ) {
+        return types[0]
+      }
+      return { ...representation, types }
+    }
+    default:
+      return representation
+  }
+}
+
+function selectReferences(
+  representations: ReadonlyArray<SchemaRepresentation.Representation>,
+  references: SchemaRepresentation.References
+): SchemaRepresentation.References {
+  // The JSON Schema compiler emits every supplied reference. Keep only references reachable from the projected
+  // roots so named parameter containers and excluded properties do not leak into OpenAPI components.
+  const selected: Record<string, SchemaRepresentation.Representation> = {}
+  const visited = new WeakSet<object>()
+  const stack = [...representations]
+
+  function pushChecks(checks: ReadonlyArray<SchemaRepresentation.Check>): void {
+    for (const check of checks) {
+      if (check.representation?.schemas !== undefined) stack.push(...check.representation.schemas)
+      if (check._tag === "FilterGroup") pushChecks(check.checks)
+    }
+  }
+
+  while (stack.length > 0) {
+    const representation = stack.pop()!
+    if (visited.has(representation)) continue
+    visited.add(representation)
+    if (representation._tag === "Reference") {
+      if (Object.hasOwn(selected, representation.$ref)) continue
+      const target = references[representation.$ref]
+      if (target === undefined) continue
+      InternalRecord.assignProperty(selected, representation.$ref, target)
+      stack.push(target)
+      continue
+    }
+
+    pushChecks(representation.checks)
+    switch (representation._tag) {
+      case "Declaration":
+        stack.push(...representation.typeParameters)
+        break
+      case "Suspend":
+        stack.push(representation.thunk)
+        break
+      case "TemplateLiteral":
+        stack.push(...representation.parts)
+        break
+      case "Arrays":
+        for (const element of representation.elements) stack.push(element.type)
+        stack.push(...representation.rest)
+        break
+      case "Objects":
+        for (const property of representation.propertySignatures) stack.push(property.type)
+        for (const signature of representation.indexSignatures) {
+          stack.push(signature.parameter, signature.type)
+        }
+        break
+      case "Union":
+        stack.push(...representation.types)
+        break
+    }
+  }
+  return selected
 }
 
 type ResponseBodies = Map<
