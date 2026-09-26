@@ -3394,7 +3394,8 @@ export function collectSentinels(ast: AST): ReadonlyArray<Sentinel> {
   }
 }
 
-type CandidateIndex = (input: any, isConstructor: boolean) => ReadonlyArray<AST>
+/** @internal */
+export type CandidateIndex = (input: any, isConstructor: boolean) => ReadonlyArray<number>
 type SentinelEntry = readonly [
   byValue: Map<LiteralValue | symbol, Set<number>>,
   all: Set<number>
@@ -3409,15 +3410,39 @@ const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
   key === "__proto__" ? Object.hasOwn(input, key) : key in input
 
-function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
+const candidateTypesCache = new WeakMap<ReadonlyArray<number>, ReadonlyArray<AST>>()
+
+/**
+ * The goal is to reduce the number of a union members that will be checked.
+ * This is useful to reduce the number of issues that will be returned.
+ *
+ * @internal
+ */
+export function getCandidates(
+  input: any,
+  types: ReadonlyArray<AST>,
+  isConstructor = false
+): ReadonlyArray<AST> {
+  const indexes = getCandidateIndex(types)(input, isConstructor)
+  if (!Object.isFrozen(indexes)) return indexes.map((i) => types[i])
+  let candidates = candidateTypesCache.get(indexes)
+  if (candidates === undefined) {
+    candidateTypesCache.set(indexes, candidates = Object.freeze(indexes.map((i) => types[i])))
+  }
+  return candidates
+}
+
+/** @internal */
+export function getCandidateIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let index = candidateIndexCache.get(types)
   if (index) return index
 
   let bySentinel: SentinelIndex | undefined
   let sentinelCandidateCount = 0
   let otherwise: { [K in Type]?: Array<number> } | undefined
-  let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | undefined
+  let literalCandidates: Map<LiteralValue | symbol, Array<number>> | undefined
   let onlyLiterals = true
+  const literalOf: Array<LiteralValue | symbol | undefined> = []
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
     const encoded = toCandidate(a)
@@ -3426,9 +3451,10 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
       literalCandidates ??= new Map()
       const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
+      literalOf[i] = literal
       let arr = literalCandidates.get(literal)
       if (!arr) literalCandidates.set(literal, arr = [])
-      arr.push(a)
+      arr.push(i)
     } else {
       onlyLiterals = false
     }
@@ -3454,24 +3480,25 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   }
 
   // Non-discriminated members are grouped by runtime type once and reused by every decode.
-  const fallbacks: { [K in Type]?: ReadonlyArray<AST> } = {}
-  const getFallback = (type: Type): ReadonlyArray<AST> =>
-    fallbacks[type] ??= Object.freeze((otherwise?.[type] ?? emptyCandidates).map((i) => types[i]))
+  const fallbacks: { [K in Type]?: ReadonlyArray<number> } = {}
+  const getFallback = (type: Type): ReadonlyArray<number> =>
+    fallbacks[type] ??= Object.freeze(otherwise?.[type] ?? emptyCandidates)
 
   if (onlyLiterals && literalCandidates) {
     literalCandidates.forEach(Object.freeze)
     index = (input) => literalCandidates.get(input) ?? emptyCandidates
   } else if (bySentinel?.size === 1 && !otherwise) {
     const [key, [byValue]] = bySentinel.entries().next().value!
-    const candidates = byValue as unknown as Map<LiteralValue | symbol, ReadonlyArray<AST>>
+    const candidates = new Map<LiteralValue | symbol, ReadonlyArray<number>>()
     for (const [literal, indexes] of byValue) {
-      candidates.set(literal, Object.freeze(Array.from(indexes, (index) => types[index])))
+      candidates.set(literal, Object.freeze(Array.from(indexes)))
     }
+    const all = Object.freeze(types.map((_, i) => i))
     index = (input, isConstructor) => {
       if (Predicate.isObjectKeyword(input)) {
         const value = hasPropertySignature(input, key) ? (input as any)[key] : undefined
         if (value !== undefined) return candidates.get(value) ?? emptyCandidates
-        if (isConstructor) return types
+        if (isConstructor) return all
       }
       return emptyCandidates
     }
@@ -3538,42 +3565,17 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
           }
         }
       }
-      return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
+      return Array.from(selected).sort((a, b) => a - b)
     }
   } else {
     index = (input) => {
       const fallback = getFallback(getRuntimeType(input))
-      return literalCandidates ? fallback.filter(filterLiterals(input)) : fallback
+      return literalCandidates ? fallback.filter((i) => literalOf[i] === undefined || literalOf[i] === input) : fallback
     }
   }
 
   candidateIndexCache.set(types, index)
   return index
-}
-
-function filterLiterals(input: any) {
-  return (ast: AST) => {
-    const encoded = toCandidate(ast)
-    return encoded._tag === "Literal" ?
-      encoded.literal === input
-      : encoded._tag === "UniqueSymbol" ?
-      encoded.symbol === input
-      : true
-  }
-}
-
-/**
- * The goal is to reduce the number of a union members that will be checked.
- * This is useful to reduce the number of issues that will be returned.
- *
- * @internal
- */
-export function getCandidates(
-  input: any,
-  types: ReadonlyArray<AST>,
-  isConstructor = false
-): ReadonlyArray<AST> {
-  return getIndex(types)(input, isConstructor)
 }
 
 /**
@@ -3680,43 +3682,28 @@ export const Union: new<A extends AST = AST>(
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
+    const isConstructor = compileField !== undefined
+    const parsers: Array<SchemaParser.Parser> = []
+    const parser = (i: number): SchemaParser.Parser => parsers[i] ??= compile(ast.types[i])
+    let index: CandidateIndex | undefined
 
     return (input, options) => {
       if (input === InternalParser.missing) {
         return InternalParser.missingExit
       }
-      const candidates = getCandidates(input, ast.types, compileField !== undefined)
+      const candidates = (index ??= getCandidateIndex(ast.types))(input, isConstructor)
 
       if (candidates.length === 0) {
         return Effect.fail(new SchemaIssue.AnyOf(ast, [], input, options))
       }
       if (candidates.length === 1) {
-        const result = compile(candidates[0])(input, options)
+        const result = parser(candidates[0])(input, options)
         if ((result as Exit.Exit<unknown, SchemaIssue.Issue>)._tag === "Success") return result
         return effectIsExit(result)
           ? failSingleUnionCandidate(ast, (result as Exit.Failure<unknown, SchemaIssue.Issue>).cause, input, options)
-          : Effect.catchCause(result, (cause) => failSingleUnionCandidate(ast, cause, input, options))
+          : catchSingleUnionCandidate(ast, result, input, options)
       }
-
-      const state = {
-        ast,
-        compile,
-        input,
-        out: undefined,
-        successes: ast.options?.mode === "oneOf" ? [] : undefined,
-        issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
-        options
-      }
-      const eff = parseUnion(state, candidates)
-      if (!eff) {
-        if (state.out) return state.out
-        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
-      }
-      return Effect.flatMapEager(eff, (_) => {
-        if (state.out === InternalParser.sameExit) return Effect.succeed(input)
-        if (state.out) return state.out
-        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
-      })
+      return parseUnionCandidates(ast, parser, candidates, input, options)
     }
   }
   private _rebuild(
@@ -3795,20 +3782,65 @@ function failSingleUnionCandidate(
   return Exit.fail(new SchemaIssue.AnyOf(ast, [issue], input, options))
 }
 
-const parseUnion = iterateEager<{
-  readonly compile: (ast: AST) => SchemaParser.Parser
+function catchSingleUnionCandidate(
+  ast: Union,
+  result: Effect.Effect<unknown, SchemaIssue.Issue, unknown>,
+  input: unknown,
+  options: ParseOptions
+) {
+  return Effect.catchCause(result, (cause) => failSingleUnionCandidate(ast, cause, input, options))
+}
+
+type UnionParserState = {
+  readonly parser: (i: number) => SchemaParser.Parser
   readonly ast: Union
   readonly input: unknown
   readonly options: ParseOptions
   out: Exit.Success<unknown, SchemaIssue.Issue> | undefined
   readonly successes: Array<AST> | undefined
   issues: Array<SchemaIssue.Issue> | undefined
-}, AST>()({
-  onItem(s, ast) {
-    const parser = s.compile(ast)
-    return parser(s.input, s.options)
+}
+
+function parseUnionCandidates(
+  ast: Union,
+  parser: (i: number) => SchemaParser.Parser,
+  candidates: ReadonlyArray<number>,
+  input: unknown,
+  options: ParseOptions
+): Effect.Effect<unknown, SchemaIssue.Issue, any> {
+  const state: UnionParserState = {
+    ast,
+    parser,
+    input,
+    out: undefined,
+    successes: ast.options?.mode === "oneOf" ? [] : undefined,
+    issues: undefined,
+    options
+  }
+  const eff = parseUnion(state, candidates)
+  if (!eff) {
+    if (state.out) return state.out
+    return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
+  }
+  return resumeUnion(eff, state)
+}
+
+function resumeUnion(
+  eff: Effect.Effect<void, SchemaIssue.Issue, any>,
+  state: UnionParserState
+): Effect.Effect<unknown, SchemaIssue.Issue, any> {
+  return Effect.flatMapEager(eff, (_) => {
+    if (state.out === InternalParser.sameExit) return Effect.succeed(state.input)
+    if (state.out) return state.out
+    return Effect.fail(new SchemaIssue.AnyOf(state.ast, state.issues ?? [], state.input, state.options))
+  })
+}
+
+const parseUnion = iterateEager<UnionParserState, number>()({
+  onItem(s, i) {
+    return s.parser(i)(s.input, s.options)
   },
-  step(s, candidate, exit) {
+  step(s, i, exit) {
     if (exit._tag === "Failure") {
       const issue = InternalSchemaCause.getSchemaIssue(exit.cause)
       if (issue === undefined) {
@@ -3818,12 +3850,12 @@ const parseUnion = iterateEager<{
       else s.issues = [issue]
     } else {
       if (s.out && s.successes) {
-        s.successes.push(candidate)
+        s.successes.push(s.ast.types[i])
         return Exit.fail(new SchemaIssue.OneOf(s.ast, s.successes, s.input, s.options))
       }
       s.out = exit
       if (s.successes) {
-        s.successes.push(candidate)
+        s.successes.push(s.ast.types[i])
       } else {
         return Exit.void
       }
