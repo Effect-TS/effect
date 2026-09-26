@@ -371,6 +371,7 @@ class RegistryImpl implements AtomRegistry {
 
   readonly nodes = new Map<Atom.Atom<any> | string, NodeImpl<any>>()
   readonly preloadedSerializable = new Map<string, unknown>()
+  readonly hydratedWithUnknownDependencies = new Set<NodeImpl<any>>()
   readonly timeoutBuckets = new Map<number, readonly [nodes: Set<NodeImpl<any>>, handle: number]>()
   readonly nodeTimeoutBucket = new Map<NodeImpl<any>, number>()
   disposed = false
@@ -384,7 +385,7 @@ class RegistryImpl implements AtomRegistry {
   }
 
   set<R, W>(atom: Atom.Writable<R, W>, value: W): void {
-    atom.write(this.ensureNode(atom).writeContext, value)
+    this.write(() => atom.write(this.ensureNode(atom).writeContext, value))
   }
 
   setSerializable(key: string, encoded: unknown): void {
@@ -394,13 +395,36 @@ class RegistryImpl implements AtomRegistry {
   modify<R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]): A {
     const node = this.ensureNode(atom)
     const result = f(node.value())
-    atom.write(node.writeContext, result[1])
+    this.write(() => atom.write(node.writeContext, result[1]))
     return result[0]
   }
 
   update<R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W): void {
     const node = this.ensureNode(atom)
-    atom.write(node.writeContext, f(node.value()))
+    const value = f(node.value())
+    this.write(() => atom.write(node.writeContext, value))
+  }
+
+  #writeDepth = 0
+  write(f: () => void): void {
+    this.#writeDepth++
+    try {
+      f()
+    } finally {
+      this.#writeDepth--
+    }
+    if (this.#writeDepth === 0) {
+      this.invalidateHydratedWithUnknownDependencies()
+    }
+  }
+
+  invalidateHydratedWithUnknownDependencies(): void {
+    if (this.hydratedWithUnknownDependencies.size === 0) return
+    const nodes = Array.from(this.hydratedWithUnknownDependencies)
+    this.hydratedWithUnknownDependencies.clear()
+    for (const node of nodes) {
+      node.invalidate()
+    }
   }
 
   refresh = <A>(atom: Atom.Atom<A>): void => {
@@ -456,7 +480,7 @@ class RegistryImpl implements AtomRegistry {
       if (target === atom) {
         node.setValue(decoded)
       } else {
-        this.ensureNode(target).setInitialValue(decoded)
+        this.ensureNode(target).setHydratedValue(decoded)
       }
     }
     return node
@@ -614,6 +638,8 @@ class NodeImpl<A> {
   lifetime: Lifetime<A> | undefined
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
+  hydrating = false
+  pendingRuntime: Atom.Atom<any> | undefined
 
   parents = new Set<NodeImpl<any>>()
   previousParents: Set<NodeImpl<any>> | undefined
@@ -649,12 +675,12 @@ class NodeImpl<A> {
       this.building = false
       if ((this.state & NodeFlags.waitingForValue) !== 0) {
         if (this.preserveInitialValueOnBuild) {
-          this.preserveInitialValueOnBuild = false
           this.state = NodeState.valid
         } else {
           this.setValue(value)
         }
       }
+      this.preserveInitialValueOnBuild = false
 
       if (this.previousParents) {
         const parents = this.previousParents
@@ -676,6 +702,16 @@ class NodeImpl<A> {
       return Option.none()
     }
     return Option.some(this._value)
+  }
+
+  setHydratedValue(value: A): void {
+    this.hydrating = (this.state & NodeFlags.initialized) === 0
+    this.setInitialValue(value)
+  }
+
+  endHydration(): void {
+    this.hydrating = false
+    this.pendingRuntime = undefined
   }
 
   setInitialValue(value: A): void {
@@ -752,7 +788,11 @@ class NodeImpl<A> {
     this.children.delete(child)
   }
 
-  invalidate(): void {
+  invalidate(parent?: NodeImpl<any>): void {
+    if (parent === undefined || parent.atom !== this.pendingRuntime) {
+      this.endHydration()
+    }
+    this.registry.hydratedWithUnknownDependencies.delete(this)
     if (this.building && batchState.phase === BatchPhase.collect) {
       this.invalidatedDuringBuild = true
     }
@@ -779,7 +819,7 @@ class NodeImpl<A> {
     const children = this.children
     this.children = new Set()
     for (const child of children) {
-      child.invalidate()
+      child.invalidate(this)
     }
   }
 
@@ -806,6 +846,7 @@ class NodeImpl<A> {
   remove() {
     this.state = NodeState.removed
     this.listeners.clear()
+    this.registry.hydratedWithUnknownDependencies.delete(this)
 
     if (this.lifetime !== undefined) {
       this.disposeLifetime()
@@ -861,6 +902,25 @@ interface Lifetime<A> extends Atom.AtomContext {
   finalizers: Array<() => void> | undefined
   disposed: boolean
   readonly dispose: () => void
+}
+
+/** @internal */
+export const consumeHydration = (ctx: Atom.AtomContext): boolean => {
+  const node = (ctx as Lifetime<any>).node
+  const hydrating = node.hydrating
+  node.endHydration()
+  if (hydrating) {
+    node.registry.hydratedWithUnknownDependencies.add(node)
+  }
+  return hydrating
+}
+
+/** @internal */
+export const pendingHydrationRuntime = (ctx: Atom.AtomContext, runtime: Atom.Atom<any>): void => {
+  const node = (ctx as Lifetime<any>).node
+  if (node.hydrating) {
+    node.pendingRuntime = runtime
+  }
 }
 
 const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn"> = {
@@ -990,6 +1050,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
 
   setSelf<A>(this: Lifetime<any>, a: A): void {
     if (this.disposed) return
+    this.node.endHydration()
     this.node.setValue(a as any)
   },
 

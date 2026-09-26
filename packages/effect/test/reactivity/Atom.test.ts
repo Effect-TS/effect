@@ -2602,7 +2602,7 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(rebuilds, 2)
     })
 
-    it("rebuilds on mutation with a hydrated value", async () => {
+    it("rebuilds on mutation with a hydrated value", () => {
       let rebuilds = 0
       let value = 0
       const atom = Atom.make(() => {
@@ -2636,6 +2636,253 @@ describe("Atom", { concurrent: false }, () => {
 
       assert.strictEqual(r.get(atom), 11)
       assert.strictEqual(rebuilds, 2)
+    })
+
+    const hydrate = (r: AtomRegistry.AtomRegistry, key: string, value: unknown) => {
+      const state: Array<Hydration.DehydratedAtomValue> = [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key,
+        value,
+        dehydratedAt: 0
+      }]
+      Hydration.hydrate(r, state)
+    }
+    const success = (value: number) => ({ _tag: "Success", value, waiting: false, timestamp: 0 })
+    const resultSchema = AsyncResult.Schema({ success: Schema.Number })
+    const mutation = counterRuntime.fn(
+      Effect.fn(function*() {
+      }),
+      { reactivityKeys: ["counter"] }
+    )
+    // Hydrates and mounts an effect atom whose runtime resolves after 5ms
+    const mountHydratedRuntimeAtom = (r: AtomRegistry.AtomRegistry) => {
+      const runtime = Atom.runtime(Layer.effectDiscard(Effect.sleep(5)))
+      const runs = { count: 0 }
+      const atom = runtime.atom(Effect.sync(() => ++runs.count)).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+      return { atom, runs }
+    }
+
+    it("tracks dependencies after hydrating a wrapped atom", () => {
+      const dependency = Atom.make(1).pipe(Atom.keepAlive)
+      let reads = 0
+      const atom = Atom.make((get) => {
+        reads++
+        return get(dependency) * 2
+      }).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: Schema.Number }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", 10)
+      r.mount(atom)
+
+      assert.strictEqual(r.get(atom), 10)
+      assert.strictEqual(reads, 1)
+
+      r.set(dependency, 7)
+
+      assert.strictEqual(r.get(atom), 14)
+      assert.strictEqual(reads, 2)
+    })
+
+    it("tracks Effect-body dependencies after hydrating a wrapped atom", () => {
+      const dependency = Atom.make(1).pipe(Atom.keepAlive)
+      let runs = 0
+      const atom = Atom.make((get) =>
+        Effect.sync(() => {
+          runs++
+          return get(dependency) * 2
+        })
+      ).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+
+      r.set(dependency, 7)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 14)
+      assert.strictEqual(runs, 1)
+    })
+
+    it("runs a hydrated effect on the first write to any atom", () => {
+      const unrelated = Atom.make(0).pipe(Atom.keepAlive)
+      let runs = 0
+      const atom = Atom.make(Effect.sync(() => ++runs)).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+
+      r.set(unrelated, 1)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+
+      r.set(unrelated, 2)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+    })
+
+    it("does not run a hydrated effect until invalidated", () => {
+      let reads = 0
+      let runs = 0
+      const atom = Atom.make(() => {
+        reads++
+        return Effect.sync(() => ++runs)
+      }).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(reads, 1)
+      assert.strictEqual(runs, 0)
+
+      r.set(mutation, void 0)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(reads, 2)
+      assert.strictEqual(runs, 1)
+    })
+
+    it("preserves hydration when an async runtime resolves until refresh", async () => {
+      const r = AtomRegistry.make()
+      const { atom, runs } = mountHydratedRuntimeAtom(r)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs.count, 0)
+      await vitest.advanceTimersByTimeAsync(5)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs.count, 0)
+
+      r.refresh(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs.count, 1)
+      r.dispose()
+    })
+
+    it("runs a refreshed hydrated effect after its async runtime resolves", async () => {
+      const r = AtomRegistry.make()
+      const { atom, runs } = mountHydratedRuntimeAtom(r)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs.count, 0)
+      r.refresh(atom)
+      await vitest.advanceTimersByTimeAsync(5)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs.count, 1)
+      r.dispose()
+    })
+
+    it("runs a hydrated effect after a matching mutation while its runtime loads", async () => {
+      const r = AtomRegistry.make()
+      const { atom, runs } = mountHydratedRuntimeAtom(r)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs.count, 0)
+      r.set(mutation, void 0)
+      await vitest.advanceTimersByTimeAsync(5)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs.count, 1)
+      r.dispose()
+    })
+
+    it("runs a hydrated effect when a pending dependency becomes ready", () => {
+      const ready = Atom.make(false).pipe(Atom.keepAlive)
+      let runs = 0
+      const atom = Atom.make((get): Effect.Effect<number> =>
+        get(ready) ? Effect.sync(() => ++runs) : AsyncResult.initial(true) as unknown as Effect.Effect<number>
+      ).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+      r.set(ready, true)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+      r.dispose()
+    })
+
+    it("does not start a hydrated synchronous stream until refresh", () => {
+      let runs = 0
+      const atom = Atom.make(Stream.fromEffect(Effect.sync(() => ++runs))).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(runs, 0)
+
+      r.refresh(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(runs, 1)
+      r.dispose()
+    })
+
+    it("ends hydration after a synchronous setSelf build", () => {
+      let builds = 0
+      let runs = 0
+      const atom = Atom.make((get): Effect.Effect<number> => {
+        if (++builds === 1) {
+          get.setSelf(AsyncResult.success(10))
+          return AsyncResult.success(10) as unknown as Effect.Effect<number>
+        }
+        return Effect.sync(() => ++runs)
+      }).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated", schema: resultSchema }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      hydrate(r, "hydrated", success(10))
+      r.mount(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 10)
+      assert.strictEqual(builds, 1)
+      assert.strictEqual(runs, 0)
+
+      r.refresh(atom)
+      assert.strictEqual(AsyncResult.getOrThrow(r.get(atom)), 1)
+      assert.strictEqual(builds, 2)
+      assert.strictEqual(runs, 1)
+      r.dispose()
     })
   })
 
