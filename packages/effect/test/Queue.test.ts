@@ -123,6 +123,33 @@ describe("Queue", () => {
     }
   }
 
+  for (const method of ["offer", "offerAll"] as const) {
+    for (const termination of ["end", "fail"] as const) {
+      it.effect(`interrupting suspended ${method} completes an empty queue after ${termination}`, () =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.bounded<number, Cause.Done | string>(0)
+          const offer = method === "offer" ? Queue.offer(queue, 1) : Queue.offerAll(queue, [1, 2])
+          const producer = yield* Effect.forkChild(offer, { startImmediately: true })
+          assert.isUndefined(producer.pollUnsafe(), "offer must be suspended before termination")
+
+          if (termination === "end") yield* Queue.end(queue)
+          else yield* Queue.fail(queue, "boom")
+          const awaiter = yield* Effect.forkChild(Effect.exit(Queue.await(queue)), { startImmediately: true })
+          assert.isUndefined(awaiter.pollUnsafe(), "await must wait for the pending offer")
+
+          yield* Fiber.interrupt(producer)
+          assert.deepStrictEqual(
+            yield* Fiber.join(awaiter),
+            termination === "end" ? Exit.void : Exit.fail("boom")
+          )
+          assert.deepStrictEqual(
+            yield* Effect.exit(Queue.take(queue)),
+            termination === "end" ? Exit.fail(Cause.Done()) : Exit.fail("boom")
+          )
+        }))
+    }
+  }
+
   it.effect("resuming a blocked producer does not enqueue its message twice", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(1)
