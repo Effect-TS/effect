@@ -1851,7 +1851,6 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const encodeFailure = Schema.encodeUnknownEffect(tool.failureSchema) as (
       error: unknown
     ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
-    // A declared Error is reported by its message; without one, by its encoded form.
     const declaredFailureResult = (error: unknown) =>
       error instanceof Error && error.message !== ""
         ? Effect.succeed(toolErrorResult(error.message))
