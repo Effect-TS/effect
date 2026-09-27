@@ -252,6 +252,27 @@ describe("Queue", () => {
       assert.deepStrictEqual(yield* Fiber.await(takeBetween), Exit.succeed([1, 2, 3]))
     }))
 
+  for (const take of ["takeN", "takeBetween"] as const) {
+    for (const termination of ["end", "fail"] as const) {
+      it.effect(take + " stops waiting for an insufficient batch after " + termination, () =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.unbounded<number, Cause.Done | string>()
+          yield* Queue.offerAll(queue, [1, 2])
+          if (termination === "end") yield* Queue.end(queue)
+          else yield* Queue.fail(queue, "boom")
+
+          const taker = yield* Effect.forkChild(
+            Effect.exit(take === "takeN" ? Queue.takeN(queue, 5) : Queue.takeBetween(queue, 5, 8)),
+            { startImmediately: true }
+          )
+          for (let i = 0; i < 20 && taker.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+          const result = taker.pollUnsafe()
+          yield* Queue.shutdown(queue)
+          assert.deepStrictEqual(result, Exit.succeed(Exit.fail(termination === "end" ? Cause.Done() : "boom")))
+        }))
+    }
+  }
+
   it.effect("takeN ending at an offerAll boundary keeps the next message", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number>()
