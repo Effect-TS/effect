@@ -102,6 +102,27 @@ describe("Queue", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([]))
     }))
 
+  for (const [method, pending] of [["offer", [2]], ["offerAll", [2, 3]]] as const) {
+    for (const interruptAfterEnd of [false, true]) {
+      it.effect(`interrupting suspended ${method} ${interruptAfterEnd ? "after" : "before"} end withdraws its messages`, () =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.bounded<number, Cause.Done>(1)
+          yield* Queue.offer(queue, 1)
+          const offer = method === "offer"
+            ? Queue.offer(queue, pending[0])
+            : Queue.offerAll(queue, pending)
+          const producer = yield* Effect.forkChild(offer, { startImmediately: true })
+          assert.isUndefined(producer.pollUnsafe(), "offer must be suspended before ending the queue")
+
+          if (interruptAfterEnd) yield* Queue.end(queue)
+          yield* Fiber.interrupt(producer)
+          if (!interruptAfterEnd) yield* Queue.end(queue)
+
+          assert.deepStrictEqual(yield* Queue.collect(queue), [1])
+        }))
+    }
+  }
+
   it.effect("resuming a blocked producer does not enqueue its message twice", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(1)
