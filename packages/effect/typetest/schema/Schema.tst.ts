@@ -1911,6 +1911,13 @@ describe("Schema", () => {
           string
         >
       >()
+      // A single port id is either the "input" or the "output" variant, never
+      // both. The flattened brand above keeps every key but cannot express that
+      // exclusivity, so also assert the usable direction: decoded values remain
+      // assignable to the original exclusive union.
+      expect(Schema.revealCodec(schema)).type.toBeAssignableTo<
+        Schema.Codec<InputOrOutputMidiPortId, string>
+      >()
     })
   })
 
