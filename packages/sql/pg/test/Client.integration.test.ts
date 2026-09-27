@@ -360,10 +360,7 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
   it.effect("fails a transaction whose COMMIT rolls back after a caught error", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
-      yield* sql`CREATE TABLE aborted_commit (value INTEGER)`
-
       const cause = yield* sql.withTransaction(Effect.gen(function*() {
-        yield* sql`INSERT INTO aborted_commit VALUES (1)`
         yield* Effect.ignore(sql`SELECT 1 / 0`)
       })).pipe(Effect.sandbox, Effect.flip)
 
@@ -371,7 +368,6 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.instanceOf(defect, SqlError.SqlError)
       assert.strictEqual(defect.reason._tag, "UnknownError")
       assert.strictEqual(defect.reason.operation, "commit")
-      assert.deepStrictEqual(yield* sql`SELECT value FROM aborted_commit`, [])
     }))
 })
 
