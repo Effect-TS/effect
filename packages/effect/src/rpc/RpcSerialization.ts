@@ -171,9 +171,12 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
             if (isBufferSizeExceeded(nlIndex - position, maxBufferSize)) {
               failMaxBufferSize(maxBufferSize)
             }
-            const item = JSON.parse(buffer.slice(position, nlIndex))
-            items.push(item)
+            const line = buffer.slice(position, nlIndex)
             position = nlIndex + 1
+            try {
+              items.push(JSON.parse(line))
+            } catch {
+            }
             nlIndex = buffer.indexOf("\n", position)
           }
           buffer = buffer.slice(position)
@@ -229,7 +232,7 @@ export const jsonRpc = (options?: {
       }>()
       return {
         decode: (bytes) => {
-          const decoded: JsonRpcMessage | Array<JsonRpcMessage> = JSON.parse(
+          const decoded: unknown = JSON.parse(
             typeof bytes === "string" ? bytes : decodeText(bytes)
           )
           return decodeJsonRpcRaw(decoded, batches)
@@ -270,8 +273,7 @@ export const ndJsonRpc = (options?: {
           if (frames.length === 0) return []
           const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
           for (let i = 0; i < frames.length; i++) {
-            const frame = frames[i]
-            messages.push(...decodeJsonRpcRaw(frame as any, batches) as any)
+            messages.push(...decodeJsonRpcRaw(frames[i], batches))
           }
           return messages
         },
@@ -284,7 +286,7 @@ export const ndJsonRpc = (options?: {
   })
 
 function decodeJsonRpcRaw(
-  decoded: JsonRpcMessage | Array<JsonRpcMessage>,
+  decoded: unknown,
   batches: Map<string | number, {
     readonly size: number
     readonly responses: Map<string | number, RpcMessage.FromServerEncoded>
@@ -297,7 +299,9 @@ function decodeJsonRpcRaw(
     }
     const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
     for (let i = 0; i < decoded.length; i++) {
-      const message = decodeJsonRpcMessage(decoded[i])
+      const item = decoded[i]
+      if (!Predicate.isObject(item)) continue
+      const message = decodeJsonRpcMessage(item as unknown as JsonRpcMessage)
       messages.push(message)
       if (message._tag === "Request" && !message.isNotification) {
         batch.size++
@@ -306,13 +310,15 @@ function decodeJsonRpcRaw(
     }
     return messages
   }
-  return [decodeJsonRpcMessage(decoded)]
+  return Predicate.isObject(decoded) ? [decodeJsonRpcMessage(decoded as unknown as JsonRpcMessage)] : []
 }
 
 function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded {
   if (Object.hasOwn(decoded, "method")) {
     const request = decoded as JsonRpcRequest
-    if (Predicate.isNullish(request.id) && request.method.startsWith("@effect/rpc/")) {
+    if (
+      Predicate.isNullish(request.id) && Predicate.isString(request.method) && request.method.startsWith("@effect/rpc/")
+    ) {
       const tag = request.method.slice("@effect/rpc/".length) as
         | RpcMessage.FromServerEncoded["_tag"]
         | Exclude<RpcMessage.FromClientEncoded["_tag"], "Request">
