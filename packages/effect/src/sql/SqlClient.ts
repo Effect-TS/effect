@@ -144,6 +144,8 @@ export declare namespace SqlClient {
     readonly beginTransaction?: string | undefined
     readonly rollback?: string | undefined
     readonly commit?: string | undefined
+    /** Override COMMIT execution when the driver must inspect its result. */
+    readonly commitEffect?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
     readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     readonly savepoint?: ((name: string) => string) | undefined
@@ -210,7 +212,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
       : undefined,
-    commit: (conn) => control(conn, commit),
+    commit: options.commitEffect ?? ((conn) => Effect.asVoid(control(conn, commit))),
     onCommitFailure: options.onCommitFailure,
     rollback: (conn) => control(conn, rollback),
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
@@ -423,12 +425,12 @@ export const makeWithTransaction = <I, S>(options: {
                         )
                       ),
                       (exit) => {
-                        let effect: Effect.Effect<void>
+                        let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
                             span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
                             const onCommitFailure = options.onCommitFailure
-                            effect = Effect.orDie(options.commit(conn))
+                            effect = options.commit(conn)
                             if (onCommitFailure) {
                               effect = Effect.onError(effect, () => Effect.orDie(onCommitFailure(conn)))
                             }
