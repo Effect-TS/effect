@@ -176,7 +176,6 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
             try {
               items.push(JSON.parse(line))
             } catch {
-              // Ignore malformed frames without discarding the rest of the chunk.
             }
             nlIndex = buffer.indexOf("\n", position)
           }
