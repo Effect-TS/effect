@@ -1981,6 +1981,7 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
   internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
+    if (self.state._tag === "Closing") return resume(self.state.exit)
     self.state.takers.add(resume)
     return internalEffect.sync(() => {
       if (self.state._tag !== "Done") self.state.takers.delete(resume)
