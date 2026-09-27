@@ -44,6 +44,8 @@
       "@effect/atom-vue/*": ["./packages/atom/vue/src/*.ts"],
       "@effect/atom-solid": ["./packages/atom/solid/src/index.ts"],
       "@effect/atom-solid/*": ["./packages/atom/solid/src/*.ts"],
+      "@effect/openfeature": ["./packages/openfeature/src/index.ts"],
+      "@effect/openfeature/*": ["./packages/openfeature/src/*.ts"],
       "@effect/opentelemetry": ["./packages/opentelemetry/src/index.ts"],
       "@effect/opentelemetry/*": ["./packages/opentelemetry/src/*.ts"],
       "@effect/platform-browser": ["./packages/platform/browser/src/index.ts"],

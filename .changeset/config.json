@@ -26,6 +26,7 @@
       "@effect/docgen",
       "@effect/doctest",
       "@effect/openapi-generator",
+      "@effect/openfeature",
       "@effect/opentelemetry",
       "@effect/platform-browser",
       "@effect/platform-bun",

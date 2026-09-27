@@ -13,6 +13,7 @@
     { "path": "packages/atom/react" },
     { "path": "packages/atom/vue" },
     { "path": "packages/atom/solid" },
+    { "path": "packages/openfeature" },
     { "path": "packages/opentelemetry" },
     { "path": "packages/platform/browser" },
     { "path": "packages/platform/bun" },

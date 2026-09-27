@@ -24,6 +24,7 @@
     "packages/ai",
     "packages/atom",
     "packages/effect/test/cluster/",
+    "packages/openfeature/",
     "packages/opentelemetry/",
     "packages/platform/browser/",
     "packages/platform/bun/",
