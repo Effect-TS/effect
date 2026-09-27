@@ -463,6 +463,7 @@ class PgConnectionImpl implements PgConnection {
     if (destroySocket) this.session.socket.destroy()
     const consumer = this.consumer
     this.consumer = undefined
+    this.retire()
     consumer?.onFatal(error)
     const sets = Array.from(this.channels.values())
     this.channels.clear()
@@ -470,7 +471,6 @@ class PgConnectionImpl implements PgConnection {
     for (const set of sets) {
       for (const queue of set) Queue.failCauseUnsafe(queue, cause)
     }
-    this.retire()
   }
 
   private retire(): void {
