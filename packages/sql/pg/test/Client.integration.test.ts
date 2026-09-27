@@ -364,12 +364,37 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
         yield* Effect.ignore(sql`SELECT 1 / 0`)
       })).pipe(Effect.sandbox, Effect.flip)
 
+      assert.isTrue(Cause.hasDies(cause))
+      assert.isFalse(Cause.hasFails(cause))
       const defect = Cause.squash(cause)
       assert.instanceOf(defect, SqlError.SqlError)
       assert.strictEqual(defect.reason._tag, "UnknownError")
       assert.strictEqual(defect.reason.operation, "commit")
     }))
 })
+
+it.layer(PgContainer.layerMakeClientUnprepared, { timeout: "30 seconds" })(
+  "PgClient.makeClient without preparation",
+  (it) => {
+    it.effect("fails an aborted COMMIT and reuses the connection", () =>
+      Effect.gen(function*() {
+        const sql = yield* PgClient.PgClient
+        const cause = yield* sql.withTransaction(Effect.gen(function*() {
+          yield* Effect.ignore(sql`SELECT 1 / 0`)
+        })).pipe(Effect.sandbox, Effect.flip)
+
+        assert.isTrue(Cause.hasDies(cause))
+        assert.isFalse(Cause.hasFails(cause))
+        const defect = Cause.squash(cause)
+        assert.instanceOf(defect, SqlError.SqlError)
+        assert.strictEqual(defect.reason._tag, "UnknownError")
+        assert.strictEqual(defect.reason.operation, "commit")
+
+        const rows = yield* sql.withTransaction(sql<{ value: number }>`SELECT 1 AS value`)
+        assert.deepStrictEqual(rows, [{ value: 1 }])
+      }))
+  }
+)
 
 it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeClient", (it) => {
   it.effect("connects before executing queries", () =>
