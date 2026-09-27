@@ -413,7 +413,7 @@ describe("PubSub", () => {
         Array.filter(result2, (n) => n < 0),
         Array.map(values, (n) => -n)
       )
-}))
+    }))
 
   it.effect("infinite capacity behaves as unbounded", () =>
     Effect.gen(function*() {
@@ -428,7 +428,7 @@ describe("PubSub", () => {
       }
     }))
 
-it.effect("null values", () => {
+  it.effect("null values", () => {
     const messages = [1, null]
     return PubSub.unbounded<number | null>().pipe(
       Effect.flatMap((pubsub) =>
