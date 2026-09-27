@@ -172,7 +172,7 @@ export declare namespace Brand {
    * @category utility types
    * @since 4.0.0
    */
-  export type Keys<B extends Brand<any>> = keyof B[typeof TypeId]
+  export type Keys<B extends Brand<any>> = B extends unknown ? keyof B[typeof TypeId] : never
 
   /**
    * A utility type to extract the brands from a branded type.

@@ -1890,6 +1890,35 @@ describe("Schema", () => {
         Schema.Codec<number & Brand.Brand<"Int"> & Brand.Brand<"Positive">, number>
       >()
     })
+
+    it("should keep the keys of a distributed union brand", () => {
+      type MIDIPortType = "input" | "output"
+      type Id<TPortType extends MIDIPortType> = TPortType extends MIDIPortType
+        ? Brand.Branded<string, "MIDIPortId"> & Brand.Brand<TPortType>
+        : never
+
+      type InputOrOutputMidiPortId = Id<MIDIPortType>
+      const InputOrOutputMidiPortId = Brand.check<InputOrOutputMidiPortId>(
+        Schema.isTrimmed(),
+        Schema.isMinLength(5)
+      )
+
+      const schema = Schema.String.pipe(Schema.fromBrand("InputOrOutputMidiPortId", InputOrOutputMidiPortId))
+      expect(schema).type.toBe<Schema.brand<Schema.String, "MIDIPortId" | "input" | "output">>()
+      expect(Schema.revealCodec(schema)).type.toBe<
+        Schema.Codec<
+          string & Brand.Brand<"MIDIPortId"> & Brand.Brand<"input"> & Brand.Brand<"output">,
+          string
+        >
+      >()
+      // A single port id is either the "input" or the "output" variant, never
+      // both. The flattened brand above keeps every key but cannot express that
+      // exclusivity, so also assert the usable direction: decoded values remain
+      // assignable to the original exclusive union.
+      expect(Schema.revealCodec(schema)).type.toBeAssignableTo<
+        Schema.Codec<InputOrOutputMidiPortId, string>
+      >()
+    })
   })
 
   describe("fieldsAssign", () => {
