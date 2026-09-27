@@ -811,17 +811,16 @@ function toWithHeadersDecoder(
 ): WithHeadersDecoder {
   const annotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
   if (annotation !== undefined) {
-    // The headers are part of the schema's encoded side, so check the wire
-    // headers with the headers options before decoding the whole pair.
-    const decodeHeaders = Schema.decodeUnknownEffect(Schema.toEncoded(annotation.headersCodec), headersOptions)
-    const decode = Schema.decodeEffect(
-      Schema.Struct({
-        body: fromArrayBuffer(annotation.body),
-        headers: annotation.headersCodec
-      }).pipe(Schema.decodeTo(schema)),
+    const decodeBody = Schema.decodeEffect(
+      fromArrayBuffer(annotation.bodyWire).pipe(Schema.decodeTo(annotation.bodyWire)),
       options
     )
-    return (body, headers) => Effect.flatMap(decodeHeaders(headers), (headers) => decode({ body, headers }))
+    const decodeHeaders = Schema.decodeUnknownEffect(annotation.headersWire, headersOptions)
+    return (body, headers) =>
+      Effect.flatMap(
+        decodeBody(body),
+        (body) => Effect.map(decodeHeaders(headers), (headers) => annotation.transformation.decode({ body, headers }))
+      )
   }
   if (!HttpApiSchema.isWithHeaders(schema)) {
     const decode = Schema.decodeEffect(fromArrayBuffer(schema).pipe(Schema.decodeTo(schema)), options)

@@ -1427,7 +1427,9 @@ function transformResponse(schema: Schema.Top): Schema.Top {
   }).pipe(Schema.decodeTo(schema)).annotate({
     "~httpApiWithHeaders": {
       ...withHeaders,
-      headersCodec: Schema.toCodecStringTree(headers)
+      headersCodec: Schema.toCodecStringTree(headers),
+      bodyWire: applyResponseEncoding(withHeaders.body, encoding),
+      headersWire: Schema.toCodecStringTree(withHeaders.headers)
     }
   })
 }
