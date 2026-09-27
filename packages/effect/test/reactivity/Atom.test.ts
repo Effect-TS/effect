@@ -554,6 +554,28 @@ describe("Atom", { concurrent: false }, () => {
     assert.deepStrictEqual(seen, [5])
   })
 
+  it("recovers an observed derived atom after its build throws", () => {
+    const source = Atom.make(0)
+    const derived = Atom.make((get) => {
+      const value = get(source)
+      if (value === 1) throw new Error("build failed")
+      return value
+    })
+    const r = AtomRegistry.make()
+    const sourceValues: Array<number> = []
+    const derivedValues: Array<number> = []
+
+    assert.strictEqual(r.get(derived), 0)
+    r.subscribe(source, (value) => sourceValues.push(value))
+    r.subscribe(derived, (value) => derivedValues.push(value))
+
+    assert.throws(() => r.set(source, 1), /build failed/)
+    assert.deepStrictEqual(sourceValues, [1])
+
+    r.set(source, 2)
+    assert.deepStrictEqual(derivedValues, [2])
+  })
+
   it("a build superseded while it runs is released", () => {
     const p = Atom.make(0)
     let finalized = 0
