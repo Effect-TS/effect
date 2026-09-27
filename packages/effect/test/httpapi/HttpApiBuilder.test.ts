@@ -265,6 +265,54 @@ it.layer(TestServices)("HttpApiBuilder slot ParseOptions", (it) => {
       const failed = yield* respond(api.annotate(HttpApi.ErrorParseOptions, {}), new Request("http://localhost/fail"))
       assert.strictEqual(failed._tag === "Success" && failed.value.status, 400)
     }))
+
+  it.effect("encodeToWithHeaders response headers use HeadersParseOptions", () =>
+    Effect.gen(function*() {
+      class Limited extends Schema.TaggedError<Limited>()("Limited", { id: Schema.String }) {}
+      const LimitedResponse = Limited.pipe(HttpApiSchema.encodeToWithHeaders({
+        body: HttpApiSchema.Empty(429),
+        headers: { "x-id": Schema.String }
+      }, {
+        decode: ({ headers }) => new Limited({ id: headers["x-id"] }),
+        encode: (error) => {
+          const headers = { "x-id": error.id, "x-extra": "extra" }
+          return { body: undefined, headers }
+        }
+      }))
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("limited", "/limited", { error: LimitedResponse }))
+      )
+      const respond = Effect.fnUntraced(function*(api: typeof Api) {
+        const handler = yield* HttpRouter.toHttpEffect(
+          HttpApiBuilder.layer(api).pipe(
+            Layer.provide(HttpApiBuilder.group(api, "test", (handlers) =>
+              handlers.handle("limited", () =>
+                Effect.fail(new Limited({ id: "1" })))))
+          )
+        )
+        return yield* handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost/limited"))
+          ),
+          Effect.exit
+        )
+      })
+
+      // Strict error body options do not apply to the headers.
+      const relaxed = yield* respond(
+        Api.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }).annotate(HttpApi.HeadersParseOptions, {})
+      )
+      assert.strictEqual(relaxed._tag, "Success")
+      if (relaxed._tag === "Success") {
+        assert.strictEqual(relaxed.value.status, 429)
+        assert.strictEqual(relaxed.value.headers["x-id"], "1")
+        assert.isUndefined(relaxed.value.headers["x-extra"])
+      }
+      // Strict header options apply even with default error body options.
+      const strict = yield* respond(Api.annotate(HttpApi.HeadersParseOptions, { onExcessProperty: "error" }))
+      assert.strictEqual(strict._tag, "Failure")
+    }))
 })
 
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {

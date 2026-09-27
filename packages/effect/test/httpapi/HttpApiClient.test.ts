@@ -282,6 +282,36 @@ describe("HttpApiClient", () => {
           Exit.succeed({ events: [{ name: "Ada" }], headers: { "x-count": 1 } })
         )
       }))
+
+    it.effect("encodeToWithHeaders decodes header transformations with HeadersParseOptions", () =>
+      Effect.gen(function*() {
+        class Invalid extends Schema.TaggedError<Invalid>()("Invalid", { a: Schema.Finite, b: Schema.Finite }) {}
+        const InvalidResponse = Invalid.pipe(HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.status(400), HttpApiSchema.asText()),
+          headers: { "x-a": Schema.FiniteFromString, "x-b": Schema.FiniteFromString }
+        }, {
+          decode: ({ headers }) => new Invalid({ a: headers["x-a"], b: headers["x-b"] }),
+          encode: (error) => ({ body: "invalid", headers: { "x-a": error.a, "x-b": error.b } })
+        }))
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/invalid", { error: InvalidResponse }))
+        )
+          .annotate(HttpApi.ParseOptions, { errors: "first" })
+          .annotate(HttpApi.HeadersParseOptions, { errors: "all" })
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response("invalid", {
+              status: 400,
+              headers: { "content-type": "text/plain", "x-a": "bad", "x-b": "bad" }
+            })
+          )
+        })
+
+        const exit = String(yield* Effect.exit(client.test.get({})))
+        assert.include(exit, `["x-a"]`)
+        assert.include(exit, `["x-b"]`)
+      }))
   })
 
   describe("literal action suffixes", () => {
