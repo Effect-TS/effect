@@ -1994,7 +1994,11 @@ const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {
   const offers = self.state.offers
   offers.add(entry)
   return internalEffect.sync(() => {
-    if (self.state._tag === "Open") offers.delete(entry)
+    if (self.state._tag === "Done") return
+    offers.delete(entry)
+    if (self.state._tag === "Closing" && offers.size === 0 && self.messages.length === 0) {
+      finalize(self, self.state.exit)
+    }
   })
 }
 
