@@ -829,21 +829,23 @@ function handlerToHttpEffect(
   isRaw: boolean
 ) {
   const annotations = Context.merge(Context.merge(api.annotations, group.annotations), endpoint.annotations)
-  const options = Context.getOrUndefined(annotations, HttpApi.ParseOptions)
-  const decodeUnknownEffect = <S extends Schema.Constraint>(schema: S) => Schema.decodeUnknownEffect(schema, options)
-  const encodeSuccess = Schema.encodeUnknownEffect(makeSuccessSchema(endpoint), options)
-  const encodeError = Schema.encodeUnknownEffect(makeErrorSchema(endpoint), options)
-  const decodeParams = UndefinedOr.map(endpoint.params, decodeUnknownEffect)
-  const decodeHeaders = UndefinedOr.map(endpoint.headers, decodeUnknownEffect)
+  const options = HttpApi.getSlotParseOptions(annotations)
+  const encodeSuccess = Schema.encodeUnknownEffect(makeSuccessSchema(endpoint), options.success)
+  const encodeError = Schema.encodeUnknownEffect(makeErrorSchema(endpoint, options.headers), options.error)
+  const decodeParams = UndefinedOr.map(endpoint.params, (schema) => Schema.decodeUnknownEffect(schema, options.params))
+  const decodeHeaders = UndefinedOr.map(
+    endpoint.headers,
+    (schema) => Schema.decodeUnknownEffect(schema, options.headers)
+  )
   const decodeQuery = UndefinedOr.map(
     endpoint.query,
-    (schema) => decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema))
+    (schema) => Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema), options.query)
   )
-  const encodeStream = makeStreamEncoder(endpoint, options)
-  const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options)
+  const encodeStream = makeStreamEncoder(endpoint, options.success)
+  const encodeWithHeaders = makeWithHeadersEncoder(endpoint, options.success, options.headers)
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
-  const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options) : undefined
+  const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload, options.payload) : undefined
 
   return applyMiddleware(
     group,
@@ -1022,13 +1024,17 @@ interface WithHeadersEncoders {
 
 function makeWithHeadersEncoder(
   endpoint: HttpApiEndpoint.Top,
-  options: SchemaAST.ParseOptions | undefined
+  options: SchemaAST.ParseOptions | undefined,
+  headersOptions: SchemaAST.ParseOptions | undefined
 ): WithHeadersEncoders | undefined {
   const encodeHeaders = new Map<number, WithHeadersEncoder>()
   const bodySchemas: Array<Schema.ConstraintEncoder<HttpServerResponse, unknown>> = []
   for (const schema of endpoint.success) {
     if (!HttpApiSchema.isWithHeaders(schema)) continue
-    encodeHeaders.set(HttpApiSchema.getStatusSuccessSchema(schema), Schema.encodeUnknownEffect(schema.headers, options))
+    encodeHeaders.set(
+      HttpApiSchema.getStatusSuccessSchema(schema),
+      Schema.encodeUnknownEffect(schema.headers, headersOptions)
+    )
     if (!HttpApiSchema.isStreamSchema(schema.schema)) {
       bodySchemas.push(toResponseSuccessSchema(schema))
     }
@@ -1180,12 +1186,14 @@ const toResponseSuccessSchema = toResponseSchema(HttpApiSchema.getStatusSuccessS
 const toResponseErrorSchemaPlain = toResponseSchema(HttpApiSchema.getStatusErrorSchema)
 
 function toResponseErrorSchema(
-  schema: Schema.Constraint
+  schema: Schema.Constraint,
+  headersOptions: SchemaAST.ParseOptions | undefined
 ): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
   if (!HttpApiSchema.isWithHeaders(schema)) return toResponseErrorSchemaPlain(schema)
 
   const encodeBody = Schema.encodeUnknownEffect(schema.schema)
-  const encodeHeaders = Schema.encodeUnknownEffect(schema.headers)
+  // Headers use the headers slot options instead of the error body options.
+  const encodeHeaders = Schema.encodeUnknownEffect(schema.headers, headersOptions)
   const encodeResponse = getResponseEncode(
     HttpApiSchema.getStatusErrorSchema(schema),
     HttpApiSchema.getResponseEncodingSchema(schema),
@@ -1197,7 +1205,7 @@ function toResponseErrorSchema(
         Effect.mapError((error) => error.issue),
         Effect.flatMap((body) => encodeResponse(body, options))
       ),
-    encodeHeaders
+    (headers) => encodeHeaders(headers)
   )
   return $HttpServerResponse.pipe(Schema.decodeTo(schema, transformation))
 }
@@ -1210,9 +1218,12 @@ function makeSuccessSchema(
 }
 
 function makeErrorSchema(
-  endpoint: HttpApiEndpoint.Top
+  endpoint: HttpApiEndpoint.Top,
+  headersOptions: SchemaAST.ParseOptions | undefined
 ): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
-  const schemas = HttpApiEndpoint.getErrorSchemas(endpoint).map(toResponseErrorSchema)
+  const schemas = HttpApiEndpoint.getErrorSchemas(endpoint).map((schema) =>
+    toResponseErrorSchema(schema, headersOptions)
+  )
   if (schemas.length === 0) return Schema.Never
   return schemas.length === 1 ? schemas[0] : Schema.Union(schemas)
 }

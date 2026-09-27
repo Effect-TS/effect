@@ -352,12 +352,59 @@ export class AdditionalSchemas extends Context.Service<
  *
  * **Details**
  *
- * Endpoint options override group options, which override API options. Objects
- * are replaced, not merged. Without an annotation, Schema defaults apply.
+ * `ParseOptions` is the fallback for every codec. Each codec slot also has its
+ * own annotation:
  *
- * Header codecs receive all HTTP headers, so `onExcessProperty: "error"` rejects
- * undeclared headers such as `content-type`. Annotate the API before passing it
- * to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
+ * - `ParamsParseOptions` for path params
+ * - `QueryParseOptions` for the query string
+ * - `HeadersParseOptions` for request headers and `WithHeaders` response headers
+ * - `PayloadParseOptions` for request bodies
+ * - `SuccessParseOptions` for success bodies
+ * - `ErrorParseOptions` for error bodies
+ *
+ * For each slot, the slot annotation is used if it is set on the API, group, or
+ * endpoint. Otherwise `ParseOptions` is used, and without either, Schema
+ * defaults apply. A slot annotation at any level beats `ParseOptions` at any
+ * level. It replaces `ParseOptions` for that slot; the two objects are never
+ * merged.
+ *
+ * Within one annotation, endpoint options override group options, which
+ * override API options. Objects are replaced, not merged. Annotate the API
+ * before passing it to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
+ *
+ * **Gotchas**
+ *
+ * Header codecs receive every HTTP header, and real header maps always contain
+ * transport headers the endpoint does not declare, such as `content-type`,
+ * `content-length`, `host`, `user-agent`, and proxy headers. Because headers
+ * fall back to `ParseOptions` like every other slot:
+ *
+ * - `onExcessProperty: "error"` rejects every real request with declared
+ *   headers and every `WithHeaders` response.
+ * - `onExcessProperty: "preserve"` passes the transport headers through into
+ *   the decoded value.
+ *
+ * Set headers back to Schema defaults with `HeadersParseOptions` on the API,
+ * which wins over `ParseOptions` at any level.
+ *
+ * **Example** (Strict bodies with default header parsing)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
+ *
+ * const api = HttpApi.make("Api")
+ *   .add(
+ *     HttpApiGroup.make("users").add(
+ *       HttpApiEndpoint.post("create", "/users", {
+ *         headers: { "x-api-key": Schema.String },
+ *         payload: { name: Schema.String }
+ *       })
+ *     )
+ *   )
+ *   .annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+ *   .annotate(HttpApi.HeadersParseOptions, {})
+ * ```
  *
  * @stability unstable
  * @category services
@@ -367,3 +414,149 @@ export class ParseOptions extends Context.Service<
   ParseOptions,
   SchemaAST.ParseOptions
 >()("effect/http-api/HttpApi/ParseOptions") {}
+
+/**
+ * Schema parse options for path params: server decoding, client encoding, and
+ * `HttpApiClient.urlBuilder`.
+ *
+ * **Details**
+ *
+ * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
+ * endpoint, it replaces `ParseOptions` for path params.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class ParamsParseOptions extends Context.Service<
+  ParamsParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/ParamsParseOptions") {}
+
+/**
+ * Schema parse options for the query string: server decoding, client encoding,
+ * and `HttpApiClient.urlBuilder`.
+ *
+ * **Details**
+ *
+ * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
+ * endpoint, it replaces `ParseOptions` for the query string.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class QueryParseOptions extends Context.Service<
+  QueryParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/QueryParseOptions") {}
+
+/**
+ * Schema parse options for request headers and the headers of `WithHeaders`
+ * responses, covering server decoding and encoding and client encoding and
+ * decoding of buffered and streamed responses.
+ *
+ * **Details**
+ *
+ * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
+ * endpoint, it replaces `ParseOptions` for headers.
+ *
+ * **Gotchas**
+ *
+ * Header maps always contain undeclared transport headers, so strict
+ * `onExcessProperty` settings reject real traffic. Set this to `{}` on the API
+ * to use Schema defaults for headers while other slots stay strict.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class HeadersParseOptions extends Context.Service<
+  HeadersParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/HeadersParseOptions") {}
+
+/**
+ * Schema parse options for request bodies, including multipart payloads:
+ * server decoding and client encoding.
+ *
+ * **Details**
+ *
+ * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
+ * endpoint, it replaces `ParseOptions` for request bodies.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class PayloadParseOptions extends Context.Service<
+  PayloadParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/PayloadParseOptions") {}
+
+/**
+ * Schema parse options for success bodies, including streams, SSE events, and
+ * the body of `WithHeaders` responses: server encoding and client decoding.
+ *
+ * **Details**
+ *
+ * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
+ * endpoint, it replaces `ParseOptions` for success bodies.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class SuccessParseOptions extends Context.Service<
+  SuccessParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/SuccessParseOptions") {}
+
+/**
+ * Schema parse options for error bodies: server encoding and client decoding.
+ *
+ * **Details**
+ *
+ * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
+ * endpoint, it replaces `ParseOptions` for error bodies.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class ErrorParseOptions extends Context.Service<
+  ErrorParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/ErrorParseOptions") {}
+
+/**
+ * Parse options resolved for each codec slot of an endpoint.
+ *
+ * @internal
+ */
+export interface SlotParseOptions {
+  readonly params: SchemaAST.ParseOptions | undefined
+  readonly query: SchemaAST.ParseOptions | undefined
+  readonly headers: SchemaAST.ParseOptions | undefined
+  readonly payload: SchemaAST.ParseOptions | undefined
+  readonly success: SchemaAST.ParseOptions | undefined
+  readonly error: SchemaAST.ParseOptions | undefined
+}
+
+/**
+ * Resolves each slot annotation from merged annotations, falling back to
+ * `ParseOptions`.
+ *
+ * @internal
+ */
+export const getSlotParseOptions = (annotations: Context.Context<never>): SlotParseOptions => {
+  const fallback = Context.getOrUndefined(annotations, ParseOptions)
+  return {
+    params: Context.getOrUndefined(annotations, ParamsParseOptions) ?? fallback,
+    query: Context.getOrUndefined(annotations, QueryParseOptions) ?? fallback,
+    headers: Context.getOrUndefined(annotations, HeadersParseOptions) ?? fallback,
+    payload: Context.getOrUndefined(annotations, PayloadParseOptions) ?? fallback,
+    success: Context.getOrUndefined(annotations, SuccessParseOptions) ?? fallback,
+    error: Context.getOrUndefined(annotations, ErrorParseOptions) ?? fallback
+  }
+}
