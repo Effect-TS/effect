@@ -66,7 +66,7 @@
   },
   "devDependencies": {
     "effect": "workspace:^",
-    "miniflare": "5.20260918.0-alpha"
+    "miniflare": "5.20260925.0-alpha"
   },
   "peerDependencies": {
     "effect": "workspace:^"
