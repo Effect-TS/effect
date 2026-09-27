@@ -816,10 +816,15 @@ function toWithHeadersDecoder(
       options
     )
     const decodeHeaders = Schema.decodeUnknownEffect(annotation.headersWire, headersOptions)
+    const decodeValue = Schema.decodeUnknownEffect(Schema.toType(schema), options)
     return (body, headers) =>
       Effect.flatMap(
         decodeBody(body),
-        (body) => Effect.map(decodeHeaders(headers), (headers) => annotation.transformation.decode({ body, headers }))
+        (body) =>
+          Effect.flatMap(
+            decodeHeaders(headers),
+            (headers) => decodeValue(annotation.transformation.decode({ body, headers }))
+          )
       )
   }
   if (!HttpApiSchema.isWithHeaders(schema)) {
