@@ -323,8 +323,24 @@ export const mount: {
 
 const constImmediate = { immediate: true }
 
-const notifyListener = (listener: () => void): void => {
-  listener()
+const invoke = (f: () => void): void => {
+  f()
+}
+
+const noFailure = {}
+
+// Runs `f` for every item, then rethrows the first failure. One failing step
+// must not skip the others: those would leak a lifetime or miss an update.
+function runAll<T>(items: Iterable<T>, f: (item: T) => void): void {
+  let failure: unknown = noFailure
+  for (const item of items) {
+    try {
+      f(item)
+    } catch (error) {
+      if (failure === noFailure) failure = error
+    }
+  }
+  if (failure !== noFailure) throw failure
 }
 
 const SerializableTypeId: Atom.SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
@@ -415,6 +431,9 @@ class RegistryImpl implements AtomRegistry {
     const node = this.ensureNode(atom)
     if (options?.immediate) {
       f(node.value())
+    } else if (node.state === NodeState.stale) {
+      // a listener hears the next change, which only reaches an up-to-date node
+      node.value()
     }
     const remove = node.subscribe(function() {
       f(node._value)
@@ -553,16 +572,20 @@ class RegistryImpl implements AtomRegistry {
   sweepBucket(bucket: number): void {
     const nodes = this.timeoutBuckets.get(bucket)![0]
     this.timeoutBuckets.delete(bucket)
+    runAll(nodes, this.removeIdleNode)
+  }
 
-    nodes.forEach((node) => {
-      this.nodeTimeoutBucket.delete(node)
-      if (!node.canBeRemoved) return
-      this.nodes.delete(atomKey(node.atom))
-      this.onNodeRemoved?.(node)
-      this.#currentSweepTTL = node.atom.idleTTL ?? this.defaultIdleTTL!
+  removeIdleNode = (node: NodeImpl<any>): void => {
+    this.nodeTimeoutBucket.delete(node)
+    if (!node.canBeRemoved) return
+    this.nodes.delete(atomKey(node.atom))
+    this.onNodeRemoved?.(node)
+    this.#currentSweepTTL = node.atom.idleTTL ?? this.defaultIdleTTL!
+    try {
       node.remove()
+    } finally {
       this.#currentSweepTTL = null
-    })
+    }
   }
 
   reset(): void {
@@ -570,11 +593,18 @@ class RegistryImpl implements AtomRegistry {
     this.timeoutBuckets.clear()
     this.nodeTimeoutBucket.clear()
 
-    this.nodes.forEach((node) => {
-      node.remove()
-      this.onNodeRemoved?.(node)
-    })
+    const nodes = Array.from(this.nodes.values())
     this.nodes.clear()
+    // every node goes: marked first, removing one cannot reschedule or time out a parent
+    for (const node of nodes) {
+      node.state = NodeState.removed
+    }
+    runAll(nodes, this.destroyNode)
+  }
+
+  destroyNode = (node: NodeImpl<any>): void => {
+    node.remove()
+    this.onNodeRemoved?.(node)
   }
 
   dispose(): void {
@@ -614,14 +644,15 @@ class NodeImpl<A> {
   lifetime: Lifetime<A> | undefined
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
+  invalidatedDuringBuild = false
 
+  // Every parent that holds this node as a child. A stale node keeps the
+  // parents of its last build, so they are not released and their next change
+  // still reaches it. A build drops the parents it did not read.
   parents = new Set<NodeImpl<any>>()
-  previousParents: Set<NodeImpl<any>> | undefined
   children = new Set<NodeImpl<any>>()
   listeners = new Set<() => void>()
-  skipInvalidation = false
-  building = false
-  invalidatedDuringBuild = false
+  observedChildren = 0
 
   currentState() {
     switch (this.state) {
@@ -640,35 +671,101 @@ class NodeImpl<A> {
     return !this.atom.keepAlive && this.listeners.size === 0 && this.children.size === 0 && this.state !== 0
   }
 
+  get building(): boolean {
+    return this.lifetime !== undefined && this.lifetime.reads !== undefined
+  }
+
+  // An observed node is rebuilt as soon as it goes stale, because something
+  // waits for its value without reading it. The count spares walking the
+  // children on every invalidation.
+  get isObserved(): boolean {
+    return !this.atom.lazy || this.listeners.size > 0 || this.observedChildren > 0
+  }
+
+  childObserved(delta: 1 | -1): void {
+    const observed = this.isObserved
+    this.observedChildren += delta
+    if (observed !== this.isObserved) {
+      this.observedChanged(delta)
+    }
+  }
+
+  observedChanged(delta: 1 | -1): void {
+    for (const parent of this.parents) {
+      parent.childObserved(delta)
+    }
+  }
+
   _value: A = undefined as any
   value(): A {
-    if ((this.state & NodeFlags.waitingForValue) !== 0) {
-      this.lifetime = makeLifetime(this)
-      this.building = true
-      const value = this.atom.read(this.lifetime)
-      this.building = false
-      if ((this.state & NodeFlags.waitingForValue) !== 0) {
-        if (this.preserveInitialValueOnBuild) {
-          this.preserveInitialValueOnBuild = false
-          this.state = NodeState.valid
-        } else {
-          this.setValue(value)
-        }
-      }
+    // a build can be superseded by a nested one, and that one staled again
+    // before the outer read returns
+    while ((this.state & NodeFlags.waitingForValue) !== 0) {
+      this.build()
+    }
+    return this._value
+  }
 
-      if (this.previousParents) {
-        const parents = this.previousParents
-        this.previousParents = undefined
-        for (const parent of parents) {
-          parent.removeChild(this)
-          if (parent.canBeRemoved) {
-            this.registry.scheduleNodeRemoval(parent)
-          }
-        }
+  build(): void {
+    // a lifetime still attached to a node that needs a value belongs to a
+    // build that failed, or to one that is running and is now superseded
+    this.disposeLifetime()
+    this.invalidatedDuringBuild = false
+    const lifetime = makeLifetime(this)
+    this.lifetime = lifetime
+    let value: A
+    try {
+      value = this.atom.read(lifetime)
+    } finally {
+      const reads = lifetime.reads!
+      lifetime.reads = undefined
+      if (this.lifetime === lifetime) {
+        this.dropUnread(reads)
       }
     }
+    if (this.lifetime !== lifetime || (this.state & NodeFlags.waitingForValue) === 0) {
+      return
+    }
+    if (this.preserveInitialValueOnBuild) {
+      this.preserveInitialValueOnBuild = false
+      this.state = NodeState.valid
+    } else {
+      this.setValue(value)
+    }
+  }
 
-    return this._value
+  readTracked<B>(atom: Atom.Atom<B>, lifetime: Lifetime<A>): B {
+    const parent = this.registry.ensureNode(atom)
+    const value = parent.value()
+    // reading the parent may have superseded this build
+    if (lifetime.disposed) return value
+    if (lifetime.reads !== undefined) {
+      lifetime.reads.add(parent)
+    }
+    if (!this.parents.has(parent)) {
+      this.parents.add(parent)
+      parent.children.add(this)
+      if (this.isObserved) {
+        parent.childObserved(1)
+      }
+    }
+    return value
+  }
+
+  dropUnread(reads: Set<NodeImpl<any>>): void {
+    if (reads.size === this.parents.size) return
+    const observed = this.isObserved
+    for (const parent of this.parents) {
+      if (reads.has(parent)) continue
+      this.parents.delete(parent)
+      parent.children.delete(this)
+      if (observed) {
+        parent.childObserved(-1)
+      }
+      if (parent.canBeRemoved) {
+        this.registry.scheduleNodeRemoval(parent)
+      }
+    }
   }
 
   valueOption(): Option.Option<A> {
@@ -683,13 +780,7 @@ class NodeImpl<A> {
       this.preserveInitialValueOnBuild = true
       this.state = NodeState.stale
       this._value = value
-
-      if (batchState.phase === BatchPhase.collect) {
-        batchState.notify.add(this)
-      } else {
-        this.notify()
-      }
-
+      this.announce()
       return
     }
 
@@ -700,13 +791,7 @@ class NodeImpl<A> {
     if ((this.state & NodeFlags.initialized) === 0) {
       this.state = NodeState.valid
       this._value = value
-
-      if (batchState.phase === BatchPhase.collect) {
-        batchState.notify.add(this)
-      } else {
-        this.notify()
-      }
-
+      this.announce()
       return
     }
 
@@ -716,58 +801,46 @@ class NodeImpl<A> {
     }
 
     this._value = value
-    if (this.skipInvalidation) {
-      this.skipInvalidation = false
-    } else {
-      this.invalidateChildren()
-    }
-
+    this.invalidateChildren()
     if (this.listeners.size > 0) {
-      if (batchState.phase === BatchPhase.collect) {
-        batchState.notify.add(this)
-      } else {
-        this.notify()
-      }
+      this.announce()
     }
   }
 
-  addParent(parent: NodeImpl<any>): void {
-    this.parents.add(parent)
-    if (this.previousParents !== undefined) {
-      this.previousParents.delete(parent)
-      if (this.previousParents.size === 0) {
-        this.previousParents = undefined
-      }
+  announce(): void {
+    if (batchState.phase === BatchPhase.collect) {
+      batchState.notify.add(this)
+    } else {
+      this.notify()
     }
-
-    if (!parent.children.has(this)) {
-      parent.children.add(this)
-      if (parent.skipInvalidation) {
-        parent.skipInvalidation = false
-      }
-    }
-  }
-
-  removeChild(child: NodeImpl<any>): void {
-    this.children.delete(child)
   }
 
   invalidate(): void {
-    if (this.building && batchState.phase === BatchPhase.collect) {
-      this.invalidatedDuringBuild = true
-    }
     if (this.state === NodeState.valid) {
       this.state = NodeState.stale
-      this.disposeLifetime()
-    }
-
-    if (batchState.phase === BatchPhase.collect) {
-      batchState.stale.push(this)
-    } else if (this.atom.lazy && this.listeners.size === 0 && !childrenAreActive(this.children)) {
-      this.invalidateChildren()
-      this.skipInvalidation = true
+      try {
+        this.disposeLifetime()
+      } finally {
+        this.propagate()
+      }
+    } else if (this.building && batchState.phase !== BatchPhase.collect) {
+      // the running build read a parent that has changed since
+      this.build()
     } else {
+      this.propagate()
+    }
+  }
+
+  propagate(): void {
+    if (batchState.phase === BatchPhase.collect) {
+      if (this.building) {
+        this.invalidatedDuringBuild = true
+      }
+      batchState.stale.push(this)
+    } else if (this.isObserved) {
       this.value()
+    } else {
+      this.invalidateChildren()
     }
   }
 
@@ -775,95 +848,89 @@ class NodeImpl<A> {
     if (this.children.size === 0) {
       return
     }
-
-    const children = this.children
-    this.children = new Set()
-    for (const child of children) {
-      child.invalidate()
+    let failure: unknown = noFailure
+    // a snapshot: a rebuild adds and drops children
+    for (const child of Array.from(this.children)) {
+      if (!child.dependsOnCurrent(this)) continue
+      try {
+        child.invalidate()
+      } catch (error) {
+        if (failure === noFailure) failure = error
+      }
     }
+    if (failure !== noFailure) throw failure
+  }
+
+  // Whether a change of the parent affects this node now: it is valid, or a
+  // running build has already read the parent. A stale node is stale already,
+  // and a build that has not read the parent yet will read the new value.
+  dependsOnCurrent(parent: NodeImpl<any>): boolean {
+    if (this.state === NodeState.valid) return true
+    const reads = this.lifetime?.reads
+    return reads !== undefined && reads.has(parent)
   }
 
   notify(): void {
     if (batchState.phase === BatchPhase.commit) {
       batchState.notify.delete(this)
     }
-
-    this.listeners.forEach(notifyListener)
+    runAll(this.listeners, invoke)
   }
 
   disposeLifetime(): void {
-    if (this.lifetime !== undefined) {
-      this.lifetime.dispose()
+    const lifetime = this.lifetime
+    if (lifetime !== undefined) {
       this.lifetime = undefined
-    }
-
-    if (this.parents.size !== 0) {
-      this.previousParents = this.parents
-      this.parents = new Set()
+      lifetime.dispose()
     }
   }
 
   remove() {
+    const observed = this.isObserved
     this.state = NodeState.removed
     this.listeners.clear()
-
-    if (this.lifetime !== undefined) {
+    try {
       this.disposeLifetime()
-    }
-
-    if (this.previousParents === undefined) {
-      return
-    }
-
-    const parents = this.previousParents
-    this.previousParents = undefined
-    for (const parent of parents) {
-      parent.removeChild(this)
-      if (parent.canBeRemoved) {
-        this.registry.removeNode(parent)
-      }
+    } finally {
+      const parents = Array.from(this.parents)
+      this.parents.clear()
+      runAll(parents, (parent) => {
+        parent.children.delete(this)
+        if (observed) {
+          parent.childObserved(-1)
+        }
+        if (parent.canBeRemoved) {
+          this.registry.removeNode(parent)
+        }
+      })
     }
   }
 
   subscribe(listener: () => void): () => void {
+    const observed = this.isObserved
     this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
-  }
-}
-
-function childrenAreActive(children: Set<NodeImpl<any>>): boolean {
-  if (children.size === 0) {
-    return false
-  }
-  let current: Set<NodeImpl<any>> | undefined = children
-  let stack: Array<Set<NodeImpl<any>>> | undefined
-  let stackIndex = 0
-  while (current !== undefined) {
-    for (const child of current) {
-      if (!child.atom.lazy || child.listeners.size > 0) {
-        return true
-      } else if (child.children.size > 0) {
-        if (stack === undefined) {
-          stack = [child.children]
-        } else {
-          stack.push(child.children)
-        }
+    if (!observed) {
+      this.observedChanged(1)
+    }
+    return () => {
+      if (this.listeners.delete(listener) && !this.isObserved) {
+        this.observedChanged(-1)
       }
     }
-    current = stack?.[stackIndex++]
   }
-  return false
 }
 
 interface Lifetime<A> extends Atom.AtomContext {
   isFn: boolean
   readonly node: NodeImpl<A>
+  // the parents read so far by the build; `undefined` once the build has returned
+  reads: Set<NodeImpl<any>> | undefined
   finalizers: Array<() => void> | undefined
   disposed: boolean
   readonly dispose: () => void
 }
 
-const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn"> = {
+const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn" | "reads"> = {
   get registry(): RegistryImpl {
     return (this as Lifetime<any>).node.registry
   },
@@ -878,10 +945,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
     if (this.disposed) {
       return this.node.registry.get(atom)
     }
-    const parent = this.node.registry.ensureNode(atom)
-    const value = parent.value()
-    this.node.addParent(parent)
-    return value
+    return this.node.readTracked(atom, this)
   },
 
   result<A, E>(this: Lifetime<any>, atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
@@ -1031,29 +1095,23 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
 
     const finalizers = this.finalizers
     this.finalizers = undefined
-    for (let i = finalizers.length - 1; i >= 0; i--) {
-      finalizers[i]()
-    }
+    runAll(finalizers.reverse(), invoke)
   }
 }
 
 const makeLifetime = <A>(node: NodeImpl<A>): Lifetime<A> => {
   function get<A>(atom: Atom.Atom<A>): A {
-    if (get.disposed) {
-      return node.registry.get(atom)
-    } else if (get.isFn) {
+    if (get.disposed || get.isFn) {
       return node.registry.get(atom)
     }
-    const parent = node.registry.ensureNode(atom)
-    const value = parent.value()
-    node.addParent(parent)
-    return value
+    return node.readTracked(atom, get as any)
   }
   Object.setPrototypeOf(get, LifetimeProto)
   get.isFn = false
   get.disposed = false
   get.finalizers = undefined
   get.node = node
+  get.reads = new Set<NodeImpl<any>>()
   return get as any
 }
 
@@ -1116,29 +1174,40 @@ export function batch(f: () => void): void {
   const previousPhase = batchState.phase
   batchState.phase = BatchPhase.collect
   batchState.depth++
+  let failure: unknown = noFailure
   try {
     f()
-    if (batchState.depth === 1) {
-      let i = 0
-      do {
-        batchState.phase = BatchPhase.collect
-        for (; i < batchState.stale.length; i++) {
-          batchRebuildNode(batchState.stale[i])
-        }
-        batchState.phase = BatchPhase.commit
-        for (const node of batchState.notify) {
-          node.notify()
-        }
-      } while (i < batchState.stale.length)
-    }
-  } finally {
-    batchState.depth--
-    batchState.phase = previousPhase
-    if (batchState.depth === 0) {
-      batchState.stale = []
-      batchState.notify.clear()
-    }
+  } catch (error) {
+    failure = error
   }
+  if (batchState.depth === 1) {
+    // what `f` changed before it failed is committed, so it is still rebuilt and heard
+    const { notify, stale } = batchState
+    let i = 0
+    do {
+      batchState.phase = BatchPhase.collect
+      for (; i < stale.length; i++) {
+        try {
+          batchRebuildNode(stale[i])
+        } catch (error) {
+          if (failure === noFailure) failure = error
+        }
+      }
+      batchState.phase = BatchPhase.commit
+      for (const node of notify) {
+        try {
+          node.notify()
+        } catch (error) {
+          if (failure === noFailure) failure = error
+        }
+      }
+    } while (i < stale.length)
+    batchState.stale = []
+    notify.clear()
+  }
+  batchState.depth--
+  batchState.phase = previousPhase
+  if (failure !== noFailure) throw failure
 }
 
 function batchRebuildNode(node: NodeImpl<any>) {
@@ -1150,15 +1219,5 @@ function batchRebuildNode(node: NodeImpl<any>) {
     node.state = NodeState.stale
     node.disposeLifetime()
   }
-
-  for (const parent of node.parents) {
-    if (parent.state !== NodeState.valid) {
-      batchRebuildNode(parent)
-    }
-  }
-
-  // @ts-ignore
-  if (node.state !== NodeState.valid) {
-    node.value()
-  }
+  node.value()
 }

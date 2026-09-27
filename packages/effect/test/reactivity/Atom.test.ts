@@ -527,6 +527,47 @@ describe("Atom", { concurrent: false }, () => {
     unsubscribe()
   })
 
+  it("a stale dependent keeps its dependency", async () => {
+    const a = Atom.make(0)
+    let builds = 0
+    const dependency = Atom.make(() => ++builds)
+    const dependent = Atom.make((get) => get(a) + get(dependency)).pipe(Atom.keepAlive)
+    const r = AtomRegistry.make()
+    r.get(dependent)
+    r.set(a, 1)
+    await Effect.runPromise(Effect.yieldNow)
+    assert.strictEqual(r.get(dependent), 2)
+  })
+
+  it("a listener added to a stale node hears changes through a parent that rebuilds to the same value", () => {
+    const a = Atom.make(0)
+    const b = Atom.make(0)
+    const middle = Atom.make((get) => get(a) > 0 ? 1 : 0)
+    const derived = Atom.make((get) => get(middle) + get(b))
+    const r = AtomRegistry.make()
+    r.get(derived)
+    r.set(b, 5)
+    r.set(a, 1)
+    const seen: Array<number> = []
+    r.subscribe(derived, (value) => seen.push(value))
+    r.set(a, 0)
+    assert.deepStrictEqual(seen, [5])
+  })
+
+  it("a build superseded while it runs is released", () => {
+    const p = Atom.make(0)
+    let finalized = 0
+    const n = Atom.make((get) => {
+      get.addFinalizer(() => finalized++)
+      if (get(p) === 0) get.set(p, 1)
+      return get(p)
+    })
+    const r = AtomRegistry.make()
+    r.subscribe(n, () => {})
+    r.get(n)
+    assert.strictEqual(finalized, 1)
+  })
+
   it("refresh derived before mount resolves base effect", async () => {
     const baseAtom = Atom.make(
       Effect.succeed("value").pipe(Effect.delay(100))
