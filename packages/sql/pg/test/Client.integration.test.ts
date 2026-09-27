@@ -1,9 +1,9 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
+import { Cause, DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Model } from "effect/schema"
-import { SqlClient, SqlModel } from "effect/sql"
+import { SqlClient, SqlError, SqlModel } from "effect/sql"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 import { PgContainer } from "./utils.ts"
@@ -356,6 +356,23 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
 
       assert.deepStrictEqual(rows, [{ value: "first" }])
     }).pipe(TestClock.withLive))
+
+  it.effect("fails a transaction whose COMMIT rolls back after a caught error", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql`CREATE TABLE aborted_commit (value INTEGER)`
+
+      const cause = yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO aborted_commit VALUES (1)`
+        yield* Effect.ignore(sql`SELECT 1 / 0`)
+      })).pipe(Effect.sandbox, Effect.flip)
+
+      const defect = Cause.squash(cause)
+      assert.instanceOf(defect, SqlError.SqlError)
+      assert.strictEqual(defect.reason._tag, "UnknownError")
+      assert.strictEqual(defect.reason.operation, "commit")
+      assert.deepStrictEqual(yield* sql`SELECT value FROM aborted_commit`, [])
+    }))
 })
 
 it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeClient", (it) => {
