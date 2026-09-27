@@ -1121,6 +1121,67 @@ describe("Atom", { concurrent: false }, () => {
     registry.dispose()
   })
 
+  it("discards notifications when a batch callback throws", () => {
+    const registry = AtomRegistry.make()
+    const source = Atom.make(0)
+    const seen: Array<number> = []
+    registry.subscribe(source, (value) => seen.push(value))
+    const error = new Error("batch failed")
+
+    let caught: unknown
+    try {
+      Atom.batch(() => {
+        registry.set(source, 1)
+        throw error
+      })
+    } catch (cause) {
+      caught = cause
+    }
+    assert.strictEqual(caught, error)
+    Atom.batch(() => {})
+    assert.deepStrictEqual(seen, [])
+
+    Atom.batch(() => registry.set(source, 2))
+    assert.deepStrictEqual(seen, [2])
+    registry.dispose()
+  })
+
+  it("discards remaining notifications when a commit listener throws", () => {
+    const registry = AtomRegistry.make()
+    const first = Atom.make(0)
+    const second = Atom.make(0)
+    const seen: Array<number> = []
+    const error = new Error("listener failed")
+    let shouldThrow = true
+    registry.subscribe(first, () => {
+      if (shouldThrow) {
+        shouldThrow = false
+        throw error
+      }
+    })
+    registry.subscribe(second, (value) => seen.push(value))
+
+    let caught: unknown
+    try {
+      Atom.batch(() => {
+        registry.set(first, 1)
+        registry.set(second, 1)
+      })
+    } catch (cause) {
+      caught = cause
+    }
+    assert.strictEqual(caught, error)
+    Atom.batch(() => {})
+    assert.deepStrictEqual(seen, [])
+
+    Atom.batch(() => {
+      registry.set(first, 2)
+      registry.set(second, 2)
+    })
+    assert.deepStrictEqual(seen, [2])
+    registry.dispose()
+  })
+
   it("initialValues", async () => {
     const state = Atom.make(0)
     const r = AtomRegistry.make({
