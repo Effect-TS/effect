@@ -1,5 +1,5 @@
 import { Effect, Option, Schema, SchemaGetter, SchemaTransformation } from "effect"
-import { invalid } from "effect/unstable/schema/SchemaCompiler"
+import { invalid } from "effect/schema/SchemaCompiler"
 import { constructionSchemas } from "./construction.ts"
 
 export const key = Symbol("key")

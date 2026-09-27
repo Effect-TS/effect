@@ -3,12 +3,12 @@
  *
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
+import * as DecisionModel from "effect/ai/DecisionModel"
+import * as Model from "effect/ai/Model"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as AiError from "effect/unstable/ai/AiError"
-import * as DecisionModel from "effect/unstable/ai/DecisionModel"
-import * as Model from "effect/unstable/ai/Model"
 import { OpenRouterClient } from "./OpenRouterClient.ts"
 import type * as OpenRouterSchema from "./OpenRouterSchema.ts"
 
@@ -41,6 +41,7 @@ export const model = (
 /**
  * Creates a decision service that requires full choice and score distributions.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
+ * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
  * @category constructors
  * @since 4.0.0
@@ -54,6 +55,7 @@ export const make = Effect.fnUntraced(function*(options: {
     Effect.succeed({ ...options.config, ...Context.getOrUndefined(services, Config) })
   )
   return yield* DecisionModel.make({
+    probabilityPrecision: 2,
     decide: Effect.fnUntraced(function*({ state, decisions }) {
       if (state === null || typeof state === "number" || typeof state === "boolean") {
         return yield* AiError.make({

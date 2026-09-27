@@ -1,10 +1,10 @@
 import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Schema, Stream } from "effect"
-import { SchemaBinary } from "effect/unstable/encoding"
-import { HttpRouter } from "effect/unstable/http"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/unstable/rpc"
+import { SchemaBinary } from "effect/encoding"
+import { HttpRouter } from "effect/http"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 
 const responseExitSuccess = (requestId: string | number, value: unknown) => ({
   _tag: "Exit",

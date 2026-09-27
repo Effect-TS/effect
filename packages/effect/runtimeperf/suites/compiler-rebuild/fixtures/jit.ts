@@ -1,4 +1,4 @@
-import { enable } from "effect/unstable/schema/SchemaJITCompiler"
+import { enable } from "effect/schema/SchemaJITCompiler"
 import { fixture, roots } from "./cases.ts"
 for (const ast of roots) enable(ast)
 export const parseValid = () => fixture("parseValid")

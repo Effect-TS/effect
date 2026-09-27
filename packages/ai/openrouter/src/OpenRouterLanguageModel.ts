@@ -9,12 +9,24 @@
  * @since 4.0.0
  */
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
+import * as AiError from "effect/ai/AiError"
+import { toCodecAnthropic } from "effect/ai/AnthropicStructuredOutput"
+import * as IdGenerator from "effect/ai/IdGenerator"
+import * as LanguageModel from "effect/ai/LanguageModel"
+import * as AiModel from "effect/ai/Model"
+import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
+import type * as Prompt from "effect/ai/Prompt"
+import type * as Response from "effect/ai/Response"
+import { addGenAIAnnotations } from "effect/ai/Telemetry"
+import * as Tool from "effect/ai/Tool"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import * as Encoding from "effect/Encoding"
+import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
+import type * as HttpClientRequest from "effect/http/HttpClientRequest"
+import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -24,18 +36,6 @@ import * as SchemaAST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
-import * as AiError from "effect/unstable/ai/AiError"
-import { toCodecAnthropic } from "effect/unstable/ai/AnthropicStructuredOutput"
-import * as IdGenerator from "effect/unstable/ai/IdGenerator"
-import * as LanguageModel from "effect/unstable/ai/LanguageModel"
-import * as AiModel from "effect/unstable/ai/Model"
-import { toCodecOpenAI } from "effect/unstable/ai/OpenAiStructuredOutput"
-import type * as Prompt from "effect/unstable/ai/Prompt"
-import type * as Response from "effect/unstable/ai/Response"
-import { addGenAIAnnotations } from "effect/unstable/ai/Telemetry"
-import * as Tool from "effect/unstable/ai/Tool"
-import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import type * as Generated from "./Generated.ts"
 import { ReasoningDetailsDuplicateTracker, resolveFinishReason } from "./internal/utilities.ts"
 import { type ChatStreamingResponseChunkData, OpenRouterClient } from "./OpenRouterClient.ts"
@@ -103,7 +103,7 @@ export type FileAnnotation = Extract<
   { type: "file" }
 >
 
-declare module "effect/unstable/ai/Prompt" {
+declare module "effect/ai/Prompt" {
   /**
    * OpenRouter-specific options for system messages.
    *
@@ -322,7 +322,7 @@ declare module "effect/unstable/ai/Prompt" {
   }
 }
 
-declare module "effect/unstable/ai/Response" {
+declare module "effect/ai/Response" {
   /**
    * OpenRouter metadata attached to completed reasoning response parts.
    *
@@ -747,7 +747,7 @@ const prepareMessages = Effect.fnUntraced(
                       url: part.data instanceof URL
                         ? part.data.toString()
                         : part.data instanceof Uint8Array
-                        ? `data:${mediaType};base64,${Encoding.encodeBase64(part.data)}`
+                        ? `data:${mediaType};base64,${Base64.encode(part.data)}`
                         : part.data
                     },
                     ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
@@ -785,7 +785,7 @@ const prepareMessages = Effect.fnUntraced(
                     type: "input_audio",
                     input_audio: {
                       data: part.data instanceof Uint8Array
-                        ? Encoding.encodeBase64(part.data)
+                        ? Base64.encode(part.data)
                         : getBase64FromDataUrl(part.data),
                       format
                     },
@@ -805,7 +805,7 @@ const prepareMessages = Effect.fnUntraced(
                     file_data: part.data instanceof URL
                       ? part.data.toString()
                       : part.data instanceof Uint8Array
-                      ? `data:${part.mediaType};base64,${Encoding.encodeBase64(part.data)}`
+                      ? `data:${part.mediaType};base64,${Base64.encode(part.data)}`
                       : part.data
                   },
                   ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)

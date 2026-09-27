@@ -195,7 +195,7 @@ const buildEffectCase = ({ Effect, Schema, SchemaAST }: EffectSchemaModules, ind
 const loadEffect = async (jit: boolean) => {
   const modules = await loadEffectSchemaModules()
   const SchemaParser = await loadEffectModule("SchemaParser")
-  const enable = jit ? (await loadEffectModule("unstable/schema/SchemaJITCompiler")).enable : undefined
+  const enable = jit ? (await loadEffectModule("schema/SchemaJITCompiler")).enable : undefined
 
   const prepare = (built: ReadonlyArray<BuiltCase>): ReadonlyArray<Parser> => {
     return built.map(({ ast, schema }) => {
@@ -365,7 +365,7 @@ if (command === "generate") {
   const [modules, moduleCpu] = await measureCpu(async () => {
     return {
       ...await loadEffectSchemaModules(),
-      AOT: await loadEffectModule("unstable/schema/SchemaAOTCompiler")
+      AOT: await loadEffectModule("schema/SchemaAOTCompiler")
     }
   })
   const [built, schemaCpu] = await measureCpu(() =>

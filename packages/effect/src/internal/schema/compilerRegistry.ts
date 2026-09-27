@@ -1,7 +1,7 @@
 import * as Effect from "../../Effect.ts"
+import type { CompiledDecoder, Decode, Is, Make } from "../../schema/SchemaCompiler.ts"
 import type * as SchemaAST from "../../SchemaAST.ts"
 import type { Parser } from "../../SchemaParser.ts"
-import type { CompiledDecoder, Decode, Is, Make } from "../../unstable/schema/SchemaCompiler.ts"
 import * as Interpreter from "./interpreter.ts"
 import * as InternalParser from "./parser.ts"
 

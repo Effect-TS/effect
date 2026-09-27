@@ -1,9 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Context, Effect, Exit, Option, Schema } from "effect"
-import { Headers } from "effect/unstable/http"
-import { Rpc, RpcGroup } from "effect/unstable/rpc"
-import { RequestId } from "effect/unstable/rpc/RpcMessage"
-import * as RpcSchema from "effect/unstable/rpc/RpcSchema"
+import { Headers } from "effect/http"
+import { Rpc, RpcGroup } from "effect/rpc"
+import { RequestId } from "effect/rpc/RpcMessage"
+import * as RpcSchema from "effect/rpc/RpcSchema"
 
 const TestGroup = RpcGroup.make(
   Rpc.make("one"),

@@ -145,6 +145,23 @@ describe("Schema", () => {
       expect(schema.make).type.toBe<Make<string, string>>()
     })
 
+    it("StringForLiteralAutocomplete", () => {
+      const schema = Schema.StringForLiteralAutocomplete
+      expect(schema).type.toBe<Schema.StringForLiteralAutocomplete>()
+      expect(schema.make).type.toBe<Make<string & {}, string & {}>>()
+    })
+
+    it("StringForLiteralAutocomplete | Literals", () => {
+      const schema = Schema.Union([
+        Schema.StringForLiteralAutocomplete,
+        Schema.Literals(["GET", "POST"])
+      ])
+      expect(schema.make).type.toBe<
+        Make<"GET" | "POST" | (string & {}), "GET" | "POST" | (string & {})>
+      >()
+      expect(schema.members[1].literals).type.toBe<readonly ["GET", "POST"]>()
+    })
+
     it("Number", () => {
       const schema = Schema.Number
       expect(schema.make).type.toBe<Make<number, number>>()
@@ -658,6 +675,35 @@ describe("Schema", () => {
       expect(Schema.revealCodec(schema)).type.toBe<Schema.Codec<string>>()
       expect(schema).type.toBe<Schema.String>()
       expect(schema.annotate({})).type.toBe<Schema.String>()
+    })
+  })
+
+  describe("StringForLiteralAutocomplete", () => {
+    const schema = Schema.StringForLiteralAutocomplete
+
+    it("ast type", () => {
+      expect(schema.ast).type.toBe<SchemaAST.String>()
+    })
+
+    it("revealCodec + annotate", () => {
+      expect(Schema.revealCodec(schema)).type.toBe<Schema.Codec<string & {}>>()
+      expect(schema).type.toBe<Schema.StringForLiteralAutocomplete>()
+      expect(schema.annotate({})).type.toBe<Schema.StringForLiteralAutocomplete>()
+    })
+
+    it("union with Literals", () => {
+      const method = Schema.Union([
+        Schema.StringForLiteralAutocomplete,
+        Schema.Literals(["GET", "POST"])
+      ])
+      expect(Schema.revealCodec(method)).type.toBe<Schema.Codec<"GET" | "POST" | (string & {})>>()
+      expect(method).type.toBe<
+        Schema.Union<readonly [Schema.StringForLiteralAutocomplete, Schema.Literals<readonly ["GET", "POST"]>]>
+      >()
+      expect(method.annotate({})).type.toBe<
+        Schema.Union<readonly [Schema.StringForLiteralAutocomplete, Schema.Literals<readonly ["GET", "POST"]>]>
+      >()
+      expect(method.members[1].literals).type.toBe<readonly ["GET", "POST"]>()
     })
   })
 

@@ -14,7 +14,9 @@
 import * as Arr from "./Array.ts"
 import * as DateTime from "./DateTime.ts"
 import * as Effect from "./Effect.ts"
-import * as Encoding from "./Encoding.ts"
+import * as Base64 from "./encoding/Base64.ts"
+import * as Base64Url from "./encoding/Base64Url.ts"
+import * as Hex from "./encoding/Hex.ts"
 import { dual } from "./Function.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as Option from "./Option.ts"
@@ -1447,7 +1449,7 @@ export function split<E extends string>(options?: {
  * @since 4.0.0
  */
 export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E> {
-  return transform(Encoding.encodeBase64)
+  return transform(Base64.encode)
 }
 
 /**
@@ -1475,7 +1477,7 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  * @since 4.0.0
  */
 export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string, E> {
-  return transform(Encoding.encodeBase64Url)
+  return transform(Base64Url.encode)
 }
 
 /**
@@ -1502,7 +1504,7 @@ export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string,
  * @since 4.0.0
  */
 export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
-  return transform(Encoding.encodeHex)
+  return transform(Hex.encode)
 }
 
 /**
@@ -1531,7 +1533,7 @@ export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
 export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
   return transformEffect((input, options) =>
     Effect.mapErrorEager(
-      Effect.fromResult(Encoding.decodeBase64(input)),
+      Effect.fromResult(Base64.decode(input)),
       () =>
         new SchemaIssue.InvalidValue(
           { expected: "a valid Base64 string" },
@@ -1567,7 +1569,7 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
  */
 export function decodeBase64String<E extends string>(): Getter<string, E> {
   return transformEffect((input, options) =>
-    Result.match(Encoding.decodeBase64String(input), {
+    Result.match(Base64.decodeString(input), {
       onFailure: () =>
         Effect.fail(
           new SchemaIssue.InvalidValue(
@@ -1606,7 +1608,7 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
  */
 export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
   return transformEffect((input, options) =>
-    Result.match(Encoding.decodeBase64Url(input), {
+    Result.match(Base64Url.decode(input), {
       onFailure: () =>
         Effect.fail(
           new SchemaIssue.InvalidValue(
@@ -1645,7 +1647,7 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
  */
 export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
   return transformEffect((input, options) =>
-    Result.match(Encoding.decodeBase64UrlString(input), {
+    Result.match(Base64Url.decodeString(input), {
       onFailure: () =>
         Effect.fail(
           new SchemaIssue.InvalidValue(
@@ -1684,7 +1686,7 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
  */
 export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
   return transformEffect((input, options) =>
-    Result.match(Encoding.decodeHex(input), {
+    Result.match(Hex.decode(input), {
       onFailure: () =>
         Effect.fail(
           new SchemaIssue.InvalidValue(
@@ -1723,7 +1725,7 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
  */
 export function decodeHexString<E extends string>(): Getter<string, E> {
   return transformEffect((input, options) =>
-    Result.match(Encoding.decodeHexString(input), {
+    Result.match(Hex.decodeString(input), {
       onFailure: () =>
         Effect.fail(
           new SchemaIssue.InvalidValue(

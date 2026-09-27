@@ -502,18 +502,18 @@ export const make = (
         imports.push(`import * as Stream from "effect/Stream"`)
       }
       if (requirements.eventStream) {
-        imports.push(`import * as Sse from "effect/unstable/encoding/Sse"`)
+        imports.push(`import * as Sse from "effect/encoding/Sse"`)
       }
       // HttpClient needs to be a value import when streaming is used (for filterStatusOk)
       if (requiresStreaming(requirements)) {
-        imports.push(`import * as HttpClient from "effect/unstable/http/HttpClient"`)
+        imports.push(`import * as HttpClient from "effect/http/HttpClient"`)
       } else {
-        imports.push(`import type * as HttpClient from "effect/unstable/http/HttpClient"`)
+        imports.push(`import type * as HttpClient from "effect/http/HttpClient"`)
       }
       imports.push(
-        `import * as HttpClientError from "effect/unstable/http/HttpClientError"`,
-        `import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"`,
-        `import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"`
+        `import * as HttpClientError from "effect/http/HttpClientError"`,
+        `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
+        `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
       )
       return imports.join("\n")
     },
@@ -935,15 +935,15 @@ export const make = (
       if (requiresStreaming(requirements)) {
         imports.push(
           `import * as Stream from "effect/Stream"`,
-          `import * as HttpClient from "effect/unstable/http/HttpClient"`
+          `import * as HttpClient from "effect/http/HttpClient"`
         )
       } else {
-        imports.push(`import type * as HttpClient from "effect/unstable/http/HttpClient"`)
+        imports.push(`import type * as HttpClient from "effect/http/HttpClient"`)
       }
       imports.push(
-        `import * as HttpClientError from "effect/unstable/http/HttpClientError"`,
-        `import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"`,
-        `import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"`
+        `import * as HttpClientError from "effect/http/HttpClientError"`,
+        `import * as HttpClientRequest from "effect/http/HttpClientRequest"`,
+        `import * as HttpClientResponse from "effect/http/HttpClientResponse"`
       )
       return imports.join("\n")
     },

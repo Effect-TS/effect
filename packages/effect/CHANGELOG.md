@@ -1,5 +1,41 @@
 # effect
 
+## 4.0.0-rc.117
+
+### Patch Changes
+
+- [#8331](https://github.com/Effect-TS/effect/pull/8331) [`9953c92`](https://github.com/Effect-TS/effect/commit/9953c92b860061ec928098b121279087ee56e5e9) Thanks @tim-smart! - Bound local sends that wait for an unregistered cluster entity type. These sends now fail with an `Entity type ... not registered` defect at the shared runner registration deadline. Once that startup deadline has elapsed, sends to not-yet-registered dynamic entity types fail immediately.
+
+- [#8319](https://github.com/Effect-TS/effect/pull/8319) [`c6e8b20`](https://github.com/Effect-TS/effect/commit/c6e8b20c27b08e94549a9431c38e867aa014b724) Thanks @fubhy! - Extend `NetAddress.toCanonical` to accept internet addresses. IPv4-mapped IPv6 addresses become IPv4 while retaining the port. Other addresses retain their identity and IPv6 scope metadata.
+
+- [#8317](https://github.com/Effect-TS/effect/pull/8317) [`8d40572`](https://github.com/Effect-TS/effect/commit/8d40572de3762d51b142cfff30e6927ef21e37a3) Thanks @tim-smart! - Fix cluster workflows stalling after request resets.
+
+- [#8323](https://github.com/Effect-TS/effect/pull/8323) [`1b21e0d`](https://github.com/Effect-TS/effect/commit/1b21e0df6ab777d6a1664dfabdea88511f2d25d1) Thanks @fubhy! - Add validated multicast address refinements for IP and MAC addresses.
+
+- [#8310](https://github.com/Effect-TS/effect/pull/8310) [`3b155e3`](https://github.com/Effect-TS/effect/commit/3b155e3e24e42b603d48dff5d3280715944998f0) Thanks @williamrobertson13! - Fix memory leaks in `Pool.makeWithTTL` with the usage strategy by releasing retired resources and consumed acquisition errors from the TTL queue.
+
+- [#8326](https://github.com/Effect-TS/effect/pull/8326) [`895d944`](https://github.com/Effect-TS/effect/commit/895d94410f90c45546aec593730e5630f200ca1b) Thanks @lloydrichards! - Normalize identified MCP output schemas to object roots across protocol versions.
+  Support identified object schemas in MCP elicitation requests.
+
+- [#8318](https://github.com/Effect-TS/effect/pull/8318) [`705fb68`](https://github.com/Effect-TS/effect/commit/705fb6852ac24791352bd78889d57f07cbe949a9) Thanks @fubhy! - Add `Queue.shutdownUnsafe` to synchronously discard buffered messages and settle pending queue operations from callbacks. Both `Queue.shutdown` and `Queue.shutdownUnsafe` return `false` when the queue has already been shut down or completed; previously, `Queue.shutdown` always returned `true`.
+
+- [#8325](https://github.com/Effect-TS/effect/pull/8325) [`87912c0`](https://github.com/Effect-TS/effect/commit/87912c014132648694015a5636177b2ba2bdeb2a) Thanks @fubhy! - Add `NetAddress.formatNativeHost` and `NetAddress.formatMulticastInterface` with explicit platform and scope ID map parameters for native socket APIs.
+
+- [#8308](https://github.com/Effect-TS/effect/pull/8308) [`106af64`](https://github.com/Effect-TS/effect/commit/106af64cf7117dfad53d3b11b61bb3d17d63bfca) Thanks @tristanz! - Release savepoints after nested transactions succeed or successfully roll back in PostgreSQL, PGlite, MySQL, libSQL, and the Node, Bun, React Native, and WASM SQLite clients. This frees PostgreSQL transaction locks before the outer transaction completes.
+  
+  Custom SQL clients can opt in through the new `releaseSavepoint` option. Clients that omit it are unchanged.
+
+- [#8323](https://github.com/Effect-TS/effect/pull/8323) [`1b21e0d`](https://github.com/Effect-TS/effect/commit/1b21e0df6ab777d6a1664dfabdea88511f2d25d1) Thanks @fubhy! - Add generic branded NetAddress classifications and named validating schemas.
+  Singleton address constants retain their base-family types; guards expose
+  classifications on demand. Operations that derive new address bits return only
+  the IPv4 or IPv6 family until callers revalidate the classification.
+
+- [#8305](https://github.com/Effect-TS/effect/pull/8305) [`3d59ae6`](https://github.com/Effect-TS/effect/commit/3d59ae6d5f9ff3e52cb6ed4a9f325320580218d5) Thanks @tim-smart! - Make `criteria` optional for `Decision.probability`. When supplied, `criteria` still requires descriptions for both `false` and `true`.
+  
+  `Decision.Probability.criteria` is now optional, so consumers reading outcome descriptions (for example, `decision.criteria.true`) must first guard against `undefined`.
+
+- [#8329](https://github.com/Effect-TS/effect/pull/8329) [`89c9a39`](https://github.com/Effect-TS/effect/commit/89c9a398412f1f5e7f9c6f697a1badd982bcd741) Thanks @tim-smart! - Warn when conflicting cluster workflow definitions reuse a tag.
+
 ## 4.0.0-rc.116
 
 ### Patch Changes

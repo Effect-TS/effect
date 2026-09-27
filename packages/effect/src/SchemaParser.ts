@@ -227,8 +227,9 @@ export function _issue<T>(ast: SchemaAST.AST) {
  * @since 4.0.0
  */
 export function asserts<S extends Schema.Constraint, I>(schema: S, input: I): asserts input is I & S["Type"] {
-  const parser = asExit(run<S["Type"], never>(SchemaAST.toType(schema.ast)))
-  const exit = parser(input, SchemaAST.defaultParseOptions)
+  const ast = SchemaAST.toType(schema.ast)
+  const result = CompilerRegistry.resolve(ast).parser(input, SchemaAST.defaultParseOptions)
+  const exit = Effect.runSyncExit(parserResult<S["Type"], never>(result, input))
   if (Exit.isFailure(exit)) {
     const issue = InternalSchemaCause.getSchemaIssueOrThrow(
       exit.cause,

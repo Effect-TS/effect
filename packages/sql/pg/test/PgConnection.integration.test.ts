@@ -1,7 +1,7 @@
 import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
-import type { SqlError } from "effect/unstable/sql/SqlError"
+import type { SqlError } from "effect/sql/SqlError"
 import { PgContainer } from "./utils.ts"
 
 const makeConnection = (options?: PgConnection.Config) =>
@@ -14,7 +14,7 @@ const makeConnection = (options?: PgConnection.Config) =>
   })
 
 const assertInterruptedOnClose = (
-  scope: Scope.Scope,
+  scope: Scope.Closeable,
   notifications: Queue.Dequeue<PgConnection.Notification, SqlError>
 ) =>
   Effect.gen(function*() {

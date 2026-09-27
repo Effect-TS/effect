@@ -9,7 +9,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Pool from "effect/Pool"
 import type * as Scope from "effect/Scope"
-import type { SqlError } from "effect/unstable/sql/SqlError"
+import type { SqlError } from "effect/sql/SqlError"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 
@@ -140,7 +140,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     Effect.sync(() => {
       createdAt.set(connection, clock.currentTimeMillisUnsafe())
       const internals = connectionInternals(connection)
-      internals.fatalHooks.add(() => {
+      internals.retireHooks.add(() => {
         deadConnections.add(connection)
         // `deadConnections` is only read by the next checkout, and a checkout
         // already waiting for this connection would never get that far. Tell
@@ -204,12 +204,9 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // `pin` reserves the pool item itself, so this needs no help.
   const reserve = Effect.flatMap(get, (connection) => connection.pin)
 
-  // `Pool.use` cannot check the session it hands over before running the
-  // effect, so it is only taken when there is nothing to check: no session is
-  // known dead, and no lifetime can have run out. Otherwise the scoped
-  // checkout does its replacement pass first. Checking inside the callback
-  // instead would hold one lease while acquiring another, which deadlocks a
-  // pool of one.
+  // `Pool.use` cannot pre-check a session. Use it only when no TTL applies and
+  // no connection awaits retirement. Checking inside its callback can deadlock
+  // a size-one pool while acquiring a replacement.
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | SqlError, R> =>

@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Schema, SchemaGetter, SchemaParser } from "effect"
-import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
+import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 
 describe("compiled homogeneous Array traversal", () => {
   it.effect("keeps detailed errors and sparse input behavior", () =>

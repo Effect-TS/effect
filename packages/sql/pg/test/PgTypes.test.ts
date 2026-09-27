@@ -60,6 +60,7 @@ const roundTrips: Array<{
   { name: "int8Max", oid: PgTypes.OID.int8, value: BigInt("9223372036854775807") },
   { name: "int8Min", oid: PgTypes.OID.int8, value: BigInt("-9223372036854775808") },
   { name: "oid", oid: PgTypes.OID.oid, value: 4294967295 },
+  { name: "regclass", oid: PgTypes.OID.regclass, value: 4294967295 },
   { name: "float4", oid: PgTypes.OID.float4, value: 1.5 },
   { name: "float8", oid: PgTypes.OID.float8, value: -3.0625 },
   { name: "numeric", oid: PgTypes.OID.numeric, value: "12345.6789" },
@@ -117,6 +118,7 @@ const elementSamples: Record<number, unknown> = {
   [PgTypes.OID.int4]: 70000,
   [PgTypes.OID.text]: "héllo ☃",
   [PgTypes.OID.oid]: 4294967295,
+  [PgTypes.OID.regclass]: 4294967295,
   [PgTypes.OID.json]: { a: [1, 2] },
   [PgTypes.OID.jsonb]: { a: [1, 2] },
   [PgTypes.OID.cidr]: "10.0.0.0/8",
@@ -1014,6 +1016,7 @@ describe("PgTypes", () => {
 
     it("maps element OIDs to array OIDs", () => {
       assert.strictEqual(PgTypes.arrayOidFor(PgTypes.OID.text), PgTypes.OID.textArray)
+      assert.strictEqual(PgTypes.arrayOidFor(PgTypes.OID.regclass), PgTypes.OID.regclassArray)
       assert.strictEqual(PgTypes.arrayOidFor(99999), undefined)
       assertThrowsTagged("PgTypesCodecError", () => PgTypes.array([], 99999))
     })

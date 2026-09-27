@@ -4,14 +4,14 @@
 
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Sse from "effect/encoding/Sse"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import type { SchemaError } from "effect/Schema"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import * as Sse from "effect/unstable/encoding/Sse"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientError from "effect/unstable/http/HttpClientError"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 // non-recursive definitions
 export type AddUploadPartRequest = { readonly "data": string }
 export const AddUploadPartRequest = Schema.Struct({
@@ -8405,8 +8405,8 @@ export const WebSearchLocation = Schema.Struct({
 export type WebSearchToolCall = {
   readonly "id": string
   readonly "type": "web_search_call"
-  readonly "status": "in_progress" | "searching" | "completed" | "failed"
-  readonly "action":
+  readonly "status": "in_progress" | "searching" | "completed" | "failed" | "incomplete"
+  readonly "action"?:
     | {
       readonly "type": "search"
       readonly "query"?: string
@@ -8423,10 +8423,10 @@ export const WebSearchToolCall = Schema.Struct({
   "type": Schema.Literal("web_search_call").annotate({
     "description": "The type of the web search tool call. Always `web_search_call`.\n"
   }),
-  "status": Schema.Literals(["in_progress", "searching", "completed", "failed"]).annotate({
+  "status": Schema.Literals(["in_progress", "searching", "completed", "failed", "incomplete"]).annotate({
     "description": "The status of the web search tool call.\n"
   }),
-  "action": Schema.Union([
+  "action": Schema.optionalKey(Schema.Union([
     Schema.Struct({
       "type": Schema.Literal("search").annotate({ "description": "The action type.\n" }),
       "query": Schema.optionalKey(Schema.String.annotate({ "description": "[DEPRECATED] The search query.\n" })),
@@ -8481,7 +8481,7 @@ export const WebSearchToolCall = Schema.Struct({
       "description":
         "An object describing the specific action taken in this web search call.\nIncludes details on how the model used the web (search, open_page, find_in_page).\n"
     })
-  ], { mode: "oneOf" })
+  ], { mode: "oneOf" }))
 }).annotate({
   "title": "Web search tool call",
   "description":
@@ -22777,8 +22777,8 @@ export type InputItem =
   | {
     readonly "id": string
     readonly "type": "web_search_call"
-    readonly "status": "in_progress" | "searching" | "completed" | "failed"
-    readonly "action":
+    readonly "status": "in_progress" | "searching" | "completed" | "failed" | "incomplete"
+    readonly "action"?:
       | {
         readonly "type": "search"
         readonly "query"?: string
@@ -23064,10 +23064,10 @@ export const InputItem = Schema.Union([
       "type": Schema.Literal("web_search_call").annotate({
         "description": "The type of the web search tool call. Always `web_search_call`.\n"
       }),
-      "status": Schema.Literals(["in_progress", "searching", "completed", "failed"]).annotate({
+      "status": Schema.Literals(["in_progress", "searching", "completed", "failed", "incomplete"]).annotate({
         "description": "The status of the web search tool call.\n"
       }),
-      "action": Schema.Union([
+      "action": Schema.optionalKey(Schema.Union([
         Schema.Struct({
           "type": Schema.Literal("search").annotate({ "description": "The action type.\n" }),
           "query": Schema.optionalKey(Schema.String.annotate({ "description": "[DEPRECATED] The search query.\n" })),
@@ -23123,7 +23123,7 @@ export const InputItem = Schema.Union([
           "description":
             "An object describing the specific action taken in this web search call.\nIncludes details on how the model used the web (search, open_page, find_in_page).\n"
         })
-      ], { mode: "oneOf" })
+      ], { mode: "oneOf" }))
     }).annotate({ "title": "Web search tool call", "description": "Content item used to generate a response.\n" }),
     Schema.Struct({
       "id": Schema.optionalKey(Schema.String.annotate({ "description": "The unique ID of the function tool call.\n" })),

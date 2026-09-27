@@ -18,13 +18,13 @@ import {
   SocketRunner,
   SqlMessageStorage,
   SqlRunnerStorage
-} from "effect/unstable/cluster"
-import type { Rpc } from "effect/unstable/rpc"
-import { RpcClient, RpcSerialization } from "effect/unstable/rpc"
-import * as Socket from "effect/unstable/socket/Socket"
-import * as SocketServer from "effect/unstable/socket/SocketServer"
-import { SqlClient, type SqlConnection, SqlError } from "effect/unstable/sql"
-import { WorkflowEngine } from "effect/unstable/workflow"
+} from "effect/cluster"
+import type { Rpc } from "effect/rpc"
+import { RpcClient, RpcSerialization } from "effect/rpc"
+import * as Socket from "effect/socket/Socket"
+import * as SocketServer from "effect/socket/SocketServer"
+import { SqlClient, type SqlConnection, SqlError } from "effect/sql"
+import { WorkflowEngine } from "effect/workflow"
 import * as Net from "node:net"
 import { inject } from "vitest"
 

@@ -46,7 +46,7 @@ const input = operation === "invalid" ? { name: "Ada", age: "bad", active: true 
 const expected = shape === "transform" || shape === "default" ? { value: 1 } : valid
 
 if (command === "generate") {
-  const AOT = await load("unstable/schema/SchemaAOTCompiler")
+  const AOT = await load("schema/SchemaAOTCompiler")
   const schema = create()
   const targetOperation = operation === "make" ? "make" : operation === "is" ? "is" : "decode"
   const ast = targetOperation === "decode" ? schema.ast : AST.toType(schema.ast)
@@ -58,7 +58,7 @@ if (command === "generate") {
   let install: ((asts: Array<unknown>) => void) | undefined
   let directory: string | undefined
   if (mode === "jit") {
-    enable = (await load("unstable/schema/SchemaJITCompiler")).enable
+    enable = (await load("schema/SchemaJITCompiler")).enable
   } else if (mode === "aot") {
     directory = mkdtempSync(join(root, "packages/effect/.compiler-memory-"))
     const generated = join(directory, "generated.mjs")

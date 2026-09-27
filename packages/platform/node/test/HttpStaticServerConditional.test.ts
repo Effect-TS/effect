@@ -2,10 +2,6 @@ import { assert, describe, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Path from "effect/Path"
-import * as PlatformError from "effect/PlatformError"
 import {
   HttpEffect,
   HttpPlatform,
@@ -14,7 +10,11 @@ import {
   HttpServerRequest,
   HttpServerResponse,
   HttpStaticServer
-} from "effect/unstable/http"
+} from "effect/http"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Path from "effect/Path"
+import * as PlatformError from "effect/PlatformError"
 
 const root = "/root"
 const filePath = `${root}/file.txt`

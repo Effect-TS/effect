@@ -3,16 +3,16 @@ import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChild
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
 import { assert, describe, it } from "@effect/vitest"
-import * as ChildProcessSpawnerTest from "effect-test/unstable/process/ChildProcessSpawnerTest"
+import * as ChildProcessSpawnerTest from "effect-test/process/ChildProcessSpawnerTest"
 import * as ByteSize from "effect/ByteSize"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as ChildProcess from "effect/process/ChildProcess"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as ChildProcess from "effect/unstable/process/ChildProcess"
 import { join } from "node:path"
 
 const NodeServices = NodeChildProcessSpawner.layer.pipe(

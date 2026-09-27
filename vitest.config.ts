@@ -101,8 +101,8 @@ export default defineConfig({
             "test/schema/SchemaGetter.test.ts",
             "test/schema/toCodec.test.ts",
             "test/schema/toDifferJsonPatch.test.ts",
-            "test/unstable/http/HttpEffect.test.ts",
-            "test/unstable/http/HttpServerRequest.test.ts"
+            "test/http/HttpEffect.test.ts",
+            "test/http/HttpServerRequest.test.ts"
           ]
           : undefined
       ),

@@ -19,17 +19,16 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
+import { classifySqliteError, SqlError } from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
-import { classifySqliteError, SqlError } from "effect/unstable/sql/SqlError"
-import * as Statement from "effect/unstable/sql/Statement"
 import { backup as backupDatabase, DatabaseSync } from "node:sqlite"
 import type { StatementSync } from "node:sqlite"
 
@@ -112,6 +111,7 @@ export interface SqliteClientConfig {
 }
 
 interface SqliteConnection extends Connection {
+  readonly isTransaction: () => boolean
   readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 }
@@ -251,6 +251,7 @@ export const make = (
       ) => Effect.flatMap(prepare(sql), (statement) => runStatementValuesUnprepared(statement, params))
 
       return identity<SqliteConnection>({
+        isTransaction: () => db.isTransaction,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)
@@ -301,20 +302,11 @@ export const make = (
       })
     })
 
-    const semaphore = yield* Semaphore.make(1)
     const connection = yield* makeConnection
-
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
-    const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      return Effect.as(
-        Effect.tap(
-          restore(semaphore.take(1)),
-          () => Scope.addFinalizer(scope, semaphore.release(1))
-        ),
-        connection
-      )
+    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+      connection: Effect.succeed(connection),
+      semaphore: yield* Semaphore.make(1),
+      isTransaction: (conn) => conn.isTransaction()
     })
 
     return Object.assign(
@@ -322,6 +314,8 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        onCommitFailure,
+        releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         beginTransaction: options.readonly === true ? "BEGIN" : "BEGIN IMMEDIATE",
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),

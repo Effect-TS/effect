@@ -1,6 +1,6 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Schema, SchemaAST, SchemaParser } from "effect"
-import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
+import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaCompiler", () => {

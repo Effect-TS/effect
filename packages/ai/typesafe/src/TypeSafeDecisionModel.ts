@@ -3,10 +3,10 @@
  *
  * @since 4.0.0
  */
+import * as DecisionModel from "effect/ai/DecisionModel"
+import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as DecisionModel from "effect/unstable/ai/DecisionModel"
-import * as AiModel from "effect/unstable/ai/Model"
 import { TypeSafeClient } from "./TypeSafeClient.ts"
 import type * as TypeSafeSchema from "./TypeSafeSchema.ts"
 
@@ -30,8 +30,9 @@ export const model = (
   AiModel.make("typesafe", model, layer({ model }))
 
 /**
- * Builds a decision service. Provider values are preserved without normalization;
- * DecisionModel validates distributions and derives rating labels.
+ * Builds a decision service. Probabilities arrive rounded to two decimals, so
+ * DecisionModel rescales small sum drift when it validates distributions and
+ * derives rating labels.
  *
  * @category constructors
  * @since 4.0.0
@@ -42,6 +43,7 @@ export const make = Effect.fnUntraced(
   ): Effect.fn.Return<DecisionModel.DecisionModel, never, TypeSafeClient> {
     const client = yield* TypeSafeClient
     return yield* DecisionModel.make({
+      probabilityPrecision: 2,
       decide: Effect.fnUntraced(function*({ state, decisions }) {
         const questions: Record<string, typeof TypeSafeSchema.Question.Encoded> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {

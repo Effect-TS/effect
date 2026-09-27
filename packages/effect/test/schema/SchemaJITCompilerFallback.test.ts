@@ -2,7 +2,7 @@ import { assert, describe, it, vi } from "@effect/vitest"
 import { Cause, Schema, SchemaParser, SchemaTransformation } from "effect"
 import * as Codegen from "effect/internal/schema/codegen"
 // oxlint-disable-next-line no-unassigned-import
-import "effect/unstable/schema/SchemaJITCompiler/enable"
+import "effect/schema/SchemaJITCompiler/enable"
 import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 describe("Schema JIT compilation fallback", () => {

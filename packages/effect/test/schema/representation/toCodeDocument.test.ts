@@ -376,6 +376,21 @@ describe("toCodeDocument", () => {
       )
     })
 
+    it("String & code point checks", () => {
+      for (
+        const [check, code] of [
+          [Schema.isMinCodePoints(2), "Schema.isMinCodePoints(2)"],
+          [Schema.isMaxCodePoints(3), "Schema.isMaxCodePoints(3)"],
+          [Schema.isBetweenCodePoints(2, 3), "Schema.isBetweenCodePoints(2, 3)"]
+        ] as const
+      ) {
+        assertSchema(
+          { schema: Schema.String.check(check) },
+          { codes: makeCode(`Schema.String.check(${code})`, "string") }
+        )
+      }
+    })
+
     it("String & check + annotations", () => {
       assertSchema(
         { schema: Schema.String.check(Schema.isMinLength(1, { description: "a" })) },
@@ -395,29 +410,29 @@ describe("toCodeDocument", () => {
     })
 
     describe("checks", () => {
-      it("isStartsWith", () => {
+      it("isStartingWith", () => {
         assertSchema(
-          { schema: Schema.String.check(Schema.isStartsWith("a")) },
+          { schema: Schema.String.check(Schema.isStartingWith("a")) },
           {
-            codes: makeCode(`Schema.String.check(Schema.isStartsWith("a"))`, "string")
+            codes: makeCode(`Schema.String.check(Schema.isStartingWith("a"))`, "string")
           }
         )
       })
 
-      it("isEndsWith", () => {
+      it("isEndingWith", () => {
         assertSchema(
-          { schema: Schema.String.check(Schema.isEndsWith("a")) },
+          { schema: Schema.String.check(Schema.isEndingWith("a")) },
           {
-            codes: makeCode(`Schema.String.check(Schema.isEndsWith("a"))`, "string")
+            codes: makeCode(`Schema.String.check(Schema.isEndingWith("a"))`, "string")
           }
         )
       })
 
-      it("isIncludes", () => {
+      it("isIncluding", () => {
         assertSchema(
-          { schema: Schema.String.check(Schema.isIncludes("a")) },
+          { schema: Schema.String.check(Schema.isIncluding("a")) },
           {
-            codes: makeCode(`Schema.String.check(Schema.isIncludes("a"))`, "string")
+            codes: makeCode(`Schema.String.check(Schema.isIncluding("a"))`, "string")
           }
         )
       })
@@ -1859,12 +1874,12 @@ describe("toCodeDocument", () => {
       })
     })
 
-    it("isSizeBetween", () => {
+    it("isBetweenSize", () => {
       assertSchema(
-        { schema: Schema.ReadonlySet(Schema.String).check(Schema.isSizeBetween(2, 2)) },
+        { schema: Schema.ReadonlySet(Schema.String).check(Schema.isBetweenSize(2, 2)) },
         {
           codes: makeCode(
-            `Schema.ReadonlySet(Schema.String).check(Schema.isSizeBetween(2, 2))`,
+            `Schema.ReadonlySet(Schema.String).check(Schema.isBetweenSize(2, 2))`,
             "globalThis.ReadonlySet<string>"
           )
         }

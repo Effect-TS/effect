@@ -171,6 +171,7 @@ const rowCases: ReadonlyArray<
   { name: "int8Max", type: "int8", oid: PgTypes.OID.int8, value: BigInt("9223372036854775807") },
   { name: "int8Min", type: "int8", oid: PgTypes.OID.int8, value: BigInt("-9223372036854775808") },
   { name: "oid", type: "oid", oid: PgTypes.OID.oid, value: 4294967295 },
+  { name: "regclass", type: "regclass", oid: PgTypes.OID.regclass, value: 4294967295 },
   { name: "float4", type: "float4", oid: PgTypes.OID.float4, value: 1.5 },
   { name: "float8", type: "float8", oid: PgTypes.OID.float8, value: -3.0625 },
   { name: "numeric", type: "numeric", oid: PgTypes.OID.numeric, value: "12345.6789" },

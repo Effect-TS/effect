@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Schema, SchemaParser } from "effect"
-import { SchemaJITCompiler } from "effect/unstable/schema"
+import { SchemaJITCompiler } from "effect/schema"
 
 describe("compiled construction concurrency", () => {
   for (const product of ["Struct", "Tuple"] as const) {

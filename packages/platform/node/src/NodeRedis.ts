@@ -16,7 +16,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Redis from "effect/unstable/persistence/Redis"
+import * as Redis from "effect/persistence/Redis"
 import { createClient, SocketTimeoutError } from "redis"
 
 type NodeRedisClient = ReturnType<typeof createClient>
