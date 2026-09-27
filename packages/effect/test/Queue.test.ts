@@ -102,6 +102,34 @@ describe("Queue", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([]))
     }))
 
+  it.effect("interrupting a suspended offer after end withdraws its message", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, Cause.Done>(1)
+      yield* Queue.offer(queue, 1)
+      const producer = yield* Effect.forkChild(Queue.offer(queue, 2), { startImmediately: true })
+      assert.isUndefined(producer.pollUnsafe(), "offer must be suspended before end")
+
+      yield* Queue.end(queue)
+      yield* Fiber.interrupt(producer)
+
+      assert.deepStrictEqual(yield* Queue.collect(queue), [1])
+    }))
+
+  it.effect("interrupting a suspended offerAll after end completes an empty queue", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, Cause.Done>(0)
+      const producer = yield* Effect.forkChild(Queue.offerAll(queue, [1, 2]), { startImmediately: true })
+      assert.isUndefined(producer.pollUnsafe(), "offerAll must be suspended before end")
+
+      yield* Queue.end(queue)
+      const awaiter = yield* Effect.forkChild(Queue.await(queue), { startImmediately: true })
+      assert.isUndefined(awaiter.pollUnsafe(), "await must wait for the pending offer")
+
+      yield* Fiber.interrupt(producer)
+      yield* Fiber.join(awaiter)
+      assert.deepStrictEqual(yield* Effect.exit(Queue.take(queue)), Exit.fail(Cause.Done()))
+    }))
+
   it.effect("resuming a blocked producer does not enqueue its message twice", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(1)
