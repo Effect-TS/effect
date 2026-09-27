@@ -254,6 +254,36 @@ describe("Queue", () => {
 
   for (const take of ["takeN", "takeBetween"] as const) {
     for (const termination of ["end", "fail"] as const) {
+      it.effect(
+        take + " does not miss " + termination + " between the batch check and waiter registration",
+        () =>
+          Effect.gen(function*() {
+            const queue = yield* Queue.unbounded<number, Cause.Done | string>()
+            yield* Queue.offerAll(queue, [1, 2])
+            // Exhaust the budget just after the first batch check, before awaitTake registers.
+            const pad = Effect.andThen(Effect.void, Effect.void)
+            const taker = yield* Effect.forkDetach(Effect.andThen(
+              pad,
+              Effect.exit(take === "takeN" ? Queue.takeN(queue, 5) : Queue.takeBetween(queue, 5, 8))
+            ))
+            const ender = yield* Effect.forkDetach(
+              termination === "end" ? Queue.end(queue) : Queue.fail(queue, "boom")
+            )
+            for (let i = 0; i < 200; i++) yield* Effect.yieldNow
+
+            const ended = ender.pollUnsafe()
+            const result = taker.pollUnsafe()
+            const size = yield* Queue.size(queue)
+            const remainder = yield* Effect.exit(Queue.takeAll(queue))
+            yield* Queue.shutdown(queue)
+
+            assert.isDefined(ended)
+            assert.deepStrictEqual(result, Exit.succeed(Exit.fail(termination === "end" ? Cause.Done() : "boom")))
+            assert.strictEqual(size, 2)
+            assert.deepStrictEqual(remainder, Exit.succeed([1, 2]))
+          }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8))
+      )
+
       it.effect(take + " stops waiting for an insufficient batch after " + termination, () =>
         Effect.gen(function*() {
           const queue = yield* Queue.unbounded<number, Cause.Done | string>()
