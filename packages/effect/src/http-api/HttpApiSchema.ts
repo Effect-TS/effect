@@ -49,13 +49,12 @@ declare module "../Schema.ts" {
 export interface WithHeadersAnnotation {
   readonly body: Schema.Top
   readonly headers: Schema.Top
-  readonly headersCodec: Schema.Top
   /**
-   * Codecs from the body and headers types to their response representation,
-   * so each can be encoded or decoded with its own parse options.
+   * Codecs from the body and headers types to their response representation.
+   * `HttpApiEndpoint` replaces them with the response encoding codecs.
    */
-  readonly bodyWire: Schema.Top
-  readonly headersWire: Schema.Top
+  readonly bodyCodec: Schema.Top
+  readonly headersCodec: Schema.Top
   /**
    * The user mapping between the `{ body, headers }` pair and the schema type.
    */
@@ -804,9 +803,8 @@ export function encodeToWithHeaders<
       "~httpApiWithHeaders": {
         body,
         headers,
-        headersCodec: Schema.toEncoded(headers),
-        bodyWire: body,
-        headersWire: headers,
+        bodyCodec: body,
+        headersCodec: headers,
         transformation
       } as WithHeadersAnnotation,
       httpApiStatus: status,

@@ -411,9 +411,7 @@ export class ParseOptions extends Context.Service<
 
 /**
  * Schema parse options for path params: server decoding, client encoding, and
- * `HttpApiClient.urlBuilder`.
- *
- * Falls back to `ParseOptions` when unset.
+ * `HttpApiClient.urlBuilder`. Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -426,9 +424,7 @@ export class ParamsParseOptions extends Context.Service<
 
 /**
  * Schema parse options for the query string: server decoding, client encoding,
- * and `HttpApiClient.urlBuilder`.
- *
- * Falls back to `ParseOptions` when unset.
+ * and `HttpApiClient.urlBuilder`. Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -442,9 +438,7 @@ export class QueryParseOptions extends Context.Service<
 /**
  * Schema parse options for request headers and the headers of `WithHeaders`
  * responses: server decoding/encoding and client encoding/decoding, including
- * buffered and streamed responses.
- *
- * Falls back to `ParseOptions` when unset.
+ * buffered and streamed responses. Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -457,9 +451,7 @@ export class HeadersParseOptions extends Context.Service<
 
 /**
  * Schema parse options for request bodies, including multipart payloads:
- * server decoding and client encoding.
- *
- * Falls back to `ParseOptions` when unset.
+ * server decoding and client encoding. Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -472,9 +464,7 @@ export class PayloadParseOptions extends Context.Service<
 
 /**
  * Schema parse options for success bodies, including streams, SSE events, and
- * the body of `WithHeaders` responses: server encoding and client decoding.
- *
- * Falls back to `ParseOptions` when unset.
+ * the body of `WithHeaders` responses: server encoding and client decoding. Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -486,9 +476,7 @@ export class SuccessParseOptions extends Context.Service<
 >()("effect/http-api/HttpApi/SuccessParseOptions") {}
 
 /**
- * Schema parse options for error bodies: server encoding and client decoding.
- *
- * Falls back to `ParseOptions` when unset.
+ * Schema parse options for error bodies: server encoding and client decoding. Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services

@@ -1190,24 +1190,15 @@ function toResponseErrorSchema(
   headersOptions: SchemaAST.ParseOptions | undefined
 ): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
   if (!HttpApiSchema.isWithHeaders(schema)) return toResponseErrorSchemaPlain(schema, headersOptions)
-
-  const encodeBody = Schema.encodeUnknownEffect(schema.schema)
-  // Headers use the headers slot options instead of the error body options.
-  const encodeHeaders = Schema.encodeUnknownEffect(schema.headers, headersOptions)
-  const encodeResponse = getResponseEncode(
-    HttpApiSchema.getStatusErrorSchema(schema),
-    HttpApiSchema.getResponseEncodingSchema(schema),
-    HttpApiSchema.isNoContent(schema.schema.ast)
-  )
-  const transformation = withHeadersTransformation<HttpApiSchema.withHeaders<unknown, Schema.StringTree>>(
-    (body, options) =>
-      encodeBody(body, options).pipe(
-        Effect.mapError((error) => error.issue),
-        Effect.flatMap((body) => encodeResponse(body, options))
-      ),
-    (headers) => encodeHeaders(headers)
-  )
-  return $HttpServerResponse.pipe(Schema.decodeTo(schema, transformation))
+  return toWithHeadersResponseSchema({
+    schema,
+    status: HttpApiSchema.getStatusErrorSchema(schema),
+    encoding: HttpApiSchema.getResponseEncodingSchema(schema),
+    body: schema.schema,
+    headers: schema.headers,
+    headersOptions,
+    toPair: (value) => value as HttpApiSchema.withHeaders<unknown, unknown>
+  })
 }
 
 function makeSuccessSchema(
@@ -1242,7 +1233,15 @@ function toResponseSchema(getStatus: (schema: Schema.Constraint) => number) {
     const withHeaders = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
     if (withHeaders !== undefined) {
       // Depends on the endpoint's header options, so it is not cached
-      return toWithHeadersAnnotationSchema(getStatus, schema, withHeaders, headersOptions)
+      return toWithHeadersResponseSchema({
+        schema: Schema.toType(schema),
+        status: getStatus(withHeaders.body),
+        encoding: HttpApiSchema.getResponseEncoding(withHeaders.body.ast),
+        body: withHeaders.bodyCodec,
+        headers: withHeaders.headersCodec,
+        headersOptions,
+        toPair: withHeaders.transformation.encode
+      })
     }
     const key = HttpApiSchema.isWithHeaders(schema) ? schema : schema.ast
     const cached = cache.get(key)
@@ -1256,31 +1255,6 @@ function toResponseSchema(getStatus: (schema: Schema.Constraint) => number) {
     cache.set(key, responseSchema)
     return responseSchema
   }
-}
-
-function toWithHeadersAnnotationSchema(
-  getStatus: (schema: Schema.Constraint) => number,
-  schema: Schema.Constraint,
-  withHeaders: HttpApiSchema.WithHeadersAnnotation,
-  headersOptions: SchemaAST.ParseOptions | undefined
-): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
-  const encodeBody = Schema.encodeUnknownEffect(withHeaders.bodyWire)
-  const encodeHeaders = Schema.encodeUnknownEffect(withHeaders.headersWire, headersOptions)
-  const encodeResponse = getResponseEncode(
-    getStatus(withHeaders.body),
-    HttpApiSchema.getResponseEncoding(withHeaders.body.ast),
-    HttpApiSchema.isNoContent(withHeaders.body.ast)
-  )
-  const transformation = withHeadersTransformation(
-    (body, options) =>
-      encodeBody(body, options).pipe(
-        Effect.mapError((error) => error.issue),
-        Effect.flatMap((body) => encodeResponse(body, options))
-      ),
-    (headers) => encodeHeaders(headers),
-    withHeaders.transformation.encode
-  )
-  return $HttpServerResponse.pipe(Schema.decodeTo(Schema.toType(schema), transformation))
 }
 
 function getResponseTransformation(
@@ -1303,32 +1277,45 @@ function getResponseTransformation(
   })
 }
 
-function withHeadersTransformation<T = unknown>(
-  encodeBody: (
-    body: unknown,
-    options?: SchemaAST.ParseOptions
-  ) => Effect.Effect<Response.HttpServerResponse, SchemaIssue.Issue, unknown>,
-  encodeHeaders: (
-    headers: unknown,
-    options?: SchemaAST.ParseOptions
-  ) => Effect.Effect<unknown, Schema.SchemaError, unknown>,
-  toPair: (value: T) => { readonly body: unknown; readonly headers: unknown } = (value) =>
-    value as { readonly body: unknown; readonly headers: unknown }
-): SchemaTransformation.Transformation<T, Response.HttpServerResponse, never, unknown> {
-  return SchemaTransformation.transformEffect<T, Response.HttpServerResponse, never, unknown>({
+// Encodes the body with the options passed to the schema and the headers with
+// the headers slot options.
+function toWithHeadersResponseSchema(options: {
+  readonly schema: Schema.Top
+  readonly status: number
+  readonly encoding: HttpApiSchema.ResponseEncoding
+  readonly body: Schema.Top
+  readonly headers: Schema.Top
+  readonly headersOptions: SchemaAST.ParseOptions | undefined
+  readonly toPair: (value: unknown) => { readonly body: unknown; readonly headers: unknown }
+}): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
+  const encodeBody = Schema.encodeUnknownEffect(options.body)
+  const encodeHeaders = Schema.encodeUnknownEffect(options.headers, options.headersOptions)
+  const encodeResponse = getResponseEncode(
+    options.status,
+    options.encoding,
+    HttpApiSchema.isNoContent(options.body.ast)
+  )
+  const toIssue = (error: Schema.SchemaError) => error.issue
+  const transformation = SchemaTransformation.transformEffect<unknown, Response.HttpServerResponse, never, unknown>({
     decode: (input, options) =>
       Effect.fail(
         new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)
       ),
-    encode: (value, options) => {
-      const pair = toPair(value)
-      return Effect.flatMap(encodeBody(pair.body, options), (response) =>
-        Effect.map(
-          encodeHeaders(pair.headers, options).pipe(Effect.mapError((error) => error.issue)),
-          (headers) => Response.setHeaders(response, headers as any)
-        ))
+    encode: (value, parseOptions) => {
+      const pair = options.toPair(value)
+      return encodeBody(pair.body, parseOptions).pipe(
+        Effect.mapError(toIssue),
+        Effect.flatMap((body) => encodeResponse(body, parseOptions)),
+        Effect.flatMap((response) =>
+          Effect.map(
+            Effect.mapError(encodeHeaders(pair.headers), toIssue),
+            (headers) => Response.setHeaders(response, headers as any)
+          )
+        )
+      )
     }
   })
+  return $HttpServerResponse.pipe(Schema.decodeTo(options.schema, transformation))
 }
 
 function getResponseEncode<E>(

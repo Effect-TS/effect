@@ -1420,16 +1420,11 @@ function transformResponse(schema: Schema.Top): Schema.Top {
   if (withHeaders === undefined) {
     return applyResponseEncoding(schema, encoding)
   }
-  const headers = Schema.toEncoded(withHeaders.headers)
-  return Schema.Struct({
-    body: applyResponseEncoding(Schema.toEncoded(withHeaders.body), encoding),
-    headers
-  }).pipe(Schema.decodeTo(schema)).annotate({
+  return schema.annotate({
     "~httpApiWithHeaders": {
       ...withHeaders,
-      headersCodec: Schema.toCodecStringTree(headers),
-      bodyWire: applyResponseEncoding(withHeaders.body, encoding),
-      headersWire: Schema.toCodecStringTree(withHeaders.headers)
+      bodyCodec: applyResponseEncoding(withHeaders.body, encoding),
+      headersCodec: Schema.toCodecStringTree(withHeaders.headers)
     }
   })
 }
