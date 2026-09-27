@@ -1083,6 +1083,23 @@ describe("Atom", { concurrent: false }, () => {
     expect(r.get(derived)).toEqual("2b")
   })
 
+  it("runs Atom.fn writes from batch commit listeners", () => {
+    const registry = AtomRegistry.make()
+    const source = Atom.make(0)
+    const write = Atom.fn((value: number, get) => Effect.sync(() => get.registry.set(source, value)))
+    const seen: Array<number> = []
+    registry.mount(write)
+    registry.subscribe(source, (value) => seen.push(value))
+    registry.subscribe(source, (value) => {
+      if (value < 3) registry.set(write, value + 1)
+    })
+
+    Atom.batch(() => registry.set(source, 1))
+
+    assert.deepStrictEqual(seen, [1, 2, 3])
+    registry.dispose()
+  })
+
   it("initialValues", async () => {
     const state = Atom.make(0)
     const r = AtomRegistry.make({

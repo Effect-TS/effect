@@ -784,11 +784,11 @@ class NodeImpl<A> {
   }
 
   notify(): void {
-    this.listeners.forEach(notifyListener)
-
     if (batchState.phase === BatchPhase.commit) {
       batchState.notify.delete(this)
     }
+
+    this.listeners.forEach(notifyListener)
   }
 
   disposeLifetime(): void {
@@ -1113,25 +1113,30 @@ export const batchState = {
  * @internal
  */
 export function batch(f: () => void): void {
+  const previousPhase = batchState.phase
   batchState.phase = BatchPhase.collect
   batchState.depth++
   try {
     f()
     if (batchState.depth === 1) {
-      for (let i = 0; i < batchState.stale.length; i++) {
-        batchRebuildNode(batchState.stale[i])
-      }
-      batchState.phase = BatchPhase.commit
-      for (const node of batchState.notify) {
-        node.notify()
-      }
-      batchState.notify.clear()
+      let i = 0
+      do {
+        batchState.phase = BatchPhase.collect
+        for (; i < batchState.stale.length; i++) {
+          batchRebuildNode(batchState.stale[i])
+        }
+        batchState.phase = BatchPhase.commit
+        for (const node of batchState.notify) {
+          node.notify()
+        }
+      } while (i < batchState.stale.length)
     }
   } finally {
     batchState.depth--
+    batchState.phase = previousPhase
     if (batchState.depth === 0) {
-      batchState.phase = BatchPhase.disabled
       batchState.stale = []
+      batchState.notify.clear()
     }
   }
 }
