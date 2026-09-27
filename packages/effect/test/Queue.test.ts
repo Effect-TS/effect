@@ -259,12 +259,12 @@ describe("Queue", () => {
       yield* Queue.end(queue)
 
       const taker = yield* Effect.forkChild(Effect.exit(Queue.takeN(queue, 5)), { startImmediately: true })
-      for (let i = 0; i < 20 && taker.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
       const result = taker.pollUnsafe()
       const next = result === undefined ? undefined : yield* Effect.forkChild(Effect.exit(Queue.takeN(queue, 5)), {
         startImmediately: true
       })
-      for (let i = 0; i < 20 && next !== undefined && next.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
       const nextResult = next?.pollUnsafe()
       const state = queue.state._tag
       yield* Queue.shutdown(queue)
@@ -285,14 +285,14 @@ describe("Queue", () => {
       const waiting = taker.pollUnsafe()
 
       yield* Queue.fail(queue, "boom")
-      for (let i = 0; i < 20 && taker.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
       const result = taker.pollUnsafe()
       const next = result === undefined ?
         undefined :
         yield* Effect.forkChild(Effect.exit(Queue.takeBetween(queue, 5, 8)), {
           startImmediately: true
         })
-      for (let i = 0; i < 20 && next !== undefined && next.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
       const nextResult = next?.pollUnsafe()
       const state = queue.state._tag
       yield* Queue.shutdown(queue)
@@ -316,7 +316,7 @@ describe("Queue", () => {
       const ended = ender.pollUnsafe()
       const result = taker.pollUnsafe()
       const next = result === undefined ? undefined : yield* Effect.forkDetach(Effect.exit(Queue.takeN(queue, 5)))
-      for (let i = 0; i < 200 && next !== undefined && next.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      for (let i = 0; i < 200; i++) yield* Effect.yieldNow
       const nextResult = next?.pollUnsafe()
       const state = queue.state._tag
       yield* Queue.shutdown(queue)
