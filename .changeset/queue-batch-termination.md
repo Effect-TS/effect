@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fail batch takes with the queue terminal error when termination leaves fewer messages than the requested minimum, including takes already waiting when the queue terminates.
+Drain remaining messages in batch takes when a queue is closing, even if fewer than the requested minimum remain. Subsequent takes receive the queue terminal error once it is done, including when a batch taker was already waiting at termination.

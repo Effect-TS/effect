@@ -950,12 +950,12 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
     return true
   }
   self.state = { ...self.state, _tag: "Closing", exit: fail }
-  // Single-item consumers may still drain buffered messages. Only wake batch
-  // takers whose minimum can no longer be reached.
+  // Preserve the order of single-item consumers; wake only batch takers that
+  // may need to drain fewer than their requested minimum.
   for (const taker of self.state.takers) {
     if (!batchTakers.has(taker)) continue
     self.state.takers.delete(taker)
-    taker(fail)
+    taker(internalEffect.exitVoid)
   }
   return true
 }
@@ -1312,8 +1312,9 @@ export const collect = <A, E>(self: Dequeue<A, E | Done>): Effect<Array<A>, Pull
  * The operation may wait until enough messages are available to satisfy the
  * queue's batching rules. Finite fractional values of `n` are rounded down.
  * If `n` is `NaN` or non-positive, it succeeds with an empty array. If the
- * queue completes or fails before messages can be taken, the effect fails with
- * the queue's terminal error.
+ * queue is closing, drains the currently available messages even when fewer
+ * than `n` are available. Once the queue is done, the effect fails with the
+ * queue's terminal error.
  *
  * **Example** (Taking a fixed number of values)
  *
@@ -1356,8 +1357,9 @@ export const takeN: {
  * The operation waits when fewer than the required minimum messages are
  * available. It returns at most `max` messages. Finite fractional bounds are
  * rounded down, while `NaN` and non-positive bounds are treated as `0`. If the
- * queue completes or fails before the minimum can be satisfied, the effect
- * fails with the queue's terminal error.
+ * queue is closing, drains the currently available messages even when fewer
+ * than `min` are available. Once the queue is done, the effect fails with the
+ * queue's terminal error.
  *
  * **Example** (Taking a bounded batch of values)
  *
@@ -1965,7 +1967,10 @@ const takeBetweenUnsafe = <A, E>(
   } else if (max <= 0 || min <= 0) {
     return core.exitSucceed([])
   } else if (!canTake(self, min)) {
-    return self.state._tag === "Closing" ? self.state.exit : undefined
+    if (self.state._tag !== "Closing") return undefined
+    // Termination cannot supply the minimum, but the remaining messages still
+    // belong to this batch. Drain them before exposing the terminal exit.
+    if (self.messages.length === 0 && self.state.offers.size === 0) return self.state.exit
   }
   const messages = self.messages.length > 0
     ? MutableList.takeN(self.messages, max)
@@ -1986,7 +1991,7 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean, batch = fals
   internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
-    if (self.state._tag === "Closing") return resume(self.state.exit)
+    if (self.state._tag === "Closing") return resume(internalEffect.exitVoid)
     if (batch) batchTakers.add(resume)
     self.state.takers.add(resume)
     return internalEffect.sync(() => {
