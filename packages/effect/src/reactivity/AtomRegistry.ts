@@ -595,7 +595,7 @@ class RegistryImpl implements AtomRegistry {
 
     const nodes = Array.from(this.nodes.values())
     this.nodes.clear()
-    // every node goes: marked first, removing one cannot reschedule or time out a parent
+    // Mark all nodes before removing any, so a parent cannot be rescheduled for removal.
     for (const node of nodes) {
       node.state = NodeState.removed
     }
