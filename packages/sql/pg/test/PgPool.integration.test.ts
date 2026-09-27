@@ -606,6 +606,26 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       )
     }), cancellationTestTimeout)
 
+  it.effect("replaces a fatal session before the next pool.use query", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const first = yield* pool.use((connection) => Effect.succeed(connection.processId))
+
+      // Decoding this interval fails fatally in the connection's data handler.
+      // The next borrow must not see the dead session, even in the same fiber.
+      const error = yield* Effect.flip(pool.use((connection) => connection.query("SELECT interval '-1 day' AS v")))
+      assert.strictEqual(error._tag, "SqlError")
+      assert.strictEqual(error.reason.message, "PgConnection: Failed to decode row")
+      const next = yield* pool.use((connection) =>
+        Effect.map(connection.query("SELECT 1::int4 AS one"), (result) => ({
+          pid: connection.processId,
+          rows: result.rows
+        }))
+      )
+      assert.notStrictEqual(next.pid, first)
+      assert.deepStrictEqual(next.rows, [{ one: 1 }])
+    }))
+
   it.effect("borrows around a connection that has to be replaced", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
