@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Emit the encoded schema of `HttpApiSchema.asText()` bodies in OpenAPI documents instead of a plain string. Text literals now appear as `enum` values, and exportable string checks such as `pattern` are kept.
+Preserve encoded string literals and exportable checks such as `pattern` in OpenAPI schemas for `HttpApiSchema.asText()` bodies. Text bodies keep their string type even when their schemas are opaque or referenced components.
