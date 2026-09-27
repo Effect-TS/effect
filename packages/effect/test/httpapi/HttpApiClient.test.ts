@@ -312,6 +312,31 @@ describe("HttpApiClient", () => {
         assert.include(exit, `["x-a"]`)
         assert.include(exit, `["x-b"]`)
       }))
+
+    it.effect("encodeToWithHeaders validates the mapped response value", () =>
+      Effect.gen(function*() {
+        const Positive = Schema.Number.check(Schema.isGreaterThan(0))
+        const ResponseSchema = Positive.pipe(HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.asText()),
+          headers: { "x-value": Schema.FiniteFromString }
+        }, {
+          decode: ({ headers }) => headers["x-value"],
+          encode: (value) => ({ body: "value", headers: { "x-value": value } })
+        }))
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/value", { success: ResponseSchema }))
+        )
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response("value", { headers: { "content-type": "text/plain", "x-value": "-1" } })
+          )
+        })
+
+        const exit = yield* Effect.exit(client.test.get({}))
+        assert.strictEqual(exit._tag, "Failure")
+        assert.include(String(exit), "greater than 0")
+      }))
   })
 
   describe("literal action suffixes", () => {
