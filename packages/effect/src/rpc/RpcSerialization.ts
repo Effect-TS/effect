@@ -211,18 +211,25 @@ export const ndjson: RpcSerialization["Service"] = makeNdjson()
  * Creates a JSON-RPC 2.0 serialization for RPC protocol messages without
  * additional message framing.
  *
+ * Notifications whose method starts with `@effect/rpc/` decode as RPC control
+ * messages such as `Eof` and `Ping`. Set `controlMessages` to `false` when
+ * peers speak plain JSON-RPC, so those methods decode as ordinary
+ * notifications.
+ *
  * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
 export const jsonRpc = (options?: {
   readonly contentType?: string | undefined
+  readonly controlMessages?: boolean | undefined
 }): RpcSerialization["Service"] =>
   RpcSerialization.of({
     contentType: options?.contentType ?? "application/json",
     includesFraming: false,
     codecFor: codecForJson,
     makeUnsafe: () => {
+      const controlMessages = options?.controlMessages ?? true
       const batches = new Map<string | number, {
         readonly size: number
         readonly responses: Map<string | number, RpcMessage.FromServerEncoded>
@@ -232,7 +239,7 @@ export const jsonRpc = (options?: {
           const decoded: JsonRpcMessage | Array<JsonRpcMessage> = JSON.parse(
             typeof bytes === "string" ? bytes : decodeText(bytes)
           )
-          return decodeJsonRpcRaw(decoded, batches)
+          return decodeJsonRpcRaw(decoded, batches, controlMessages)
         },
         encode: (response) => {
           const encoded = encodeJsonRpcResponse(response as any, batches)
@@ -246,6 +253,11 @@ export const jsonRpc = (options?: {
  * Creates a newline-delimited JSON-RPC 2.0 serialization for RPC protocol
  * messages.
  *
+ * Notifications whose method starts with `@effect/rpc/` decode as RPC control
+ * messages such as `Eof` and `Ping`. Set `controlMessages` to `false` when
+ * peers speak plain JSON-RPC, so those methods decode as ordinary
+ * notifications.
+ *
  * @stability unstable
  * @category serialization
  * @since 4.0.0
@@ -253,6 +265,7 @@ export const jsonRpc = (options?: {
 export const ndJsonRpc = (options?: {
   readonly contentType?: string | undefined
   readonly maxBufferSize?: number | "unbounded" | undefined
+  readonly controlMessages?: boolean | undefined
 }): RpcSerialization["Service"] =>
   RpcSerialization.of({
     contentType: options?.contentType ?? "application/json-rpc",
@@ -260,6 +273,7 @@ export const ndJsonRpc = (options?: {
     codecFor: codecForJson,
     makeUnsafe: () => {
       const parser = makeNdjson({ maxBufferSize: options?.maxBufferSize }).makeUnsafe()
+      const controlMessages = options?.controlMessages ?? true
       const batches = new Map<string, {
         readonly size: number
         readonly responses: Map<string, RpcMessage.FromServerEncoded>
@@ -271,7 +285,7 @@ export const ndJsonRpc = (options?: {
           const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
           for (let i = 0; i < frames.length; i++) {
             const frame = frames[i]
-            messages.push(...decodeJsonRpcRaw(frame as any, batches) as any)
+            messages.push(...decodeJsonRpcRaw(frame as any, batches, controlMessages) as any)
           }
           return messages
         },
@@ -288,7 +302,8 @@ function decodeJsonRpcRaw(
   batches: Map<string | number, {
     readonly size: number
     readonly responses: Map<string | number, RpcMessage.FromServerEncoded>
-  }>
+  }>,
+  controlMessages: boolean
 ) {
   if (Array.isArray(decoded)) {
     const batch = {
@@ -297,7 +312,7 @@ function decodeJsonRpcRaw(
     }
     const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
     for (let i = 0; i < decoded.length; i++) {
-      const message = decodeJsonRpcMessage(decoded[i])
+      const message = decodeJsonRpcMessage(decoded[i], controlMessages)
       messages.push(message)
       if (message._tag === "Request" && !message.isNotification) {
         batch.size++
@@ -306,13 +321,16 @@ function decodeJsonRpcRaw(
     }
     return messages
   }
-  return [decodeJsonRpcMessage(decoded)]
+  return [decodeJsonRpcMessage(decoded, controlMessages)]
 }
 
-function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded {
+function decodeJsonRpcMessage(
+  decoded: JsonRpcMessage,
+  controlMessages: boolean
+): RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded {
   if (Object.hasOwn(decoded, "method")) {
     const request = decoded as JsonRpcRequest
-    if (Predicate.isNullish(request.id) && request.method.startsWith("@effect/rpc/")) {
+    if (controlMessages && Predicate.isNullish(request.id) && request.method.startsWith("@effect/rpc/")) {
       const tag = request.method.slice("@effect/rpc/".length) as
         | RpcMessage.FromServerEncoded["_tag"]
         | Exclude<RpcMessage.FromClientEncoded["_tag"], "Request">
@@ -622,6 +640,7 @@ export const layerNdjsonWith = (options?: StreamOptions): Layer.Layer<RpcSeriali
  */
 export const layerJsonRpc = (options?: {
   readonly contentType?: string | undefined
+  readonly controlMessages?: boolean | undefined
 }): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(jsonRpc(options))
 
 /**
@@ -635,6 +654,7 @@ export const layerJsonRpc = (options?: {
 export const layerNdJsonRpc = (options?: {
   readonly contentType?: string | undefined
   readonly maxBufferSize?: number | "unbounded" | undefined
+  readonly controlMessages?: boolean | undefined
 }): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(ndJsonRpc(options))
 
 /**
