@@ -270,6 +270,22 @@ describe("Queue", () => {
       assert.deepStrictEqual(remainder, Exit.succeed([1, 2]))
     }))
 
+  it.effect("takeN consumes a ready batch when end overtakes scheduled release", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number, Cause.Done>()
+      const taker = yield* Effect.forkChild(Effect.exit(Queue.takeN(queue, 2)), { startImmediately: true })
+      assert.strictEqual(taker.pollUnsafe(), undefined)
+
+      assert.isTrue(Queue.offerUnsafe(queue, 1))
+      assert.isTrue(Queue.offerUnsafe(queue, 2))
+      assert.isTrue(Queue.endUnsafe(queue))
+
+      for (let i = 0; i < 20 && taker.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+      const result = taker.pollUnsafe()
+      yield* Queue.shutdown(queue)
+      assert.deepStrictEqual(result, Exit.succeed(Exit.succeed([1, 2])))
+    }))
+
   it.effect("takeBetween fails when a waiting batch encounters failure", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number, string>()
