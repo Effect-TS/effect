@@ -258,73 +258,37 @@ describe("Queue", () => {
       yield* Queue.offerAll(queue, [1, 2])
       yield* Queue.end(queue)
 
-      const taker = yield* Effect.forkChild(Effect.exit(Queue.takeN(queue, 5)), { startImmediately: true })
-      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-      const result = taker.pollUnsafe()
-      const next = result === undefined ? undefined : yield* Effect.forkChild(Effect.exit(Queue.takeN(queue, 5)), {
-        startImmediately: true
-      })
-      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-      const nextResult = next?.pollUnsafe()
-      const state = queue.state._tag
-      yield* Queue.shutdown(queue)
-
-      assert.deepStrictEqual(result, Exit.succeed(Exit.succeed([1, 2])))
-      assert.deepStrictEqual(nextResult, Exit.succeed(Exit.fail(Cause.Done())))
-      assert.strictEqual(state, "Done")
+      assert.deepStrictEqual(yield* Queue.takeN(queue, 5), [1, 2])
+      assert.strictEqual(queue.state._tag, "Done")
+      assert.deepStrictEqual(yield* Effect.exit(Queue.takeN(queue, 5)), Exit.fail(Cause.Done()))
     }))
 
   it.effect("takeBetween drains a waiting batch on failure", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number, string>()
       yield* Queue.offerAll(queue, [1, 2])
-      const taker = yield* Effect.forkChild(Effect.exit(Queue.takeBetween(queue, 5, 8)), {
-        startImmediately: true
-      })
-      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-      const waiting = taker.pollUnsafe()
+      const taker = yield* Effect.forkChild(Queue.takeBetween(queue, 5, 8), { startImmediately: true })
+      assert.strictEqual(taker.pollUnsafe(), undefined)
 
       yield* Queue.fail(queue, "boom")
-      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-      const result = taker.pollUnsafe()
-      const next = result === undefined ?
-        undefined :
-        yield* Effect.forkChild(Effect.exit(Queue.takeBetween(queue, 5, 8)), {
-          startImmediately: true
-        })
-      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-      const nextResult = next?.pollUnsafe()
-      const state = queue.state._tag
-      yield* Queue.shutdown(queue)
-
-      assert.strictEqual(waiting, undefined)
-      assert.deepStrictEqual(result, Exit.succeed(Exit.succeed([1, 2])))
-      assert.deepStrictEqual(nextResult, Exit.succeed(Exit.fail("boom")))
-      assert.strictEqual(state, "Done")
+      assert.deepStrictEqual(yield* Fiber.join(taker), [1, 2])
+      assert.strictEqual(queue.state._tag, "Done")
+      assert.deepStrictEqual(yield* Effect.exit(Queue.takeBetween(queue, 5, 8)), Exit.fail("boom"))
     }))
 
   it.effect("takeN drains on failure between the batch check and waiter registration", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<number, string>()
       yield* Queue.offerAll(queue, [1, 2])
-      // Exhaust the budget just after the first batch check, before awaitTake registers.
+      // At a budget of 8, this padding exhausts the taker budget after the
+      // first batch check but before registering in awaitTake.
       const pad = Effect.andThen(Effect.void, Effect.void)
-      const taker = yield* Effect.forkDetach(Effect.andThen(pad, Effect.exit(Queue.takeN(queue, 5))))
-      const ender = yield* Effect.forkDetach(Queue.fail(queue, "boom"))
-      for (let i = 0; i < 200; i++) yield* Effect.yieldNow
+      const taker = yield* Effect.forkDetach(Effect.andThen(pad, Queue.takeN(queue, 5)))
+      yield* Effect.forkDetach(Queue.fail(queue, "boom"))
 
-      const ended = ender.pollUnsafe()
-      const result = taker.pollUnsafe()
-      const next = result === undefined ? undefined : yield* Effect.forkDetach(Effect.exit(Queue.takeN(queue, 5)))
-      for (let i = 0; i < 200; i++) yield* Effect.yieldNow
-      const nextResult = next?.pollUnsafe()
-      const state = queue.state._tag
-      yield* Queue.shutdown(queue)
-
-      assert.isDefined(ended)
-      assert.deepStrictEqual(result, Exit.succeed(Exit.succeed([1, 2])))
-      assert.deepStrictEqual(nextResult, Exit.succeed(Exit.fail("boom")))
-      assert.strictEqual(state, "Done")
+      assert.deepStrictEqual(yield* Fiber.join(taker), [1, 2])
+      assert.strictEqual(queue.state._tag, "Done")
+      assert.deepStrictEqual(yield* Effect.exit(Queue.takeN(queue, 5)), Exit.fail("boom"))
     }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 8)))
 
   it.effect("takeN ending at an offerAll boundary keeps the next message", () =>

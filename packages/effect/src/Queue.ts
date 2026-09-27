@@ -950,12 +950,8 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
     return true
   }
   self.state = { ...self.state, _tag: "Closing", exit: fail }
-  // Wake batch takers without reordering single-item consumers.
-  for (const taker of self.state.takers) {
-    if (!batchTakers.has(taker)) continue
-    self.state.takers.delete(taker)
-    taker(internalEffect.exitVoid)
-  }
+  // Batch takers waiting on a minimum can now drain the remainder.
+  scheduleReleaseTaker(self)
   return true
 }
 
@@ -1396,7 +1392,7 @@ export const takeBetween: {
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
     takeBetweenUnsafe(self, min, max) ??
-      internalEffect.andThen(awaitTake(self, () => canTake(self, min), min > 1), takeBetween(self, min, max))
+      internalEffect.andThen(awaitTake(self, () => canTake(self, min)), takeBetween(self, min, max))
   )
 })
 
@@ -1930,7 +1926,6 @@ const exitFalse = core.exitSucceed(false)
 const exitTrue = core.exitSucceed(true)
 const exitFailDone = core.exitFail(core.Done()) as Failure<never, Done>
 const exitInterrupt = internalEffect.exitInterrupt() as Failure<never, never>
-const batchTakers = new WeakSet<object>()
 
 const releaseTakers = <A, E>(self: Enqueue<A, E>) => {
   if (self.state._tag === "Done" || self.state.takers.size === 0) {
@@ -1966,8 +1961,7 @@ const takeBetweenUnsafe = <A, E>(
   } else if (max <= 0 || min <= 0) {
     return core.exitSucceed([])
   } else if (!canTake(self, min)) {
-    if (self.state._tag !== "Closing") return undefined
-    if (self.messages.length === 0 && self.state.offers.size === 0) return self.state.exit
+    return undefined
   }
   const messages = self.messages.length > 0
     ? MutableList.takeN(self.messages, max)
@@ -1977,19 +1971,18 @@ const takeBetweenUnsafe = <A, E>(
 }
 
 // Whether a take of at least `min` messages can complete without waiting.
+// A closing queue receives no more messages, so any remainder satisfies `min`.
 const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
-  self.messages.length >= Math.min(min, self.capacity || 1) ||
+  self.messages.length >= (self.state._tag === "Closing" ? 1 : Math.min(min, self.capacity || 1)) ||
   (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
 
 // The readiness check and the taker registration run in one step, so no
 // message can arrive between them. Wake-ups resume with void and the caller
 // retries, which keeps the fiber stack flat across spurious wake-ups.
-const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean, batch = false) =>
+const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
   internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
-    if (self.state._tag === "Closing") return resume(internalEffect.exitVoid)
-    if (batch) batchTakers.add(resume)
     self.state.takers.add(resume)
     return internalEffect.sync(() => {
       if (self.state._tag !== "Done") self.state.takers.delete(resume)
