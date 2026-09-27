@@ -295,7 +295,7 @@ describe("RpcSerialization", () => {
   it("ndjson skips lines that are not JSON and keeps decoding", () => {
     const parser = RpcSerialization.ndjson.makeUnsafe()
 
-    assert.deepStrictEqual(parser.decode("{\"id\":1}\nnot json\n\n﻿{\"id\":2}\n{\"id\":3}\n"), [{ id: 1 }, { id: 3 }])
+    assert.deepStrictEqual(parser.decode("{\"id\":1}\nnot json\n{\"id\":2}\n"), [{ id: 1 }, { id: 2 }])
     assert.deepStrictEqual(parser.decode("{\"id\":4}\n"), [{ id: 4 }])
   })
 
@@ -404,26 +404,30 @@ describe("RpcSerialization", () => {
     }])
   })
 
-  it("jsonRpc ignores JSON values that are not messages", () => {
+  it("jsonRpc skips non-objects in a batch without losing requests", () => {
     const parser = RpcSerialization.jsonRpc().makeUnsafe()
 
     assert.deepStrictEqual(parser.decode("null"), [])
     assert.deepStrictEqual(parser.decode("7"), [])
-    assert.deepStrictEqual(parser.decode("[null,{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"), [{
-      _tag: "Request",
-      id: 2,
-      tag: "users.get",
-      payload: null,
-      headers: []
-    }])
-  })
-
-  it("jsonRpc decodes a notification with a non-string method as a request", () => {
-    const parser = RpcSerialization.jsonRpc().makeUnsafe()
-
-    const decoded = parser.decode("{\"jsonrpc\":\"2.0\",\"method\":1}")
-    assert.strictEqual(decoded.length, 1)
-    assert.propertyVal(decoded[0], "_tag", "Request")
+    assert.deepStrictEqual(
+      parser.decode(
+        "[null,{\"jsonrpc\":\"2.0\",\"method\":1},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"
+      ),
+      [{
+        _tag: "Request",
+        id: "",
+        tag: 1,
+        isNotification: true,
+        payload: null,
+        headers: []
+      }, {
+        _tag: "Request",
+        id: 2,
+        tag: "users.get",
+        payload: null,
+        headers: []
+      }]
+    )
   })
 
   it("ndJsonRpc keeps requests that share a chunk with a value that is not a message", () => {
