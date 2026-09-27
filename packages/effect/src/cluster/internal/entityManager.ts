@@ -302,8 +302,7 @@ export const make = Effect.fnUntraced(function*<
                     }
                     activeRequests.delete(Snowflake.Snowflake(response.requestId))
 
-                    // ensure that the reaper does not remove the entity as we haven't
-                    // been "idle" yet
+                    // Start the idle timer when the last request completes.
                     if (activeRequests.size === 0) {
                       state.lastActiveCheck = clock.currentTimeMillisUnsafe()
                     }
