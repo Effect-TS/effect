@@ -1130,13 +1130,13 @@ export function batch(f: () => void): void {
           node.notify()
         }
       } while (i < batchState.stale.length)
-      batchState.notify.clear()
     }
   } finally {
     batchState.depth--
     batchState.phase = previousPhase
     if (batchState.depth === 0) {
       batchState.stale = []
+      batchState.notify.clear()
     }
   }
 }
