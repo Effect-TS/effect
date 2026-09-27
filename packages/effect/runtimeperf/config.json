@@ -1421,6 +1421,24 @@
               "operation": "schema"
             },
             {
+              "name": "schema-creation-encoded-object-8-effect",
+              "export": "effectSchemaCreationEncodedObject8",
+              "scenario": "schema-creation-encoded-object-8",
+              "implementation": "effect",
+              "operation": "schema",
+              "astTags": ["Objects", "Arrays", "String", "Number", "Boolean"],
+              "size": 8
+            },
+            {
+              "name": "first-make-encoded-object-8-effect",
+              "export": "effectFirstMakeEncodedObject8",
+              "scenario": "first-make-encoded-object-8",
+              "implementation": "effect",
+              "operation": "first-make",
+              "astTags": ["Objects", "Arrays", "String", "Number", "Boolean"],
+              "size": 8
+            },
+            {
               "name": "first-make-object-2-effect",
               "export": "effectFirstMakeObject2",
               "scenario": "first-make-object-2",
