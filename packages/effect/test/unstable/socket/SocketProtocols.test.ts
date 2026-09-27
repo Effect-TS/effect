@@ -13,8 +13,10 @@ describe("SocketProtocols", () => {
 
     it.effect("drops empty tokens", () =>
       Effect.gen(function*() {
-        const result = yield* Schema.decodeEffect(SocketProtocols.Schema)("a,,b, ,c,")
-        assert.deepStrictEqual(result, ["a", "b", "c"])
+        const decode = Schema.decodeEffect(SocketProtocols.Schema)
+        assert.deepStrictEqual(yield* decode("a,,b"), ["a", "b"])
+        assert.deepStrictEqual(yield* decode("a, ,b"), ["a", "b"])
+        assert.deepStrictEqual(yield* decode("a,,b, ,c,"), ["a", "b", "c"])
       }))
 
     it.effect("decodes an empty header into an empty array", () =>

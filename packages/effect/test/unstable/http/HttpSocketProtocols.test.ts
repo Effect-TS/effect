@@ -31,7 +31,7 @@ describe("HttpSocketProtocols", () => {
       )
     ))
 
-  it.effect("drops empty tokens from the header", () =>
+  it.effect("drops empty tokens from the header (a,,b)", () =>
     Effect.gen(function*() {
       const protocols = yield* HttpSocketProtocols.HttpSocketProtocols
       assert.deepStrictEqual(protocols, ["a", "b"])
@@ -40,6 +40,17 @@ describe("HttpSocketProtocols", () => {
       Effect.provideService(
         HttpServerRequest.HttpServerRequest,
         request({ [HttpSocketProtocols.HEADER_NAME]: "a,,b" })
+      )
+    ))
+  it.effect("drops empty tokens from the header (a, ,b)", () =>
+    Effect.gen(function*() {
+      const protocols = yield* HttpSocketProtocols.HttpSocketProtocols
+      assert.deepStrictEqual(protocols, ["a", "b"])
+    }).pipe(
+      Effect.provide(HttpSocketProtocols.layer),
+      Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        request({ [HttpSocketProtocols.HEADER_NAME]: "a, ,b" })
       )
     ))
 
