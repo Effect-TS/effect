@@ -270,6 +270,34 @@ describe("Queue", () => {
           yield* Queue.shutdown(queue)
           assert.deepStrictEqual(result, Exit.succeed(Exit.fail(termination === "end" ? Cause.Done() : "boom")))
         }))
+
+      it.effect(
+        take + " preserves the remainder when a waiting batch encounters " + termination,
+        () =>
+          Effect.gen(function*() {
+            const queue = yield* Queue.unbounded<number, Cause.Done | string>()
+            yield* Queue.offerAll(queue, [1, 2])
+            const taker = yield* Effect.forkChild(
+              Effect.exit(take === "takeN" ? Queue.takeN(queue, 5) : Queue.takeBetween(queue, 5, 8)),
+              { startImmediately: true }
+            )
+            for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+            const waiting = taker.pollUnsafe()
+
+            if (termination === "end") yield* Queue.end(queue)
+            else yield* Queue.fail(queue, "boom")
+            for (let i = 0; i < 20 && taker.pollUnsafe() === undefined; i++) yield* Effect.yieldNow
+            const result = taker.pollUnsafe()
+            const size = yield* Queue.size(queue)
+            const remainder = yield* Effect.exit(Queue.takeAll(queue))
+            yield* Queue.shutdown(queue)
+
+            assert.strictEqual(waiting, undefined)
+            assert.deepStrictEqual(result, Exit.succeed(Exit.fail(termination === "end" ? Cause.Done() : "boom")))
+            assert.strictEqual(size, 2)
+            assert.deepStrictEqual(remainder, Exit.succeed([1, 2]))
+          })
+      )
     }
   }
 
