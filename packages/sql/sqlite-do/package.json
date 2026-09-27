@@ -61,7 +61,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260919.1",
+    "@cloudflare/workers-types": "^5.20260926.1",
     "effect": "workspace:^",
     "esbuild": "^0.28.2",
     "miniflare": "5.20260918.0-alpha"
