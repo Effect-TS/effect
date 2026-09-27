@@ -374,6 +374,11 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
           })
       })
       yield* server.addTool({
+        tool: makeTool("internal-failure", "Fails with an internal error"),
+        annotations: Context.empty(),
+        handle: () => Effect.fail(new McpSchema.InternalError({ message: "database unavailable" }))
+      })
+      yield* server.addTool({
         tool: makeTool("arguments", "Argument normalization probe"),
         annotations: Context.empty(),
         handle: (payload) =>
@@ -1925,6 +1930,26 @@ describe("McpServer protocol adapters", () => {
       )
       assert.strictEqual(fixture.state.audioInvocations, 1)
       assert.strictEqual(fixture.state.resourceLinkInvocations, 1)
+    }))
+
+  it.effect("should return an error result for tool execution failures on 2025-11-25", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+      const client = yield* initialize(fixture.post, "2025-11-25")
+      const result = resultOf(yield* client.request("tools/call", { name: "internal-failure" }))
+      assert.isTrue(result.isError)
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "database unavailable" }])
+    }))
+
+  it.effect("should report tool execution failures as internal errors on older revisions", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+      for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const error = errorOf(yield* client.request("tools/call", { name: "internal-failure" }))
+        assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
+        assert.strictEqual(error.message, "database unavailable")
+      }
     }))
 
   it.effect("should reject invalid structured content at the protocol serialization boundary", () =>

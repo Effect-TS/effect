@@ -318,7 +318,7 @@ export const protocol = McpProtocol.make({
           McpProtocol.invocationFromClient(request)
         ).pipe(
           Effect.flatMap((outcome) => McpProtocol.requireCompleteOperation(McpSchema.protocolVersion, outcome)),
-          Effect.catchTag("InvalidToolInput", (error) =>
+          Effect.catchTag(["InvalidToolInput", "ToolExecutionError"], (error) =>
             Effect.succeed(PublicMcpSchema.CallToolResult.make({
               content: [PublicMcpSchema.TextContent.make({
                 type: "text",
