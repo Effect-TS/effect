@@ -950,6 +950,9 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
     return true
   }
   self.state = { ...self.state, _tag: "Closing", exit: fail }
+  // Wake pending takers so a batch that can no longer reach its minimum
+  // can observe the terminal exit without draining the buffered remainder.
+  releaseTakers(self)
   return true
 }
 
@@ -1930,7 +1933,7 @@ const releaseTakers = <A, E>(self: Enqueue<A, E>) => {
   for (const taker of self.state.takers) {
     self.state.takers.delete(taker)
     taker(internalEffect.exitVoid)
-    if (self.messages.length === 0) {
+    if (self.messages.length === 0 && self.state._tag === "Open") {
       break
     }
   }
@@ -1957,7 +1960,7 @@ const takeBetweenUnsafe = <A, E>(
   } else if (max <= 0 || min <= 0) {
     return core.exitSucceed([])
   } else if (!canTake(self, min)) {
-    return undefined
+    return self.state._tag === "Closing" ? self.state.exit : undefined
   }
   const messages = self.messages.length > 0
     ? MutableList.takeN(self.messages, max)
