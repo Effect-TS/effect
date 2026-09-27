@@ -950,8 +950,7 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
     return true
   }
   self.state = { ...self.state, _tag: "Closing", exit: fail }
-  // Preserve the order of single-item consumers; wake only batch takers that
-  // may need to drain fewer than their requested minimum.
+  // Wake batch takers without reordering single-item consumers.
   for (const taker of self.state.takers) {
     if (!batchTakers.has(taker)) continue
     self.state.takers.delete(taker)
@@ -1968,8 +1967,6 @@ const takeBetweenUnsafe = <A, E>(
     return core.exitSucceed([])
   } else if (!canTake(self, min)) {
     if (self.state._tag !== "Closing") return undefined
-    // Termination cannot supply the minimum, but the remaining messages still
-    // belong to this batch. Drain them before exposing the terminal exit.
     if (self.messages.length === 0 && self.state.offers.size === 0) return self.state.exit
   }
   const messages = self.messages.length > 0
