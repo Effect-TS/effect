@@ -11816,6 +11816,11 @@ export interface Semaphore {
 
   /**
    * Releases all permits held by this semaphore and returns the resulting available permits.
+   *
+   * This does not stop effects already running with `withPermits` or
+   * `withPermitsIfAvailable`. Their permits become available immediately, but
+   * those effects still release their permits when they finish. The resulting
+   * available count can exceed the semaphore's capacity.
    */
   releaseAll: Effect<number>
 }
