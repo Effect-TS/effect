@@ -49,7 +49,19 @@ declare module "../Schema.ts" {
 export interface WithHeadersAnnotation {
   readonly body: Schema.Top
   readonly headers: Schema.Top
+  /**
+   * Codecs from the body and headers types to their response representation.
+   * `HttpApiEndpoint` replaces them with the response encoding codecs.
+   */
+  readonly bodyCodec: Schema.Top
   readonly headersCodec: Schema.Top
+  /**
+   * The user mapping between the `{ body, headers }` pair and the schema type.
+   */
+  readonly transformation: {
+    readonly decode: (pair: { readonly body: unknown; readonly headers: unknown }) => unknown
+    readonly encode: (value: unknown) => { readonly body: unknown; readonly headers: unknown }
+  }
 }
 
 /**
@@ -788,7 +800,13 @@ export function encodeToWithHeaders<
         SchemaTransformation.transform(transformation)
       )
     ).annotate({
-      "~httpApiWithHeaders": { body, headers, headersCodec: Schema.toEncoded(headers) },
+      "~httpApiWithHeaders": {
+        body,
+        headers,
+        bodyCodec: body,
+        headersCodec: headers,
+        transformation
+      } as WithHeadersAnnotation,
       httpApiStatus: status,
       "~httpApiEncoding": encoding
     })

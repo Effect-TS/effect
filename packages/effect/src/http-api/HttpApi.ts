@@ -352,12 +352,53 @@ export class AdditionalSchemas extends Context.Service<
  *
  * **Details**
  *
- * Endpoint options override group options, which override API options. Objects
- * are replaced, not merged. Without an annotation, Schema defaults apply.
+ * Each codec slot has its own annotation:
  *
- * Header codecs receive all HTTP headers, so `onExcessProperty: "error"` rejects
- * undeclared headers such as `content-type`. Annotate the API before passing it
- * to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
+ * - `ParamsParseOptions` for path params
+ * - `QueryParseOptions` for the query string
+ * - `HeadersParseOptions` for request headers and `WithHeaders` response headers
+ * - `PayloadParseOptions` for request bodies
+ * - `SuccessParseOptions` for success bodies
+ * - `ErrorParseOptions` for error bodies
+ *
+ * A slot annotation at any level takes precedence over `ParseOptions` at any
+ * level. If neither is set, Schema defaults apply. Options are replaced, not
+ * merged. For the same annotation, endpoint overrides group, which overrides
+ * API. Annotate the API before passing it to `HttpApiBuilder.group` or
+ * `HttpApiBuilder.endpoint`.
+ *
+ * **Gotchas**
+ *
+ * Header codecs receive all HTTP headers, including undeclared transport
+ * headers such as `content-type`, `content-length`, `host`, `user-agent` and
+ * proxy headers. Without `HeadersParseOptions`, headers use `ParseOptions`:
+ *
+ * - `onExcessProperty: "error"` rejects real requests and `WithHeaders`
+ *   responses with transport headers.
+ * - `onExcessProperty: "preserve"` includes transport headers in the decoded
+ *   value.
+ *
+ * Set `HeadersParseOptions` to `{}` at the API level to use Schema defaults for
+ * headers, even if an endpoint sets `ParseOptions`.
+ *
+ * **Example** (Strict bodies with default header parsing)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api"
+ *
+ * const api = HttpApi.make("Api")
+ *   .add(
+ *     HttpApiGroup.make("users").add(
+ *       HttpApiEndpoint.post("create", "/users", {
+ *         headers: { "x-api-key": Schema.String },
+ *         payload: { name: Schema.String }
+ *       })
+ *     )
+ *   )
+ *   .annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+ *   .annotate(HttpApi.HeadersParseOptions, {})
+ * ```
  *
  * @stability unstable
  * @category services
@@ -367,3 +408,108 @@ export class ParseOptions extends Context.Service<
   ParseOptions,
   SchemaAST.ParseOptions
 >()("effect/http-api/HttpApi/ParseOptions") {}
+
+/**
+ * Schema parse options for path params: server decoding, client encoding, and
+ * `HttpApiClient.urlBuilder`. Falls back to `ParseOptions` when unset.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class ParamsParseOptions extends Context.Service<
+  ParamsParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/ParamsParseOptions") {}
+
+/**
+ * Schema parse options for the query string: server decoding, client encoding,
+ * and `HttpApiClient.urlBuilder`. Falls back to `ParseOptions` when unset.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class QueryParseOptions extends Context.Service<
+  QueryParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/QueryParseOptions") {}
+
+/**
+ * Schema parse options for request headers and the headers of `WithHeaders`
+ * responses: server decoding/encoding and client encoding/decoding, including
+ * buffered and streamed responses. Falls back to `ParseOptions` when unset.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class HeadersParseOptions extends Context.Service<
+  HeadersParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/HeadersParseOptions") {}
+
+/**
+ * Schema parse options for request bodies, including multipart payloads:
+ * server decoding and client encoding. Falls back to `ParseOptions` when unset.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class PayloadParseOptions extends Context.Service<
+  PayloadParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/PayloadParseOptions") {}
+
+/**
+ * Schema parse options for success bodies, including streams, SSE events, and
+ * the body of `WithHeaders` responses: server encoding and client decoding. Falls back to `ParseOptions` when unset.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class SuccessParseOptions extends Context.Service<
+  SuccessParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/SuccessParseOptions") {}
+
+/**
+ * Schema parse options for error bodies: server encoding and client decoding. Falls back to `ParseOptions` when unset.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export class ErrorParseOptions extends Context.Service<
+  ErrorParseOptions,
+  SchemaAST.ParseOptions
+>()("effect/http-api/HttpApi/ErrorParseOptions") {}
+
+/**
+ * @internal
+ */
+export interface SlotParseOptions {
+  readonly params: SchemaAST.ParseOptions | undefined
+  readonly query: SchemaAST.ParseOptions | undefined
+  readonly headers: SchemaAST.ParseOptions | undefined
+  readonly payload: SchemaAST.ParseOptions | undefined
+  readonly success: SchemaAST.ParseOptions | undefined
+  readonly error: SchemaAST.ParseOptions | undefined
+}
+
+/**
+ * @internal
+ */
+export const getSlotParseOptions = (annotations: Context.Context<never>): SlotParseOptions => {
+  const fallback = Context.getOrUndefined(annotations, ParseOptions)
+  return {
+    params: Context.getOrUndefined(annotations, ParamsParseOptions) ?? fallback,
+    query: Context.getOrUndefined(annotations, QueryParseOptions) ?? fallback,
+    headers: Context.getOrUndefined(annotations, HeadersParseOptions) ?? fallback,
+    payload: Context.getOrUndefined(annotations, PayloadParseOptions) ?? fallback,
+    success: Context.getOrUndefined(annotations, SuccessParseOptions) ?? fallback,
+    error: Context.getOrUndefined(annotations, ErrorParseOptions) ?? fallback
+  }
+}
