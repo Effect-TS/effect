@@ -645,6 +645,7 @@ class NodeImpl<A> {
   writeContext: WriteContextImpl<A>
   preserveInitialValueOnBuild = false
   invalidatedDuringBuild = false
+  failed = false
 
   // Every parent that holds this node as a child. A stale node keeps the
   // parents of its last build, so they are not released and their next change
@@ -714,34 +715,50 @@ class NodeImpl<A> {
     const lifetime = makeLifetime(this)
     this.lifetime = lifetime
     let value: A
+    let read = false
     try {
       value = this.atom.read(lifetime)
+      read = true
     } finally {
       const reads = lifetime.reads!
       lifetime.reads = undefined
       if (this.lifetime === lifetime) {
         this.dropUnread(reads)
+        if (!read) this.fail()
       }
     }
-    if (this.lifetime !== lifetime || (this.state & NodeFlags.waitingForValue) === 0) {
-      return
+    if (this.lifetime === lifetime && (this.state & NodeFlags.waitingForValue) !== 0) {
+      if (this.preserveInitialValueOnBuild) {
+        this.preserveInitialValueOnBuild = false
+        this.failed = false
+        this.state = NodeState.valid
+      } else {
+        this.setValue(value)
+      }
     }
-    if (this.preserveInitialValueOnBuild) {
-      this.preserveInitialValueOnBuild = false
-      this.state = NodeState.valid
-    } else {
-      this.setValue(value)
+    if (lifetime.failure !== noFailure) throw lifetime.failure
+  }
+
+  // A build that threw leaves its dependents holding, or reading, a value
+  // this node no longer stands behind, so they go stale and rebuild when
+  // pulled or observed. The read's error is the one reported.
+  fail(): void {
+    this.failed = true
+    for (const child of Array.from(this.children)) {
+      if (!child.dependsOnCurrent(this)) continue
+      try {
+        child.invalidate()
+      } catch {
+        // an observed dependent rebuilt and met the same failure
+      }
     }
   }
 
   readTracked<B>(atom: Atom.Atom<B>, lifetime: Lifetime<A>): B {
     const parent = this.registry.ensureNode(atom)
-    const value = parent.value()
-    // reading the parent may have superseded this build
-    if (lifetime.disposed) return value
-    if (lifetime.reads !== undefined) {
-      lifetime.reads.add(parent)
-    }
+    // the dependency holds even when the parent cannot produce a value, so
+    // that its recovery reaches this node; a build superseded while the
+    // parent builds has the edge dropped by its replacement
     if (!this.parents.has(parent)) {
       this.parents.add(parent)
       parent.children.add(this)
@@ -749,6 +766,18 @@ class NodeImpl<A> {
         parent.childObserved(1)
       }
     }
+    let value: B
+    try {
+      value = parent.value()
+    } catch (error) {
+      noteRead(lifetime, parent)
+      // the parent may have got its value and failed only to update another
+      // dependent: this build still takes the value, and rethrows once it is done
+      if (lifetime.reads === undefined || parent.state !== NodeState.valid) throw error
+      if (lifetime.failure === noFailure) lifetime.failure = error
+      value = parent._value
+    }
+    noteRead(lifetime, parent)
     return value
   }
 
@@ -788,23 +817,34 @@ class NodeImpl<A> {
   }
 
   setValue(value: A): void {
-    if ((this.state & NodeFlags.initialized) === 0) {
-      this.state = NodeState.valid
-      this._value = value
-      this.announce()
-      return
-    }
-
+    // dependents that failed along with this node get another try
+    const recovered = this.failed
+    this.failed = false
+    const initialized = (this.state & NodeFlags.initialized) !== 0
     this.state = NodeState.valid
-    if (this.atom.equals(this._value, value)) {
+    if (initialized && this.atom.equals(this._value, value)) {
+      if (recovered) this.invalidateChildren()
       return
     }
 
     this._value = value
-    this.invalidateChildren()
-    if (this.listeners.size > 0) {
-      this.announce()
+    let failure: unknown = noFailure
+    if (initialized || recovered) {
+      try {
+        this.invalidateChildren()
+      } catch (error) {
+        failure = error
+      }
     }
+    // the value is committed, so its listeners hear of it even when a dependent failed
+    if (!initialized || this.listeners.size > 0) {
+      try {
+        this.announce()
+      } catch (error) {
+        if (failure === noFailure) failure = error
+      }
+    }
+    if (failure !== noFailure) throw failure
   }
 
   announce(): void {
@@ -851,7 +891,9 @@ class NodeImpl<A> {
     let failure: unknown = noFailure
     // a snapshot: a rebuild adds and drops children
     for (const child of Array.from(this.children)) {
-      if (!child.dependsOnCurrent(this)) continue
+      // an observed child that is still stale had its rebuild fail, and this
+      // commit is its chance to recover
+      if (!child.dependsOnCurrent(this) && (child.building || !child.isObserved)) continue
       try {
         child.invalidate()
       } catch (error) {
@@ -861,7 +903,7 @@ class NodeImpl<A> {
     if (failure !== noFailure) throw failure
   }
 
-  // Whether a change of the parent affects this node now: it is valid, or a
+  // Whether this node holds the parent's current value: it is valid, or a
   // running build has already read the parent. A stale node is stale already,
   // and a build that has not read the parent yet will read the new value.
   dependsOnCurrent(parent: NodeImpl<any>): boolean {
@@ -925,12 +967,14 @@ interface Lifetime<A> extends Atom.AtomContext {
   readonly node: NodeImpl<A>
   // the parents read so far by the build; `undefined` once the build has returned
   reads: Set<NodeImpl<any>> | undefined
+  // a failure met while reading a parent that still produced its value
+  failure: unknown
   finalizers: Array<() => void> | undefined
   disposed: boolean
   readonly dispose: () => void
 }
 
-const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn" | "reads"> = {
+const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn" | "reads" | "failure"> = {
   get registry(): RegistryImpl {
     return (this as Lifetime<any>).node.registry
   },
@@ -1099,6 +1143,14 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
   }
 }
 
+// read once the parent has answered: its commit while it is being pulled is
+// the value this build is about to receive
+const noteRead = (lifetime: Lifetime<any>, parent: NodeImpl<any>): void => {
+  if (lifetime.reads !== undefined && !lifetime.disposed) {
+    lifetime.reads.add(parent)
+  }
+}
+
 const makeLifetime = <A>(node: NodeImpl<A>): Lifetime<A> => {
   function get<A>(atom: Atom.Atom<A>): A {
     if (get.disposed || get.isFn) {
@@ -1112,6 +1164,7 @@ const makeLifetime = <A>(node: NodeImpl<A>): Lifetime<A> => {
   get.finalizers = undefined
   get.node = node
   get.reads = new Set<NodeImpl<any>>()
+  get.failure = noFailure
   return get as any
 }
 
