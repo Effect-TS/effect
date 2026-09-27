@@ -413,7 +413,8 @@ describe("PubSub", () => {
         Array.filter(result2, (n) => n < 0),
         Array.map(values, (n) => -n)
       )
-    }))
+}))
+
   it.effect("infinite capacity behaves as unbounded", () =>
     Effect.gen(function*() {
       const values = Array.range(0, 64)
@@ -425,8 +426,9 @@ describe("PubSub", () => {
         const late = yield* PubSub.subscribe(pubsub)
         assert.deepStrictEqual(yield* PubSub.takeAll(late), [63, 64])
       }
-    }).pipe(Effect.scoped))
-  it.effect("null values", () => {
+    }))
+
+it.effect("null values", () => {
     const messages = [1, null]
     return PubSub.unbounded<number | null>().pipe(
       Effect.flatMap((pubsub) =>
