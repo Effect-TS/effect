@@ -1083,6 +1083,62 @@ describe("Atom", { concurrent: false }, () => {
     expect(r.get(derived)).toEqual("2b")
   })
 
+  it("runs Atom.fn writes from batch commit listeners", () => {
+    const registry = AtomRegistry.make()
+    const source = Atom.make(0)
+    const write = Atom.fn((value: number, get) => Effect.sync(() => get.registry.set(source, value)))
+    const seen: Array<number> = []
+    registry.mount(write)
+    registry.subscribe(source, (value) => seen.push(value))
+    registry.subscribe(source, (value) => {
+      if (value < 3) registry.set(write, value + 1)
+    })
+
+    Atom.batch(() => registry.set(source, 1))
+
+    assert.strictEqual(registry.get(source), 3)
+    assert.deepStrictEqual(seen, [1, 2, 3])
+    registry.dispose()
+  })
+
+  it("batches dependent updates made by commit listeners", () => {
+    const registry = AtomRegistry.make()
+    const source = Atom.make(0)
+    const left = Atom.make(0)
+    const right = Atom.make(0)
+    const pair = Atom.make((get) => [get(left), get(right)])
+    const seen: Array<Array<number>> = []
+    registry.subscribe(pair, (value) => seen.push(value), { immediate: true })
+    registry.subscribe(source, (value) => {
+      Atom.batch(() => {
+        registry.set(left, value)
+        registry.set(right, value)
+      })
+    })
+
+    Atom.batch(() => registry.set(source, 1))
+
+    assert.deepStrictEqual(seen, [[0, 0], [1, 1]])
+    assert.deepStrictEqual(registry.get(pair), [1, 1])
+    registry.dispose()
+  })
+
+  it("notifies an atom updated again by a nested batch in its listener", () => {
+    const registry = AtomRegistry.make()
+    const source = Atom.make(0)
+    const seen: Array<number> = []
+    registry.subscribe(source, (value) => seen.push(value))
+    registry.subscribe(source, (value) => {
+      if (value < 3) Atom.batch(() => registry.set(source, value + 1))
+    })
+
+    Atom.batch(() => registry.set(source, 1))
+
+    assert.strictEqual(registry.get(source), 3)
+    assert.deepStrictEqual(seen, [1, 2, 3])
+    registry.dispose()
+  })
+
   it("initialValues", async () => {
     const state = Atom.make(0)
     const r = AtomRegistry.make({
