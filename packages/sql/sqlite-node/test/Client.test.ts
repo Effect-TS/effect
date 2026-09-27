@@ -125,6 +125,8 @@ describe("Client", () => {
       const failedCommit = yield* Effect.exit(sql.withTransaction(sql`INSERT INTO child VALUES (999)`))
       assert.isTrue(Exit.isFailure(failedCommit))
       if (!Exit.isFailure(failedCommit)) return
+      assert.isFalse(Cause.hasDies(failedCommit.cause))
+      assert.strictEqual(Option.getOrThrow(Cause.findErrorOption(failedCommit.cause))._tag, "SqlError")
       assert.match(Cause.pretty(failedCommit.cause), /foreign key constraint failed/i)
 
       assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
