@@ -329,11 +329,7 @@ class ConnectionImpl implements Connection {
   }
 }
 
-/**
- * PostgreSQL answers `COMMIT` with a `ROLLBACK` command tag, not an error, when
- * an earlier statement aborted the transaction. Reporting that as a success
- * would tell the caller that discarded writes were committed.
- */
+/** PostgreSQL returns `ROLLBACK` for `COMMIT` when a transaction is aborted. */
 const commit = (conn: Connection): Effect.Effect<void, SqlError> =>
   Effect.flatMap(
     conn.executeRaw("COMMIT", []) as Effect.Effect<PgConnection.Result, SqlError>,

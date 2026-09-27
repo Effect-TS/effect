@@ -143,12 +143,7 @@ export declare namespace SqlClient {
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined
     readonly rollback?: string | undefined
-    /**
-     * SQL that commits a top-level transaction, or an effect that commits it
-     * on the given connection. Pass an effect when the driver must inspect the
-     * COMMIT result, for example to fail when the database answers with a
-     * rollback.
-     */
+    /** Commit SQL, or an effect that commits on the connection and checks the result. */
     readonly commit?: string | ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
     readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
