@@ -69,7 +69,7 @@
     "@std/fs": "jsr:^1.0.24",
     "@std/media-types": "jsr:^1.1.0",
     "@std/path": "jsr:^1.1.6",
-    "@std/streams": "jsr:^1.1.2"
+    "@std/streams": "jsr:^1.2.0"
   },
   "peerDependencies": {
     "effect": "workspace:^"

@@ -54,8 +54,8 @@
     "vitest": ">=5.0.0 <6.0.0"
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "effect": "workspace:^",
-    "vitest": "5.0.1"
+    "vitest": "5.0.2"
   }
 }
