@@ -355,8 +355,9 @@ export class AdditionalSchemas extends Context.Service<
  * Endpoint options override group options, which override API options. Objects
  * are replaced, not merged. Without an annotation, Schema defaults apply.
  *
- * Header codecs receive all HTTP headers, so `onExcessProperty: "error"` rejects
- * undeclared headers such as `content-type`. Annotate the API before passing it
+ * Request and response header codecs ignore `onExcessProperty: "error"`: HTTP
+ * header maps always carry transport headers such as `content-type`, so
+ * undeclared headers are dropped instead. Annotate the API before passing it
  * to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
  *
  * @stability unstable

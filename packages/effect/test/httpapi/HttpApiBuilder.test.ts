@@ -196,6 +196,62 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
       assert.strictEqual(error.kind, "Payload")
       assert.strictEqual(error.cause.message, `Expected no excess property\n  at ["extra"]`)
     }))
+
+  it.effect("strict request decoding ignores undeclared transport headers", () =>
+    Effect.gen(function*() {
+      const api = HttpApi.make("Api").add(
+        HttpApiGroup.make("users").add(
+          HttpApiEndpoint.post("create", "/users", {
+            payload: Person,
+            headers: { "x-tenant": Schema.String },
+            success: Schema.String
+          })
+        )
+      ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      const handler = yield* HttpRouter.toHttpEffect(
+        HttpApiBuilder.layer(api).pipe(
+          Layer.provide(
+            HttpApiBuilder.group(api, "users", (handlers) =>
+              handlers.handle("create", ({ headers }) =>
+                Effect.succeed(JSON.stringify(headers))))
+          )
+        )
+      )
+      const respond = (payload: unknown) =>
+        handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(
+              new Request("http://localhost/users", {
+                method: "POST",
+                headers: { "content-type": "application/json", "user-agent": "test", "x-tenant": "acme" },
+                body: JSON.stringify(payload)
+              })
+            )
+          ),
+          Effect.exit
+        )
+
+      const accepted = yield* respond({ firstName: "Ada", lastName: "Lovelace" })
+      if (accepted._tag === "Failure") {
+        return assert.fail(Cause.pretty(accepted.cause))
+      }
+      assert.strictEqual(accepted.value.status, 200)
+      const body = accepted.value.body
+      assert.strictEqual(body._tag, "Uint8Array")
+      if (body._tag === "Uint8Array") {
+        assert.strictEqual(JSON.parse(textDecoder.decode(body.body)), `{"x-tenant":"acme"}`)
+      }
+
+      const rejected = yield* respond({ firstName: "Ada", lastName: "Lovelace", extra: true })
+      if (rejected._tag === "Success") {
+        return assert.fail("Expected payload decoding to fail")
+      }
+      const error = Cause.squash(rejected.cause)
+      assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+      assert.strictEqual(error.kind, "Payload")
+      assert.strictEqual(error.cause.message, `Expected no excess property\n  at ["extra"]`)
+    }))
 })
 
 it.layer(TestServices)("HttpApiBuilder.handler", (it) => {

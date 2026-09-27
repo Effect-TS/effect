@@ -665,6 +665,47 @@ describe("HttpApiClient", () => {
     }))
 
   describe("response headers", () => {
+    it.effect("strict decoding ignores undeclared transport headers", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("created", "/created", {
+              success: HttpApiSchema.WithHeaders(
+                Schema.Struct({ id: Schema.Int }),
+                { "x-count": Schema.NumberFromString }
+              )
+            }),
+            HttpApiEndpoint.get("download", "/download", {
+              success: HttpApiSchema.WithHeaders(
+                HttpApiSchema.StreamUint8Array(),
+                { "x-count": Schema.NumberFromString }
+              )
+            })
+          )
+        ).annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              request.url.endsWith("/created")
+                ? new Response(JSON.stringify({ id: 1 }), {
+                  headers: { "content-type": "application/json", "x-count": "2" }
+                })
+                : new Response(byteStream([new Uint8Array([1])]), {
+                  headers: { "content-type": "application/octet-stream", "x-count": "2" }
+                })
+            ))
+          )
+        })
+
+        const created = yield* client.test.created({})
+        assert.deepStrictEqual(created.body, { id: 1 })
+        assert.deepStrictEqual(created.headers, { "x-count": 2 })
+        const download = yield* client.test.download({})
+        assert.deepStrictEqual(download.headers, { "x-count": 2 })
+      }))
+
     it.effect("fails response decoding when a declared header is invalid", () =>
       Effect.gen(function*() {
         const Api = HttpApi.make("Api").add(

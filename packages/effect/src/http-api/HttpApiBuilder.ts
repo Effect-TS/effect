@@ -52,6 +52,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import type * as HttpApiSecurity from "./HttpApiSecurity.ts"
+import * as InternalHeaders from "./internal/headers.ts"
 import * as MediaType from "./internal/mediaType.ts"
 import * as HttpApiPath from "./internal/path.ts"
 import * as OpenApi from "./OpenApi.ts"
@@ -834,7 +835,10 @@ function handlerToHttpEffect(
   const encodeSuccess = Schema.encodeUnknownEffect(makeSuccessSchema(endpoint), options)
   const encodeError = Schema.encodeUnknownEffect(makeErrorSchema(endpoint), options)
   const decodeParams = UndefinedOr.map(endpoint.params, decodeUnknownEffect)
-  const decodeHeaders = UndefinedOr.map(endpoint.headers, decodeUnknownEffect)
+  const decodeHeaders = UndefinedOr.map(
+    endpoint.headers,
+    (schema) => Schema.decodeUnknownEffect(schema, InternalHeaders.decodeOptions(options))
+  )
   const decodeQuery = UndefinedOr.map(
     endpoint.query,
     (schema) => decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema))

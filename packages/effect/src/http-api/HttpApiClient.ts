@@ -29,6 +29,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
+import * as SchemaParser from "../SchemaParser.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as Stream from "../Stream.ts"
 import type { Simplify } from "../Types.ts"
@@ -38,6 +39,7 @@ import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
+import * as InternalHeaders from "./internal/headers.ts"
 import * as MediaType from "./internal/mediaType.ts"
 import * as HttpApiPath from "./internal/path.ts"
 
@@ -779,19 +781,33 @@ function schemasToResponse(
     )
 }
 
+// The response codec decodes body and headers in one pass, so the header field
+// applies the header parse options itself.
+function headersFromResponse(headers: Schema.Top): Schema.Top {
+  const decode = SchemaParser.decodeUnknownEffect(headers)
+  const encode = SchemaParser.encodeUnknownEffect(headers)
+  return Schema.Unknown.pipe(Schema.decodeTo(
+    Schema.toType(headers),
+    SchemaTransformation.transformEffect<unknown, unknown, unknown, unknown>({
+      decode: (input, options) => decode(input, InternalHeaders.decodeOptions(options)),
+      encode
+    }) as any
+  ))
+}
+
 function toCodecArrayBufferWithHeaders(schema: Schema.Constraint): Schema.Top {
   const isWithHeaders = HttpApiSchema.isWithHeaders(schema)
   const annotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
   if (annotation !== undefined) {
     return Schema.Struct({
       body: fromArrayBuffer(annotation.body),
-      headers: annotation.headersCodec
+      headers: headersFromResponse(annotation.headersCodec)
     }).pipe(Schema.decodeTo(schema))
   }
   const body = isWithHeaders ? schema.schema : schema
   return Schema.Struct({
     body: fromArrayBuffer(body).pipe(Schema.decodeTo(body)),
-    headers: isWithHeaders ? schema.headers : Schema.Unknown
+    headers: isWithHeaders ? headersFromResponse(schema.headers) : Schema.Unknown
   }).pipe(
     Schema.decodeTo(
       isWithHeaders ? schema : Schema.toType(schema),
@@ -920,7 +936,7 @@ function streamToResponse(successSchema: StreamSuccessSchema, options: SchemaAST
       ))
   if (!isWithHeaders) return toStream
 
-  const decodeHeaders = Schema.decodeUnknownEffect(successSchema.headers, options)
+  const decodeHeaders = Schema.decodeUnknownEffect(successSchema.headers, InternalHeaders.decodeOptions(options))
   return (response: HttpClientResponse.HttpClientResponse, sseOptions?: Sse.DecodeOptions) =>
     Effect.flatMap(
       decodeHeaders(response.headers),
