@@ -351,9 +351,13 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   const operationIds = new Set<string>()
   const finalizeOperations: Array<() => void> = []
 
-  function registerSchema(ast: SchemaAST.AST): JsonSchema.JsonSchema {
-    const target: JsonSchema.JsonSchema = {}
-    schemaOps.push({ _tag: "schema", ast, target })
+  function registerSchema(
+    ast: SchemaAST.AST,
+    encoding: HttpApiSchema.Encoding["_tag"] = "Json"
+  ): JsonSchema.JsonSchema {
+    // Text bodies remain strings even when an opaque schema compiles to {}.
+    const target: JsonSchema.JsonSchema = encoding === "Text" ? { type: "string" } : {}
+    schemaOps.push({ _tag: "schema", ast: toEncodingAST(ast, encoding), target })
     return target
   }
 
@@ -455,7 +459,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
                 const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts)
                 op.responses[status].content ??= {}
                 InternalRecord.assignProperty(op.responses[status].content, contentType, {
-                  schema: registerSchema(toEncodingAST(ast, encoding))
+                  schema: registerSchema(ast, encoding)
                 })
               })
             })
@@ -570,7 +574,7 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
             const asts = schemas.map(SchemaAST.getAST)
             const ast = asts.length === 1 ? asts[0] : new SchemaAST.Union(asts)
             InternalRecord.assignProperty(content, contentType, {
-              schema: registerSchema(toEncodingAST(ast, encoding._tag))
+              schema: registerSchema(ast, encoding._tag)
             })
           }
           op.requestBody = { content, required: true }
@@ -680,7 +684,7 @@ function compileSchemaOps(
   if (!Arr.isArrayNonEmpty(schemaOps)) return
 
   const document = InternalToRepresentation.toRepresentations(
-    Arr.map(schemaOps, (op) => op._tag === "schema" ? InternalToCodec.toCodecJsonAST(op.ast) : op.ast),
+    Arr.map(schemaOps, (op) => op.ast),
     options
   )
   const representations = Arr.map(document.representations, (representation, index) => {
@@ -974,13 +978,11 @@ function toEncodingAST(ast: SchemaAST.AST, _tag: HttpApiSchema.Encoding["_tag"])
     case "Uint8Array":
       return Uint8ArrayEncoding.ast
     case "Text":
-      return Schema.String.ast
-    case "FormUrlEncoded":
-    case "Json":
-      return ast
+      return SchemaAST.isDeclaration(ast) && ast.encoding === undefined ? Schema.String.ast : ast
     case "Multipart":
-      return persistedFileToBinaryEncoding(ast)
+      ast = persistedFileToBinaryEncoding(ast)
   }
+  return InternalToCodec.toCodecJsonAST(ast)
 }
 
 function persistedFileToBinaryEncoding(ast: SchemaAST.AST): SchemaAST.AST {

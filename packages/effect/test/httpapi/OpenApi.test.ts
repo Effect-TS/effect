@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { type Context, Effect, Schema, SchemaTransformation } from "effect"
+import { type Context, Effect, Predicate, Schema, SchemaTransformation } from "effect"
 import {
   HttpApi,
   HttpApiEndpoint,
@@ -321,6 +321,154 @@ describe("OpenApi", () => {
     )
     assert.property(streamExtension, "causeSchema")
     assert.property(streamExtension, "errorSchema")
+  })
+
+  it("emits the encoded schema of text bodies", () => {
+    class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}) {}
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          payload: Schema.String.check(Schema.isPattern(/^[a-z]+$/u)).pipe(HttpApiSchema.asText()),
+          success: Schema.Literal("Created").pipe(HttpApiSchema.asText()),
+          error: [
+            Schema.Literal("Bad Request").pipe(HttpApiSchema.asText(), HttpApiSchema.status(400)),
+            Schema.Literal("Invalid Cursor").pipe(HttpApiSchema.asText(), HttpApiSchema.status(400)),
+            Schema.Literal("Not Found").pipe(
+              Schema.decodeTo(
+                NotFound,
+                SchemaTransformation.transform({
+                  decode: () => ({ _tag: "NotFound" as const }),
+                  encode: () => "Not Found" as const
+                })
+              ),
+              HttpApiSchema.asText(),
+              HttpApiSchema.status(404)
+            )
+          ]
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const operation = spec.paths["/create"]?.post
+
+    assert.deepStrictEqual(operation?.requestBody?.content["text/plain"]?.schema, {
+      type: "string",
+      pattern: "^[a-z]+$"
+    })
+    assert.deepStrictEqual(operation?.responses[200]?.content?.["text/plain"]?.schema, {
+      type: "string",
+      enum: ["Created"]
+    })
+    assert.deepStrictEqual(operation?.responses[400]?.content?.["text/plain"]?.schema, {
+      type: "string",
+      enum: ["Bad Request", "Invalid Cursor"]
+    })
+    assert.deepStrictEqual(operation?.responses[404]?.content?.["text/plain"]?.schema, {
+      type: "string",
+      $ref: "#/components/schemas/NotFoundEncoded"
+    })
+    assert.deepStrictEqual(spec.components.schemas.NotFoundEncoded, { type: "string", enum: ["Not Found"] })
+  })
+
+  it("keeps opaque text bodies as strings", () => {
+    const Text = Schema.declare<string>(Predicate.isString).pipe(HttpApiSchema.asText())
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          payload: Text,
+          success: Text,
+          error: Text.pipe(HttpApiSchema.status(400))
+        })
+      )
+    )
+
+    const operation = OpenApi.fromApi(Api).paths["/create"]?.post
+
+    assert.deepStrictEqual(operation?.requestBody?.content["text/plain"]?.schema, { type: "string" })
+    assert.deepStrictEqual(operation?.responses[200]?.content?.["text/plain"]?.schema, { type: "string" })
+    assert.deepStrictEqual(operation?.responses[400]?.content?.["text/plain"]?.schema, { type: "string" })
+  })
+
+  it("constrains referenced opaque text bodies without changing shared JSON schemas", () => {
+    const OpaqueText = Schema.declare<string>(Predicate.isString).annotate({ identifier: "OpaqueText" })
+    const Text = OpaqueText.pipe(HttpApiSchema.asText())
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("text", "/text", {
+          payload: Text,
+          success: Text,
+          error: Text.pipe(HttpApiSchema.status(400))
+        }),
+        HttpApiEndpoint.post("json", "/json", {
+          payload: OpaqueText,
+          success: OpaqueText
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const textOperation = spec.paths["/text"]?.post
+    const jsonOperation = spec.paths["/json"]?.post
+    const jsonReference = { $ref: "#/components/schemas/OpaqueTextEncoded" }
+    const textSchema = { type: "string" }
+
+    assert.deepStrictEqual(textOperation?.requestBody?.content["text/plain"]?.schema, textSchema)
+    assert.deepStrictEqual(textOperation?.responses[200]?.content?.["text/plain"]?.schema, textSchema)
+    assert.deepStrictEqual(textOperation?.responses[400]?.content?.["text/plain"]?.schema, textSchema)
+    assert.deepStrictEqual(jsonOperation?.requestBody?.content["application/json"]?.schema, jsonReference)
+    assert.deepStrictEqual(jsonOperation?.responses[200]?.content?.["application/json"]?.schema, jsonReference)
+    assert.deepStrictEqual(spec.components.schemas, { OpaqueTextEncoded: {} })
+  })
+
+  it("uses encoding-specific codecs for text, JSON, and form bodies", () => {
+    const OpaqueString = Schema.declare<string>(Predicate.isString, {
+      toCodecJson: () =>
+        Schema.link<string>()(
+          Schema.Struct({ value: Schema.String }),
+          SchemaTransformation.transform({
+            decode: ({ value }) => value,
+            encode: (value) => ({ value })
+          })
+        )
+    })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          payload: [
+            OpaqueString,
+            OpaqueString.pipe(HttpApiSchema.asText()),
+            OpaqueString.pipe(HttpApiSchema.asFormUrlEncoded())
+          ],
+          success: [
+            OpaqueString,
+            OpaqueString.pipe(HttpApiSchema.asText()),
+            OpaqueString.pipe(HttpApiSchema.asFormUrlEncoded())
+          ]
+        })
+      )
+    )
+
+    const operation = OpenApi.fromApi(Api).paths["/create"]?.post
+    const objectSchema = {
+      type: "object",
+      properties: { value: { type: "string" } },
+      required: ["value"],
+      additionalProperties: false
+    }
+
+    assert.deepStrictEqual(operation?.requestBody?.content["text/plain"]?.schema, { type: "string" })
+    assert.deepStrictEqual(operation?.responses[200]?.content?.["text/plain"]?.schema, { type: "string" })
+    assert.deepStrictEqual(operation?.requestBody?.content["application/json"]?.schema, objectSchema)
+    assert.deepStrictEqual(operation?.responses[200]?.content?.["application/json"]?.schema, objectSchema)
+    assert.deepStrictEqual(
+      operation?.requestBody?.content["application/x-www-form-urlencoded"]?.schema,
+      objectSchema
+    )
+    assert.deepStrictEqual(
+      operation?.responses[200]?.content?.["application/x-www-form-urlencoded"]?.schema,
+      objectSchema
+    )
   })
 
   it("emits encoded success response headers", () => {
