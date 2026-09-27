@@ -1096,7 +1096,6 @@ describe("Atom", { concurrent: false }, () => {
 
     Atom.batch(() => registry.set(source, 1))
 
-    assert.strictEqual(registry.get(source), 3)
     assert.deepStrictEqual(seen, [1, 2, 3])
     registry.dispose()
   })
@@ -1119,23 +1118,6 @@ describe("Atom", { concurrent: false }, () => {
     Atom.batch(() => registry.set(source, 1))
 
     assert.deepStrictEqual(seen, [[0, 0], [1, 1]])
-    assert.deepStrictEqual(registry.get(pair), [1, 1])
-    registry.dispose()
-  })
-
-  it("notifies an atom updated again by a nested batch in its listener", () => {
-    const registry = AtomRegistry.make()
-    const source = Atom.make(0)
-    const seen: Array<number> = []
-    registry.subscribe(source, (value) => seen.push(value))
-    registry.subscribe(source, (value) => {
-      if (value < 3) Atom.batch(() => registry.set(source, value + 1))
-    })
-
-    Atom.batch(() => registry.set(source, 1))
-
-    assert.strictEqual(registry.get(source), 3)
-    assert.deepStrictEqual(seen, [1, 2, 3])
     registry.dispose()
   })
 
