@@ -1595,10 +1595,11 @@ describe.concurrent("Sharding", () => {
       Layer.provide(MessageStorage.layerNoop)
     ))))
 
-  it.effect("does not retain completed request ids without MessageStorage", () =>
+  it.effect("reprocesses a completed volatile request id without MessageStorage", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
       const sharding = yield* Sharding.Sharding
+      const state = yield* TestEntityState
       const rpc = TestEntity.protocol.requests.get("GetUserVolatile") as Extract<
         RpcGroup.Rpcs<typeof TestEntity.protocol>,
         { readonly _tag: "GetUserVolatile" }
@@ -1631,7 +1632,9 @@ describe.concurrent("Sharding", () => {
         yield* Deferred.await(replied)
       })
       yield* send
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
       yield* send
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 2)
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
       Layer.provide(MessageStorage.layerNoop)
     ))))
