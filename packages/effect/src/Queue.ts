@@ -950,9 +950,13 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
     return true
   }
   self.state = { ...self.state, _tag: "Closing", exit: fail }
-  // Wake pending takers so a batch that can no longer reach its minimum
-  // can observe the terminal exit without draining the buffered remainder.
-  releaseTakers(self)
+  // Single-item consumers may still drain buffered messages. Only wake batch
+  // takers whose minimum can no longer be reached.
+  for (const taker of self.state.takers) {
+    if (!batchTakers.has(taker)) continue
+    self.state.takers.delete(taker)
+    taker(fail)
+  }
   return true
 }
 
@@ -1391,7 +1395,7 @@ export const takeBetween: {
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
     takeBetweenUnsafe(self, min, max) ??
-      internalEffect.andThen(awaitTake(self, () => canTake(self, min)), takeBetween(self, min, max))
+      internalEffect.andThen(awaitTake(self, () => canTake(self, min), min > 1), takeBetween(self, min, max))
   )
 })
 
@@ -1925,6 +1929,7 @@ const exitFalse = core.exitSucceed(false)
 const exitTrue = core.exitSucceed(true)
 const exitFailDone = core.exitFail(core.Done()) as Failure<never, Done>
 const exitInterrupt = internalEffect.exitInterrupt() as Failure<never, never>
+const batchTakers = new WeakSet<object>()
 
 const releaseTakers = <A, E>(self: Enqueue<A, E>) => {
   if (self.state._tag === "Done" || self.state.takers.size === 0) {
@@ -1933,7 +1938,7 @@ const releaseTakers = <A, E>(self: Enqueue<A, E>) => {
   for (const taker of self.state.takers) {
     self.state.takers.delete(taker)
     taker(internalEffect.exitVoid)
-    if (self.messages.length === 0 && self.state._tag === "Open") {
+    if (self.messages.length === 0) {
       break
     }
   }
@@ -1977,11 +1982,12 @@ const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
 // The readiness check and the taker registration run in one step, so no
 // message can arrive between them. Wake-ups resume with void and the caller
 // retries, which keeps the fiber stack flat across spurious wake-ups.
-const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
+const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean, batch = false) =>
   internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
     if (self.state._tag === "Closing") return resume(self.state.exit)
+    if (batch) batchTakers.add(resume)
     self.state.takers.add(resume)
     return internalEffect.sync(() => {
       if (self.state._tag !== "Done") self.state.takers.delete(resume)
