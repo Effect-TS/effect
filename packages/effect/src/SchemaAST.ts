@@ -4415,7 +4415,10 @@ export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(<A ex
       new Context(true, ast.context.isMutable, ast.context.constructorDefault, ast.context.annotations) :
       ast.context :
     new Context(true, false)
-  return optionalKeyLastLink(replaceContext(ast, context))
+  const contextual = replaceContext(ast, context)
+  const out = optionalKeyLastLink(contextual)
+  if (out !== contextual) contextOwners.set(out, getContextOwner(contextual))
+  return out
 })
 
 const optionalKeyLastLink = applyToLastLink(optionalKey)
@@ -4432,7 +4435,10 @@ export const mutableKey = memoizeIdempotent(<A extends AST>(ast: A): A => {
       new Context(ast.context.isOptional, true, ast.context.constructorDefault, ast.context.annotations) :
       ast.context :
     new Context(false, true)
-  return mutableKeyLastLink(replaceContext(ast, context))
+  const contextual = replaceContext(ast, context)
+  const out = mutableKeyLastLink(contextual)
+  if (out !== contextual) contextOwners.set(out, getContextOwner(contextual))
+  return out
 })
 
 const mutableKeyLastLink = applyToLastLink(mutableKey)
@@ -4581,6 +4587,12 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
  * @since 4.0.0
  */
 export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
+  // A contextual copy's type is its owner's type with the copy's context
+  const owner = getContextOwner(ast) as A
+  if (owner !== ast) {
+    const ownerType = toType(owner)
+    return ownerType === owner ? ast : replaceContext(ownerType, ast.context)
+  }
   const out: any = ast
   const type = out.recur?.(toType) ?? out
   const encodingChecks: Checks | undefined = type.encodingChecks

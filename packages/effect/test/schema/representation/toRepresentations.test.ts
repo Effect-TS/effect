@@ -110,6 +110,40 @@ describe("SchemaRepresentation.toRepresentations", () => {
       })
     })
 
+    it("shares a type reference between an encoded AST and its mutable key", () => {
+      const Value = Schema.NumberFromString.annotate({ identifier: "Value" })
+      const document = SchemaRepresentation.toRepresentations([
+        SchemaAST.toType(Schema.Struct({ a: Schema.mutableKey(Value) }).ast),
+        SchemaAST.toType(Schema.Struct({ b: Schema.NullOr(Value) }).ast)
+      ])
+
+      assert.deepStrictEqual(document.references, {
+        Value: {
+          _tag: "Number",
+          annotations: { identifier: "Value" },
+          checks: []
+        }
+      })
+      assert.strictEqual(SchemaAST.getContextOwner(Schema.mutableKey(Value).ast), Value.ast)
+    })
+
+    it("shares a type reference between an encoded AST and its optional key", () => {
+      const Value = Schema.NumberFromString.annotate({ identifier: "Value" })
+      const document = SchemaRepresentation.toRepresentations([
+        SchemaAST.toType(Schema.Struct({ a: Schema.optionalKey(Value) }).ast),
+        SchemaAST.toType(Schema.Struct({ b: Schema.NullOr(Value) }).ast)
+      ])
+
+      assert.deepStrictEqual(document.references, {
+        Value: {
+          _tag: "Number",
+          annotations: { identifier: "Value" },
+          checks: []
+        }
+      })
+      assert.strictEqual(SchemaAST.getContextOwner(Schema.optionalKey(Value).ast), Value.ast)
+    })
+
     it("keeps a checked derivative distinct from its identified source", () => {
       const base = Schema.String.annotate({ identifier: "Text" })
       const refined = base.pipe(Schema.check(Schema.isMinLength(1)))
