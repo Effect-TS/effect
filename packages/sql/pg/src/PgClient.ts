@@ -335,18 +335,21 @@ class ConnectionImpl implements Connection {
  * would tell the caller that discarded writes were committed.
  */
 const commit = (conn: Connection): Effect.Effect<void, SqlError> =>
-  Effect.flatMap((conn as ConnectionImpl).connection.query("COMMIT"), (result) =>
-    result.command === "ROLLBACK"
-      ? Effect.fail(
-        new SqlError({
-          reason: new UnknownError({
-            cause: new Error("COMMIT rolled back an aborted transaction"),
-            message: "PgClient: COMMIT rolled back an aborted transaction",
-            operation: "commit"
+  Effect.flatMap(
+    conn.executeRaw("COMMIT", []) as Effect.Effect<PgConnection.Result, SqlError>,
+    (result) =>
+      result.command === "ROLLBACK"
+        ? Effect.fail(
+          new SqlError({
+            reason: new UnknownError({
+              cause: new Error("COMMIT rolled back an aborted transaction"),
+              message: "PgClient: COMMIT rolled back an aborted transaction",
+              operation: "commit"
+            })
           })
-        })
-      )
-      : Effect.void)
+        )
+        : Effect.void
+  )
 
 const makeConnection = (
   connection: PgConnection.PgConnection,
