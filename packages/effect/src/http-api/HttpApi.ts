@@ -352,8 +352,7 @@ export class AdditionalSchemas extends Context.Service<
  *
  * **Details**
  *
- * `ParseOptions` is the fallback for every codec. Each codec slot also has its
- * own annotation:
+ * Each codec slot has its own annotation:
  *
  * - `ParamsParseOptions` for path params
  * - `QueryParseOptions` for the query string
@@ -362,30 +361,25 @@ export class AdditionalSchemas extends Context.Service<
  * - `SuccessParseOptions` for success bodies
  * - `ErrorParseOptions` for error bodies
  *
- * For each slot, the slot annotation is used if it is set on the API, group, or
- * endpoint. Otherwise `ParseOptions` is used, and without either, Schema
- * defaults apply. A slot annotation at any level beats `ParseOptions` at any
- * level. It replaces `ParseOptions` for that slot; the two objects are never
- * merged.
- *
- * Within one annotation, endpoint options override group options, which
- * override API options. Objects are replaced, not merged. Annotate the API
- * before passing it to `HttpApiBuilder.group` or `HttpApiBuilder.endpoint`.
+ * A slot annotation at any level takes precedence over `ParseOptions` at any
+ * level. If neither is set, Schema defaults apply. Options are replaced, not
+ * merged. For the same annotation, endpoint overrides group, which overrides
+ * API. Annotate the API before passing it to `HttpApiBuilder.group` or
+ * `HttpApiBuilder.endpoint`.
  *
  * **Gotchas**
  *
- * Header codecs receive every HTTP header, and real header maps always contain
- * transport headers the endpoint does not declare, such as `content-type`,
- * `content-length`, `host`, `user-agent`, and proxy headers. Because headers
- * fall back to `ParseOptions` like every other slot:
+ * Header codecs receive all HTTP headers, including undeclared transport
+ * headers such as `content-type`, `content-length`, `host`, `user-agent` and
+ * proxy headers. Without `HeadersParseOptions`, headers use `ParseOptions`:
  *
- * - `onExcessProperty: "error"` rejects every real request with declared
- *   headers and every `WithHeaders` response.
- * - `onExcessProperty: "preserve"` passes the transport headers through into
- *   the decoded value.
+ * - `onExcessProperty: "error"` rejects real requests and `WithHeaders`
+ *   responses with transport headers.
+ * - `onExcessProperty: "preserve"` includes transport headers in the decoded
+ *   value.
  *
- * Set headers back to Schema defaults with `HeadersParseOptions` on the API,
- * which wins over `ParseOptions` at any level.
+ * Set `HeadersParseOptions` to `{}` at the API level to use Schema defaults for
+ * headers, even if an endpoint sets `ParseOptions`.
  *
  * **Example** (Strict bodies with default header parsing)
  *
@@ -419,10 +413,7 @@ export class ParseOptions extends Context.Service<
  * Schema parse options for path params: server decoding, client encoding, and
  * `HttpApiClient.urlBuilder`.
  *
- * **Details**
- *
- * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
- * endpoint, it replaces `ParseOptions` for path params.
+ * Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -437,10 +428,7 @@ export class ParamsParseOptions extends Context.Service<
  * Schema parse options for the query string: server decoding, client encoding,
  * and `HttpApiClient.urlBuilder`.
  *
- * **Details**
- *
- * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
- * endpoint, it replaces `ParseOptions` for the query string.
+ * Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -453,19 +441,10 @@ export class QueryParseOptions extends Context.Service<
 
 /**
  * Schema parse options for request headers and the headers of `WithHeaders`
- * responses, covering server decoding and encoding and client encoding and
- * decoding of buffered and streamed responses.
+ * responses: server decoding/encoding and client encoding/decoding, including
+ * buffered and streamed responses.
  *
- * **Details**
- *
- * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
- * endpoint, it replaces `ParseOptions` for headers.
- *
- * **Gotchas**
- *
- * Header maps always contain undeclared transport headers, so strict
- * `onExcessProperty` settings reject real traffic. Set this to `{}` on the API
- * to use Schema defaults for headers while other slots stay strict.
+ * Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -480,10 +459,7 @@ export class HeadersParseOptions extends Context.Service<
  * Schema parse options for request bodies, including multipart payloads:
  * server decoding and client encoding.
  *
- * **Details**
- *
- * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
- * endpoint, it replaces `ParseOptions` for request bodies.
+ * Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -498,10 +474,7 @@ export class PayloadParseOptions extends Context.Service<
  * Schema parse options for success bodies, including streams, SSE events, and
  * the body of `WithHeaders` responses: server encoding and client decoding.
  *
- * **Details**
- *
- * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
- * endpoint, it replaces `ParseOptions` for success bodies.
+ * Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -515,10 +488,7 @@ export class SuccessParseOptions extends Context.Service<
 /**
  * Schema parse options for error bodies: server encoding and client decoding.
  *
- * **Details**
- *
- * Falls back to `ParseOptions` when unset. When set on the API, a group, or an
- * endpoint, it replaces `ParseOptions` for error bodies.
+ * Falls back to `ParseOptions` when unset.
  *
  * @stability unstable
  * @category services
@@ -530,8 +500,6 @@ export class ErrorParseOptions extends Context.Service<
 >()("effect/http-api/HttpApi/ErrorParseOptions") {}
 
 /**
- * Parse options resolved for each codec slot of an endpoint.
- *
  * @internal
  */
 export interface SlotParseOptions {
@@ -544,9 +512,6 @@ export interface SlotParseOptions {
 }
 
 /**
- * Resolves each slot annotation from merged annotations, falling back to
- * `ParseOptions`.
- *
  * @internal
  */
 export const getSlotParseOptions = (annotations: Context.Context<never>): SlotParseOptions => {
