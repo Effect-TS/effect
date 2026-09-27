@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Schema, Stream } from "effect"
+import { Cause, Effect, type Exit, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -156,6 +156,402 @@ describe("HttpApiClient", () => {
       const urls = HttpApiClient.urlBuilder(Api)
       assert.throws(() => urls.users.get({ query: {} as typeof Person.Type }), /firstName[\s\S]*lastName/)
     })
+  })
+
+  describe("slot ParseOptions", () => {
+    const Strict = { onExcessProperty: "error" } as const
+    const Person = Schema.Struct({ firstName: Schema.String, lastName: Schema.String })
+    const ada = { firstName: "Ada", lastName: "Lovelace" }
+    const adaWithExtra = { ...ada, extra: true }
+
+    const recordingClient = (response: () => Response) => {
+      const requests: Array<{ readonly url: string; readonly headers: Record<string, string> }> = []
+      const httpClient = HttpClient.make((request, url) =>
+        Effect.sync(() => {
+          requests.push({ url: url.toString(), headers: request.headers })
+          return HttpClientResponse.fromWeb(request, response())
+        })
+      )
+      return { requests, httpClient }
+    }
+
+    const jsonResponse = (body: unknown, init?: ResponseInit) =>
+      new Response(JSON.stringify(body), {
+        ...init,
+        headers: { "content-type": "application/json", ...init?.headers }
+      })
+
+    const expectSchemaError = <A, E>(exit: Exit.Exit<A, E>) => {
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Success") throw new Error("Expected a failure")
+      const error = Cause.squash(exit.cause)
+      assert.ok(Schema.isSchemaError(error))
+      return error
+    }
+
+    it.effect("ParamsParseOptions overrides ParseOptions for path params", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/items/:id", { params: { id: Schema.String } })
+          )
+        ).annotate(HttpApi.ParseOptions, Strict)
+        const params = { id: "1", extra: "x" } as { readonly id: string }
+
+        const strict = recordingClient(() => new Response(null, { status: 204 }))
+        const strictClient = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: strict.httpClient
+        })
+        const error = expectSchemaError(yield* Effect.exit(strictClient.test.get({ params })))
+        assert.include(error.message, `["extra"]`)
+        assert.strictEqual(strict.requests.length, 0)
+
+        const relaxed = recordingClient(() => new Response(null, { status: 204 }))
+        const relaxedClient = yield* HttpApiClient.makeWith(Api.annotate(HttpApi.ParamsParseOptions, {}), {
+          baseUrl: "http://test",
+          httpClient: relaxed.httpClient
+        })
+        yield* relaxedClient.test.get({ params })
+        assert.deepStrictEqual(relaxed.requests.map((request) => request.url), ["http://test/items/1"])
+      }))
+
+    it.effect("QueryParseOptions overrides ParseOptions for the query string", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/items", { query: { a: Schema.String } })
+          )
+        ).annotate(HttpApi.ParseOptions, Strict)
+        const query = { a: "x", extra: "y" } as { readonly a: string }
+
+        const strict = recordingClient(() => new Response(null, { status: 204 }))
+        const strictClient = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: strict.httpClient
+        })
+        const error = expectSchemaError(yield* Effect.exit(strictClient.test.get({ query })))
+        assert.include(error.message, `["extra"]`)
+        assert.strictEqual(strict.requests.length, 0)
+
+        const relaxed = recordingClient(() => new Response(null, { status: 204 }))
+        const relaxedClient = yield* HttpApiClient.makeWith(Api.annotate(HttpApi.QueryParseOptions, {}), {
+          baseUrl: "http://test",
+          httpClient: relaxed.httpClient
+        })
+        yield* relaxedClient.test.get({ query })
+        assert.deepStrictEqual(relaxed.requests.map((request) => request.url), ["http://test/items?a=x"])
+      }))
+
+    it("urlBuilder uses ParamsParseOptions and QueryParseOptions over ParseOptions", () => {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/items/:id", {
+            params: { id: Schema.String },
+            query: { a: Schema.String }
+          })
+        )
+      ).annotate(HttpApi.ParseOptions, Strict)
+      const request = {
+        params: { id: "1", extra: "x" } as { readonly id: string },
+        query: { a: "x", extra: "y" } as { readonly a: string }
+      }
+
+      assert.throws(() => HttpApiClient.urlBuilder(Api).test.get(request), /extra/)
+      assert.throws(
+        () => HttpApiClient.urlBuilder(Api.annotate(HttpApi.ParamsParseOptions, {})).test.get(request),
+        /extra/
+      )
+      assert.throws(
+        () => HttpApiClient.urlBuilder(Api.annotate(HttpApi.QueryParseOptions, {})).test.get(request),
+        /extra/
+      )
+      const urls = HttpApiClient.urlBuilder(
+        Api.annotate(HttpApi.ParamsParseOptions, {}).annotate(HttpApi.QueryParseOptions, {})
+      )
+      strictEqual(urls.test.get(request), "/items/1?a=x")
+    })
+
+    it.effect("HeadersParseOptions overrides ParseOptions for request headers", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/items", { headers: { "x-a": Schema.String } })
+          )
+        ).annotate(HttpApi.ParseOptions, Strict)
+        const headers = { "x-a": "a", "x-b": "b" } as { readonly "x-a": string }
+
+        const strict = recordingClient(() => new Response(null, { status: 204 }))
+        const strictClient = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: strict.httpClient
+        })
+        const error = expectSchemaError(yield* Effect.exit(strictClient.test.get({ headers })))
+        assert.include(error.message, `["x-b"]`)
+        assert.strictEqual(strict.requests.length, 0)
+
+        const relaxed = recordingClient(() => new Response(null, { status: 204 }))
+        const relaxedClient = yield* HttpApiClient.makeWith(Api.annotate(HttpApi.HeadersParseOptions, {}), {
+          baseUrl: "http://test",
+          httpClient: relaxed.httpClient
+        })
+        yield* relaxedClient.test.get({ headers })
+        assert.strictEqual(relaxed.requests.length, 1)
+        assert.strictEqual(relaxed.requests[0]!.headers["x-a"], "a")
+        assert.isUndefined(relaxed.requests[0]!.headers["x-b"])
+      }))
+
+    it.effect("PayloadParseOptions overrides ParseOptions for the request body", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.post("create", "/users", { payload: Person }))
+        ).annotate(HttpApi.ParseOptions, Strict)
+        const payload = adaWithExtra
+
+        const strict = recordingClient(() => new Response(null, { status: 204 }))
+        const strictClient = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: strict.httpClient
+        })
+        const error = expectSchemaError(yield* Effect.exit(strictClient.test.create({ payload })))
+        assert.include(error.message, `["extra"]`)
+        assert.strictEqual(strict.requests.length, 0)
+
+        const relaxed = recordingClient(() => new Response(null, { status: 204 }))
+        const relaxedClient = yield* HttpApiClient.makeWith(Api.annotate(HttpApi.PayloadParseOptions, {}), {
+          baseUrl: "http://test",
+          httpClient: relaxed.httpClient
+        })
+        yield* relaxedClient.test.create({ payload })
+        assert.strictEqual(relaxed.requests.length, 1)
+      }))
+
+    it.effect("SuccessParseOptions overrides ParseOptions for buffered success bodies", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/users", { success: Person }))
+        ).annotate(HttpApi.ParseOptions, Strict)
+        const httpClient = clientFromResponse(() => jsonResponse({ ...ada, extra: true }))
+
+        const strictClient = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient })
+        const error = expectSchemaError(yield* Effect.exit(strictClient.test.get({})))
+        assert.include(error.message, `["extra"]`)
+
+        const relaxedClient = yield* HttpApiClient.makeWith(Api.annotate(HttpApi.SuccessParseOptions, {}), {
+          baseUrl: "http://test",
+          httpClient
+        })
+        assert.deepStrictEqual(yield* relaxedClient.test.get({}), ada)
+      }))
+
+    it.effect("SuccessParseOptions overrides ParseOptions for SSE event data", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("events", "/events", {
+            success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+          }))
+        ).annotate(HttpApi.ParseOptions, Strict)
+        const httpClient = clientFromResponse(() =>
+          new Response(textStream([`data: ${JSON.stringify({ ...ada, extra: true })}\n\n`]), {
+            headers: { "content-type": "text/event-stream" }
+          })
+        )
+
+        const strictClient = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient })
+        const error = expectSchemaError(
+          yield* strictClient.test.events({}).pipe(Effect.flatMap(Stream.runCollect), Effect.exit)
+        )
+        assert.include(error.message, `["extra"]`)
+
+        const relaxedClient = yield* HttpApiClient.makeWith(Api.annotate(HttpApi.SuccessParseOptions, {}), {
+          baseUrl: "http://test",
+          httpClient
+        })
+        const events = yield* relaxedClient.test.events({}).pipe(Effect.flatMap(Stream.runCollect))
+        assert.deepStrictEqual(events, [ada])
+      }))
+
+    it.effect("ErrorParseOptions overrides ParseOptions for error bodies", () =>
+      Effect.gen(function*() {
+        const BadRequest = Schema.Struct({ message: Schema.String }).pipe(HttpApiSchema.status(400))
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/items", { error: BadRequest }))
+        ).annotate(HttpApi.ParseOptions, Strict)
+        const httpClient = clientFromResponse(() => jsonResponse({ message: "bad", extra: true }, { status: 400 }))
+
+        const strictClient = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient })
+        const strictError = yield* Effect.flip(strictClient.test.get({}))
+        assert.ok(HttpClientError.isHttpClientError(strictError))
+
+        const relaxedClient = yield* HttpApiClient.makeWith(Api.annotate(HttpApi.ErrorParseOptions, {}), {
+          baseUrl: "http://test",
+          httpClient
+        })
+        assert.deepStrictEqual(yield* Effect.flip(relaxedClient.test.get({})), { message: "bad" })
+      }))
+
+    it.effect("a slot annotation on the API beats ParseOptions on the endpoint", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/users", { success: Person }).annotate(HttpApi.ParseOptions, Strict)
+          )
+        ).annotate(HttpApi.SuccessParseOptions, {})
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => jsonResponse({ ...ada, extra: true }))
+        })
+        assert.deepStrictEqual(yield* client.test.get({}), ada)
+      }))
+
+    it.effect("a slot annotation replaces ParseOptions instead of merging with it", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.post("create", "/users", { payload: Person }))
+        )
+          .annotate(HttpApi.ParseOptions, { onExcessProperty: "error", errors: "all" })
+          .annotate(HttpApi.PayloadParseOptions, { errors: "first" })
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response(null, { status: 204 }))
+        })
+
+        yield* client.test.create({ payload: adaWithExtra })
+
+        const error = expectSchemaError(
+          yield* Effect.exit(client.test.create({ payload: {} as typeof Person.Type }))
+        )
+        assert.include(error.message, "firstName")
+        assert.notInclude(error.message, "lastName")
+      }))
+
+    describe("strict ParseOptions with HeadersParseOptions {}", () => {
+      const transportHeaders = {
+        "content-length": "42",
+        "date": "Sun, 27 Sep 2026 00:00:00 GMT",
+        "server": "test",
+        "x-count": "1"
+      }
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("buffered", "/buffered", {
+            success: HttpApiSchema.WithHeaders(Person, { "x-count": Schema.Int })
+          }),
+          HttpApiEndpoint.get("download", "/download", {
+            success: HttpApiSchema.WithHeaders(HttpApiSchema.StreamUint8Array(), { "x-count": Schema.Int })
+          }),
+          HttpApiEndpoint.get("events", "/events", {
+            success: HttpApiSchema.WithHeaders(
+              HttpApiSchema.StreamSse({ data: Person, error: StreamError }),
+              { "x-count": Schema.Int }
+            )
+          }),
+          HttpApiEndpoint.post("create", "/users", { payload: Person })
+        )
+      ).annotate(HttpApi.ParseOptions, Strict)
+      const relaxed = () => Api.annotate(HttpApi.HeadersParseOptions, {})
+
+      const buffered = (body: unknown) =>
+        clientFromResponse(() =>
+          new Response(JSON.stringify(body), {
+            headers: { ...transportHeaders, "content-type": "application/json" }
+          })
+        )
+      const download = clientFromResponse(() =>
+        new Response(byteStream([new Uint8Array([1, 2])]), {
+          headers: { ...transportHeaders, "content-type": "application/octet-stream" }
+        })
+      )
+      const events = clientFromResponse(() =>
+        new Response(textStream([`data: ${JSON.stringify(ada)}\n\n`]), {
+          headers: { ...transportHeaders, "content-type": "text/event-stream" }
+        })
+      )
+
+      it.effect("ParseOptions alone rejects WithHeaders responses carrying transport headers", () =>
+        Effect.gen(function*() {
+          const bufferedClient = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "http://test",
+            httpClient: buffered(ada)
+          })
+          expectSchemaError(yield* Effect.exit(bufferedClient.test.buffered({})))
+
+          const downloadClient = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: download })
+          expectSchemaError(yield* Effect.exit(downloadClient.test.download({})))
+
+          const eventsClient = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: events })
+          expectSchemaError(yield* Effect.exit(eventsClient.test.events({})))
+        }))
+
+      it.effect("accepts buffered WithHeaders responses", () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.makeWith(relaxed(), { baseUrl: "http://test", httpClient: buffered(ada) })
+          const value = yield* client.test.buffered({})
+          assert.deepStrictEqual(value.headers, { "x-count": 1 })
+          assert.deepStrictEqual(value.body, ada)
+        }))
+
+      it.effect("accepts streamed WithHeaders responses", () =>
+        Effect.gen(function*() {
+          const downloadClient = yield* HttpApiClient.makeWith(relaxed(), {
+            baseUrl: "http://test",
+            httpClient: download
+          })
+          const downloaded = yield* downloadClient.test.download({})
+          assert.deepStrictEqual(downloaded.headers, { "x-count": 1 })
+          const chunks = yield* Stream.runCollect(downloaded.body)
+          assert.deepStrictEqual(chunks.map((chunk) => Array.from(chunk)), [[1, 2]])
+
+          const eventsClient = yield* HttpApiClient.makeWith(relaxed(), { baseUrl: "http://test", httpClient: events })
+          const streamed = yield* eventsClient.test.events({})
+          assert.deepStrictEqual(streamed.headers, { "x-count": 1 })
+          assert.deepStrictEqual(yield* Stream.runCollect(streamed.body), [ada])
+        }))
+
+      it.effect("still rejects an excess key in a buffered WithHeaders body", () =>
+        Effect.gen(function*() {
+          const client = yield* HttpApiClient.makeWith(relaxed(), {
+            baseUrl: "http://test",
+            httpClient: buffered({ ...ada, extra: true })
+          })
+          const error = expectSchemaError(yield* Effect.exit(client.test.buffered({})))
+          assert.include(error.message, `["extra"]`)
+        }))
+
+      it.effect("still rejects an excess payload key", () =>
+        Effect.gen(function*() {
+          const recording = recordingClient(() => new Response(null, { status: 204 }))
+          const client = yield* HttpApiClient.makeWith(relaxed(), {
+            baseUrl: "http://test",
+            httpClient: recording.httpClient
+          })
+          const error = expectSchemaError(yield* Effect.exit(client.test.create({ payload: adaWithExtra })))
+          assert.include(error.message, `["extra"]`)
+          assert.strictEqual(recording.requests.length, 0)
+        }))
+    })
+
+    it.effect("buffered WithHeaders responses decode headers with HeadersParseOptions only", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/users", {
+              success: HttpApiSchema.WithHeaders(Person, { "x-count": Schema.Int })
+            })
+          )
+        ).annotate(HttpApi.HeadersParseOptions, Strict)
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response(JSON.stringify({ ...ada, extra: true }), {
+              headers: { "content-type": "application/json", "x-count": "1" }
+            })
+          )
+        })
+        const error = expectSchemaError(yield* Effect.exit(client.test.get({})))
+        assert.include(error.message, `["content-type"]`)
+        assert.notInclude(error.message, `["extra"]`)
+      }))
   })
 
   describe("literal action suffixes", () => {

@@ -3,6 +3,7 @@ import {
   Cause,
   DateTime,
   Effect,
+  type Exit,
   FileSystem,
   Layer,
   Path,
@@ -195,6 +196,282 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
       assert.ok(HttpApiError.HttpApiSchemaError.is(error))
       assert.strictEqual(error.kind, "Payload")
       assert.strictEqual(error.cause.message, `Expected no excess property\n  at ["extra"]`)
+    }))
+})
+
+it.layer(TestServices)("HttpApiBuilder slot ParseOptions", (it) => {
+  const Strict = { onExcessProperty: "error" } as const
+  const Person = Schema.Struct({ firstName: Schema.String, lastName: Schema.String })
+  const ada = { firstName: "Ada", lastName: "Lovelace" }
+
+  const serve = Effect.fnUntraced(function*<Groups extends HttpApiGroup.Constraint>(
+    api: HttpApi.HttpApi<"Api", Groups>,
+    group: Layer.Layer<any>
+  ) {
+    const handler = yield* HttpRouter.toHttpEffect(HttpApiBuilder.layer(api).pipe(Layer.provide(group)))
+    return (request: Request) =>
+      handler.pipe(
+        Effect.provideService(HttpServerRequest.HttpServerRequest, HttpServerRequest.fromWeb(request)),
+        Effect.exit
+      )
+  })
+
+  const schemaError = (exit: Exit.Exit<HttpServerResponse.HttpServerResponse, unknown>) => {
+    if (exit._tag === "Success") throw new Error("Expected the request to fail")
+    const error = Cause.squash(exit.cause)
+    assert.ok(HttpApiError.HttpApiSchemaError.is(error))
+    return error
+  }
+
+  const success = (exit: Exit.Exit<HttpServerResponse.HttpServerResponse, unknown>) => {
+    if (exit._tag === "Failure") throw new Error(`Expected a response, got ${Cause.pretty(exit.cause)}`)
+    return exit.value
+  }
+
+  const postJson = (url: string, body: unknown, headers?: Record<string, string>) =>
+    new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body)
+    })
+
+  it.effect("ParamsParseOptions overrides ParseOptions for path params", () =>
+    Effect.gen(function*() {
+      const Get = HttpApiEndpoint.get("get", "/items/:a/:b", {
+        params: { a: Schema.Literal("ok"), b: Schema.Literal("ok") }
+      })
+      const make = (api: HttpApi.HttpApi<"Api", HttpApiGroup.HttpApiGroup<"test", typeof Get>>) =>
+        serve(api, HttpApiBuilder.group(api, "test", (handlers) => handlers.handle("get", () => Effect.void)))
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(Get))
+        .annotate(HttpApi.ParseOptions, { errors: "all" })
+
+      const fallback = schemaError(yield* (yield* make(Api))(new Request("http://localhost/items/x/y")))
+      assert.strictEqual(fallback.kind, "Params")
+      assert.include(fallback.cause.message, `["a"]`)
+      assert.include(fallback.cause.message, `["b"]`)
+
+      const override = schemaError(
+        yield* (yield* make(Api.annotate(HttpApi.ParamsParseOptions, {})))(new Request("http://localhost/items/x/y"))
+      )
+      assert.strictEqual(override.kind, "Params")
+      assert.include(override.cause.message, `["a"]`)
+      assert.notInclude(override.cause.message, `["b"]`)
+    }))
+
+  it.effect("QueryParseOptions overrides ParseOptions for the query string", () =>
+    Effect.gen(function*() {
+      const Get = HttpApiEndpoint.get("get", "/items", { query: { a: Schema.String } })
+      const make = (api: HttpApi.HttpApi<"Api", HttpApiGroup.HttpApiGroup<"test", typeof Get>>) =>
+        serve(
+          api,
+          HttpApiBuilder.group(api, "test", (handlers) => handlers.handle("get", () => Effect.void))
+        )
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(Get)).annotate(HttpApi.ParseOptions, Strict)
+      const request = () => new Request("http://localhost/items?a=x&extra=y")
+
+      const fallback = schemaError(yield* (yield* make(Api))(request()))
+      assert.strictEqual(fallback.kind, "Query")
+      assert.include(fallback.cause.message, `["extra"]`)
+
+      const response = success(yield* (yield* make(Api.annotate(HttpApi.QueryParseOptions, {})))(request()))
+      assert.strictEqual(response.status, 204)
+    }))
+
+  it.effect("strict ParseOptions with HeadersParseOptions {} accepts transport headers and still rejects excess payload keys", () =>
+    Effect.gen(function*() {
+      const Create = HttpApiEndpoint.post("create", "/users", {
+        headers: { "x-api-key": Schema.String },
+        payload: Person
+      })
+      const make = (api: HttpApi.HttpApi<"Api", HttpApiGroup.HttpApiGroup<"test", typeof Create>>) =>
+        serve(api, HttpApiBuilder.group(api, "test", (handlers) => handlers.handle("create", () => Effect.void)))
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(Create)).annotate(HttpApi.ParseOptions, Strict)
+      const headers = { "user-agent": "test-agent", "x-forwarded-for": "127.0.0.1", "x-api-key": "secret" }
+
+      const fallback = schemaError(yield* (yield* make(Api))(postJson("http://localhost/users", ada, headers)))
+      assert.strictEqual(fallback.kind, "Headers")
+      assert.include(fallback.cause.message, "Expected no excess property")
+
+      const handler = yield* make(Api.annotate(HttpApi.HeadersParseOptions, {}))
+      const response = success(yield* handler(postJson("http://localhost/users", ada, headers)))
+      assert.strictEqual(response.status, 204)
+
+      const rejected = schemaError(yield* handler(postJson("http://localhost/users", { ...ada, extra: true }, headers)))
+      assert.strictEqual(rejected.kind, "Payload")
+      assert.strictEqual(rejected.cause.message, `Expected no excess property\n  at ["extra"]`)
+    }))
+
+  it.effect("HeadersParseOptions overrides ParseOptions for WithHeaders response headers", () =>
+    Effect.gen(function*() {
+      const Get = HttpApiEndpoint.get("get", "/items", {
+        success: HttpApiSchema.WithHeaders(Schema.String, { "x-a": Schema.String })
+      })
+      const make = (api: HttpApi.HttpApi<"Api", HttpApiGroup.HttpApiGroup<"test", typeof Get>>) =>
+        serve(
+          api,
+          HttpApiBuilder.group(api, "test", (handlers) =>
+            handlers.handle("get", () =>
+              Effect.succeed(HttpApiSchema.withHeaders({
+                body: "ok",
+                headers: { "x-a": "a", "x-b": "b" } as { readonly "x-a": string }
+              }))))
+        )
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(Get)).annotate(HttpApi.ParseOptions, Strict)
+
+      const fallback = schemaError(yield* (yield* make(Api))(new Request("http://localhost/items")))
+      assert.strictEqual(fallback.kind, "ResponseHeaders")
+      assert.include(fallback.cause.message, `["x-b"]`)
+
+      const response = success(
+        yield* (yield* make(Api.annotate(HttpApi.HeadersParseOptions, {})))(new Request("http://localhost/items"))
+      )
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["x-a"], "a")
+      assert.isUndefined(response.headers["x-b"])
+    }))
+
+  it.effect("PayloadParseOptions overrides ParseOptions for the request body", () =>
+    Effect.gen(function*() {
+      const Create = HttpApiEndpoint.post("create", "/users", { payload: Person })
+      const make = (api: HttpApi.HttpApi<"Api", HttpApiGroup.HttpApiGroup<"test", typeof Create>>) =>
+        serve(
+          api,
+          HttpApiBuilder.group(api, "test", (handlers) => handlers.handle("create", () => Effect.void))
+        )
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(Create)).annotate(HttpApi.ParseOptions, Strict)
+      const request = () => postJson("http://localhost/users", { ...ada, extra: true })
+
+      const fallback = schemaError(yield* (yield* make(Api))(request()))
+      assert.strictEqual(fallback.kind, "Payload")
+      assert.include(fallback.cause.message, `["extra"]`)
+
+      const response = success(yield* (yield* make(Api.annotate(HttpApi.PayloadParseOptions, {})))(request()))
+      assert.strictEqual(response.status, 204)
+    }))
+
+  it.effect("SuccessParseOptions overrides ParseOptions for success bodies, including WithHeaders bodies", () =>
+    Effect.gen(function*() {
+      const Group = HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("plain", "/plain", { success: Person }),
+        HttpApiEndpoint.get("wrapped", "/wrapped", {
+          success: HttpApiSchema.WithHeaders(Person, { "x-a": Schema.String })
+        })
+      )
+      const make = (api: HttpApi.HttpApi<"Api", typeof Group>) =>
+        serve(
+          api,
+          HttpApiBuilder.group(api, "test", (handlers) =>
+            handlers
+              .handle("plain", () => Effect.succeed({ ...ada, extra: true }))
+              .handle(
+                "wrapped",
+                () =>
+                  Effect.succeed(HttpApiSchema.withHeaders({ body: { ...ada, extra: true }, headers: { "x-a": "a" } }))
+              ))
+        )
+      const Api = HttpApi.make("Api").add(Group).annotate(HttpApi.ParseOptions, Strict)
+
+      const strict = yield* make(Api)
+      for (const path of ["/plain", "/wrapped"]) {
+        const fallback = schemaError(yield* strict(new Request(`http://localhost${path}`)))
+        assert.strictEqual(fallback.kind, "Body")
+        assert.include(fallback.cause.message, `["extra"]`)
+      }
+
+      const relaxed = yield* make(Api.annotate(HttpApi.SuccessParseOptions, {}))
+      for (const path of ["/plain", "/wrapped"]) {
+        const response = success(yield* relaxed(new Request(`http://localhost${path}`)))
+        assert.strictEqual(response.status, 200)
+        assert.deepStrictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(response).json()), ada)
+      }
+      const wrapped = success(yield* relaxed(new Request("http://localhost/wrapped")))
+      assert.strictEqual(wrapped.headers["x-a"], "a")
+    }))
+
+  it.effect("SuccessParseOptions overrides ParseOptions for SSE event data", () =>
+    Effect.gen(function*() {
+      const Events = HttpApiEndpoint.get("events", "/events", {
+        success: HttpApiSchema.StreamSse({ data: Person, error: StreamError })
+      })
+      const make = (api: HttpApi.HttpApi<"Api", HttpApiGroup.HttpApiGroup<"test", typeof Events>>) =>
+        serve(
+          api,
+          HttpApiBuilder.group(api, "test", (handlers) =>
+            handlers.handle("events", () => Effect.succeed(Stream.make({ ...ada, extra: true }))))
+        )
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(Events))
+        .annotate(HttpApi.ParseOptions, Strict)
+      const render = Effect.fnUntraced(function*(api: typeof Api) {
+        const response = success(yield* (yield* make(api))(new Request("http://localhost/events")))
+        return yield* Effect.promise(() => HttpServerResponse.toWeb(response).text())
+      })
+
+      assert.isTrue((yield* render(Api)).startsWith("event: effect/http-api/stream/failure\n"))
+      assert.strictEqual(
+        yield* render(Api.annotate(HttpApi.SuccessParseOptions, {})),
+        `data: {"firstName":"Ada","lastName":"Lovelace"}\n\n`
+      )
+    }))
+
+  it.effect("ErrorParseOptions overrides ParseOptions for error bodies", () =>
+    Effect.gen(function*() {
+      const BadRequest = Schema.Struct({ message: Schema.String }).pipe(HttpApiSchema.status(400))
+      const Get = HttpApiEndpoint.get("get", "/items", { error: BadRequest })
+      const make = (api: HttpApi.HttpApi<"Api", HttpApiGroup.HttpApiGroup<"test", typeof Get>>) =>
+        serve(
+          api,
+          HttpApiBuilder.group(api, "test", (handlers) =>
+            handlers.handle("get", () => Effect.fail({ message: "bad", extra: true })))
+        )
+      const Api = HttpApi.make("Api").add(HttpApiGroup.make("test").add(Get)).annotate(HttpApi.ParseOptions, Strict)
+
+      const fallback = yield* (yield* make(Api))(new Request("http://localhost/items"))
+      assert.strictEqual(fallback._tag, "Failure")
+
+      const response = success(
+        yield* (yield* make(Api.annotate(HttpApi.ErrorParseOptions, {})))(new Request("http://localhost/items"))
+      )
+      assert.strictEqual(response.status, 400)
+      assert.deepStrictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(response).json()), {
+        message: "bad"
+      })
+    }))
+
+  it.effect("a slot annotation on the API beats ParseOptions on the endpoint", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.post("create", "/users", { payload: Person }).annotate(HttpApi.ParseOptions, Strict)
+        )
+      ).annotate(HttpApi.PayloadParseOptions, {})
+      const handler = yield* serve(
+        Api,
+        HttpApiBuilder.group(Api, "test", (handlers) => handlers.handle("create", () => Effect.void))
+      )
+
+      const response = success(yield* handler(postJson("http://localhost/users", { ...ada, extra: true })))
+      assert.strictEqual(response.status, 204)
+    }))
+
+  it.effect("a slot annotation replaces ParseOptions instead of merging with it", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.post("create", "/users", { payload: Person }))
+      )
+        .annotate(HttpApi.ParseOptions, { onExcessProperty: "error", errors: "all" })
+        .annotate(HttpApi.PayloadParseOptions, { errors: "first" })
+      const handler = yield* serve(
+        Api,
+        HttpApiBuilder.group(Api, "test", (handlers) => handlers.handle("create", () => Effect.void))
+      )
+
+      const response = success(yield* handler(postJson("http://localhost/users", { ...ada, extra: true })))
+      assert.strictEqual(response.status, 204)
+
+      const error = schemaError(yield* handler(postJson("http://localhost/users", {})))
+      assert.strictEqual(error.kind, "Payload")
+      assert.include(error.cause.message, "firstName")
+      assert.notInclude(error.cause.message, "lastName")
     }))
 })
 
