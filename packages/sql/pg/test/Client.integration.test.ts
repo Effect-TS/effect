@@ -1,9 +1,10 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
+import { Cause, DateTime, Deferred, Effect, Exit, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Model } from "effect/schema"
 import { SqlClient, SqlModel } from "effect/sql"
+import * as SqlError from "effect/sql/SqlError"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 import { PgContainer } from "./utils.ts"
@@ -322,6 +323,52 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
 
         assert.deepStrictEqual(yield* sql`SELECT value FROM savepoint_locks`, [{ value: 1 }])
       }))
+    }))
+
+  it.effect("fails with SqlError when COMMIT silently rolls back an aborted transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* Effect.acquireUseRelease(
+        sql`CREATE TABLE silent_rollback_regression (value INTEGER)`,
+        () =>
+          Effect.gen(function*() {
+            const exit = yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+              yield* sql`INSERT INTO silent_rollback_regression VALUES (1)`
+              yield* Effect.ignore(sql`SELECT 1 / 0`)
+            })))
+            const rows = yield* sql<
+              { count: number }
+            >`SELECT count(*)::integer AS count FROM silent_rollback_regression`
+
+            assert.deepStrictEqual(rows, [{ count: 0 }])
+            assert.isTrue(Exit.isFailure(exit))
+            if (Exit.isFailure(exit)) {
+              assert.isFalse(Cause.hasDies(exit.cause))
+              const error = Cause.findErrorOption(exit.cause)
+              assert.isTrue(Option.isSome(error) && SqlError.isSqlError(error.value))
+            }
+          }),
+        () => sql`DROP TABLE silent_rollback_regression`
+      )
+    }))
+
+  it.effect("commits the outer transaction after rolling back a failed nested savepoint", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* Effect.acquireUseRelease(
+        sql`CREATE TABLE nested_rollback_regression (value INTEGER)`,
+        () =>
+          Effect.gen(function*() {
+            yield* sql.withTransaction(Effect.gen(function*() {
+              yield* sql`INSERT INTO nested_rollback_regression VALUES (1)`
+              yield* Effect.ignore(sql.withTransaction(sql`SELECT 1 / 0`))
+              yield* sql`INSERT INTO nested_rollback_regression VALUES (2)`
+            }))
+            const rows = yield* sql<{ value: number }>`SELECT value FROM nested_rollback_regression ORDER BY value`
+            assert.deepStrictEqual(rows, [{ value: 1 }, { value: 2 }])
+          }),
+        () => sql`DROP TABLE nested_rollback_regression`
+      )
     }))
 
   it.effect("preserves successful concurrent nested transactions", () =>

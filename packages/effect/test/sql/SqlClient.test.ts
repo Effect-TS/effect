@@ -30,6 +30,7 @@ let harnessIdCounter = 0
  */
 const makeHarness = (options: {
   readonly begin?: SqlError.SqlError | undefined
+  readonly commit?: SqlError.SqlError | undefined
   readonly savepoint?: SqlError.SqlError | undefined
   readonly rollbackSavepoint?: SqlError.SqlError | undefined
   readonly releaseSavepoint?: true | SqlError.SqlError | undefined
@@ -76,7 +77,9 @@ const makeHarness = (options: {
       }),
     commit: () =>
       Effect.flatMap(record("commit"), () =>
-        transactionActive
+        options.commit !== undefined
+          ? Effect.fail(options.commit)
+          : transactionActive
           ? Effect.sync(() => {
             transactionActive = false
           })
@@ -120,6 +123,17 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
 
 describe("SqlClient", () => {
   describe("makeWithTransaction", () => {
+    it.effect("propagates a failed commit as a typed SqlError", () =>
+      Effect.gen(function*() {
+        const commitError = sqlError("commit failed")
+        const harness = makeHarness({ commit: commitError })
+
+        const exit = yield* Effect.exit(harness.withTransaction(Effect.succeed(1)))
+
+        assertTypedFailure(exit, commitError)
+        assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection"])
+      }))
+
     it.effect("propagates a failed begin as a typed error without rolling back", () =>
       Effect.gen(function*() {
         const beginError = sqlError("database is locked")
