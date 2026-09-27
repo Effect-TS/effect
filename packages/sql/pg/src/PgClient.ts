@@ -237,7 +237,7 @@ const makeImpl = Effect.fnUntraced(function*(
       // Postgres prepares transaction control like anything else, and a client
       // with preparation turned off falls back to the unnamed path anyway.
       prepareTransactionControls: true,
-      commitEffect: (conn) => (conn as ConnectionImpl).commit(),
+      commitEffect: (conn) => commit(conn as ConnectionImpl),
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer: options.transactionAcquirer,
       compiler,
@@ -284,21 +284,6 @@ class ConnectionImpl implements Connection {
     return Effect.map(this.connection.query(query, params, prepare), (result) => result.rows)
   }
 
-  commit(): Effect.Effect<void, SqlError> {
-    return Effect.flatMap(this.connection.query("COMMIT", [], true), (result) =>
-      result.command === "ROLLBACK"
-        ? Effect.fail(
-          new SqlError({
-            reason: new UnknownError({
-              cause: new Error("PostgreSQL rolled back the aborted transaction instead of committing"),
-              message: "PostgreSQL rolled back the aborted transaction instead of committing",
-              operation: "COMMIT"
-            })
-          })
-        )
-        : Effect.void)
-  }
-
   execute(
     sql: string,
     params: ReadonlyArray<unknown>,
@@ -343,6 +328,20 @@ class ConnectionImpl implements Connection {
       : stream
   }
 }
+
+const commit = (conn: ConnectionImpl): Effect.Effect<void, SqlError> =>
+  Effect.flatMap(conn.connection.query("COMMIT", [], true), (result) =>
+    result.command === "ROLLBACK"
+      ? Effect.fail(
+        new SqlError({
+          reason: new UnknownError({
+            cause: new Error("PostgreSQL rolled back the aborted transaction instead of committing"),
+            message: "PostgreSQL rolled back the aborted transaction instead of committing",
+            operation: "COMMIT"
+          })
+        })
+      )
+      : Effect.void)
 
 const makeConnection = (
   connection: PgConnection.PgConnection,
