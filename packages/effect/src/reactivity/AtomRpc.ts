@@ -57,27 +57,28 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
 
   readonly mutation: <Tag extends Rpc.Tag<Rpcs>>(
     arg: Tag
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
-    infer _Payload,
-    infer _Success,
-    infer _Error,
-    infer _Middleware,
-    infer _Requires
-  > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? never
-    : Atom.AtomResultFn<
-      {
-        readonly payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
-        readonly reactivityKeys?:
-          | ReadonlyArray<unknown>
-          | ReadonlyRecord<string, ReadonlyArray<unknown>>
-          | undefined
-        readonly headers?: Headers.Input | undefined
-      },
-      _Success["Type"],
-      _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
-    >
-    : never
+  ) => Rpc.ExtractTag<Rpcs, Tag> extends infer Current ? Current extends Rpc.Rpc<
+      infer _Tag,
+      infer _Payload,
+      infer _Success,
+      infer _Error,
+      infer _Middleware,
+      infer _Requires
+    > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? never
+      : Atom.AtomResultFn<
+        {
+          readonly payload: Rpc.PayloadConstructor<Current>
+          readonly reactivityKeys?:
+            | ReadonlyArray<unknown>
+            | ReadonlyRecord<string, ReadonlyArray<unknown>>
+            | undefined
+          readonly headers?: Headers.Input | undefined
+        },
+        _Success["Type"],
+        _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+      >
+    : never :
+    never
 
   readonly query: <Tag extends Rpc.Tag<Rpcs>>(
     tag: Tag,
@@ -91,27 +92,28 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
-    infer _Payload,
-    infer _Success,
-    infer _Error,
-    infer _Middleware,
-    infer _Requires
-  > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? Atom.Writable<
-        Atom.PullResult<
-          _A["Type"],
-          _E["Type"] | _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
-        >,
-        void
+  ) => Rpc.ExtractTag<Rpcs, Tag> extends infer Current ? Current extends Rpc.Rpc<
+      infer _Tag,
+      infer _Payload,
+      infer _Success,
+      infer _Error,
+      infer _Middleware,
+      infer _Requires
+    > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? Atom.Writable<
+          Atom.PullResult<
+            _A["Type"],
+            _E["Type"] | _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+          >,
+          void
+        >
+      : Atom.Atom<
+        AsyncResult.AsyncResult<
+          _Success["Type"],
+          _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+        >
       >
-    : Atom.Atom<
-      AsyncResult.AsyncResult<
-        _Success["Type"],
-        _Error["Type"] | RpcClientError | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
-      >
-    >
-    : never
+    : never :
+    never
 }
 
 declare global {

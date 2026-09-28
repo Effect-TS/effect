@@ -166,41 +166,45 @@ export declare namespace RpcClient {
         readonly context?: Context.Context<never> | undefined
         readonly discard?: Discard | undefined
       }
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
-    infer _Payload,
-    infer _Success,
-    infer _Error,
-    infer _Middleware,
-    infer _Requires
-  > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsQueue extends true ? Effect.Effect<
-          Queue.Dequeue<
-            _A["Type"],
-            _E["Type"] | _Error["Type"] | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
-          >,
-          never,
-          | Scope.Scope
+  ) => Rpc.ExtractTag<Rpcs, Tag> extends infer Current ? Current extends Rpc.Rpc<
+      infer _Tag,
+      infer _Payload,
+      infer _Success,
+      infer _Error,
+      infer _Middleware,
+      infer _Requires
+    > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsQueue extends true ? Effect.Effect<
+            Queue.Dequeue<
+              _A["Type"],
+              _E["Type"] | _Error["Type"] | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"]
+            >,
+            never,
+            | Scope.Scope
+            | _Payload["EncodingServices"]
+            | _Success["DecodingServices"]
+            | _Error["DecodingServices"]
+            | _Middleware["error"]["DecodingServices"]
+          >
+        : Stream.Stream<
+          _A["Type"],
+          _E["Type"] | _Error["Type"] | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"],
           | _Payload["EncodingServices"]
           | _Success["DecodingServices"]
           | _Error["DecodingServices"]
           | _Middleware["error"]["DecodingServices"]
         >
-      : Stream.Stream<
-        _A["Type"],
-        _E["Type"] | _Error["Type"] | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"],
+      : Effect.Effect<
+        Discard extends true ? void : _Success["Type"],
+        | (Discard extends true ? never : _Error["Type"])
+        | E
+        | _Middleware["error"]["Type"]
+        | _Middleware["~ClientError"],
         | _Payload["EncodingServices"]
         | _Success["DecodingServices"]
         | _Error["DecodingServices"]
         | _Middleware["error"]["DecodingServices"]
-      >
-    : Effect.Effect<
-      Discard extends true ? void : _Success["Type"],
-      (Discard extends true ? never : _Error["Type"]) | E | _Middleware["error"]["Type"] | _Middleware["~ClientError"],
-      | _Payload["EncodingServices"]
-      | _Success["DecodingServices"]
-      | _Error["DecodingServices"]
-      | _Middleware["error"]["DecodingServices"]
-    > :
+      > :
+    never :
     never
 }
 

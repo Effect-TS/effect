@@ -45,6 +45,20 @@ describe("Rpc", () => {
     })
   })
 
+  describe("ExtractTag", () => {
+    it("extracts the RPC with a tag", () => {
+      expect<Rpc.ExtractTag<Mixed, "GetUser">>().type.toBe<typeof GetUser>()
+    })
+
+    it("extracts the RPCs with any tag in a union of tags", () => {
+      expect<Rpc.ExtractTag<Mixed, "GetUser" | "StreamEvents">>().type.toBe<typeof GetUser | typeof StreamEvents>()
+    })
+
+    it("returns never for a tag outside the group", () => {
+      expect<Rpc.ExtractTag<Mixed, "AuthedGetUser">>().type.toBe<never>()
+    })
+  })
+
   describe("ExtractProvides", () => {
     it("extracts provided service from stream RPC with middleware", () => {
       expect<Rpc.ExtractProvides<typeof AuthedStream, "AuthedStream">>().type.toBe<CurrentUser>()
