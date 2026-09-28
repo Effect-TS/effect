@@ -1156,7 +1156,7 @@ const callbackOptions: <A, E = never, R = never>(
     this: Scheduler.Scheduler,
     resume: (effect: Effect.Effect<A, E, R>) => void,
     signal?: AbortSignal
-  ) => void | Effect.Effect<void, never, R>,
+  ) => void | Effect.Effect<void, E, R>,
   withSignal: boolean
 ) => Effect.Effect<A, E, R> = (function() {
   const Proto = makePrimitiveProto({
@@ -1225,7 +1225,7 @@ export const callback = <A, E = never, R = never>(
     this: Scheduler.Scheduler,
     resume: (effect: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
-  ) => void | Effect.Effect<void, never, R>
+  ) => void | Effect.Effect<void, E, R>
 ): Effect.Effect<A, E, R> => callbackOptions(register as any, register.length >= 2)
 
 /** @internal */
@@ -5085,7 +5085,6 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
     let parentFiber: Fiber.Fiber<any, any> | undefined
     let fibers: Set<Fiber.Fiber<any, any>> | undefined
     let resume: ((effect: Effect.Effect<void, E | E2, R>) => void) | undefined
-    let interrupted = false
     let terminal: Exit.Exit<void, E | E2> | void
     let effect: Effect.Effect<X, E, R> | undefined
 
@@ -5093,7 +5092,6 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
       const defect = exitDie(error)
       terminal = defect
       done = true
-      interrupted = true
       return fibers && fibers.size > 0
         ? flatMap(uninterruptible(fiberInterruptAll(Array.from(fibers))), () => defect)
         : defect
@@ -5125,9 +5123,11 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             }
             if (result) return cb(result)
             return suspend(() => {
-              terminal = exitVoid
-              interrupted = true
-              return fibers ? fiberInterruptAll(fibers) : void_
+              terminal ??= exitVoid
+              return flatMap(
+                fibers ? fiberInterruptAll(fibers) : void_,
+                () => terminal?._tag === "Failure" ? terminal : void_
+              )
             })
           })
 
@@ -5151,7 +5151,7 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             fibers!.delete(fiber)
             try {
               if (terminal) {
-                if (!interrupted && exit._tag === "Failure") {
+                if (exit._tag === "Failure") {
                   for (const reason of exit.cause.reasons) {
                     if (reason._tag === "Interrupt") continue
                     else if (terminal._tag === "Failure") {

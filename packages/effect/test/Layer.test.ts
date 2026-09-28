@@ -41,6 +41,40 @@ describe("Layer", () => {
       assert.deepStrictEqual(array, [acquire1, release1])
     }))
 
+  it.effect("preserves a failure when a shared layer build is interrupted", () =>
+    Effect.gen(function*() {
+      const Shared = Context.Service<number>("Shared")
+      const Dying = Context.Service<number>("Dying")
+      const Runtime = Context.Service<boolean>("Runtime")
+
+      for (const kind of ["die", "fail"] as const) {
+        const sharedStarted = Latch.makeUnsafe()
+        const outerStarted = Latch.makeUnsafe()
+        const shared = Layer.effect(Shared)(sharedStarted.open.pipe(Effect.andThen(Effect.never)))
+        const dying = Layer.effect(Dying)(
+          Effect.all([sharedStarted.await, outerStarted.await]).pipe(
+            Effect.andThen(Effect.yieldNow),
+            Effect.andThen(kind === "die" ? Effect.die("layer defect") : Effect.fail("layer failure"))
+          )
+        )
+        const runtime = Layer.effect(Runtime)(Effect.as(Effect.all([Shared, Dying]), true)).pipe(
+          Layer.provide([shared, dying])
+        )
+        const outerShared = Layer.fromBuild((memoMap, scope) =>
+          sharedStarted.await.pipe(
+            Effect.andThen(outerStarted.open),
+            Effect.andThen(shared.build(memoMap, scope))
+          )
+        )
+
+        const exit = yield* Layer.mergeAll(runtime, outerShared).pipe(Layer.build, Effect.scoped, Effect.exit)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.isTrue(kind === "die" ? Cause.hasDies(exit.cause) : Cause.hasFails(exit.cause))
+        }
+      }
+    }))
+
   it.effect("sharing itself with merge", () =>
     Effect.gen(function*() {
       const service1 = new Service1()
