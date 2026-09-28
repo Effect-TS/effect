@@ -163,21 +163,22 @@ export const makeUpgradeHandler = <R, E>(
   httpApp: App.Default<E, R>,
   middleware?: Middleware.HttpMiddleware
 ) => {
-  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
-    function handler(
+  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) => {
+    const handlerCauses = new WeakMap<object, Cause.Cause<E>>()
+    const handledApp = App.toHandled(
+      Effect.tapErrorCause(httpApp, (cause) =>
+        Effect.flatMap(ServerRequest.HttpServerRequest, (request) =>
+          Effect.sync(() => {
+            handlerCauses.set(request.source as object, cause)
+          }))),
+      handleResponse,
+      middleware
+    )
+    return function handler(
       nodeRequest: Http.IncomingMessage,
       socket: Duplex,
       head: Buffer
     ) {
-      let handlerCause: Cause.Cause<E> | undefined
-      const handledApp = App.toHandled(
-        Effect.tapErrorCause(httpApp, (cause) =>
-          Effect.sync(() => {
-            handlerCause = cause
-          })),
-        handleResponse,
-        middleware
-      )
       let upgraded = false
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
@@ -207,7 +208,8 @@ export const makeUpgradeHandler = <R, E>(
               ),
               (ws, exit) =>
                 Effect.sync(() => {
-                  const failure = exit._tag === "Failure" ? exit.cause : handlerCause
+                  const failure = exit._tag === "Failure" ? exit.cause : handlerCauses.get(nodeRequest)
+                  handlerCauses.delete(nodeRequest)
                   if (failure === undefined) {
                     ws.close(1000)
                     return
@@ -233,7 +235,8 @@ export const makeUpgradeHandler = <R, E>(
           fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
-    })
+    }
+  })
 }
 
 class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> implements ServerRequest.HttpServerRequest {
