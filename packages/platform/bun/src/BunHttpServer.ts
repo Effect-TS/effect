@@ -187,33 +187,17 @@ export const make = Effect.fnUntraced(
         const serveScope = Context.getUnsafe(services, Scope.Scope)
         const scope = Scope.forkUnsafe(serveScope, "parallel")
 
+        const httpEffect = HttpEffect.toHandled(httpApp, (request, response) =>
+          Effect.sync(() => {
+            ;(request as BunServerRequest).resolve(makeResponse(request, response, services, scope))
+          }), middleware)
+
         function handler(request: Request, server: BunServer<WebSocketContext>) {
           return new Promise<Response>((resolve, _reject) => {
-            const bunRequest = new BunServerRequest(
-              request,
-              resolve,
-              removeHost(request.url),
-              server,
-              compressionThreshold
-            )
-            const httpEffect = HttpEffect.toHandled(
-              Effect.flatMap(Effect.scope, (requestScope) => {
-                bunRequest.exitState.scope = requestScope
-                return Effect.onExit(httpApp, (exit) =>
-                  Effect.sync(() => {
-                    bunRequest.exitState.exit = exit
-                  }))
-              }),
-              (request, response) =>
-                Effect.sync(() => {
-                  ;(request as BunServerRequest).resolve(makeResponse(request, response, services, scope))
-                }),
-              middleware
-            )
             const context = Context.add(
               services,
               ServerRequest.HttpServerRequest,
-              bunRequest
+              new BunServerRequest(request, resolve, removeHost(request.url), server, compressionThreshold)
             )
             const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
             request.signal.addEventListener("abort", () => {
@@ -419,7 +403,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   readonly url: string
   private bunServer: BunServer<WebSocketContext>
   private compressionThreshold: number
-  readonly exitState: { scope?: Scope.Scope; exit?: Exit.Exit<unknown, unknown> }
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
 
@@ -430,8 +413,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     bunServer: BunServer<WebSocketContext>,
     compressionThreshold: number,
     headersOverride?: Headers.Headers,
-    remoteAddressOverride?: Option.Option<string>,
-    exitState: { scope?: Scope.Scope; exit?: Exit.Exit<unknown, unknown> } = {}
+    remoteAddressOverride?: Option.Option<string>
   ) {
     super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -441,7 +423,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     this.url = url
     this.bunServer = bunServer
     this.compressionThreshold = compressionThreshold
-    this.exitState = exitState
     this.headersOverride = headersOverride
     this.remoteAddressOverride = remoteAddressOverride
   }
@@ -466,8 +447,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       this.bunServer,
       this.compressionThreshold,
       options.headers ?? this.headersOverride,
-      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride,
-      this.exitState
+      "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
   get method(): HttpMethod {
@@ -634,7 +614,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         return
       }
       const compressionThreshold = this.compressionThreshold
-      const exitState = this.exitState
       resume(Effect.map(Deferred.await(deferred), (ws) => {
         const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
           Effect.sync(() => {
@@ -723,10 +702,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
                 )
                 ws.data.run = wsDefaultRun
                 ws.data.onClose = constVoid
-                // HTTP error handling can add a response defect to the request scope's exit.
-                // Detached reader scopes must still use their own exit.
-                const result = scope === exitState.scope ? exitState.exit ?? exit : exit
-                ws.close(Exit.isSuccess(result) ? 1000 : Cause.hasInterruptsOnly(result.cause) ? 1001 : 1011)
+                ws.close(closeCode(scope, exit))
                 return Effect.void
               })
           )
@@ -751,6 +727,12 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
       }))
     })
   }
+}
+
+// Maps the exit of the scope that owns a server WebSocket to a close code.
+const closeCode = (scope: Scope.Scope, exit: Exit.Exit<unknown, unknown>): number => {
+  const cause = HttpEffect.scopeHandlerCause(scope) ?? (Exit.isFailure(exit) ? exit.cause : undefined)
+  return cause === undefined ? 1000 : Cause.hasInterruptsOnly(cause) ? 1001 : 1011
 }
 
 const emptyReadbleStream = new ReadableStream({

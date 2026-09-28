@@ -242,6 +242,7 @@ export const makeUpgradeHandler = <
   never,
   Exclude<Effect.Services<App>, HttpServerRequest | Scope.Scope>
 > => {
+  const handledApp = HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
   return Effect.withFiber((parent) => {
     const services = parent.context
     return Effect.succeed(function handler(
@@ -249,21 +250,6 @@ export const makeUpgradeHandler = <
       socket: Duplex,
       head: Buffer
     ) {
-      let handlerExit: Exit.Exit<unknown, unknown> | undefined
-      let requestScope: Scope.Scope | undefined
-      // HttpEffect can recover the handler failure while writing an HTTP response.
-      // Keep the original exit for the WebSocket's release finalizer.
-      const handledApp = HttpEffect.toHandled(
-        Effect.flatMap(Effect.scope, (scope) => {
-          requestScope = scope
-          return Effect.onExit(httpEffect, (exit) =>
-            Effect.sync(() => {
-              handlerExit = exit
-            }))
-        }),
-        handleResponse,
-        options.middleware as any
-      )
       let upgraded = false
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
@@ -286,7 +272,7 @@ export const makeUpgradeHandler = <
       const upgradeEffect = Socket.fromWebSocket(Effect.flatMap(
         lazyWss,
         (wss) =>
-          Effect.flatMap(Effect.scope, (readerScope) =>
+          Effect.flatMap(Effect.scope, (scope) =>
             Effect.acquireRelease(
               Effect.callback<NodeWS.WebSocket>((resume) =>
                 wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
@@ -294,12 +280,7 @@ export const makeUpgradeHandler = <
                   resume(Effect.succeed(ws))
                 })
               ),
-              (ws, exit) =>
-                Effect.sync(() => {
-                  // Only the request scope can have its exit rewritten by HTTP handling.
-                  const result = readerScope === requestScope ? handlerExit ?? exit : exit
-                  ws.close(Exit.isSuccess(result) ? 1000 : Cause.hasInterruptsOnly(result.cause) ? 1001 : 1011)
-                })
+              (ws, exit) => Effect.sync(() => ws.close(closeCode(scope, exit)))
             ))
       ))
       const context = Context.add(
@@ -535,6 +516,12 @@ export const layerTest: Layer.Layer<
 // -----------------------------------------------------------------------------
 // Internal
 // -----------------------------------------------------------------------------
+
+// Maps the exit of the scope that owns a server WebSocket to a close code.
+const closeCode = (scope: Scope.Scope, exit: Exit.Exit<unknown, unknown>): number => {
+  const cause = HttpEffect.scopeHandlerCause(scope) ?? (Exit.isFailure(exit) ? exit.cause : undefined)
+  return cause === undefined ? 1000 : Cause.hasInterruptsOnly(cause) ? 1001 : 1011
+}
 
 const handleResponse = (
   request: HttpServerRequest,

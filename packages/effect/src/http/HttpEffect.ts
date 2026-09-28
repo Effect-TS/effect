@@ -45,8 +45,10 @@ export const toHandled = <E, R, EH, RH>(
   ) => Effect.Effect<unknown, EH, RH>,
   middleware?: HttpMiddleware | undefined
 ): Effect.Effect<void, never, Exclude<R | RH | HttpServerRequest, Scope.Scope>> => {
-  const handleCause = (request: HttpServerRequest, cause: Cause.Cause<E | EH | HttpServerError>) =>
-    Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
+  const handleCause = (request: HttpServerRequest, cause: Cause.Cause<E | EH | HttpServerError>) => {
+    // `causeResponse` rewrites the cause before the request scope closes with it
+    ;(Context.getUnsafe(Fiber.getCurrent()!.context, Scope.Scope) as any)[handlerCause] = cause
+    return Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
       const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
@@ -67,6 +69,7 @@ export const toHandled = <E, R, EH, RH>(
         () => cont
       )
     })
+  }
 
   // Writes the response, applying any registered pre-response handler first.
   // Returns an `Exit` when the write completes synchronously.
@@ -226,6 +229,30 @@ export const scopeTransferToStream = (
 }
 
 const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
+
+/**
+ * Returns the cause an HTTP request handler failed with, or `undefined` when
+ * the handler succeeded or the scope is not a request scope.
+ *
+ * **When to use**
+ *
+ * Use to react to how the handler exited from a request scope finalizer, for
+ * example to choose a WebSocket close code.
+ *
+ * **Details**
+ *
+ * A request scope closes with the exit of the response write, which carries
+ * the derived response as a defect and can succeed even though the handler
+ * failed. The returned cause is the handler's own, recorded before a response
+ * was derived from it.
+ *
+ * @stability unstable
+ * @category resource management
+ * @since 4.0.0
+ */
+export const scopeHandlerCause = (scope: Scope.Scope): Cause.Cause<unknown> | undefined => (scope as any)[handlerCause]
+
+const handlerCause = Symbol.for("effect/http/HttpEffect/handlerCause")
 
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.
