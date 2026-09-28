@@ -299,7 +299,9 @@ export const make = Effect.gen(function*() {
     )
 
     if (Option.isNone(maybeSuspended)) return
-    yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
+    if (!(yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId)))) {
+      return yield* Effect.fail(new Error("Failed to reset workflow run"))
+    }
     yield* sharding.pollStorage
   })
 
