@@ -108,6 +108,14 @@ export interface LanguageModel {
   readonly [TypeId]: TypeId
 
   /**
+   * Whether the current provider configuration preserves system instructions in
+   * conversation history instead of collecting them before the conversation.
+   * Evaluate in the request's context: scoped model overrides can change support.
+   * Providers may constrain where these messages can appear. Absence is unknown.
+   */
+  readonly supportsSystemMessagesInHistory?: Effect.Effect<boolean> | undefined
+
+  /**
    * Generate text using the language model.
    */
   readonly generateText: {
@@ -833,6 +841,9 @@ export const make: (params: {
    * for structured output generation.
    */
   readonly codecTransformer?: CodecTransformer | undefined
+
+  /** Whether the effective provider configuration supports system messages in history. */
+  readonly supportsSystemMessagesInHistory?: Effect.Effect<boolean> | undefined
 }) => Effect.Effect<LanguageModel> = Effect.fnUntraced(function*(params) {
   const codecTransformer = params.codecTransformer ?? defaultCodecTransformer
 
@@ -1749,6 +1760,7 @@ export const make: (params: {
 
   return LanguageModel.of({
     [TypeId]: TypeId,
+    supportsSystemMessagesInHistory: params.supportsSystemMessagesInHistory,
     generateText: generateText as LanguageModel["generateText"],
     generateObject: generateObject as LanguageModel["generateObject"],
     streamText: streamText as LanguageModel["streamText"]

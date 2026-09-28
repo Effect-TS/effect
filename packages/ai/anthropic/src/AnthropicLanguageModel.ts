@@ -92,6 +92,16 @@ export class Config extends Context.Service<
        */
       readonly structuredOutputs?: boolean | undefined
       /**
+       * Override support for mid-conversation system messages. By default only
+       * documented model identifiers enable this feature; unknown models collect
+       * all system instructions in the top-level system field.
+       *
+       * Later instructions are placed after the user/tool results and before the
+       * next assistant response. The API rejects unsupported message placement.
+       * @see https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages
+       */
+      readonly midConversationSystemMessages?: boolean | undefined
+      /**
        * Whether to use strict JSON schema validation for tool calls.
        *
        * **Details**
@@ -703,7 +713,12 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       const capabilities = Predicate.isNotUndefined(config.structuredOutputs)
         ? { ...modelCapabilities, supportsStructuredOutput: config.structuredOutputs }
         : modelCapabilities
-      const { messages, system } = yield* prepareMessages({ betas, options, toolNameMapper })
+      const { messages, system } = yield* prepareMessages({
+        betas,
+        options,
+        toolNameMapper,
+        systemMessagesInHistory: supportsSystemMessagesInHistory(config)
+      })
       const outputFormat = yield* getOutputFormat({ capabilities, options })
       const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
       const params: Mutable<typeof Generated.BetaMessagesPostParams.Encoded> = {}
@@ -715,6 +730,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         output_config,
         strictJsonSchema: _strictJsonSchema,
         structuredOutputs: _structuredOutputs,
+        midConversationSystemMessages: _midConversationSystemMessages,
         ...requestConfig
       } = config
       const payload: Mutable<typeof Generated.BetaCreateMessageParams.Encoded> = {
@@ -741,6 +757,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   return yield* LanguageModel.make({
     codecTransformer: toCodecAnthropic,
+    supportsSystemMessagesInHistory: Effect.map(makeConfig, supportsSystemMessagesInHistory),
     generateText: Effect.fnUntraced(function*(options) {
       const config = yield* makeConfig
       const toolNameMapper = new Tool.NameMapper(options.tools)
@@ -832,10 +849,11 @@ export const withConfigOverride: {
 // =============================================================================
 
 const prepareMessages = Effect.fnUntraced(
-  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, options, toolNameMapper }: {
+  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, options, toolNameMapper, systemMessagesInHistory }: {
     readonly betas: Set<string>
     readonly options: LanguageModel.ProviderOptions
     readonly toolNameMapper: Tool.NameMapper<Tools>
+    readonly systemMessagesInHistory: boolean
   }): Effect.fn.Return<{
     readonly system: ReadonlyArray<typeof Generated.BetaRequestTextBlock.Encoded> | undefined
     readonly messages: ReadonlyArray<typeof Generated.BetaInputMessage.Encoded>
@@ -844,18 +862,32 @@ const prepareMessages = Effect.fnUntraced(
 
     let system: Array<typeof Generated.BetaRequestTextBlock.Encoded> | undefined = undefined
     const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
+    let pendingSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
 
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i]
       const isLastGroup = i === groups.length - 1
 
+      // Instructions arriving before a new user message apply to its next
+      // assistant response. Keep them out of the tool-use/result pair.
+      if (group.type === "assistant" && pendingSystem.length > 0) {
+        messages.push({ role: "system", content: pendingSystem })
+        pendingSystem = []
+      }
+
       switch (group.type) {
         case "system": {
-          system = group.messages.map((message) => ({
+          const content = group.messages.map((message): typeof Generated.BetaRequestTextBlock.Encoded => ({
             type: "text",
             text: message.content,
             cache_control: getCacheControl(message)
           }))
+          if (i === 0 || !systemMessagesInHistory) {
+            system ??= []
+            system.push(...content)
+          } else {
+            pendingSystem.push(...content)
+          }
           break
         }
 
@@ -1226,10 +1258,10 @@ const prepareMessages = Effect.fnUntraced(
       }
     }
 
-    return {
-      system,
-      messages
+    if (pendingSystem.length > 0) {
+      messages.push({ role: "system", content: pendingSystem })
     }
+    return { system, messages }
   }
 )
 
@@ -3000,6 +3032,10 @@ interface ModelCapabilities {
   readonly maxOutputTokens: number
   readonly supportsStructuredOutput: boolean
 }
+
+const supportsSystemMessagesInHistory = (config: typeof Config.Service & { readonly model: string }): boolean =>
+  config.midConversationSystemMessages ??
+    /^claude-(?:fable-5(?:-1)?|mythos-5(?:-1)?|opus-(?:4-8|5(?:-5)?)|sonnet-5-5)(?:-\d{8}|-latest)?$/.test(config.model)
 
 /**
  * Returns the capabilities of a Claude model that are used for defaults and feature selection.
