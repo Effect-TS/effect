@@ -590,6 +590,21 @@ export const makeEncoded: (options?: {
       withTracerDisabled
     ),
 
+    clearRepliesIfCurrent: Effect.fnUntraced(
+      function*(requestId, replyId) {
+        const id = String(requestId)
+        const expected = String(replyId)
+        // Check at the storage boundary, not at the earlier workflow read.
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0
+          AND EXISTS (SELECT 1 FROM ${messagesTableSql} WHERE id = ${id} AND last_reply_id = ${expected})`
+        yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL
+          WHERE request_id = ${id} AND last_reply_id = ${expected}`
+      },
+      sql.withTransaction,
+      PersistenceError.refail,
+      withTracerDisabled
+    ),
+
     requestIdForPrimaryKey: (primaryKey) =>
       messageIdForPrimaryKey(primaryKey).pipe(
         Effect.flatMap((messageId) =>

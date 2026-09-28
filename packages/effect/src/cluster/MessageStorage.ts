@@ -78,6 +78,12 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    */
   readonly clearReplies: (requestId: Snowflake.Snowflake) => Effect.Effect<void, PersistenceError>
 
+  /** Clear replies only while the observed reply is still current. */
+  readonly clearRepliesIfCurrent: (
+    requestId: Snowflake.Snowflake,
+    replyId: Snowflake.Snowflake
+  ) => Effect.Effect<void, PersistenceError>
+
   /**
    * Retrieves the replies for the specified requests.
    *
@@ -353,6 +359,12 @@ export type Encoded = {
    * Remove the replies for the specified request.
    */
   readonly clearReplies: (requestId: Snowflake.Snowflake) => Effect.Effect<void, PersistenceError>
+
+  /** Clear replies only while the observed reply is still current. */
+  readonly clearRepliesIfCurrent: (
+    requestId: Snowflake.Snowflake,
+    replyId: Snowflake.Snowflake
+  ) => Effect.Effect<void, PersistenceError>
 
   /**
    * Retrieves the request id for the specified primary key.
@@ -701,6 +713,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         Effect.flatMap(({ encodedReply, persisted }) => Effect.as(encoded.saveReply(encodedReply), persisted))
       ),
     clearReplies: encoded.clearReplies,
+    clearRepliesIfCurrent: encoded.clearRepliesIfCurrent,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
       const map = new Map<string, Message.OutgoingRequest<any>>()
@@ -868,6 +881,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   saveEnvelope: () => Effect.void,
   saveReply: (reply) => Effect.succeed(reply),
   clearReplies: () => Effect.void,
+  clearRepliesIfCurrent: () => Effect.void,
   repliesFor: () => Effect.succeed([]),
   repliesForUnfiltered: () => Effect.succeed([]),
   requestIdForPrimaryKey: () => Effect.succeedNone,
@@ -1058,6 +1072,15 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
         Effect.sync(() => {
           const entry = requests.get(String(id))
           if (!entry) return
+          entry.replies = []
+          entry.lastReceivedChunk = undefined
+          unprocessed.add(entry.envelope)
+          lastRead.delete(entry.envelope)
+        }),
+      clearRepliesIfCurrent: (id, replyId) =>
+        Effect.sync(() => {
+          const entry = requests.get(String(id))
+          if (!entry || entry.replies.at(-1)?.id !== String(replyId)) return
           entry.replies = []
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)
