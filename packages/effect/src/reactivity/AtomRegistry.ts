@@ -744,13 +744,10 @@ class NodeImpl<A> {
   // pulled or observed. The read's error is the one reported.
   fail(): void {
     this.failed = true
-    for (const child of Array.from(this.children)) {
-      if (!child.dependsOnCurrent(this)) continue
-      try {
-        child.invalidate()
-      } catch {
-        // an observed dependent rebuilt and met the same failure
-      }
+    try {
+      this.invalidateChildren()
+    } catch {
+      // an observed dependent rebuilt and met the same failure
     }
   }
 
@@ -766,19 +763,21 @@ class NodeImpl<A> {
         parent.childObserved(1)
       }
     }
-    let value: B
     try {
-      value = parent.value()
+      return parent.value()
     } catch (error) {
-      noteRead(lifetime, parent)
       // the parent may have got its value and failed only to update another
       // dependent: this build still takes the value, and rethrows once it is done
       if (lifetime.reads === undefined || parent.state !== NodeState.valid) throw error
       if (lifetime.failure === noFailure) lifetime.failure = error
-      value = parent._value
+      return parent._value
+    } finally {
+      // read once the parent has answered: its commit while it is being
+      // pulled is the value this build is about to receive
+      if (lifetime.reads !== undefined && !lifetime.disposed) {
+        lifetime.reads.add(parent)
+      }
     }
-    noteRead(lifetime, parent)
-    return value
   }
 
   dropUnread(reads: Set<NodeImpl<any>>): void {
@@ -829,15 +828,13 @@ class NodeImpl<A> {
 
     this._value = value
     let failure: unknown = noFailure
-    if (initialized || recovered) {
-      try {
-        this.invalidateChildren()
-      } catch (error) {
-        failure = error
-      }
+    try {
+      this.invalidateChildren()
+    } catch (error) {
+      failure = error
     }
     // the value is committed, so its listeners hear of it even when a dependent failed
-    if (!initialized || this.listeners.size > 0) {
+    if (this.listeners.size > 0) {
       try {
         this.announce()
       } catch (error) {
@@ -891,9 +888,7 @@ class NodeImpl<A> {
     let failure: unknown = noFailure
     // a snapshot: a rebuild adds and drops children
     for (const child of Array.from(this.children)) {
-      // an observed child that is still stale had its rebuild fail, and this
-      // commit is its chance to recover
-      if (!child.dependsOnCurrent(this) && (child.building || !child.isObserved)) continue
+      if (!child.affectedBy(this)) continue
       try {
         child.invalidate()
       } catch (error) {
@@ -903,13 +898,16 @@ class NodeImpl<A> {
     if (failure !== noFailure) throw failure
   }
 
-  // Whether this node holds the parent's current value: it is valid, or a
-  // running build has already read the parent. A stale node is stale already,
-  // and a build that has not read the parent yet will read the new value.
-  dependsOnCurrent(parent: NodeImpl<any>): boolean {
+  // Whether a change of the parent reaches this node: it holds the parent's
+  // value, or a running build has already read it. A stale node is stale
+  // already, and a build that has not read the parent yet will read the new
+  // value. The exception is an observed node that is still stale: its rebuild
+  // failed, and a parent that has a value again is its chance to recover.
+  affectedBy(parent: NodeImpl<any>): boolean {
     if (this.state === NodeState.valid) return true
     const reads = this.lifetime?.reads
-    return reads !== undefined && reads.has(parent)
+    if (reads !== undefined) return reads.has(parent)
+    return this.isObserved && parent.state === NodeState.valid
   }
 
   notify(): void {
@@ -1140,14 +1138,6 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
     const finalizers = this.finalizers
     this.finalizers = undefined
     runAll(finalizers.reverse(), invoke)
-  }
-}
-
-// read once the parent has answered: its commit while it is being pulled is
-// the value this build is about to receive
-const noteRead = (lifetime: Lifetime<any>, parent: NodeImpl<any>): void => {
-  if (lifetime.reads !== undefined && !lifetime.disposed) {
-    lifetime.reads.add(parent)
   }
 }
 
