@@ -37,15 +37,17 @@
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
-import { constVoid } from "../Function.ts"
-import { args, contA, contAll, exitSucceed, makePrimitive, type Primitive, withFiber } from "../internal/core.ts"
+import { withFiber } from "../internal/core.ts"
 import type { FiberImpl } from "../internal/effect.ts"
 import * as Latch from "../Latch.ts"
+import * as MutableList from "../MutableList.ts"
 import * as NetAddress from "../net/NetAddress.ts"
 import * as Predicate from "../Predicate.ts"
+import * as Queue from "../Queue.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 
@@ -592,7 +594,11 @@ const makeFromHandle = <R>(
     Effect.fnUntraced(function*(restore) {
       while (!free.closeUnsafe()) yield* restore(free.await)
       const scope = yield* Effect.scope
-      const state = new ReaderState(capacity, sliding, onError)
+      const queue = yield* Queue.make<DatagramImpl, DatagramSocketError>({
+        capacity,
+        strategy: sliding ? "sliding" : "dropping"
+      })
+      const state = new ReaderState(queue, capacity, sliding, onError)
       // `open` may not be cancellable (Node's `lookup`), so it runs in its own
       // fiber and is never interrupted. Interruption only stops the wait, and
       // `abandon` closes a handle that arrives later.
@@ -674,32 +680,35 @@ const targetOf = (datagram: OutgoingDatagram): NetAddress.InetAddress | Datagram
   isDatagramImpl(datagram) ? datagram : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
 
 class ReaderState {
+  // core's queue holds the packets and the parked pulls. Overflow under
+  // "dropping" and "sliding" is the queue's, and the sticky error is its
+  // failure: queued packets are delivered first, then every pull fails
+  readonly queue: Queue.Queue<DatagramImpl, DatagramSocketError>
   readonly capacity: number
   readonly sliding: boolean
   readonly listener: ((error: DatagramSocketError) => void) | undefined
   // arrow functions, so an adapter can pass one on its own as a callback
   readonly events: NativeEvents
   readonly reader: Reader
-  // queued packets, oldest first from `head`. `head` only moves under
-  // "sliding" once the buffer is full, when it becomes a ring
-  buffer: Array<DatagramImpl> = []
-  head = 0
   dropped = 0
-  // the sticky error as a failed exit, shared by every pull and write after it
+  // the sticky error as a failed exit, shared by every write after it; the
+  // queue carries it to pulls once the queued packets are delivered
   failure: Effect.Effect<never, DatagramSocketError> | undefined = undefined
-  // fibers parked in `pull`, oldest first: the oldest sits in the slot and
-  // the rest wait in `waiters`, so a single consumer never touches the array
-  waiter: FiberImpl | undefined = undefined
-  waiters: Array<FiberImpl> = []
-  // pushed on a parked fiber's stack, shared by every park
-  readonly unpark: Primitive = unpark(this)
   handle: NativeHandle | undefined = undefined
+  // separate from `failed`: after a sticky read error the socket is still
+  // open, so ICMP reports still reach `onError`
   closed = false
   #address: NetAddress.InetAddress | undefined = undefined
   #lastTarget: NetAddress.InetAddress | undefined = undefined
   #lastDestination: NativeAddress | undefined = undefined
 
-  constructor(capacity: number, sliding: boolean, listener: ((error: DatagramSocketError) => void) | undefined) {
+  constructor(
+    queue: Queue.Queue<DatagramImpl, DatagramSocketError>,
+    capacity: number,
+    sliding: boolean,
+    listener: ((error: DatagramSocketError) => void) | undefined
+  ) {
+    this.queue = queue
     this.capacity = capacity
     this.sliding = sliding
     this.listener = listener
@@ -727,65 +736,24 @@ class ReaderState {
 
   push(payload: Uint8Array, host: string, port: number) {
     if (this.failure !== undefined) return
-    // a parked pull implies an empty queue, so it never overflows
-    if (this.buffer.length >= this.capacity) return this.overflow(payload, host, port)
+    const queue = this.queue
     const datagram = new DatagramImpl(payload, host, port, this)
-    if (this.waiter !== undefined) return this.wake(datagram)
-    const buffer = this.buffer
-    buffer[buffer.length] = datagram
-  }
-
-  wake(datagram: DatagramImpl) {
-    const fiber = this.waiter!
-    this.promoteWaiter()
-    fiber.evaluate(exitSucceed([datagram]) as any)
-  }
-
-  overflow(payload: Uint8Array, host: string, port: number) {
-    this.dropped++
-    if (!this.sliding) return
-    // the oldest record becomes the newest in the same ring slot
-    const buffer = this.buffer
-    const head = this.head
-    buffer[head].reuse(payload, host, port)
-    this.head = head + 1 === buffer.length ? 0 : head + 1
-  }
-
-  take(): NonEmptyReadonlyArray<Datagram> {
-    const buffer = this.buffer
-    const head = this.head
-    this.buffer = []
-    if (head === 0) return buffer as unknown as NonEmptyReadonlyArray<Datagram>
-    this.head = 0
-    const length = buffer.length
-    // unroll the ring, oldest first
-    const batch = new Array<DatagramImpl>(length)
-    let j = 0
-    for (let i = head; i < length; i++) batch[j++] = buffer[i]
-    for (let i = 0; i < head; i++) batch[j++] = buffer[i]
-    return batch as unknown as NonEmptyReadonlyArray<Datagram>
-  }
-
-  park(fiber: FiberImpl) {
-    if (this.waiter === undefined) this.waiter = fiber
-    else this.waiters.push(fiber)
-  }
-
-  promoteWaiter() {
-    this.waiter = this.waiters.length === 0 ? undefined : this.waiters.shift()
-  }
-
-  removeWaiter(fiber: FiberImpl) {
-    if (this.waiter === fiber) return this.promoteWaiter()
-    if (this.waiters.length === 0) return
-    const index = this.waiters.indexOf(fiber)
-    if (index !== -1) this.waiters.splice(index, 1)
+    if (this.sliding) {
+      // the queue drops its oldest packet itself
+      if (queue.messages.length >= this.capacity) this.dropped++
+      Queue.offerUnsafe(queue, datagram)
+    } else if (!Queue.offerUnsafe(queue, datagram)) {
+      this.dropped++
+      return
+    }
+    // a parked pull resumes inline, not on the queue's scheduled release
+    Queue.flushUnsafe(queue)
   }
 
   fail(error: DatagramSocketError) {
     if (this.failure !== undefined) return
     this.failure = Effect.fail(error)
-    this.failWaiters()
+    Queue.failCauseUnsafe(this.queue, Cause.fail(error))
   }
 
   report(error: DatagramSocketError) {
@@ -798,23 +766,11 @@ class ReaderState {
     }
   }
 
-  failWaiters() {
-    const waiter = this.waiter
-    if (waiter === undefined) return
-    const failure = this.failure!
-    const waiters = this.waiters
-    this.waiter = undefined
-    this.waiters = []
-    waiter.evaluate(failure as any)
-    for (let i = 0; i < waiters.length; i++) waiters[i].evaluate(failure as any)
-  }
-
   close() {
     this.closed = true
-    this.buffer = []
-    this.head = 0
-    this.failure = Effect.fail(closedError())
-    this.failWaiters()
+    // the queue is thrown away, and a parked pull fails at once
+    MutableList.clear(this.queue.messages)
+    this.fail(closedError())
     this.handle?.close()
   }
 
@@ -922,35 +878,8 @@ class ReaderState {
   }
 }
 
-// `pull` without `Effect.callback`: a parked fiber is its own waiter, and a
-// packet resumes it inline with `fiber.evaluate`, like `Effect.yieldNow`. It
-// is built on the shared `withFiber` primitive rather than a new one, so the
-// run loop's dispatch sees no extra primitive shape
-const makePull = (state: ReaderState): Reader["pull"] =>
-  withFiber((fiber): any => {
-    if (state.buffer.length !== 0) {
-      const batch = state.take()
-      const cont = fiber.getCont(contA)
-      return cont ? cont[contA](batch, fiber) : fiber.yieldWith(exitSucceed(batch))
-    }
-    if (state.failure !== undefined) return state.failure
-    state.park(fiber)
-    fiber._stack.push(state.unpark)
-    return fiber.yieldWith(constVoid)
-  })
-
-// Popped on every path out of a park, as `Effect.uninterruptible`'s frame is.
-// `contAll` runs even when an interruption skips `contE`, so an interrupted
-// fiber always leaves the waiters; after a wake it finds nothing to remove.
-const unpark: (state: ReaderState) => Primitive = makePrimitive({
-  op: "DatagramSocketUnpark",
-  [contAll](fiber) {
-    this[args].removeWaiter(fiber)
-  }
-})
-
 const makeReader = (state: ReaderState): Reader => ({
-  pull: makePull(state),
+  pull: Queue.takeAll(state.queue),
   get address() {
     return state.address
   },
