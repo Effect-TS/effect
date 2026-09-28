@@ -451,7 +451,7 @@ describe("Atom", { concurrent: false }, () => {
     r.dispose()
   })
 
-  it("effectFn concurrent returns the current result while an earlier call is pending", () => {
+  it("effectFn concurrent waits for earlier calls", async () => {
     const latch = Latch.makeUnsafe()
     const count = Atom.fn((n: number) => n === 1 ? latch.await.pipe(Effect.as(n)) : Effect.succeed(n), {
       concurrent: true
@@ -462,9 +462,38 @@ describe("Atom", { concurrent: false }, () => {
     r.set(count, 1)
     assert(AsyncResult.isInitial(r.get(count)))
     r.set(count, 2)
+    const waiting = r.get(count)
+    assert(AsyncResult.isInitial(waiting) && waiting.waiting)
+
+    latch.openUnsafe()
+    await Effect.runPromise(Effect.yieldNow)
     const result = r.get(count)
     assert(AsyncResult.isSuccess(result))
-    assert.strictEqual(result.value, 2)
+    assert.strictEqual(result.value, 1)
+    r.dispose()
+  })
+
+  it("effectFn concurrent observes an earlier failure after a later success", async () => {
+    const latch = Latch.makeUnsafe()
+    const count = Atom.fn((n: number) =>
+      n === 1
+        ? latch.await.pipe(Effect.flatMap(() => Effect.fail("older failure")))
+        : Effect.succeed(n), { concurrent: true })
+    const r = AtomRegistry.make()
+    r.mount(count)
+
+    r.set(count, 1)
+    r.set(count, 2)
+    const waiting = r.get(count)
+    assert(AsyncResult.isInitial(waiting) && waiting.waiting)
+
+    latch.openUnsafe()
+    await Effect.runPromise(Effect.yieldNow)
+    const result = r.get(count)
+    assert(AsyncResult.isFailure(result))
+    const error = Cause.findErrorOption(result.cause)
+    assert(Option.isSome(error))
+    assert.strictEqual(error.value, "older failure")
     r.dispose()
   })
 
