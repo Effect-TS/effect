@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix concurrent `Atom.fn` calls to return their own results, including synchronous successes and failures.
+Fix lost synchronous successes and failures in concurrent `Atom.fn` calls.
