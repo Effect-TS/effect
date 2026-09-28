@@ -451,6 +451,23 @@ describe("Atom", { concurrent: false }, () => {
     r.dispose()
   })
 
+  it("effectFn concurrent returns the current result while an earlier call is pending", () => {
+    const latch = Latch.makeUnsafe()
+    const count = Atom.fn((n: number) => n === 1 ? latch.await.pipe(Effect.as(n)) : Effect.succeed(n), {
+      concurrent: true
+    })
+    const r = AtomRegistry.make()
+    r.mount(count)
+
+    r.set(count, 1)
+    assert(AsyncResult.isInitial(r.get(count)))
+    r.set(count, 2)
+    const result = r.get(count)
+    assert(AsyncResult.isSuccess(result))
+    assert.strictEqual(result.value, 2)
+    r.dispose()
+  })
+
   it("effectFn initial", async () => {
     const count = Atom.fn((n: number) => Effect.succeed(n + 1), {
       initialValue: 0
