@@ -250,13 +250,17 @@ export const makeUpgradeHandler = <
       head: Buffer
     ) {
       let handlerExit: Exit.Exit<unknown, unknown> | undefined
+      let requestScope: Scope.Scope | undefined
       // HttpEffect can recover the handler failure while writing an HTTP response.
       // Keep the original exit for the WebSocket's release finalizer.
       const handledApp = HttpEffect.toHandled(
-        Effect.onExit(httpEffect, (exit) =>
-          Effect.sync(() => {
-            handlerExit = exit
-          })),
+        Effect.flatMap(Effect.scope, (scope) => {
+          requestScope = scope
+          return Effect.onExit(httpEffect, (exit) =>
+            Effect.sync(() => {
+              handlerExit = exit
+            }))
+        }),
         handleResponse,
         options.middleware as any
       )
@@ -282,19 +286,21 @@ export const makeUpgradeHandler = <
       const upgradeEffect = Socket.fromWebSocket(Effect.flatMap(
         lazyWss,
         (wss) =>
-          Effect.acquireRelease(
-            Effect.callback<NodeWS.WebSocket>((resume) =>
-              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
-                upgraded = true
-                resume(Effect.succeed(ws))
-              })
-            ),
-            (ws, exit) =>
-              Effect.sync(() => {
-                const result = handlerExit ?? exit
-                ws.close(Exit.isSuccess(result) ? 1000 : Cause.hasInterruptsOnly(result.cause) ? 1001 : 1011)
-              })
-          )
+          Effect.flatMap(Effect.scope, (readerScope) =>
+            Effect.acquireRelease(
+              Effect.callback<NodeWS.WebSocket>((resume) =>
+                wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                  upgraded = true
+                  resume(Effect.succeed(ws))
+                })
+              ),
+              (ws, exit) =>
+                Effect.sync(() => {
+                  // Only the request scope can have its exit rewritten by HTTP handling.
+                  const result = readerScope === requestScope ? handlerExit ?? exit : exit
+                  ws.close(Exit.isSuccess(result) ? 1000 : Cause.hasInterruptsOnly(result.cause) ? 1001 : 1011)
+                })
+            ))
       ))
       const context = Context.add(
         services,
