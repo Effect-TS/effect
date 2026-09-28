@@ -163,13 +163,21 @@ export const makeUpgradeHandler = <R, E>(
   httpApp: App.Default<E, R>,
   middleware?: Middleware.HttpMiddleware
 ) => {
-  const handledApp = App.toHandled(httpApp, handleResponse, middleware)
   return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
     function handler(
       nodeRequest: Http.IncomingMessage,
       socket: Duplex,
       head: Buffer
     ) {
+      let handlerCause: Cause.Cause<E> | undefined
+      const handledApp = App.toHandled(
+        Effect.tapErrorCause(httpApp, (cause) =>
+          Effect.sync(() => {
+            handlerCause = cause
+          })),
+        handleResponse,
+        middleware
+      )
       let upgraded = false
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
@@ -199,11 +207,12 @@ export const makeUpgradeHandler = <R, E>(
               ),
               (ws, exit) =>
                 Effect.sync(() => {
-                  if (exit._tag === "Success") {
+                  const failure = exit._tag === "Failure" ? exit.cause : handlerCause
+                  if (failure === undefined) {
                     ws.close(1000)
                     return
                   }
-                  const cause = Error.causeResponseStripped(exit.cause)[1]
+                  const cause = Error.causeResponseStripped(failure)[1]
                   ws.close(Option.exists(cause, Cause.isInterruptedOnly) ? 1001 : 1011)
                 })
             )
