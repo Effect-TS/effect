@@ -231,20 +231,21 @@ export const scopeTransferToStream = (
 const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
 
 /**
- * Returns the cause an HTTP request handler failed with, or `undefined` when
- * the handler succeeded or the scope is not a request scope.
+ * Returns the cause recorded while handling an HTTP failure in the given scope,
+ * or `undefined` if no cause was recorded there.
  *
  * **When to use**
  *
- * Use to react to how the handler exited from a request scope finalizer, for
+ * Use to react to the original HTTP failure from a scope finalizer, for
  * example to choose a WebSocket close code.
  *
  * **Details**
  *
- * A request scope closes with the exit of the response write, which carries
- * the derived response as a defect and can succeed even though the handler
- * failed. The returned cause is the handler's own, recorded before a response
- * was derived from it.
+ * The scope where the failure was handled may close with the exit of the
+ * response write, which can carry a derived response as a defect or succeed
+ * even though the handler failed. The cause is recorded before the response
+ * is derived from it. Middleware may cause this to be a child scope rather
+ * than the request scope.
  *
  * @stability unstable
  * @category resource management
