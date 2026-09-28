@@ -799,6 +799,41 @@ describe("HttpServer", () => {
   })
 
   describe("HttpServerRequest.upgrade", () => {
+    for (const [name, finish, code] of [
+      ["success", Effect.void, 1000],
+      ["interruption", Effect.interrupt, 1001],
+      ["failure", Effect.fail(new Error("handler failed")), 1011],
+      ["defect", Effect.die(new Error("handler defect")), 1011]
+    ] as const) {
+      it.scoped(`closes with ${code} on ${name}`, () =>
+        Effect.gen(function*() {
+          yield* HttpRouter.empty.pipe(
+            HttpRouter.get(
+              "/ws",
+              Effect.gen(function*() {
+                const socket = yield* HttpServerRequest.upgrade
+                yield* Effect.forkScoped(socket.runRaw(constVoid))
+                const write = yield* socket.writer
+                yield* write("ready")
+                yield* finish
+                return HttpServerResponse.empty()
+              }).pipe(Effect.scoped)
+            ),
+            HttpServer.serveEffect()
+          )
+          const address = (yield* HttpServer.HttpServer).address
+          assert(address._tag === "TcpAddress")
+          const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
+          assert.strictEqual(frames.length, 2)
+          assert.strictEqual(frames[0].opcode, 1)
+          assert.strictEqual(frames[0].payload.toString(), "ready")
+          assert.strictEqual(frames[1].opcode, 8)
+          assert.strictEqual(frames[1].payload.length, 2)
+          assert.strictEqual(frames[1].payload.readUInt16BE(0), code)
+          assert.strictEqual(trailing.length, 0)
+        }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+    }
+
     it.scoped("does not write the HTTP response to an upgraded connection", () =>
       Effect.gen(function*() {
         yield* HttpRouter.empty.pipe(
@@ -823,6 +858,7 @@ describe("HttpServer", () => {
         assert.strictEqual(frames[0].payload.toString(), "refused")
         assert.strictEqual(frames[1].opcode, 8)
         assert.strictEqual(frames[1].payload.readUInt16BE(0), 4400)
+        assert.strictEqual(frames[1].payload.subarray(2).toString(), "refused")
         assert.strictEqual(trailing.toString(), "")
       }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
