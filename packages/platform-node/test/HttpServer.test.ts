@@ -799,6 +799,37 @@ describe("HttpServer", () => {
   })
 
   describe("HttpServerRequest.upgrade", () => {
+    it.scoped("preserves middleware state across upgrade requests", () =>
+      Effect.gen(function*() {
+        const observed: Array<number> = []
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.get(
+            "/ws",
+            Effect.gen(function*() {
+              const socket = yield* HttpServerRequest.upgrade
+              yield* Effect.forkScoped(socket.runRaw(constVoid))
+              const write = yield* socket.writer
+              yield* write("ready")
+              return HttpServerResponse.empty()
+            }).pipe(Effect.scoped)
+          ),
+          HttpServer.serveEffect((app) => {
+            let count = 0
+            return Effect.zipRight(Effect.sync(() => {
+              observed.push(++count)
+            }), app)
+          })
+        )
+        const address = (yield* HttpServer.HttpServer).address
+        assert(address._tag === "TcpAddress")
+        for (let i = 0; i < 2; i++) {
+          const { frames } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
+          assert.strictEqual(frames[0].payload.toString(), "ready")
+          assert.strictEqual(frames[1].payload.readUInt16BE(0), 1000)
+        }
+        assert.deepStrictEqual(observed, [1, 2])
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
     for (const [name, finish, code] of [
       ["success", Effect.void, 1000],
       ["interruption", Effect.interrupt, 1001],
