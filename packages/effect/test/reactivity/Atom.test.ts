@@ -527,6 +527,69 @@ describe("Atom", { concurrent: false }, () => {
     unsubscribe()
   })
 
+  it("a stale dependent keeps its dependency", async () => {
+    const a = Atom.make(0)
+    let builds = 0
+    const dependency = Atom.make(() => ++builds)
+    const dependent = Atom.make((get) => get(a) + get(dependency)).pipe(Atom.keepAlive)
+    const r = AtomRegistry.make()
+    r.get(dependent)
+    r.set(a, 1)
+    await Effect.runPromise(Effect.yieldNow)
+    assert.strictEqual(r.get(dependent), 2)
+  })
+
+  it("a listener added to a stale node hears changes through a parent that rebuilds to the same value", () => {
+    const a = Atom.make(0)
+    const b = Atom.make(0)
+    const middle = Atom.make((get) => get(a) > 0 ? 1 : 0)
+    const derived = Atom.make((get) => get(middle) + get(b))
+    const r = AtomRegistry.make()
+    r.get(derived)
+    r.set(b, 5)
+    r.set(a, 1)
+    const seen: Array<number> = []
+    r.subscribe(derived, (value) => seen.push(value))
+    r.set(a, 0)
+    assert.deepStrictEqual(seen, [5])
+  })
+
+  it("recovers an observed derived atom after its build throws", () => {
+    const source = Atom.make(0)
+    const derived = Atom.make((get) => {
+      const value = get(source)
+      if (value === 1) throw new Error("build failed")
+      return value
+    })
+    const r = AtomRegistry.make()
+    const sourceValues: Array<number> = []
+    const derivedValues: Array<number> = []
+
+    assert.strictEqual(r.get(derived), 0)
+    r.subscribe(source, (value) => sourceValues.push(value))
+    r.subscribe(derived, (value) => derivedValues.push(value))
+
+    assert.throws(() => r.set(source, 1), /build failed/)
+    assert.deepStrictEqual(sourceValues, [1])
+
+    r.set(source, 2)
+    assert.deepStrictEqual(derivedValues, [2])
+  })
+
+  it("a build superseded while it runs is released", () => {
+    const p = Atom.make(0)
+    let finalized = 0
+    const n = Atom.make((get) => {
+      get.addFinalizer(() => finalized++)
+      if (get(p) === 0) get.set(p, 1)
+      return get(p)
+    })
+    const r = AtomRegistry.make()
+    r.subscribe(n, () => {})
+    r.get(n)
+    assert.strictEqual(finalized, 1)
+  })
+
   it("refresh derived before mount resolves base effect", async () => {
     const baseAtom = Atom.make(
       Effect.succeed("value").pipe(Effect.delay(100))
@@ -1081,6 +1144,43 @@ describe("Atom", { concurrent: false }, () => {
     })
     expect(count).toEqual(1)
     expect(r.get(derived)).toEqual("2b")
+  })
+
+  it.each([
+    { existingListener: false, expected: [0] },
+    { existingListener: true, expected: [0, 0] }
+  ])("delivers a batched value to a late subscriber (existing listener: $existingListener)", ({
+    existingListener,
+    expected
+  }) => {
+    const r = AtomRegistry.make()
+    const state = Atom.make(existingListener ? 1 : 0)
+    const seen: Array<number> = []
+
+    Atom.batch(() => {
+      if (existingListener) {
+        r.subscribe(state, () => {})
+        r.set(state, 0)
+      } else {
+        r.get(state)
+      }
+      r.subscribe(state, (value) => seen.push(value), { immediate: true })
+    })
+
+    assert.deepStrictEqual(seen, expected)
+    r.dispose()
+  })
+
+  it("does not queue an initialValues notification without listeners", () => {
+    const state = Atom.make(0)
+    const seen: Array<number> = []
+
+    Atom.batch(() => {
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(state, 10)] })
+      r.subscribe(state, (value) => seen.push(value), { immediate: true })
+    })
+
+    assert.deepStrictEqual(seen, [10])
   })
 
   it("runs Atom.fn writes from batch commit listeners", () => {
