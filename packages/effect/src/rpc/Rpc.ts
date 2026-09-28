@@ -687,8 +687,7 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
   never
 
 /**
- * Extracts the RPCs with the specified tag, or any tag in a union of tags,
- * from an RPC union.
+ * Extracts RPCs whose tags match the given tag or union of tags.
  *
  * @stability unstable
  * @category utility types
