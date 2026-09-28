@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve synchronous success values and failures from `Atom.fn` with `concurrent: true`.
+Fix concurrent `Atom.fn` calls to return their own results, including synchronous successes and failures.
