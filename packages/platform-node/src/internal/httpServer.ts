@@ -186,25 +186,38 @@ export const makeUpgradeHandler = <R, E>(
         }
         return nodeResponse_
       }
-      const upgradeEffect = Socket.fromWebSocket(Effect.flatMap(
-        lazyWss,
-        (wss) =>
-          Effect.acquireRelease(
-            Effect.async<globalThis.WebSocket>((resume) =>
-              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
-                upgraded = true
-                resume(Effect.succeed(ws as any))
-              })
-            ),
-            (ws) => Effect.sync(() => ws.close())
-          )
-      ))
+      const upgradeEffect = Effect.flatMap(Effect.scope, (scope) =>
+        Socket.fromWebSocket(Effect.flatMap(
+          lazyWss,
+          (wss) =>
+            Effect.acquireRelease(
+              Effect.async<globalThis.WebSocket>((resume) =>
+                wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                  upgraded = true
+                  resume(Effect.succeed(ws as any))
+                })
+              ),
+              (ws, exit) =>
+                Effect.sync(() => {
+                  if (exit._tag === "Success") {
+                    ws.close(1000)
+                    return
+                  }
+                  const cause = Error.causeResponseStripped(exit.cause)[1]
+                  ws.close(Option.exists(cause, Cause.isInterruptedOnly) ? 1001 : 1011)
+                })
+            )
+        ).pipe(Scope.extend(scope)))
+      )
       const fiber = runFork(
-        Effect.provideService(
-          handledApp,
-          ServerRequest.HttpServerRequest,
-          new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
-        )
+        Effect.scoped(Effect.gen(function*() {
+          const scope = yield* Effect.scope
+          yield* Effect.provideService(
+            handledApp,
+            ServerRequest.HttpServerRequest,
+            new ServerRequestImpl(nodeRequest, nodeResponse, Effect.provideService(upgradeEffect, Scope.Scope, scope))
+          )
+        }))
       )
       socket.on("close", () => {
         if (!socket.writableEnded) {
