@@ -77,7 +77,7 @@ import * as SchemaTransformation from "./SchemaTransformation.ts"
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from "./StandardSchema.ts"
 import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
-import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
+import type { IsUnion, RequiredKeys } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
 
 const TypeId = InternalMake.TypeId
@@ -5057,14 +5057,19 @@ export function refine<S extends Constraint, T extends S["Type"]>(
   return (schema: S): refine<T, S> =>
     make(SchemaAST.appendChecks(schema.ast, [SchemaAST.makeFilterByGuard(refinement, annotations)]), { schema })
 }
-type DistributeBrands<B> = UnionToIntersection<B extends infer U extends string ? Brand.Brand<U> : never>
+// A concrete key requires a property; broad and open template keys do not.
+type EnsureSingleBrandKey<K extends PropertyKey> = IsUnion<K> extends false
+  ? {} extends Record<K, unknown> ? never : unknown
+  : never
+// Collect all keys, including those not shared by every union member.
+type FromBrandKeys<A extends Brand.Brand<any>> = A extends unknown ? Brand.Brand.Keys<A> : never
 /**
  * Type-level representation returned by {@link brand}.
  *
  * @category branding
  * @since 3.10.0
  */
-export interface brand<S extends Constraint, B> extends
+export interface brand<S extends Constraint, B extends string> extends
   BottomLazy<
     S["ast"],
     brand<S, B>,
@@ -5076,13 +5081,13 @@ export interface brand<S extends Constraint, B> extends
     S["~encoded.optionality"]
   >
 {
-  readonly "Type": S["Type"] & DistributeBrands<B>
+  readonly "Type": S["Type"] & Brand.Brand<B>
   readonly "Encoded": S["Encoded"]
   readonly "DecodingServices": S["DecodingServices"]
   readonly "EncodingServices": S["EncodingServices"]
   readonly "~type.make.in": S["~type.make.in"]
-  readonly "~type.make": S["Type"] & DistributeBrands<B>
-  readonly "Iso": S["Type"] & DistributeBrands<B>
+  readonly "~type.make": S["Type"] & Brand.Brand<B>
+  readonly "Iso": S["Type"] & Brand.Brand<B>
   readonly schema: S
   readonly identifier: string
 }
@@ -5097,15 +5102,17 @@ export interface brand<S extends Constraint, B> extends
  *
  * **Gotchas**
  *
- * `brand` adds brand metadata and narrows the TypeScript output type, but it
- * does not add runtime checks.
+ * - `identifier` must be a single concrete string literal. Widened strings,
+ *   unions, and open template literal types are rejected.
+ * - `brand` adds brand metadata and narrows the TypeScript output type, but it
+ *   does not add runtime checks.
  *
  * @see {@link fromBrand} for applying a Brand constructor's checks along with the brand tag
  *
  * @category branding
  * @since 3.10.0
  */
-export function brand<B extends string>(identifier: B) {
+export function brand<B extends string>(identifier: B & EnsureSingleBrandKey<B>) {
   return <S extends ConstraintRebuildable>(schema: S): brand<S["Rebuild"], B> =>
     make(SchemaAST.brand(schema.ast, identifier), { schema, identifier })
 }
@@ -5113,15 +5120,31 @@ export function brand<B extends string>(identifier: B) {
  * Creates a branded schema from a {@link Brand.Constructor}, applying the
  * constructor's checks and brand tag to the underlying schema.
  *
+ * **When to use**
+ *
+ * Use to reuse the checks from a constructor with one concrete brand key.
+ *
+ * **Gotchas**
+ *
+ * `identifier` must match the constructor's only brand key. Apply `fromBrand`
+ * repeatedly to compose distinct brands, and use {@link Union} to represent
+ * alternatives.
+ *
+ * @see {@link brand} for adding a brand without constructor checks
+ *
  * @category branding
  * @since 3.10.0
  */
-export function fromBrand<A extends Brand.Brand<any>>(identifier: string, ctor: Brand.Constructor<A>) {
+export function fromBrand<A extends Brand.Brand<any>>(
+  identifier: Brand.Brand.Keys<A> & string,
+  ctor: Brand.Constructor<A> & EnsureSingleBrandKey<FromBrandKeys<A>>
+) {
+  type B = Brand.Brand.Keys<A> & string
   return <S extends Top & { readonly "Type": Brand.Brand.Unbranded<A> }>(
     self: S
-  ): brand<S["Rebuild"], Brand.Brand.Keys<A>> => {
-    return (ctor.checks ? self.check(...ctor.checks) : self).pipe(brand(identifier))
-  }
+  ): brand<S["Rebuild"], B> =>
+    // The constructor already guarantees a single concrete brand key.
+    (ctor.checks ? self.check(...ctor.checks) : self).pipe(brand<B>(identifier as B & EnsureSingleBrandKey<B>))
 }
 /**
  * Type-level representation returned by {@link middlewareDecoding}.
