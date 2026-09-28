@@ -20,15 +20,31 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
 import * as References from "effect/References"
 import * as Scope from "effect/Scope"
-import * as Socket from "effect/unstable/socket/Socket"
-import * as SocketServer from "effect/unstable/socket/SocketServer"
+import * as Socket from "effect/socket/Socket"
+import * as SocketServer from "effect/socket/SocketServer"
 import type * as Http from "node:http"
 import * as Net from "node:net"
 import * as Tls from "node:tls"
 import * as NodeSocket from "./NodeSocket.ts"
 import { NodeWS } from "./NodeSocket.ts"
+
+const isDeno = "Deno" in globalThis
+
+const socketAddressFromNode = (
+  address: string | Net.AddressInfo
+): Effect.Effect<NetAddress.SocketAddress, SocketServer.SocketServerError> =>
+  typeof address === "string"
+    ? Effect.succeed(NetAddress.unixPathAddress(address))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(address.address, address.port)).pipe(
+      Effect.mapError((cause) =>
+        new SocketServer.SocketServerError({
+          reason: new SocketServer.SocketServerOpenError({ cause })
+        })
+      )
+    )
 
 /**
  * Service tag for the Node `IncomingMessage` associated with the current
@@ -170,7 +186,7 @@ export const makeWebSocket: (
     // pause immediately so nothing is dropped before a handler acquires the
     // socket's reader
     conn.pause()
-    onConnection(conn, req)
+    onConnection(conn, req as Http.IncomingMessage)
   })
 
   yield* Effect.callback<void, SocketServer.SocketServerError>((resume) => {
@@ -226,18 +242,9 @@ export const makeWebSocket: (
     )
   })
 
-  const address = server.address()!
+  const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
-    address: typeof address === "string" ?
-      {
-        _tag: "UnixAddress",
-        path: address
-      } :
-      {
-        _tag: "TcpAddress",
-        hostname: address.address,
-        port: address.port
-      },
+    address: boundAddress,
     run
   })
 })
@@ -297,8 +304,9 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
   server = options.createServer()
   server.on(options.connectionEvent, (conn: Net.Socket) => {
     // pause immediately so nothing is dropped before a handler acquires the
-    // socket's reader
-    conn.pause()
+    // socket's reader. Deno's node:net compatibility layer leaves the socket
+    // non-flowing but breaks `readable` events after an explicit pause.
+    if (!isDeno) conn.pause()
     onConnection(conn)
   })
   server.on("error", (err) => Deferred.doneUnsafe(errorDeferred, Exit.fail(err)))
@@ -352,7 +360,8 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
                   conn.destroySoon()
                 }
               })
-          )
+          ),
+          { tlsServer: true }
         ),
         Effect.flatMap(handler),
         Effect.catchCause(reportUnhandledError),
@@ -372,18 +381,9 @@ const makeNetServer = Effect.fnUntraced(function*(options: {
     })
   })
 
-  const address = server.address()!
+  const boundAddress = yield* socketAddressFromNode(server.address()!)
   return SocketServer.SocketServer.of({
-    address: typeof address === "string" ?
-      {
-        _tag: "UnixAddress",
-        path: address
-      } :
-      {
-        _tag: "TcpAddress",
-        hostname: address.address,
-        port: address.port
-      },
+    address: boundAddress,
     run
   })
 })

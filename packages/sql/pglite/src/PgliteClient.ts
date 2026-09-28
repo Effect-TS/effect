@@ -18,12 +18,11 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
-import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
 import {
   AuthenticationError,
   AuthorizationError,
@@ -37,9 +36,10 @@ import {
   StatementTimeoutError,
   UniqueViolation,
   UnknownError
-} from "effect/unstable/sql/SqlError"
-import type { Custom, Fragment } from "effect/unstable/sql/Statement"
-import * as Statement from "effect/unstable/sql/Statement"
+} from "effect/sql/SqlError"
+import type { Custom, Fragment } from "effect/sql/Statement"
+import * as Statement from "effect/sql/Statement"
+import * as Stream from "effect/Stream"
 
 /**
  * Runtime type identifier used to mark `PgliteClient` values.
@@ -70,6 +70,8 @@ export interface PgliteClient extends Client.SqlClient {
   readonly json: (_: unknown) => Fragment
   /**
    * Subscribes to a PGlite notification channel.
+   *
+   * **Details**
    *
    * The effect completes after the listener is installed. Notifications are
    * buffered in the returned dequeue, and the subscription remains active
@@ -227,6 +229,7 @@ export const fromClient = (
       acquirer,
       compiler,
       transactionAcquirer,
+      releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       spanAttributes,
       transformRows
     })
@@ -427,13 +430,12 @@ export const makeCompiler = (
     onCustom(type, placeholder, withoutTransform) {
       switch (type.kind) {
         case "PgJson": {
+          const value = withoutTransform || transformValue === undefined
+            ? type.paramA
+            : transformValue(type.paramA)
           return [
             placeholder(undefined),
-            [
-              withoutTransform || transformValue === undefined
-                ? type.paramA
-                : transformValue(type.paramA)
-            ]
+            [typeof value === "string" ? JSON.stringify(value) : value]
           ]
         }
       }

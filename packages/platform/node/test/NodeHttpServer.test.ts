@@ -2,16 +2,10 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { ByteSize, Effect, Option } from "effect"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
-import * as Latch from "effect/Latch"
-import * as Layer from "effect/Layer"
-import * as ManagedRuntime from "effect/ManagedRuntime"
-import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
-import * as Tracer from "effect/Tracer"
 import {
   Cookies,
   FetchHttpClient,
@@ -27,9 +21,16 @@ import {
   HttpServerResponse,
   Multipart,
   UrlParams
-} from "effect/unstable/http"
-import * as HttpApiError from "effect/unstable/httpapi/HttpApiError"
-import { Socket } from "effect/unstable/socket"
+} from "effect/http"
+import * as HttpApiError from "effect/http-api/HttpApiError"
+import * as Latch from "effect/Latch"
+import * as Layer from "effect/Layer"
+import * as ManagedRuntime from "effect/ManagedRuntime"
+import * as NetAddress from "effect/net/NetAddress"
+import * as Schema from "effect/Schema"
+import { Socket } from "effect/socket"
+import * as Stream from "effect/Stream"
+import * as Tracer from "effect/Tracer"
 import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
@@ -46,6 +47,45 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("keeps routes isolated between independent servers", () =>
+    Effect.gen(function*() {
+      const publicServer = Http.createServer()
+      const internalServer = Http.createServer()
+
+      const Health = Layer.effectDiscard(
+        Effect.flatMap(HttpRouter.HttpRouter, (router) =>
+          router.add("GET", "/health", HttpServerResponse.text("healthy")))
+      )
+      const publicApp = Layer.mergeAll(
+        HttpRouter.add("GET", "/public", HttpServerResponse.text("public")),
+        Health
+      )
+      const internalApp = Layer.mergeAll(
+        HttpRouter.add("GET", "/internal", HttpServerResponse.text("internal")),
+        Health
+      )
+
+      yield* Layer.mergeAll(
+        HttpRouter.serve(publicApp, { disableListenLog: true, disableLogger: true }).pipe(
+          Layer.provide(NodeHttpServer.layer(() =>
+            publicServer, { port: 0 }))
+        ),
+        HttpRouter.serve(internalApp, { disableListenLog: true, disableLogger: true }).pipe(
+          Layer.provide(NodeHttpServer.layer(() => internalServer, { port: 0 }))
+        )
+      ).pipe(Layer.build)
+
+      const status = (port: number, path: string) =>
+        Effect.promise(() => fetch("http://localhost:" + port + path).then((response) => response.status))
+
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/public"), 200)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/internal"), 200)
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/health"), 200)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/health"), 200)
+      assert.strictEqual(yield* status(tcpPort(publicServer), "/internal"), 404)
+      assert.strictEqual(yield* status(tcpPort(internalServer), "/public"), 404)
+    }))
+
   it.effect("schema", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
@@ -84,6 +124,24 @@ describe("HttpServer", () => {
         body: HttpBody.jsonUnsafe({ value: "original" })
       })
       assert.strictEqual(response.status, 204)
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect.each(["Uploaded", ""] as const)("forwards status text %j", (statusText) =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/",
+        HttpServerResponse.empty({ status: 201, statusText })
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      assert.isTrue(NetAddress.isInetAddress(server.address))
+      if (!NetAddress.isInetAddress(server.address)) return
+      const port = server.address.port
+
+      assert.strictEqual(yield* getStatusText(port), statusText)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.effect("formData", () =>
@@ -159,7 +217,7 @@ describe("HttpServer", () => {
       ).pipe(
         HttpRouter.serve,
         Layer.build,
-        Effect.provideService(Multipart.MaxFileSize, 100)
+        Effect.provideService(Multipart.MaxFileSize, ByteSize.bytes(100))
       )
       const client = yield* HttpClient.HttpClient
       const formData = new FormData()
@@ -187,7 +245,7 @@ describe("HttpServer", () => {
       ).pipe(
         HttpRouter.serve,
         Layer.build,
-        Effect.provideService(Multipart.MaxFieldSize, 100)
+        Effect.provideService(Multipart.MaxFieldSize, ByteSize.bytes(100))
       )
       const client = yield* HttpClient.HttpClient
       const formData = new FormData()
@@ -864,7 +922,7 @@ describe("HttpServer", () => {
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* Effect.orDie(request.upgrade)
           yield* Effect.gen(function*() {
-            const pull = yield* socket.reader
+            const { pull } = yield* socket.reader
             while (true) {
               yield* pull
             }
@@ -880,7 +938,7 @@ describe("HttpServer", () => {
         Layer.build
       )
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
 
       const connect = (perMessageDeflate: boolean) =>
         Effect.acquireRelease(
@@ -909,7 +967,7 @@ describe("HttpServer", () => {
         Layer.build
       )
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
 
       const uncaught: Array<unknown> = []
       const onUncaught = (error: unknown) => uncaught.push(error)
@@ -958,7 +1016,7 @@ describe("HttpServer", () => {
         Layer.build
       )
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(port, "/ws"))
       assert.strictEqual(frames.length, 2)
       assert.strictEqual(frames[0].opcode, 1)
@@ -979,7 +1037,7 @@ describe("HttpServer", () => {
         Layer.build
       )
       const server = yield* HttpServer.HttpServer
-      const port = (server.address as HttpServer.TcpAddress).port
+      const port = (server.address as NetAddress.InetAddress).port
       const response = yield* Effect.promise(() => rawUpgradeRequest(port, "/no-ws"))
       assert.match(response, /^HTTP\/1\.1 426/)
       assert.match(response, /upgrade refused/)
@@ -997,6 +1055,16 @@ const layerTestWebsocket = HttpServer.layerTestClient.pipe(
     websocket: { perMessageDeflate: true }
   }))
 )
+
+const getStatusText = (port: number) =>
+  Effect.callback<string | undefined, Error>((resume) => {
+    const request = Http.get({ hostname: "127.0.0.1", port, agent: false }, (response) => {
+      response.resume()
+      response.on("end", () => resume(Effect.succeed(response.statusMessage)))
+    })
+    request.on("error", (error) => resume(Effect.fail(error)))
+    return Effect.sync(() => request.destroy())
+  })
 
 const tcpPort = (server: Http.Server): number => {
   const address = server.address()

@@ -5,6 +5,68 @@ import * as SchemaTransformation from "effect/SchemaTransformation"
 import { TestSchema } from "effect/testing"
 
 describe("TestSchema", () => {
+  describe("ast.fields.equals", () => {
+    const equals = TestSchema.Asserts.ast.fields.equals
+
+    it("compares string and symbol fields by AST", () => {
+      const key = Symbol("field")
+      const fields = () => ({ field: Schema.Literal("value"), [key]: Schema.Literal("value") })
+      const left = fields()
+      const right = fields()
+      assert.notStrictEqual(left[key], right[key])
+      equals(left, right)
+    })
+
+    it("rejects missing or structurally different symbol fields", () => {
+      const key = Symbol("field")
+      assert.throws(() => equals({ [key]: Schema.Literal("left") }, { [key]: Schema.Literal("right") }))
+      assert.throws(() => equals({ [key]: Schema.Literal("value") }, {}))
+      assert.throws(() =>
+        equals(
+          { [key]: Schema.Literal("value").annotate({ title: "Field" }) },
+          { [key]: Schema.Literal("value") }
+        )
+      )
+      assert.throws(() =>
+        equals({ [key]: Schema.optionalKey(Schema.Literal("value")) }, { [key]: Schema.Literal("value") })
+      )
+    })
+
+    it("preserves symbol identity even with equal descriptions", () => {
+      const left: symbol = Symbol("field")
+      const right: symbol = Symbol("field")
+      const schema = Schema.Literal("value")
+      assert.notStrictEqual(left, right)
+      assert.throws(() => equals({ [left]: schema }, { [right]: schema }))
+    })
+
+    it("preserves own __proto__ and constructor fields", () => {
+      const fields = () => ({ ["__proto__"]: Schema.Literal("proto"), constructor: Schema.Literal("ctor") })
+      const left = fields()
+      assert.isTrue(Object.hasOwn(left, "__proto__"))
+      assert.isTrue(Object.hasOwn(left, "constructor"))
+      equals(left, fields())
+      assert.throws(() => equals(left, { constructor: Schema.Literal("ctor") }))
+      assert.throws(() => equals(left, { ["__proto__"]: Schema.Literal("other"), constructor: Schema.Literal("ctor") }))
+    })
+
+    it("uses the Struct own-key contract for non-enumerable fields", () => {
+      const key = Symbol("hidden")
+      const fields = (value: string): Schema.Struct.Fields =>
+        Object.defineProperties({}, {
+          hidden: { value: Schema.Literal(value) },
+          [key]: { value: Schema.Literal(value) }
+        })
+      const left = fields("value")
+      const right = fields("value")
+      assert.deepStrictEqual(Object.keys(left), [])
+      assert.deepStrictEqual(Schema.Struct(left).ast.propertySignatures.map((field) => field.name), ["hidden", key])
+      equals(left, right)
+      equals(left, { hidden: Schema.Literal("value"), [key]: Schema.Literal("value") })
+      assert.throws(() => equals(left, fields("other")))
+    })
+  })
+
   it("decoding", async () => {
     const schema = Schema.FiniteFromString.check(Schema.isGreaterThan(0))
     const asserts = new TestSchema.Asserts(schema)

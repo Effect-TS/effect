@@ -4,11 +4,41 @@ Helpers for testing Effect-based code with [Vitest](https://vitest.dev). Provide
 
 ## Installation
 
-Ensure a supported `vitest` version is installed (`^4.1.0`), then add the package as a dev dependency:
+Install Vitest 5 (`>=5.0.0 <6.0.0`) with the package as a dev dependency:
 
 ```sh
-npm install -D vitest @effect/vitest@rc
+npm install -D vitest@^5 @effect/vitest@rc
 ```
+
+Vitest 5 supports Node.js `^22.12.0 || ^24.0.0 || >=26.0.0` and Vite 6.4 or later within majors 6, 7, and 8.
+
+## Migrating to Vitest 5
+
+The package re-exports Vitest's public API. Upgrading removes the same exports and helpers that Vitest 5 removes; it does not provide compatibility shims.
+
+- Replace `test.sequential`, `it.sequential`, `describe.sequential`, and `{ sequential: true }` with `{ concurrent: false }`. Set this explicitly for suites that share mutable state or depend on test order when concurrency is enabled.
+- Replace the top-level `bench` import with the test-context fixture:
+
+  ```ts
+  import { test } from "@effect/vitest"
+
+  test("sort", async ({ bench }) => {
+    await bench("sort", () => [3, 1, 2].sort()).run()
+  })
+  ```
+
+  Use `test.skip`, `test.only`, or `test.todo` on the enclosing test. The old `BenchFactory`, `BenchFunction`, `BenchTask`, `BenchTaskResult`, `Benchmark`, `BenchmarkAPI`, `BenchmarkResult`, and `BenchmarkRunner` exports are removed. Use the fixture's `Bench`, `BenchFn`, `BenchRegistration`, and `BenchResult` types as appropriate; custom benchmark engines use `BenchmarkProvider`.
+- Change `Assertion<T>` to `Assertion<void, T>` for synchronous assertions or `Assertion<Promise<void>, T>` for asynchronous assertions. Augment `Matchers<R, T>` in `vitest` for custom matchers. Vitest's assertion state is no longer shared with `@vitest/expect`.
+- The `ExpectPollOptions` export is removed. Derive the options type with `NonNullable<Parameters<typeof expect.poll>[1]>` when needed.
+- Import reporter types from `vitest/node` and environment or snapshot APIs from `vitest/runtime`.
+
+Vitest 5 clears mock call history before each test by default and requires asynchronous assertions to be awaited. JSON reporters write to a file by default; use an explicit `outputFile` when consuming their results. See the [Vitest migration guide](https://vitest.dev/guide/migration/) for the remaining upstream changes.
+
+The Effect helpers retain their existing calling convention: `it.effect(name, effect, options)`, `it.live(name, effect, options)`, shared layers, and property tests.
+
+Both `layer` and `it.layer` accept `{ concurrent: false }` to serialize a named shared-layer suite, or `{ concurrent: true }` to run its tests concurrently. Omitting the option inherits suite concurrency; nested named layers can override it. Anonymous layers always inherit the enclosing suite's concurrency, regardless of the option.
+
+In concurrent tests, use the callback's `ctx.expect` so snapshots and assertion counts belong to the right test.
 
 ## Documentation
 
@@ -284,6 +314,34 @@ it.effect("run with scope", () =>
     yield* resource
   }))
 ```
+
+## Using Vitest Fixtures
+
+To use [Vitest fixtures](https://vitest.dev/guide/test-context#extend-test-context) in Effect tests, pass a test extended with `test.extend` to `makeMethods`. It returns the same helpers as `it`, and each test receives the fixtures it destructures from its context.
+
+**Example** (Sharing a Database Across a Test File)
+
+```ts
+import { assert, makeMethods, test } from "@effect/vitest"
+import { PGlite } from "@electric-sql/pglite"
+import { Effect } from "effect"
+
+const it = makeMethods(
+  test.extend("db", { scope: "file" }, async ({}, { onCleanup }) => {
+    const db = await PGlite.create()
+    onCleanup(() => db.close())
+    return db
+  })
+)
+
+it.effect("runs a query", ({ db }) =>
+  Effect.gen(function*() {
+    const result = yield* Effect.promise(() => db.query("select 1 as one"))
+    assert.deepStrictEqual(result.rows, [{ one: 1 }])
+  }))
+```
+
+Destructure the fixtures a test uses: Vitest reads those names to decide what to set up, and rejects `(ctx) =>` once any fixture is defined. `it.effect.each` passes the context after the test case. Property tests cannot request fixtures, but auto fixtures still run. Build `makeMethods` from `test` or `test.extend(...)`, not from the test a `describe` callback receives: that API is bound to the outer suite, so tests in a named `it.layer` can end up outside their named suite and miss its hooks and concurrency setting.
 
 ## Writing Tests with `it.flakyTest`
 

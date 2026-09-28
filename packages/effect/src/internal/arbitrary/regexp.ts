@@ -39,6 +39,7 @@ interface Interval {
   readonly maximum: number
 }
 
+/** @internal */
 export interface Compiled {
   readonly minimumLength: number
   readonly generate: (
@@ -98,7 +99,7 @@ function characterMetadata(intervals: ReadonlyArray<Interval>, length: number) {
     preferred: preferredCodePoints.filter((codePoint) =>
       codePointLength(codePoint) === length && codePointInIntervals(codePoint, intervals)
     ),
-    count: intervals.reduce((count, interval) => count + countCodePoints(interval, length), 0)
+    count: intervals.reduce((count, interval) => count + countCodePointsInInterval(interval, length), 0)
   }
 }
 
@@ -217,7 +218,7 @@ function codePointLength(codePoint: number): number {
   return codePoint > 0xffff ? 2 : 1
 }
 
-function countCodePoints(interval: Interval, length: number): number {
+function countCodePointsInInterval(interval: Interval, length: number): number {
   const minimum = length === 1 ? interval.minimum : Math.max(interval.minimum, 0x10000)
   const maximum = length === 1 ? Math.min(interval.maximum, 0xffff) : interval.maximum
   if (minimum > maximum) return 0
@@ -243,7 +244,7 @@ function generateCharacter(node: Character, length: number, state: Model.Generat
   if (count === 0) return undefined
   let offset = Model.randomInt(state, 0, count - 1)
   for (const interval of node.intervals) {
-    const size = countCodePoints(interval, length)
+    const size = countCodePointsInInterval(interval, length)
     if (offset < size) return globalThis.String.fromCodePoint(codePointAtOffset(interval, length, offset))
     offset -= size
   }
@@ -254,7 +255,7 @@ function canonicalCharacter(node: Character, length: number): string | undefined
   const preferred = node.preferred[length - 1][0]
   if (preferred !== undefined) return globalThis.String.fromCodePoint(preferred)
   for (const interval of node.intervals) {
-    if (countCodePoints(interval, length) > 0) {
+    if (countCodePointsInInterval(interval, length) > 0) {
       return globalThis.String.fromCodePoint(codePointAtOffset(interval, length, 0))
     }
   }
@@ -587,8 +588,8 @@ function possibleLengths(node: Node, limit: number, cache: LengthCache): Lengths
     }
     case "Character": {
       out = emptyLengths(limit)
-      if (node.intervals.some((interval) => countCodePoints(interval, 1) > 0) && limit >= 1) out[1] = true
-      if (node.intervals.some((interval) => countCodePoints(interval, 2) > 0) && limit >= 2) out[2] = true
+      if (node.intervals.some((interval) => countCodePointsInInterval(interval, 1) > 0) && limit >= 1) out[1] = true
+      if (node.intervals.some((interval) => countCodePointsInInterval(interval, 2) > 0) && limit >= 2) out[2] = true
       break
     }
     case "Alternation": {
@@ -823,6 +824,7 @@ function addUnanchoredSurroundings(node: Node, source: string, flags: string): N
  * exact UTF-16 length analysis; no fast-check parser or arbitrary is included.
  * https://github.com/dubzzz/fast-check/blob/v4.9.0/packages/fast-check/src/arbitrary/stringMatching.ts
  */
+/** @internal */
 export function compile(pattern: Pattern): Compiled | undefined {
   const { flags, source } = pattern
   // Case folding, multiline assertions, and Unicode sets require dedicated AST semantics. Falling back preserves the

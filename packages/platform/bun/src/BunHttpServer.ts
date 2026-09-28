@@ -23,32 +23,34 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
 import { constVoid, flow } from "effect/Function"
+import * as Cookies from "effect/http/Cookies"
+import * as Etag from "effect/http/Etag"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as Headers from "effect/http/Headers"
+import type { HttpClient } from "effect/http/HttpClient"
+import * as HttpEffect from "effect/http/HttpEffect"
+import * as IncomingMessage from "effect/http/HttpIncomingMessage"
+import type { HttpMethod } from "effect/http/HttpMethod"
+import type { HttpPlatform } from "effect/http/HttpPlatform"
+import * as Server from "effect/http/HttpServer"
+import * as Error from "effect/http/HttpServerError"
+import * as ServerRequest from "effect/http/HttpServerRequest"
+import * as ServerResponse from "effect/http/HttpServerResponse"
+import type * as Multipart from "effect/http/Multipart"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
+import * as Result from "effect/Result"
 import * as Scheduler from "effect/Scheduler"
 import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
+import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Cookies from "effect/unstable/http/Cookies"
-import * as Etag from "effect/unstable/http/Etag"
-import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
-import * as Headers from "effect/unstable/http/Headers"
-import type { HttpClient } from "effect/unstable/http/HttpClient"
-import * as HttpEffect from "effect/unstable/http/HttpEffect"
-import * as IncomingMessage from "effect/unstable/http/HttpIncomingMessage"
-import type { HttpMethod } from "effect/unstable/http/HttpMethod"
-import type { HttpPlatform } from "effect/unstable/http/HttpPlatform"
-import * as Server from "effect/unstable/http/HttpServer"
-import * as Error from "effect/unstable/http/HttpServerError"
-import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
-import type * as ServerResponse from "effect/unstable/http/HttpServerResponse"
-import type * as Multipart from "effect/unstable/http/Multipart"
-import * as UrlParams from "effect/unstable/http/UrlParams"
-import * as Socket from "effect/unstable/socket/Socket"
 import * as Platform from "./BunHttpPlatform.ts"
 import * as BunMultipart from "./BunMultipart.ts"
 import * as BunServices from "./BunServices.ts"
@@ -115,6 +117,22 @@ export const make = Effect.fnUntraced(
     }
   ) {
     const scope = yield* Effect.scope
+    let listenOptions = options
+    if (!("unix" in options) || options.unix === undefined) {
+      const internetOptions = options as Bun.Serve.HostnamePortServeOptions<WebSocketContext>
+      let hostname = internetOptions.hostname ?? "::"
+      if (Result.isFailure(NetAddress.ipFromString(hostname))) {
+        hostname = yield* Effect.tryPromise({
+          try: async () => {
+            const result = await Bun.dns.lookup(hostname, { socketType: "tcp" })
+            if (result.length === 0) throw new globalThis.Error(`Could not resolve hostname: ${hostname}`)
+            return result[0].address
+          },
+          catch: (cause) => new Error.ServeError({ cause })
+        })
+      }
+      listenOptions = { ...options, hostname }
+    }
     const { compressionThreshold = MIN_COMPRESSIBLE_SIZE, ...websocket } = options.websocket ?? {}
     const handlerStack: Array<(request: Request, server: BunServer<WebSocketContext>) => Response | Promise<Response>> =
       [
@@ -123,7 +141,7 @@ export const make = Effect.fnUntraced(
         }
       ]
     const server = Bun.serve<WebSocketContext, R>({
-      ...options as ServeOptions<R>,
+      ...listenOptions as ServeOptions<R>,
       fetch: handlerStack[0],
       websocket: {
         ...websocket,
@@ -154,8 +172,14 @@ export const make = Effect.fnUntraced(
 
     yield* Scope.addFinalizer(scope, shutdown)
 
+    const address = "unix" in options && options.unix !== undefined
+      ? NetAddress.unixPathAddress(options.unix)
+      : yield* Effect.fromResult(NetAddress.inetAddressFromIpString(server.hostname!, server.port!)).pipe(
+        Effect.mapError((cause) => new Error.ServeError({ cause }))
+      )
+
     return Server.make({
-      address: { _tag: "TcpAddress", port: server.port!, hostname: server.hostname! },
+      address,
       serve: Effect.fnUntraced(function*(httpApp, middleware) {
         const parent = yield* Effect.fiber
         const services = parent.context
@@ -184,11 +208,17 @@ export const make = Effect.fnUntraced(
         yield* Scope.addFinalizerExit(serveScope, () => {
           const index = handlerStack.indexOf(handler)
           if (index !== -1) handlerStack.splice(index, 1)
-          server.reload({ fetch: handlerStack[handlerStack.length - 1] })
+          server.reload({
+            fetch: handlerStack[handlerStack.length - 1],
+            ...(options.routes === undefined ? undefined : { routes: options.routes })
+          })
           return handlerStack.length === 1 ? preemptiveShutdown : Effect.void
         })
         handlerStack.push(handler)
-        server.reload({ fetch: handler })
+        server.reload({
+          fetch: handler,
+          ...(options.routes === undefined ? undefined : { routes: options.routes })
+        })
       })
     })
   }
@@ -202,6 +232,9 @@ const makeResponse = (
   context: Context.Context<never>,
   scope: Scope.Scope
 ): Response => {
+  if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
+    return ServerResponse.toWeb(response, { withoutBody: true })
+  }
   const fields: {
     headers: globalThis.Headers
     status?: number
@@ -221,16 +254,15 @@ const makeResponse = (
     fields.statusText = response.statusText
   }
 
-  if (request.method === "HEAD") {
-    return new Response(undefined, fields)
-  }
   response = HttpEffect.scopeTransferToStream(response)
   const body = response.body
   switch (body._tag) {
     case "Empty": {
       return new Response(undefined, fields)
     }
-    case "Uint8Array":
+    case "Uint8Array": {
+      return new Response(body.text ?? body.body as any, fields)
+    }
     case "Raw": {
       if (body.body instanceof Response) {
         for (const [key, value] of fields.headers.entries()) {
@@ -270,7 +302,7 @@ export const layerServer: <R extends string>(
     readonly gracefulShutdownTimeout?: Duration.Input | undefined
     readonly websocket?: WebSocketOptions | undefined
   }
-) => Layer.Layer<Server.HttpServer> = flow(make, Layer.effect(Server.HttpServer)) as any
+) => Layer.Layer<Server.HttpServer, Error.ServeError> = flow(make, Layer.effect(Server.HttpServer)) as any
 
 /**
  * Layer that provides Bun HTTP support services: `HttpPlatform`, weak ETag generation, and `BunServices`.
@@ -304,7 +336,8 @@ export const layer = <R extends string>(
   | Server.HttpServer
   | HttpPlatform
   | Etag.Generator
-  | BunServices.BunServices
+  | BunServices.BunServices,
+  Error.ServeError
 > => Layer.mergeAll(layerServer(options), layerHttpServices)
 
 /**
@@ -319,7 +352,7 @@ export const layerTest: Layer.Layer<
   Layer.provide(FetchHttpClient.layer.pipe(
     Layer.provide(Layer.succeed(FetchHttpClient.RequestInit)({ keepalive: false }))
   )),
-  Layer.provideMerge(layer({ port: 0 }))
+  Layer.provideMerge(Layer.orDie(layer({ hostname: "127.0.0.1", port: 0 })))
 )
 
 /**
@@ -338,7 +371,7 @@ export const layerConfig = <R extends string>(
   >
 ): Layer.Layer<
   Server.HttpServer | HttpPlatform | FileSystem.FileSystem | Etag.Generator | Path.Path,
-  ConfigError
+  ConfigError | Error.ServeError
 > =>
   Layer.mergeAll(
     Layer.effect(Server.HttpServer)(Effect.flatMap(Config.unwrap(options), make)),
@@ -672,18 +705,20 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             })
           )
 
-          // @effect-diagnostics-next-line returnEffectInGen:off
-          return Effect.callback<
-            Arr.NonEmptyReadonlyArray<Uint8Array | string>,
-            Socket.SocketError
-          >((resumeRead) => {
-            if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
-            if (error !== undefined) return resumeRead(Effect.fail(error))
-            waiter = resumeRead
-            return Effect.sync(() => {
-              if (waiter === resumeRead) waiter = undefined
-            })
-          })
+          return {
+            pull: Effect.callback<
+              Arr.NonEmptyReadonlyArray<Uint8Array | string>,
+              Socket.SocketError
+            >((resumeRead) => {
+              if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
+              if (error !== undefined) return resumeRead(Effect.fail(error))
+              waiter = resumeRead
+              return Effect.sync(() => {
+                if (waiter === resumeRead) waiter = undefined
+              })
+            }),
+            upgrade: Socket.SocketUpgradeError.unsupported
+          }
         })
 
         return Socket.make({ reader, writer })

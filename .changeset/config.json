@@ -17,6 +17,7 @@
       "effect",
       "@effect/ai-anthropic",
       "@effect/ai-openai",
+      "@effect/ai-typesafe",
       "@effect/ai-openai-compat",
       "@effect/ai-openrouter",
       "@effect/atom-react",

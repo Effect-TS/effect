@@ -323,7 +323,7 @@ export const fromTransform = <In, A, E, R, L = never>(
  *   Channel.pipeTo(Sink.toChannel(Sink.sum))
  * )
  *
- * await Effect.runPromise(Channel.runDone(channel)) // => [6]
+ * await Effect.runPromise(Channel.runDrain(channel)) // => [6]
  * ```
  *
  * @category constructors
@@ -1247,7 +1247,12 @@ export const flatMap: {
             return upstream
           }),
           scope
-        )
+        ).pipe(Effect.map((end): End<A1, L | L1> => {
+          if (!leftover) {
+            return end
+          }
+          return [end[0], end[1] ? [...end[1], ...leftover] : leftover]
+        }))
     )
   }))
 

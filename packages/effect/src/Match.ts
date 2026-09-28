@@ -22,7 +22,7 @@ const TypeId = internal.TypeId
 
 // The conditional must stay deferred until P is inferred. Replacing it with an
 // intersection loses contextual typing for nested generic calls (microsoft/TypeScript#52864).
-type Contextual<P, Fallback> = internal.Contextual<P, Fallback>
+type Contextual<P, Fallback> = [P] extends [never] ? Fallback : P
 
 type TagHandlers<D extends string, R, Ret> = {
   readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => Ret
@@ -332,10 +332,13 @@ export const type: <I>() => Matcher<I, Types.Without<never>, I, never, never> = 
 /**
  * Creates a reusable matcher from a function that selects the value to match.
  *
+ * **Details**
+ *
  * The compiled matcher keeps the selector's original argument list. Case
  * handlers receive the narrowed selected value followed by those arguments.
  *
- * @example
+ * **Example** (Creating a reusable matcher)
+ *
  * ```ts import.meta.vitest
  * import { Match } from "effect"
  *

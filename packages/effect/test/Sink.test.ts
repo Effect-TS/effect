@@ -314,6 +314,16 @@ describe("Sink", () => {
   })
 
   describe("flatMap", () => {
+    it.effect("preserves leftovers when the next sink consumes no input", () =>
+      Effect.gen(function*() {
+        const sink = Sink.take<number>(1).pipe(
+          Sink.flatMap(() => Sink.take<number>(0)),
+          Sink.flatMap(() => Sink.collect<number>())
+        )
+        const result = yield* Stream.fromArrays([1, 2, 3], [4, 5]).pipe(Stream.run(sink))
+        deepStrictEqual(result, [2, 3, 4, 5], "pending leftovers should be preserved")
+      }))
+
     it.effect("flatMap - empty input", () =>
       Effect.gen(function*() {
         const sink = pipe(Sink.head<number>(), Sink.flatMap(Sink.succeed))

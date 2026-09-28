@@ -10,7 +10,7 @@
  *
  * @since 4.0.0
  */
-import type { D1Database, D1PreparedStatement } from "@cloudflare/workers-types"
+import type { D1Database, D1PreparedStatement, D1Result } from "@cloudflare/workers-types"
 import * as Cache from "effect/Cache"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
@@ -18,13 +18,13 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
+import { SqlError, UnknownError } from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
-import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
-import * as Statement from "effect/unstable/sql/Statement"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const ATTR_DB_OPERATION_NAME = "db.operation.name"
@@ -221,25 +221,31 @@ export const make = (
           })
       })
 
-      const runStatement = (
+      const runStatementRaw = (
         statement: D1PreparedStatement,
         params: ReadonlyArray<unknown> = []
-      ): Effect.Effect<ReadonlyArray<any>, SqlError, never> =>
+      ): Effect.Effect<D1Result, SqlError, never> =>
         Effect.tryPromise({
           try: async () => {
             const response = await statement.bind(...params).all()
             if (response.error) {
               throw response.error
             }
-            return response.results || []
+            return response
           },
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
         })
 
+      const runStatement = (
+        statement: D1PreparedStatement,
+        params: ReadonlyArray<unknown> = []
+      ): Effect.Effect<ReadonlyArray<any>, SqlError, never> =>
+        Effect.map(runStatementRaw(statement, params), (response) => response.results || [])
+
       const runRaw = (
         sql: string,
         params: ReadonlyArray<unknown> = []
-      ) => runStatement(db.prepare(sql), params)
+      ) => runStatementRaw(db.prepare(sql), params)
 
       const runCached = (
         sql: string,
@@ -249,7 +255,7 @@ export const make = (
       const runUncached = (
         sql: string,
         params: ReadonlyArray<unknown> = []
-      ) => runRaw(sql, params)
+      ) => runStatement(db.prepare(sql), params)
 
       const runValues = (
         sql: string,

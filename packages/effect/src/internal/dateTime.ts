@@ -374,8 +374,9 @@ const formatOptions: Intl.DateTimeFormatOptions = {
 
 const zoneMakeIntl = (format: Intl.DateTimeFormat): DateTime.TimeZone.Named => {
   const zoneId = format.resolvedOptions().timeZone
-  if (validZoneCache.has(zoneId)) {
-    return validZoneCache.get(zoneId)!
+  const cached = validZoneCache.get(zoneId)
+  if (cached !== undefined) {
+    return cached
   }
   const zone = Object.create(ProtoTimeZoneNamed)
   zone.id = zoneId
@@ -386,16 +387,19 @@ const zoneMakeIntl = (format: Intl.DateTimeFormat): DateTime.TimeZone.Named => {
 
 /** @internal */
 export const zoneMakeNamedUnsafe = (zoneId: string): DateTime.TimeZone.Named => {
-  if (validZoneCache.has(zoneId)) {
-    return validZoneCache.get(zoneId)!
+  const cached = validZoneCache.get(zoneId)
+  if (cached !== undefined) {
+    return cached
   }
   try {
-    return zoneMakeIntl(
+    const zone = zoneMakeIntl(
       new Intl.DateTimeFormat("en-US", {
         ...formatOptions,
         timeZone: zoneId
       })
     )
+    validZoneCache.set(zoneId, zone)
+    return zone
   } catch {
     throw new IllegalArgumentError(`Invalid time zone: ${zoneId}`)
   }
@@ -661,14 +665,12 @@ export const getPart: {
 } = dual(2, (self: DateTime.DateTime, part: keyof DateTime.DateTime.PartsWithWeekday): number => toParts(self)[part])
 
 const setPartsDate = (date: Date, parts: Partial<DateTime.DateTime.PartsWithWeekday>): void => {
-  if (parts.year !== undefined) {
-    date.setUTCFullYear(parts.year)
-  }
-  if (parts.month !== undefined) {
-    date.setUTCMonth(parts.month - 1)
-  }
-  if (parts.day !== undefined) {
-    date.setUTCDate(parts.day)
+  if (parts.year !== undefined || parts.month !== undefined || parts.day !== undefined) {
+    date.setUTCFullYear(
+      parts.year ?? date.getUTCFullYear(),
+      parts.month !== undefined ? parts.month - 1 : date.getUTCMonth(),
+      parts.day ?? date.getUTCDate()
+    )
   }
   if (parts.weekDay !== undefined) {
     const diff = parts.weekDay - date.getUTCDay()

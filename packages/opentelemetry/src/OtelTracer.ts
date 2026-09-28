@@ -104,7 +104,7 @@ export const make: Effect.Effect<Tracer.Tracer, never, OtelTracer> = Effect.map(
         )
       },
       context(primitive, fiber) {
-        const currentSpan = fiber.currentSpan
+        const currentSpan = fiber.cache.span
 
         if (currentSpan === undefined) {
           return primitive["~effect/Effect/evaluate"](fiber)

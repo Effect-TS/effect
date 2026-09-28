@@ -15,9 +15,9 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Redis from "effect/persistence/Redis"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
-import * as Redis from "effect/unstable/persistence/Redis"
 
 /**
  * Options for connecting to Redis, including a Redis URL or individual
@@ -46,10 +46,13 @@ export class DenoRedis extends Context.Service<DenoRedis, {
 const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
   const connectClient = () => {
     const { url, ...connectOptions } = options
+    const parsedUrl = url === undefined ? undefined : new URL(url)
     const { name, ...parsed } = url === undefined ? { hostname: "localhost" } : parseURL(url)
     return connect({
       ...parsed,
       ...(name === undefined ? {} : { username: name }),
+      ...(parsedUrl?.username ? { username: decodeURIComponent(parsedUrl.username) } : {}),
+      ...(parsedUrl?.password ? { password: decodeURIComponent(parsedUrl.password) } : {}),
       ...Record.filter(connectOptions, Predicate.isNotUndefined)
     })
   }

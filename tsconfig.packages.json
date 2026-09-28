@@ -8,6 +8,7 @@
     { "path": "packages/ai/anthropic" },
     { "path": "packages/ai/openai-compat" },
     { "path": "packages/ai/openai" },
+    { "path": "packages/ai/typesafe" },
     { "path": "packages/ai/openrouter" },
     { "path": "packages/atom/react" },
     { "path": "packages/atom/vue" },

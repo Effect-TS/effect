@@ -7,14 +7,14 @@
  *
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
+import * as EmbeddingModel from "effect/ai/EmbeddingModel"
+import * as AiModel from "effect/ai/Model"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Simplify } from "effect/Types"
-import * as AiError from "effect/unstable/ai/AiError"
-import * as EmbeddingModel from "effect/unstable/ai/EmbeddingModel"
-import * as AiModel from "effect/unstable/ai/Model"
 import { OpenAiClient } from "./OpenAiClient.ts"
 import type * as OpenAiSchema from "./OpenAiSchema.ts"
 
@@ -101,7 +101,7 @@ export const model = (
  *
  * **When to use**
  *
- * Use to construct the `EmbeddingModel.Service` effectfully when
+ * Use to construct the `EmbeddingModel` effectfully when
  * `OpenAiClient` is already available in the environment.
  *
  * **Details**
@@ -127,7 +127,7 @@ export const model = (
 export const make = Effect.fnUntraced(function*({ model, config: providerConfig }: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<typeof Config.Service, "model"> | undefined
-}): Effect.fn.Return<EmbeddingModel.Service, never, OpenAiClient> {
+}): Effect.fn.Return<EmbeddingModel.EmbeddingModel, never, OpenAiClient> {
   const client = yield* OpenAiClient
 
   const makeConfig = Effect.contextWith((services: Context.Context<never>) =>

@@ -1528,8 +1528,14 @@ export const tap: {
  * @category combining
  * @since 2.0.0
  */
-export const product = <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]> =>
-  isSome(self) && isSome(that) ? some([self.value, that.value]) : none()
+export const product: {
+  <B>(that: Option<B>): <A>(self: Option<A>) => Option<[A, B]>
+  <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]>
+} = dual(
+  2,
+  <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]> =>
+    isSome(self) && isSome(that) ? some([self.value, that.value]) : none()
+)
 
 /**
  * Combines a primary `Option` with an iterable of `Option`s into a tuple if
@@ -1563,10 +1569,10 @@ export const product = <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]> 
  * @category combining
  * @since 2.0.0
  */
-export const productMany = <A>(
-  self: Option<A>,
-  collection: Iterable<Option<A>>
-): Option<[A, ...Array<A>]> => {
+export const productMany: {
+  <A>(collection: Iterable<Option<A>>): (self: Option<A>) => Option<[A, ...Array<A>]>
+  <A>(self: Option<A>, collection: Iterable<Option<A>>): Option<[A, ...Array<A>]>
+} = dual(2, <A>(self: Option<A>, collection: Iterable<Option<A>>): Option<[A, ...Array<A>]> => {
   if (isNone(self)) {
     return none()
   }
@@ -1578,7 +1584,7 @@ export const productMany = <A>(
     out.push(o.value)
   }
   return some(out)
-}
+})
 
 /**
  * Combines a structure of `Option`s (tuple, struct, or iterable) into a single

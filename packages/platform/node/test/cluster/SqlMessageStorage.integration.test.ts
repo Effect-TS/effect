@@ -2,7 +2,6 @@ import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
-import { TestClock } from "effect/testing"
 import {
   Entity,
   EntityAddress,
@@ -19,8 +18,9 @@ import {
   ShardingConfig,
   Snowflake,
   SqlMessageStorage
-} from "effect/unstable/cluster"
-import { SqlClient } from "effect/unstable/sql"
+} from "effect/cluster"
+import { SqlClient } from "effect/sql"
+import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {
@@ -56,7 +56,9 @@ describe("SqlMessageStorage", () => {
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
+    // Tests truncate this backend's shared tables.
     it.layer(StorageLayer.pipe(Layer.provideMerge(layer)), {
+      concurrent: false,
       timeout: 120000
     })(label, (it) => {
       if (label === "pg") {
@@ -72,6 +74,59 @@ describe("SqlMessageStorage", () => {
             expect(indexes).toHaveLength(1)
           }))
       }
+
+      it.effect("resetRequests with no IDs leaves existing claims untouched", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+          yield* storage.resetRequests([])
+          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(0)
+        }))
+
+      it.effect("resetRequests releases only the selected request at a shared address", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const selected = yield* makeRequest()
+          const unrelated = yield* makeRequest()
+          yield* storage.saveRequest(selected)
+          yield* storage.saveRequest(unrelated)
+          const shards = [selected.envelope.address.shardId]
+          expect(yield* storage.unprocessedMessages(shards)).toHaveLength(2)
+          yield* storage.resetRequests([selected.envelope.requestId])
+          const messages = yield* storage.unprocessedMessages(shards)
+          expect(messages.map((message) => message.envelope.requestId)).toEqual([selected.envelope.requestId])
+          expect(yield* storage.unprocessedMessages(shards)).toHaveLength(0)
+        }))
+
+      it.effect("resetRequests preserves chunk replies, exit replies, and completed state", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const streaming = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 123 }) })
+          const completed = yield* makeRequest()
+          yield* storage.saveRequest(streaming)
+          yield* storage.saveRequest(completed)
+          const shards = [streaming.envelope.address.shardId]
+          expect(yield* storage.unprocessedMessages(shards)).toHaveLength(2)
+          yield* storage.saveReply(yield* makeChunkReply(streaming))
+          yield* storage.saveReply(yield* makeReply(completed))
+          const replies = yield* storage.repliesFor([streaming, completed])
+          expect(replies).toHaveLength(2)
+          expect(yield* storage.unprocessedMessages(shards)).toHaveLength(0)
+          const sql = yield* SqlClient.SqlClient
+          const processed = yield* sql`SELECT processed FROM cluster_messages ORDER BY rowid`
+          yield* storage.resetRequests([streaming.envelope.requestId, completed.envelope.requestId])
+          const messages = yield* storage.unprocessedMessages(shards)
+          // Replies keep both requests out of the SQL read loop.
+          expect(messages).toHaveLength(0)
+          expect(yield* storage.repliesFor([streaming, completed])).toEqual(replies)
+          expect(yield* sql`SELECT processed FROM cluster_messages ORDER BY rowid`).toEqual(processed)
+          yield* truncate
+        }))
 
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
@@ -472,10 +527,25 @@ describe("SqlMessageStorage", () => {
           yield* truncate
 
           const storage = yield* MessageStorage.MessageStorage
-          const request = yield* makeRequest()
+          const request = yield* makeRequest({
+            rpc: StreamRpc,
+            payload: StreamRpc.payloadSchema.make({ id: 123 })
+          })
           yield* storage.saveRequest(request)
           let messages = yield* storage.unprocessedMessagesById([request.envelope.requestId])
           expect(messages).toHaveLength(1)
+
+          const chunk = yield* makeChunkReply(request)
+          yield* storage.saveReply(chunk)
+          const ack = yield* makeAckChunk(request, chunk)
+          yield* storage.saveEnvelope(ack)
+
+          const encoded = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const acknowledgements = yield* encoded.unprocessedMessagesById([ack.envelope.id], 0)
+          expect(acknowledgements).toHaveLength(1)
+          assert(acknowledgements[0].envelope._tag === "AckChunk")
+          expect(acknowledgements[0].envelope.replyId).toEqual(String(chunk.reply.id))
+
           yield* storage.saveReply(yield* makeReply(request))
           messages = yield* storage.unprocessedMessagesById([request.envelope.requestId])
           expect(messages).toHaveLength(0)

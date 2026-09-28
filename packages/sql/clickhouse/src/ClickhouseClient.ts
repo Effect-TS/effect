@@ -3,7 +3,7 @@
  *
  * This module provides both the ClickHouse-specific {@link ClickhouseClient}
  * service and the generic {@link Client.SqlClient} service. `make` creates a
- * scoped client, checks the connection with `SELECT 1`, maps ClickHouse errors
+ * scoped client, checks the connection with `ping()`, maps ClickHouse errors
  * to `SqlError`, and aborts in-flight queries when interrupted. The
  * ClickHouse-specific service adds typed parameters, command execution, insert
  * queries, query id and settings helpers, a statement compiler, and direct or
@@ -20,11 +20,10 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
 import {
   AuthenticationError,
   AuthorizationError,
@@ -33,8 +32,9 @@ import {
   SqlSyntaxError,
   StatementTimeoutError,
   UnknownError
-} from "effect/unstable/sql/SqlError"
-import * as Statement from "effect/unstable/sql/Statement"
+} from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
+import * as Stream from "effect/Stream"
 import * as Crypto from "node:crypto"
 import type { Readable } from "node:stream"
 
@@ -116,6 +116,7 @@ export interface ClickhouseClient extends Client.SqlClient {
     readonly table: string
     readonly values: Clickhouse.InsertValues<Readable, T>
     readonly format?: Clickhouse.DataFormat
+    readonly columns?: NonNullable<Clickhouse.InsertParams<Readable, T>["columns"]>
   }) => Effect.Effect<Clickhouse.InsertResult, SqlError>
   readonly withQueryId: {
     (queryId: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
@@ -159,7 +160,7 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 }
 
 /**
- * Creates a scoped `ClickhouseClient`, verifies connectivity with `SELECT 1`,
+ * Creates a scoped `ClickhouseClient`, verifies connectivity with `ping()`,
  * closes the underlying client when the scope ends, maps ClickHouse failures
  * to `SqlError`, and aborts plus kills in-flight queries when interrupted.
  *
@@ -181,7 +182,13 @@ export const make = (
     )
 
     yield* Effect.tryPromise({
-      try: () => client.exec({ query: "SELECT 1" }),
+      try: async () => {
+        const result = await client.ping()
+        if (!result.success) {
+          throw result.error
+        }
+        return result
+      },
       catch: (cause) =>
         new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
     }).pipe(
@@ -361,6 +368,7 @@ export const make = (
           readonly table: string
           readonly values: Clickhouse.InsertValues<Readable, T>
           readonly format?: Clickhouse.DataFormat
+          readonly columns?: NonNullable<Clickhouse.InsertParams<Readable, T>["columns"]>
         }) {
           return Effect.callback<Clickhouse.InsertResult, SqlError>((resume) => {
             const fiber = Fiber.getCurrent()!
@@ -518,7 +526,7 @@ const typeFromUnknown = (value: unknown): string => {
  */
 export const makeCompiler = (transform?: (_: string) => string) =>
   Statement.makeCompiler<ClickhouseCustom>({
-    dialect: "sqlite",
+    dialect: "clickhouse",
     placeholder(i, u) {
       return `{p${i}: ${typeFromUnknown(u)}}`
     },

@@ -11,16 +11,15 @@
  */
 import * as assert from "node:assert"
 import { isDeepStrictEqual } from "node:util"
+import * as Arbitrary from "../Arbitrary.ts"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import { pipe } from "../Function.ts"
-import * as Record from "../Record.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
-import * as Arbitrary from "../unstable/arbitrary/Arbitrary.ts"
 
 function assertPropertyPassed<A, E>(result: Arbitrary.CheckResult<A, E>): void {
   const failure = Arbitrary.formatCheckFailure(result)
@@ -82,7 +81,10 @@ export class Asserts<S extends Schema.Constraint> {
   static ast = {
     fields: {
       equals: (a: Schema.Struct.Fields, b: Schema.Struct.Fields) => {
-        assert.deepStrictEqual(Record.map(a, SchemaAST.getAST), Record.map(b, SchemaAST.getAST))
+        assert.deepStrictEqual(
+          Object.fromEntries(Reflect.ownKeys(a).map((key) => [key, SchemaAST.getAST(a[key])])),
+          Object.fromEntries(Reflect.ownKeys(b).map((key) => [key, SchemaAST.getAST(b[key])]))
+        )
       }
     },
     elements: {

@@ -23,7 +23,7 @@ import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Scope from "effect/Scope"
-import * as Socket from "effect/unstable/socket/Socket"
+import * as Socket from "effect/socket/Socket"
 import { once } from "node:events"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
@@ -203,10 +203,11 @@ interface SocketClient {
 
 const socketClient = Effect.fnUntraced(function*(socket: Socket.Socket) {
   const writer = yield* socket.writer
-  const pull = Effect.orDie(yield* Socket.readerBytes(socket))
+  const pull = yield* Socket.readerBytes(socket)
+  const read = Effect.orDie(pull)
   let received = 0
   let consumed = 0
-  const drain: Effect.Effect<void> = Effect.flatMap(pull, (frames) => {
+  const drain: Effect.Effect<void> = Effect.flatMap(read, (frames) => {
     for (let i = 0; i < frames.length; i++) received += frames[i].length
     return received >= consumed ? Effect.void : drain
   })

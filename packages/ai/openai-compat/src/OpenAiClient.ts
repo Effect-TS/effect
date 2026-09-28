@@ -7,21 +7,21 @@
  *
  * @since 4.0.0
  */
+import type * as AiError from "effect/ai/AiError"
 import * as Array from "effect/Array"
 import type * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Sse from "effect/encoding/Sse"
 import { identity } from "effect/Function"
+import * as Headers from "effect/http/Headers"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import type * as AiError from "effect/unstable/ai/AiError"
-import * as Sse from "effect/unstable/encoding/Sse"
-import * as Headers from "effect/unstable/http/Headers"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as Errors from "./internal/errors.ts"
 import { OpenAiConfig } from "./OpenAiConfig.ts"
 
@@ -1104,7 +1104,8 @@ const ChatCompletionToolCall = Schema.Struct({
 })
 
 const ChatCompletionToolCallDelta = Schema.Struct({
-  id: Schema.optionalKey(Schema.String),
+  // Some providers send `id: null` on tool-call continuation fragments.
+  id: Schema.optionalKey(Schema.NullOr(Schema.String)),
   index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
   function: Schema.optionalKey(ChatCompletionToolFunctionDelta)
@@ -1119,7 +1120,8 @@ const ChatCompletionMessage = Schema.Struct({
 })
 
 const ChatCompletionDelta = Schema.Struct({
-  role: Schema.optionalKey(Schema.String),
+  // Some providers send `role: null` on streamed text deltas.
+  role: Schema.optionalKey(Schema.NullOr(Schema.String)),
   content: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning: Schema.optionalKey(Schema.NullOr(Schema.String)),
   reasoning_content: Schema.optionalKey(Schema.NullOr(Schema.String)),

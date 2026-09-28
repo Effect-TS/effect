@@ -17,12 +17,14 @@ import type * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { constTrue, dual, identity } from "./Function.ts"
-import { exitFail, exitSucceed } from "./internal/core.ts"
+import { exitSucceed } from "./internal/core.ts"
 import * as Count from "./internal/count.ts"
 import * as effect from "./internal/effect.ts"
 import * as internal from "./internal/request.ts"
 import * as Iterable from "./Iterable.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
+import type * as Persistable from "./persistence/Persistable.ts"
+import * as Persistence from "./persistence/Persistence.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Request from "./Request.ts"
@@ -30,8 +32,6 @@ import type * as Schema from "./Schema.ts"
 import type { Scope } from "./Scope.ts"
 import * as Tracer from "./Tracer.ts"
 import type * as Types from "./Types.ts"
-import type * as Persistable from "./unstable/persistence/Persistable.ts"
-import * as Persistence from "./unstable/persistence/Persistence.ts"
 
 const TypeId = "~effect/RequestResolver"
 
@@ -529,17 +529,18 @@ export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string
       return Effect.forEach(
         grouped,
         ([tag, requests]) =>
-          Effect.matchCause((fns[tag] as any)(requests) as Effect.Effect<Array<any>, unknown, unknown>, {
+          Effect.matchCause((fns[tag] as any)(requests) as Effect.Effect<Iterable<any>, unknown, unknown>, {
             onFailure: (cause) => {
               for (let i = 0; i < requests.length; i++) {
                 const entry = requests[i]
-                entry.completeUnsafe(exitFail(cause) as any)
+                entry.completeUnsafe(Exit.failCause(cause) as any)
               }
             },
             onSuccess: (res) => {
-              for (let i = 0; i < res.length; i++) {
-                const entry = requests[i]
-                entry.completeUnsafe(exitSucceed(res[i]) as any)
+              let i = 0
+              for (const result of res) {
+                const entry = requests[i++]
+                entry.completeUnsafe(exitSucceed(result) as any)
               }
             }
           }),
@@ -1118,8 +1119,9 @@ export const asCache: {
  *
  * **Gotchas**
  *
- * Entries do not expire by time, and completed failures are cached the same as
- * successes. Request equality controls cache hits.
+ * Entries do not expire by time, and completed failures without interruptions
+ * are cached the same as successes. Results containing interruptions are not
+ * cached. Request equality controls cache hits.
  *
  * @see {@link asCache} for exposing the resolver as a `Cache` with time-to-live and service lookup controls
  * @see {@link persisted} for backing persistable requests with the configured persistence store
@@ -1167,7 +1169,16 @@ export const withCache: {
           MutableHashMap.set(cache, entry.request, cached)
           const prevComplete = entry.completeUnsafe
           entry.completeUnsafe = function(exit) {
-            cached.exit = exit as any
+            if (Exit.hasInterrupts(exit)) {
+              if (cached.exit === undefined) {
+                const current = MutableHashMap.get(cache, entry.request)
+                if (current._tag === "Some" && current.value === cached) {
+                  MutableHashMap.remove(cache, entry.request)
+                }
+              }
+            } else {
+              cached.exit = exit as any
+            }
             prevComplete(exit)
           }
           return true
@@ -1265,6 +1276,7 @@ export const persisted: {
         >)
         const leftover: Array<Request.Entry<A>> = []
         const toPersist = new Map<A, Request.Result<A>>()
+        const completed = new Set<Request.Entry<A>>()
         for (let i = 0; i < results.length; i++) {
           const entry = entries[i]
           const exit = results[i]
@@ -1274,6 +1286,7 @@ export const persisted: {
           ) {
             const prevComplete = entry.completeUnsafe
             entry.completeUnsafe = function(exit) {
+              completed.add(entry)
               toPersist.set(entry.request, exit as any)
               prevComplete(exit)
             }
@@ -1285,10 +1298,10 @@ export const persisted: {
         if (!Arr.isArrayNonEmpty(leftover)) {
           return
         }
-        yield* Effect.catchCause(self.runAll(leftover, key), (cause) => {
+        yield* Effect.catchCause(Effect.suspend(() => self.runAll(leftover, key)), (cause) => {
           for (let i = 0; i < leftover.length; i++) {
             const entry = leftover[i]
-            if (!toPersist.has(entry.request)) continue
+            if (completed.has(entry)) continue
             entry.completeUnsafe(Exit.failCause(cause) as any)
           }
           return Effect.void

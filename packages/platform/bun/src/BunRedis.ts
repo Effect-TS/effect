@@ -9,15 +9,15 @@
  *
  * @since 4.0.0
  */
-import { RedisClient, type RedisOptions } from "bun"
+import type { RedisClient, RedisOptions } from "bun"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Redis from "effect/persistence/Redis"
 import * as Scope from "effect/Scope"
-import * as Redis from "effect/unstable/persistence/Redis"
 
 /**
  * Service tag for Bun Redis integration, exposing the raw `RedisClient` and a `use` helper that maps client promise failures to `RedisError`.
@@ -35,6 +35,7 @@ const make = Effect.fnUntraced(function*(
     readonly url?: string
   } & RedisOptions
 ) {
+  const { RedisClient } = yield* Effect.promise(() => import("bun"))
   const scope = yield* Effect.scope
   yield* Scope.addFinalizer(scope, Effect.sync(() => client.close()))
   const client = new RedisClient(options?.url, options)

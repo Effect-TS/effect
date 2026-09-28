@@ -2,8 +2,8 @@ import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import * as NodePathLayer from "@effect/platform-node/NodePath"
 import { assert, describe, it } from "@effect/vitest"
+import { HttpRouter, HttpStaticServer } from "effect/http"
 import * as Layer from "effect/Layer"
-import { HttpRouter, HttpStaticServer } from "effect/unstable/http"
 import { copyFile, cp, mkdtemp, rm, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import * as NodePath from "node:path"
@@ -176,6 +176,53 @@ describe("HttpStaticServer", () => {
       const malformed = await handler(new Request("http://localhost/range.txt", { headers: { Range: "bytes=abc" } }))
       assert.strictEqual(malformed.status, 200)
       assert.strictEqual(await malformed.text(), fullBody)
+    })
+  })
+
+  const unsafeRangeInteger = (BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)).toString()
+
+  it.each([
+    `bytes=${unsafeRangeInteger}-`,
+    `bytes=${unsafeRangeInteger}-${unsafeRangeInteger}`
+  ])("returns 416 for a range start above Number.MAX_SAFE_INTEGER: %s", async (range) => {
+    await withStaticFiles(async ({ handler }) => {
+      const fullBody = await handler(new Request("http://localhost/range.txt")).then((response) => response.text())
+      const response = await handler(
+        new Request("http://localhost/range.txt", { headers: { Range: range } })
+      )
+
+      assert.strictEqual(response.status, 416)
+      assert.strictEqual(response.headers.get("content-range"), `bytes */${fullBody.length}`)
+      assert.strictEqual(await response.text(), "")
+    })
+  })
+
+  it.each([
+    `bytes=0-${unsafeRangeInteger}`,
+    `bytes=-${unsafeRangeInteger}`
+  ])("returns the whole file as 206 for range ends and suffixes above Number.MAX_SAFE_INTEGER: %s", async (range) => {
+    await withStaticFiles(async ({ handler }) => {
+      const fullBody = await handler(new Request("http://localhost/range.txt")).then((response) => response.text())
+      const response = await handler(new Request("http://localhost/range.txt", { headers: { Range: range } }))
+
+      assert.strictEqual(response.status, 206)
+      assert.strictEqual(response.headers.get("content-range"), `bytes 0-${fullBody.length - 1}/${fullBody.length}`)
+      assert.strictEqual(response.headers.get("content-length"), String(fullBody.length))
+      assert.strictEqual(await response.text(), fullBody)
+    })
+  })
+
+  it("clamps a range end above Number.MAX_SAFE_INTEGER while preserving a nonzero start", async () => {
+    await withStaticFiles(async ({ handler }) => {
+      const fullBody = await handler(new Request("http://localhost/range.txt")).then((response) => response.text())
+      const response = await handler(
+        new Request("http://localhost/range.txt", { headers: { Range: `bytes=5-${unsafeRangeInteger}` } })
+      )
+
+      assert.strictEqual(response.status, 206)
+      assert.strictEqual(response.headers.get("content-range"), `bytes 5-${fullBody.length - 1}/${fullBody.length}`)
+      assert.strictEqual(response.headers.get("content-length"), String(fullBody.length - 5))
+      assert.strictEqual(await response.text(), fullBody.slice(5))
     })
   })
 

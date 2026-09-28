@@ -1,15 +1,15 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Fiber, Layer, Schedule, Schema, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream } from "effect"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
+import { RpcClientError } from "effect/rpc/RpcClientError"
+import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/unstable/rpc"
-import { RpcClientError } from "effect/unstable/rpc/RpcClientError"
-import * as Socket from "effect/unstable/socket/Socket"
-import * as Worker from "effect/unstable/workers/Worker"
-import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerError"
+import * as Worker from "effect/workers/Worker"
+import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 import { vi } from "vitest"
-import type * as RpcClientErrorModule from "../../src/unstable/rpc/RpcClientError.ts"
+import type * as RpcClientErrorModule from "../../src/rpc/RpcClientError.ts"
 
 const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
@@ -62,6 +62,26 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  for (const consumer of ["queue", "stream"] as const) {
+    it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
+      Effect.gen(function*() {
+        const writing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+        const { client } = yield* RpcClient.makeNoSerialization(TestGroup, {
+          onFromClient: ({ message }) =>
+            message._tag === "Request"
+              ? Effect.withFiber((fiber) => Deferred.succeed(writing, fiber).pipe(Effect.andThen(Effect.never)))
+              : Effect.void
+        })
+        const reader = yield* (consumer === "queue"
+          ? client.Events(undefined, { asQueue: true }).pipe(Effect.flatMap(Queue.take), Effect.asVoid)
+          : Stream.runDrain(client.Events())).pipe(Effect.forkChild)
+        const writer = yield* Deferred.await(writing)
+        yield* Fiber.interrupt(writer)
+        const readExit = yield* Fiber.await(reader)
+        assert(Exit.isFailure(readExit) && Cause.hasInterruptsOnly(readExit.cause))
+      }))
+  }
+
   it.effect("releases a worker pool slot when the worker run fails", () =>
     Effect.gen(function*() {
       const runFailure = yield* Deferred.make<never, WorkerError>()
@@ -137,7 +157,7 @@ describe("RpcClient", () => {
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignRpcClientError = await vi.importActual<typeof RpcClientErrorModule>(
-      "../../src/unstable/rpc/RpcClientError.ts"
+      "../../src/rpc/RpcClientError.ts"
     )
     const rpcClientError = new ForeignRpcClientError.RpcClientError({
       reason: new ForeignRpcClientError.RpcClientDefect({ message: "boom", cause: undefined })
@@ -201,7 +221,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError)))),
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -244,7 +267,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError)))),
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -285,12 +311,13 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed(
-          Deferred.await(requestSent).pipe(
+        reader: Effect.succeed({
+          pull: Deferred.await(requestSent).pipe(
             Effect.tap(() => Effect.sync(() => attempts++)),
             Effect.andThen(Effect.fail(socketError))
-          )
-        ),
+          ),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))

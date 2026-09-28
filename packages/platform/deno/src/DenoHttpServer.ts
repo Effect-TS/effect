@@ -11,31 +11,32 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
 import { flow } from "effect/Function"
+import * as Cookies from "effect/http/Cookies"
+import * as Etag from "effect/http/Etag"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as Headers from "effect/http/Headers"
+import type * as HttpBody from "effect/http/HttpBody"
+import type { HttpClient } from "effect/http/HttpClient"
+import * as HttpEffect from "effect/http/HttpEffect"
+import * as IncomingMessage from "effect/http/HttpIncomingMessage"
+import type { HttpMethod } from "effect/http/HttpMethod"
+import type { HttpPlatform } from "effect/http/HttpPlatform"
+import * as Server from "effect/http/HttpServer"
+import * as Error from "effect/http/HttpServerError"
+import * as ServerRequest from "effect/http/HttpServerRequest"
+import * as ServerResponse from "effect/http/HttpServerResponse"
+import type * as Multipart from "effect/http/Multipart"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
 import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
+import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Cookies from "effect/unstable/http/Cookies"
-import * as Etag from "effect/unstable/http/Etag"
-import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
-import * as Headers from "effect/unstable/http/Headers"
-import type * as HttpBody from "effect/unstable/http/HttpBody"
-import type { HttpClient } from "effect/unstable/http/HttpClient"
-import * as HttpEffect from "effect/unstable/http/HttpEffect"
-import * as IncomingMessage from "effect/unstable/http/HttpIncomingMessage"
-import type { HttpMethod } from "effect/unstable/http/HttpMethod"
-import type { HttpPlatform } from "effect/unstable/http/HttpPlatform"
-import * as Server from "effect/unstable/http/HttpServer"
-import * as Error from "effect/unstable/http/HttpServerError"
-import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
-import type * as ServerResponse from "effect/unstable/http/HttpServerResponse"
-import type * as Multipart from "effect/unstable/http/Multipart"
-import * as UrlParams from "effect/unstable/http/UrlParams"
-import * as Socket from "effect/unstable/socket/Socket"
 import * as Platform from "./DenoHttpPlatform.ts"
 import * as DenoMultipart from "./DenoMultipart.ts"
 import * as DenoServices from "./DenoServices.ts"
@@ -95,13 +96,12 @@ export const make = Effect.fnUntraced(function*(
   yield* Scope.addFinalizer(scope, shutdown)
 
   const serverAddress = server.addr
-  const address: Server.Address = serverAddress.transport === "unix"
-    ? { _tag: "UnixAddress", path: serverAddress.path }
-    : {
-      _tag: "TcpAddress",
-      port: (serverAddress as Deno.NetAddr).port,
-      hostname: (serverAddress as Deno.NetAddr).hostname
-    }
+  const address = yield* (serverAddress.transport === "unix"
+    ? Effect.succeed(NetAddress.unixPathAddress(serverAddress.path))
+    : Effect.fromResult(NetAddress.inetAddressFromIpString(
+      (serverAddress as Deno.NetAddr).hostname,
+      (serverAddress as Deno.NetAddr).port
+    )).pipe(Effect.mapError((cause) => new Error.ServeError({ cause }))))
 
   return Server.make({
     address,
@@ -171,7 +171,7 @@ const makeResponse = Effect.fnUntraced(function*(
   }
   if (response.statusText !== undefined) fields.statusText = response.statusText
 
-  if (request.method === "HEAD") {
+  if (ServerResponse.omitsBody(response, request.method === "HEAD")) {
     yield* cancelResponseBody(response.body)
     return new Response(undefined, fields)
   }
@@ -216,7 +216,7 @@ export const layerServer: (
     readonly gracefulShutdownTimeout?: Duration.Input | undefined
     readonly websocket?: Deno.UpgradeWebSocketOptions | undefined
   }
-) => Layer.Layer<Server.HttpServer> = flow(
+) => Layer.Layer<Server.HttpServer, Error.ServeError> = flow(
   make,
   Layer.effect(Server.HttpServer)
 )
@@ -245,7 +245,7 @@ export const layer = (
     readonly gracefulShutdownTimeout?: Duration.Input | undefined
     readonly websocket?: Deno.UpgradeWebSocketOptions | undefined
   }
-): Layer.Layer<Server.HttpServer | HttpPlatform | Etag.Generator | DenoServices.DenoServices> =>
+): Layer.Layer<Server.HttpServer | HttpPlatform | Etag.Generator | DenoServices.DenoServices, Error.ServeError> =>
   Layer.mergeAll(layerServer(options), layerHttpServices)
 
 /**
@@ -260,7 +260,7 @@ export const layerTest: Layer.Layer<
   Layer.provide(FetchHttpClient.layer.pipe(
     Layer.provide(Layer.succeed(FetchHttpClient.RequestInit)({ keepalive: false }))
   )),
-  Layer.provideMerge(layer({ hostname: "127.0.0.1", port: 0, onListen: () => {} }))
+  Layer.provideMerge(Layer.orDie(layer({ hostname: "127.0.0.1", port: 0, onListen: () => {} })))
 )
 
 /**
@@ -279,7 +279,7 @@ export const layerConfig = (
   >
 ): Layer.Layer<
   Server.HttpServer | HttpPlatform | FileSystem.FileSystem | Etag.Generator | Path.Path,
-  ConfigError
+  ConfigError | Error.ServeError
 > =>
   Layer.mergeAll(
     Layer.effect(Server.HttpServer)(Effect.flatMap(Config.unwrap(options), make)),
@@ -552,8 +552,8 @@ const bufferedWebSocket = (ws: WebSocket): Socket.WebSocketLike => {
 }
 
 const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
-  const stream = (body as any).body
-  if ((body._tag === "Raw" || body._tag === "Uint8Array") && stream instanceof ReadableStream) {
+  if (body._tag === "Raw" && typeof ReadableStream !== "undefined" && body.body instanceof ReadableStream) {
+    const stream = body.body
     return Effect.ignoreCause(Effect.promise(() => stream.cancel()))
   }
   return Effect.void

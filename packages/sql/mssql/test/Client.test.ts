@@ -1,8 +1,8 @@
 import { MssqlClient, Procedure } from "@effect/sql-mssql"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber } from "effect"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Statement from "effect/unstable/sql/Statement"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Statement from "effect/sql/Statement"
 import type * as Tedious from "tedious"
 import { vi } from "vitest"
 
@@ -131,6 +131,43 @@ describe("mssql", () => {
     )
     expect(params).toEqual(["Tim"])
   })
+
+  for (
+    const [name, returning] of [
+      ["Identifier", sql("INSERTED.name")],
+      ["wrapped Identifier", sql`${sql("INSERTED.name")}`]
+    ] as const
+  ) {
+    it(`insert helper returning ${name}`, () => {
+      const result = sql`INSERT INTO ${sql("people")} ${sql.insert({ name: "Rowan", age: 10 }).returning(returning)}`
+        .compile()
+
+      assert.deepStrictEqual(result, [
+        `INSERT INTO [people] ([name],[age]) OUTPUT [INSERTED].[name] VALUES (@1,@2)`,
+        ["Rowan", 10]
+      ])
+    })
+
+    it(`update helper returning ${name}`, () => {
+      const result = sql`UPDATE people SET ${sql.update({ name: "Rowan" }).returning(returning)}`.compile()
+
+      assert.deepStrictEqual(result, [
+        `UPDATE people SET [name] = @1 OUTPUT [INSERTED].[name]`,
+        ["Rowan"]
+      ])
+    })
+
+    it(`updateValues helper returning ${name}`, () => {
+      const result = sql`UPDATE people SET name = data.name ${
+        sql.updateValues([{ name: "Rowan" }, { name: "Mira" }], "data").returning(returning)
+      }`.compile()
+
+      assert.deepStrictEqual(result, [
+        `UPDATE people SET name = data.name OUTPUT [INSERTED].[name] FROM (values (@1),(@2)) AS data([name])`,
+        ["Rowan", "Mira"]
+      ])
+    })
+  }
 
   it("array helper", () => {
     const [query, params] = sql`SELECT * FROM ${sql("people")} WHERE id IN ${sql.in([1, 2, "string"])}`.compile()
