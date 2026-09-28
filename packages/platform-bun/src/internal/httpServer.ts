@@ -443,7 +443,11 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
               },
               Effect.scoped,
               Effect.onExit((exit) => {
-                ws.close(exit._tag === "Success" ? 1000 : Cause.isInterruptedOnly(exit.cause) ? 1012 : 1011)
+                if (Exit.isSuccess(exit)) {
+                  ws.close(1000)
+                } else {
+                  ws.close(Cause.isInterruptedOnly(exit.cause) ? 1012 : 1011)
+                }
                 return Effect.void
               }),
               Effect.raceFirst(Deferred.await(closeDeferred)),
