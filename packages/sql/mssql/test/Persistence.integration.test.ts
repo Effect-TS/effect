@@ -1,3 +1,4 @@
+import { it } from "@effect/vitest"
 import { Layer } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
@@ -14,7 +15,10 @@ PersistedCacheTest.suite(
   Persistence.layerSql.pipe(Layer.provide(MssqlContainer.layerClient))
 )
 
-PersistedQueueTest.suite(
+// Allow extra time to acquire the MSSQL-backed layer under CI load.
+PersistedQueueTest.suiteWith(
   "sql-mssql",
-  PersistedQueue.layerStoreSql().pipe(Layer.provide(MssqlContainer.layerClient))
+  PersistedQueue.layerStoreSql().pipe(Layer.provide(MssqlContainer.layerClient)),
+  it,
+  "90 seconds"
 )
