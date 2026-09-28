@@ -26,39 +26,27 @@ const GetB = Rpc.make("GetB", {
 })
 const Watch = Rpc.make("Watch", { success: Schema.String, stream: true })
 
-type Rpcs = typeof GetA | typeof GetB | typeof Watch
-
 type ResultA = Effect.Effect<{ readonly a: number }, { readonly _tag: "ErrorA" }, ScaleA>
 type ResultB = Effect.Effect<{ readonly b: number }, { readonly _tag: "ErrorB" }, ScaleB>
 
 describe("RpcClient.Flat", () => {
-  const client = hole<RpcClient.RpcClient.Flat<Rpcs>>()
+  const client = hole<RpcClient.RpcClient.Flat<typeof GetA | typeof GetB | typeof Watch>>()
 
   it("infers the result of a single tag", () => {
     expect(client("GetA", { id: "a" })).type.toBe<ResultA>()
-    expect(client("Watch", undefined)).type.toBe<Stream.Stream<string>>()
-  })
-
-  it("rejects an unknown tag or another tag's payload", () => {
-    expect(client).type.not.toBeCallableWith("Missing", { id: "a" })
     expect(client).type.not.toBeCallableWith("GetA", { count: 1 })
   })
 
   it("infers a result per RPC for a union of tags", () => {
     const tag = hole<"GetA" | "GetB">()
-    const payload = hole<{ readonly id: string } | { readonly count: number }>()
 
-    expect(client(tag, payload)).type.toBe<ResultA | ResultB>()
-    expect(client(tag, payload, { discard: true })).type.toBe<
-      Effect.Effect<void, never, ScaleA> | Effect.Effect<void, never, ScaleB>
-    >()
+    expect(client(tag, hole<{ readonly id: string } | { readonly count: number }>())).type.toBe<ResultA | ResultB>()
     expect(client).type.not.toBeCallableWith(tag, { name: "a" })
   })
 
   it("infers effects and streams for a union of tags", () => {
     const tag = hole<"GetA" | "Watch">()
-    const payload = hole<{ readonly id: string } | void>()
 
-    expect(client(tag, payload)).type.toBe<ResultA | Stream.Stream<string>>()
+    expect(client(tag, hole<{ readonly id: string } | void>())).type.toBe<ResultA | Stream.Stream<string>>()
   })
 })

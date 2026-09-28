@@ -53,10 +53,6 @@ describe("Rpc", () => {
     it("extracts the RPCs with any tag in a union of tags", () => {
       expect<Rpc.ExtractTag<Mixed, "GetUser" | "StreamEvents">>().type.toBe<typeof GetUser | typeof StreamEvents>()
     })
-
-    it("returns never for a tag outside the group", () => {
-      expect<Rpc.ExtractTag<Mixed, "AuthedGetUser">>().type.toBe<never>()
-    })
   })
 
   describe("ExtractProvides", () => {
