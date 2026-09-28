@@ -51,9 +51,10 @@ const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>) =>
         received = received.subarray(headerEnd + 4)
         Effect.runSync(Deferred.succeed(opened, undefined))
       }
-      if (closeCode !== undefined || received.length < 4 || (received[0] & 0x0f) !== 8) return
+      if (received.length < 4 || (received[0] & 0x0f) !== 8) return
+      if (closeCode !== undefined) return
       closeCode = received.readUInt16BE(2)
-      socket.write(Buffer.from([0x88, 0x82, 0, 0, 0, 0, closeCode >> 8, closeCode & 0xff]), () => socket.destroy())
+      socket.write(Buffer.from([0x88, 0x82, 0, 0, 0, 0, closeCode >> 8, closeCode & 0xff]))
     })
     return Effect.sync(() => socket.destroy())
   })
@@ -412,11 +413,24 @@ describe("BunHttpServer", () => {
       Effect.gen(function*() {
         const opened = yield* Deferred.make<void>()
         const closed = yield* Deferred.make<void>()
+        // Bun's graceful stop can wait indefinitely for a server-initiated close.
+        // Capture this test's server so cleanup can force-stop it after observing the frame.
+        const serve = Bun.serve
+        let forceStop: (() => void) | undefined
+        Bun.serve = ((options: Parameters<typeof Bun.serve>[0]) => {
+          const bunServer = serve(options)
+          forceStop = () => {
+            bunServer.stop(true)
+          }
+          return bunServer
+        }) as typeof Bun.serve
         const server = yield* BunHttpServer.make({
           hostname: "127.0.0.1",
           port: 0,
           gracefulShutdownTimeout: "100 millis"
-        })
+        }).pipe(Effect.ensuring(Effect.sync(() => {
+          Bun.serve = serve
+        })))
         yield* server.serve(Effect.gen(function*() {
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* request.upgrade
@@ -438,8 +452,10 @@ describe("BunHttpServer", () => {
           yield* Deferred.await(closed)
           return HttpServerResponse.empty()
         }))
+        yield* Effect.addFinalizer(() => Effect.sync(() => forceStop?.()))
         const port = (server.address as NetAddress.InetAddress).port
         const actual = yield* readWebSocketClose(port, opened)
+        forceStop?.()
         yield* Deferred.succeed(closed, undefined)
         assert.strictEqual(actual, code)
       }).pipe(Effect.timeout("5 seconds")), 10000)
