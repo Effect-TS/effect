@@ -59,6 +59,42 @@ describe("Tracer", () => {
         Effect.provide(TracingLayer)
       ))
 
+    it.effect.each([undefined, false, true])(
+      "withSpan uses the active OpenTelemetry parent with root %s",
+      (root) =>
+        Effect.gen(function*() {
+          const parent: OtelApi.SpanContext = {
+            traceId: "1".repeat(32),
+            spanId: "2".repeat(16),
+            traceFlags: OtelApi.TraceFlags.SAMPLED,
+            traceState: OtelApi.createTraceState("vendor=value"),
+            isRemote: false
+          }
+          const active = OtelApi.trace.setSpanContext(OtelApi.ROOT_CONTEXT, parent)
+          const services = yield* Effect.context<never>()
+          const child = yield* Effect.promise(() =>
+            OtelApi.context.with(active, () =>
+              Effect.runPromise(
+                Effect.currentSpan.pipe(
+                  Effect.withSpan("child", { root }),
+                  Effect.provideContext(services)
+                )
+              ))
+          )
+
+          assert(child instanceof OtelTracer.OtelSpan)
+          if (root === true) {
+            assert.isTrue(Option.isNone(child.parent))
+            assert.notStrictEqual(child.traceId, parent.traceId)
+          } else {
+            assert.strictEqual(child.traceId, parent.traceId)
+            assert.isTrue(Option.isSome(child.parent))
+            assert.strictEqual(Option.getOrThrow(child.parent).spanId, parent.spanId)
+            assert.strictEqual(child.span.spanContext().traceState?.serialize(), "vendor=value")
+          }
+        }).pipe(Effect.provide(TracingLayer))
+    )
+
     it.effect("supervisor sets context", () =>
       Effect.sync(() => {
         const context = OtelApi.context.active()
