@@ -237,6 +237,23 @@ const invalidEncoding = (
     ? invalidType(ast, value, options)
     : Interpreter.wrapEncoding(ast, input, options, invalidType(ast.encoding[index - 1].to, value, options))
 
+const invalidEncodingChecks = (
+  ast: SchemaAST.AST & { readonly encoding: SchemaAST.Encoding },
+  index: number,
+  input: unknown,
+  value: unknown,
+  issues: readonly [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>],
+  options: SchemaAST.ParseOptions
+) => {
+  const to = ast.encoding[index - 1].to
+  return Interpreter.wrapEncoding(
+    ast,
+    input,
+    options,
+    Effect.fail(new SchemaIssue.Composite(to, issues, value, options))
+  )
+}
+
 /**
  * @internal
  */
@@ -255,6 +272,7 @@ export const runtime = {
   die: Effect.die,
   invalidType,
   invalidEncoding,
+  invalidEncodingChecks,
   getCheckIssues,
   check,
   getExpectedKeys: (ast: SchemaAST.Objects) =>
