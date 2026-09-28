@@ -430,6 +430,73 @@ describe("Atom", { concurrent: false }, () => {
     assert(AsyncResult.isSuccess(result))
   })
 
+  it("effectFn concurrent preserves synchronous success and failure", () => {
+    const count = Atom.fn((n: number) => n === 1 ? Effect.succeed(n + 1) : Effect.fail("fail"), {
+      concurrent: true
+    })
+    const r = AtomRegistry.make()
+    r.mount(count)
+
+    r.set(count, 1)
+    const success = r.get(count)
+    assert(AsyncResult.isSuccess(success))
+    assert.strictEqual(success.value, 2)
+
+    r.set(count, 2)
+    const failure = r.get(count)
+    assert(AsyncResult.isFailure(failure))
+    const error = Cause.findErrorOption(failure.cause)
+    assert(Option.isSome(error))
+    assert.strictEqual(error.value, "fail")
+    r.dispose()
+  })
+
+  it("effectFn concurrent waits for earlier calls", async () => {
+    const latch = Latch.makeUnsafe()
+    const count = Atom.fn((n: number) => n === 1 ? latch.await.pipe(Effect.as(n)) : Effect.succeed(n), {
+      concurrent: true
+    })
+    const r = AtomRegistry.make()
+    r.mount(count)
+
+    r.set(count, 1)
+    assert(AsyncResult.isInitial(r.get(count)))
+    r.set(count, 2)
+    const waiting = r.get(count)
+    assert(AsyncResult.isInitial(waiting) && waiting.waiting)
+
+    latch.openUnsafe()
+    await Effect.runPromise(Effect.yieldNow)
+    const result = r.get(count)
+    assert(AsyncResult.isSuccess(result))
+    assert.strictEqual(result.value, 1)
+    r.dispose()
+  })
+
+  it("effectFn concurrent observes an earlier failure after a later success", async () => {
+    const latch = Latch.makeUnsafe()
+    const count = Atom.fn((n: number) =>
+      n === 1
+        ? latch.await.pipe(Effect.flatMap(() => Effect.fail("older failure")))
+        : Effect.succeed(n), { concurrent: true })
+    const r = AtomRegistry.make()
+    r.mount(count)
+
+    r.set(count, 1)
+    r.set(count, 2)
+    const waiting = r.get(count)
+    assert(AsyncResult.isInitial(waiting) && waiting.waiting)
+
+    latch.openUnsafe()
+    await Effect.runPromise(Effect.yieldNow)
+    const result = r.get(count)
+    assert(AsyncResult.isFailure(result))
+    const error = Cause.findErrorOption(result.cause)
+    assert(Option.isSome(error))
+    assert.strictEqual(error.value, "older failure")
+    r.dispose()
+  })
+
   it("effectFn initial", async () => {
     const count = Atom.fn((n: number) => Effect.succeed(n + 1), {
       initialValue: 0
