@@ -1133,8 +1133,7 @@ export const makeProtocolSocket = (options?: {
           () =>
             Effect.fail(
               new Socket.SocketError({
-                reason: new Socket.SocketOpenError({
-                  kind: "Timeout",
+                reason: new Socket.SocketReadError({
                   cause: new Error("ping timeout")
                 })
               })
