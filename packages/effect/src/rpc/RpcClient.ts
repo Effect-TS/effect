@@ -166,8 +166,8 @@ export declare namespace RpcClient {
         readonly context?: Context.Context<never> | undefined
         readonly discard?: Discard | undefined
       }
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
+  ) => Rpcs extends Rpc.Rpc<
+    infer _Tag extends Tag,
     infer _Payload,
     infer _Success,
     infer _Error,
