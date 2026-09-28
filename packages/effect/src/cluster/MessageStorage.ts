@@ -74,14 +74,15 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError | MalformedMessage>
 
   /**
-   * Clear replies for the given request id. When expectedReplyId is provided,
-   * clear only if it is still the latest reply at the storage boundary.
+   * Clear replies for the given request id. When options.expectedReplyId is
+   * provided, clear only if it is still the latest reply at the storage boundary.
+   * Without it, clear unconditionally.
    * Custom storage implementations must honor this condition to protect
    * workflows from stale concurrent resumes.
    */
   readonly clearReplies: (
     requestId: Snowflake.Snowflake,
-    expectedReplyId?: Snowflake.Snowflake
+    options?: { readonly expectedReplyId?: Snowflake.Snowflake | undefined }
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -356,14 +357,15 @@ export type Encoded = {
   readonly saveReply: (reply: Reply.Encoded) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Remove the replies for the specified request. If expectedReplyId is
-   * provided, compare it with the latest reply atomically before clearing.
+   * Remove the replies for the specified request. If options.expectedReplyId
+   * is provided, compare it with the latest reply atomically before clearing.
+   * Without it, clear unconditionally.
    * Custom storage implementations must honor this condition to protect
    * workflows from stale concurrent resumes.
    */
   readonly clearReplies: (
     requestId: Snowflake.Snowflake,
-    expectedReplyId?: Snowflake.Snowflake
+    options?: { readonly expectedReplyId?: Snowflake.Snowflake | undefined }
   ) => Effect.Effect<void, PersistenceError>
 
   /**
@@ -1066,11 +1068,13 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           replyIds.add(reply.id)
           replyLatch.openUnsafe()
         }),
-      clearReplies: (id, expectedReplyId) =>
+      clearReplies: (id, options) =>
         Effect.sync(() => {
           const entry = requests.get(String(id))
           if (!entry) return
-          if (expectedReplyId !== undefined && entry.replies.at(-1)?.id !== String(expectedReplyId)) return
+          if (
+            options?.expectedReplyId !== undefined && entry.replies.at(-1)?.id !== String(options.expectedReplyId)
+          ) return
           entry.replies = []
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)

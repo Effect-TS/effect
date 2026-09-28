@@ -576,7 +576,8 @@ export const makeEncoded: (options?: {
       ),
 
     clearReplies: Effect.fnUntraced(
-      function*(requestId, expectedReplyId) {
+      function*(requestId, options) {
+        const expectedReplyId = options?.expectedReplyId
         if (expectedReplyId === undefined) {
           yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
           yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
