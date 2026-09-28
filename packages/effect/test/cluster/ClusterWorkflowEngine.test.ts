@@ -90,6 +90,75 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(context))
     }), 20_000)
 
+  it.effect("keeps a completed reply when an older concurrent wake resets it", () =>
+    Effect.gen(function*() {
+      const firstReset = yield* Latch.make()
+      const allowStaleReset = yield* Latch.make()
+      const staleResetFinished = yield* Latch.make()
+      const allowPoll = yield* Latch.make()
+      const first = DurableDeferred.make("ConcurrentResume/First", { success: Schema.String })
+      const second = DurableDeferred.make("ConcurrentResume/Second", { success: Schema.String })
+      const workflow = Workflow.make("ConcurrentResume", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      const shared = yield* Layer.build(
+        MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
+      )
+      const storage = Context.get(shared, MessageStorage.MessageStorage)
+      const driver = Context.get(shared, MessageStorage.MemoryDriver)
+      let runRequestId: Snowflake.Snowflake | undefined
+      let runResets = 0
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        clearReplies: (id, options) =>
+          id === runRequestId && options?.expectedReplyId !== undefined && ++runResets === 1
+            ? firstReset.open.pipe(
+              Effect.andThen(allowStaleReset.await),
+              Effect.andThen(storage.clearReplies(id, options)),
+              Effect.andThen(staleResetFinished.open),
+              // Do not let the stale wake poll storage and replay before inspecting the reply.
+              Effect.andThen(allowPoll.await)
+            )
+            : storage.clearReplies(id, options)
+      })
+      const context = yield* Layer.build(
+        workflow.toLayer(() =>
+          Effect.all([DurableDeferred.await(first), DurableDeferred.await(second)], { concurrency: "unbounded" }).pipe(
+            Effect.map(([a, b]) => a + "/" + b)
+          )
+        ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+      )
+      yield* Effect.addFinalizer(() => Effect.all([allowStaleReset.open, allowPoll.open], { discard: true }))
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, executionId, "Suspended")
+        const run = driver.journal.find((message) => message._tag === "Request" && message.tag === "run")!
+        runRequestId = Snowflake.Snowflake(run.requestId)
+        const complete = (deferred: typeof first, value: string) =>
+          DurableDeferred.succeed(deferred, {
+            token: DurableDeferred.tokenFromExecutionId(deferred, { workflow, executionId }),
+            value
+          })
+        const firstFiber = yield* complete(first, "first").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* advanceUntil(() => firstReset.isOpen(), "first wake must reach reset")
+        yield* complete(second, "second")
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("first/second") })
+        )
+        yield* allowStaleReset.open
+        yield* advanceUntil(() => staleResetFinished.isOpen(), "stale reset must finish")
+        assert.deepStrictEqual(
+          yield* workflow.poll(executionId),
+          Option.some(new Workflow.Complete({ exit: Exit.succeed("first/second") }))
+        )
+        yield* allowPoll.open
+        yield* Fiber.join(firstFiber)
+      }).pipe(Effect.provide(context))
+    }), 30_000)
+
   for (const entityMailboxCapacity of [2, 3]) {
     it.effect(
       `admits a required completion after an unrelated completion with mailbox capacity ${entityMailboxCapacity}`,

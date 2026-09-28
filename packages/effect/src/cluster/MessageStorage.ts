@@ -74,9 +74,16 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError | MalformedMessage>
 
   /**
-   * Clear the `Reply`s for the given request id.
+   * Clear replies for the given request id. When options.expectedReplyId is
+   * provided, clear only if it is still the latest reply at the storage boundary.
+   * Without it, clear unconditionally.
+   * Custom storage implementations must honor this condition to protect
+   * workflows from stale concurrent resumes.
    */
-  readonly clearReplies: (requestId: Snowflake.Snowflake) => Effect.Effect<void, PersistenceError>
+  readonly clearReplies: (
+    requestId: Snowflake.Snowflake,
+    options?: { readonly expectedReplyId?: Snowflake.Snowflake | undefined }
+  ) => Effect.Effect<void, PersistenceError>
 
   /**
    * Retrieves the replies for the specified requests.
@@ -350,9 +357,16 @@ export type Encoded = {
   readonly saveReply: (reply: Reply.Encoded) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Remove the replies for the specified request.
+   * Remove the replies for the specified request. If options.expectedReplyId
+   * is provided, compare it with the latest reply atomically before clearing.
+   * Without it, clear unconditionally.
+   * Custom storage implementations must honor this condition to protect
+   * workflows from stale concurrent resumes.
    */
-  readonly clearReplies: (requestId: Snowflake.Snowflake) => Effect.Effect<void, PersistenceError>
+  readonly clearReplies: (
+    requestId: Snowflake.Snowflake,
+    options?: { readonly expectedReplyId?: Snowflake.Snowflake | undefined }
+  ) => Effect.Effect<void, PersistenceError>
 
   /**
    * Retrieves the request id for the specified primary key.
@@ -1054,10 +1068,13 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           replyIds.add(reply.id)
           replyLatch.openUnsafe()
         }),
-      clearReplies: (id) =>
+      clearReplies: (id, options) =>
         Effect.sync(() => {
           const entry = requests.get(String(id))
           if (!entry) return
+          if (
+            options?.expectedReplyId !== undefined && entry.replies.at(-1)?.id !== String(options.expectedReplyId)
+          ) return
           entry.replies = []
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)
