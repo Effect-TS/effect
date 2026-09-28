@@ -576,24 +576,19 @@ export const makeEncoded: (options?: {
       ),
 
     clearReplies: Effect.fnUntraced(
-      function*(requestId) {
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
-        yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
-          String(requestId)
-        } AND kind = ${messageKindInterrupt}`
-        yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
-          String(requestId)
-        }`
-      },
-      sql.withTransaction,
-      PersistenceError.refail,
-      withTracerDisabled
-    ),
-
-    clearRepliesIfCurrent: Effect.fnUntraced(
-      function*(requestId, replyId) {
+      function*(requestId, expectedReplyId) {
+        if (expectedReplyId === undefined) {
+          yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
+          yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
+            String(requestId)
+          } AND kind = ${messageKindInterrupt}`
+          yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
+            String(requestId)
+          }`
+          return
+        }
         const id = String(requestId)
-        const expected = String(replyId)
+        const expected = String(expectedReplyId)
         // Check at the storage boundary, not at the earlier workflow read.
         yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0
           AND EXISTS (SELECT 1 FROM ${messagesTableSql} WHERE id = ${id} AND last_reply_id = ${expected})`
