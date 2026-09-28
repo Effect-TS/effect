@@ -1,6 +1,7 @@
 import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, Option, References, Scope, Stream, Tracer } from "effect"
+import { Cause, Context, Effect, Option, References, Scope, Stream, Tracer } from "effect"
+import { identity } from "effect/Function"
 import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/http"
 import { appendPreResponseHandlerUnsafe, requestPreResponseHandlers } from "effect/http/internal/preResponseHandler"
 import * as Layer from "effect/Layer"
@@ -30,6 +31,60 @@ describe("HttpEffect", () => {
       Effect.provideService(HttpServerRequest.HttpServerRequest, request),
       Effect.provideService(References.TracerEnabled, false)
     )
+  })
+
+  describe("scopeHandlerCause", () => {
+    const tracer = Tracer.make({
+      span: (options) => new Tracer.NativeSpan(options)
+    })
+    for (
+      const [name, middleware, services] of [
+        ["without middleware", undefined, Context.make(References.TracerEnabled, false)],
+        ["with middleware", identity, Context.make(References.TracerEnabled, false)],
+        ["with a tracer", undefined, Context.make(Tracer.Tracer, tracer)]
+      ] as const
+    ) {
+      it.effect(`records the handler cause ${name}`, () => {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+        const error = new Error("handler failed")
+        const defect = new Error("handler defect")
+        let result: Effect.Effect<HttpServerResponse.HttpServerResponse, Error> = Effect.fail(error)
+        let recorded: Cause.Cause<unknown> | undefined
+        const handled = HttpEffect.toHandled(
+          Effect.gen(function*() {
+            const scope = yield* Effect.scope
+            yield* Scope.addFinalizer(
+              scope,
+              Effect.sync(() => {
+                recorded = HttpEffect.scopeHandlerCause(scope)
+              })
+            )
+            return yield* result
+          }),
+          () => Effect.void,
+          middleware
+        )
+        const run = (next: typeof result) => {
+          result = next
+          recorded = undefined
+          return Effect.exit(handled)
+        }
+        return Effect.gen(function*() {
+          yield* run(Effect.fail(error))
+          strictEqual(Cause.squash(recorded!), error)
+          yield* run(Effect.die(defect))
+          strictEqual(Cause.squash(recorded!), defect)
+          yield* run(Effect.interrupt)
+          strictEqual(Cause.hasInterruptsOnly(recorded!), true)
+          // a later request through the same handled effect starts clean
+          yield* run(Effect.succeed(HttpServerResponse.empty()))
+          strictEqual(recorded, undefined)
+        }).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideContext(services)
+        )
+      })
+    }
   })
 
   describe("toWebHandler", () => {

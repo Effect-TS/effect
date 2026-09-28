@@ -7,7 +7,7 @@ import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import { constVoid } from "effect/Function"
+import { constVoid, identity } from "effect/Function"
 import {
   Cookies,
   FetchHttpClient,
@@ -963,55 +963,59 @@ describe("HttpServer", () => {
       expect(plain.extensions).not.toContain("permessage-deflate")
     }).pipe(Effect.scoped, Effect.provide(layerTestWebsocket)))
 
-  for (
-    const [name, exit, code] of [
-      ["success", "success", 1000],
-      ["interrupt", "interrupt", 1001],
-      ["failure", "failure", 1011],
-      ["defect", "defect", 1011],
-      ["explicit close before failure", "explicit", 4400]
-    ] as const
-  ) {
-    it.effect(`closes a WebSocket with the handler's ${name} code`, () =>
-      Effect.gen(function*() {
-        const opened = yield* Deferred.make<void>()
-        yield* HttpRouter.add(
-          "GET",
-          "/ws",
-          Effect.gen(function*() {
-            const request = yield* HttpServerRequest.HttpServerRequest
-            const socket = yield* request.upgrade
-            yield* socket.reader
-            yield* Deferred.await(opened)
-            if (exit === "explicit") {
-              const writer = yield* socket.writer
-              yield* writer.write(new Socket.CloseEvent(4400, "handler closed"))
-            }
-            if (exit === "interrupt") return yield* Effect.interrupt
-            if (exit === "failure" || exit === "explicit") return yield* Effect.fail(new Error("handler failed"))
-            if (exit === "defect") return yield* Effect.die(new Error("handler defect"))
-            return HttpServerResponse.empty()
+  // with middleware the request scope closes successfully even when the handler fails
+  for (const [suffix, middleware] of [["", undefined], [" with middleware", identity]] as const) {
+    for (
+      const [name, exit, code] of [
+        ["success", "success", 1000],
+        ["interrupt", "interrupt", 1001],
+        ["failure", "failure", 1011],
+        ["defect", "defect", 1011],
+        ["explicit close before failure", "explicit", 4400]
+      ] as const
+    ) {
+      it.effect(`closes a WebSocket with the handler's ${name} code${suffix}`, () =>
+        Effect.gen(function*() {
+          const opened = yield* Deferred.make<void>()
+          yield* HttpRouter.add(
+            "GET",
+            "/ws",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              const socket = yield* request.upgrade
+              yield* socket.reader
+              yield* Deferred.await(opened)
+              if (exit === "explicit") {
+                const writer = yield* socket.writer
+                yield* writer.write(new Socket.CloseEvent(4400, "handler closed"))
+              }
+              if (exit === "interrupt") return yield* Effect.interrupt
+              if (exit === "failure" || exit === "explicit") return yield* Effect.fail(new Error("handler failed"))
+              if (exit === "defect") return yield* Effect.die(new Error("handler defect"))
+              return HttpServerResponse.empty()
+            })
+          ).pipe((layer) => HttpRouter.serve(layer, middleware && { middleware }), Layer.build)
+          const server = yield* HttpServer.HttpServer
+          const port = (server.address as NetAddress.InetAddress).port
+          const actual = yield* Effect.callback<number, Error>((resume) => {
+            const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
+            ws.on("open", () => {
+              Effect.runSync(Deferred.succeed(opened, undefined))
+            })
+            ws.on("close", (code) => resume(Effect.succeed(code)))
+            ws.on("error", (error) => resume(Effect.fail(error)))
+            return Effect.sync(() => ws.close())
           })
-        ).pipe(HttpRouter.serve, Layer.build)
-        const server = yield* HttpServer.HttpServer
-        const port = (server.address as NetAddress.InetAddress).port
-        const actual = yield* Effect.callback<number, Error>((resume) => {
-          const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
-          ws.on("open", () => {
-            Effect.runSync(Deferred.succeed(opened, undefined))
-          })
-          ws.on("close", (code) => resume(Effect.succeed(code)))
-          ws.on("error", (error) => resume(Effect.fail(error)))
-          return Effect.sync(() => ws.close())
-        })
-        assert.strictEqual(actual, code)
-      }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
+          assert.strictEqual(actual, code)
+        }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
+    }
   }
 
   for (
-    const [name, exit, code] of [
-      ["interrupted", "interrupt", 1001],
-      ["failed", "failure", 1011]
+    const [name, ownerExit, handlerFails, code] of [
+      ["interrupted", Exit.interrupt(), false, 1001],
+      ["failed", Exit.fail(new Error("owner failed")), false, 1011],
+      ["succeeded", Exit.void, true, 1000]
     ] as const
   ) {
     it.effect(`a separately owned WebSocket closes with the ${name} owner scope exit`, () =>
@@ -1028,6 +1032,7 @@ describe("HttpServer", () => {
             yield* socket.reader.pipe(Scope.provide(scope))
             yield* Deferred.succeed(owner, scope)
             yield* Effect.addFinalizer(() => Deferred.succeed(handlerDone, undefined))
+            if (handlerFails) return yield* Effect.fail(new Error("handler failed"))
             return HttpServerResponse.empty()
           })
         ).pipe(HttpRouter.serve, Layer.build)
@@ -1041,7 +1046,7 @@ describe("HttpServer", () => {
         }).pipe(Effect.forkChild({ startImmediately: true }))
         const scope = yield* Deferred.await(owner)
         yield* Deferred.await(handlerDone)
-        yield* Scope.close(scope, exit === "interrupt" ? Exit.interrupt() : Exit.fail(new Error("owner failed")))
+        yield* Scope.close(scope, ownerExit)
         assert.strictEqual(yield* Fiber.join(close), code)
       }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
   }
