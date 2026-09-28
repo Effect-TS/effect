@@ -167,6 +167,29 @@ describe("DatagramSocket native handle", () => {
       assert.deepStrictEqual(texts(yield* Fiber.join(second)), ["second"])
     })))
 
+  it.effect("resumes an already-parked pull before the native packet callback returns", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const received: Array<string> = []
+      const pull = yield* reader.pull.pipe(
+        Effect.tap((batch) =>
+          Effect.sync(() => {
+            received.push(...texts(batch))
+          })
+        ),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(pull.pollUnsafe(), "the pull must be parked before delivery")
+      const handle = handles[0]!
+      handle.packet("inline")
+      // No yield or await between the native callback and this assertion:
+      // a scheduled wake cannot run until this synchronous stack returns.
+      assert.deepStrictEqual(received, ["inline"])
+      assert.deepStrictEqual(texts(yield* Fiber.join(pull)), ["inline"])
+    })))
+
   it.effect("fails every parked pull on scope close", () =>
     Effect.gen(function*() {
       const { socket } = yield* fixture()
