@@ -2811,6 +2811,10 @@ const refined = Schema.Array(Schema.String).pipe(
 
 Use `Schema.brand` to add a brand to a schema.
 
+The identifier must be a single concrete string literal. `Schema.brand` adds
+brand metadata but no runtime validation. Apply it once per identifier when a
+type has multiple brands.
+
 **Example** (Brand a string as a UserId)
 
 ```ts
@@ -2819,6 +2823,32 @@ import { Schema } from "effect"
 //      ┌─── Schema.brand<Schema.String, "UserId">
 //      ▼
 const branded = Schema.String.pipe(Schema.brand("UserId"))
+```
+
+### Using Brand constructors
+
+Use `Schema.fromBrand` to reuse the checks from a `Brand.Constructor`. The
+constructor must have exactly one concrete brand key, and the identifier must
+match that key. Apply `Schema.fromBrand` once per constructor to compose
+distinct brands. Use `Schema.Union` for alternatives instead.
+
+With a string enum brand key, pass the enum member rather than its string value.
+
+**Example** (Compose checked brands)
+
+```ts
+import { Brand, Schema } from "effect"
+
+type Int = number & Brand.Brand<"Int">
+const Int = Brand.check<Int>(Schema.isInt())
+
+type Positive = number & Brand.Brand<"Positive">
+const Positive = Brand.check<Positive>(Schema.isGreaterThan(0))
+
+const PositiveInt = Schema.Number.pipe(
+  Schema.fromBrand("Int", Int),
+  Schema.fromBrand("Positive", Positive)
+)
 ```
 
 ## Structural Filters
