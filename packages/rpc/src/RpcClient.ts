@@ -990,7 +990,7 @@ export const makeProtocolSocket = (options?: {
           pinger.timeout,
           Effect.fail(
             new Socket.SocketGenericError({
-              reason: "OpenTimeout",
+              reason: "Read",
               cause: new Error("ping timeout")
             })
           )
