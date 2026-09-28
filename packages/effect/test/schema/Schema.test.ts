@@ -10486,8 +10486,10 @@ describe("Check", () => {
       type Positive = number & Brand.Brand<"Positive">
       const Positive = Brand.check<Positive>(Schema.isGreaterThan(0))
 
-      const PositiveInt = Brand.all(Int, Positive)
-      const schema = Schema.Number.pipe(Schema.fromBrand("PositiveInt", PositiveInt))
+      const schema = Schema.Number.pipe(
+        Schema.fromBrand("Int", Int),
+        Schema.fromBrand("Positive", Positive)
+      )
 
       const asserts = new TestSchema.Asserts(schema)
 
@@ -10497,7 +10499,8 @@ describe("Check", () => {
       await decoding.fail(1.2, `Expected an integer`)
       await decoding.fail(-1, `Expected a value greater than 0`)
 
-      deepStrictEqual(schema.ast.checks?.at(-1)?.annotations?.brands, ["PositiveInt"])
+      deepStrictEqual(schema.ast.checks?.at(0)?.annotations?.brands, ["Int"])
+      deepStrictEqual(schema.ast.checks?.at(-1)?.annotations?.brands, ["Positive"])
     })
   })
 
