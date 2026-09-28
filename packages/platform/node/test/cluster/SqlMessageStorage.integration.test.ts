@@ -136,7 +136,7 @@ describe("SqlMessageStorage", () => {
           const reply = yield* makeReply(request)
           yield* storage.saveRequest(request)
           yield* storage.saveReply(reply)
-          yield* storage.clearReplies(request.envelope.requestId, reply.reply.id)
+          yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: reply.reply.id })
           expect(yield* storage.repliesFor([request])).toHaveLength(0)
           expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
         }))
@@ -155,7 +155,7 @@ describe("SqlMessageStorage", () => {
           const before = yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE id = ${
             String(request.envelope.requestId)
           }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
-          yield* storage.clearReplies(request.envelope.requestId, oldReply.reply.id)
+          yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
           expect((yield* storage.repliesFor([request])).map((r) => r.id)).toEqual([
             oldReply.reply.id,
             completed.reply.id

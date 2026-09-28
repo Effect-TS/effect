@@ -111,16 +111,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       let runResets = 0
       const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
         ...storage,
-        clearReplies: (id, expectedReplyId) =>
-          id === runRequestId && expectedReplyId !== undefined && ++runResets === 1
+        clearReplies: (id, options) =>
+          id === runRequestId && options?.expectedReplyId !== undefined && ++runResets === 1
             ? firstReset.open.pipe(
               Effect.andThen(allowStaleReset.await),
-              Effect.andThen(storage.clearReplies(id, expectedReplyId)),
+              Effect.andThen(storage.clearReplies(id, options)),
               Effect.andThen(staleResetFinished.open),
               // Do not let the stale wake poll storage and replay before inspecting the reply.
               Effect.andThen(allowPoll.await)
             )
-            : storage.clearReplies(id, expectedReplyId)
+            : storage.clearReplies(id, options)
       })
       const context = yield* Layer.build(
         workflow.toLayer(() =>
