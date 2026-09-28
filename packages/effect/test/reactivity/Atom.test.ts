@@ -17,6 +17,7 @@ import {
 import { KeyValueStore } from "effect/persistence"
 import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
+import { getGc } from "../utils/gc.ts"
 
 declare const global: any
 
@@ -1066,6 +1067,35 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(hashKeep, Hash.hash(countKeep(1)))
     }
   })
+
+  it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "family keeps a replacement atom when the collected atom is finalized late",
+    async () => {
+      vitest.useRealTimers()
+      const gc = await getGc()
+      const tick = () => new Promise((resolve) => setTimeout(resolve, 0))
+      const counter = Atom.family((_: string) => Atom.make(0).pipe(Atom.keepAlive))
+
+      const older = new WeakRef(counter("a"))
+      for (let i = 0; i < 8 && older.deref() !== undefined; i++) {
+        await tick()
+        gc()
+      }
+      assert.isUndefined(older.deref())
+
+      // the finalizer for the collected atom has not run yet
+      const current = counter("a")
+      const r = AtomRegistry.make()
+      r.set(current, 42)
+      for (let i = 0; i < 8; i++) {
+        await tick()
+        gc()
+      }
+
+      assert.strictEqual(counter("a"), current)
+      assert.strictEqual(r.get(counter("a")), 42)
+    }
+  )
 
   it("label", async () => {
     expect(
