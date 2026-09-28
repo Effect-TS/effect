@@ -128,7 +128,7 @@ describe("SqlMessageStorage", () => {
           yield* truncate
         }))
 
-      it.effect("clearRepliesIfCurrent requeues when the observed reply is current", () =>
+      it.effect("clearReplies requeues when the expected reply is current", () =>
         Effect.gen(function*() {
           yield* truncate
           const storage = yield* MessageStorage.MessageStorage
@@ -136,12 +136,24 @@ describe("SqlMessageStorage", () => {
           const reply = yield* makeReply(request)
           yield* storage.saveRequest(request)
           yield* storage.saveReply(reply)
-          yield* storage.clearRepliesIfCurrent(request.envelope.requestId, reply.reply.id)
+          yield* storage.clearReplies(request.envelope.requestId, reply.reply.id)
           expect(yield* storage.repliesFor([request])).toHaveLength(0)
           expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
         }))
 
-      it.effect("clearRepliesIfCurrent preserves a newer completion and processed state", () =>
+      it.effect("clearReplies without an expected reply clears the latest completion", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          yield* storage.saveReply(yield* makeReply(request))
+          yield* storage.clearReplies(request.envelope.requestId)
+          expect(yield* storage.repliesFor([request])).toHaveLength(0)
+          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+        }))
+
+      it.effect("clearReplies with a stale expected reply preserves a newer completion and processed state", () =>
         Effect.gen(function*() {
           yield* truncate
           const sql = yield* SqlClient.SqlClient
@@ -155,7 +167,7 @@ describe("SqlMessageStorage", () => {
           const before = yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE id = ${
             String(request.envelope.requestId)
           }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
-          yield* storage.clearRepliesIfCurrent(request.envelope.requestId, oldReply.reply.id)
+          yield* storage.clearReplies(request.envelope.requestId, oldReply.reply.id)
           expect((yield* storage.repliesFor([request])).map((r) => r.id)).toEqual([
             oldReply.reply.id,
             completed.reply.id
@@ -170,7 +182,7 @@ describe("SqlMessageStorage", () => {
         }))
 
       if (label !== "sqlite") {
-        it.effect("concurrent conditional clear and reply persistence keep the newer completion", () =>
+        it.effect("concurrent expected-reply clear and reply persistence keep the newer completion", () =>
           Effect.gen(function*() {
             yield* truncate
             const storage = yield* MessageStorage.MessageStorage
@@ -182,7 +194,7 @@ describe("SqlMessageStorage", () => {
             // Each transaction checks out a separate pool connection.
             const start = yield* Latch.make()
             const clear = yield* Effect.forkChild(start.await.pipe(
-              Effect.andThen(storage.clearRepliesIfCurrent(request.envelope.requestId, oldReply.reply.id))
+              Effect.andThen(storage.clearReplies(request.envelope.requestId, oldReply.reply.id))
             ))
             const save = yield* Effect.forkChild(start.await.pipe(Effect.andThen(storage.saveReply(completed))))
             yield* start.open
