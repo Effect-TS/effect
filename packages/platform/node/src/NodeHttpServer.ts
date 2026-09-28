@@ -17,6 +17,7 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
 import { flow, type LazyArg } from "effect/Function"
@@ -241,7 +242,6 @@ export const makeUpgradeHandler = <
   never,
   Exclude<Effect.Services<App>, HttpServerRequest | Scope.Scope>
 > => {
-  const handledApp = HttpEffect.toHandled(httpEffect, handleResponse, options.middleware as any)
   return Effect.withFiber((parent) => {
     const services = parent.context
     return Effect.succeed(function handler(
@@ -249,6 +249,17 @@ export const makeUpgradeHandler = <
       socket: Duplex,
       head: Buffer
     ) {
+      let handlerExit: Exit.Exit<unknown, unknown> | undefined
+      // HttpEffect can recover the handler failure while writing an HTTP response.
+      // Keep the original exit for the WebSocket's release finalizer.
+      const handledApp = HttpEffect.toHandled(
+        Effect.onExit(httpEffect, (exit) =>
+          Effect.sync(() => {
+            handlerExit = exit
+          })),
+        handleResponse,
+        options.middleware as any
+      )
       let upgraded = false
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
@@ -278,7 +289,11 @@ export const makeUpgradeHandler = <
                 resume(Effect.succeed(ws))
               })
             ),
-            (ws) => Effect.sync(() => ws.close())
+            (ws, exit) =>
+              Effect.sync(() => {
+                const result = handlerExit ?? exit
+                ws.close(Exit.isSuccess(result) ? 1000 : Cause.hasInterruptsOnly(result.cause) ? 1001 : 1011)
+              })
           )
       ))
       const context = Context.add(
