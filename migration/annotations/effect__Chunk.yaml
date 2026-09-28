@@ -9,13 +9,16 @@
   note: "The Option suffix was dropped; an out-of-bounds index still returns Option.none."
 "effect/Chunk#partitionMap":
   replacement: "Chunk.partition"
-  note: "Pass a Result-returning mapper instead of Either; the output remains [failures, successes]."
+  note: "Pass a Result-returning mapper instead of Either. The tuple is [passes, fails], the reverse of v3 [failures, successes]."
 "effect/Chunk#removeOption":
   replacement: "Chunk.remove"
   note: "The closest API now returns the unchanged Chunk out of bounds; use Chunk.get before Chunk.remove to preserve the old Option result."
 "effect/Chunk#replaceOption":
   replacement: "Chunk.replace"
   note: "The Option suffix was dropped; an out-of-bounds index still returns Option.none."
+"effect/Chunk#separate":
+  replacement: "Chunk.separate"
+  note: "The tuple is now [successes, failures], the reverse of v3 [failures, successes]."
 "effect/Chunk#TypeId":
   replacement: "none"
   note: "The v4 Chunk brand key is private; no public Chunk.TypeId type or value is exported."

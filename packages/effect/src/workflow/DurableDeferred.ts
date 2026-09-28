@@ -239,7 +239,7 @@ export const into: {
           Effect.provideService(effect, InstanceTag, instance),
           Effect.fnUntraced(function*(exit) {
             if (Exit.isFailure(exit)) {
-              const [reasons, interrupts] = Arr.partition(
+              const [interrupts, reasons] = Arr.partition(
                 exit.cause.reasons,
                 Filter.fromPredicate(Cause.isInterruptReason)
               )

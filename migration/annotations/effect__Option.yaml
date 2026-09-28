@@ -37,6 +37,9 @@
 "effect/Option#orElseEither":
   replacement: "Option.orElseResult"
   note: "Either was replaced by Result; source tracking now uses Failure and Success."
+"effect/Option#partitionMap":
+  replacement: "Option.partitionMap"
+  note: "The tuple is now [passes, fails], the reverse of v3 [left, right]."
 "effect/Option#Some":
   replacement: "Option.Some"
   note: "The variant remains, but Option is no longer an Effect or STM subtype."

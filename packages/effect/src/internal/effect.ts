@@ -4719,19 +4719,19 @@ export const partition: {
   <A, B, E, R>(
     f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: { readonly concurrency?: Concurrency | undefined }
-  ): (elements: Iterable<A>) => Effect.Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>
+  ): (elements: Iterable<A>) => Effect.Effect<[passes: Array<B>, fails: Array<E>], never, R>
   <A, B, E, R>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: { readonly concurrency?: Concurrency | undefined }
-  ): Effect.Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>
+  ): Effect.Effect<[passes: Array<B>, fails: Array<E>], never, R>
 } = dual(
   (args) => isIterable(args[0]) && !isEffect(args[0]),
   <A, B, E, R>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: { readonly concurrency?: Concurrency | undefined }
-  ): Effect.Effect<[excluded: Array<E>, satisfying: Array<B>], never, R> =>
+  ): Effect.Effect<[passes: Array<B>, fails: Array<E>], never, R> =>
     map(
       forEach(elements, (a, i) => result(f(a, i)), options),
       (results) => Arr.partition(results, identity)
@@ -4820,11 +4820,11 @@ export const validate: {
   ): Effect.Effect<Array<B> | void, Arr.NonEmptyArray<E>, R> =>
     flatMap(
       partition(elements, f, { concurrency: options?.concurrency }),
-      ([excluded, satisfying]) => {
-        if (Arr.isArrayNonEmpty(excluded)) {
-          return fail(excluded)
+      ([passes, fails]) => {
+        if (Arr.isArrayNonEmpty(fails)) {
+          return fail(fails)
         }
-        return options?.discard ? void_ : succeed(satisfying)
+        return options?.discard ? void_ : succeed(passes)
       }
     )
 )

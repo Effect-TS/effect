@@ -51,7 +51,7 @@
   note: "The Option suffix was dropped; an out-of-bounds index still returns Option.none."
 "effect/Array#partitionMap":
   replacement: "Array.partition"
-  note: "Pass a Result-returning mapper instead of Either; the output remains [failures, successes], corresponding to v3 [lefts, rights]."
+  note: "Pass a Result-returning mapper instead of Either. The tuple is [passes, fails], the reverse of v3 [lefts, rights]."
 "effect/Array#ReadonlyArray":
   replacement: "Array.ReadonlyArray"
   note: "The namespace and its Infer, With, OrNonEmpty, AndNonEmpty, and Flatten utility types remain."
@@ -61,6 +61,9 @@
 "effect/Array#replaceOption":
   replacement: "Array.replace"
   note: "The Option suffix was dropped; an out-of-bounds index still returns Option.none."
+"effect/Array#separate":
+  replacement: "Array.separate"
+  note: "The tuple is now [successes, failures], the reverse of v3 [lefts, rights]."
 "effect/Array#setNonEmptyHead":
   replacement: "Array.setHeadNonEmpty"
   note: "Direct word-order rename with the same non-empty-preserving result."

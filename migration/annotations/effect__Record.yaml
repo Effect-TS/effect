@@ -12,7 +12,7 @@
   note: "The Option suffix was dropped; missing keys still return Option.none."
 "effect/Record#partitionMap":
   replacement: "Record.partition"
-  note: "Pass a mapper returning Result; failures and successes form the two output records."
+  note: "Pass a mapper returning Result. The tuple is [passes, fails], the reverse of v3 [failures, successes]."
 "effect/Record#ReadonlyRecord":
   replacement: "Record.ReadonlyRecord"
   note: "The public type and parameter order are unchanged."
@@ -22,3 +22,6 @@
 "effect/Record#replaceOption":
   replacement: "Record.replace"
   note: "The Option suffix was dropped; missing keys still return Option.none."
+"effect/Record#separate":
+  replacement: "Record.separate"
+  note: "The tuple is now [successes, failures], the reverse of v3 [failures, successes]."

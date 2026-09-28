@@ -1731,23 +1731,23 @@ export const mapAccum: {
 })
 
 /**
- * Splits a chunk using a `Filter` into failures and successes.
+ * Splits a chunk using a `Filter` into successes and failures.
  *
  * **Details**
  *
- * Returns `[excluded, satisfying]`. The filter receives `(element, index)`.
+ * Returns `[passes, fails]`. The filter receives `(element, index)`.
  *
  * **Example** (Partitioning with a Result)
  *
  * ```ts import.meta.vitest
  * import { Chunk, Result } from "effect"
  *
- * const [excluded, satisfying] = Chunk.partition(Chunk.make(1, -2, 3), (n, i) =>
+ * const [passes, fails] = Chunk.partition(Chunk.make(1, -2, 3), (n, i) =>
  *   n > 0 ? Result.succeed(n + i) : Result.fail(`negative:${n}`)
  * )
  *
- * Chunk.toArray(excluded) // => ["negative:-2"]
- * Chunk.toArray(satisfying) // => [1, 5]
+ * Chunk.toArray(passes) // => [1, 5]
+ * Chunk.toArray(fails) // => ["negative:-2"]
  * ```
  *
  * @category filtering
@@ -1756,32 +1756,32 @@ export const mapAccum: {
 export const partition: {
   <A, Pass, Fail>(
     f: (input: NoInfer<A>, i: number) => Result<Pass, Fail>
-  ): (self: Chunk<A>) => [excluded: Chunk<Fail>, satisfying: Chunk<Pass>]
+  ): (self: Chunk<A>) => [passes: Chunk<Pass>, fails: Chunk<Fail>]
   <A, Pass, Fail>(
     self: Chunk<A>,
     f: (input: A, i: number) => Result<Pass, Fail>
-  ): [excluded: Chunk<Fail>, satisfying: Chunk<Pass>]
+  ): [passes: Chunk<Pass>, fails: Chunk<Fail>]
 } = dual(
   2,
   <A, Pass, Fail>(
     self: Chunk<A>,
     f: (input: A, i: number) => Result<Pass, Fail>
-  ): [excluded: Chunk<Fail>, satisfying: Chunk<Pass>] => {
-    const [excluded, satisfying] = RA.partition(self, f)
-    return [fromArrayUnsafe(excluded), fromArrayUnsafe(satisfying)]
+  ): [passes: Chunk<Pass>, fails: Chunk<Fail>] => {
+    const [passes, fails] = RA.partition(self, f)
+    return [fromArrayUnsafe(passes), fromArrayUnsafe(fails)]
   }
 )
 
 /**
- * Separates a chunk of `Result` values into a chunk of failures and a chunk of
- * successes.
+ * Separates a chunk of `Result` values into a chunk of successes and a chunk of
+ * failures.
  *
  * **Details**
  *
- * The returned tuple is `[failures, successes]`, preserving the original order
+ * The returned tuple is `[successes, failures]`, preserving the original order
  * within each side.
  *
- * **Example** (Separating failures and successes)
+ * **Example** (Separating successes and failures)
  *
  * ```ts import.meta.vitest
  * import { Chunk, Result } from "effect"
@@ -1794,21 +1794,21 @@ export const partition: {
  *   Result.succeed(3)
  * )
  *
- * const [errors, values] = Chunk.separate(chunk)
- * Chunk.toArray(errors) // => ["error1", "error2"]
+ * const [values, errors] = Chunk.separate(chunk)
  * Chunk.toArray(values) // => [1, 2, 3]
+ * Chunk.toArray(errors) // => ["error1", "error2"]
  *
  * // All successes
  * const allSuccesses = Chunk.make(Result.succeed(1), Result.succeed(2))
- * const [noErrors, allValues] = Chunk.separate(allSuccesses)
- * Chunk.toArray(noErrors) // => []
+ * const [allValues, noErrors] = Chunk.separate(allSuccesses)
  * Chunk.toArray(allValues) // => [1, 2]
+ * Chunk.toArray(noErrors) // => []
  * ```
  *
  * @category filtering
  * @since 2.0.0
  */
-export const separate = <A, B>(self: Chunk<Result<B, A>>): [Chunk<A>, Chunk<B>] =>
+export const separate = <A, B>(self: Chunk<Result<B, A>>): [Chunk<B>, Chunk<A>] =>
   pipe(
     RA.separate(toReadonlyArray(self)),
     ([l, r]) => [fromArrayUnsafe(l), fromArrayUnsafe(r)]
