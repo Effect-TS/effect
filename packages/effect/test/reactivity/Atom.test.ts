@@ -1146,6 +1146,43 @@ describe("Atom", { concurrent: false }, () => {
     expect(r.get(derived)).toEqual("2b")
   })
 
+  it.each([
+    { existingListener: false, expected: [0] },
+    { existingListener: true, expected: [0, 0] }
+  ])("delivers a batched value to a late subscriber (existing listener: $existingListener)", ({
+    existingListener,
+    expected
+  }) => {
+    const r = AtomRegistry.make()
+    const state = Atom.make(existingListener ? 1 : 0)
+    const seen: Array<number> = []
+
+    Atom.batch(() => {
+      if (existingListener) {
+        r.subscribe(state, () => {})
+        r.set(state, 0)
+      } else {
+        r.get(state)
+      }
+      r.subscribe(state, (value) => seen.push(value), { immediate: true })
+    })
+
+    assert.deepStrictEqual(seen, expected)
+    r.dispose()
+  })
+
+  it("does not queue an initialValues notification without listeners", () => {
+    const state = Atom.make(0)
+    const seen: Array<number> = []
+
+    Atom.batch(() => {
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(state, 10)] })
+      r.subscribe(state, (value) => seen.push(value), { immediate: true })
+    })
+
+    assert.deepStrictEqual(seen, [10])
+  })
+
   it("runs Atom.fn writes from batch commit listeners", () => {
     const registry = AtomRegistry.make()
     const source = Atom.make(0)
