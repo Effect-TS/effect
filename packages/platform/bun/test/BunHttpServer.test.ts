@@ -461,6 +461,46 @@ describe("BunHttpServer", () => {
       }).pipe(Effect.timeout("5 seconds")), 10000)
   }
 
+  it.effect(
+    "closes a request-owned WebSocket with 1001 when the handler fiber is interrupted",
+    () =>
+      Effect.gen(function*() {
+        const opened = yield* Deferred.make<void>()
+        const handlerFiber = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+        const serve = Bun.serve
+        let forceStop: (() => void) | undefined
+        Bun.serve = ((options: Parameters<typeof Bun.serve>[0]) => {
+          const bunServer = serve(options)
+          forceStop = () => bunServer.stop(true)
+          return bunServer
+        }) as typeof Bun.serve
+        const server = yield* BunHttpServer.make({
+          hostname: "127.0.0.1",
+          port: 0,
+          gracefulShutdownTimeout: "100 millis"
+        }).pipe(Effect.ensuring(Effect.sync(() => {
+          Bun.serve = serve
+        })))
+        yield* server.serve(Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* socket.reader
+          yield* Deferred.succeed(handlerFiber, yield* Effect.fiber)
+          return yield* Effect.interruptible(Effect.never)
+        }))
+        yield* Effect.addFinalizer(() => Effect.sync(() => forceStop?.()))
+        const port = (server.address as NetAddress.InetAddress).port
+        const close = yield* readWebSocketClose(port, opened).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(opened)
+        const fiber = yield* Deferred.await(handlerFiber)
+        fiber.interruptUnsafe((yield* Effect.fiber).id)
+        const actual = yield* Fiber.join(close)
+        forceStop?.()
+        assert.strictEqual(actual, 1001)
+      }).pipe(Effect.timeout("5 seconds")),
+    10000
+  )
+
   it.effect("fails a concurrent reader waiting behind a closed reader", () =>
     Effect.gen(function*() {
       const secondReaderFailed = yield* Deferred.make<boolean>()

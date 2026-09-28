@@ -5,6 +5,7 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { ByteSize, Effect, Option } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
 import {
@@ -29,6 +30,7 @@ import * as Layer from "effect/Layer"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Schema from "effect/Schema"
+import * as Scope from "effect/Scope"
 import { Socket } from "effect/socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
@@ -1003,6 +1005,44 @@ describe("HttpServer", () => {
           return Effect.sync(() => ws.close())
         })
         assert.strictEqual(actual, code)
+      }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
+  }
+
+  for (
+    const [name, exit, code] of [
+      ["interrupted", "interrupt", 1001],
+      ["failed", "failure", 1011]
+    ] as const
+  ) {
+    it.effect(`a separately owned WebSocket closes with the ${name} owner scope exit`, () =>
+      Effect.gen(function*() {
+        const owner = yield* Deferred.make<Scope.Closeable>()
+        const handlerDone = yield* Deferred.make<void>()
+        yield* HttpRouter.add(
+          "GET",
+          "/ws",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            const scope = yield* Scope.make()
+            yield* socket.reader.pipe(Scope.provide(scope))
+            yield* Deferred.succeed(owner, scope)
+            yield* Effect.addFinalizer(() => Deferred.succeed(handlerDone, undefined))
+            return HttpServerResponse.empty()
+          })
+        ).pipe(HttpRouter.serve, Layer.build)
+        const server = yield* HttpServer.HttpServer
+        const port = (server.address as NetAddress.InetAddress).port
+        const close = yield* Effect.callback<number, Error>((resume) => {
+          const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
+          ws.on("close", (code) => resume(Effect.succeed(code)))
+          ws.on("error", (error) => resume(Effect.fail(error)))
+          return Effect.sync(() => ws.close())
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+        const scope = yield* Deferred.await(owner)
+        yield* Deferred.await(handlerDone)
+        yield* Scope.close(scope, exit === "interrupt" ? Exit.interrupt() : Exit.fail(new Error("owner failed")))
+        assert.strictEqual(yield* Fiber.join(close), code)
       }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
   }
 
