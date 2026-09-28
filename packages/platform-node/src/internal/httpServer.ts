@@ -163,18 +163,9 @@ export const makeUpgradeHandler = <R, E>(
   httpApp: App.Default<E, R>,
   middleware?: Middleware.HttpMiddleware
 ) => {
-  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) => {
-    const handlerCauses = new WeakMap<object, Cause.Cause<E>>()
-    const handledApp = App.toHandled(
-      Effect.tapErrorCause(httpApp, (cause) =>
-        Effect.flatMap(ServerRequest.HttpServerRequest, (request) =>
-          Effect.sync(() => {
-            handlerCauses.set(request.source as object, cause)
-          }))),
-      handleResponse,
-      middleware
-    )
-    return function handler(
+  const handledApp = App.toHandled(httpApp, handleResponse, middleware)
+  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
+    function handler(
       nodeRequest: Http.IncomingMessage,
       socket: Duplex,
       head: Buffer
@@ -195,48 +186,35 @@ export const makeUpgradeHandler = <R, E>(
         }
         return nodeResponse_
       }
-      const upgradeEffect = Effect.flatMap(Effect.scope, (scope) =>
-        Socket.fromWebSocket(Effect.flatMap(
-          lazyWss,
-          (wss) =>
-            Effect.acquireRelease(
-              Effect.async<globalThis.WebSocket>((resume) =>
-                wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
-                  upgraded = true
-                  resume(Effect.succeed(ws as any))
-                })
-              ),
-              (ws, exit) =>
-                Effect.sync(() => {
-                  const failure = exit._tag === "Failure" ? exit.cause : handlerCauses.get(nodeRequest)
-                  handlerCauses.delete(nodeRequest)
-                  if (failure === undefined) {
-                    ws.close(1000)
-                    return
-                  }
-                  const cause = Error.causeResponseStripped(failure)[1]
-                  ws.close(Option.exists(cause, Cause.isInterruptedOnly) ? 1001 : 1011)
-                })
-            )
-        ).pipe(Scope.extend(scope)))
-      )
-      const fiber = runFork(
-        Effect.scoped(Effect.gen(function*() {
-          const scope = yield* Effect.scope
-          yield* Effect.provideService(
-            handledApp,
-            ServerRequest.HttpServerRequest,
-            new ServerRequestImpl(nodeRequest, nodeResponse, Effect.provideService(upgradeEffect, Scope.Scope, scope))
+      const upgradeEffect = Socket.fromWebSocket(Effect.flatMap(
+        lazyWss,
+        (wss) =>
+          Effect.acquireRelease(
+            Effect.async<globalThis.WebSocket>((resume) =>
+              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                upgraded = true
+                resume(Effect.succeed(ws as any))
+              })
+            ),
+            (ws, exit) =>
+              Effect.sync(() => {
+                ws.close(exit._tag === "Success" ? 1000 : Cause.isInterruptedOnly(exit.cause) ? 1001 : 1011)
+              })
           )
-        }))
+      ))
+      const fiber = runFork(
+        Effect.provideService(
+          handledApp,
+          ServerRequest.HttpServerRequest,
+          new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
+        )
       )
       socket.on("close", () => {
         if (!socket.writableEnded) {
           fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
-    }
-  })
+    })
 }
 
 class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> implements ServerRequest.HttpServerRequest {

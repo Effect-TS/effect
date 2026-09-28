@@ -815,9 +815,12 @@ describe("HttpServer", () => {
           ),
           HttpServer.serveEffect((app) => {
             let count = 0
-            return Effect.zipRight(Effect.sync(() => {
-              observed.push(++count)
-            }), app)
+            return Effect.zipRight(
+              Effect.sync(() => {
+                observed.push(++count)
+              }),
+              app
+            )
           })
         )
         const address = (yield* HttpServer.HttpServer).address
@@ -825,75 +828,64 @@ describe("HttpServer", () => {
         for (let i = 0; i < 2; i++) {
           const { frames } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
           assert.strictEqual(frames[0].payload.toString(), "ready")
-          assert.strictEqual(frames[1].payload.readUInt16BE(0), 1000)
+          assert.strictEqual(frames[1].payload.readUInt16BE(0), 1001)
         }
         assert.deepStrictEqual(observed, [1, 2])
       }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
-    for (const [name, finish, code] of [
-      ["success", Effect.void, 1000],
-      ["interruption", Effect.interrupt, 1001],
-      ["failure", Effect.fail(new Error("handler failed")), 1011],
-      ["defect", Effect.die(new Error("handler defect")), 1011]
-    ] as const) {
-      it.scoped(`closes with ${code} on ${name}`, () =>
+    it.scoped("closes with 1001 when the handler ends while the socket is running", () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.get(
+            "/ws",
+            Effect.gen(function*() {
+              const socket = yield* HttpServerRequest.upgrade
+              yield* Effect.forkScoped(socket.runRaw(constVoid))
+              const write = yield* socket.writer
+              yield* write("ready")
+              return HttpServerResponse.empty()
+            }).pipe(Effect.scoped)
+          ),
+          HttpServer.serveEffect()
+        )
+        const address = (yield* HttpServer.HttpServer).address
+        assert(address._tag === "TcpAddress")
+        const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
+        assert.strictEqual(frames.length, 2)
+        assert.strictEqual(frames[0].opcode, 1)
+        assert.strictEqual(frames[0].payload.toString(), "ready")
+        assert.strictEqual(frames[1].opcode, 8)
+        assert.strictEqual(frames[1].payload.length, 2)
+        assert.strictEqual(frames[1].payload.readUInt16BE(0), 1001)
+        assert.strictEqual(trailing.length, 0)
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+    for (
+      const [name, finish] of [
+        ["failure", Effect.fail(new Error("socket failed"))],
+        ["defect", Effect.die(new Error("socket defect"))]
+      ] as const
+    ) {
+      it.scoped(`closes with 1011 on socket ${name}`, () =>
         Effect.gen(function*() {
           yield* HttpRouter.empty.pipe(
             HttpRouter.get(
               "/ws",
               Effect.gen(function*() {
                 const socket = yield* HttpServerRequest.upgrade
-                yield* Effect.forkScoped(socket.runRaw(constVoid))
-                const write = yield* socket.writer
-                yield* write("ready")
-                yield* finish
+                yield* socket.runRaw(() => finish)
                 return HttpServerResponse.empty()
-              }).pipe(Effect.scoped)
+              })
             ),
             HttpServer.serveEffect()
           )
           const address = (yield* HttpServer.HttpServer).address
           assert(address._tag === "TcpAddress")
-          const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
-          assert.strictEqual(frames.length, 2)
-          assert.strictEqual(frames[0].opcode, 1)
-          assert.strictEqual(frames[0].payload.toString(), "ready")
-          assert.strictEqual(frames[1].opcode, 8)
-          assert.strictEqual(frames[1].payload.length, 2)
-          assert.strictEqual(frames[1].payload.readUInt16BE(0), code)
-          assert.strictEqual(trailing.length, 0)
-        }).pipe(Effect.provide(NodeHttpServer.layerTest)))
-    }
-
-    for (const [name, finish] of [
-      ["failure", Effect.fail(new Error("handler failed"))],
-      ["defect", Effect.die(new Error("handler defect"))]
-    ] as const) {
-      it.scoped(`closes with 1011 on ${name} with middleware`, () =>
-        Effect.gen(function*() {
-          yield* HttpRouter.empty.pipe(
-            HttpRouter.get(
-              "/ws",
-              Effect.gen(function*() {
-                const socket = yield* HttpServerRequest.upgrade
-                yield* Effect.forkScoped(socket.runRaw(constVoid))
-                const write = yield* socket.writer
-                yield* write("ready")
-                yield* finish
-                return HttpServerResponse.empty()
-              }).pipe(Effect.scoped)
-            ),
-            HttpServer.serveEffect((app) => app)
-          )
-          const address = (yield* HttpServer.HttpServer).address
-          assert(address._tag === "TcpAddress")
-          const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
-          assert.strictEqual(frames.length, 2)
-          assert.strictEqual(frames[0].opcode, 1)
-          assert.strictEqual(frames[0].payload.toString(), "ready")
-          assert.strictEqual(frames[1].opcode, 8)
-          assert.strictEqual(frames[1].payload.length, 2)
-          assert.strictEqual(frames[1].payload.readUInt16BE(0), 1011)
+          const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws", "hello"))
+          assert.strictEqual(frames.length, 1)
+          assert.strictEqual(frames[0].opcode, 8)
+          assert.strictEqual(frames[0].payload.length, 2)
+          assert.strictEqual(frames[0].payload.readUInt16BE(0), 1011)
           assert.strictEqual(trailing.length, 0)
         }).pipe(Effect.provide(NodeHttpServer.layerTest)))
     }
@@ -991,20 +983,25 @@ const upgradeRequest = (path: string): string =>
     ""
   ].join("\r\n")
 
-const closeFrame = (code: number): Buffer.Buffer => {
-  const payload = Buffer.Buffer.alloc(2)
-  payload.writeUInt16BE(code, 0)
+const maskedFrame = (opcode: number, payload: Buffer.Buffer): Buffer.Buffer => {
   const mask = randomBytes(4)
   const masked = Buffer.Buffer.from(payload)
   for (let index = 0; index < masked.length; index++) {
     masked[index] = masked[index] ^ mask[index % 4]
   }
-  return Buffer.Buffer.concat([Buffer.Buffer.from([0x88, 0x80 | payload.length]), mask, masked])
+  return Buffer.Buffer.concat([Buffer.Buffer.from([0x80 | opcode, 0x80 | payload.length]), mask, masked])
+}
+
+const closeFrame = (code: number): Buffer.Buffer => {
+  const payload = Buffer.Buffer.alloc(2)
+  payload.writeUInt16BE(code, 0)
+  return maskedFrame(8, payload)
 }
 
 const rawWebSocket = (
   port: number,
-  path: string
+  path: string,
+  message?: string
 ): Promise<{ readonly frames: ReadonlyArray<WebSocketFrame>; readonly trailing: Buffer.Buffer }> =>
   new Promise((resolve, reject) => {
     const socket = createConnection({ host: "127.0.0.1", port })
@@ -1029,6 +1026,9 @@ const rawWebSocket = (
         }
         upgraded = true
         stream = Buffer.Buffer.from(stream.subarray(headerEnd + 4))
+        if (message !== undefined) {
+          socket.write(maskedFrame(1, Buffer.Buffer.from(message)))
+        }
       }
       if (!closeEchoed) {
         const close = parseWebSocketFrames(stream).frames.find((frame) => frame.opcode === 8)
