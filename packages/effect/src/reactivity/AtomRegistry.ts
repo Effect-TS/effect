@@ -808,7 +808,9 @@ class NodeImpl<A> {
       this.preserveInitialValueOnBuild = true
       this.state = NodeState.stale
       this._value = value
-      this.announce()
+      if (this.listeners.size > 0) {
+        this.announce()
+      }
       return
     }
 
