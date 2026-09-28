@@ -694,7 +694,15 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
  * @category utility types
  * @since 4.0.0
  */
-export type ExtractTag<R extends Any, Tag extends string> = Extract<R, { readonly _tag: Tag }>
+export type ExtractTag<R extends Any, Tag extends string> = R extends Rpc<
+  infer _Tag extends Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware,
+  infer _Requires
+> ? R :
+  never
 
 /**
  * Extracts the services provided by middleware on the RPC with the specified
