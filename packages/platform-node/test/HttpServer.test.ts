@@ -834,6 +834,39 @@ describe("HttpServer", () => {
         }).pipe(Effect.provide(NodeHttpServer.layerTest)))
     }
 
+    for (const [name, finish] of [
+      ["failure", Effect.fail(new Error("handler failed"))],
+      ["defect", Effect.die(new Error("handler defect"))]
+    ] as const) {
+      it.scoped(`closes with 1011 on ${name} with middleware`, () =>
+        Effect.gen(function*() {
+          yield* HttpRouter.empty.pipe(
+            HttpRouter.get(
+              "/ws",
+              Effect.gen(function*() {
+                const socket = yield* HttpServerRequest.upgrade
+                yield* Effect.forkScoped(socket.runRaw(constVoid))
+                const write = yield* socket.writer
+                yield* write("ready")
+                yield* finish
+                return HttpServerResponse.empty()
+              }).pipe(Effect.scoped)
+            ),
+            HttpServer.serveEffect((app) => app)
+          )
+          const address = (yield* HttpServer.HttpServer).address
+          assert(address._tag === "TcpAddress")
+          const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
+          assert.strictEqual(frames.length, 2)
+          assert.strictEqual(frames[0].opcode, 1)
+          assert.strictEqual(frames[0].payload.toString(), "ready")
+          assert.strictEqual(frames[1].opcode, 8)
+          assert.strictEqual(frames[1].payload.length, 2)
+          assert.strictEqual(frames[1].payload.readUInt16BE(0), 1011)
+          assert.strictEqual(trailing.length, 0)
+        }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+    }
+
     it.scoped("does not write the HTTP response to an upgraded connection", () =>
       Effect.gen(function*() {
         yield* HttpRouter.empty.pipe(
