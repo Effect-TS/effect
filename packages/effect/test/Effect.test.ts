@@ -751,6 +751,59 @@ describe("Effect", () => {
         assert.deepStrictEqual(done, [1, 2])
       }))
 
+    it.effect("preserves interruption when a child cleanup dies", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const defect = new Error("cleanup defect")
+        const fiber = yield* Effect.forEach([0, 1], (i) =>
+          i === 0
+            ? Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Effect.callback<void>(() => Effect.die(defect)))
+            )
+            : Effect.never, { concurrency: 2 }).pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* Deferred.await(started)
+        yield* Fiber.interrupt(fiber)
+        const exit = yield* Fiber.await(fiber)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.isTrue(Cause.hasInterrupts(exit.cause))
+          assert.isTrue(Cause.hasDies(exit.cause))
+        }
+        assertExitDefect(exit, defect)
+      }))
+
+    it.effect("preserves a recorded sibling failure on external interruption", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const cleanupStarted = yield* Deferred.make<void>()
+        const releaseCleanup = yield* Deferred.make<void>()
+        const fiber = yield* Effect.forEach([0, 1], (i) =>
+          i === 0
+            ? Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Deferred.succeed(cleanupStarted, void 0).pipe(
+                  Effect.andThen(Deferred.await(releaseCleanup))
+                )
+              )
+            )
+            : Deferred.await(started).pipe(Effect.andThen(Effect.fail("sibling failure"))), {
+          concurrency: 2
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* Deferred.await(cleanupStarted)
+        fiber.interruptUnsafe()
+        yield* Deferred.succeed(releaseCleanup, void 0)
+        const exit = yield* Fiber.await(fiber)
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.isTrue(Cause.hasInterrupts(exit.cause))
+          assert.isTrue(Cause.hasFails(exit.cause))
+          assert.deepStrictEqual(Cause.findError(exit.cause), Result.succeed("sibling failure"))
+        }
+      }))
+
     it.effect("unbounded fail", () =>
       Effect.gen(function*() {
         const done: Array<number> = []

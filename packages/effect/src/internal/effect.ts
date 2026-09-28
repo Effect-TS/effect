@@ -1214,7 +1214,7 @@ const asyncFinalizer: (
   },
   [contE](cause, _fiber) {
     return hasInterrupts(cause)
-      ? flatMap(this[args](), () => failCause(cause))
+      ? flatMap(combineFinalizerCause(exitFailCause(cause), this[args]()), () => failCause(cause))
       : failCause(cause)
   }
 })
