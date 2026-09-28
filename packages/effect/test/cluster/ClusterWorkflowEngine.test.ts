@@ -385,6 +385,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* TestClock.adjust("10 seconds")
       yield* sharding.pollStorage
       yield* TestClock.adjust(5000)
+      // The storage poll may return before the resumed run finishes unwinding.
+      yield* advanceUntil(() => flags.get("ensuring") === true, "suspended await must run ensuring")
 
       // --- the workflow is suspended at this point
 
