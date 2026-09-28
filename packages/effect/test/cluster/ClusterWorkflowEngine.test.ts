@@ -17,6 +17,7 @@ import {
   Tracer
 } from "effect"
 import {
+  ClusterError,
   ClusterSchema,
   ClusterWorkflowEngine,
   Entity,
