@@ -15,10 +15,12 @@ PersistedCacheTest.suite(
   Persistence.layerSql.pipe(Layer.provide(MssqlContainer.layerClient))
 )
 
-// Allow extra time to acquire the MSSQL-backed layer under CI load.
+// Allow extra time for MSSQL-backed layer setup and teardown under CI load.
+// Keep the queue test bodies at their 30-second timeout.
 PersistedQueueTest.suiteWith(
   "sql-mssql",
   PersistedQueue.layerStoreSql().pipe(Layer.provide(MssqlContainer.layerClient)),
   it,
+  "30 seconds",
   "90 seconds"
 )
