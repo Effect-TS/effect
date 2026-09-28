@@ -446,7 +446,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
                 if (Exit.isSuccess(exit)) {
                   ws.close(1000)
                 } else {
-                  ws.close(Cause.isInterruptedOnly(exit.cause) ? 1012 : 1011)
+                  ws.close(Cause.isInterruptedOnly(exit.cause) ? 1001 : 1011)
                 }
                 return Effect.void
               }),
