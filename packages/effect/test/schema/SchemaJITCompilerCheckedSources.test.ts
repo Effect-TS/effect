@@ -53,6 +53,8 @@ const makeFixtures = () => {
   return {
     Digits,
     Checked,
+    OneOf: Schema.TemplateLiteral([Schema.Union([Schema.String, Schema.Literal("x")], { mode: "oneOf" })]),
+    identity: SchemaTransformation.transform({ decode: counted((s: string) => s), encode: (s: string) => s }),
     DigitsToNumber: Digits.pipe(Schema.decodeTo(Schema.Number, toNumber)),
     ShortToNumber: Short.pipe(Schema.decodeTo(Schema.Number, toNumber)),
     StringToNumber: Schema.String.pipe(Schema.decodeTo(Schema.Number, toNumber)),
@@ -85,9 +87,6 @@ interface Case {
   readonly schema: (f: Fixtures) => Schema.Codec<unknown, unknown>
   readonly inputs: ReadonlyArray<unknown>
   readonly make?: ReadonlyArray<unknown>
-  // The JIT accepts overlapping `oneOf` members inside a TemplateLiteral with
-  // or without this change, so such cases only run through AOT.
-  readonly compilers?: ReadonlyArray<"jit" | "aot"> | undefined
   // Compiled parsers may run a failing check a second time in their
   // diagnostic pass. That is only allowed on paths this change does not
   // inline: "always" for schemas that keep their previous parser, "fallback"
@@ -106,32 +105,93 @@ const inLayouts = (
   name: string,
   field: (f: Fixtures) => Schema.Codec<unknown, unknown>,
   inputs: ReadonlyArray<unknown>,
-  options: Pick<Case, "compilers" | "replay"> & { readonly ownParserReplays?: boolean } = {}
+  options: Pick<Case, "replay"> & { readonly ownParserReplays?: boolean } = {}
 ): ReadonlyArray<Case> => [
   {
     name,
     schema: field,
     inputs,
-    compilers: options.compilers,
     replay: options.replay ?? (options.ownParserReplays ? "always" : undefined)
   },
   {
     name: `${name} in a Struct`,
     schema: (f) => Schema.Struct({ n: field(f) }),
     inputs: inputs.map((n) => ({ n })),
-    compilers: options.compilers,
     replay: options.replay ?? (options.ownParserReplays ? "fallback" : undefined)
   },
   {
     name: `${name} next to a checked field`,
     schema: (f) => Schema.Struct({ s: f.Checked, n: field(f) }),
     inputs: inputs.map((n) => ({ s: "ok", n })),
-    compilers: options.compilers,
     replay: options.replay ?? (options.ownParserReplays ? "fallback" : undefined)
   }
 ]
 
 const cases: ReadonlyArray<Case> = [
+  ...inLayouts(
+    "TemplateLiteral with overlapping oneOf parts",
+    (f) => f.OneOf,
+    ["x", "y", "", 1]
+  ),
+  ...inLayouts(
+    "nested TemplateLiteral with overlapping oneOf parts",
+    (f) => Schema.TemplateLiteral(["nested:", f.OneOf]),
+    ["nested:x", "nested:y", "wrong", 1]
+  ),
+  ...inLayouts(
+    "TemplateLiteral with oneOf inside anyOf",
+    () =>
+      Schema.TemplateLiteral([Schema.Union([
+        Schema.Union([Schema.String, Schema.Literal("x")], { mode: "oneOf" }),
+        Schema.Literal("z")
+      ])]),
+    ["x", "y", "z", 1]
+  ),
+  ...inLayouts(
+    "TemplateLiteral with overlapping numeric oneOf parts",
+    () => Schema.TemplateLiteral([Schema.Union([Schema.Number, Schema.Literal("1")], { mode: "oneOf" })]),
+    ["1", "2", "wrong", 1]
+  ),
+  ...inLayouts(
+    "TemplateLiteral transformation target",
+    (f) =>
+      Schema.String.pipe(Schema.decodeTo(
+        Schema.TemplateLiteral(["x-", Schema.String]),
+        f.identity as SchemaTransformation.Transformation<`x-${string}`, string>
+      )),
+    ["x-a", "wrong", 1]
+  ),
+  ...inLayouts(
+    "TemplateLiteral transformation target with overlapping oneOf parts",
+    (f) => Schema.String.pipe(Schema.decodeTo(f.OneOf, f.identity)),
+    ["x", "y", 1]
+  ),
+  ...inLayouts(
+    "checked source with a oneOf TemplateLiteral target",
+    (f) => f.Checked.pipe(Schema.decodeTo(f.OneOf, f.identity)),
+    ["x", "y", "INVALID", 1]
+  ),
+  ...inLayouts(
+    "TemplateLiteral transformation source",
+    (f) =>
+      Schema.TemplateLiteral(["x-", Schema.String]).pipe(Schema.decodeTo(
+        Schema.String,
+        f.identity as SchemaTransformation.Transformation<string, `x-${string}`>
+      )),
+    ["x-a", "wrong", 1]
+  ),
+  ...inLayouts(
+    "TemplateLiteral intermediate transformation",
+    (f) =>
+      Schema.String.pipe(Schema.decodeTo(
+        Schema.TemplateLiteral(["x-", Schema.String]).pipe(Schema.decodeTo(
+          Schema.String,
+          f.identity as SchemaTransformation.Transformation<string, `x-${string}`>
+        )),
+        f.identity as SchemaTransformation.Transformation<`x-${string}`, string>
+      )),
+    ["x-a", "wrong", 1]
+  ),
   ...inLayouts("checked source", (f) => f.DigitsToNumber, values),
   ...inLayouts("several source checks", (f) => f.ShortToNumber, values),
   ...inLayouts("string target", (f) => f.DigitsToString, values),
@@ -227,8 +287,7 @@ const cases: ReadonlyArray<Case> = [
       Schema.Struct({ n: f.Digits.pipe(Schema.decodeTo(Schema.Number.check(Schema.isLessThan(100)), f.toNumber)) }),
     inputs: [{ n: "1" }, { n: "100" }, { n: "x" }]
   },
-  // Chains containing a TemplateLiteral are not inlined when their source has
-  // checks, so they keep their previous parsers.
+  // TemplateLiteral chains retain their parsers for structured diagnostics.
   ...inLayouts(
     "checked TemplateLiteral source",
     (f) =>
@@ -254,10 +313,10 @@ const cases: ReadonlyArray<Case> = [
   ...inLayouts(
     "checked TemplateLiteral source with a oneOf part",
     (f) =>
-      Schema.TemplateLiteral([Schema.Union([Schema.String, Schema.Literal("x")], { mode: "oneOf" })])
+      f.OneOf
         .check(f.countedFilter((s) => s.length >= 1, "non-empty")).pipe(Schema.decodeTo(Schema.String, f.prefixed)),
     ["x", "y"],
-    { compilers: ["aot"], replay: "always" }
+    { replay: "always" }
   )
 ]
 
@@ -354,7 +413,7 @@ const install = {
     const directory = mkdtempSync(fileURLToPath(new URL("../../.schema-aot-checked-sources-", import.meta.url)))
     try {
       const file = join(directory, "module.mjs")
-      writeFileSync(file, SchemaAOTCompiler.compile(asts.map((ast) => ({ ast, operations: ["decode", "make"] }))))
+      writeFileSync(file, SchemaAOTCompiler.compile(asts.map((ast) => ({ ast, operations: ["decode", "is", "make"] }))))
       const generated = await import(pathToFileURL(file).href)
       generated.install(asts)
     } finally {
@@ -365,8 +424,28 @@ const install = {
 
 describe("Schema compilers: transformations with checked sources", { concurrent: false }, () => {
   for (const compiler of ["jit", "aot"] as const) {
+    it(`${compiler} preserves oneOf TemplateLiteral guards and constructors`, async () => {
+      const shapes: ReadonlyArray<(f: Fixtures) => readonly [Schema.Top, (value: string) => unknown]> = [
+        (f) => [f.OneOf, (value) => value],
+        (f) => [Schema.Struct({ value: f.OneOf }), (value) => ({ value })],
+        (f) => [Schema.Array(f.OneOf), (value) => [value]],
+        (f) => [Schema.TemplateLiteral(["nested:", f.OneOf]), (value) => `nested:${value}`]
+      ]
+      for (const shape of shapes) {
+        const [schema, input] = shape(makeFixtures())
+        for (const compiled of [false, true]) {
+          if (compiled) await install[compiler](schema)
+          const is = SchemaParser.is(schema)
+          const make = SchemaParser.make(schema)
+          assert.isFalse(is(input("x")))
+          assert.isTrue(is(input("y")))
+          assert.throws(() => make(input("x") as never))
+          deepStrictEqual(make(input("y") as never), input("y"))
+        }
+      }
+    })
+
     for (const testCase of cases) {
-      if (testCase.compilers !== undefined && !testCase.compilers.includes(compiler)) continue
       it(`${compiler} matches the interpreter: ${testCase.name}`, async () => {
         const schema = testCase.schema(makeFixtures()) as Schema.Codec<unknown, unknown> & Schema.Top
         const { describeResult } = makeDescriber(
@@ -443,7 +522,7 @@ describe("Schema compilers: transformations with checked sources", { concurrent:
     assert.deepEqual(describeOutput({ [a]: 1 }), describeOutput({ [a]: 1 }))
   })
 
-  it("does not inline a checked chain containing a TemplateLiteral", () => {
+  it("uses TemplateLiteral parsers for transformation diagnostics", () => {
     const f = makeFixtures()
     const source = Schema.TemplateLiteral(["x-", Schema.String]).check(Schema.isMaxLength(4)).pipe(
       Schema.decodeTo(
@@ -455,7 +534,11 @@ describe("Schema compilers: transformations with checked sources", { concurrent:
       Schema.TemplateLiteral(["#", Schema.String]),
       f.prefixed as unknown as SchemaTransformation.Transformation<`#${string}`, string>
     ))
-    for (const schema of [source, target]) {
+    const unchecked = Schema.String.pipe(Schema.decodeTo(
+      Schema.TemplateLiteral(["#", Schema.String]),
+      f.prefixed as SchemaTransformation.Transformation<`#${string}`, string>
+    ))
+    for (const schema of [source, target, unchecked]) {
       assert.include(Codegen.generate(schema.ast, "decodeEffect"), "R.decode(")
       assert.notInclude(Codegen.generate(Schema.Struct({ n: schema }).ast, "decodeEffect"), "R.getCheckIssues(")
     }

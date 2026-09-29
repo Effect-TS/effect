@@ -22,13 +22,21 @@ type Facts = {
   supported: boolean
   outputFree: boolean
   makeSafe: boolean
+  hasOneOf: boolean
   nodes: number
   height: number
 }
 
 const factsCache = new WeakMap<SchemaAST.AST, Facts>()
 
-const unsupportedFacts: Facts = { supported: false, outputFree: false, makeSafe: false, nodes: 1, height: 0 }
+const unsupportedFacts: Facts = {
+  supported: false,
+  outputFree: false,
+  makeSafe: false,
+  hasOneOf: false,
+  nodes: 1,
+  height: 0
+}
 
 const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
   ast._tag !== "Union" && ast._tag !== "Declaration" && ast._tag !== "Suspend" &&
@@ -59,6 +67,7 @@ const addChild = (
       }
       if (!childFacts.outputFree) facts.outputFree = false
       if (!childFacts.makeSafe) facts.makeSafe = false
+      if (childFacts.hasOneOf) facts.hasOneOf = true
       facts.nodes += childFacts.nodes
       if (childFacts.height >= facts.height) facts.height = childFacts.height + 1
       return true
@@ -89,12 +98,24 @@ const getFacts = (
     return budget.remaining < 0 || depth + cached.height > maxGeneratedDepth ? undefined : cached
   }
   if (--budget.remaining < 0 || depth > maxGeneratedDepth) return undefined
-  const facts: Facts = { supported: true, outputFree: true, makeSafe: true, nodes: 1, height: 0 }
+  const facts: Facts = {
+    supported: true,
+    outputFree: true,
+    makeSafe: true,
+    hasOneOf: ast._tag === "Union" && ast.options?.mode === "oneOf",
+    nodes: 1,
+    height: 0
+  }
   const next = depth + 1
   switch (ast._tag) {
     case "TemplateLiteral":
       for (const part of ast.parts) {
         if (!addChild(facts, part, next, budget)) return stop(ast, facts)
+      }
+      // matchPart only segments the input; the tuple parser enforces oneOf.
+      if (facts.hasOneOf) {
+        facts.supported = false
+        return stop(ast, facts)
       }
       break
     case "Arrays":
@@ -761,7 +782,8 @@ const inlineTypePredicate = (ast: SchemaAST.AST, input: string, path: string): s
     case "BigInt":
       return `typeof ${input}==="bigint"`
     case "TemplateLiteral":
-      return `R.matchesTemplateLiteral(${path},${input},o)`
+      // Its parser reports structured issues, not an InvalidType failure.
+      return undefined
     default:
       return undefined
   }
@@ -779,13 +801,6 @@ const inlineSourcePredicate = (ast: SchemaAST.AST, input: string, path: string):
     ? inlineTypePredicate(ast, input, path)
     : undefined
 
-// The inline TemplateLiteral predicate does not report the TemplateLiteral
-// parser's issues, so a chain whose source has checks is only inlined when no
-// schema in the chain is a TemplateLiteral.
-const canInlineCheckedSource = (ast: SchemaAST.AST, links: SchemaAST.Encoding): boolean =>
-  links[links.length - 1].to.checks === undefined ||
-  ast._tag !== "TemplateLiteral" && links.every((link) => link.to._tag !== "TemplateLiteral")
-
 const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
   const links = ast.encoding
   if (links?.length !== 1 || getEncodingChecks(ast) !== undefined) return undefined
@@ -794,7 +809,6 @@ const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
   if (
     link.to.encoding !== undefined ||
     getEncodingChecks(link.to) !== undefined ||
-    !canInlineCheckedSource(ast, links) ||
     transformation._tag !== "Transformation" ||
     transformation.decode._tag !== "Transform"
   ) {
@@ -823,7 +837,6 @@ const canInlineEncoding = (ast: SchemaAST.AST): ast is SchemaAST.AST & { readonl
   ast.checks === undefined &&
   getEncodingChecks(ast) === undefined &&
   inlineIdentityPredicate(ast, "v", "ast") !== undefined &&
-  canInlineCheckedSource(ast, ast.encoding) &&
   ast.encoding.every((link, index, links) =>
     link.to.encoding === undefined &&
     (index === links.length - 1 ? inlineSourcePredicate : inlineIdentityPredicate)(link.to, "v", "ast") !==
