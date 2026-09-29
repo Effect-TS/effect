@@ -5152,13 +5152,10 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             try {
               if (terminal) {
                 if (exit._tag === "Failure") {
-                  for (const reason of exit.cause.reasons) {
-                    if (reason._tag === "Interrupt") continue
-                    else if (terminal._tag === "Failure") {
-                      ;(terminal.cause.reasons as Array<any>).push(reason)
-                    } else {
-                      terminal = exitFailCause(causeFromReasons([reason]))
-                    }
+                  const reasons = exit.cause.reasons.filter((reason) => reason._tag !== "Interrupt")
+                  if (reasons.length > 0) {
+                    const cause = causeFromReasons(reasons)
+                    terminal = exitFailCause(terminal._tag === "Failure" ? causeCombine(terminal.cause, cause) : cause)
                   }
                 }
               } else {
