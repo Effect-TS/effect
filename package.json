@@ -17,7 +17,7 @@
     "docgen": "pnpm --recursive --filter \"./packages/**/*\" exec docgen && node scripts/docs.mjs",
     "test-types": "tstyche",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish --tag v3"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
