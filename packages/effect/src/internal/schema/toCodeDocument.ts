@@ -366,12 +366,21 @@ export function toCodeDocument(
   ): SchemaRepresentation.Code {
     const nodeBrands = InternalAnnotations.collectBrands(representation.annotations)
     let runtime = base.runtime + runtimeAnnotate(representation.annotations) + runtimeBrands(nodeBrands)
-    let Type = base.Type + (includeTypeBrands ? typeBrands(nodeBrands) : "")
+    let Type = base.Type
+    let hasTypeBrands = false
+    if (includeTypeBrands && nodeBrands.length > 0) {
+      Type = `(${Type})${typeBrands(nodeBrands)}`
+      hasTypeBrands = true
+    }
     for (let index = 0; index < representation.checks.length; index++) {
       const check = representation.checks[index]
       const brands = checkBrands(check)
       runtime += `.check(${compileCheck(check, [...path, "checks", index])})${runtimeBrands(brands)}`
-      if (includeTypeBrands) Type += typeBrands(brands)
+      if (includeTypeBrands && brands.length > 0) {
+        if (!hasTypeBrands) Type = `(${Type})`
+        Type += typeBrands(brands)
+        hasTypeBrands = true
+      }
     }
     return makeCode(runtime, Type)
   }
