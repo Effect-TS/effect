@@ -735,17 +735,17 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         return entry.schemas.decodeChunk.value(message.values).pipe(
           Effect.provideContext(entry.context),
           Effect.orDie,
-          Effect.flatMap((chunk) =>
-            write({ _tag: "Chunk", clientId: 0, requestId: RequestId(message.requestId), values: chunk })
-          ),
-          Effect.onError((cause) =>
-            write({
-              _tag: "Exit",
-              clientId: 0,
-              requestId: RequestId(message.requestId),
-              exit: Exit.failCause(cause)
-            })
-          )
+          Effect.matchCauseEffect({
+            onSuccess: (chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk }),
+            onFailure: (cause) => {
+              if (Cause.hasInterruptsOnly(cause)) return Effect.failCause(cause)
+              entries.delete(requestId)
+              return write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
+                Effect.andThen(send(clientId, { _tag: "Interrupt", requestId: message.requestId })),
+                Effect.ignore
+              )
+            }
+          })
         ) as Effect.Effect<void>
       }
       case "Exit": {

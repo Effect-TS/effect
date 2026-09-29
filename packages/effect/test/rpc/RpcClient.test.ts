@@ -154,6 +154,51 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(sentRequestIds, [1, 2])
     }))
 
+  it.effect("ends only the stream whose chunk fails to decode and interrupts it on the server", () =>
+    Effect.gen(function*() {
+      const group = RpcGroup.make(
+        Rpc.make("Small", { success: RpcSchema.Stream(Schema.Int.check(Schema.isLessThan(3)), Schema.Never) }),
+        Rpc.make("Events", { success: RpcSchema.Stream(Schema.String, Schema.Never) })
+      )
+      const bothSent = yield* Deferred.make<void>()
+      const sent: Array<RpcMessage.FromClientEncoded> = []
+      const requestIds = new Map<string, string | number>()
+      let deliver: (clientId: number, response: RpcMessage.FromServerEncoded) => Effect.Effect<void>
+      const protocol = yield* RpcClient.Protocol.make((write) => {
+        deliver = write
+        return Effect.succeed({
+          send: (_clientId, message) =>
+            Effect.suspend(() => {
+              sent.push(message)
+              if (message._tag !== "Request") return Effect.void
+              requestIds.set(message.tag, message.id)
+              return requestIds.size === 2 ? Deferred.succeed(bothSent, void 0) : Effect.void
+            }).pipe(Effect.asVoid),
+          supportsAck: false,
+          supportsTransferables: false,
+          codecFor: Schema.toCodecJson
+        })
+      })
+      const client = yield* RpcClient.make(group).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const small = yield* client.Small().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+      const events = yield* client.Events().pipe(Stream.take(1), Stream.runCollect, Effect.forkChild)
+      yield* Deferred.await(bothSent)
+
+      const smallId = requestIds.get("Small")!
+      yield* deliver!(0, { _tag: "Chunk", requestId: smallId, values: [5] })
+      yield* deliver!(0, { _tag: "Chunk", requestId: requestIds.get("Events")!, values: ["still here"] })
+
+      const smallExit = yield* Fiber.join(small)
+      assert.isTrue(Exit.hasDies(smallExit))
+      assert.deepStrictEqual(yield* Fiber.join(events), ["still here"])
+      assert.deepStrictEqual(
+        sent.filter((message) => message._tag === "Interrupt" && message.requestId === smallId),
+        [{ _tag: "Interrupt", requestId: smallId }]
+      )
+    }))
+
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignRpcClientError = await vi.importActual<typeof RpcClientErrorModule>(
