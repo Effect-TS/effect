@@ -5,7 +5,7 @@ An opinionated documentation generator for Effect projects.
 ## Installation
 
 ```sh
-npm install -D @effect/docgen@rc
+npm install -D @effect/docgen
 ```
 
 ## Documentation

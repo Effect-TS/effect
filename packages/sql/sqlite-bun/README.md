@@ -5,7 +5,7 @@ An Effect SQL client for SQLite on the [Bun](https://bun.sh) runtime, built on `
 ## Installation
 
 ```sh
-npm install effect@rc @effect/sql-sqlite-bun@rc
+npm install effect @effect/sql-sqlite-bun
 ```
 
 ## Documentation

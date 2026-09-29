@@ -5,7 +5,7 @@
 ## Installation
 
 ```sh
-npm install effect@rc @effect/platform-bun@rc
+npm install effect @effect/platform-bun
 ```
 
 ## Documentation

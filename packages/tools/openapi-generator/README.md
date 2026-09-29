@@ -5,7 +5,7 @@ Generates Effect `Schema` types, HTTP clients, and `HttpApi` modules from OpenAP
 ## Installation
 
 ```sh
-npm install effect@rc @effect/openapi-generator@rc
+npm install effect @effect/openapi-generator
 ```
 
 ## Documentation

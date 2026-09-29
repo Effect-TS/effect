@@ -6,12 +6,12 @@
 
 Effect is a library for building robust, maintainable, type-safe, and production grade applications in TypeScript. It helps you handle the hard problems at scale: typed errors, dependency injection, structured concurrency, scheduling, tracing, and unified schema validation.
 
-> **Effect V4 is currently a release candidate.** The `main` branch contains v4 development.
+> The `main` branch contains Effect v4 development.
 
-## Install V4 RC
+## Install
 
 ```sh
-npm install effect@rc
+npm install effect
 ```
 
 ## Requirements
@@ -26,7 +26,7 @@ The Effect v3 source code is available on the [`v3`](https://github.com/Effect-T
 
 ## Packages
 
-This monorepo contains the core `effect` package alongside integration packages that extend it. All v4 packages are published under the `rc` tag on npm.
+This monorepo contains the core `effect` package alongside integration packages that extend it.
 
 | Package                                                               | Description                                              | API Reference                                                      |
 | --------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ |

@@ -5,7 +5,7 @@
 ## Installation
 
 ```sh
-npm install effect@rc @effect/atom-react@rc
+npm install effect @effect/atom-react
 ```
 
 ## Documentation

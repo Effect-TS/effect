@@ -5,7 +5,7 @@ An Effect SQL client for PostgreSQL with a native wire-protocol driver.
 ## Installation
 
 ```sh
-npm install effect@rc @effect/sql-pg@rc
+npm install effect @effect/sql-pg
 ```
 
 ## Session defaults
