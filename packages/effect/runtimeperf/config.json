@@ -12,6 +12,57 @@
   },
   "suites": [
     {
+      "name": "schema-checked-sources",
+      "fixtures": [
+        {
+          "file": "suites/schema-checked-sources/fixtures/cases.ts",
+          "defaults": {
+            "tier": 1,
+            "family": "jit",
+            "implementation": "effect-jit",
+            "astTags": ["Arrays", "Objects", "String", "Number"],
+            "operation": "decode",
+            "path": "valid",
+            "size": 1000
+          },
+          "cases": [
+            {
+              "name": "digits",
+              "export": "digits",
+              "scenario": "checked-sources-digits"
+            },
+            {
+              "name": "checked-source",
+              "export": "checkedSource",
+              "scenario": "checked-sources-checked-source"
+            },
+            {
+              "name": "unchecked-source",
+              "export": "uncheckedSource",
+              "scenario": "checked-sources-unchecked-source"
+            },
+            {
+              "name": "two-passes",
+              "export": "twoPasses",
+              "scenario": "checked-sources-two-passes"
+            },
+            {
+              "name": "checked-template-target",
+              "export": "checkedTemplateTarget",
+              "scenario": "checked-sources-checked-template-target",
+              "astTags": ["Arrays", "Objects", "String", "TemplateLiteral"]
+            },
+            {
+              "name": "unchecked-template-target",
+              "export": "uncheckedTemplateTarget",
+              "scenario": "checked-sources-unchecked-template-target",
+              "astTags": ["Arrays", "Objects", "String", "TemplateLiteral"]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "schema-excess-properties",
       "fixtures": [
         {
