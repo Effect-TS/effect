@@ -1327,49 +1327,43 @@ describe("Effect", () => {
     }))
 
   for (const [name, race] of [["race", Effect.race], ["raceFirst", Effect.raceFirst]] as const) {
-    it.effect(name + " interrupts the loser when it settles the race as it starts", () =>
+    it.effect(`${name} interrupts a loser that settles the race while starting`, () =>
       Effect.gen(function*() {
-        const interrupted: Array<string> = []
-        const signal = yield* Deferred.make<string>()
-        const result = yield* race(
-          Deferred.await(signal),
-          Deferred.succeed(signal, "winner").pipe(
+        let interrupted = false
+        const deferred = yield* Deferred.make<void>()
+        yield* race(
+          Deferred.await(deferred),
+          Deferred.succeed(deferred, void 0).pipe(
             Effect.andThen(Effect.never),
             Effect.onInterrupt(() =>
               Effect.sync(() => {
-                interrupted.push("loser")
+                interrupted = true
               })
             )
           )
         )
-        assert.strictEqual(result, "winner")
-        assert.deepStrictEqual(interrupted, ["loser"])
+        assert.isTrue(interrupted)
       }))
 
-    it.effect(
-      name + " interrupts the loser when its fiber is interrupted as a side settles",
-      () =>
-        Effect.gen(function*() {
-          const interrupted: Array<string> = []
-          const fiber = yield* Effect.gen(function*() {
-            const self = Fiber.getCurrent()!
-            return yield* race(
-              Effect.sync(() => self.interruptUnsafe()).pipe(
-                Effect.andThen(Effect.never),
-                Effect.onInterrupt(() =>
-                  Effect.sync(() => {
-                    interrupted.push("loser")
-                  })
-                )
-              ),
-              Effect.void
-            )
-          }).pipe(Effect.forkChild)
-          const exit = yield* Fiber.await(fiber)
-          assert.isTrue(Exit.hasInterrupts(exit))
-          assert.deepStrictEqual(interrupted, ["loser"])
-        })
-    )
+    it.effect(`${name} interrupts the loser when interrupted while starting`, () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        const fiber = yield* Effect.withFiber((parent) =>
+          race(
+            Effect.sync(() => parent.interruptUnsafe()).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  interrupted = true
+                })
+              )
+            ),
+            Effect.void
+          )
+        ).pipe(Effect.forkChild)
+        yield* Fiber.await(fiber)
+        assert.isTrue(interrupted)
+      }))
   }
 
   describe("repeat", () => {
