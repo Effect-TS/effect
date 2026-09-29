@@ -22,7 +22,8 @@ describe("OpenAiLanguageModel", () => {
     it.effect.each(
       [
         {
-          event: undefined,
+          event: "json",
+          status: "completed",
           diagnostics: {
             type: "cache_miss",
             reason: "tools_changed",
@@ -32,38 +33,69 @@ describe("OpenAiLanguageModel", () => {
           serviceTier: "priority",
           expectedServiceTier: "priority"
         },
-        { event: "response.completed", diagnostics: { type: "cache_hit" }, serviceTier: "fast" },
-        { event: "response.incomplete", diagnostics: { type: "unavailable" } },
-        { event: "response.failed", diagnostics: { type: "comparison_response_not_found" } }
+        { event: "response.completed", status: "completed", diagnostics: { type: "cache_hit" }, serviceTier: "fast" },
+        { event: "response.incomplete", status: "incomplete", diagnostics: { type: "unavailable" } },
+        { event: "response.failed", status: "failed", diagnostics: { type: "comparison_response_not_found" } }
       ] as const
-    )("preserves diagnostics in finish metadata ($event)", ({ event, diagnostics, ...tier }) =>
+    )(
+      "preserves diagnostics in finish metadata ($event)",
+      ({ event, status, diagnostics, ...tier }) =>
+        Effect.gen(function*() {
+          const response = {
+            ...makeDefaultResponse({
+              status,
+              error: status === "failed" ? { code: "server_error", message: "generation failed" } : null,
+              incomplete_details: status === "incomplete" ? { reason: "max_output_tokens" } : null
+            }),
+            prompt_cache_diagnostics: diagnostics,
+            ...("serviceTier" in tier ? { service_tier: tier.serviceTier } : undefined)
+          }
+          const body = event === "json"
+            ? JSON.stringify(response)
+            : `data: ${JSON.stringify({ type: event, sequence_number: 1, response })}\n\n`
+          const parts = yield* Effect.gen(function*() {
+            if (event === "json") return (yield* LanguageModel.generateText({ prompt: "test" })).content
+            return yield* LanguageModel.streamText({ prompt: "test" }).pipe(Stream.runCollect)
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-6-luna")),
+            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+            Effect.provideService(
+              HttpClient.HttpClient,
+              makeRawResponseClient(body, event === "json" ? "application/json" : "text/event-stream")
+            )
+          )
+
+          const finish = parts.find((part) => part.type === "finish")
+          assert.isDefined(finish)
+          deepStrictEqual(finish.metadata.openai, {
+            promptCacheDiagnostics: diagnostics,
+            ...("expectedServiceTier" in tier ? { serviceTier: tier.expectedServiceTier } : undefined)
+          })
+        })
+    )
+
+    it.effect("rejects a cache miss without its token count through the SSE decoder", () =>
       Effect.gen(function*() {
-        const response = {
-          ...makeDefaultResponse(),
-          prompt_cache_diagnostics: diagnostics,
-          ...("serviceTier" in tier ? { service_tier: tier.serviceTier } : undefined)
+        const event = {
+          type: "response.completed",
+          sequence_number: 1,
+          response: {
+            ...makeDefaultResponse(),
+            prompt_cache_diagnostics: { type: "cache_miss", reason: "tools_changed" }
+          }
         }
-        const body = event === undefined
-          ? JSON.stringify(response)
-          : `data: ${JSON.stringify({ type: event, sequence_number: 1, response })}\n\n`
-        const parts = yield* Effect.gen(function*() {
-          if (event === undefined) return (yield* LanguageModel.generateText({ prompt: "test" })).content
-          return yield* LanguageModel.streamText({ prompt: "test" }).pipe(Stream.runCollect)
-        }).pipe(
+        const error = yield* LanguageModel.streamText({ prompt: "test" }).pipe(
+          Stream.runCollect,
+          Effect.flip,
           Effect.provide(OpenAiLanguageModel.model("gpt-6-luna")),
           Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
           Effect.provideService(
             HttpClient.HttpClient,
-            makeRawResponseClient(body, event === undefined ? "application/json" : "text/event-stream")
+            makeRawResponseClient(`data: ${JSON.stringify(event)}\n\n`, "text/event-stream")
           )
         )
 
-        const finish = parts.find((part) => part.type === "finish")
-        assert.isDefined(finish)
-        deepStrictEqual(finish.metadata.openai, {
-          promptCacheDiagnostics: diagnostics,
-          ...("expectedServiceTier" in tier ? { serviceTier: tier.expectedServiceTier } : undefined)
-        })
+        strictEqual(error.reason._tag, "InvalidOutputError")
       }))
   })
 
