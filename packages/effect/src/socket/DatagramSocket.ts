@@ -609,7 +609,7 @@ const makeFromHandle = <R>(
       current = state
       latch.openUnsafe()
       yield* Effect.addFinalizer(() => Effect.sync(() => release(state)))
-      return state.reader
+      return makeReader(state)
     })
   )
 
@@ -673,57 +673,66 @@ const isDatagramImpl = (value: NetAddress.InetAddress | OutgoingDatagram | undef
 const targetOf = (datagram: OutgoingDatagram): NetAddress.InetAddress | DatagramImpl | undefined =>
   isDatagramImpl(datagram) ? datagram : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
 
+// The state of one reader acquisition: the native handle once `open` has
+// completed, the receive queue and the pulls parked on it, the sticky failure,
+// and the write path, which needs the handle and the failure. Its methods run
+// inside the native callbacks and the fiber run loop, so they never allocate
+// more than the contract's one record per packet and one array per pull.
 class ReaderState {
+  // -- configuration --------------------------------------------------------
+
   readonly capacity: number
   readonly sliding: boolean
   readonly listener: ((error: DatagramSocketError) => void) | undefined
   // arrow functions, so an adapter can pass one on its own as a callback
-  readonly events: NativeEvents
-  readonly reader: Reader
+  readonly events: NativeEvents = {
+    onPacket: (payload, host, port) => this.push(payload, host, port),
+    onReadError: (error) => this.fail(error),
+    onError: (error) => this.report(error),
+    onClose: () => this.fail(closedError())
+  }
+
+  // -- lifecycle ------------------------------------------------------------
+
+  // set when `open` completes; packets can arrive before that
+  handle: NativeHandle | undefined = undefined
+  // the sticky error as a failed exit, shared by every pull and write after it
+  failure: Effect.Effect<never, DatagramSocketError> | undefined = undefined
+  // separate from `failure`: after a sticky read error the socket is still
+  // open, so ICMP reports still reach `onError`
+  closed = false
+
+  // -- receive queue --------------------------------------------------------
+
   // queued packets, oldest first from `head`. `head` only moves under
   // "sliding" once the buffer is full, when it becomes a ring
   buffer: Array<DatagramImpl> = []
   head = 0
   dropped = 0
-  // the sticky error as a failed exit, shared by every pull and write after it
-  failure: Effect.Effect<never, DatagramSocketError> | undefined = undefined
-  // fibers parked in `pull`, oldest first: the oldest sits in the slot and
-  // the rest wait in `waiters`, so a single consumer never touches the array
+
+  // -- parked pulls ---------------------------------------------------------
+
+  // oldest first: the oldest sits in the slot and the rest wait in
+  // `waiters`, so a single consumer never touches the array
   waiter: FiberImpl | undefined = undefined
   waiters: Array<FiberImpl> = []
   // pushed on a parked fiber's stack, shared by every park
   readonly unpark: Primitive = unpark(this)
-  handle: NativeHandle | undefined = undefined
-  closed = false
-  #address: NetAddress.InetAddress | undefined = undefined
-  #lastTarget: NetAddress.InetAddress | undefined = undefined
-  #lastDestination: NativeAddress | undefined = undefined
+
+  // -- addresses, parsed and formatted on first use --------------------------
+
+  bound: NetAddress.InetAddress | undefined = undefined
+  // one-entry cache for `write` to the same explicit address
+  lastTarget: NetAddress.InetAddress | undefined = undefined
+  lastDestination: NativeAddress | undefined = undefined
 
   constructor(capacity: number, sliding: boolean, listener: ((error: DatagramSocketError) => void) | undefined) {
     this.capacity = capacity
     this.sliding = sliding
     this.listener = listener
-    this.events = {
-      onPacket: (payload, host, port) => this.push(payload, host, port),
-      onReadError: (error) => this.fail(error),
-      onError: (error) => this.report(error),
-      onClose: () => this.fail(closedError())
-    }
-    this.reader = makeReader(this)
   }
 
-  // packets can arrive before the handle does, so they read this lazily
-  get scopeIds(): ReadonlyMap<string, number> {
-    return this.handle?.scopeIds ?? emptyScopeIds
-  }
-
-  get address(): NetAddress.InetAddress {
-    return this.#address ??= NetAddress.inetAddressFromNativeUnsafe(
-      this.handle!.address.host,
-      this.handle!.address.port,
-      this.scopeIds
-    )
-  }
+  // -- receiving ------------------------------------------------------------
 
   push(payload: Uint8Array, host: string, port: number) {
     if (this.failure !== undefined) return
@@ -766,6 +775,8 @@ class ReaderState {
     return batch as unknown as NonEmptyReadonlyArray<Datagram>
   }
 
+  // -- parked pulls ---------------------------------------------------------
+
   park(fiber: FiberImpl) {
     if (this.waiter === undefined) this.waiter = fiber
     else this.waiters.push(fiber)
@@ -782,22 +793,6 @@ class ReaderState {
     if (index !== -1) this.waiters.splice(index, 1)
   }
 
-  fail(error: DatagramSocketError) {
-    if (this.failure !== undefined) return
-    this.failure = Effect.fail(error)
-    this.failWaiters()
-  }
-
-  report(error: DatagramSocketError) {
-    const listener = this.listener
-    if (listener === undefined || this.closed) return
-    try {
-      listener(error)
-    } catch {
-      // listener failures are ignored
-    }
-  }
-
   failWaiters() {
     const waiter = this.waiter
     if (waiter === undefined) return
@@ -809,6 +804,14 @@ class ReaderState {
     for (let i = 0; i < waiters.length; i++) waiters[i].evaluate(failure as any)
   }
 
+  // -- failure and close ----------------------------------------------------
+
+  fail(error: DatagramSocketError) {
+    if (this.failure !== undefined) return
+    this.failure = Effect.fail(error)
+    this.failWaiters()
+  }
+
   close() {
     this.closed = true
     this.buffer = []
@@ -817,6 +820,34 @@ class ReaderState {
     this.failWaiters()
     this.handle?.close()
   }
+
+  // errors with no write left to fail, such as ICMP reports
+  report(error: DatagramSocketError) {
+    const listener = this.listener
+    if (listener === undefined || this.closed) return
+    try {
+      listener(error)
+    } catch {
+      // listener failures are ignored
+    }
+  }
+
+  // -- addresses ------------------------------------------------------------
+
+  // packets can arrive before the handle does, so they read this lazily
+  get scopeIds(): ReadonlyMap<string, number> {
+    return this.handle?.scopeIds ?? emptyScopeIds
+  }
+
+  get address(): NetAddress.InetAddress {
+    return this.bound ??= NetAddress.inetAddressFromNativeUnsafe(
+      this.handle!.address.host,
+      this.handle!.address.port,
+      this.scopeIds
+    )
+  }
+
+  // -- writing --------------------------------------------------------------
 
   // A send the handle completes synchronously (Bun) returns its result without
   // suspending. Otherwise the fiber parks, as in `pull`, and the completion
@@ -877,6 +908,9 @@ class ReaderState {
     }) as any
   }
 
+  // The native destination for a write, or the error that rejects it: no
+  // destination on a connected socket, the peer or a received datagram as is,
+  // and an explicit address formatted once and cached
   destination(
     target: NetAddress.InetAddress | DatagramImpl | undefined
   ): NativeAddress | undefined | DatagramSocketError {
@@ -887,13 +921,14 @@ class ReaderState {
     }
     if (isDatagramImpl(target)) return handle.connected ? undefined : target
     if (handle.connected) return writeError("an explicit address cannot be used on a connected DatagramSocket", target)
-    if (target === this.#lastTarget) return this.#lastDestination
+    if (target === this.lastTarget) return this.lastDestination
     const destination = { host: NetAddress.formatNativeHost(target, this.scopeIds), port: target.port }
-    this.#lastTarget = target
-    this.#lastDestination = destination
+    this.lastTarget = target
+    this.lastDestination = destination
     return destination
   }
 
+  // a write error carries the address it was sent to, when one is known
   withAddress(
     error: DatagramSocketError,
     target: NetAddress.InetAddress | DatagramImpl | undefined
