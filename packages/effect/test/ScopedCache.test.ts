@@ -1831,6 +1831,27 @@ describe("ScopedCache", () => {
           assert.isFalse(yield* ScopedCache.has(cache, "test"))
         }))
 
+      it.effect("a zero-TTL failure is not served again when the lookup completes asynchronously", () =>
+        Effect.gen(function*() {
+          let lookupCount = 0
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) =>
+              Effect.promise(() => Promise.resolve()).pipe(
+                Effect.andThen(Effect.sync(() => ++lookupCount)),
+                Effect.flatMap((count) => count === 1 ? Effect.fail("error") : Effect.succeed(count))
+              ),
+            timeToLive: (exit) => Exit.isSuccess(exit) ? "1 hour" : Duration.zero
+          })
+
+          const first = yield* Effect.exit(ScopedCache.get(cache, "test"))
+          const second = yield* Effect.exit(ScopedCache.get(cache, "test"))
+
+          assert.deepStrictEqual(first, Exit.fail("error"))
+          assert.deepStrictEqual(second, Exit.succeed(2))
+          assert.strictEqual(lookupCount, 2)
+        }))
+
       it.effect("TTL updates on refresh", () =>
         Effect.gen(function*() {
           let refreshCount = 0

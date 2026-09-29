@@ -288,18 +288,21 @@ export const get: {
             entry.fiber = effect.forkUnsafe(
               fiber,
               effect.onExit(effect.suspend(() => Scope.provide(self.lookup(key), scope)), (exit) => {
-                Deferred.doneUnsafe(deferred, exit)
                 if (effect.exitHasInterrupts(exit)) {
                   if (self.state._tag === "Open") {
                     const current = MutableHashMap.get(self.state.map, key)
                     if (Option.isSome(current) && current.value === entry) MutableHashMap.remove(self.state.map, key)
                   }
+                  Deferred.doneUnsafe(deferred, exit)
                   return Scope.close(scope, exit)
                 }
+                // Stamp the expiry before completing the Deferred: a waiter it resumes can call
+                // `get` again at once, and must not find the entry with no expiry yet.
                 const ttl = self.timeToLive(exit, key)
                 if (Duration.isFinite(ttl)) {
                   entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
                 }
+                Deferred.doneUnsafe(deferred, exit)
                 return effect.void
               }),
               true,
