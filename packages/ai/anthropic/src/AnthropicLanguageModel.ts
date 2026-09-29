@@ -2688,12 +2688,28 @@ const makeStreamResponse = Effect.fnUntraced(
                     }
                   }
 
+                  // Fine-grained tool streaming can emit fragments that never form
+                  // valid JSON (Anthropic docs say to guard the parse), so a malformed
+                  // input must fail as an AiError rather than die with a SyntaxError.
+                  const parsedParams = yield* Effect.try({
+                    try: () => Tool.unsafeSecureJsonParse(finalParams),
+                    catch: (cause) =>
+                      AiError.make({
+                        module: "AnthropicLanguageModel",
+                        method: "makeStreamResponse",
+                        reason: new AiError.ToolParameterValidationError({
+                          toolName: contentBlock.name,
+                          description: `Failed securely JSON parse tool parameters: ${cause}`
+                        })
+                      })
+                  })
+
                   const params = contentBlock.providerExecuted === true
-                    ? Tool.unsafeSecureJsonParse(finalParams)
+                    ? parsedParams
                     : yield* transformToolCallParams(
                       options.tools,
                       contentBlock.name,
-                      Tool.unsafeSecureJsonParse(finalParams)
+                      parsedParams
                     )
 
                   parts.push({
