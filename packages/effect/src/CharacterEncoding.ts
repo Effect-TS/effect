@@ -4,10 +4,11 @@
  * dependencies. Mapping data is derived from iconv-lite; see the internal data
  * files for attribution. This module does not provide Base64 or hex encoding.
  *
- * Codecs are explicit imports from `effect/encoding/*`. This module imports no
+ * Codecs are explicit imports from `effect/encoding/charset/*`. This module imports no
  * codec and performs no lookup by label; mapping labels to codecs is left to the
  * application.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
@@ -22,6 +23,7 @@ import * as Stream from "./Stream.ts"
  * BOMs are stripped when decoding unless `stripBOM` is false; encoding adds a
  * BOM only when `addBOM` is true. UTF-16 endianness must be explicit.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -35,6 +37,7 @@ export interface Options {
  * A conversion failure: malformed byte sequences or characters unavailable in
  * a target character set.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -50,6 +53,7 @@ export class CharacterEncodingError extends Data.TaggedError("CharacterEncodingE
  * completion to flush pending characters. Methods throw CharacterEncodingError.
  * Create a separate instance for each independent conversion.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -63,6 +67,7 @@ export interface Encoder {
  * completion to detect incomplete input. Methods throw CharacterEncodingError.
  * Create a separate instance for each independent conversion.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -86,6 +91,7 @@ const attempt = <A>(encoding: string, operation: "encode" | "decode", f: () => A
  * are low-level hooks; use makeEncoderUnsafe / makeDecoderUnsafe for typed errors
  * and lifecycle checks.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -98,6 +104,7 @@ export interface Encoding {
 /**
  * Creates a fresh incremental encoder from an explicitly imported codec.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -122,6 +129,7 @@ export const makeEncoderUnsafe = (encoding: Encoding, options: Options = {}): En
 /**
  * Creates a fresh incremental decoder from an explicitly imported codec.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -146,6 +154,7 @@ export const makeDecoderUnsafe = (encoding: Encoding, options: Options = {}): De
 /**
  * Encodes a complete string, throwing CharacterEncodingError on failure.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -157,6 +166,7 @@ export const encodeUnsafe = (text: string, encoding: Encoding, options?: Options
 /**
  * Decodes a complete byte array, throwing CharacterEncodingError on failure.
  *
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -168,6 +178,7 @@ export const decodeUnsafe = (bytes: Uint8Array, encoding: Encoding, options?: Op
 /**
  * Encodes a string with conversion errors in the Effect error channel.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -181,6 +192,7 @@ export const encode = (
 /**
  * Decodes bytes with conversion errors in the Effect error channel.
  *
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -223,6 +235,7 @@ const transform = <I, O, E, R>(
  * state. Each run gets fresh state. Flushes only on normal upstream completion,
  * not on interruption or failure, and inherits upstream backpressure.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */
@@ -236,6 +249,7 @@ export const encodeStream =
  * chunks. Flushes exactly once on normal completion; fatal errors at EOF remain
  * typed failures. No buffering of the entire input is required.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */
@@ -248,6 +262,7 @@ export const decodeStream =
  * Converts a byte stream from one character encoding into another without
  * collecting it. Decode and encode options are independent.
  *
+ * @stability unstable
  * @category streaming
  * @since 4.0.0
  */

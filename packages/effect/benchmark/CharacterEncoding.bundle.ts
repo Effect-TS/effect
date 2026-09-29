@@ -15,13 +15,13 @@ const cases = [
   {
     name: "utf8-only",
     source:
-      "import { decodeUnsafe } from \"./src/encoding/Utf8.ts\"; export const decode = (bytes) => decodeUnsafe(bytes)",
+      "import { decodeUnsafe } from \"./src/encoding/charset/Utf8.ts\"; export const decode = (bytes) => decodeUnsafe(bytes)",
     tables: 0
   },
   {
     name: "cp1251-only",
     source:
-      "import { decodeUnsafe } from \"./src/encoding/Windows1251.ts\"; export const decode = (bytes) => decodeUnsafe(bytes)",
+      "import { decodeUnsafe } from \"./src/encoding/charset/Windows1251.ts\"; export const decode = (bytes) => decodeUnsafe(bytes)",
     tables: 1
   }
 ]

@@ -1,18 +1,18 @@
 import { describe, it } from "@effect/vitest"
 import * as C from "effect/CharacterEncoding"
 import * as Effect from "effect/Effect"
-import * as Big5Hkscs from "effect/encoding/Big5Hkscs"
-import * as Cp936 from "effect/encoding/Cp936"
-import * as Gb18030 from "effect/encoding/Gb18030"
-import * as Gbk from "effect/encoding/Gbk"
-import * as ShiftJis from "effect/encoding/ShiftJis"
-import * as Utf16BE from "effect/encoding/Utf16BE"
-import * as Utf16LE from "effect/encoding/Utf16LE"
-import * as Utf32BE from "effect/encoding/Utf32BE"
-import * as Utf32LE from "effect/encoding/Utf32LE"
-import * as Utf8 from "effect/encoding/Utf8"
-import * as Windows1251 from "effect/encoding/Windows1251"
-import * as Windows1252 from "effect/encoding/Windows1252"
+import * as Big5Hkscs from "effect/encoding/charset/Big5Hkscs"
+import * as Cp936 from "effect/encoding/charset/Cp936"
+import * as Gb18030 from "effect/encoding/charset/Gb18030"
+import * as Gbk from "effect/encoding/charset/Gbk"
+import * as ShiftJis from "effect/encoding/charset/ShiftJis"
+import * as Utf16BE from "effect/encoding/charset/Utf16BE"
+import * as Utf16LE from "effect/encoding/charset/Utf16LE"
+import * as Utf32BE from "effect/encoding/charset/Utf32BE"
+import * as Utf32LE from "effect/encoding/charset/Utf32LE"
+import * as Utf8 from "effect/encoding/charset/Utf8"
+import * as Windows1251 from "effect/encoding/charset/Windows1251"
+import * as Windows1252 from "effect/encoding/charset/Windows1252"
 import { make } from "effect/internal/characterEncoding/codec"
 import { MultiByte } from "effect/internal/characterEncoding/multiByte"
 import * as Stream from "effect/Stream"
@@ -22,11 +22,11 @@ import { readdirSync } from "node:fs"
 
 // Every codec module, keyed by its module name.
 const codecs: ReadonlyArray<[module: string, codec: typeof Utf8]> = await Promise.all(
-  readdirSync(new URL("../src/encoding/", import.meta.url))
+  readdirSync(new URL("../src/encoding/charset/", import.meta.url))
     .filter((file) => file.endsWith(".ts"))
     .map((file) => file.slice(0, -3))
     .sort()
-    .map(async (module) => [module, await import(`effect/encoding/${module}`)] as [string, typeof Utf8])
+    .map(async (module) => [module, await import(`effect/encoding/charset/${module}`)] as [string, typeof Utf8])
 )
 const multiByte = new Set(["shiftjis", "cp936", "cp949", "cp950", "gbk", "gb18030", "big5hkscs", "eucjp"])
 const unicode = [Utf8, Utf16LE, Utf16BE, Utf32LE, Utf32BE]

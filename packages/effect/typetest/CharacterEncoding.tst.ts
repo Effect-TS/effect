@@ -1,6 +1,6 @@
 import * as C from "effect/CharacterEncoding"
 import type * as Effect from "effect/Effect"
-import * as Utf8 from "effect/encoding/Utf8"
+import * as Utf8 from "effect/encoding/charset/Utf8"
 import { hole } from "effect/Function"
 import type * as Stream from "effect/Stream"
 import { describe, expect, it } from "tstyche"

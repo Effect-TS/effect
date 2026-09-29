@@ -10,8 +10,8 @@ placement is an explicit review question for this draft.
 ```ts
 import * as CharacterEncoding from "effect/CharacterEncoding"
 import * as Effect from "effect/Effect"
-import * as Utf8 from "effect/encoding/Utf8"
-import * as Windows1251 from "effect/encoding/Windows1251"
+import * as Utf8 from "effect/encoding/charset/Utf8"
+import * as Windows1251 from "effect/encoding/charset/Windows1251"
 import * as Stream from "effect/Stream"
 
 const program = Effect.gen(function*() {
@@ -59,7 +59,7 @@ Each codec module also exports `encode`, `decode`, `encodeUnsafe`, `decodeUnsafe
 point does not need the core operators at all:
 
 ```ts
-import * as Windows1251 from "effect/encoding/Windows1251"
+import * as Windows1251 from "effect/encoding/charset/Windows1251"
 
 const bytes = Windows1251.encodeUnsafe("Привет")
 const text = Windows1251.decodeUnsafe(bytes)
