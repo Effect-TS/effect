@@ -201,7 +201,8 @@ export const makeUnsafe = (initialState: State = "closed"): Latch => internal.ma
  * @category constructors
  * @since 4.0.0
  */
-export const make = (initialState: State = "closed"): Effect.Effect<Latch> => internal.makeLatch(initialState === "open")
+export const make = (initialState: State = "closed"): Effect.Effect<Latch> =>
+  internal.makeLatch(initialState === "open")
 
 /**
  * Opens the latch and releases fibers waiting on it.
