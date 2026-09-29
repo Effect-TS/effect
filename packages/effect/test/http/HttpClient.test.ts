@@ -141,6 +141,32 @@ Missing key
     }))
 
   describe("tracer", () => {
+    it.effect.each(["", "#", "#fragment?query"])(
+      "preserves the fragment %j while masking query parameters",
+      (hash) =>
+        Effect.gen(function*() {
+          let span: Tracer.NativeSpan | undefined
+          const client = HttpClient.make((request, url) => {
+            assert.strictEqual(url.href, `https://example.test/path?token=secret${hash}`)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+          })
+          yield* client.get(`https://example.test/path${hash}`, {
+            urlParams: { token: Redacted.make("secret") }
+          }).pipe(Effect.provideService(
+            Tracer.Tracer,
+            Tracer.make({
+              span(options) {
+                span = new Tracer.NativeSpan(options)
+                return span
+              }
+            })
+          ))
+          assert(span !== undefined)
+          assert.strictEqual(span.attributes.get("url.full"), `https://example.test/path?token=<redacted>${hash}`)
+          assert.strictEqual(span.attributes.get("url.query"), "token=<redacted>")
+        })
+    )
+
     it.effect("redacts query values in both URL attributes without changing the transport URL", () =>
       Effect.gen(function*() {
         let clientSpan: Tracer.NativeSpan | undefined

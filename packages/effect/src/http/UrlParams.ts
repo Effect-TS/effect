@@ -35,6 +35,13 @@ const TypeId = "~effect/http/UrlParams"
  * Parameters are stored as ordered key-value pairs and can contain multiple
  * values for the same key. Redacted values retain their wrappers so HTTP client
  * traces can hide them while outgoing requests send their underlying strings.
+ * Use `params`, iteration, or {@link transform} to inspect or transform entries
+ * while preserving redaction.
+ *
+ * **Gotchas**
+ *
+ * String getters and serializers unwrap redacted values. Rebuilding parameters
+ * from {@link toRecord} or {@link toString} does not restore their redaction.
  *
  * @stability unstable
  * @category models
@@ -457,6 +464,11 @@ export const toString = (input: Input): string =>
  * **Details**
  *
  * Redacted values are unwrapped.
+ *
+ * **Gotchas**
+ *
+ * Passing the result to {@link fromInput} loses redaction. Use iteration or
+ * {@link transform} to preserve redacted wrappers when copying or updating parameters.
  *
  * **Example** (Converting parameters to a record)
  *

@@ -41,6 +41,7 @@ import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as MediaType from "./internal/mediaType.ts"
 import * as HttpApiPath from "./internal/path.ts"
+import { clientQuerySchema } from "./internal/urlParams.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -414,7 +415,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           Schema.encodeUnknownEffect(
             HttpMethod.hasBody(endpoint.method)
               ? getEncodePayloadSchema(payloadSchemas, endpoint.method)
-              : Schema.Union(payloadSchemas),
+              : Schema.Union(payloadSchemas.map((schema) => clientQuerySchema(schema, endpoint.disableCodecs))),
             parseOptions.payload
           ) :
           undefined
@@ -425,7 +426,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         )
         const encodeQuery = UndefinedOr.map(
           endpoint.query,
-          (schema) => Schema.encodeUnknownEffect(schema, parseOptions.query)
+          (schema) => Schema.encodeUnknownEffect(clientQuerySchema(schema, endpoint.disableCodecs), parseOptions.query)
         )
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
@@ -459,7 +460,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
                   httpRequest = HttpClientRequest.setBody(httpRequest, body)
                 }
               } else {
-                const urlParams = (yield* encodePayload(request.payload)) as Record<string, string>
+                const urlParams = (yield* encodePayload(request.payload)) as UrlParams.Input
                 httpRequest = HttpClientRequest.appendUrlParams(httpRequest, urlParams)
               }
             }
@@ -472,7 +473,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
             // query
             if (encodeQuery !== undefined) {
-              const query = (yield* encodeQuery(request.query)) as Record<string, string>
+              const query = (yield* encodeQuery(request.query)) as UrlParams.Input
               httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
             }
           }

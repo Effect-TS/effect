@@ -792,20 +792,16 @@ const redactUrlForTracing = (
   }
   // `Url.make` appends `request.urlParams` after any query already present in
   // `request.url`, so the last `params.length` entries map to `params` in order.
-  const entries = Array.from(url.searchParams)
-  const offset = entries.length - params.length
-  const parts: Array<string> = []
-  for (let i = 0; i < entries.length; i++) {
-    const [key, value] = entries[i]
-    parts.push(
-      i >= offset && typeof params[i - offset][1] !== "string"
-        ? `${new URLSearchParams([[key, ""]]).toString()}<redacted>`
-        : new URLSearchParams([[key, value]]).toString()
-    )
-  }
-  const query = parts.join("&")
-  const prefix = url.href.slice(0, url.href.length - url.search.length - url.hash.length)
-  return { full: `${prefix}?${query}${url.hash}`, query }
+  const offset = url.searchParams.size - params.length
+  const query = Array.from(url.searchParams, ([key, value], index) => {
+    const redacted = index >= offset && typeof params[index - offset][1] !== "string"
+    const entry = new URLSearchParams([[key, redacted ? "" : value]]).toString()
+    return redacted ? `${entry}<redacted>` : entry
+  }).join("&")
+  const href = url.href
+  const hashIndex = href.indexOf("#")
+  const hash = hashIndex === -1 ? "" : href.slice(hashIndex)
+  return { full: `${href.slice(0, href.indexOf("?"))}?${query}${hash}`, query }
 }
 
 /**
