@@ -511,7 +511,6 @@ const bind = (
     native.close()
     resume(Effect.fail(error))
   }
-  // a bind failure arrives as `'error'` and leaves the socket open, unbound
   native.onOpenError = (error) => fail(openError(error))
   try {
     socket.bind({ address: host, port: options.bind?.port ?? 0 }, () => {
@@ -567,7 +566,6 @@ const adopt = (
     try {
       remote = socket.remoteAddress() as Dgram.RemoteInfo
     } catch {
-      // not connected
     }
     const scopeIds = scopeIdsFor(family)
     if (remote !== undefined) {
@@ -675,7 +673,6 @@ class NativeSocket {
     try {
       this.socket.close()
     } catch {
-      // already closed
     }
   }
 }

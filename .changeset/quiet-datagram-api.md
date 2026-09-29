@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add the `effect/socket/DatagramSocket` module for scoped UDP sockets, with a bounded receive queue, an exclusive reader, a latch-gated writer and a callback-based native send contract for platform adapters.
+Add `effect/socket/DatagramSocket` for scoped UDP sockets, with a bounded receive queue, an exclusive reader and a writer that waits for the reader to open.
