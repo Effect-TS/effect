@@ -402,6 +402,57 @@ describe("SchemaAST", () => {
       strictEqual(ast.encodingChecks, undefined)
     })
 
+    it("toEncoded preserves parent checks when projecting checked children without transformations", () => {
+      const schema = Schema.Struct({
+        xs: Schema.Array(Schema.String).check(Schema.isMinLength(1))
+      }).check(Schema.makeFilter((o) => o.xs[0] === "ok"))
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(Schema.decodeUnknownExit(schema)({ xs: ["bad"] })._tag, "Failure")
+      strictEqual(Schema.decodeUnknownExit(encoded)({ xs: ["bad"] })._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)({ xs: ["ok"] }), { xs: ["ok"] })
+    })
+
+    it("toEncoded preserves union checks when projecting checked members without transformations", () => {
+      const schema = Schema.Union([
+        Schema.Array(Schema.String).check(Schema.isMinLength(1)),
+        Schema.String
+      ]).check(Schema.makeFilter((value) => typeof value === "string" || value[0] === "ok"))
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(Schema.decodeUnknownExit(encoded)(["bad"])._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)(["ok"]), ["ok"])
+      strictEqual(Schema.decodeUnknownSync(encoded)("ok"), "ok")
+    })
+
+    it("toEncoded drops parent checks when a union member has a transformation", () => {
+      const schema = Schema.Struct({
+        a: Schema.Union([Schema.NumberFromString, Schema.Boolean])
+      }).check(Schema.makeFilter((o) => typeof o.a === "boolean" || o.a > 0))
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(Schema.decodeUnknownExit(schema)({ a: "-1" })._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)({ a: "-1" }), { a: "-1" })
+    })
+
+    it.each([false, true])("treats suspended children as opaque (already evaluated: %s)", (evaluated) => {
+      let calls = 0
+      const suspended = Schema.suspend(() => {
+        calls++
+        return Schema.String
+      })
+      if (evaluated) Schema.decodeUnknownSync(suspended)("ok")
+      const schema = Schema.Struct({ a: Schema.optionalKey(suspended) }).check(
+        Schema.makeFilter((o) => o.a !== "bad"),
+        Schema.isMinProperties(1)
+      )
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(calls, evaluated ? 1 : 0)
+      strictEqual(Schema.decodeUnknownExit(encoded)({})._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)({ a: "bad" }), { a: "bad" })
+    })
+
     it("drops encodingChecks when contained type shape changes", () => {
       const schema = Schema.Struct({ a: Schema.FiniteFromString }).pipe(
         Schema.flip,
