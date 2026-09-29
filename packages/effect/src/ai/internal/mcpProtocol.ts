@@ -205,7 +205,12 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
       }),
       Match.exhaustive
     )
-    return new ProtocolError({ code: PublicMcpSchema.INVALID_PARAMS_ERROR_CODE, message })
+    return new ProtocolError({
+      code: error._tag === "ToolExecutionError"
+        ? PublicMcpSchema.INTERNAL_ERROR_CODE
+        : PublicMcpSchema.INVALID_PARAMS_ERROR_CODE,
+      message
+    })
   }
 
   static fromFeature(error: unknown): ProtocolError {

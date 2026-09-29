@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-deno",
   "type": "module",
-  "version": "4.0.0-rc.117",
+  "version": "4.0.0-rc.118",
   "license": "MIT",
   "description": "Platform specific implementations for the Deno runtime",
   "homepage": "https://effect.website",
@@ -69,7 +69,7 @@
     "@std/fs": "jsr:^1.0.24",
     "@std/media-types": "jsr:^1.1.0",
     "@std/path": "jsr:^1.1.6",
-    "@std/streams": "jsr:^1.1.2"
+    "@std/streams": "jsr:^1.2.0"
   },
   "peerDependencies": {
     "effect": "workspace:^"

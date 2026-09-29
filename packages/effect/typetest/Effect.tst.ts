@@ -922,7 +922,7 @@ describe("Effect.partition", () => {
       [1, 2, 3],
       (n) => n % 2 === 0 ? Effect.fail(`${n}`) : Effect.succeed(n)
     )
-    expect(result).type.toBe<Effect.Effect<[excluded: Array<string>, satisfying: Array<number>], never, never>>()
+    expect(result).type.toBe<Effect.Effect<[passes: Array<number>, fails: Array<string>], never, never>>()
   })
 
   it("data-last", () => {
@@ -930,7 +930,7 @@ describe("Effect.partition", () => {
       [1, 2, 3],
       Effect.partition((n) => n % 2 === 0 ? Effect.fail(n) : Effect.succeed(`${n}`))
     )
-    expect(result).type.toBe<Effect.Effect<[excluded: Array<number>, satisfying: Array<string>], never, never>>()
+    expect(result).type.toBe<Effect.Effect<[passes: Array<string>, fails: Array<number>], never, never>>()
   })
 })
 

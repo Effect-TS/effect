@@ -237,6 +237,21 @@ const invalidEncoding = (
     ? invalidType(ast, value, options)
     : Interpreter.wrapEncoding(ast, input, options, invalidType(ast.encoding[index - 1].to, value, options))
 
+const invalidEncodingChecks = (
+  ast: SchemaAST.AST & { readonly encoding: SchemaAST.Encoding },
+  input: unknown,
+  issues: readonly [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>],
+  options: SchemaAST.ParseOptions
+) => {
+  const source = ast.encoding[ast.encoding.length - 1].to
+  return Interpreter.wrapEncoding(
+    ast,
+    input,
+    options,
+    Effect.fail(new SchemaIssue.Composite(source, issues, input, options))
+  )
+}
+
 /**
  * @internal
  */
@@ -255,6 +270,7 @@ export const runtime = {
   die: Effect.die,
   invalidType,
   invalidEncoding,
+  invalidEncodingChecks,
   getCheckIssues,
   check,
   getExpectedKeys: (ast: SchemaAST.Objects) =>
@@ -262,7 +278,7 @@ export const runtime = {
   hasExcessProperties,
   matchesTemplateLiteral: (ast: SchemaAST.TemplateLiteral, input: unknown, options: SchemaAST.ParseOptions) =>
     typeof input === "string" && ast.matchPart(input, options) !== undefined,
-  getCandidates: SchemaAST.getCandidates,
+  getCandidateIndex: SchemaAST.getCandidateIndex,
   getIndexSignatureKeys: SchemaAST.getIndexSignatureKeys,
   parameterFromPropertyKey: SchemaAST.parameterFromPropertyKey,
   getConstructorDescriptor: SchemaAST.getConstructorDescriptor,

@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect"
+import { Context, Effect, hole, Layer, Schema } from "effect"
 import { type Atom, AtomRpc } from "effect/reactivity"
 import { Rpc, RpcGroup, RpcMiddleware } from "effect/rpc"
 import { describe, expect, it } from "tstyche"
@@ -35,5 +35,17 @@ describe("AtomRpc", () => {
       readonly id: number
       readonly name: string
     }>()
+  })
+
+  it("query and mutation infer a union of tags", () => {
+    const A = Rpc.make("A", { payload: { id: Schema.String }, success: Schema.Number })
+    const B = Rpc.make("B", { success: Schema.String })
+    const client = hole<AtomRpc.AtomRpcClient<unknown, "Client", typeof A | typeof B>>()
+    const tag = hole<"A" | "B">()
+    const query = client.query(tag, hole<{ readonly id: string } | void>())
+    const mutation = client.mutation(tag)
+
+    expect<Atom.Success<typeof query>>().type.toBe<number | string>()
+    expect<Atom.Success<typeof mutation>>().type.toBe<number | string>()
   })
 })

@@ -687,14 +687,14 @@ export type IsStream<R extends Any, Tag extends string> = R extends Rpc<
   never
 
 /**
- * Extracts the RPC with the specified tag from an RPC union.
+ * Extracts RPCs whose tags match the given tag or union of tags.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
 export type ExtractTag<R extends Any, Tag extends string> = R extends Rpc<
-  Tag,
+  infer _Tag extends Tag,
   infer _Payload,
   infer _Success,
   infer _Error,

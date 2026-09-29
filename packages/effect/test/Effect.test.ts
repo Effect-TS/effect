@@ -995,38 +995,37 @@ describe("Effect", () => {
     it.effect("collects only successes", () =>
       Effect.gen(function*() {
         const values = [0, 1, 2, 3, 4]
-        const [excluded, satisfying] = yield* Effect.partition(values, Effect.succeed)
-        assert.deepStrictEqual(excluded, [])
-        assert.deepStrictEqual(satisfying, values)
+        const [passes, fails] = yield* Effect.partition(values, Effect.succeed)
+        assert.deepStrictEqual(passes, values)
+        assert.deepStrictEqual(fails, [])
       }))
 
     it.effect("collects only failures", () =>
       Effect.gen(function*() {
         const values = [0, 1, 2, 3, 4]
-        const [excluded, satisfying] = yield* Effect.partition(values, Effect.fail)
-        assert.deepStrictEqual(excluded, values)
-        assert.deepStrictEqual(satisfying, [])
+        const [passes, fails] = yield* Effect.partition(values, Effect.fail)
+        assert.deepStrictEqual(passes, [])
+        assert.deepStrictEqual(fails, values)
       }))
 
-    it.effect("collects failures and successes", () =>
+    it.effect("collects successes and failures", () =>
       Effect.gen(function*() {
         const values = [0, 1, 2, 3, 4, 5]
-        const [excluded, satisfying] = yield* Effect.partition(values, (n) =>
-          n % 2 === 0 ? Effect.fail(n) : Effect.succeed(n))
-        assert.deepStrictEqual(excluded, [0, 2, 4])
-        assert.deepStrictEqual(satisfying, [1, 3, 5])
+        const [passes, fails] = yield* Effect.partition(values, (n) => n % 2 === 0 ? Effect.fail(n) : Effect.succeed(n))
+        assert.deepStrictEqual(passes, [1, 3, 5])
+        assert.deepStrictEqual(fails, [0, 2, 4])
       }))
 
     it.effect("supports concurrency option", () =>
       Effect.gen(function*() {
         const values = [0, 1, 2, 3, 4, 5]
-        const [excluded, satisfying] = yield* Effect.partition(
+        const [passes, fails] = yield* Effect.partition(
           values,
           (n) => n % 2 === 0 ? Effect.fail(n) : Effect.succeed(n),
           { concurrency: "unbounded" }
         )
-        assert.deepStrictEqual(excluded, [0, 2, 4])
-        assert.deepStrictEqual(satisfying, [1, 3, 5])
+        assert.deepStrictEqual(passes, [1, 3, 5])
+        assert.deepStrictEqual(fails, [0, 2, 4])
       }))
   })
 

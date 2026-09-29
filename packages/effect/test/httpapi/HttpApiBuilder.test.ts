@@ -3,6 +3,7 @@ import {
   Cause,
   DateTime,
   Effect,
+  type Exit,
   FileSystem,
   Layer,
   Path,
@@ -195,6 +196,122 @@ it.layer(TestServices)("HttpApiBuilder ParseOptions", (it) => {
       assert.ok(HttpApiError.HttpApiSchemaError.is(error))
       assert.strictEqual(error.kind, "Payload")
       assert.strictEqual(error.cause.message, `Expected no excess property\n  at ["extra"]`)
+    }))
+})
+
+it.layer(TestServices)("HttpApiBuilder slot ParseOptions", (it) => {
+  it.effect("API slot annotations replace endpoint ParseOptions one codec at a time", () =>
+    Effect.gen(function*() {
+      const Person = Schema.Struct({ name: Schema.String })
+      const Group = HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/users", {
+          headers: { "x-api-key": Schema.String },
+          query: { q: Schema.String },
+          payload: Person,
+          success: Person
+        }).annotate(HttpApi.ParseOptions, { onExcessProperty: "error", errors: "all" }),
+        HttpApiEndpoint.get("fail", "/fail", { error: Person.pipe(HttpApiSchema.status(400)) })
+          .annotate(HttpApi.ParseOptions, { onExcessProperty: "error" })
+      )
+      const respond = Effect.fnUntraced(function*(api: HttpApi.HttpApi<"Api", typeof Group>, request: Request) {
+        const handler = yield* HttpRouter.toHttpEffect(
+          HttpApiBuilder.layer(api).pipe(
+            Layer.provide(HttpApiBuilder.group(api, "test", (handlers) =>
+              handlers
+                .handle("create", () => Effect.succeed({ name: "Ada", extra: true }))
+                .handle("fail", () => Effect.fail({ name: "Ada", extra: true }))))
+          )
+        )
+        return yield* handler.pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, HttpServerRequest.fromWeb(request)),
+          Effect.exit
+        )
+      })
+      const create = (api: HttpApi.HttpApi<"Api", typeof Group>) =>
+        respond(
+          api,
+          new Request("http://localhost/users?q=x&extra=1", {
+            method: "POST",
+            headers: { "content-type": "application/json", "user-agent": "test", "x-api-key": "key" },
+            body: JSON.stringify({ name: "Ada", extra: true })
+          })
+        )
+      const failedSlot = (exit: Exit.Exit<HttpServerResponse.HttpServerResponse, unknown>) => {
+        if (exit._tag === "Success") throw new Error("Expected the request to fail")
+        const error = Cause.squash(exit.cause)
+        return HttpApiError.HttpApiSchemaError.is(error) ? error.kind : undefined
+      }
+
+      // Unset slots fall back to the strict endpoint ParseOptions, headers included.
+      let api = HttpApi.make("Api").add(Group)
+      assert.strictEqual(failedSlot(yield* create(api)), "Headers")
+      api = api.annotate(HttpApi.HeadersParseOptions, {})
+      assert.strictEqual(failedSlot(yield* create(api)), "Query")
+      api = api.annotate(HttpApi.QueryParseOptions, {})
+      assert.strictEqual(failedSlot(yield* create(api)), "Payload")
+      // Replaces ParseOptions: onExcessProperty is not merged in.
+      api = api.annotate(HttpApi.PayloadParseOptions, { errors: "first" })
+      assert.strictEqual(failedSlot(yield* create(api)), "Body")
+      api = api.annotate(HttpApi.SuccessParseOptions, {})
+      const created = yield* create(api)
+      assert.strictEqual(created._tag, "Success")
+      if (created._tag === "Success") {
+        assert.deepStrictEqual(yield* Effect.promise(() => HttpServerResponse.toWeb(created.value).json()), {
+          name: "Ada"
+        })
+      }
+
+      assert.strictEqual((yield* respond(api, new Request("http://localhost/fail")))._tag, "Failure")
+      const failed = yield* respond(api.annotate(HttpApi.ErrorParseOptions, {}), new Request("http://localhost/fail"))
+      assert.strictEqual(failed._tag === "Success" && failed.value.status, 400)
+    }))
+
+  it.effect("encodeToWithHeaders response headers use HeadersParseOptions", () =>
+    Effect.gen(function*() {
+      class Limited extends Schema.TaggedError<Limited>()("Limited", { id: Schema.String }) {}
+      const LimitedResponse = Limited.pipe(HttpApiSchema.encodeToWithHeaders({
+        body: HttpApiSchema.Empty(429),
+        headers: { "x-id": Schema.String }
+      }, {
+        decode: ({ headers }) => new Limited({ id: headers["x-id"] }),
+        encode: (error) => {
+          const headers = { "x-id": error.id, "x-extra": "extra" }
+          return { body: undefined, headers }
+        }
+      }))
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("limited", "/limited", { error: LimitedResponse }))
+      )
+      const respond = Effect.fnUntraced(function*(api: typeof Api) {
+        const handler = yield* HttpRouter.toHttpEffect(
+          HttpApiBuilder.layer(api).pipe(
+            Layer.provide(HttpApiBuilder.group(api, "test", (handlers) =>
+              handlers.handle("limited", () =>
+                Effect.fail(new Limited({ id: "1" })))))
+          )
+        )
+        return yield* handler.pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost/limited"))
+          ),
+          Effect.exit
+        )
+      })
+
+      // Strict error body options do not apply to the headers.
+      const relaxed = yield* respond(
+        Api.annotate(HttpApi.ParseOptions, { onExcessProperty: "error" }).annotate(HttpApi.HeadersParseOptions, {})
+      )
+      assert.strictEqual(relaxed._tag, "Success")
+      if (relaxed._tag === "Success") {
+        assert.strictEqual(relaxed.value.status, 429)
+        assert.strictEqual(relaxed.value.headers["x-id"], "1")
+        assert.isUndefined(relaxed.value.headers["x-extra"])
+      }
+      // Strict header options apply even with default error body options.
+      const strict = yield* respond(Api.annotate(HttpApi.HeadersParseOptions, { onExcessProperty: "error" }))
+      assert.strictEqual(strict._tag, "Failure")
     }))
 })
 

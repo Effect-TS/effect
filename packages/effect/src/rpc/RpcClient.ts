@@ -166,8 +166,8 @@ export declare namespace RpcClient {
         readonly context?: Context.Context<never> | undefined
         readonly discard?: Discard | undefined
       }
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
+  ) => Rpcs extends Rpc.Rpc<
+    infer _Tag extends Tag,
     infer _Payload,
     infer _Success,
     infer _Error,
@@ -1035,9 +1035,9 @@ export const makeProtocolSocket = (options?: {
   readonly retryPolicy?: Schedule.Schedule<any, Socket.SocketError> | undefined
   /**
    * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
-   * Ping timeouts are also reported because the protocol classifies them as
-   * `SocketOpenError`. The returned `Effect<void>` cannot fail with a typed error
-   * or require services; defects are logged and ignored so retries can continue.
+   * A missed pong fails in-flight calls and is not reported through this hook.
+   * The returned `Effect<void>` cannot fail with a typed error or require
+   * services; defects are logged and ignored so retries can continue.
    */
   readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
 }): Effect.Effect<
@@ -1133,8 +1133,7 @@ export const makeProtocolSocket = (options?: {
           () =>
             Effect.fail(
               new Socket.SocketError({
-                reason: new Socket.SocketOpenError({
-                  kind: "Timeout",
+                reason: new Socket.SocketReadError({
                   cause: new Error("ping timeout")
                 })
               })
@@ -1235,9 +1234,9 @@ export const layerProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
   /**
    * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
-   * Ping timeouts are also reported because the protocol classifies them as
-   * `SocketOpenError`. The returned `Effect<void>` cannot fail with a typed error
-   * or require services; defects are logged and ignored so retries can continue.
+   * A missed pong fails in-flight calls and is not reported through this hook.
+   * The returned `Effect<void>` cannot fail with a typed error or require
+   * services; defects are logged and ignored so retries can continue.
    */
   readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
 }): Layer.Layer<

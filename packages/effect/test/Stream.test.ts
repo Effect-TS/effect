@@ -4548,7 +4548,7 @@ describe("Stream", () => {
         const stream = pipe(
           Stream.fromIterable(Array.empty<number>()),
           Stream.partitionEffect((n) => Effect.succeed(n % 2 === 0 ? Result.succeed(n) : Result.fail(n))),
-          Effect.map(([odds, evens]) => pipe(evens, Stream.mergeResult(odds))),
+          Effect.map(([passes, fails]) => pipe(fails, Stream.mergeResult(passes))),
           Effect.flatMap(Stream.runCollect),
           Effect.scoped
         )

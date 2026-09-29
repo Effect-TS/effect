@@ -143,7 +143,8 @@ export declare namespace SqlClient {
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined
     readonly rollback?: string | undefined
-    readonly commit?: string | undefined
+    /** Commit SQL, or an effect that commits on the connection and checks the result. */
+    readonly commit?: string | ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
     readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     readonly savepoint?: ((name: string) => string) | undefined
@@ -210,7 +211,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
       : undefined,
-    commit: (conn) => control(conn, commit),
+    commit: typeof commit === "string" ? (conn) => control(conn, commit) : commit,
     onCommitFailure: options.onCommitFailure,
     rollback: (conn) => control(conn, rollback),
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))

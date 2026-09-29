@@ -1264,8 +1264,9 @@ function makeResultFn<Arg, E, A>(
           Effect.forkDetach(eff, { startImmediately: true }),
           (fiber) => {
             fibers.add(fiber)
+            const runningFibers = Array.from(fibers)
             fiber.addObserver(() => fibers.delete(fiber))
-            return Effect.map(Fiber.joinAll(fibers), (arr) => arr[0])
+            return Effect.map(Fiber.joinAll(runningFibers), (arr) => arr[0])
           }
         )
       }

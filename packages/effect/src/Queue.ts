@@ -950,6 +950,8 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
     return true
   }
   self.state = { ...self.state, _tag: "Closing", exit: fail }
+  // Batch takers waiting on a minimum can now drain the remainder.
+  scheduleReleaseTaker(self)
   return true
 }
 
@@ -1305,8 +1307,9 @@ export const collect = <A, E>(self: Dequeue<A, E | Done>): Effect<Array<A>, Pull
  * The operation may wait until enough messages are available to satisfy the
  * queue's batching rules. Finite fractional values of `n` are rounded down.
  * If `n` is `NaN` or non-positive, it succeeds with an empty array. If the
- * queue completes or fails before messages can be taken, the effect fails with
- * the queue's terminal error.
+ * queue is closing, drains the currently available messages even when fewer
+ * than `n` are available. Once the queue is done, the effect fails with the
+ * queue's terminal error.
  *
  * **Example** (Taking a fixed number of values)
  *
@@ -1349,8 +1352,9 @@ export const takeN: {
  * The operation waits when fewer than the required minimum messages are
  * available. It returns at most `max` messages. Finite fractional bounds are
  * rounded down, while `NaN` and non-positive bounds are treated as `0`. If the
- * queue completes or fails before the minimum can be satisfied, the effect
- * fails with the queue's terminal error.
+ * queue is closing, drains the currently available messages even when fewer
+ * than `min` are available. Once the queue is done, the effect fails with the
+ * queue's terminal error.
  *
  * **Example** (Taking a bounded batch of values)
  *
@@ -1388,7 +1392,7 @@ export const takeBetween: {
   max = Count.normalize(max)
   return internalEffect.suspend(() =>
     takeBetweenUnsafe(self, min, max) ??
-      internalEffect.andThen(awaitTake(self, () => canTake(self, min)), takeBetween(self, 1, max))
+      internalEffect.andThen(awaitTake(self, () => canTake(self, min)), takeBetween(self, min, max))
   )
 })
 
@@ -1967,8 +1971,9 @@ const takeBetweenUnsafe = <A, E>(
 }
 
 // Whether a take of at least `min` messages can complete without waiting.
+// A closing queue receives no more messages, so any remainder satisfies `min`.
 const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
-  self.messages.length >= Math.min(min, self.capacity || 1) ||
+  self.messages.length >= (self.state._tag === "Closing" ? 1 : Math.min(min, self.capacity || 1)) ||
   (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0)
 
 // The readiness check and the taker registration run in one step, so no
@@ -1994,7 +1999,11 @@ const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {
   const offers = self.state.offers
   offers.add(entry)
   return internalEffect.sync(() => {
-    if (self.state._tag === "Open") offers.delete(entry)
+    if (self.state._tag === "Done") return
+    offers.delete(entry)
+    if (self.state._tag === "Closing" && offers.size === 0 && self.messages.length === 0) {
+      finalize(self, self.state.exit)
+    }
   })
 }
 

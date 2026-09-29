@@ -1,5 +1,5 @@
 import { assert } from "@effect/vitest"
-import { JsonSchema, Schema, SchemaRepresentation } from "effect"
+import { Brand, JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { TestSchema } from "effect/testing"
 import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
@@ -1697,7 +1697,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.String.pipe(Schema.brand("a"))`,
-            `string & Brand.Brand<"a">`
+            `(string) & Brand.Brand<"a">`
           ),
           artifacts: [{
             _tag: "Import",
@@ -1715,7 +1715,51 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.String.pipe(Schema.brand("a"), Schema.brand("b"))`,
-            `string & Brand.Brand<"a"> & Brand.Brand<"b">`
+            `(string) & Brand.Brand<"a"> & Brand.Brand<"b">`
+          ),
+          artifacts: [{
+            _tag: "Import",
+            importDeclaration: `import type * as Brand from "effect/Brand"`
+          }]
+        }
+      )
+    })
+
+    it("brand union", () => {
+      assertSchema(
+        {
+          schema: Schema.Union([Schema.String, Schema.Number]).pipe(Schema.brand("a"))
+        },
+        {
+          codes: makeCode(
+            `Schema.Union([Schema.String, Schema.Number]).pipe(Schema.brand("a"))`,
+            `(string | number) & Brand.Brand<"a">`
+          ),
+          artifacts: [{
+            _tag: "Import",
+            importDeclaration: `import type * as Brand from "effect/Brand"`
+          }]
+        }
+      )
+    })
+
+    it("fromBrand & fromBrand", () => {
+      type Int = number & Brand.Brand<"Int">
+      const Int = Brand.check<Int>(Schema.isInt())
+      type Positive = number & Brand.Brand<"Positive">
+      const Positive = Brand.check<Positive>(Schema.isGreaterThan(0))
+
+      assertSchema(
+        {
+          schema: Schema.Number.pipe(
+            Schema.fromBrand("Int", Int),
+            Schema.fromBrand("Positive", Positive)
+          )
+        },
+        {
+          codes: makeCode(
+            `Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })).pipe(Schema.brand("Int")).check(Schema.isGreaterThan(0).annotate({ "expected": "a value greater than 0" })).pipe(Schema.brand("Positive"))`,
+            `(number) & Brand.Brand<"Int"> & Brand.Brand<"Positive">`
           ),
           artifacts: [{
             _tag: "Import",
@@ -1733,7 +1777,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.String.check(Schema.isMinLength(1)).pipe(Schema.brand("b"))`,
-            `string & Brand.Brand<"b">`
+            `(string) & Brand.Brand<"b">`
           ),
           artifacts: [{
             _tag: "Import",
@@ -1751,7 +1795,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.String.pipe(Schema.brand("a")).check(Schema.isMinLength(1)).pipe(Schema.brand("b"))`,
-            `string & Brand.Brand<"a"> & Brand.Brand<"b">`
+            `(string) & Brand.Brand<"a"> & Brand.Brand<"b">`
           ),
           artifacts: [{
             _tag: "Import",
@@ -1769,7 +1813,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.String.check(Schema.isMinLength(1)).pipe(Schema.brand("b")).check(Schema.isMaxLength(2))`,
-            `string & Brand.Brand<"b">`
+            `(string) & Brand.Brand<"b">`
           ),
           artifacts: [{
             _tag: "Import",

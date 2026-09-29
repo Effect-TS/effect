@@ -1852,7 +1852,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       error: unknown
     ) => Effect.Effect<unknown, Schema.SchemaError, Tool.HandlerServices<Tools[keyof Tools]>>
     const declaredFailureResult = (error: unknown) =>
-      error instanceof Error
+      error instanceof Error && error.message !== ""
         ? Effect.succeed(toolErrorResult(error.message))
         : Effect.map(encodeFailure(error), (encoded) =>
           new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
