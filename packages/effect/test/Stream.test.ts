@@ -1510,7 +1510,7 @@ describe("Stream", () => {
     inner: "never" | "slow"
   ) =>
     Effect.gen(function*() {
-      const started = yield* Latch.make(false)
+      const started = yield* Latch.make("closed")
       const failing = yield* Deferred.make<void>()
       const finalized = yield* Ref.make(0)
       const outer = Stream.concat(

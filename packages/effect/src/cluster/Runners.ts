@@ -258,11 +258,11 @@ export const make: (
       let entry = storageRequests.get(message.envelope.requestId)
       if (entry) {
         entry.messages.add(message)
-        entry.doneLatch ??= Latch.makeUnsafe(false)
+        entry.doneLatch ??= Latch.makeUnsafe("closed")
         return yield* entry.doneLatch.await
       } else {
         entry = {
-          latch: Latch.makeUnsafe(false),
+          latch: Latch.makeUnsafe("closed"),
           doneLatch: undefined,
           replies: [],
           messages: new Set([message])
@@ -314,7 +314,7 @@ export const make: (
       )
   )
 
-  const storageLatch = Latch.makeUnsafe(false)
+  const storageLatch = Latch.makeUnsafe("closed")
   if (storage !== MessageStorage.noop) {
     yield* Effect.gen(function*() {
       const foundRequests = new Set<StorageRequestEntry>()

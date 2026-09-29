@@ -459,7 +459,7 @@ interface PartitionState {
 }
 
 const makePartitionState = (): PartitionState => ({
-  connectionAvailable: Latch.makeUnsafe(true),
+  connectionAvailable: Latch.makeUnsafe("open"),
   blockRelease: false,
   activeQueries: 0,
   maxActiveQueries: 0,

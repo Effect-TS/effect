@@ -26,7 +26,7 @@ describe("DevToolsClient", () => {
         // sends one message, then stays idle until the reader scope closes,
         // which fails the suspended pull as the reader contract requires
         reader: Effect.gen(function*() {
-          const closed = Latch.makeUnsafe(false)
+          const closed = Latch.makeUnsafe("closed")
           yield* Effect.addFinalizer(() => closed.open)
           let sent = false
           return {

@@ -6291,7 +6291,7 @@ export const mergeAll: {
           ? Number.MAX_SAFE_INTEGER
           : Math.max(1, concurrency)
         const semaphore = switch_ ? undefined : Semaphore.makeUnsafe(concurrencyN)
-        const doneLatch = yield* Latch.make(true)
+        const doneLatch = yield* Latch.make("open")
         const fibers = new Set<Fiber.Fiber<any, any>>()
 
         const queue = yield* Queue.bounded<OutElem, OutErr | OutErr1 | Cause.Done<OutDone>>(

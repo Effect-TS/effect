@@ -30,7 +30,7 @@ const StateEntity = Entity.make("ClusterIntegrationState", [
   })
 ]).annotateRpcs(ClusterSchema.Persisted, true)
 
-let orderGate = Latch.makeUnsafe(true)
+let orderGate = Latch.makeUnsafe("open")
 let orderEntered = Latch.makeUnsafe()
 let order: Array<number> = []
 const generations = new Map<string, number>()
@@ -72,7 +72,7 @@ const MailboxEntity = Entity.make("ClusterIntegrationMailbox", [
   })
 ])
 
-let mailboxGate = Latch.makeUnsafe(true)
+let mailboxGate = Latch.makeUnsafe("open")
 let mailboxEntered = Latch.makeUnsafe()
 
 const MailboxEntityLayer = MailboxEntity.toLayer({

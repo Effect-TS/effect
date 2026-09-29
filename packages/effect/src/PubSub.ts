@@ -316,7 +316,7 @@ export const make = <A>(
       options.atomicPubSub(),
       new Map(),
       Scope.makeUnsafe(),
-      Latch.makeUnsafe(false),
+      Latch.makeUnsafe("closed"),
       MutableRef.make(false),
       options.strategy(),
       MutableRef.make(Option.none())
@@ -1638,7 +1638,7 @@ const makeSubscriptionUnsafe = <A>(
     subscribers,
     pubsub.subscribe(),
     MutableList.make<Deferred.Deferred<A>>(),
-    Latch.makeUnsafe(false),
+    Latch.makeUnsafe("closed"),
     MutableRef.make(false),
     strategy,
     pubsub.replayWindow(),

@@ -5,7 +5,7 @@ import * as Scheduler from "effect/Scheduler"
 describe("Latch", () => {
   it.effect("release wakes current waiters and keeps the latch closed", () =>
     Effect.gen(function*() {
-      const latch = yield* Latch.make(false)
+      const latch = yield* Latch.make("closed")
       const waiter = yield* Effect.forkChild(
         Latch.await(latch),
         { startImmediately: true }
@@ -22,9 +22,11 @@ describe("Latch", () => {
 
   it.effect("isOpen reflects the state of the latch", () =>
     Effect.gen(function*() {
-      const latch = yield* Latch.make(false)
+      const latch = yield* Latch.make("closed")
+      const opened = Latch.makeUnsafe("open")
 
       assert.isFalse(latch.isOpen())
+      assert.isTrue(opened.isOpen())
 
       yield* latch.open
       yield* Effect.yieldNow
@@ -34,7 +36,7 @@ describe("Latch", () => {
 
   it.effect("open then close does not resume waiters registered after close", () =>
     Effect.gen(function*() {
-      const latch = Latch.makeUnsafe(false)
+      const latch = Latch.makeUnsafe("closed")
       const before = yield* Effect.forkChild(
         Latch.await(latch),
         { startImmediately: true }
@@ -56,7 +58,7 @@ describe("Latch", () => {
 
   it.effect("release while a flush is pending covers the new waiters", () =>
     Effect.gen(function*() {
-      const latch = yield* Latch.make(false)
+      const latch = yield* Latch.make("closed")
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
@@ -94,7 +96,7 @@ describe("Latch", () => {
 
   it.effect("release does not resume waiters registered after the release", () =>
     Effect.gen(function*() {
-      const latch = yield* Latch.make(false)
+      const latch = yield* Latch.make("closed")
       const covered = yield* Effect.forkChild(
         Latch.await(latch),
         { startImmediately: true }
@@ -115,7 +117,7 @@ describe("Latch", () => {
 
   it.effect("openUnsafe does not resume waiters registered after a reentrant close", () =>
     Effect.gen(function*() {
-      const latch = Latch.makeUnsafe(false)
+      const latch = Latch.makeUnsafe("closed")
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
@@ -152,7 +154,7 @@ describe("Latch", () => {
 
   it.effect("interrupting a waiter removes it from a pending flush", () =>
     Effect.gen(function*() {
-      const latch = yield* Latch.make(false)
+      const latch = yield* Latch.make("closed")
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
@@ -191,7 +193,7 @@ describe("Latch", () => {
 
   it.effect("await is interruptible and cleans up interrupted waiters", () =>
     Effect.gen(function*() {
-      const latch = yield* Latch.make(false)
+      const latch = yield* Latch.make("closed")
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",

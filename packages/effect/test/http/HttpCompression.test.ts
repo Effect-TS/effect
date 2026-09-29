@@ -338,7 +338,7 @@ describe("HttpCompression", () => {
   })
 
   it("compresses unknown-length streams incrementally", async () => {
-    const latch = Latch.makeUnsafe(false)
+    const latch = Latch.makeUnsafe("closed")
     const first = randomBytes(1 << 17)
     const second = randomBytes(1 << 10)
     const app = Effect.succeed(HttpServerResponse.stream(

@@ -276,7 +276,7 @@ describe("Channel", () => {
     it.effect("mapEffect interrupts the running effect when the channel is interrupted", () =>
       Effect.gen(function*() {
         let interrupted = false
-        const latch = yield* Latch.make(false)
+        const latch = yield* Latch.make("closed")
         const fiber = yield* Channel.succeed(1).pipe(
           Channel.mapEffect(() =>
             latch.open.pipe(
@@ -297,8 +297,8 @@ describe("Channel", () => {
     it.effect("mapEffect - interrupts pending tasks on failure", () =>
       Effect.gen(function*() {
         let interrupts = 0
-        const latch1 = yield* Latch.make(false)
-        const latch2 = yield* Latch.make(false)
+        const latch1 = yield* Latch.make("closed")
+        const latch2 = yield* Latch.make("closed")
         const result = yield* Channel.fromArray([1, 2, 3]).pipe(
           Channel.mapEffect((n) => {
             if (n === 1) {
@@ -375,7 +375,7 @@ describe("Channel", () => {
   describe("merging", () => {
     it.effect("merge - interrupts left side if halt strategy is set to 'right'", () =>
       Effect.gen(function*() {
-        const latch = yield* Latch.make(false)
+        const latch = yield* Latch.make("closed")
         const leftQueue = yield* Queue.make<number, Cause.Done>()
         const rightQueue = yield* Queue.make<number>()
         const left = Channel.fromQueue(rightQueue)
@@ -395,7 +395,7 @@ describe("Channel", () => {
 
     it.effect("merge - interrupts right side if halt strategy is set to 'left'", () =>
       Effect.gen(function*() {
-        const latch = yield* Latch.make(false)
+        const latch = yield* Latch.make("closed")
         const leftQueue = yield* Queue.make<number, Cause.Done>()
         const rightQueue = yield* Queue.make<number>()
         const left = Channel.fromQueue(leftQueue).pipe(

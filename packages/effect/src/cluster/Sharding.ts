@@ -272,11 +272,11 @@ const make = Effect.gen(function*() {
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
   // open while shard lock storage is healthy
-  const shardLocksHealthyLatch = Latch.makeUnsafe(true)
+  const shardLocksHealthyLatch = Latch.makeUnsafe("open")
 
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
-  const activeShardsLatch = yield* Latch.make(false)
+  const activeShardsLatch = yield* Latch.make("closed")
 
   const events = yield* PubSub.unbounded<ShardingRegistrationEvent>()
   const getRegistrationEvents: Stream.Stream<ShardingRegistrationEvent> = Stream.fromPubSub(events)
@@ -614,7 +614,7 @@ const make = Effect.gen(function*() {
   // It should also be shutdown after the entity managers, to ensure interrupt
   // & ack envelopes can still be processed.
 
-  const storageReadLatch = yield* Latch.make(true)
+  const storageReadLatch = yield* Latch.make("open")
   const openStorageReadLatch = constant(Effect.asVoid(storageReadLatch.open))
 
   const storageReadLock = Semaphore.makeUnsafe(1)

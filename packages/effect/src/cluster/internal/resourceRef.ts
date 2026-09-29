@@ -68,7 +68,7 @@ export class ResourceRef<A, E = never> {
     this.teardownAddress = teardownAddress
   }
 
-  latch = Latch.makeUnsafe(true)
+  latch = Latch.makeUnsafe("open")
 
   getUnsafe(): Option.Option<A> {
     if (this.state.current._tag === "Acquired") {

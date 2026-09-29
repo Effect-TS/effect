@@ -117,7 +117,7 @@ describe("Socket", () => {
   describe("fromWebSocket", () => {
     it.effect("removes the open listener when the socket closes while connecting", () =>
       Effect.gen(function*() {
-        const openListenerAttached = Latch.makeUnsafe(false)
+        const openListenerAttached = Latch.makeUnsafe("closed")
         const ws = new TestWebSocket(openListenerAttached)
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
         const reader = yield* socket.reader.pipe(
@@ -134,7 +134,7 @@ describe("Socket", () => {
 
     it.effect("pauses at the highWaterMark and resumes after draining", () =>
       Effect.gen(function*() {
-        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        const ws = new TestWebSocket(Latch.makeUnsafe("closed"))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 10 })
         const { pull } = yield* socket.reader
@@ -154,7 +154,7 @@ describe("Socket", () => {
 
     it.effect("counts text frames toward the highWaterMark by UTF-8 byte length", () =>
       Effect.gen(function*() {
-        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        const ws = new TestWebSocket(Latch.makeUnsafe("closed"))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { highWaterMark: 3 })
         const { pull } = yield* socket.reader
@@ -167,7 +167,7 @@ describe("Socket", () => {
 
     it.effect("uses the default highWaterMark for pausable sockets", () =>
       Effect.gen(function*() {
-        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        const ws = new TestWebSocket(Latch.makeUnsafe("closed"))
         ws.readyState = 1
         const socket = yield* Socket.fromWebSocket(Effect.succeed(ws))
         const { pull } = yield* socket.reader
@@ -190,7 +190,7 @@ describe("Socket", () => {
         // which is the whole reason `toChannel` needs no per-pull race
         const socket = Socket.make({
           reader: Effect.gen(function*() {
-            const closed = Latch.makeUnsafe(false)
+            const closed = Latch.makeUnsafe("closed")
             yield* Effect.addFinalizer(() => closed.open)
             return {
               pull: Effect.andThen(

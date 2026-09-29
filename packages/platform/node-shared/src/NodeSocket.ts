@@ -153,7 +153,7 @@ export const fromDuplex = <RO>(
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
-    const latch = Latch.makeUnsafe(false)
+    const latch = Latch.makeUnsafe("closed")
     const openServices = fiber.context as Context.Context<RO>
     const isServer = options?.tlsServer === true
     const secureEvent = isServer ? "secure" : "secureConnect"

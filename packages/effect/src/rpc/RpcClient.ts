@@ -1383,7 +1383,7 @@ export const makeProtocolWorker = (
         case "Request": {
           return Pool.get(pool).pipe(
             Effect.flatMap((worker) => {
-              const latch = Latch.makeUnsafe(false)
+              const latch = Latch.makeUnsafe("closed")
               entries.set(request.id, { clientId, worker, latch })
               return Effect.flatMap(worker.send(request, transferables), () => latch.await)
             }),
