@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add a trusted native-host internet address constructor for datagram sockets.
+Add `NetAddress.inetAddressFromNativeUnsafe` for runtime-reported host addresses.

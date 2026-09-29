@@ -484,7 +484,6 @@ const create = (
     socket: native.handlers
   }
   if (flags !== 0) socketOptions.flags = flags
-  // `connect` can only be set at creation
   if (connected) socketOptions.connect = { hostname: remote!.host, port: remote!.port }
   let opening: Promise<UdpSocket>
   try {
@@ -591,7 +590,6 @@ class NativeSocket {
   constructor(events: DatagramSocket.NativeEvents) {
     this.events = events
     this.handlers = {
-      // payloads arrive as fresh `Buffer`s and pass straight through
       data: (_socket, payload, port, host) => events.onPacket(payload, host, port),
       // also fires once right after creation, when nothing is pending
       drain: () => this.flush(),
@@ -615,7 +613,6 @@ class NativeSocket {
       peer,
       connected,
       trySend: (payload, destination) => {
-        // behind a backlog, `send` queues it
         if (this.pending.length !== 0) return false
         try {
           const sent = connected
@@ -654,7 +651,6 @@ class NativeSocket {
         try {
           sent = socket.sendMany(packets as any)
         } catch (error) {
-          // Bun throws for the whole call, so no index is known
           return done(this.sendError(error))
         }
         if (sent === count) return done()
@@ -771,7 +767,6 @@ class NativeSocket {
     try {
       this.socket?.close()
     } catch {
-      // already closed
     }
   }
 }

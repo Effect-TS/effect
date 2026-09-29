@@ -462,7 +462,6 @@ const adopt = (
         try {
           conn.close()
         } catch {
-          // already closed
         }
         resume(Effect.fail(lookupOpenError(error)))
       },
@@ -496,7 +495,6 @@ class NativeConn {
 
   readonly onReceive = (received: [Uint8Array, Deno.Addr]) => {
     if (this.closing) return
-    // the buffer is reused, so each packet is copied out
     const addr = received[1] as Deno.NetAddr
     this.events.onPacket(received[0].slice(), addr.hostname, addr.port)
     // a woken pull may have closed the reader
@@ -593,7 +591,6 @@ class NativeConn {
     try {
       this.conn.close()
     } catch {
-      // already closed
     }
   }
 }
