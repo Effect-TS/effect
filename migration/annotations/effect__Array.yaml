@@ -49,6 +49,10 @@
 "effect/Array#modifyOption":
   replacement: "Array.modify"
   note: "The Option suffix was dropped; an out-of-bounds index still returns Option.none."
+"effect/Array#partition":
+  include: true
+  replacement: "Array.partition"
+  note: "Return Result.succeed(value) for a match and Result.fail(value) otherwise; Filter.fromPredicate adapts predicates that only inspect the value. The tuple is now [passes, fails], the reverse of v3 [excluded, satisfying]."
 "effect/Array#partitionMap":
   replacement: "Array.partition"
   note: "Pass a Result-returning mapper instead of Either. The tuple is [passes, fails], the reverse of v3 [lefts, rights]."
@@ -62,6 +66,7 @@
   replacement: "Array.replace"
   note: "The Option suffix was dropped; an out-of-bounds index still returns Option.none."
 "effect/Array#separate":
+  include: true
   replacement: "Array.separate"
   note: "The tuple is now [successes, failures], the reverse of v3 [lefts, rights]."
 "effect/Array#setNonEmptyHead":

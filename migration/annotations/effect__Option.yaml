@@ -38,6 +38,7 @@
   replacement: "Option.orElseResult"
   note: "Either was replaced by Result; source tracking now uses Failure and Success."
 "effect/Option#partitionMap":
+  include: true
   replacement: "Option.partitionMap"
   note: "The tuple is now [passes, fails], the reverse of v3 [left, right]."
 "effect/Option#Some":

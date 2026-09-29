@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`97d80c91fef755966ffd0adbfb00b3eb4ae7eace`)
+Base: `origin/v3` (`6bb0ea2de7b19d753bcb381ec767b09ce17639e6`)
 
-Head: `HEAD` (`95c19c5987fa6289e00c4e4443e2ef6962d41cd3`)
+Head: `HEAD` (`fbe51781cef26dbf01a825b5ffd6a5456e143b0f`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -6416,6 +6416,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Undici.DiagnosticsChannel.RequestErrorMessage` -> `undici.DiagnosticsChannel.RequestErrorMessage`: Import the same type-only namespace member; its error field is the built-in Error type in Undici 8.
 
+- `Undici.DiagnosticsChannel.Response`: TODO: needs guidance
+
 - `Undici.Dispatcher` -> `undici.Dispatcher`: Import the upstream Dispatcher directly; custom dispatchers must adopt Undici 8's controller-based v2 handler API.
 
 - `Undici.Dispatcher.ConnectOptions` -> `undici.Dispatcher.ConnectOptions`: Import the same Dispatcher namespace type; Undici 8 removes maxRedirections and redirectionLimitReached.
@@ -8812,11 +8814,15 @@ Arbitrary.schema(schema)
 
 - `Array.modifyOption` -> `Array.modify`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
 
-- `Array.partitionMap` -> `Array.partition`: Pass a Result-returning mapper instead of Either; the output remains [failures, successes], corresponding to v3 [lefts, rights].
+- `Array.partition` -> `Array.partition`: Return Result.succeed(value) for a match and Result.fail(value) otherwise; Filter.fromPredicate adapts predicates that only inspect the value. The tuple is now [passes, fails], the reverse of v3 [excluded, satisfying].
+
+- `Array.partitionMap` -> `Array.partition`: Pass a Result-returning mapper instead of Either. The tuple is [passes, fails], the reverse of v3 [lefts, rights].
 
 - `Array.removeOption` -> `Array.remove`: The closest API now returns an unchanged copy out of bounds; use Array.get before Array.remove to preserve the old Option result.
 
 - `Array.replaceOption` -> `Array.replace`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
+
+- `Array.separate` -> `Array.separate`: The tuple is now [successes, failures], the reverse of v3 [lefts, rights].
 
 - `Array.setNonEmptyHead` -> `Array.setHeadNonEmpty`: Direct word-order rename with the same non-empty-preserving result.
 
@@ -9220,11 +9226,15 @@ Arbitrary.schema(schema)
 
 - `Chunk.modifyOption` -> `Chunk.modify`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
 
-- `Chunk.partitionMap` -> `Chunk.partition`: Pass a Result-returning mapper instead of Either; the output remains [failures, successes].
+- `Chunk.partition` -> `Chunk.partition`: Return Result.succeed(value) for a match and Result.fail(value) otherwise; Filter.fromPredicate adapts predicates that only inspect the value. The tuple is now [passes, fails], the reverse of v3 [excluded, satisfying].
+
+- `Chunk.partitionMap` -> `Chunk.partition`: Pass a Result-returning mapper instead of Either. The tuple is [passes, fails], the reverse of v3 [failures, successes].
 
 - `Chunk.removeOption` -> `Chunk.remove`: The closest API now returns the unchanged Chunk out of bounds; use Chunk.get before Chunk.remove to preserve the old Option result.
 
 - `Chunk.replaceOption` -> `Chunk.replace`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
+
+- `Chunk.separate` -> `Chunk.separate`: The tuple is now [successes, failures], the reverse of v3 [failures, successes].
 
 - `Chunk.unsafeFromArray` -> `Chunk.fromArrayUnsafe`: Direct word-order rename; it still wraps without copying and is unsafe if the source array is mutated.
 
@@ -10013,6 +10023,8 @@ Arbitrary.schema(schema)
 - `Effect.parallelErrors` -> `Effect.all`: Use `{ mode: "result", concurrency: "unbounded" }` and collect failures explicitly. Adapt arguments and imports to the v4 API.
 
 - `Effect.parallelFinalizers` -> `none`: Parallel finalizer strategy mutation was removed; fork independent cleanup explicitly when ordering is irrelevant. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
+
+- `Effect.partition` -> `Effect.partition`: The tuple is now [passes, fails], the reverse of v3 [failures, successes]. Every effect still runs, and the outer effect does not fail.
 
 - `Effect.patchFiberRefs` -> `none`: Bulk FiberRefs patching was removed; update individual context references with `Effect.updateService`. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
@@ -11737,9 +11749,9 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `List.of` -> `Array.of`: List was removed; use Array.of. It preserves ordering but returns arrays rather than persistent linked lists.
 
-- `List.partition` -> `Array.partition`: Use a Result-returning callback: failure values form the first array and success values the second.
+- `List.partition` -> `Array.partition`: Use a Result-returning callback: success values form the first array and failure values the second.
 
-- `List.partitionMap` -> `Array.partition`: Migrate the Either-returning mapper to Result; failures form the first array and successes the second.
+- `List.partitionMap` -> `Array.partition`: Migrate the Either-returning mapper to Result; successes form the first array and failures the second.
 
 - `List.prependAll` -> `Array.prependAll`: List was removed; use Array.prependAll. It preserves ordering but returns arrays rather than persistent linked lists.
 
@@ -12803,6 +12815,8 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `Option.orElseEither` -> `Option.orElseResult`: Either was replaced by Result; source tracking now uses Failure and Success.
 
+- `Option.partitionMap` -> `Option.partitionMap`: The tuple is now [passes, fails], the reverse of v3 [left, right].
+
 ### `effect/Order`
 
 - `Order.Order` -> `Order.Order`: The callable type is retained; its return type remains the -1 | 0 | 1 Ordering union.
@@ -13265,9 +13279,13 @@ Schema.toFormatter(schema)
 
 - `Record.modifyOption` -> `Record.modify`: The Option suffix was dropped; missing keys still return Option.none.
 
-- `Record.partitionMap` -> `Record.partition`: Pass a mapper returning Result; failures and successes form the two output records.
+- `Record.partition` -> `Record.partition`: Return Result.succeed(value) for a match and Result.fail(value) otherwise; Filter.fromPredicate adapts predicates that only inspect the value. The tuple is now [passes, fails], the reverse of v3 [excluded, satisfying].
+
+- `Record.partitionMap` -> `Record.partition`: Pass a mapper returning Result. The tuple is [passes, fails], the reverse of v3 [failures, successes].
 
 - `Record.replaceOption` -> `Record.replace`: The Option suffix was dropped; missing keys still return Option.none.
+
+- `Record.separate` -> `Record.separate`: The tuple is now [successes, failures], the reverse of v3 [failures, successes].
 
 ### `effect/RedBlackTree`
 
@@ -13789,7 +13807,7 @@ Schema.toFormatter(schema)
 
 - `STM.orTry` -> `none`: V4 exposes no recoverable retry signal or public transactional savepoint; restructure branch selection before Effect.txRetry.
 
-- `STM.partition` -> `Effect.partition`: The combinator keeps its name, but STM values are now ordinary Effects. Run the complete transaction with Effect.tx. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+- `STM.partition` -> `Effect.partition`: STM values are now ordinary Effects. Run the complete transaction with Effect.tx. The tuple is [passes, fails], the reverse of v3 [failures, successes].
 
 - `STM.provideServiceSTM` -> `Effect.provideServiceEffect`: The effectful service provider was renamed on Effect.
 
