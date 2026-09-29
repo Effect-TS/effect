@@ -1,6 +1,6 @@
 import { AnthropicClient, AnthropicLanguageModel, AnthropicTool } from "@effect/ai-anthropic"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Redacted, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Layer, Option, Redacted, Schema, Stream } from "effect"
 import {
   type AiError,
   AnthropicStructuredOutput,
@@ -290,6 +290,111 @@ describe("AnthropicLanguageModel", () => {
         const failure = toolResult.result as AiError.AiError
         assert.strictEqual(failure._tag, "AiError")
         assert.strictEqual(failure.reason._tag, "ToolParameterValidationError")
+      }))
+
+    it.effect("fails the stream with a ToolParameterValidationError when streamed tool params are not valid JSON", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-sonnet-4-20250514",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: null,
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      inference_geo: null,
+                      input_tokens: 10,
+                      output_tokens: 0,
+                      service_tier: null
+                    }
+                  }
+                },
+                {
+                  type: "content_block_start",
+                  index: 0,
+                  content_block: {
+                    type: "tool_use",
+                    id: "toolu_test_1",
+                    name: "GlobTool",
+                    input: {}
+                  }
+                },
+                // Fragments that concatenate to an unterminated string: not valid JSON.
+                // Fine-grained tool streaming can produce this because the API skips
+                // validating the input, so callers are told to guard the parse.
+                {
+                  type: "content_block_delta",
+                  index: 0,
+                  delta: { type: "input_json_delta", partial_json: "{\"pattern\": \"" }
+                },
+                { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: "*.ts" } },
+                {
+                  type: "content_block_stop",
+                  index: 0
+                },
+                {
+                  type: "message_delta",
+                  delta: {
+                    stop_reason: "tool_use",
+                    stop_sequence: null
+                  },
+                  usage: {
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    input_tokens: null,
+                    output_tokens: 5
+                  }
+                },
+                {
+                  type: "message_stop"
+                }
+              ]))
+            )
+          ))
+        )
+
+        const GlobTool = Tool.make("GlobTool", {
+          description: "Search for files",
+          parameters: Schema.Struct({ pattern: Schema.String }),
+          success: Schema.String
+        })
+
+        const toolkit = Toolkit.make(GlobTool)
+        const toolkitLayer = toolkit.toLayer({
+          GlobTool: () => Effect.succeed("found.ts")
+        })
+
+        const exit = yield* LanguageModel.streamText({
+          prompt: "find ts files",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(toolkitLayer),
+          Effect.provide(layer),
+          Effect.exit
+        )
+
+        assert(Exit.isFailure(exit), "expected the stream to fail with an AiError, but it completed successfully")
+
+        const failure = Cause.findErrorOption(exit.cause)
+        assert(Option.isSome(failure), `expected the stream to fail with an AiError, got: ${Cause.pretty(exit.cause)}`)
+
+        const aiError = failure.value
+        assert.strictEqual(aiError._tag, "AiError")
+        assert.strictEqual(aiError.reason._tag, "ToolParameterValidationError")
       }))
 
     const codeExecutionCases = [
