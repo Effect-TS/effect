@@ -3720,7 +3720,7 @@ export const getSomes: <T extends Iterable<Option.Option<X>>, X = any>(
  * ```
  *
  * @see {@link getSuccesses} — extract success values
- * @see {@link separate} — split into failures and successes
+ * @see {@link separate} — split into successes and failures
  *
  * @category filtering
  * @since 4.0.0
@@ -3756,7 +3756,7 @@ export const getFailures = <T extends Iterable<Result.Result<any, any>>>(
  * ```
  *
  * @see {@link getFailures} — extract failure values
- * @see {@link separate} — split into failures and successes
+ * @see {@link separate} — split into successes and failures
  *
  * @category filtering
  * @since 4.0.0
@@ -3795,7 +3795,7 @@ export const getSuccesses = <T extends Iterable<Result.Result<any, any>>>(
  * ```
  *
  * @see {@link filter} — keep original elements matching a predicate
- * @see {@link partition} for keeping both failures and successes
+ * @see {@link partition} for keeping both successes and failures
  *
  * @category filtering
  * @since 2.0.0

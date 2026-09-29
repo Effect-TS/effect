@@ -1008,7 +1008,7 @@ describe("Effect", () => {
         assert.deepStrictEqual(fails, values)
       }))
 
-    it.effect("collects failures and successes", () =>
+    it.effect("collects successes and failures", () =>
       Effect.gen(function*() {
         const values = [0, 1, 2, 3, 4, 5]
         const [passes, fails] = yield* Effect.partition(values, (n) => n % 2 === 0 ? Effect.fail(n) : Effect.succeed(n))
