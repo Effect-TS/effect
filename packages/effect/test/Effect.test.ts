@@ -1326,6 +1326,52 @@ describe("Effect", () => {
       assert.deepStrictEqual(interrupted, ["slow"])
     }))
 
+  for (const [name, race] of [["race", Effect.race], ["raceFirst", Effect.raceFirst]] as const) {
+    it.effect(name + " interrupts the loser when it settles the race as it starts", () =>
+      Effect.gen(function*() {
+        const interrupted: Array<string> = []
+        const signal = yield* Deferred.make<string>()
+        const result = yield* race(
+          Deferred.await(signal),
+          Deferred.succeed(signal, "winner").pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted.push("loser")
+              })
+            )
+          )
+        )
+        assert.strictEqual(result, "winner")
+        assert.deepStrictEqual(interrupted, ["loser"])
+      }))
+
+    it.effect(
+      name + " interrupts the loser when its fiber is interrupted as a side settles",
+      () =>
+        Effect.gen(function*() {
+          const interrupted: Array<string> = []
+          const fiber = yield* Effect.gen(function*() {
+            const self = Fiber.getCurrent()!
+            return yield* race(
+              Effect.sync(() => self.interruptUnsafe()).pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() =>
+                  Effect.sync(() => {
+                    interrupted.push("loser")
+                  })
+                )
+              ),
+              Effect.void
+            )
+          }).pipe(Effect.forkChild)
+          const exit = yield* Fiber.await(fiber)
+          assert.isTrue(Exit.hasInterrupts(exit))
+          assert.deepStrictEqual(interrupted, ["loser"])
+        })
+    )
+  }
+
   describe("repeat", () => {
     it.effect("is interruptible", () =>
       Effect.gen(function*() {
