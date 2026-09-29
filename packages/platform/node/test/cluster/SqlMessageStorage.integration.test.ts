@@ -128,6 +128,47 @@ describe("SqlMessageStorage", () => {
           yield* truncate
         }))
 
+      it.effect("clearReplies requeues when the expected reply is current", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest()
+          const reply = yield* makeReply(request)
+          yield* storage.saveRequest(request)
+          yield* storage.saveReply(reply)
+          yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: reply.reply.id })
+          expect(yield* storage.repliesFor([request])).toHaveLength(0)
+          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+        }))
+
+      it.effect("clearReplies with a stale expected reply preserves a newer completion and processed state", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 123 }) })
+          const oldReply = yield* makeChunkReply(request)
+          const completed = yield* makeReply(request)
+          yield* storage.saveRequest(request)
+          yield* storage.saveReply(oldReply)
+          yield* storage.saveReply(completed)
+          const before = yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE id = ${
+            String(request.envelope.requestId)
+          }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
+          yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
+          expect((yield* storage.repliesFor([request])).map((r) => r.id)).toEqual([
+            oldReply.reply.id,
+            completed.reply.id
+          ])
+          expect(
+            yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE id = ${
+              String(request.envelope.requestId)
+            }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
+          ).toEqual(before)
+          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(0)
+          yield* truncate
+        }))
+
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage

@@ -195,9 +195,13 @@ export class Sharding extends Context.Service<Sharding, {
   >
 
   /**
-   * Reset the state of a message
+   * Reset the state of a message. When options.expectedReplyId is provided,
+   * reset only if it is still the latest reply. Otherwise reset unconditionally.
    */
-  readonly reset: (requestId: Snowflake.Snowflake) => Effect.Effect<boolean>
+  readonly reset: (
+    requestId: Snowflake.Snowflake,
+    options?: { readonly expectedReplyId?: Snowflake.Snowflake | undefined }
+  ) => Effect.Effect<boolean>
 
   /**
    * Trigger a storage read, which will read all unprocessed messages.
@@ -1208,8 +1212,8 @@ const make = Effect.gen(function*() {
     )
   }
 
-  const reset: Sharding["Service"]["reset"] = (requestId) =>
-    Effect.matchCause(storage.clearReplies(requestId), {
+  const reset: Sharding["Service"]["reset"] = (requestId, options) =>
+    Effect.matchCause(storage.clearReplies(requestId, options), {
       onSuccess: () => true,
       onFailure: () => false
     })

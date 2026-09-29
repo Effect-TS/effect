@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`6bb0ea2de7b19d753bcb381ec767b09ce17639e6`)
 
-Head: `HEAD` (`fbe51781cef26dbf01a825b5ffd6a5456e143b0f`)
+Head: `HEAD` (`061be92fdf1c532b9af10f5d826619a4464b5ca3`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14737,7 +14737,7 @@ Schema.toFormatter(schema)
 
 - `Schema.betweenDuration` -> `Schema.isBetween`: Rename the predicate to `isBetween` and apply it with `Schema.check` or a schema's `check` method.
 
-- `Schema.brand` -> `Schema.brand`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.brand` -> `Schema.brand`: Pass one concrete string literal as the brand identifier. Widened strings, unions, open template literals, and symbol identifiers are rejected; apply brand repeatedly to compose brands.
 
 - `Schema.capitalized` -> `Schema.isCapitalized`: Rename the string predicate to `isCapitalized` and apply it with `Schema.check` or a schema's `check` method.
 
@@ -14803,7 +14803,7 @@ Schema.toFormatter(schema)
 
 - `Schema.format` -> `SchemaRepresentation.toCodeDocument`: Build a representation with `SchemaRepresentation.toRepresentation`, `toMultiDocument`, then `toCodeDocument`.
 
-- `Schema.fromBrand` -> `Schema.fromBrand`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.fromBrand` -> `Schema.fromBrand`: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives.
 
 - `Schema.fromKey` -> `Schema.encodeKeys`: Use `encodeKeys` to map decoded property names to encoded keys.
 

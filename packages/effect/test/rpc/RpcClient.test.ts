@@ -257,6 +257,48 @@ describe("RpcClient", () => {
       assert.isUndefined(streamFiber.pollUnsafe())
     }))
 
+  it.effect("fails in-flight streams on a missed pong while retrying socket errors", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      let writes = 0
+      const write = () =>
+        Effect.sync(() => writes++).pipe(Effect.andThen(Deferred.succeed(requestSent, void 0)), Effect.asVoid)
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Effect.never,
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({
+          write,
+          writeAll: write
+        })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket({
+        retryTransientErrors: true,
+        retryPolicy: Schedule.spaced("1 hour")
+      }).pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const streamFiber = yield* client.Events().pipe(
+        Stream.runDrain,
+        Effect.timeout("11 seconds"),
+        Effect.flip,
+        Effect.forkChild
+      )
+
+      yield* Deferred.await(requestSent)
+      yield* TestClock.adjust("11 seconds")
+      const error = yield* Fiber.join(streamFiber)
+
+      assert.isAtLeast(writes, 2) // request and unanswered ping
+      assert.instanceOf(error, RpcClientError)
+      assert.strictEqual(error.reason._tag, "SocketReadError")
+    }))
+
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()

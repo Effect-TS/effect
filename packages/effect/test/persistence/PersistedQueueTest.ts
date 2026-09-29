@@ -29,7 +29,8 @@ export const suiteWith = <R>(
   name: string,
   layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown, R>,
   testApi: Vitest.MethodsNonLive<R>,
-  timeout: Duration.Input = "30 seconds"
+  timeout: Duration.Input = "30 seconds",
+  hookTimeout: Duration.Input = timeout
 ) => {
   // Tests share and advance the same TestClock.
   const testOptions = { timeout: Duration.toMillis(timeout) }
@@ -37,7 +38,7 @@ export const suiteWith = <R>(
     PersistedQueue.layer.pipe(
       Layer.provideMerge(layer)
     ),
-    { timeout, concurrent: false }
+    { timeout: hookTimeout, concurrent: false }
   )(`PersistedQueue (${name})`, (it) => {
     it.effect("offer + take", () =>
       Effect.gen(function*() {

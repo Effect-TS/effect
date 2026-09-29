@@ -57,8 +57,8 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
 
   readonly mutation: <Tag extends Rpc.Tag<Rpcs>>(
     arg: Tag
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
+  ) => Rpcs extends Rpc.Rpc<
+    infer _Tag extends Tag,
     infer _Payload,
     infer _Success,
     infer _Error,
@@ -67,7 +67,7 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
   > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? never
     : Atom.AtomResultFn<
       {
-        readonly payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>
+        readonly payload: Rpc.PayloadConstructor<Rpcs>
         readonly reactivityKeys?:
           | ReadonlyArray<unknown>
           | ReadonlyRecord<string, ReadonlyArray<unknown>>
@@ -91,8 +91,8 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
-  ) => Rpc.ExtractTag<Rpcs, Tag> extends Rpc.Rpc<
-    infer _Tag,
+  ) => Rpcs extends Rpc.Rpc<
+    infer _Tag extends Tag,
     infer _Payload,
     infer _Success,
     infer _Error,
