@@ -68,10 +68,7 @@ describe("Layer", () => {
         )
 
         const exit = yield* Layer.mergeAll(runtime, outerShared).pipe(Layer.build, Effect.scoped, Effect.exit)
-        assert.strictEqual(exit._tag, "Failure")
-        if (exit._tag === "Failure") {
-          assert.isTrue(kind === "die" ? Cause.hasDies(exit.cause) : Cause.hasFails(exit.cause))
-        }
+        assert.isTrue(kind === "die" ? Exit.hasDies(exit) : Exit.hasFails(exit))
       }
     }))
 

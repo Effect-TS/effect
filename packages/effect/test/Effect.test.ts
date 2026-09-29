@@ -765,11 +765,7 @@ describe("Effect", () => {
         yield* Deferred.await(started)
         yield* Fiber.interrupt(fiber)
         const exit = yield* Fiber.await(fiber)
-        assert.strictEqual(exit._tag, "Failure")
-        if (exit._tag === "Failure") {
-          assert.isTrue(Cause.hasInterrupts(exit.cause))
-          assert.isTrue(Cause.hasDies(exit.cause))
-        }
+        assert.isTrue(Exit.hasInterrupts(exit))
         assertExitDefect(exit, defect)
       }))
 
@@ -796,10 +792,9 @@ describe("Effect", () => {
         fiber.interruptUnsafe()
         yield* Deferred.succeed(releaseCleanup, void 0)
         const exit = yield* Fiber.await(fiber)
-        assert.strictEqual(exit._tag, "Failure")
-        if (exit._tag === "Failure") {
-          assert.isTrue(Cause.hasInterrupts(exit.cause))
-          assert.isTrue(Cause.hasFails(exit.cause))
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
           assert.deepStrictEqual(Cause.findError(exit.cause), Result.succeed("sibling failure"))
         }
       }))
