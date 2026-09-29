@@ -4565,6 +4565,17 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
   return Arr.isArrayNonEmpty(out) ? out : undefined
 }
 
+function canPreserveEncodingChecks(ast: AST): boolean {
+  let preserve = true
+  function visit(child: AST): AST {
+    preserve = preserve && !child.encoding && !isSuspend(child)
+    if (preserve && "recur" in child) child.recur(visit)
+    return child
+  }
+  if ("recur" in ast) ast.recur(visit)
+  return preserve
+}
+
 /**
  * Strips all encoding transformations from an AST, returning the decoded
  * (type-level) representation.
@@ -4595,7 +4606,7 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
   const type = out.recur?.(toType) ?? out
   const encodingChecks: Checks | undefined = type.encodingChecks
   if (encodingChecks) {
-    const checks = type === ast
+    const checks = canPreserveEncodingChecks(ast)
       ? encodingChecks
       : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
       ? extractStructuralChecks(encodingChecks)
