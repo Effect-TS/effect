@@ -1694,11 +1694,6 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
     return callback((resume) => {
       let done = false
-      const onExit = (exit: Exit.Exit<any, any>) => {
-        done = true
-        resume(exit)
-      }
-
       let i = 0
       for (const effect of all) {
         if (done) break
@@ -1708,7 +1703,8 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
           const isWinner = !done
-          onExit(exit)
+          done = true
+          resume(exit)
           if (isWinner && options?.onWinner) {
             options.onWinner({ fiber, index, parentFiber: parent })
           }
