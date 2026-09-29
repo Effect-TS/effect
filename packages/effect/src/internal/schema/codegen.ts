@@ -297,12 +297,10 @@ const emitUnionHelper = (ast: SchemaAST.Union, emitter: Emitter, operation: Oper
   if (cached !== undefined) return cached
   const name = `u${emitter.next++}`
   emitter.unionHelpers.set(ast, name)
-  const entries = ast.types.map((type, index) =>
-    `[${constant(emitter, type, `${path}.types[${index}]`)},${
-      emitDecoderHelper(type, emitter, operation, `${path}.types[${index}]`)
-    }]`
+  const decoders = ast.types.map((type, index) =>
+    emitDecoderHelper(type, emitter, operation, `${path}.types[${index}]`)
   )
-  emitter.initializers.push(`const ${name}=new Map([${entries.join(",")}])`)
+  emitter.initializers.push(`const ${name}=[${decoders.join(",")}]`)
   return name
 }
 
@@ -607,20 +605,22 @@ const emitBase = (
       const decoder = variable(emitter)
       const types = constant(emitter, ast.types, `${path}.types`)
       const decoders = emitUnionHelper(ast, emitter, operation, path)
+      const select = variable(emitter)
+      emitter.initializers.push(`const ${select}=U(${types})`)
       statements.push(
-        `const ${candidates}=U(${input},${types})`,
+        `const ${candidates}=${select}(${input},false)`,
         `let ${output}=${invalid},${candidate},${decoder}`
       )
       if (ast.options?.mode !== "oneOf") {
         statements.push(
-          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){${output}=${candidate};break}}`
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}[${candidates}[${index}]];${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){${output}=${candidate};break}}`
         )
         statements.push(`if(${output}===${invalid})return ${invalid}`)
       } else {
         const successes = variable(emitter)
         statements.push(`let ${successes}=0`)
         statements.push(
-          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}.get(${candidates}[${index}]);${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){if(++${successes}>1)return ${invalid};${output}=${candidate}}}`
+          `for(let ${index}=0;${index}<${candidates}.length;${index}++){${decoder}=${decoders}[${candidates}[${index}]];${candidate}=${decoder}(${input},o);if(${candidate}!==${invalid}){if(++${successes}>1)return ${invalid};${output}=${candidate}}}`
         )
         statements.push(`if(${successes}!==1)return ${invalid}`)
       }
@@ -664,7 +664,7 @@ const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): 
   const bindings = {
     K: "getCheckIssues",
     T: "matchesTemplateLiteral",
-    U: "getCandidates",
+    U: "getCandidateIndex",
     G: "getIndexSignatureKeys",
     D: "defaultParseOptions",
     E: "hasExcessProperties"

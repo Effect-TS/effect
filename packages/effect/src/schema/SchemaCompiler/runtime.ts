@@ -280,7 +280,7 @@ export const runtime = {
   hasExcessProperties,
   matchesTemplateLiteral: (ast: SchemaAST.TemplateLiteral, input: unknown, options: SchemaAST.ParseOptions) =>
     typeof input === "string" && ast.matchPart(input, options) !== undefined,
-  getCandidates: SchemaAST.getCandidates,
+  getCandidateIndex: SchemaAST.getCandidateIndex,
   getIndexSignatureKeys: SchemaAST.getIndexSignatureKeys,
   parameterFromPropertyKey: SchemaAST.parameterFromPropertyKey,
   getConstructorDescriptor: SchemaAST.getConstructorDescriptor,
