@@ -1,50 +1,9 @@
+import { classifyError } from "@effect/sql-mssql/internal/sqlError"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
-import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as SqlError from "effect/sql/SqlError"
-import { vi } from "vitest"
 
-const state: {
-  connectCause: unknown
-  requestCauses: Array<unknown>
-} = {
-  connectCause: null,
-  requestCauses: []
-}
-
-vi.mock("#tds/tdsConnection", async () => {
-  const { SqlError, UnknownError, ConnectionError } = await import("effect/sql/SqlError")
-  const query = () =>
-    Effect.suspend(() => {
-      const cause = state.requestCauses.shift()
-      return cause ?
-        Effect.fail(new SqlError({ reason: new UnknownError({ cause }) })) :
-        Effect.succeed({ rows: [], output: {} })
-    })
-  return {
-    make: () =>
-      Effect.suspend(() =>
-        state.connectCause ?
-          Effect.fail(new SqlError({ reason: new ConnectionError({ cause: state.connectCause }) })) :
-          Effect.succeed({ query, call: query, batch: query, onClose: () => () => {} })
-      )
-  }
-})
-
-const queryFailureReason = (cause: unknown) =>
-  Effect.gen(function*() {
-    state.connectCause = null
-    state.requestCauses = [null, cause]
-    const { MssqlClient } = yield* Effect.promise(() => import("@effect/sql-mssql"))
-    const client = yield* MssqlClient.make({ server: "localhost" })
-    const error = yield* Effect.flip(client`SELECT 1`)
-    return error.reason
-  }).pipe(
-    Effect.scoped,
-    Effect.provide(Reactivity.layer)
-  )
-
-const queryFailureReasonTag = (number: number) => Effect.map(queryFailureReason({ number }), (reason) => reason._tag)
+const reason = (cause: unknown, fallback?: "connection" | "unknown") =>
+  classifyError({ cause, message: "failed", operation: "execute" }, fallback)
 
 const assertUniqueViolation = (reason: SqlError.SqlErrorReason, constraint: string) => {
   assert.strictEqual(reason._tag, "UniqueViolation")
@@ -53,94 +12,90 @@ const assertUniqueViolation = (reason: SqlError.SqlErrorReason, constraint: stri
   }
 }
 
-describe("MssqlClient SqlError classification", { concurrent: false }, () => {
-  it.effect("maps representative error numbers to reasons", () =>
-    Effect.gen(function*() {
-      const cases = [
-        [233, "ConnectionError"],
-        [18456, "AuthenticationError"],
-        [229, "AuthorizationError"],
-        [102, "SqlSyntaxError"],
-        [2601, "UniqueViolation"],
-        [2627, "UniqueViolation"],
-        [547, "ConstraintError"],
-        [1205, "DeadlockError"],
-        [3960, "SerializationError"],
-        [1222, "LockTimeoutError"]
-      ] as const
+describe("MssqlConnection SqlError classification", () => {
+  it("maps representative error numbers to reasons", () => {
+    const cases = [
+      [233, "ConnectionError"],
+      [18456, "AuthenticationError"],
+      [229, "AuthorizationError"],
+      [102, "SqlSyntaxError"],
+      [2601, "UniqueViolation"],
+      [2627, "UniqueViolation"],
+      [547, "ConstraintError"],
+      [1205, "DeadlockError"],
+      [3960, "SerializationError"],
+      [1222, "LockTimeoutError"]
+    ] as const
 
-      for (const [number, expectedTag] of cases) {
-        const tag = yield* queryFailureReasonTag(number)
-        assert.strictEqual(tag, expectedTag)
-      }
-    }))
+    for (const [number, expectedTag] of cases) {
+      assert.strictEqual(reason({ number })._tag, expectedTag)
+    }
+  })
 
-  it.effect("falls back to UnknownError for unmapped error numbers", () =>
-    Effect.gen(function*() {
-      const tag = yield* queryFailureReasonTag(99999)
-      assert.strictEqual(tag, "UnknownError")
-    }))
+  it("falls back to UnknownError or ConnectionError for unmapped error numbers", () => {
+    assert.strictEqual(reason({ number: 99999 })._tag, "UnknownError")
+    assert.strictEqual(reason(new Error("socket closed"), "connection")._tag, "ConnectionError")
+  })
 
-  it.effect("classifies duplicate-key number 2601 as UniqueViolation and extracts the unique index", () =>
-    Effect.gen(function*() {
-      const reason = yield* queryFailureReason({
+  it("classifies duplicate-key number 2601 as UniqueViolation and extracts the unique index", () => {
+    assertUniqueViolation(
+      reason({
         number: 2601,
         message:
           "Cannot insert duplicate key row in object 'dbo.Users' with unique index 'IX_Users_Email'. The duplicate key value is (user@example.com)."
-      })
-      assertUniqueViolation(reason, "IX_Users_Email")
-    }))
+      }),
+      "IX_Users_Email"
+    )
+  })
 
-  it.effect("classifies constraint number 2627 as UniqueViolation and extracts the constraint", () =>
-    Effect.gen(function*() {
-      const reason = yield* queryFailureReason({
+  it("classifies constraint number 2627 as UniqueViolation and extracts the constraint", () => {
+    assertUniqueViolation(
+      reason({
         number: 2627,
         message:
           "Violation of UNIQUE KEY constraint 'UQ_Users_Email'. Cannot insert duplicate key in object 'dbo.Users'. The duplicate key value is (user@example.com)."
-      })
-      assertUniqueViolation(reason, "UQ_Users_Email")
-    }))
+      }),
+      "UQ_Users_Email"
+    )
+  })
 
-  it.effect("prefers structured constraints and trims whitespace", () =>
-    Effect.gen(function*() {
-      const reason = yield* queryFailureReason({
+  it("prefers structured constraints and trims whitespace", () => {
+    assertUniqueViolation(
+      reason({
         number: 2601,
         constraint: "  IX_Structured_Email  ",
         message:
           "Cannot insert duplicate key row in object 'dbo.Users' with unique index 'IX_Users_Email'. The duplicate key value is (user@example.com)."
-      })
-      assertUniqueViolation(reason, "IX_Structured_Email")
-    }))
+      }),
+      "IX_Structured_Email"
+    )
+  })
 
-  it.effect("uses unknown for blank, missing, malformed, or non-string unique violation metadata", () =>
-    Effect.gen(function*() {
-      const missing = yield* queryFailureReason({ number: 2601 })
-      assertUniqueViolation(missing, "unknown")
-
-      const blank = yield* queryFailureReason({
+  it("uses unknown for blank, missing, malformed, or non-string unique violation metadata", () => {
+    assertUniqueViolation(reason({ number: 2601 }), "unknown")
+    assertUniqueViolation(
+      reason({
         number: 2627,
         constraint: "   ",
         message: "Violation of UNIQUE KEY constraint '   '. Cannot insert duplicate key in object 'dbo.Users'."
-      })
-      assertUniqueViolation(blank, "unknown")
-
-      const malformed = yield* queryFailureReason({
-        number: 2601,
-        message: "Cannot insert duplicate key row in object 'dbo.Users'."
-      })
-      assertUniqueViolation(malformed, "unknown")
-
-      const nonString = yield* queryFailureReason({
+      }),
+      "unknown"
+    )
+    assertUniqueViolation(
+      reason({ number: 2601, message: "Cannot insert duplicate key row in object 'dbo.Users'." }),
+      "unknown"
+    )
+    assertUniqueViolation(
+      reason({
         number: 2627,
         constraint: 2627,
         message: { text: "Violation of UNIQUE KEY constraint 'UQ_Users_Email'." }
-      })
-      assertUniqueViolation(nonString, "unknown")
-    }))
+      }),
+      "unknown"
+    )
+  })
 
-  it.effect("keeps non-unique constraint number 547 classified as ConstraintError", () =>
-    Effect.gen(function*() {
-      const tag = yield* queryFailureReasonTag(547)
-      assert.strictEqual(tag, "ConstraintError")
-    }))
+  it("keeps non-unique constraint number 547 classified as ConstraintError", () => {
+    assert.strictEqual(reason({ number: 547 })._tag, "ConstraintError")
+  })
 })

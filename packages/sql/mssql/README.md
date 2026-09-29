@@ -26,6 +26,18 @@ Whether your team is considering Effect, rolling it out, or already running it i
 - **Production support.** We're exploring how to better support teams running Effect in production. If your organization has specific support needs, let's discuss them.
 - **Adoption help.** Our [adoption partners](https://effect.website/adoption-partners) offer implementation, consulting, team extension, training, and commercial support.
 
+## Modules
+
+The driver is layered like `@effect/sql-pg`; each module depends only on the ones
+listed after it.
+
+- `MssqlClient`: the `SqlClient` facade, typed parameters, stored procedures, and layers.
+- `MssqlPool`: pools of native sessions.
+- `MssqlConnection`: one TDS session: TLS, login, routing, requests, and cancellation.
+- `MssqlAuth`: pure NTLMv2 computations.
+- `MssqlProtocol`: the pure TDS 7.4 wire codec: packets, requests, tokens, and values.
+- `MssqlTypes`: SQL Server parameter type descriptors.
+
 ## Native driver
 
 The driver supports encrypted SQL authentication, NTLMv2, access-token FedAuth, named-instance discovery,

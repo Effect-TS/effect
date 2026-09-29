@@ -1,14 +1,19 @@
-import * as Connection from "#tds/tdsConnection"
-import * as Packet from "#tds/tdsPacket"
-import { MssqlClient } from "@effect/sql-mssql"
+import { MssqlClient, MssqlConnection, MssqlProtocol } from "@effect/sql-mssql"
 import { describe, expect, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Result from "effect/Result"
 import { Buffer } from "node:buffer"
 import { readFileSync } from "node:fs"
 import * as Net from "node:net"
 import * as Tls from "node:tls"
 
+const { PacketType } = MssqlProtocol
+const encode = (type: number, data: Uint8Array) => {
+  const packet = MssqlProtocol.encodePacket(type, data)
+  if (Result.isFailure(packet)) throw packet.failure
+  return packet.success
+}
 const done = Buffer.from("fd000000000000000000000000", "hex")
 const loginAck = Buffer.from("ad0a0001740000040010000000", "hex")
 // The proxy wraps the TLS server's handshake records in TDS packets, then
@@ -28,22 +33,23 @@ const peer = (ack: Buffer, echo = true) =>
         socket.on("close", () => sockets.delete(socket))
         const state = states.get(socket.remotePort!)!
         state.secure = true
-        const packets = new Packet.PacketParser()
-        const messages = new Packet.MessageParser()
+        const packets = MssqlProtocol.makePacketParser()
+        const messages = MssqlProtocol.makeMessageParser()
         socket.on("error", () => {})
         socket.on("data", (chunk: Buffer) =>
           packets.push(chunk, (packet) => {
             state.applicationData = true
-            const data = messages.push(packet)
-            if (!data) return
-            if (packet.type === Packet.LOGIN7) {
+            const message = messages.push(packet)
+            if (!message) return
+            const data = Buffer.from(message.buffer, message.byteOffset, message.byteLength)
+            if (packet.type === PacketType.Login7) {
               const feature = data.readUInt32LE(data.readUInt16LE(56))
               expect(data[feature]).toBe(2)
               expect(data[feature + 5]).toBe(echo ? 3 : 2)
               const length = data.readUInt32LE(feature + 6)
               expect(data.toString("utf16le", feature + 10, feature + 10 + length)).toBe("test-token")
-              socket.write(Packet.encode(Packet.RESPONSE, Buffer.concat([loginAck, ack, done])))
-            } else socket.write(Packet.encode(Packet.RESPONSE, done))
+              socket.write(encode(PacketType.Response, Buffer.concat([loginAck, ack, done])))
+            } else socket.write(encode(PacketType.Response, done))
           }))
       })
       tlsServer.on("connection", (socket) => {
@@ -71,8 +77,8 @@ const peer = (ack: Buffer, echo = true) =>
           socket.destroy()
         })
         backend.on("data", (data: Buffer) =>
-          socket.write(state.applicationData ? data : Packet.encode(Packet.PRELOGIN, data)))
-        const packets = new Packet.PacketParser()
+          socket.write(state.applicationData ? data : encode(PacketType.Prelogin, data)))
+        const packets = MssqlProtocol.makePacketParser()
         let prelogin = true
         let incoming = Buffer.alloc(0)
         socket.on("data", (data: Buffer) => {
@@ -80,7 +86,7 @@ const peer = (ack: Buffer, echo = true) =>
           // A resumed client's final wrapped handshake and first raw TLS
           // application record may share a TCP read, before secure fires here.
           while (incoming.length >= 5) {
-            const wrapped = incoming[0] === Packet.PRELOGIN
+            const wrapped = incoming[0] === PacketType.Prelogin
             const length = wrapped ? incoming.readUInt16BE(2) : 5 + incoming.readUInt16BE(3)
             if (incoming.length < length) {
               return
@@ -95,8 +101,11 @@ const peer = (ack: Buffer, echo = true) =>
             packets.push(record, (packet) => {
               if (prelogin) {
                 prelogin = false
-                expect(Packet.preloginOptions(packet.data).fedAuthRequired).toBe(true)
-                socket.write(Packet.encode(Packet.RESPONSE, Packet.prelogin(true, echo)))
+                const options = MssqlProtocol.decodePrelogin(packet.data)
+                expect(Result.isSuccess(options) && options.success.fedAuthRequired).toBe(true)
+                socket.write(
+                  encode(PacketType.Response, MssqlProtocol.encodePrelogin({ encrypt: true, fedAuth: echo }))
+                )
               } else backend.write(packet.data)
             })
           }
@@ -125,16 +134,17 @@ const peer = (ack: Buffer, echo = true) =>
         )
       })
   ).pipe(Effect.map(({ server }) => server))
-const settings = (server: Net.Server): Connection.Config => ({
+const settings = (server: Net.Server): MssqlConnection.Config => ({
   server: "127.0.0.1",
   port: (server.address() as Net.AddressInfo).port,
   encrypt: true,
   trustServer: true,
-  accessToken: "test-token",
-  connectTimeoutMs: 2000
+  authType: "azure-active-directory-access-token",
+  accessToken: Effect.succeed(Redacted.make("test-token")),
+  connectTimeout: 2000
 })
 
-describe("native TDS Security Token authentication", () => {
+describe("MssqlConnection Security Token authentication", () => {
   it.effect("obtains a token for each new pooled connection through the public adapter", () =>
     Effect.scoped(Effect.gen(function*() {
       const server = yield* peer(Buffer.from([0xae, 2, 0, 0, 0, 0, 255]))
@@ -143,7 +153,6 @@ describe("native TDS Security Token authentication", () => {
         yield* Effect.scoped(MssqlClient.make({
           ...settings(server),
           password: undefined,
-          authType: "azure-active-directory-access-token",
           minConnections: 1,
           maxConnections: 1,
           accessToken: Effect.sync(() => {
@@ -158,7 +167,7 @@ describe("native TDS Security Token authentication", () => {
     it.effect(`exchanges a token over TLS and echoes FEDAUTHREQUIRED=${echo}`, () =>
       Effect.scoped(Effect.gen(function*() {
         const server = yield* peer(Buffer.from([0xae, 2, 0, 0, 0, 0, 255]), echo)
-        const session = yield* Connection.make(settings(server))
+        const session = yield* MssqlConnection.make(settings(server))
         expect((yield* session.query("SELECT 1")).rows).toEqual([])
       })))
   }
@@ -172,14 +181,19 @@ describe("native TDS Security Token authentication", () => {
     it.effect(`rejects ${name} FedAuth acknowledgement`, () =>
       Effect.scoped(Effect.gen(function*() {
         const server = yield* peer(ack)
-        const error = yield* Effect.flip(Connection.make(settings(server)))
-        expect(error.reason.cause).toBeInstanceOf(Packet.ProtocolError)
+        const error = yield* Effect.flip(MssqlConnection.make(settings(server)))
+        expect(error.reason.cause).toBeInstanceOf(MssqlProtocol.ParseError)
       })))
   }
-  it("refuses to send tokens over plaintext or with NTLM", () => {
-    expect(() => new Connection.Session({ server: "localhost", accessToken: "secret", encrypt: false }, () => {}))
-      .toThrow("TLS")
-    expect(() => new Connection.Session({ server: "localhost", accessToken: "secret", authType: "ntlm" }, () => {}))
-      .toThrow("NTLM")
-  })
+  it.effect("refuses to send tokens over plaintext or with NTLM", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const accessToken = Effect.succeed(Redacted.make("secret"))
+      const plaintext = yield* Effect.flip(MssqlConnection.make({ server: "localhost", accessToken, encrypt: false }))
+      expect(plaintext.reason._tag).toBe("AuthenticationError")
+      expect(plaintext.message).toContain("TLS")
+      const ntlm = yield* Effect.flip(
+        MssqlConnection.make({ server: "localhost", accessToken, authType: "ntlm", domain: "D" })
+      )
+      expect(ntlm.message).toContain("NTLM")
+    })))
 })

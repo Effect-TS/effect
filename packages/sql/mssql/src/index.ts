@@ -7,7 +7,17 @@
 /**
  * @since 4.0.0
  */
+export * as MssqlAuth from "./MssqlAuth.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as MssqlClient from "./MssqlClient.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as MssqlConnection from "./MssqlConnection.ts"
 
 /**
  * @since 4.0.0
@@ -16,6 +26,16 @@ export * as MssqlMigrator from "./MssqlMigrator.ts"
 
 /**
  * @stability unstable
+ * @since 4.0.0
+ */
+export * as MssqlPool from "./MssqlPool.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as MssqlProtocol from "./MssqlProtocol.ts"
+
+/**
  * @since 4.0.0
  */
 export * as MssqlTypes from "./MssqlTypes.ts"

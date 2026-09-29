@@ -43,6 +43,7 @@ type Encoding =
   | "CP1258"
 
 // http://technet.microsoft.com/en-us/library/aa176553(v=sql.80).aspx
+/** @internal */
 export const codepageByLanguageId: { [key: number]: Encoding } = {
   // Arabic_*
   [0x0401]: "CP1256",
@@ -248,6 +249,7 @@ export const codepageByLanguageId: { [key: number]: Encoding } = {
   [0x0437]: "CP1252"
 }
 
+/** @internal */
 export const codepageBySortId: { [key: number]: Encoding } = {
   [30]: "CP437", // SQL_Latin1_General_CP437_BIN
   [31]: "CP437", // SQL_Latin1_General_CP437_CS_AS
@@ -324,7 +326,14 @@ export const codepageBySortId: { [key: number]: Encoding } = {
   [186]: "CP1252" // SQL_Icelandic_Pref_Cp1_CI_AS_KI_WI
 }
 
-export const encoding = (collation: Uint8Array): string | undefined => {
+/**
+ * The code page of a five-byte TDS collation, or `undefined` for a collation
+ * this table does not know. A UTF-8 collation (flag `0x04` in byte 3) wins
+ * over its sort and language identifiers.
+ *
+ * @internal
+ */
+export const collationEncoding = (collation: Uint8Array): string | undefined => {
   if (collation[3] & 0x04) return "utf-8"
   if (collation[4]) return codepageBySortId[collation[4]]
   return codepageByLanguageId[collation[0] | (collation[1] << 8)]

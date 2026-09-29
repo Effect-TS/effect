@@ -4,15 +4,18 @@ import { Effect } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { vi } from "vitest"
 
-vi.mock("#tds/tdsConnection", () => ({
-  make: () =>
-    Effect.succeed({
-      query: (_sql: string, parameters: ReadonlyArray<{ value: unknown }>) =>
-        Effect.succeed({ rows: parameters.map((parameter) => ({ value: parameter.value })), output: {} }),
-      batch: () => Effect.succeed({ rows: [], output: {} }),
-      onClose: () => () => {}
-    })
-}))
+vi.mock("@effect/sql-mssql/MssqlConnection", async () => {
+  const { internalsKey } = await import("@effect/sql-mssql/internal/connection")
+  return {
+    make: () =>
+      Effect.succeed({
+        query: (_sql: string, parameters: ReadonlyArray<{ value: unknown }>) =>
+          Effect.succeed({ rows: parameters.map((parameter) => ({ value: parameter.value })), output: {} }),
+        batch: () => Effect.succeed({ rows: [], output: {} }),
+        [internalsKey]: { deadError: () => undefined, retireHooks: new Set() }
+      })
+  }
+})
 
 it.effect("binds an interpolated Uint8Array as VarBinary", () =>
   Effect.gen(function*() {

@@ -6,6 +6,8 @@ Replace the tedious runtime dependency with an Effect-native TDS 7.4 driver,
 including TLS, SQL, NTLMv2 and access-token FedAuth authentication, parameter and result codecs,
 stored procedures, table-valued parameters, transaction-aware calls and safe
 cancellation. Export native MssqlTypes descriptors and add requestTimeout.
+The driver is exposed as layered modules like `@effect/sql-pg`: MssqlProtocol
+(wire codec), MssqlAuth (NTLMv2), MssqlConnection (sessions), and MssqlPool.
 
 Automatic Azure credential flows are not yet supported; applications can provide
 an Effect-based access-token provider. Native parameter descriptors

@@ -24,9 +24,6 @@
     "database"
   ],
   "sideEffects": [],
-  "imports": {
-    "#tds/*": "./src/internal/*.ts"
-  },
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
@@ -61,7 +58,9 @@
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "check": "tsc -b tsconfig.json"
+    "check": "tsc -b tsconfig.json",
+    "benchmark:client": "node benchmark/MssqlClient.ts",
+    "benchmark:codec": "node benchmark/MssqlCodec.ts"
   },
   "devDependencies": {
     "@testcontainers/mssqlserver": "^12.1.0",

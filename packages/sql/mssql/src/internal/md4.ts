@@ -4,6 +4,7 @@
 const shifts = [3, 7, 11, 19, 3, 5, 9, 13, 3, 9, 11, 15]
 const round3 = [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15]
 
+/** @internal */
 export const md4 = (input: Uint8Array): Uint8Array => {
   const padded = new Uint8Array(Math.ceil((input.length + 9) / 64) * 64)
   padded.set(input)

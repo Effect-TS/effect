@@ -1,13 +1,14 @@
 /**
- * SQL Server parameter types for the native TDS client.
+ * SQL Server data type descriptors for native TDS parameters.
  *
  * Pass these values to `MssqlClient.param`, `Procedure.param`, or
- * `Procedure.outputParam`. Parameter encoding validates values before a
- * request is written to the connection.
+ * `Procedure.outputParam`. A descriptor only names a type; `MssqlProtocol`
+ * validates and encodes each value before a request is written to the
+ * connection, so an invalid value fails the request without reaching the
+ * server.
  *
  * @since 4.0.0
  */
-import * as internal from "./internal/tdsRequest.ts"
 
 /**
  * A SQL Server parameter type descriptor.
@@ -15,7 +16,16 @@ import * as internal from "./internal/tdsRequest.ts"
  * @category models
  * @since 4.0.0
  */
-export type DataType = internal.DataType
+export interface DataType {
+  readonly name: string
+  /** The TDS type identifier of the declared type. */
+  readonly id: number
+  /**
+   * Returns the value unchanged, or `null` for `undefined`. Values are
+   * validated when they are encoded.
+   */
+  readonly validate: (value: unknown, collation?: unknown) => unknown
+}
 
 /**
  * Explicit length, precision, and scale for a parameter.
@@ -24,7 +34,22 @@ export type DataType = internal.DataType
  * @category models
  * @since 4.0.0
  */
-export type ParameterOptions = internal.ParameterOptions
+export interface ParameterOptions {
+  readonly length?: number | undefined
+  readonly precision?: number | undefined
+  readonly scale?: number | undefined
+}
+
+/**
+ * A column of a table-valued parameter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface TableColumn extends ParameterOptions {
+  readonly name: string
+  readonly type: DataType
+}
 
 /**
  * A named SQL Server table type and its input rows.
@@ -32,7 +57,12 @@ export type ParameterOptions = internal.ParameterOptions
  * @category models
  * @since 4.0.0
  */
-export type Table = internal.Table
+export interface Table {
+  readonly name: string
+  readonly schema?: string | undefined
+  readonly columns: ReadonlyArray<TableColumn>
+  readonly rows: ReadonlyArray<ReadonlyArray<unknown>>
+}
 
 /**
  * A decoded Time, DateTime2 or DateTimeOffset value retaining its sub-millisecond
@@ -47,250 +77,255 @@ export interface DateWithNanosecondsDelta extends globalThis.Date {
   readonly nanosecondsDelta: number
 }
 
-/**
- * The SQL Server TinyInt parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const TinyInt: DataType = internal.TYPES.TinyInt
+const validate = (value: unknown): unknown => value ?? null
+
+const make = (name: string, id: number): DataType => ({ name, id, validate })
 
 /**
- * The SQL Server SmallInt parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const SmallInt: DataType = internal.TYPES.SmallInt
-
-/**
- * The SQL Server Int parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Int: DataType = internal.TYPES.Int
-
-/**
- * The SQL Server BigInt parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const BigInt: DataType = internal.TYPES.BigInt
-
-/**
- * The SQL Server Bit parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Bit: DataType = internal.TYPES.Bit
-
-/**
- * The SQL Server Real parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Real: DataType = internal.TYPES.Real
-
-/**
- * The SQL Server Float parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Float: DataType = internal.TYPES.Float
-
-/**
- * The SQL Server NVarChar parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const NVarChar: DataType = internal.TYPES.NVarChar
-
-/**
- * The SQL Server NChar parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const NChar: DataType = internal.TYPES.NChar
-
-/**
- * The SQL Server VarChar parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const VarChar: DataType = internal.TYPES.VarChar
-
-/**
- * The SQL Server Char parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Char: DataType = internal.TYPES.Char
-
-/**
- * The SQL Server VarBinary parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const VarBinary: DataType = internal.TYPES.VarBinary
-
-/**
- * The SQL Server Binary parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Binary: DataType = internal.TYPES.Binary
-
-/**
- * The SQL Server Date parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Date: DataType = internal.TYPES.Date
-
-/**
- * The SQL Server Time parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Time: DataType = internal.TYPES.Time
-
-/**
- * The SQL Server DateTime parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const DateTime: DataType = internal.TYPES.DateTime
-
-/**
- * The SQL Server DateTime2 parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const DateTime2: DataType = internal.TYPES.DateTime2
-
-/**
- * The SQL Server DateTimeOffset parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const DateTimeOffset: DataType = internal.TYPES.DateTimeOffset
-
-/**
- * The SQL Server SmallDateTime parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const SmallDateTime: DataType = internal.TYPES.SmallDateTime
-
-/**
- * The SQL Server UniqueIdentifier parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const UniqueIdentifier: DataType = internal.TYPES.UniqueIdentifier
-
-/**
- * The SQL Server Decimal parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Decimal: DataType = internal.TYPES.Decimal
-
-/**
- * The SQL Server Numeric parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Numeric: DataType = internal.TYPES.Numeric
-
-/**
- * The SQL Server Money parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Money: DataType = internal.TYPES.Money
-
-/**
- * The SQL Server SmallMoney parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const SmallMoney: DataType = internal.TYPES.SmallMoney
-
-/**
- * The SQL Server Text parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Text: DataType = internal.TYPES.Text
-
-/**
- * The SQL Server NText parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const NText: DataType = internal.TYPES.NText
-
-/**
- * The SQL Server Image parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Image: DataType = internal.TYPES.Image
-
-/**
- * The SQL Server Xml parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const Xml: DataType = internal.TYPES.Xml
-
-/**
- * The SQL Server TVP parameter type.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const TVP: DataType = internal.TYPES.TVP
-
-/**
- * The SQL Server UDT descriptor. UDT results decode to bytes; parameter encoding is not supported.
+ * TINYINT, an unsigned 8-bit integer.
  *
  * @category constants
  * @since 4.0.0
  */
-export const UDT: DataType = internal.TYPES.UDT
+export const TinyInt: DataType = make("TinyInt", 0x30)
 
 /**
- * The SQL Server Variant descriptor. Variant results decode to their underlying values; parameter encoding is not supported.
+ * SMALLINT, a signed 16-bit integer.
  *
  * @category constants
  * @since 4.0.0
  */
-export const Variant: DataType = internal.TYPES.Variant
+export const SmallInt: DataType = make("SmallInt", 0x34)
+
+/**
+ * INT, a signed 32-bit integer.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Int: DataType = make("Int", 0x38)
+
+/**
+ * BIGINT, a signed 64-bit integer. Results decode to decimal strings; parameters accept a `bigint`, a safe integer, or an integer string.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const BigInt: DataType = make("BigInt", 0x7f)
+
+/**
+ * BIT. Parameters accept a boolean, `0`, or `1`.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Bit: DataType = make("Bit", 0x32)
+
+/**
+ * REAL, a 32-bit float.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Real: DataType = make("Real", 0x3b)
+
+/**
+ * FLOAT, a 64-bit float.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Float: DataType = make("Float", 0x3e)
+
+/**
+ * NVARCHAR, UTF-16 text. A length above 4000 or `Infinity` selects NVARCHAR(MAX).
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const NVarChar: DataType = make("NVarChar", 0xe7)
+
+/**
+ * NCHAR, fixed-length UTF-16 text.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const NChar: DataType = make("NChar", 0xef)
+
+/**
+ * VARCHAR, text in the connection collation's code page. A length above 8000 or `Infinity` selects VARCHAR(MAX).
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const VarChar: DataType = make("VarChar", 0xa7)
+
+/**
+ * CHAR, fixed-length text in the connection collation's code page.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Char: DataType = make("Char", 0xaf)
+
+/**
+ * VARBINARY. Parameters accept a `Uint8Array`. A length above 8000 or `Infinity` selects VARBINARY(MAX).
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const VarBinary: DataType = make("VarBinary", 0xa5)
+
+/**
+ * BINARY, fixed-length bytes.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Binary: DataType = make("Binary", 0xad)
+
+/**
+ * DATE, a UTC calendar day.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Date: DataType = make("Date", 0x28)
+
+/**
+ * TIME with a scale of up to 7 fractional digits, 7 by default.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Time: DataType = make("Time", 0x29)
+
+/**
+ * DATETIME, rounded to SQL Server's 1/300 second ticks.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const DateTime: DataType = make("DateTime", 0x3d)
+
+/**
+ * DATETIME2 with a scale of up to 7 fractional digits, 7 by default.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const DateTime2: DataType = make("DateTime2", 0x2a)
+
+/**
+ * DATETIMEOFFSET. Values are sent and decoded in UTC.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const DateTimeOffset: DataType = make("DateTimeOffset", 0x2b)
+
+/**
+ * SMALLDATETIME, rounded to the minute.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const SmallDateTime: DataType = make("SmallDateTime", 0x3a)
+
+/**
+ * UNIQUEIDENTIFIER. Parameters accept a UUID string; results decode to upper-case UUID strings.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const UniqueIdentifier: DataType = make("UniqueIdentifier", 0x24)
+
+/**
+ * DECIMAL with precision 18 and scale 0 by default. Parameters accept a number, bigint, or decimal string and are rounded to the declared scale.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Decimal: DataType = make("Decimal", 0x6a)
+
+/**
+ * NUMERIC, identical to `Decimal`.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Numeric: DataType = make("Numeric", 0x6c)
+
+/**
+ * MONEY, a fixed-point value with four fractional digits.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Money: DataType = make("Money", 0x3c)
+
+/**
+ * SMALLMONEY, a 32-bit fixed-point value with four fractional digits.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const SmallMoney: DataType = make("SmallMoney", 0x7a)
+
+/**
+ * TEXT, a legacy LOB in the connection collation's code page.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Text: DataType = make("Text", 0x23)
+
+/**
+ * NTEXT, a legacy UTF-16 LOB.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const NText: DataType = make("NText", 0x63)
+
+/**
+ * IMAGE, a legacy binary LOB.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Image: DataType = make("Image", 0x22)
+
+/**
+ * XML, sent as UTF-16 text.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Xml: DataType = make("Xml", 0xf1)
+
+/**
+ * A table-valued parameter. The value is a `Table`.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const TVP: DataType = make("TVP", 0xf3)
+
+/**
+ * The UDT descriptor. UDT results decode to bytes; parameter encoding is not supported.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const UDT: DataType = make("UDT", 0xf0)
+
+/**
+ * The SQL_VARIANT descriptor. Variant results decode to their underlying values;
+ * parameter encoding is not supported.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const Variant: DataType = make("Variant", 0x62)

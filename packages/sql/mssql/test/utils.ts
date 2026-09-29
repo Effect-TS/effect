@@ -1,4 +1,4 @@
-import { MssqlClient } from "@effect/sql-mssql"
+import { MssqlClient, type MssqlConnection } from "@effect/sql-mssql"
 import { MSSQLServerContainer } from "@testcontainers/mssqlserver"
 import { Context, Data, Effect, Layer, Redacted } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
@@ -53,4 +53,37 @@ export class MssqlContainer extends Context.Service<MssqlContainer>()("test/Mssq
         })
       })
     ).pipe(Layer.provide(this.layer))
+}
+
+/**
+ * Connection settings for a live SQL Server: the server at `MSSQL_PORT` when
+ * set, otherwise a fresh container.
+ */
+export class MssqlTestConfig
+  extends Context.Service<MssqlTestConfig, MssqlConnection.Config>()("test/MssqlTestConfig")
+{
+  static readonly layer = process.env.MSSQL_PORT ?
+    Layer.succeed(this, {
+      server: process.env.MSSQL_HOST ?? "127.0.0.1",
+      port: Number(process.env.MSSQL_PORT),
+      username: process.env.MSSQL_USERNAME ?? "sa",
+      password: Redacted.make(process.env.MSSQL_PASSWORD ?? "Effect_Tds_Test_7426!"),
+      encrypt: true,
+      trustServer: true
+    }) :
+    Layer.effect(
+      this,
+      Effect.gen(function*() {
+        const container = yield* MssqlContainer
+        return {
+          server: container.getHost(),
+          port: container.getPort(),
+          database: container.getDatabase(),
+          username: container.getUsername(),
+          password: Redacted.make(container.getPassword()),
+          encrypt: true,
+          trustServer: true
+        }
+      })
+    ).pipe(Layer.provide(MssqlContainer.layer))
 }

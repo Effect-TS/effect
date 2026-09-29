@@ -1,4 +1,4 @@
-import { TokenParser } from "#tds/tdsToken"
+import { MssqlProtocol } from "@effect/sql-mssql"
 import { strict as assert } from "node:assert"
 import { Buffer } from "node:buffer"
 import { createRequire } from "node:module"
@@ -23,7 +23,7 @@ for (let offset = 0; offset < data.length; offset += fragment) chunks.push(data.
 
 const native = async () => {
   let count = 0
-  const parser = new TokenParser()
+  const parser = MssqlProtocol.makeTokenParser()
   for (let i = 0; i < repeats; i++) for (const chunk of chunks) parser.push(chunk, () => count++)
   parser.end()
   assert.equal(count, tokenCount * repeats)

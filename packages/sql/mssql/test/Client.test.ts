@@ -7,21 +7,24 @@ import { vi } from "vitest"
 
 const state = vi.hoisted(() => ({ cancelCalls: 0, completeRequests: true, type: {} }))
 
-vi.mock("#tds/tdsConnection", () => ({
-  make: () =>
-    Effect.succeed({
-      query: () =>
-        Effect.callback((resume) => {
-          if (state.completeRequests) resume(Effect.succeed({ rows: [], output: {} }))
-          return Effect.sync(() => {
-            state.cancelCalls++
-          })
-        }),
-      batch: () => Effect.succeed({ rows: [], output: {} }),
-      call: () => Effect.succeed({ rows: [], output: { answer: 42 } }),
-      onClose: () => () => {}
-    })
-}))
+vi.mock("@effect/sql-mssql/MssqlConnection", async () => {
+  const { internalsKey } = await import("@effect/sql-mssql/internal/connection")
+  return {
+    make: () =>
+      Effect.succeed({
+        query: () =>
+          Effect.callback((resume) => {
+            if (state.completeRequests) resume(Effect.succeed({ rows: [], output: {} }))
+            return Effect.sync(() => {
+              state.cancelCalls++
+            })
+          }),
+        batch: () => Effect.succeed({ rows: [], output: {} }),
+        call: () => Effect.succeed({ rows: [], output: { answer: 42 } }),
+        [internalsKey]: { deadError: () => undefined, retireHooks: new Set() }
+      })
+  }
+})
 
 const sql = Statement.make(Effect.void as any, MssqlClient.makeCompiler(), [], undefined)
 

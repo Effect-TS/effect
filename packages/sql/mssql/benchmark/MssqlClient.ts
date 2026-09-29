@@ -1,6 +1,5 @@
-import * as Native from "#tds/tdsConnection"
-import { TYPES } from "#tds/tdsRequest"
-import { Effect } from "effect"
+import { MssqlConnection, MssqlTypes } from "@effect/sql-mssql"
+import { Effect, Redacted } from "effect"
 import { strict as assert } from "node:assert"
 import { performance } from "node:perf_hooks"
 import * as Tedious from "tedious"
@@ -92,7 +91,7 @@ const median = (values: ReadonlyArray<number>) => {
 }
 
 const program = Effect.scoped(Effect.gen(function*() {
-  const native = yield* Native.make(config)
+  const native = yield* MssqlConnection.make({ ...config, password: Redacted.make(config.password) })
   const tedious = yield* baseline
   const sessionSettings = "SELECT @@OPTIONS AS flags, @@DATEFIRST AS firstDay, @@TEXTSIZE AS [textSize]"
   assert.deepEqual(
@@ -127,9 +126,9 @@ const program = Effect.scoped(Effect.gen(function*() {
     const nativeQuery = native.query(
       workload.sql,
       typeof workload.parameter === "string"
-        ? [{ name: "value", type: TYPES.NVarChar, value: workload.parameter }]
+        ? [{ name: "value", type: MssqlTypes.NVarChar, value: workload.parameter }]
         : workload.parameter
-        ? [{ name: "value", type: TYPES.Float, value: 42 }]
+        ? [{ name: "value", type: MssqlTypes.Float, value: 42 }]
         : []
     )
       .pipe(Effect.map((result) => result.rows))
