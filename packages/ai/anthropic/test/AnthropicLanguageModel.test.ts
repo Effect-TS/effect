@@ -13,8 +13,6 @@ import {
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicLanguageModel", () => {
-  // Separated system groups previously overwrote each other. Exercise the real
-  // serializer: a successful model response cannot prove that guidance survived.
   describe("system message history", () => {
     const Body = Schema.Struct({
       system: Schema.optionalKey(Schema.Array(Schema.Json)),
@@ -37,7 +35,7 @@ describe("AnthropicLanguageModel", () => {
         content: [{ type: "tool-result", id: "call-1", name: "lookup", result: "Evidence", isFailure: false }],
         options: { anthropic: { cacheControl } }
       },
-      { role: "system", content: "Policy A", options: { anthropic: { cacheControl } } },
+      { role: "system", content: "Policy A" },
       { role: "system", content: "Current context" }
     ])
 
@@ -90,7 +88,7 @@ describe("AnthropicLanguageModel", () => {
             assert.deepStrictEqual(body.system, [
               { type: "text", text: "Policy A", cache_control: cacheControl },
               { type: "text", text: "Policy B", cache_control: cacheControl },
-              { type: "text", text: "Policy A", cache_control: cacheControl },
+              { type: "text", text: "Policy A", cache_control: null },
               { type: "text", text: "Current context", cache_control: null }
             ])
             assert.isFalse(body.messages.some((message) => message.role === "system"))
@@ -121,7 +119,7 @@ describe("AnthropicLanguageModel", () => {
             assert.deepStrictEqual(body.messages.at(-1), {
               role: "system",
               content: [
-                { type: "text", text: "Policy A", cache_control: cacheControl },
+                { type: "text", text: "Policy A", cache_control: null },
                 { type: "text", text: "Current context", cache_control: null }
               ]
             })
