@@ -487,7 +487,7 @@ describe("Schema compilers: transformations with checked sources", { concurrent:
 
     const mixed = Codegen.generate(Schema.Struct({ s: f.Checked, n: f.TwoLinks }).ast, "decodeEffect")
     assert.isDefined(mixed)
-    assert.include(mixed, "R.invalidEncodingChecks(p1.type,2,")
+    assert.include(mixed, "R.invalidEncodingChecks(p1.type,v1,")
   })
 
   for (const compiler of ["jit", "aot"] as const) {

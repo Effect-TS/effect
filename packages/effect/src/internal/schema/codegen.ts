@@ -789,18 +789,6 @@ const inlineTypePredicate = (ast: SchemaAST.AST, input: string, path: string): s
   }
 }
 
-const inlineIdentityPredicate = (ast: SchemaAST.AST, input: string, path: string): string | undefined =>
-  ast.checks === undefined && getEncodingChecks(ast) === undefined
-    ? inlineTypePredicate(ast, input, path)
-    : undefined
-
-// The source of an encoding chain may also have checks: they run inline on the
-// input, after its type predicate and before the first transformation.
-const inlineSourcePredicate = (ast: SchemaAST.AST, input: string, path: string): string | undefined =>
-  getEncodingChecks(ast) === undefined
-    ? inlineTypePredicate(ast, input, path)
-    : undefined
-
 const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
   const links = ast.encoding
   if (links?.length !== 1 || getEncodingChecks(ast) !== undefined) return undefined
@@ -821,7 +809,7 @@ const emitEncoding = (ast: SchemaAST.AST): string | undefined => {
   const sourceChecks = link.to.checks === undefined
     ? ""
     : "const issues=R.getCheckIssues(from,i,false,o);" +
-      "if(issues!==void 0)return R.invalidEncodingChecks(ast,1,i,i,issues,o);"
+      "if(issues!==void 0)return R.invalidEncodingChecks(ast,i,issues,o);"
   return `const transform=ast.encoding[0].transformation.decode.transform,from=ast.encoding[0].to;return function(i,o){try{
     if(i===R.missing)return R.missingExit;
     if(!(${source}))return R.invalidEncoding(ast,1,i,i,o);
@@ -836,11 +824,13 @@ const canInlineEncoding = (ast: SchemaAST.AST): ast is SchemaAST.AST & { readonl
   ast.encoding !== undefined &&
   ast.checks === undefined &&
   getEncodingChecks(ast) === undefined &&
-  inlineIdentityPredicate(ast, "v", "ast") !== undefined &&
+  inlineTypePredicate(ast, "v", "ast") !== undefined &&
   ast.encoding.every((link, index, links) =>
     link.to.encoding === undefined &&
-    (index === links.length - 1 ? inlineSourcePredicate : inlineIdentityPredicate)(link.to, "v", "ast") !==
-      undefined &&
+    getEncodingChecks(link.to) === undefined &&
+    // Only the initial source may have checks; they run before any transformation.
+    (link.to.checks === undefined || index === links.length - 1) &&
+    inlineTypePredicate(link.to, "v", "ast") !== undefined &&
     link.transformation._tag === "Transformation" &&
     (link.transformation.decode._tag === "Passthrough" || link.transformation.decode._tag === "Transform")
   )
@@ -851,6 +841,15 @@ const inlinePropertyHandler =
 const emitObject = (ast: SchemaAST.Objects): string => {
   const initializers: Array<string> = []
   const transforms = new Map<object, string>()
+  const bindTransform = (transform: object, path: string): string => {
+    let name = transforms.get(transform)
+    if (name === undefined) {
+      name = `t${transforms.size}`
+      transforms.set(transform, name)
+      initializers.push(`const ${name}=${path}`)
+    }
+    return name
+  }
   let usesInlinePropertyHandler = false
   let usesInlinePropertyFailure = false
   let usesInlineSourceFailure = false
@@ -879,9 +878,10 @@ const emitObject = (ast: SchemaAST.Objects): string => {
       const descriptor = lazyProperties ? `p(${index})` : `p${index}`
       const handleInline = `t=handle(state,${index},${descriptor},h${index},v${index},r);if(t)return t`
       const links = property.type.encoding
+      const sourceAst = links[links.length - 1].to
       const sourcePath = `${propertyPath}.encoding[${links.length - 1}].to`
-      const source = inlineSourcePredicate(links[links.length - 1].to, `v${index}`, sourcePath)!
-      const sourceChecks = links[links.length - 1].to.checks !== undefined
+      const source = inlineTypePredicate(sourceAst, `v${index}`, sourcePath)!
+      const sourceChecks = sourceAst.checks !== undefined
       if (sourceChecks) initializers.push(`const s${index}=${sourcePath}`)
       const checkSource = sourceChecks ? `const c${index}=R.getCheckIssues(s${index},v${index},false,o);` : ""
       // Share cold diagnostics without adding a call to the successful path.
@@ -890,27 +890,24 @@ const emitObject = (ast: SchemaAST.Objects): string => {
         const transformation = links[0].transformation
         let decoded = `v${index}`
         if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
-          let transform = transforms.get(transformation.decode.transform)
-          if (transform === undefined) {
-            transform = `t${transforms.size}`
-            transforms.set(transformation.decode.transform, transform)
-            initializers.push(`const ${transform}=${propertyPath}.encoding[0].transformation.decode.transform`)
-          }
+          const transform = bindTransform(
+            transformation.decode.transform,
+            `${propertyPath}.encoding[0].transformation.decode.transform`
+          )
           decoded = `${transform}(v${index})`
         }
-        const predicate = inlineIdentityPredicate(property.type, `x${index}`, propertyPath)!
-        if (sourceChecks) usesInlineSourceFailure = true
-        const run = `const x${index}=${decoded};` +
+        const predicate = inlineTypePredicate(property.type, `x${index}`, propertyPath)!
+        let run = `const x${index}=${decoded};` +
           `if(x${index}!==R.missing&&(${predicate})){out[${key}]=x${index}}` +
           `else{t=invalid(state,${index},h${index},v${index},x${index},o);if(t)return t}`
+        if (sourceChecks) {
+          usesInlineSourceFailure = true
+          run = `${checkSource}if(c${index}===void 0){${run}}` +
+            `else{t=invalidSource(state,${index},h${index},v${index},c${index},o);if(t)return t}`
+        }
         statements.push(
           `const h${index}=${present},v${index}=h${index}?i[${key}]:R.missing`,
-          `if(v${index}!==R.missing&&(${source})){${
-            sourceChecks
-              ? `${checkSource}if(c${index}===void 0){${run}}` +
-                `else{t=invalidSource(state,${index},h${index},v${index},c${index},o);if(t)return t}`
-              : run
-          }}` +
+          `if(v${index}!==R.missing&&(${source})){${run}}` +
             `else{t=fallbackProperty(state,${index},h${index},v${index},o);if(t)return t}`
         )
         return
@@ -918,27 +915,23 @@ const emitObject = (ast: SchemaAST.Objects): string => {
       const fast: Array<string> = [`let x${index}=v${index};r=void 0;l${index}:{`]
       if (sourceChecks) {
         fast.push(
-          `${checkSource}if(c${index}!==void 0){r=R.invalidEncodingChecks(${descriptor}.type,${links.length},v${index},v${index},c${index},o);break l${index}}`
+          `${checkSource}if(c${index}!==void 0){r=R.invalidEncodingChecks(${descriptor}.type,v${index},c${index},o);break l${index}}`
         )
       }
       for (let linkIndex = links.length - 1; linkIndex >= 0; linkIndex--) {
         const transformation = links[linkIndex].transformation
         if (transformation._tag === "Transformation" && transformation.decode._tag === "Transform") {
-          let transform = transforms.get(transformation.decode.transform)
-          if (transform === undefined) {
-            transform = `t${transforms.size}`
-            transforms.set(transformation.decode.transform, transform)
-            initializers.push(
-              `const ${transform}=${propertyPath}.encoding[${linkIndex}].transformation.decode.transform`
-            )
-          }
+          const transform = bindTransform(
+            transformation.decode.transform,
+            `${propertyPath}.encoding[${linkIndex}].transformation.decode.transform`
+          )
           fast.push(`x${index}=${transform}(x${index})`)
         }
         const targetPath = linkIndex === 0
           ? propertyPath
           : `${propertyPath}.encoding[${linkIndex - 1}].to`
         const target = linkIndex === 0 ? property.type : links[linkIndex - 1].to
-        const predicate = inlineIdentityPredicate(target, `x${index}`, targetPath)!
+        const predicate = inlineTypePredicate(target, `x${index}`, targetPath)!
         fast.push(
           `if(x${index}===R.missing){r=R.missingExit;break l${index}}else if(!(${predicate})){r=R.invalidEncoding(${descriptor}.type,${linkIndex},v${index},x${index},o);break l${index}}`
         )
@@ -975,7 +968,7 @@ const emitObject = (ast: SchemaAST.Objects): string => {
   }
   if (usesInlineSourceFailure) {
     initializers.push(
-      "const invalidSource=(state,index,present,input,issues,o)=>{const property=p(index);return handle(state,index,property,present,input,R.invalidEncodingChecks(property.type,1,input,input,issues,o))}"
+      "const invalidSource=(state,index,present,input,issues,o)=>{const property=p(index);return handle(state,index,property,present,input,R.invalidEncodingChecks(property.type,input,issues,o))}"
     )
   }
   return `function({ast,getProperties,fallback,resume,step}){${initializers.join(";")};return function(i,o){try{${

@@ -239,18 +239,16 @@ const invalidEncoding = (
 
 const invalidEncodingChecks = (
   ast: SchemaAST.AST & { readonly encoding: SchemaAST.Encoding },
-  index: number,
   input: unknown,
-  value: unknown,
   issues: readonly [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>],
   options: SchemaAST.ParseOptions
 ) => {
-  const to = ast.encoding[index - 1].to
+  const source = ast.encoding[ast.encoding.length - 1].to
   return Interpreter.wrapEncoding(
     ast,
     input,
     options,
-    Effect.fail(new SchemaIssue.Composite(to, issues, value, options))
+    Effect.fail(new SchemaIssue.Composite(source, issues, input, options))
   )
 }
 
