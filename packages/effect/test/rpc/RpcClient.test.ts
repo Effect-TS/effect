@@ -3,7 +3,7 @@ import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, S
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
-import { RpcClientError } from "effect/rpc/RpcClientError"
+import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
 import * as Worker from "effect/workers/Worker"
@@ -152,6 +152,57 @@ describe("RpcClient", () => {
       yield* Fiber.join(secondSent)
       yield* Fiber.interrupt(second)
       assert.deepStrictEqual(sentRequestIds, [1, 2])
+    }))
+
+  it.effect("does not fail requests started while broadcasting a protocol error", () =>
+    Effect.gen(function*() {
+      const firstRequestSent = yield* Deferred.make<void>()
+      const secondRequestSent = yield* Deferred.make<void>()
+      const requests: Array<{ readonly clientId: number; readonly id: string | number }> = []
+      let deliver: (clientId: number, response: RpcMessage.FromServerEncoded) => Effect.Effect<void>
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
+      })
+      const protocol = yield* RpcClient.Protocol.make((write) => {
+        deliver = write
+        return Effect.succeed({
+          send: (clientId, message) => {
+            if (message._tag !== "Request") return Effect.void
+            return Effect.sync(() => {
+              requests.push({ clientId, id: message.id })
+              return requests.length
+            }).pipe(
+              Effect.flatMap((count) =>
+                count === 1
+                  ? Deferred.succeed(firstRequestSent, void 0)
+                  : Deferred.succeed(secondRequestSent, void 0)
+              )
+            )
+          },
+          supportsAck: false,
+          supportsTransferables: false,
+          codecFor: Schema.toCodecJson
+        })
+      })
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const request = yield* client.Ping().pipe(
+        Effect.catch(() => client.Ping()),
+        Effect.forkChild
+      )
+
+      yield* Deferred.await(firstRequestSent)
+      yield* Effect.yieldNow
+      yield* deliver!(requests[0].clientId, { _tag: "ClientProtocolError", error })
+      yield* Deferred.await(secondRequestSent)
+      yield* deliver!(requests[1].clientId, {
+        _tag: "Exit",
+        requestId: requests[1].id,
+        exit: { _tag: "Success", value: "ok" }
+      })
+
+      assert.strictEqual(yield* Fiber.join(request), "ok")
     }))
 
   it("preserves RpcClientError failures from a reloaded module copy", async () => {

@@ -768,7 +768,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
         return Effect.forEach(
-          entries.keys(),
+          Array.from(entries.keys()),
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
         )
       }
