@@ -3410,28 +3410,6 @@ const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
   key === "__proto__" ? Object.hasOwn(input, key) : key in input
 
-const candidateTypesCache = new WeakMap<ReadonlyArray<number>, ReadonlyArray<AST>>()
-
-/**
- * The goal is to reduce the number of a union members that will be checked.
- * This is useful to reduce the number of issues that will be returned.
- *
- * @internal
- */
-export function getCandidates(
-  input: any,
-  types: ReadonlyArray<AST>,
-  isConstructor = false
-): ReadonlyArray<AST> {
-  const indexes = getCandidateIndex(types)(input, isConstructor)
-  if (!Object.isFrozen(indexes)) return indexes.map((i) => types[i])
-  let candidates = candidateTypesCache.get(indexes)
-  if (candidates === undefined) {
-    candidateTypesCache.set(indexes, candidates = Object.freeze(indexes.map((i) => types[i])))
-  }
-  return candidates
-}
-
 /** @internal */
 export function getCandidateIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let index = candidateIndexCache.get(types)
