@@ -557,6 +557,11 @@ declare module "effect/ai/Response" {
        * The service tier reported by OpenAI for the response.
        */
       readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | null
+      /**
+       * The prompt cache comparison result requested through
+       * `prompt_cache_options.comparison_response_id`.
+       */
+      readonly promptCacheDiagnostics?: OpenAiSchema.PromptCacheDiagnostics
     } | null
   }
 }
@@ -1817,7 +1822,7 @@ const makeResponse = Effect.fnUntraced(
       reason: finishReason,
       usage: getUsage(rawResponse.usage),
       response: buildHttpResponseDetails(response),
-      ...toServiceTier(rawResponse.service_tier)
+      ...toFinishMetadata(rawResponse)
     })
 
     return parts
@@ -1970,7 +1975,7 @@ const makeStreamResponse = Effect.fnUntraced(
               ),
               usage: getUsage(event.response.usage),
               response: buildHttpResponseDetails(response),
-              ...toServiceTier(event.response.service_tier)
+              ...toFinishMetadata(event.response)
             })
             break
           }
@@ -1984,7 +1989,7 @@ const makeStreamResponse = Effect.fnUntraced(
               reason: "error",
               usage: getUsage(event.response.usage),
               response: buildHttpResponseDetails(response),
-              ...toServiceTier(event.response.service_tier)
+              ...toFinishMetadata(event.response)
             })
             break
           }
@@ -3303,22 +3308,32 @@ const getUsage = (usage: OpenAiSchema.ResponseUsage | null | undefined): Respons
 
 type ServiceTier = "default" | "auto" | "flex" | "scale" | "priority" | null
 
-const toServiceTier = (value: string | undefined): {
-  readonly metadata: {
-    readonly openai: {
-      readonly serviceTier: ServiceTier
-    }
-  }
+const toFinishMetadata = (response: OpenAiSchema.Response): {
+  readonly metadata: Response.FinishPartMetadata
 } | undefined => {
-  switch (value) {
+  let serviceTier: ServiceTier | undefined
+  switch (response.service_tier) {
     case "default":
     case "auto":
     case "flex":
     case "scale":
     case "priority":
-      return { metadata: { openai: { serviceTier: value } } }
-    default:
-      return undefined
+      serviceTier = response.service_tier
+      break
+  }
+
+  const promptCacheDiagnostics = response.prompt_cache_diagnostics
+  if (serviceTier === undefined && promptCacheDiagnostics === undefined) {
+    return undefined
+  }
+
+  return {
+    metadata: {
+      openai: {
+        ...(serviceTier === undefined ? undefined : { serviceTier }),
+        ...(promptCacheDiagnostics === undefined ? undefined : { promptCacheDiagnostics })
+      }
+    }
   }
 }
 

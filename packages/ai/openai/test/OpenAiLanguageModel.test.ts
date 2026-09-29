@@ -18,6 +18,55 @@ const fileSearchOutcomes = [
 ] as const
 
 describe("OpenAiLanguageModel", () => {
+  describe("prompt cache diagnostics", () => {
+    it.effect.each(
+      [
+        {
+          event: undefined,
+          diagnostics: {
+            type: "cache_miss",
+            reason: "tools_changed",
+            cache_missed_tokens: 1024,
+            comparison_reusable_tokens: 2048
+          },
+          serviceTier: "priority",
+          expectedServiceTier: "priority"
+        },
+        { event: "response.completed", diagnostics: { type: "cache_hit" }, serviceTier: "fast" },
+        { event: "response.incomplete", diagnostics: { type: "unavailable" } },
+        { event: "response.failed", diagnostics: { type: "comparison_response_not_found" } }
+      ] as const
+    )("preserves diagnostics in finish metadata ($event)", ({ event, diagnostics, ...tier }) =>
+      Effect.gen(function*() {
+        const response = {
+          ...makeDefaultResponse(),
+          prompt_cache_diagnostics: diagnostics,
+          ...("serviceTier" in tier ? { service_tier: tier.serviceTier } : undefined)
+        }
+        const body = event === undefined
+          ? JSON.stringify(response)
+          : `data: ${JSON.stringify({ type: event, sequence_number: 1, response })}\n\n`
+        const parts = yield* Effect.gen(function*() {
+          if (event === undefined) return (yield* LanguageModel.generateText({ prompt: "test" })).content
+          return yield* LanguageModel.streamText({ prompt: "test" }).pipe(Stream.runCollect)
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-6-luna")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(
+            HttpClient.HttpClient,
+            makeRawResponseClient(body, event === undefined ? "application/json" : "text/event-stream")
+          )
+        )
+
+        const finish = parts.find((part) => part.type === "finish")
+        assert.isDefined(finish)
+        deepStrictEqual(finish.metadata.openai, {
+          promptCacheDiagnostics: diagnostics,
+          ...("expectedServiceTier" in tier ? { serviceTier: tier.expectedServiceTier } : undefined)
+        })
+      }))
+  })
+
   describe("make", () => {
     it.effect("sends correct model in request", () =>
       Effect.gen(function*() {
@@ -169,7 +218,7 @@ describe("OpenAiLanguageModel", () => {
           }).pipe(
             Effect.provide(OpenAiLanguageModel.model("gpt-5.6", {
               prompt_cache_key: "assistant:v1",
-              prompt_cache_options: { mode: "explicit", ttl: "30m" }
+              prompt_cache_options: { mode: "explicit", ttl: "30m", comparison_response_id: "resp_baseline" }
             }))
           )
 
@@ -177,7 +226,11 @@ describe("OpenAiLanguageModel", () => {
           const body = yield* getRequestBody(requests[0])
 
           strictEqual(body.prompt_cache_key, "assistant:v1")
-          deepStrictEqual(body.prompt_cache_options, { mode: "explicit", ttl: "30m" })
+          deepStrictEqual(body.prompt_cache_options, {
+            mode: "explicit",
+            ttl: "30m",
+            comparison_response_id: "resp_baseline"
+          })
           deepStrictEqual(body.input, [{
             role: "developer",
             content: [{
