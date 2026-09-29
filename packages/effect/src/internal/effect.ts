@@ -1634,8 +1634,7 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
 > =>
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
-    // A side can settle the race, or the parent can be interrupted, while later
-    // sides are still being forked, so the remaining sides are interrupted on exit.
+    // Read fibers on exit to include losers forked after the race settles.
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
     return callback((resume) => {
       const effects = Arr.fromIterable(all)
@@ -1689,8 +1688,6 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
 > =>
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
-    // A side can settle the race, or the parent can be interrupted, while later
-    // sides are still being forked, so the remaining sides are interrupted on exit.
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
     return callback((resume) => {
       let done = false
