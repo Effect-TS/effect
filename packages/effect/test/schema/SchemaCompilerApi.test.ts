@@ -47,6 +47,35 @@ describe("SchemaCompiler", () => {
     }
   })
 
+  it("retains a resolved Union member parser after replacement", () => {
+    const child = Schema.String.annotate({ title: "resolved Union candidate" })
+    const decode = SchemaParser.decodeUnknownSync(Schema.Union([child, Schema.Number]))
+
+    strictEqual(decode("original"), "original")
+
+    SchemaCompiler.set(child.ast, {
+      decode: () => "replacement",
+      decodeEffect: () => Effect.succeed("replacement")
+    })
+
+    strictEqual(decode("cached"), "cached")
+    strictEqual(SchemaParser.decodeUnknownSync(child)("new consumer"), "replacement")
+  })
+
+  it("uses a replacement for an unresolved Union member", () => {
+    const child = Schema.String.annotate({ title: "unresolved Union candidate" })
+    const decode = SchemaParser.decodeUnknownSync(Schema.Union([Schema.Number, child]))
+
+    strictEqual(decode(1), 1)
+
+    SchemaCompiler.set(child.ast, {
+      decode: () => "replacement",
+      decodeEffect: () => Effect.succeed("replacement")
+    })
+
+    strictEqual(decode("first visit"), "replacement")
+  })
+
   it("installs a decoder in the shared registry", () => {
     const schema = Schema.Struct({ value: Schema.String })
     const early = SchemaParser.decodeUnknownSync(schema)
