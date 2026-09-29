@@ -300,6 +300,33 @@ describe("compiler regression contracts", () => {
     assert.isBelow(reads, 10)
   })
 
+  it("preserves repeated Union members when selecting generated decoders", () => {
+    const member = Schema.Struct({ kind: Schema.Literal("a"), value: Schema.Number })
+    for (const mode of ["anyOf", "oneOf"] as const) {
+      const schema = Schema.Union([
+        member,
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.String }),
+        member,
+        Schema.Never
+      ], { mode })
+      SchemaJITCompiler.enable(schema.ast)
+      const decode = SchemaParser.decodeUnknownResult(schema)
+      const is = SchemaParser.is(schema)
+      const input = { kind: "a", value: 1 } as const
+      strictEqual(is(input), mode === "anyOf")
+      const result = decode(input)
+      if (mode === "anyOf") {
+        deepStrictEqual(result, Result.succeed(input))
+      } else {
+        assert(Result.isFailure(result))
+        strictEqual(result.failure._tag, "OneOf")
+      }
+      const other = { kind: "b", value: "value" } as const
+      strictEqual(is(other), true)
+      deepStrictEqual(decode(other), Result.succeed(other))
+    }
+  })
+
   it("stops oneOf after its second successful candidate", () => {
     const schema = Schema.Union([
       Schema.String.check(Schema.isMinLength(1)),

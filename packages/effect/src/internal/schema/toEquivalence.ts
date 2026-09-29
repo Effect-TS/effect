@@ -136,13 +136,12 @@ function recur(ast: SchemaAST.AST): Equivalence.Equivalence<any> {
     }
     case "Union": {
       const types = SchemaAST.toType(ast).types
-      const compiled = new Map(
-        types.map((candidate, i) => [candidate, [SchemaParser._is(candidate), recur(ast.types[i])] as const] as const)
-      )
+      const index = SchemaAST.getCandidateIndex(types)
+      const compiled = types.map((candidate, i) => [SchemaParser._is(candidate), recur(ast.types[i])] as const)
       return Equivalence.make((a, b) => {
-        const candidates = SchemaAST.getCandidates(a, types)
+        const candidates = index(a, false)
         for (let i = 0; i < candidates.length; i++) {
-          const [is, equivalence] = compiled.get(candidates[i])!
+          const [is, equivalence] = compiled[candidates[i]]
           if (is(a) && is(b)) {
             return equivalence(a, b)
           }
