@@ -5103,12 +5103,9 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
         const item = items[index]
         const eff = effect ?? onItem(state, item, index)
 
-        // fast case (already an exit)
         if (effectIsExit(eff)) {
           terminal = step(state, item, eff, index)
           if (terminal) break
-
-          // We have an effect, so enter "async" mode
         } else if (!parentFiber) {
           return callback((cb) => {
             parentFiber = getCurrentFiber()!
@@ -5130,10 +5127,8 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
               )
             })
           })
-
-          // Fork the effect with concurrency > 1
         } else {
-          // Clear the temporary effect from capturing the parentFiber
+          // Clear the effect cached before the parent fiber was available.
           effect = undefined
 
           const fiber = forkUnsafe(parentFiber, eff, true, true, "inherit")
@@ -5143,7 +5138,6 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             continue
           }
 
-          // Add the fiber to the Set
           fibers!.add(fiber)
 
           const currentIndex = index
@@ -5179,7 +5173,6 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             }
           })
 
-          // Check if we have reached the concurrency limit
           if (fibers!.size < concurrency) continue
           paused = true
           index++
