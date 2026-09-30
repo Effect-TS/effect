@@ -176,15 +176,22 @@ describe("RpcClient", () => {
       )
       const reader = yield* client.Bad().pipe(Stream.runDrain, Effect.forkChild)
       const requestId = takeRequestId(yield* Queue.take(sent))
-      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["not a number"] }).pipe(Effect.forkChild)
+      let observedInterrupt = false
+      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["not a number"] }).pipe(
+        Effect.onInterrupt(() => Effect.sync(() => void (observedInterrupt = true))),
+        Effect.forkChild
+      )
       yield* Deferred.await(sendingInterrupt)
       assert(Exit.isFailure(yield* Fiber.await(reader)))
 
       // Request cancellation while the Interrupt send is suspended, without waiting for it.
       yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
       yield* Deferred.succeed(releaseInterrupt, void 0)
-      yield* Fiber.await(receiver)
+      const receiveExit = yield* Fiber.await(receiver)
       assert.deepStrictEqual(yield* Queue.clear(sent), [{ _tag: "Interrupt", requestId }])
+      // The cancelled handler must end interrupted, not with the decode defect it already handled.
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      assert.isTrue(observedInterrupt)
     }))
 
   for (const consumer of ["queue", "stream"] as const) {
