@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`6bb0ea2de7b19d753bcb381ec767b09ce17639e6`)
+Base: `origin/v3` (`0963a1c17f5be8e26676ed5ffc9c542bd26f97f0`)
 
-Head: `HEAD` (`061be92fdf1c532b9af10f5d826619a4464b5ca3`)
+Head: `HEAD` (`072cdc42a84421694593035d65d0f3375d1a17fd`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14161,7 +14161,7 @@ Schema.toFormatter(schema)
 
 - `Schema.BooleanFromUnknown` -> `Schema.Boolean`: Use the boolean schema and perform any coercion explicitly before decoding.
 
-- `Schema.BrandSchema` -> `Schema.brand`: Use the schema returned by the v4 `brand` combinator and infer its concrete type.
+- `Schema.BrandSchema` -> `Schema.brand`: Use the schema returned by the v4 `brand` combinator and infer its concrete type. The brand exists only in the TypeScript type and cannot be inspected through the runtime AST.
 
 - `Schema.BrandSchemaId` -> `none`: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
 
@@ -14737,7 +14737,7 @@ Schema.toFormatter(schema)
 
 - `Schema.betweenDuration` -> `Schema.isBetween`: Rename the predicate to `isBetween` and apply it with `Schema.check` or a schema's `check` method.
 
-- `Schema.brand` -> `Schema.brand`: Pass one concrete string literal as the brand identifier. Widened strings, unions, open template literals, and symbol identifiers are rejected; apply brand repeatedly to compose brands.
+- `Schema.brand` -> `Schema.brand`: Pass one concrete string literal as the brand identifier. Widened strings, unions, open template literals, and symbol identifiers are rejected; apply brand repeatedly to compose brands. V4 branding is type-only and does not add runtime AST metadata.
 
 - `Schema.capitalized` -> `Schema.isCapitalized`: Rename the string predicate to `isCapitalized` and apply it with `Schema.check` or a schema's `check` method.
 
@@ -14803,7 +14803,7 @@ Schema.toFormatter(schema)
 
 - `Schema.format` -> `SchemaRepresentation.toCodeDocument`: Build a representation with `SchemaRepresentation.toRepresentation`, `toMultiDocument`, then `toCodeDocument`.
 
-- `Schema.fromBrand` -> `Schema.fromBrand`: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives.
+- `Schema.fromBrand` -> `Schema.fromBrand`: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives. Constructor checks remain at runtime, while the brand is type-only and does not add AST metadata.
 
 - `Schema.fromKey` -> `Schema.encodeKeys`: Use `encodeKeys` to map decoded property names to encoded keys.
 
@@ -15027,9 +15027,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.BooleanKeyword` -> `SchemaAST.Boolean`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
 
-- `SchemaAST.BrandAnnotation` -> `Schema.Annotations.Bottom["brands"]`: Brands are stored under the string-keyed brands annotation and normally added with Schema.brand.
+- `SchemaAST.BrandAnnotation` -> `none`: Runtime brand annotations were removed. Schema.brand adds a TypeScript-only nominal distinction and does not store brand metadata in the AST.
 
-- `SchemaAST.BrandAnnotationId` -> `Schema.brand`: Symbol annotation IDs were removed; add brands through Schema.brand.
+- `SchemaAST.BrandAnnotationId` -> `Schema.brand`: Use Schema.brand for a TypeScript-only nominal distinction. V4 does not store brand metadata in the AST.
 
 - `SchemaAST.Compiler` -> `none`: The generic AST compiler abstraction was removed; traverse the discriminated SchemaAST.AST union directly or use a higher-level Schema derivation API.
 
@@ -15193,7 +15193,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
 
-- `SchemaAST.getBrandAnnotation` -> `SchemaAST.resolveAt("brands")`: Resolve the string-keyed brands annotation.
+- `SchemaAST.getBrandAnnotation` -> `none`: Runtime brand inspection was removed because Schema.brand is type-only and does not store brand metadata in the AST.
 
 - `SchemaAST.getCompiler` -> `none`: The Match-based compiler was removed; traverse SchemaAST.AST directly or use the relevant Schema derivation API.
 

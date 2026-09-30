@@ -2812,8 +2812,13 @@ const refined = Schema.Array(Schema.String).pipe(
 Use `Schema.brand` to add a brand to a schema.
 
 The identifier must be a single concrete string literal. `Schema.brand` adds
-brand metadata but no runtime validation. Apply it once per identifier when a
+a nominal distinction to the decoded TypeScript type. It does not add runtime
+validation or metadata to the schema AST. Apply it once per identifier when a
 type has multiple brands.
+
+Because branding is type-only, `SchemaRepresentation` does not preserve it.
+Reapply `Schema.brand` after rebuilding a representation or generating schema
+code when the branded TypeScript type is still required.
 
 **Example** (Brand a string as a UserId)
 
@@ -6033,6 +6038,13 @@ console.log(decoded.representation._tag)
 
 Consequently, rebuilding `encoded` produces a schema for the string representation; it does not recreate the original
 string-to-number transformation.
+
+Representations describe runtime schema structure, so they do not preserve
+TypeScript-only distinctions. `Schema.brand` is absent because it does not
+change the AST. A check introduced by `Schema.refine` can remain part of the
+runtime representation, but its narrowed TypeScript type cannot be recovered.
+Reapply these type-level operations after rebuilding a representation or
+generating schema code when needed.
 
 ### Live and persisted documents
 

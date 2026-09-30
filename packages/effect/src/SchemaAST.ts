@@ -4374,13 +4374,6 @@ function appendTransformation<A extends AST>(
   return replaceEncoding(to, to.encoding ? [...to.encoding, link] : [link])
 }
 
-/** @internal */
-export function brand(ast: AST, brand: string): AST {
-  const existing = InternalAnnotations.resolveBrands(ast)
-  const brands = existing ? [...existing, brand] : [brand]
-  return annotate(ast, { brands })
-}
-
 /**
  * Maps over the array but will return the original array if no changes occur.
  * @internal
