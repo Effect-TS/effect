@@ -41,6 +41,7 @@ describe("ScopedCache", () => {
         yield* collectGarbage
         assert.isUndefined(control.deref())
         for (const reference of references) assert.isUndefined(reference.deref())
+        assert.strictEqual(yield* ScopedCache.size(cache), 1)
       })
   )
 
