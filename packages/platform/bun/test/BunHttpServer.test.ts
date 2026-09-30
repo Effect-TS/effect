@@ -454,7 +454,7 @@ describe("BunHttpServer", () => {
       }).pipe(Effect.timeout("5 seconds")), 10000)
   }
 
-  // with middleware the request scope closes successfully even when the handler is interrupted
+  // Middleware can turn the response pipeline result into success; the request scope must retain the handler failure.
   for (const [suffix, middleware] of [["", undefined], [" with middleware", identity]] as const) {
     it.effect(
       `closes a request-owned WebSocket with 1001 when the handler fiber is interrupted${suffix}`,

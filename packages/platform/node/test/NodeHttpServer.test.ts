@@ -963,7 +963,7 @@ describe("HttpServer", () => {
       expect(plain.extensions).not.toContain("permessage-deflate")
     }).pipe(Effect.scoped, Effect.provide(layerTestWebsocket)))
 
-  // with middleware the request scope closes successfully even when the handler fails
+  // Middleware can turn the response pipeline result into success; the request scope must retain the handler failure.
   for (const [suffix, middleware] of [["", undefined], [" with middleware", identity]] as const) {
     for (
       const [name, exit, code] of [
