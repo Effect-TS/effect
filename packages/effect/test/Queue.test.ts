@@ -229,6 +229,49 @@ describe("Queue", () => {
       assert.deepEqual(b, [3, 4])
     }))
 
+  it("takeN on a partial batch does not monopolize the host", () => {
+    // Drive a finite number of scheduler turns by hand. An unproductive wake
+    // loop leaves more work queued, without starving Vitest's timeout timer.
+    const tasks: Array<() => void> = []
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "async",
+      shouldYield: (fiber) => fiber.currentOpCount >= 2048,
+      makeDispatcher: () => {
+        return {
+          scheduleTask(task, _priority) {
+            tasks.push(task)
+          },
+          flush() {}
+        }
+      }
+    }
+
+    const queue = Effect.runSync(Queue.unbounded<number>())
+    Object.defineProperty(queue, "dispatcher", { value: scheduler.makeDispatcher() })
+    const taker = Effect.runFork(Queue.takeN(queue, 2), { scheduler })
+    assert.strictEqual(queue.state._tag === "Done" ? 0 : queue.state.takers.size, 1)
+    let releases = 0
+    const takers = queue.state.takers
+    const originalDelete = takers.delete.bind(takers)
+    takers.delete = (taker) => {
+      if (++releases > 100) throw new Error("partial batch repeatedly woke its taker")
+      return originalDelete(taker)
+    }
+    Queue.offerUnsafe(queue, 1)
+    let error: unknown
+    try {
+      for (let i = 0; i < 100 && tasks.length > 0; i++) tasks.shift()!()
+    } catch (cause) {
+      error = cause
+    } finally {
+      takers.delete = originalDelete
+    }
+
+    assert.isUndefined(error, "partial batch must not loop while releasing takers")
+    assert.isUndefined(taker.pollUnsafe())
+    assert.isEmpty(tasks, "partial batch repeatedly rescheduled its taker")
+  })
+
   const lostWakeupCases: ReadonlyArray<readonly [string, (queue: Queue.Queue<number>) => Effect.Effect<unknown>]> = [
     ["take", Queue.take],
     ["takeN", (queue) => Queue.takeN(queue, 1)],
