@@ -388,4 +388,159 @@ describe("AsyncLocalStorage", () => {
       })
     })
   })
+
+  // Policy: like `await`, a fiber resumes in the async context it had when it
+  // suspended, so a store set with `enterWith` survives every kind of resume.
+  describe("enterWith", () => {
+    interface Boundary {
+      readonly effect: Effect.Effect<unknown, unknown>
+      // Resumes the fiber from the "waker" context once it has suspended
+      readonly settle?: () => void
+      readonly result?: unknown
+    }
+
+    const boundaries: Record<string, () => Boundary> = {
+      "native Effect.promise (fulfilled)": () => ({ effect: Effect.promise(() => Promise.resolve(1)) }),
+      "native Effect.promise (rejected)": () => ({ effect: Effect.exit(Effect.promise(() => Promise.reject("boom"))) }),
+      "native Effect.tryPromise (fulfilled)": () => ({
+        effect: Effect.tryPromise({ try: () => Promise.resolve(1), catch: (e) => e })
+      }),
+      "native Effect.tryPromise (rejected)": () => ({
+        effect: Effect.exit(Effect.tryPromise({ try: () => Promise.reject("boom"), catch: (e) => e }))
+      }),
+      "native promise settled from another context": () => {
+        let resolve!: (n: number) => void
+        const promise = new Promise<number>((res) => {
+          resolve = res
+        })
+        return { effect: Effect.promise(() => promise), settle: () => resolve(1) }
+      },
+      "custom thenable settled from another context": () => {
+        let onFulfilled!: (n: number) => void
+        const promise: PromiseLike<number> = {
+          // oxlint-disable-next-line unicorn/no-thenable -- the thenable under test
+          then: ((f: any) => {
+            onFulfilled = f
+          }) as any
+        }
+        return { effect: Effect.promise(() => promise), settle: () => onFulfilled(1) }
+      },
+      "Deferred completed from another context": () => {
+        const deferred = Deferred.makeUnsafe<void>()
+        return { effect: Deferred.await(deferred), settle: () => Deferred.doneUnsafe(deferred, Exit.void) }
+      },
+      "Effect.callback resumed from another context": () => {
+        let resume!: (effect: Effect.Effect<void>) => void
+        return {
+          effect: Effect.callback<void>((r) => {
+            resume = r
+          }),
+          settle: () => resume(Effect.void)
+        }
+      },
+      "Effect.yieldNow": () => ({ effect: Effect.yieldNow }),
+      "Effect.sleep": () => ({ effect: Effect.sleep(1) }),
+      "Effect.forkChild": () => ({
+        effect: Effect.forkChild(
+          Effect.sync(current).pipe(
+            Effect.flatMap((started) =>
+              Effect.map(Effect.andThen(Effect.yieldNow, observe), (after) => ({ started, after }))
+            )
+          )
+        ).pipe(Effect.flatMap(Fiber.join)),
+        result: { started: "b", after: expected("b") }
+      })
+    }
+
+    for (const when of ["before", "after"] as const) {
+      for (const [name, makeBoundary] of Object.entries(boundaries)) {
+        it(`${name} keeps a store set ${when} the first suspension`, async () => {
+          const boundary = makeBoundary()
+          let onReady!: () => void
+          const ready = new Promise<void>((resolve) => {
+            onReady = resolve
+          })
+          const fiber = storage.run("a", () =>
+            Effect.runFork(Effect.gen(function*() {
+              if (when === "after") yield* Effect.yieldNow
+              yield* Effect.sync(() => storage.enterWith("b"))
+              // Reactions run after the fiber has suspended at the boundary
+              yield* Effect.sync(onReady)
+              const result = yield* boundary.effect
+              return { result, after: yield* observe }
+            })))
+          await ready
+          if (boundary.settle !== undefined) {
+            const waker = storage.run("waker", () => {
+              boundary.settle!()
+              return current()
+            })
+            assert.strictEqual(waker, "waker")
+          }
+          const { result, after } = await Effect.runPromise(Fiber.join(fiber))
+          assert.strictEqual(after.resumed, "b", "store right after the boundary")
+          assert.deepStrictEqual(after, expected("b"))
+          if (boundary.result !== undefined) {
+            assert.deepStrictEqual(result, boundary.result)
+          }
+        })
+      }
+
+      it(`interrupt handlers see a store set ${when} the first suspension`, async () => {
+        const seen: Record<string, string> = {}
+        let onReady!: () => void
+        const ready = new Promise<void>((resolve) => {
+          onReady = resolve
+        })
+        const fiber = storage.run("a", () =>
+          Effect.runFork(
+            Effect.gen(function*() {
+              if (when === "after") yield* Effect.yieldNow
+              yield* Effect.sync(() => storage.enterWith("b"))
+              yield* Effect.sync(onReady)
+              return yield* Effect.never
+            }).pipe(
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  seen.onInterrupt = current()
+                })
+              ),
+              Effect.ensuring(Effect.gen(function*() {
+                seen.finalizer = current()
+                seen.finalizerPromise = yield* Effect.promise(async () => current())
+                yield* Effect.sleep(1)
+                seen.finalizerAfterSleep = current()
+              }))
+            )
+          ))
+        await ready
+        const interrupter = storage.run("interrupter", () => {
+          fiber.interruptUnsafe()
+          return current()
+        })
+        assert.strictEqual(interrupter, "interrupter")
+        await Effect.runPromise(Fiber.await(fiber))
+        assert.deepStrictEqual(seen, {
+          onInterrupt: "b",
+          finalizer: "b",
+          finalizerPromise: "b",
+          finalizerAfterSleep: "b"
+        })
+      })
+
+      it(`a store set ${when} the first suspension does not leak into a fiber it wakes`, async () => {
+        const deferred = Deferred.makeUnsafe<void>()
+        const waiter = storage.run("waiter", () => Effect.runFork(Effect.andThen(Deferred.await(deferred), observe)))
+        const waker = storage.run("a", () =>
+          Effect.runFork(Effect.gen(function*() {
+            if (when === "after") yield* Effect.yieldNow
+            yield* Effect.sync(() => storage.enterWith("b"))
+            yield* Deferred.succeed(deferred, undefined)
+            return current()
+          })))
+        assert.strictEqual(await Effect.runPromise(Fiber.join(waker)), "b")
+        assert.deepStrictEqual(await Effect.runPromise(Fiber.join(waiter)), expected("waiter"))
+      })
+    }
+  })
 })
