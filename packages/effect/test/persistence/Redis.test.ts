@@ -116,38 +116,40 @@ describe("Redis", () => {
 
   it.effect("evaluates and caches missing scripts on the key's owning node", () =>
     Effect.gen(function*() {
-      const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
-      let evalShaAttempts = 0
-      const redis = yield* Redis.make({
-        scan: () => Effect.die("unused"),
-        scriptHash: () => Effect.succeed("sha"),
-        send: <A>(command: string, ...args: ReadonlyArray<string>) =>
-          Effect.suspend(() => {
-            commands.push([command, args])
-            if (command === "EVALSHA") {
-              evalShaAttempts += 1
-            }
-            if (command === "EVALSHA" && evalShaAttempts === 1) {
-              return Effect.fail(new Redis.RedisError({ cause: new Error("NOSCRIPT No matching script") }))
-            }
-            return Effect.succeed("ok" as A)
-          }),
-        subscribe: () => Effect.succeed(Effect.never)
-      })
-      const evalScript = redis.eval(
-        Redis.script((key: string) => [key], {
-          lua: "return KEYS[1]",
-          numberOfKeys: 1
-        }).withReturnType<string>()
-      )
+      for (const message of ["NOSCRIPT No matching script", "-NOSCRIPT No matching script"]) {
+        const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
+        let evalShaAttempts = 0
+        const redis = yield* Redis.make({
+          scan: () => Effect.die("unused"),
+          scriptHash: () => Effect.succeed("sha"),
+          send: <A>(command: string, ...args: ReadonlyArray<string>) =>
+            Effect.suspend(() => {
+              commands.push([command, args])
+              if (command === "EVALSHA") {
+                evalShaAttempts += 1
+              }
+              if (command === "EVALSHA" && evalShaAttempts === 1) {
+                return Effect.fail(new Redis.RedisError({ cause: new Error(message) }))
+              }
+              return Effect.succeed("ok" as A)
+            }),
+          subscribe: () => Effect.succeed(Effect.never)
+        })
+        const evalScript = redis.eval(
+          Redis.script((key: string) => [key], {
+            lua: "return KEYS[1]",
+            numberOfKeys: 1
+          }).withReturnType<string>()
+        )
 
-      const result = yield* evalScript("key")
+        const result = yield* evalScript("key")
 
-      assert.strictEqual(result, "ok")
-      assert.deepStrictEqual(commands.map(([command]) => command), [
-        "EVALSHA",
-        "EVAL"
-      ])
+        assert.strictEqual(result, "ok")
+        assert.deepStrictEqual(commands.map(([command]) => command), [
+          "EVALSHA",
+          "EVAL"
+        ])
+      }
     }))
 
   it.effect("receives messages from a subscription", () =>

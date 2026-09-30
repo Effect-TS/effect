@@ -171,7 +171,24 @@ export default defineConfig({
         ]
       ),
       ...project("@effect/platform-node-shared", "packages/platform/node-shared", isNode),
-      ...project("@effect/redis", "packages/redis"),
+      // Topology fixtures start several Redis containers per test. Avoid
+      // competing startup bursts alongside the other integration projects.
+      ...project(
+        "@effect/redis",
+        "packages/redis",
+        true,
+        integrationTestsEnabled
+          ? {
+            test: {
+              fileParallelism: false,
+              sequence: {
+                concurrent: false,
+                groupOrder: 1
+              }
+            }
+          }
+          : {}
+      ),
       ...project("@effect/vitest", "packages/vitest"),
       ...project("@effect/sql-clickhouse", "packages/sql/clickhouse"),
       ...project("@effect/sql-d1", "packages/sql/d1", !isDeno),

@@ -135,7 +135,7 @@ export const make = Effect.fnUntraced(function*(
       Effect.catchIf(
         (error) => {
           const message = Predicate.isError(error.cause) ? error.cause.message : error.cause
-          return Predicate.isString(message) && /^NOSCRIPT(?:\s|$)/.test(message)
+          return Predicate.isString(message) && /^-?NOSCRIPT(?:\s|$)/.test(message)
         },
         () =>
           options.send<Config["result"]>(
