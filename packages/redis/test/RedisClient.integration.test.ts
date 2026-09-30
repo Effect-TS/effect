@@ -307,34 +307,6 @@ describe("RedisClient", () => {
         }),
       90_000
     )
-
-    it.live("restores sharded subscriptions after their slot changes owner", () =>
-      Effect.gen(function*() {
-        const fixture = yield* Effect.acquireRelease(Effect.promise(() => startCluster()), (fixture) =>
-          Effect.promise(fixture.stop))
-        const client = yield* Client.make(makeConnector(), {
-          topology: { _tag: "Cluster", seeds: fixture.seeds },
-          protocol: 3,
-          reconnectDelay: "10 millis"
-        })
-        const channel = "{foo}:sharded-events"
-        const subscription = yield* Subscription.make(client, channel, { mode: "sharded" })
-        assert.strictEqual(Protocol.toValue(yield* client.execute(["SPUBLISH", channel, "before"])), 1)
-        assert.deepStrictEqual((yield* Queue.take(subscription.messages)).message, new TextEncoder().encode("before"))
-        const source = fixture.nodes[2]
-        const target = fixture.nodes[0]
-        yield* Effect.promise(() =>
-          fixture.moveSlot(12182, source, target)
-        )
-        yield* Effect.promise(() =>
-          waitUntil(async () => {
-            const counts = await target.command("PUBSUB", "SHARDNUMSUB", channel) as Array<unknown>
-            return counts[1] === 1
-          }, "Sharded subscription did not follow its slot")
-        )
-        assert.strictEqual(Protocol.toValue(yield* client.execute(["SPUBLISH", channel, "after"])), 1)
-        assert.deepStrictEqual((yield* Queue.take(subscription.messages)).message, new TextEncoder().encode("after"))
-      }), 90_000)
   })
 
   describe("Sentinel", () => {

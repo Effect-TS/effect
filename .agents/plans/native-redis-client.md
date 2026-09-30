@@ -275,9 +275,16 @@ package surfaces, CI, and release policy. Review corrections include immediate
 cleanup after failed client acquisition, bounded redirect configuration,
 binary argument/routing snapshots, client-owned subscription termination,
 binary acknowledgement correlation, RESP numeric grammar, transaction control
-preflight and attribute decoding, and typed timeout/reconnect validation.
+preflight and attribute decoding, typed timeout/reconnect validation, and a
+bounded initial PING with immediate transport cleanup on acquisition failure.
 
-- The mandatory manifest runner passed all 18 suites and 173 tests, with no
+Tests are consolidated by public module: six Redis unit suites and three Redis
+integration suites, plus NodeRedis unit and integration suites. Cluster and
+Sentinel scenarios live in RedisClient suites; subscription and transaction
+scenarios live beside their respective modules. Fixtures are shared helpers,
+not standalone suites, and duplicate sharded-subscription coverage was removed.
+
+- The mandatory manifest runner passed all 11 suites and 178 tests, with no
   skips, on both Redis 7.2.6 and 8.10.2 using local server binaries.
 - Root type checking, public JSDoc validation, and targeted type tests passed;
   the type tests cover TypeScript 5.9.3 and 6.0.3.

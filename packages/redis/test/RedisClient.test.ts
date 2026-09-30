@@ -45,6 +45,31 @@ const discovery = (request: Request, endpoint: { host: string; port: number }): 
 
 describe("RedisClient", () => {
   describe("lifecycle", () => {
+    it.effect("times out initial PING and closes the acquired transport", () =>
+      Effect.gen(function*() {
+        const written = yield* Deferred.make<void>()
+        const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
+        let closed = false
+        const connector: Connector = () =>
+          Effect.acquireRelease(
+            Effect.succeed({
+              read: Queue.take(replies),
+              write: () => Deferred.succeed(written, undefined).pipe(Effect.asVoid),
+              close: Effect.sync(() => {
+                closed = true
+              })
+            }),
+            (transport) => transport.close
+          )
+        const acquiring = yield* Client.make(connector).pipe(Effect.result, Effect.forkChild)
+        yield* Deferred.await(written)
+        yield* TestClock.adjust("10 seconds")
+        const error = failure(yield* Fiber.join(acquiring))
+        assert.strictEqual(error.reason, "Timeout")
+        assert.strictEqual(error.outcome, "Unknown")
+        assert.isTrue(closed)
+      }))
+
     it.effect("rejects invalid reconnect delays before acquiring connections", () =>
       Effect.gen(function*() {
         let acquisitions = 0

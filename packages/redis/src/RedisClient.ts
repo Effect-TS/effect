@@ -457,7 +457,19 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       }) as any
   }
   const initial = yield* topology.resolve(["PING"], { keyIndexes: [] })
-  yield* get(initial.endpoint).pipe(Effect.flatMap((connection) => connection.execute(["PING"])))
+  yield* get(initial.endpoint).pipe(
+    Effect.flatMap((connection) =>
+      connection.execute(["PING"]).pipe(
+        Effect.timeoutOrElse({
+          duration: config.commandTimeout ?? "10 seconds",
+          orElse: () =>
+            Effect.fail(
+              new RedisError({ reason: "Timeout", message: "Redis initial PING timed out", outcome: "Unknown" })
+            )
+        })
+      )
+    )
+  )
   yield* Scope.addFinalizer(
     scope,
     Effect.sync(() => {
