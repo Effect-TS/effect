@@ -49,11 +49,15 @@ const protocolVersionClaim = (input: unknown): { readonly present: boolean; read
 export const hasRequestProtocolVersion = (input: unknown): boolean =>
   protocolVersionClaim(asRecord(asRecord(input)?.params)?._meta).present
 
-const routingNameKey = (method: string): "name" | "uri" | undefined => {
+const routingNameKey = (method: string): "name" | "uri" | "taskId" | undefined => {
   switch (method) {
     case "tools/call":
     case "prompts/get":
       return "name"
+    case "tasks/get":
+    case "tasks/update":
+    case "tasks/cancel":
+      return "taskId"
     case "resources/read":
       return "uri"
     default:
@@ -155,6 +159,7 @@ export const stateful = (
  * @internal
  */
 export interface ServerRuntimeShape {
+  readonly setCore: (core: McpCore.McpCore) => void
   readonly protocols: NonEmptyReadonlyArray<PublicMcpProtocol.AnyProtocolAdapter>
   readonly clientRpcs: McpProtocolRegistry.ProtocolRegistry<PublicMcpProtocol.AnyProtocolAdapter>["clientRpcs"]
   readonly selectProtocol: (offeredVersion: string) => PublicMcpProtocol.AnyProtocolAdapter
@@ -220,19 +225,32 @@ export const make = Effect.fnUntraced(function*(
   const protocolVersions = protocols.map((protocol) => protocol.protocolVersion)
   let statelessDescriptor: PublicMcpProtocol.StatelessRuntimeDescriptor | undefined
   let statelessProtocol: PublicMcpProtocol.AnyProtocolAdapter | undefined
+
   for (const protocol of protocols) {
     if (protocol.runtime._tag !== "Stateless") {
       continue
     }
+
     if (statelessDescriptor !== undefined) {
       return yield* new Cause.IllegalArgumentError(
         "MCP runtime supports at most one stateless protocol"
       )
     }
+
     statelessDescriptor = protocol.runtime
     statelessProtocol = protocol
   }
+
   const registry = yield* McpProtocolRegistry.make(protocols)
+  let installedCore: McpCore.McpCore | undefined
+
+  const isMethodAvailable = (protocol: PublicMcpProtocol.AnyProtocolAdapter, method: string) => {
+    return installedCore === undefined ||
+      !Predicate.hasProperty(protocol, "isMethodAvailable") ||
+      !Predicate.isFunction(protocol.isMethodAvailable) ||
+      protocol.isMethodAvailable(installedCore, method) !== false
+  }
+
   const sessionTerminationListeners = new Set<(binding: RequestBinding) => Effect.Effect<void>>()
   const unsupportedProtocolVersion = (requested: string) => ({
     code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
@@ -306,18 +324,28 @@ export const make = Effect.fnUntraced(function*(
       if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
         return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
       }
+
       const method = inputRecord?.method
+
       if (typeof method !== "string" || headers[MCP_METHOD_HEADER] !== method) {
         return headerMismatch("Mcp-Method header does not match request method")
       }
+
+      if (!isMethodAvailable(statelessProtocol, method)) {
+        return { _tag: "Rejected", status: 404, error: { code: -32601, message: `Method not found: ${method}` } }
+      }
+
       const nameKey = routingNameKey(method)
+
       if (nameKey !== undefined) {
         const name = asRecord(inputRecord?.params)?.[nameKey]
         const header = headers[MCP_NAME_HEADER]
+
         if (typeof name !== "string" || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name) {
           return headerMismatch("Mcp-Name header does not match request parameters")
         }
       }
+
       return { _tag: "Accepted", binding: undefined, protocol: statelessProtocol }
     }
     return selectHttpSession(headers, isInitialize)
@@ -355,15 +383,23 @@ export const make = Effect.fnUntraced(function*(
       } else {
         protocol = registry.protocols[0]
       }
+
+      if (!isMethodAvailable(protocol, request.tag)) {
+        return yield* new McpProtocol.ProtocolError({ code: -32601, message: `Method not found: ${request.tag}` })
+      }
+
       if (protocol.runtime._tag === "Stateful") {
         return { protocol, binding }
       }
+
       if (request.isNotification && request.tag === "notifications/cancelled") {
         return { protocol }
       }
+
       if (statelessDescriptor === undefined) {
         return yield* Effect.die("MCP stateless runtime invariant failed")
       }
+
       if (requestedVersion !== undefined && requestedVersion !== protocol.protocolVersion) {
         return yield* new McpProtocol.ProtocolError(unsupportedProtocolVersion(requestedVersion))
       }
@@ -508,7 +544,11 @@ export const make = Effect.fnUntraced(function*(
     deliveryClientIds: () => stateful?.initializedClientIds() ?? [],
     canDeliver: (clientId, headers, notification, fallback) =>
       stateful?.canDeliver(clientId, headers, notification, fallback) ?? true,
+    setCore: (core) => {
+      installedCore = core
+    },
     installHandlers: Effect.fnUntraced(function*(options) {
+      installedCore = options.core
       const contextMap = new Map<string, unknown>()
       const installationContext: McpProtocol.HandlerInstallationContext = {
         subscribeServerNotifications: options.subscribeServerNotifications,

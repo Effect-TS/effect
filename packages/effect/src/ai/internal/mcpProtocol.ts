@@ -469,6 +469,7 @@ export interface ProtocolAdapter<
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
   readonly serverNotificationRpcs: RpcGroup.RpcGroup<ServerNotificationRpcs>
   readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PublicMcpProtocol.PayloadCodecs
+  readonly isMethodAvailable?: ((core: McpCore.McpCore, method: string) => boolean) | undefined
   readonly handlerRpcs?: RpcGroup.RpcGroup<HandlerRpcs> | undefined
   readonly installHandlers: (
     core: McpCore.McpCore,
@@ -512,6 +513,7 @@ export const make = <
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
   readonly serverNotificationRpcs: RpcGroup.RpcGroup<ServerNotificationRpcs>
+  readonly isMethodAvailable?: ((core: McpCore.McpCore, method: string) => boolean) | undefined
   readonly handlerRpcs?: RpcGroup.RpcGroup<HandlerRpcs> | undefined
   readonly makeHandlers?:
     | ((
