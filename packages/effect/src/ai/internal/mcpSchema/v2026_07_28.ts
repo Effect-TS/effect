@@ -659,8 +659,111 @@ export const CallToolResult = Schema.StructWithRest(
 /**
  * @internal
  */
+export const Task = Schema.Struct({
+  taskId: Schema.String,
+  status: Schema.Literals(["working", "input_required", "completed", "failed", "cancelled"]),
+  statusMessage: optional(Schema.String),
+  createdAt: Schema.String,
+  lastUpdatedAt: Schema.String,
+  ttlMs: Schema.NullOr(Schema.Int),
+  pollIntervalMs: optional(Schema.Int)
+})
+/**
+ * @internal
+ */
+export const CreateTaskResult = Schema.StructWithRest(
+  Schema.Struct({ ...ResultMeta, ...Task.fields, resultType: Schema.Literal("task") }),
+  [Schema.JsonObject]
+)
+/**
+ * @internal
+ */
+export const GetTaskResult = Schema.Union([
+  Schema.StructWithRest(
+    Schema.Struct({
+      ...ResultMeta,
+      ...Task.fields,
+      status: Schema.Literal("working"),
+      resultType: Schema.Literal("complete")
+    }),
+    [Schema.JsonObject]
+  ),
+  Schema.StructWithRest(
+    Schema.Struct({
+      ...ResultMeta,
+      ...Task.fields,
+      status: Schema.Literal("input_required"),
+      inputRequests: InputRequests,
+      resultType: Schema.Literal("complete")
+    }),
+    [Schema.JsonObject]
+  ),
+  Schema.StructWithRest(
+    Schema.Struct({
+      ...ResultMeta,
+      ...Task.fields,
+      status: Schema.Literal("completed"),
+      result: Schema.JsonObject,
+      resultType: Schema.Literal("complete")
+    }),
+    [Schema.JsonObject]
+  ),
+  Schema.StructWithRest(
+    Schema.Struct({
+      ...ResultMeta,
+      ...Task.fields,
+      status: Schema.Literal("failed"),
+      error: McpError,
+      resultType: Schema.Literal("complete")
+    }),
+    [Schema.JsonObject]
+  ),
+  Schema.StructWithRest(
+    Schema.Struct({
+      ...ResultMeta,
+      ...Task.fields,
+      status: Schema.Literal("cancelled"),
+      resultType: Schema.Literal("complete")
+    }),
+    [Schema.JsonObject]
+  )
+])
+/**
+ * @internal
+ */
+export const TaskAcknowledgement = Schema.StructWithRest(
+  Schema.Struct({ ...ResultMeta, resultType: Schema.Literal("complete") }),
+  [Schema.JsonObject]
+)
+/**
+ * @internal
+ */
+export class GetTask extends Rpc.make("tasks/get", {
+  success: GetTaskResult,
+  error: McpError,
+  payload: { ...RequestParams.fields, taskId: Schema.String }
+}) {}
+/**
+ * @internal
+ */
+export class UpdateTask extends Rpc.make("tasks/update", {
+  success: TaskAcknowledgement,
+  error: McpError,
+  payload: { ...RequestParams.fields, taskId: Schema.String, inputResponses: InputResponses }
+}) {}
+/**
+ * @internal
+ */
+export class CancelTask extends Rpc.make("tasks/cancel", {
+  success: TaskAcknowledgement,
+  error: McpError,
+  payload: { ...RequestParams.fields, taskId: Schema.String }
+}) {}
+/**
+ * @internal
+ */
 export class CallTool extends Rpc.make("tools/call", {
-  success: Schema.Union([CallToolResult, InputRequiredResult]),
+  success: Schema.Union([CallToolResult, InputRequiredResult, CreateTaskResult]),
   error: McpError,
   payload: {
     ...InputResponseRequestParams,
@@ -823,7 +926,10 @@ export class ClientRequestRpcs extends RpcGroup.make(
   ReadResource,
   SubscriptionsListen,
   CallTool,
-  ListTools
+  ListTools,
+  GetTask,
+  UpdateTask,
+  CancelTask
 ) {}
 
 /**
