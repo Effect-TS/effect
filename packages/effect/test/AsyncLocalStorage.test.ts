@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, FiberSet, Latch, Pool, Queue, Scope, Semaphore } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, FiberSet, Latch, Pool, Queue, Scope, Semaphore } from "effect"
 import { AsyncLocalStorage } from "node:async_hooks"
 
 // A fiber woken by another fiber must resume in its own async context, not
@@ -235,6 +235,36 @@ describe("AsyncLocalStorage", () => {
           }
         })
         return { promise, settle: (outcome) => outcome === "fulfill" ? callbacks[0](1) : callbacks[1]("boom") }
+      },
+      "Promise whose then getter changes": () => {
+        // The first read returns the built-in `then`, later reads return a
+        // method that saves the callbacks
+        let callbacks: [(n: number) => void, (e: unknown) => void] | undefined
+        let resolve!: (n: number) => void
+        let reject!: (e: unknown) => void
+        const promise = new Promise<number>((res, rej) => {
+          resolve = res
+          reject = rej
+        })
+        let reads = 0
+        // oxlint-disable-next-line unicorn/no-thenable -- the getter under test
+        Object.defineProperty(promise, "then", {
+          get: () =>
+            reads++ === 0 ? Promise.prototype.then : (onFulfilled: any, onRejected: any) => {
+              callbacks = [onFulfilled, onRejected]
+            }
+        })
+        const settle = (outcome: "fulfill" | "reject") => {
+          if (callbacks !== undefined) {
+            if (outcome === "fulfill") callbacks[0](1)
+            else callbacks[1]("boom")
+          } else if (outcome === "fulfill") {
+            resolve(1)
+          } else {
+            reject("boom")
+          }
+        }
+        return { promise, settle }
       }
     }
 
@@ -260,6 +290,71 @@ describe("AsyncLocalStorage", () => {
         }
       }
     }
+
+    // The catcher is part of the fiber's resumption, so it and any async work
+    // it starts must see the fiber's store, even when it throws.
+    describe("Effect.tryPromise catcher", () => {
+      const catcherError = new Error("catcher failed")
+
+      const runCatcher = async (
+        promise: () => PromiseLike<number>,
+        settle: (() => void) | undefined,
+        throws: boolean
+      ) => {
+        let catcherStore: string | undefined
+        let catcherWork: Promise<Array<string>> | undefined
+        const catcher = (cause: unknown) => {
+          catcherStore = current()
+          catcherWork = Promise.all([
+            Promise.resolve().then(current),
+            new Promise<string>((resolve) => setTimeout(() => resolve(current()), 1))
+          ])
+          if (throws) throw catcherError
+          return cause
+        }
+        const fiber = storage.run("waiter", () =>
+          Effect.runFork(Effect.gen(function*() {
+            const exit = yield* Effect.exit(Effect.tryPromise({ try: promise, catch: catcher }))
+            return { exit, after: yield* observe }
+          })))
+        if (settle !== undefined) {
+          assert.isUndefined(fiber.pollUnsafe())
+          storage.run("waker", settle)
+        }
+        const { exit, after } = await Effect.runPromise(Fiber.join(fiber))
+        assert.deepStrictEqual(
+          { catcher: catcherStore, catcherWork: await catcherWork },
+          { catcher: "waiter", catcherWork: ["waiter", "waiter"] }
+        )
+        if (throws) {
+          assert.isTrue(Exit.hasDies(exit))
+        } else {
+          assert.isTrue(Exit.hasFails(exit))
+        }
+        assert.strictEqual(Exit.isFailure(exit) && Cause.squash(exit.cause), throws ? catcherError : "boom")
+        assert.deepStrictEqual(after, expected("waiter"))
+      }
+
+      for (const throws of [false, true]) {
+        const label = throws ? "a throwing catcher" : "the catcher"
+
+        for (const [sourceName, makeSource] of Object.entries(sources)) {
+          it(`${label} runs in the fiber's context when a ${sourceName} rejects`, () => {
+            const source = makeSource()
+            return runCatcher(() => source.promise, () => source.settle("reject"), throws)
+          })
+        }
+
+        it(`${label} runs in the fiber's context when try throws synchronously`, () =>
+          runCatcher(
+            () => {
+              throw "boom"
+            },
+            undefined,
+            throws
+          ))
+      }
+    })
   })
 
   describe("forks", () => {
