@@ -4230,26 +4230,33 @@ export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annota
   )
 }
 
-function copy<A extends AST>(ast: A): Types.Mutable<A> {
+// Copies that update only context or encoding share a body.
+// All other fields describe the body itself, including child contexts.
+const bodyOwners = new WeakMap<AST, AST>()
+
+function copy<A extends AST>(ast: A, changes: Partial<AST>): A {
   // AST copies preserve the prototype and enumerable values, not property descriptors.
-  return Object.assign(Object.create(Object.getPrototypeOf(ast)), ast)
+  const out = Object.assign(Object.create(Object.getPrototypeOf(ast)), ast, changes) as A
+  if (Reflect.ownKeys(changes).every((key) => key === "context" || key === "encoding")) {
+    bodyOwners.set(out, getContextOwner(ast))
+  }
+  return out
 }
 
-const contextOwners = new WeakMap<AST, AST>()
-
 /** @internal */
-export function getContextOwner(ast: AST): AST {
-  return contextOwners.get(ast) ?? ast
+export function getContextOwner<A extends AST>(ast: A): A {
+  const existing = bodyOwners.get(ast)
+  if (existing !== undefined) return existing as A
+  if (ast.encoding === undefined) return ast
+  // A body representative must not expose or retain the node's own codec.
+  const owner = Object.assign(Object.create(Object.getPrototypeOf(ast)), ast, { encoding: undefined }) as A
+  bodyOwners.set(ast, owner)
+  return owner
 }
 
 /** @internal */
 export function replaceEncoding<A extends AST>(ast: A, encoding: Encoding | undefined): A {
-  if (ast.encoding === encoding) {
-    return ast
-  }
-  const out = copy(ast)
-  out.encoding = encoding
-  return out
+  return ast.encoding === encoding ? ast : copy(ast, { encoding })
 }
 
 /** @internal */
@@ -4258,13 +4265,10 @@ export function replaceContext<A extends AST>(ast: A, context: Context | undefin
     return ast
   }
   const owner = getContextOwner(ast)
-  if (owner.context === context) {
-    return owner as A
+  if (owner.context === context && owner.encoding === ast.encoding) {
+    return owner
   }
-  const out = copy(ast)
-  out.context = context
-  contextOwners.set(out as A, owner)
-  return out
+  return copy(ast, { context })
 }
 
 /** @internal */
@@ -4278,9 +4282,7 @@ export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.
     const last = ast.checks[ast.checks.length - 1]
     return replaceChecks(ast, Arr.append(ast.checks.slice(0, -1), last.annotate(annotations)))
   }
-  const out = copy(ast)
-  out.annotations = { ...ast.annotations, ...annotations }
-  return out
+  return copy(ast, { annotations: { ...ast.annotations, ...annotations } })
 }
 
 /** @internal */
@@ -4291,9 +4293,7 @@ export function replaceChecks<A extends AST>(ast: A, checks: Checks | undefined)
   if (ast.checks === checks) {
     return ast
   }
-  const out = copy(ast)
-  out.checks = checks
-  return out
+  return copy(ast, { checks })
 }
 
 /** @internal */
@@ -4595,22 +4595,24 @@ function canPreserveEncodingChecks(ast: AST): boolean {
  * @since 4.0.0
  */
 export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
-  const out: any = ast
-  const type = out.recur?.(toType) ?? out
-  const encodingChecks: Checks | undefined = type.encodingChecks
-  if (encodingChecks) {
-    const checks = canPreserveEncodingChecks(ast)
-      ? encodingChecks
-      : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
-      ? extractStructuralChecks(encodingChecks)
-      : undefined
-    const copyOfType = copy(type)
-    copyOfType.encoding = undefined
-    copyOfType.encodingChecks = undefined
-    copyOfType.checks = combineChecks(type.checks, checks)
-    return copyOfType
+  const owner = getContextOwner(ast)
+  if (owner !== ast) {
+    const type = toType(owner)
+    return type === owner && ast.encoding === undefined ? ast : replaceContext(type, ast.context)
   }
-  return type.encoding ? replaceEncoding(type, undefined) : type
+  const type = ("recur" in ast ? ast.recur(toType) : ast) as A
+  if ("encodingChecks" in type && type.encodingChecks) {
+    const checks = canPreserveEncodingChecks(ast)
+      ? type.encodingChecks
+      : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
+      ? extractStructuralChecks(type.encodingChecks)
+      : undefined
+    return copy(type, {
+      encodingChecks: undefined,
+      checks: combineChecks(type.checks, checks)
+    })
+  }
+  return type
 })
 
 /**
@@ -4682,8 +4684,12 @@ export const flip = memoize((ast: AST): AST => {
   if (ast.encoding) {
     return flipEncoding(ast, ast.encoding)
   }
-  const out: any = ast
-  return out.flip?.(flip) ?? out.recur?.(flip) ?? out
+  const owner = getContextOwner(ast)
+  if (owner !== ast) {
+    const flipped = flip(owner)
+    return flipped === owner ? ast : replaceContext(flipped, ast.context)
+  }
+  return "flip" in ast ? ast.flip(flip) : "recur" in ast ? ast.recur(flip) : ast
 })
 
 /** @internal */
