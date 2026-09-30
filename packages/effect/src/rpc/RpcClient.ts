@@ -732,18 +732,24 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         const requestId = RequestId(message.requestId)
         const entry = entries.get(requestId)
         if (!entry || Option.isNone(entry.schemas.decodeChunk)) return Effect.void
-        return entry.schemas.decodeChunk.value(message.values).pipe(
-          Effect.provideContext(entry.context),
-          Effect.orDie,
-          Effect.matchCauseEffect({
-            onSuccess: (chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk }),
-            onFailure: (cause) =>
-              write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
-                Effect.andThen(() =>
-                  Cause.hasInterrupts(cause) ? Effect.failCause(cause) : Effect.ignore(interruptRequest(requestId))
+        const decodeChunk = entry.schemas.decodeChunk.value
+        return Effect.uninterruptibleMask((restore) =>
+          restore(
+            decodeChunk(message.values).pipe(
+              Effect.provideContext(entry.context),
+              Effect.orDie
+            )
+          ).pipe(
+            Effect.matchCauseEffect({
+              onSuccess: (chunk) => restore(write({ _tag: "Chunk", clientId: 0, requestId, values: chunk })),
+              onFailure: (cause) =>
+                write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
+                  Effect.andThen(() =>
+                    Cause.hasInterrupts(cause) ? Effect.failCause(cause) : Effect.ignore(interruptRequest(requestId))
+                  )
                 )
-              )
-          })
+            })
+          )
         ) as Effect.Effect<void>
       }
       case "Exit": {
