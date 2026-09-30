@@ -1134,9 +1134,10 @@ export { try_ as try }
 const nativePromiseThen = Promise.prototype.then
 
 // Reactions registered through the built-in `then` run in the async context
-// that registered them, which is the suspending fiber's own
-const resumesInContext = (promise: PromiseLike<unknown>): boolean =>
-  promise instanceof Promise && promise.then === nativePromiseThen
+// that registered them, which is the suspending fiber's own. Callers read
+// `then` once and invoke that same function.
+const resumesInContext = (promise: PromiseLike<unknown>, then: unknown): boolean =>
+  promise instanceof Promise && then === nativePromiseThen
 
 /** @internal */
 export const promise = <A>(
@@ -1144,8 +1145,10 @@ export const promise = <A>(
 ): Effect.Effect<A> =>
   callbackOptions<A>(function(resume, signal) {
     const promise = evaluate(signal!)
-    const inContext = resumesInContext(promise)
-    promise.then(
+    const then = promise.then
+    const inContext = resumesInContext(promise, then)
+    then.call(
+      promise,
       (a) => resume(succeed(a), inContext),
       (e) => resume(die(e), inContext)
     )
@@ -1163,22 +1166,26 @@ export const tryPromise = <A, E = Cause.UnknownError>(
     ? ((cause: unknown) => new UnknownError(cause, "An error occurred in Effect.tryPromise"))
     : options.catch
   return callbackOptions<A, E>(function(resume, signal) {
-    const failWithCatch = (cause: unknown, inContext?: boolean) => {
-      try {
-        resume(fail(internalCall(() => catcher(cause)) as E), inContext)
-      } catch (err) {
-        resume(die(err), inContext)
-      }
-    }
+    // The catcher runs once the fiber has resumed, in its own async context
+    const failWithCatch = (cause: unknown) =>
+      suspend(() => {
+        try {
+          return fail(internalCall(() => catcher(cause)) as E)
+        } catch (err) {
+          return die(err)
+        }
+      })
     try {
       const promise = f(signal!)
-      const inContext = resumesInContext(promise)
-      promise.then(
+      const then = promise.then
+      const inContext = resumesInContext(promise, then)
+      then.call(
+        promise,
         (a) => resume(succeed(a), inContext),
-        (e) => failWithCatch(e, inContext)
+        (e) => resume(failWithCatch(e), inContext)
       )
     } catch (err) {
-      failWithCatch(err)
+      resume(failWithCatch(err))
     }
   }, f.length !== 0)
 }
