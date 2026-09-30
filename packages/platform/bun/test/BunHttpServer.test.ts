@@ -412,8 +412,7 @@ describe("BunHttpServer", () => {
     it.effect(`closes a WebSocket with the handler's ${name} code`, () =>
       Effect.gen(function*() {
         const opened = yield* Deferred.make<void>()
-        // Bun's graceful stop can wait indefinitely for a server-initiated close.
-        // Capture this test's server so cleanup can force-stop it after observing the frame.
+        // Force-stop Bun after the close frame; graceful stop can hang here.
         const serve = Bun.serve
         let forceStop: (() => void) | undefined
         Bun.serve = ((options: Parameters<typeof Bun.serve>[0]) => {

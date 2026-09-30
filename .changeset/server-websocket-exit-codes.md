@@ -4,4 +4,4 @@
 "@effect/platform-node": patch
 ---
 
-Server WebSockets now close with code 1000 after success, 1001 after interruption, and 1011 after failure. Explicit close codes set by the handler are preserved. HTTP request scopes now close with the handler's original failure exit, even when response handling or middleware transforms the fiber result.
+Close server WebSockets with 1000 on success, 1001 on interruption, or 1011 on failure, while preserving explicit close codes. HTTP request scopes retain the handler's failure exit through response handling and middleware.

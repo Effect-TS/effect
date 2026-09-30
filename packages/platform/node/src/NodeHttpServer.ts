@@ -516,7 +516,6 @@ export const layerTest: Layer.Layer<
 // Internal
 // -----------------------------------------------------------------------------
 
-// Maps the exit of the scope that owns a server WebSocket to a close code.
 const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
   Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 

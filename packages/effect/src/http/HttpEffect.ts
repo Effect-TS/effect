@@ -32,8 +32,7 @@ import * as preResponseHandler from "./internal/preResponseHandler.ts"
 
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
- * The request scope closes with the original handler failure, even when the
- * response pipeline or middleware handles that failure.
+ * On handler failure, the request scope closes with the original cause.
  *
  * @stability unstable
  * @category combinators
