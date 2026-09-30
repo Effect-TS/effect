@@ -9,6 +9,7 @@ patches:
   - '[{"op":"remove","path":"/components/schemas/BetaUsage/required/9"},{"op":"remove","path":"/components/schemas/BetaUsage/required/5"},{"op":"remove","path":"/components/schemas/BetaMessageDeltaUsage/required/3"}]'
 header: |
   /**
+   * @stability unstable
    * @since 1.0.0
    */
 excludeAnnotations:

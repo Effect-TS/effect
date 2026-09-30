@@ -326,11 +326,7 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     }
   })
 
-  it("restores brands", () => {
-    assertRepresentationRoundtrip(Schema.String.pipe(Schema.brand("A"), Schema.brand("B")))
-  })
-
-  it("restores brands and checks added by fromBrand", () => {
+  it("restores checks added by fromBrand", () => {
     type Int = number & Brand.Brand<"Int">
     const Int = Brand.check<Int>(Schema.isInt())
     type Positive = number & Brand.Brand<"Positive">

@@ -28,6 +28,7 @@ import * as Tls from "node:tls"
 const isDeno = "Deno" in globalThis
 
 /**
+ * @stability unstable
  * @category re-exports
  * @since 4.0.0
  */

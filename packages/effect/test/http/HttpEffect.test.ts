@@ -1,6 +1,7 @@
 import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, Option, References, Scope, Stream, Tracer } from "effect"
+import { Cause, Context, Effect, Exit, Option, References, Scope, Stream, Tracer } from "effect"
+import { identity } from "effect/Function"
 import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/http"
 import { appendPreResponseHandlerUnsafe, requestPreResponseHandlers } from "effect/http/internal/preResponseHandler"
 import * as Layer from "effect/Layer"
@@ -26,6 +27,42 @@ describe("HttpEffect", () => {
       const after = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
       strictEqual(during === before, false)
       strictEqual(after, before)
+    }).pipe(
+      Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+      Effect.provideService(References.TracerEnabled, false)
+    )
+  })
+
+  it.effect("propagates a handler failure through middleware to request and forked scopes", () => {
+    const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+    const error = new Error("handler failed")
+    let requestExit: Exit.Exit<unknown, unknown> | undefined
+    let childExit: Exit.Exit<unknown, unknown> | undefined
+    return Effect.gen(function*() {
+      yield* HttpEffect.toHandled(
+        Effect.gen(function*() {
+          const scope = yield* Effect.scope
+          const child = yield* Scope.fork(scope)
+          yield* Scope.addFinalizerExit(child, (exit) =>
+            Effect.sync(() => {
+              childExit = exit
+            }))
+          yield* Scope.addFinalizerExit(scope, (exit) =>
+            Effect.sync(() => {
+              requestExit = exit
+            }))
+          return yield* Effect.fail(error)
+        }),
+        () => Effect.void,
+        identity
+      )
+      for (const exit of [requestExit, childExit]) {
+        strictEqual(exit !== undefined && Exit.isFailure(exit), true)
+        if (exit && Exit.isFailure(exit)) {
+          strictEqual(exit.cause.reasons.length, 1)
+          strictEqual(Cause.squash(exit.cause), error)
+        }
+      }
     }).pipe(
       Effect.provideService(HttpServerRequest.HttpServerRequest, request),
       Effect.provideService(References.TracerEnabled, false)

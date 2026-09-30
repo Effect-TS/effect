@@ -1431,7 +1431,10 @@ export const family = typeof WeakRef === "undefined" || typeof FinalizationRegis
   ): (arg: Arg) => T => {
     const atoms = MutableHashMap.empty<Arg, WeakRef<T>>()
     const registry = new FinalizationRegistry<Arg>((arg) => {
-      MutableHashMap.remove(atoms, arg)
+      const entry = MutableHashMap.get(atoms, arg)
+      if (entry._tag === "Some" && entry.value.deref() === undefined) {
+        MutableHashMap.remove(atoms, arg)
+      }
     })
     return function(arg) {
       const atomEntry = MutableHashMap.get(atoms, arg).pipe(
