@@ -841,6 +841,33 @@ describe("Effect", () => {
         assertExitDefect(exit!, defect)
       }))
 
+    it.effect("preserves a sibling cleanup defect when the mapper throws", () =>
+      Effect.gen(function*() {
+        const mapperDefect = new Error("mapper defect")
+        const cleanupDefect = new Error("cleanup defect")
+        let cleanedUp = false
+        const exit = yield* Effect.forEach([0, 1], (i) => {
+          if (i === 0) {
+            return Effect.callback<void>(() =>
+              Effect.sync(() => {
+                cleanedUp = true
+                throw cleanupDefect
+              })
+            )
+          }
+          throw mapperDefect
+        }, { concurrency: 2 }).pipe(Effect.exit)
+
+        assert.isTrue(cleanedUp)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.deepStrictEqual(
+            exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect),
+            [mapperDefect, cleanupDefect]
+          )
+        }
+      }))
+
     it.effect("interrupts started workers when observer-driven refill throws", () =>
       Effect.gen(function*() {
         const release = yield* Deferred.make<void>()
