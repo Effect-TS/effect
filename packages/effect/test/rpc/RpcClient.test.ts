@@ -1,5 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Schedule, Schema, Stream } from "effect"
+import {
+  Cause,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Option,
+  Queue,
+  Schedule,
+  Schema,
+  SchemaGetter,
+  Stream
+} from "effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
@@ -20,6 +33,18 @@ const ChunkGroup = RpcGroup.make(
   Rpc.make("Bad", { success: RpcSchema.Stream(Schema.Number, Schema.Never) }),
   Rpc.make("Good", { success: RpcSchema.Stream(Schema.String, Schema.Never) }),
   Rpc.make("Unary", { success: Schema.String })
+)
+
+const InterruptGroup = RpcGroup.make(
+  Rpc.make("InterruptedDecode", {
+    success: RpcSchema.Stream(
+      Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformOptionalEffect(() => Effect.interrupt),
+        encode: SchemaGetter.passthrough()
+      })),
+      Schema.Never
+    )
+  })
 )
 
 const makeChunkProtocol = Effect.gen(function*() {
@@ -96,6 +121,11 @@ describe("RpcClient", () => {
       assert.strictEqual(goodRequest._tag, "Request")
       if (goodRequest._tag !== "Request") return
 
+      const unary = yield* client.Unary().pipe(Effect.forkChild)
+      const unaryRequest = yield* Queue.take(sent)
+      assert.strictEqual(unaryRequest._tag, "Request")
+      if (unaryRequest._tag !== "Request") return
+
       // A decode defect must not escape into the shared protocol receive loop.
       const receiveExit = yield* Effect.exit(handle({
         _tag: "Chunk",
@@ -108,10 +138,6 @@ describe("RpcClient", () => {
       assert(Exit.isSuccess(receiveExit), "chunk decode failure escaped the shared receive handler")
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId: badRequest.id })
 
-      const unary = yield* client.Unary().pipe(Effect.forkChild)
-      const unaryRequest = yield* Queue.take(sent)
-      assert.strictEqual(unaryRequest._tag, "Request")
-      if (unaryRequest._tag !== "Request") return
       yield* handle({ _tag: "Chunk", requestId: goodRequest.id, values: ["alive"] })
       yield* handle({ _tag: "Exit", requestId: goodRequest.id, exit: { _tag: "Success", value: null } })
       yield* handle({ _tag: "Exit", requestId: unaryRequest.id, exit: { _tag: "Success", value: "ok" } })
@@ -146,6 +172,30 @@ describe("RpcClient", () => {
       const exit = yield* Fiber.await(reader)
       assert(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId: request.id })
+    }))
+
+  it.effect("propagates interruption from chunk decoding through the receive handler", () =>
+    Effect.gen(function*() {
+      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+      const protocol = RpcClient.Protocol.of({
+        codecFor: RpcSerialization.json.codecFor,
+        supportsAck: false,
+        supportsTransferables: false,
+        run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+        send: (_clientId, message) => Queue.offer(sent, message).pipe(Effect.asVoid)
+      })
+      const client = yield* RpcClient.make(InterruptGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const handle = yield* Deferred.await(received)
+      const reader = yield* client.InterruptedDecode().pipe(Stream.runDrain, Effect.forkChild)
+      const request = yield* Queue.take(sent)
+      assert.strictEqual(request._tag, "Request")
+      if (request._tag !== "Request") return
+
+      const receiveExit = yield* Effect.exit(handle({ _tag: "Chunk", requestId: request.id, values: ["value"] }))
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      assert(Option.isNone(yield* Queue.poll(sent)), "decoder interruption must not cancel the request")
+      yield* Fiber.interrupt(reader)
     }))
 
   for (const consumer of ["queue", "stream"] as const) {
