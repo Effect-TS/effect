@@ -15,8 +15,36 @@ import {
   ScopedCache
 } from "effect"
 import { TestClock } from "effect/testing"
+import { collectGarbage } from "./utils/gc.ts"
 
 describe("ScopedCache", () => {
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "does not retain prior equal object keys on cache hits",
+    () =>
+      Effect.gen(function*() {
+        const references: Array<WeakRef<object>> = []
+        const control = new WeakRef({})
+        let lookups = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 16,
+          lookup: (_key: { readonly region: string }) => Effect.sync(() => ++lookups)
+        })
+        for (let i = 0; i < 10; i++) {
+          const key = { region: "us-east-1" }
+          references.push(new WeakRef(key))
+          assert.strictEqual(yield* Effect.scoped(ScopedCache.get(cache, key)), 1)
+        }
+        assert.strictEqual(lookups, 1)
+        assert.strictEqual(yield* ScopedCache.size(cache), 1)
+        // The last key may still be held by the cache.
+        references.pop()
+        yield* collectGarbage
+        assert.isUndefined(control.deref())
+        for (const reference of references) assert.isUndefined(reference.deref())
+        assert.strictEqual(yield* ScopedCache.size(cache), 1)
+      })
+  )
+
   describe("constructors", () => {
     describe("make", () => {
       it.effect("creates cache with fixed capacity", () =>
