@@ -246,9 +246,9 @@ describe("Redis transactions", () => {
       const connector: typeof base = (endpoint) =>
         base(endpoint).pipe(Effect.map((transport) => ({
           ...transport,
-          write: (bytes: Uint8Array) =>
+          write: (bytes: string | Uint8Array) =>
             Effect.sync(() => {
-              sent.push(bytes.slice())
+              sent.push(typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes.slice())
             }).pipe(Effect.andThen(transport.write(bytes)))
         })))
       const client = yield* Client.make(connector, { topology: { _tag: "Cluster", seeds: fixture.seeds } })

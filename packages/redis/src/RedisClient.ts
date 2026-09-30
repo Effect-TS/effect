@@ -15,6 +15,7 @@ import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Cluster from "./internal/cluster.ts"
+import * as ConnectionInternal from "./internal/connection.ts"
 import { prepareSnapshots } from "./internal/encoding.ts"
 import * as Sentinel from "./internal/sentinel.ts"
 import type * as TopologyInternal from "./internal/topology.ts"
@@ -387,9 +388,43 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     })
 
   const run = <A>(command: Command.RedisCommand<A>): Effect.Effect<A, RedisError> =>
-    execute(command.arguments, command.routing).pipe(
-      Effect.flatMap((reply) => Effect.fromResult(command.decode(reply)))
-    )
+    Effect.callback((resume) => {
+      if (!closed && topologyConfig._tag === "Standalone" && command.routing?.node === undefined) {
+        const cached = connections.get(endpointKey(topologyConfig.endpoint))
+        const submit = cached?.connection.isOpen() ? ConnectionInternal.get(cached.connection) : undefined
+        if (submit !== undefined && !requiresReservation(command.arguments)) {
+          try {
+            const decode = command.decode
+            // Admission encodes arguments synchronously within this callback,
+            // before any yield. Decode on completion without routing/raw Effect
+            // wrappers; decoder defects belong to the caller, not the reader.
+            const cancel = submit(command.arguments, (result) => {
+              if (result._tag === "Failure") return resume(Effect.fail(result.failure))
+              try {
+                resume(Effect.fromResult(decode(result.success)))
+              } catch (cause) {
+                resume(Effect.die(cause))
+              }
+            })
+            return Effect.sync(cancel)
+          } catch (cause) {
+            return resume(Effect.fail(
+              cause instanceof RedisError ? cause : new RedisError({
+                reason: "Protocol",
+                message: "Cannot encode Redis command",
+                cause,
+                outcome: "NotSent"
+              })
+            ))
+          }
+        }
+      }
+      resume(
+        execute(command.arguments, command.routing).pipe(
+          Effect.flatMap((reply) => Effect.fromResult(command.decode(reply)))
+        )
+      )
+    })
   const reserve = (affinity: Affinity = {}): Effect.Effect<Connection.RedisConnection, RedisError, Scope.Scope> =>
     Effect.gen(function*() {
       if (closed) {

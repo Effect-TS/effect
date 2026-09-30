@@ -11,7 +11,8 @@ import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
-import { encodeCommand, encodeCommands } from "./internal/encoding.ts"
+import * as ConnectionInternal from "./internal/connection.ts"
+import { encodeFrame, encodeFrames } from "./internal/encoding.ts"
 import { makeParser } from "./internal/protocol.ts"
 import * as Replies from "./internal/replies.ts"
 import type * as TransportInternal from "./internal/transport.ts"
@@ -33,11 +34,14 @@ export type Endpoint = TransportInternal.Endpoint
  *
  * **Details**
  *
- * Writes copy their input by default. With `ownership: "transfer"`, callers
- * promise never to mutate the supplied bytes, and transports may retain them
- * without copying. Transports must not modify those bytes in either mode.
- * Reads transfer a stable byte range: transports must never mutate or reuse
- * returned bytes. Producers that reuse their buffers must copy before returning.
+ * Strings are written as UTF-8. Byte writes copy their input by default. With
+ * `ownership: "transfer"`, callers promise never to mutate the supplied bytes,
+ * and transports may retain them without copying. Transports must not modify
+ * those bytes in either mode.
+ * `run` delivers stable byte ranges synchronously to one scoped consumer.
+ * Transports must never mutate or reuse delivered bytes. Producers that reuse
+ * their buffers must copy before delivery. Interruption unregisters the consumer;
+ * callback exceptions fail `run` and close the transport.
  *
  * @stability unstable
  * @category models
@@ -108,7 +112,7 @@ export interface RedisConnection {
 }
 
 interface Pending {
-  bytes: Uint8Array | undefined
+  bytes: string | Uint8Array | undefined
   readonly size: number
   state: "Queued" | "Sent" | "Done"
   readonly ack: string | undefined
@@ -277,7 +281,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
 
   const prepare = (
     args: ReadonlyArray<Protocol.Argument>,
-    bytes: Uint8Array,
+    frame: ReturnType<typeof encodeFrame>,
     onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
   ) => {
     const command = nameOf(args[0]).toUpperCase()
@@ -300,8 +304,8 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     }
     const result = onResult === undefined ? Deferred.makeUnsafe<Protocol.Reply, RedisError>() : undefined
     const entry: Pending = {
-      bytes,
-      size: bytes.length,
+      bytes: frame.bytes,
+      size: frame.size,
       state: "Queued",
       ack: subscriptionAcks.get(command),
       ackChannel: subscriptionAcks.has(command)
@@ -336,7 +340,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     if (dead !== undefined) {
       throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
     }
-    const item = prepare(args, encodeCommand(args), onResult)
+    const item = prepare(args, encodeFrame(args), onResult)
     if (pending.size >= limit || queuedBytes + item.entry.size > byteLimit || outgoing.length >= limit) {
       throw new RedisError({ reason: "Capacity", message: "Redis command queue capacity exceeded", outcome: "NotSent" })
     }
@@ -355,7 +359,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     }
     // Admission is atomic: local validation or capacity failures never submit
     // only part of a batch, particularly a MULTI/EXEC transaction.
-    const frames = encodeCommands(commands)
+    const frames = encodeFrames(commands)
     const prepared = commands.map((args, index) =>
       prepare(args, frames[index], onResult === undefined ? undefined : (result) => onResult(result, index))
     )
@@ -495,18 +499,33 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         if (active.length === 0) return Effect.void
         const first = active[0].bytes!
         let size = 0
-        let contiguous = true
+        let contiguous = typeof first !== "string"
+        let allStrings = typeof first === "string"
         for (const entry of active) {
           const bytes = entry.bytes!
-          if (bytes.buffer !== first.buffer || bytes.byteOffset !== first.byteOffset + size) contiguous = false
+          if (typeof bytes === "string") contiguous = false
+          else {
+            allStrings = false
+            if (
+              typeof first === "string" || bytes.buffer !== first.buffer || bytes.byteOffset !== first.byteOffset + size
+            ) {
+              contiguous = false
+            }
+          }
           size += entry.size
         }
-        const bytes = contiguous
+        const bytes = allStrings
+          ? active.map((entry) => entry.bytes as string).join("")
+          : contiguous && typeof first !== "string"
           ? active.length === 1 ? first : new Uint8Array(first.buffer, first.byteOffset, size)
           : new Uint8Array(size)
         let offset = 0
         for (const entry of active) {
-          if (!contiguous) bytes.set(entry.bytes!, offset)
+          if (!allStrings && !contiguous && typeof bytes !== "string") {
+            const frame = entry.bytes!
+            if (typeof frame === "string") encoder.encodeInto(frame, bytes.subarray(offset, offset + entry.size))
+            else bytes.set(frame, offset)
+          }
           offset += entry.size
           entry.bytes = undefined
           queuedBytes -= entry.size
@@ -574,17 +593,15 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     )
   }
   yield* Effect.forkScoped(
-    Effect.forever(transport.read.pipe(Effect.flatMap((bytes) =>
-      Effect.try({
-        try: () => {
-          for (const reply of parser.push(bytes)) receive(reply)
-        },
-        catch: (cause) =>
-          cause instanceof RedisError
-            ? cause
-            : new RedisError({ reason: "Protocol", message: "Invalid Redis response", cause })
-      })
-    ))).pipe(Effect.catchCause((cause) => {
+    transport.run((bytes) => {
+      try {
+        for (const reply of parser.push(bytes)) receive(reply)
+      } catch (cause) {
+        throw cause instanceof RedisError
+          ? cause
+          : new RedisError({ reason: "Protocol", message: "Invalid Redis response", cause })
+      }
+    }).pipe(Effect.catchCause((cause) => {
       const error = Cause.squash(cause)
       if (error instanceof RedisError && (error.reason === "Connection" || error.reason === "Closed")) {
         try {
@@ -614,6 +631,12 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         listeners.delete(listener)
       }
     }
+  }
+  if (timeout === undefined) {
+    ConnectionInternal.register(connection, (args, onResult) => {
+      const { entry } = submitOneUnsafe(args, onResult)
+      return () => cancel(entry)
+    })
   }
   yield* Effect.gen(function*() {
     const password = config.password === undefined ? undefined : Effect.isEffect(config.password)

@@ -4,6 +4,11 @@ import type { Argument } from "../RedisProtocol.ts"
 const encoder = new TextEncoder()
 const preparedFrames = new WeakMap<ReadonlyArray<Argument>, Uint8Array>()
 
+export interface Frame {
+  readonly bytes: string | Uint8Array
+  readonly size: number
+}
+
 const measure = (args: ReadonlyArray<Argument>) => {
   const lengths: Array<number> = []
   let size = String(args.length).length + 3
@@ -27,6 +32,32 @@ const measure = (args: ReadonlyArray<Argument>) => {
     size += String(length).length + length + 5
   }
   return { lengths, size }
+}
+
+const sameShape = (left: ReadonlyArray<Argument>, right: ReadonlyArray<Argument>): boolean => {
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index++) {
+    const argument = left[index]
+    const previous = right[index]
+    if (typeof argument === "string") {
+      if (argument !== previous) return false
+    } else if (typeof previous === "string" || argument.length !== previous.length) return false
+  }
+  return true
+}
+
+// Repeated batch shapes share immutable length metadata. Binary bytes are
+// still copied separately for each command, even when their lengths match.
+const measureCommands = (commands: ReadonlyArray<ReadonlyArray<Argument>>) => {
+  const measured: Array<ReturnType<typeof measure>> = []
+  for (let index = 0; index < commands.length; index++) {
+    measured.push(
+      index > 0 && sameShape(commands[index], commands[index - 1])
+        ? measured[index - 1]
+        : measure(commands[index])
+    )
+  }
+  return measured
 }
 
 const write = (
@@ -70,11 +101,28 @@ export const encodeCommand = (args: ReadonlyArray<Argument>): Uint8Array => {
   return bytes
 }
 
+// Transports can encode immutable text directly into their socket write. Keep
+// byte counts separate from JS string length for capacity and Unicode headers.
+export const encodeFrame = (args: ReadonlyArray<Argument>): Frame => {
+  const prepared = preparedFrames.get(args)
+  if (prepared !== undefined) return { bytes: prepared, size: prepared.length }
+  for (const arg of args) {
+    if (typeof arg !== "string") {
+      const bytes = encodeCommand(args)
+      return { bytes, size: bytes.length }
+    }
+  }
+  const { lengths, size } = measure(args)
+  let bytes = `*${args.length}\r\n`
+  for (let index = 0; index < args.length; index++) bytes += `$${lengths[index]}\r\n${args[index]}\r\n`
+  return { bytes, size }
+}
+
 // These arrays belong to one client invocation and never escape to the caller.
 // Copy binary payloads into their wire positions and retain stable argument
 // views for routing and retries, avoiding a separate payload snapshot buffer.
 export const prepareSnapshots = (commands: ReadonlyArray<Array<Argument>>): void => {
-  const measured = commands.map(measure)
+  const measured = measureCommands(commands)
   const bytes = new Uint8Array(measured.reduce((total, command) => total + command.size, 0))
   let offset = 0
   for (let index = 0; index < commands.length; index++) {
@@ -106,7 +154,7 @@ export const encodeCommands = (commands: ReadonlyArray<ReadonlyArray<Argument>>)
     frames[0] = encodeCommand(commands[0])
     return frames
   }
-  const measured = commands.map(measure)
+  const measured = measureCommands(commands)
   const bytes = new Uint8Array(measured.reduce((total, command) => total + command.size, 0))
   let offset = 0
   for (let index = 0; index < commands.length; index++) {
@@ -114,6 +162,29 @@ export const encodeCommands = (commands: ReadonlyArray<ReadonlyArray<Argument>>)
     write(commands[index], lengths, bytes, offset)
     frames[index] = bytes.subarray(offset, offset + size)
     offset += size
+  }
+  return frames
+}
+
+export const encodeFrames = (commands: ReadonlyArray<ReadonlyArray<Argument>>): Array<Frame> => {
+  for (const args of commands) {
+    for (const arg of args) {
+      if (typeof arg !== "string") {
+        // Binary batches keep their contiguous owned allocation, including
+        // cached snapshots and any text commands surrounding them.
+        return encodeCommands(commands).map((bytes) => ({ bytes, size: bytes.length }))
+      }
+    }
+  }
+  const frames: Array<Frame> = []
+  for (let index = 0; index < commands.length; index++) {
+    const previous = frames[index - 1]
+    frames.push(
+      previous !== undefined && typeof previous.bytes === "string" &&
+        sameShape(commands[index], commands[index - 1])
+        ? previous
+        : encodeFrame(commands[index])
+    )
   }
   return frames
 }

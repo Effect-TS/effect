@@ -1,4 +1,5 @@
 import { makeConnector } from "@effect/platform-node/internal/redisTransport"
+import * as ConnectionInternal from "@effect/redis/internal/connection"
 import * as Connection from "@effect/redis/RedisConnection"
 import type { RedisError } from "@effect/redis/RedisError"
 import * as Protocol from "@effect/redis/RedisProtocol"
@@ -20,6 +21,38 @@ const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
 }
 
 describe("Redis physical session", () => {
+  it.effect("captures binary arguments when a command is admitted", () =>
+    Effect.gen(function*() {
+      const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
+      const requests = Protocol.makeParser()
+      let captured: Protocol.Reply | undefined
+      const connector: Connection.Connector = () =>
+        Effect.succeed({
+          run: (onBytes) => Effect.forever(Queue.take(replies).pipe(Effect.map(onBytes))),
+          close: Effect.void,
+          write: (bytes) =>
+            Effect.sync(() => {
+              captured = requests.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes)[0]
+              Queue.offerUnsafe(replies, Buffer.from("+OK\r\n"))
+            })
+        })
+      const connection = yield* Connection.make(connector, { host: "unused", port: 6379 })
+      const submit = ConnectionInternal.get(connection)
+      assert.isDefined(submit)
+      if (submit === undefined) return assert.fail("Expected concrete command submission")
+      const completed = yield* Deferred.make<Result.Result<Protocol.Reply, RedisError>>()
+      const bytes = new Uint8Array([0, 128, 255])
+      submit(["SET", "binary", bytes], (result) => {
+        Deferred.doneUnsafe(completed, Effect.succeed(result))
+      })
+      bytes.fill(99)
+      assert.strictEqual((yield* Deferred.await(completed))._tag, "Success")
+      assert.strictEqual(captured?._tag, "Array")
+      if (captured?._tag === "Array") {
+        assert.deepStrictEqual(captured.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
+      }
+    }))
+
   it.effect("keeps repeated command and pipeline effects independent with immediate replies", () =>
     Effect.gen(function*() {
       const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
@@ -29,12 +62,14 @@ describe("Redis physical session", () => {
       const connection = yield* Connection.make(
         () =>
           Effect.succeed({
-            read: Queue.take(replies),
+            run: (onBytes) => Effect.forever(Queue.take(replies).pipe(Effect.map(onBytes))),
             close: Effect.void,
             write: (bytes) =>
               Effect.sync(() => {
                 writes++
-                const response = requests.push(bytes).map(() => `:${++counter}\r\n`).join("")
+                const response = requests.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes).map(() =>
+                  `:${++counter}\r\n`
+                ).join("")
                 Queue.offerUnsafe(replies, Buffer.from(response))
               })
           }),
@@ -67,7 +102,7 @@ describe("Redis physical session", () => {
       const connection = yield* Connection.make(
         () =>
           Effect.succeed({
-            read: Queue.take(replies),
+            run: (onBytes) => Effect.forever(Queue.take(replies).pipe(Effect.map(onBytes))),
             close: Effect.void,
             write: () =>
               Effect.sync(() => {
@@ -111,7 +146,7 @@ describe("Redis physical session", () => {
       const connection = yield* Connection.make(
         () =>
           Effect.succeed({
-            read: Queue.take(replies),
+            run: (onBytes) => Effect.forever(Queue.take(replies).pipe(Effect.map(onBytes))),
             close: Effect.void,
             write: () =>
               Effect.sync(() => {
@@ -122,6 +157,7 @@ describe("Redis physical session", () => {
         { host: "unused", port: 6379 },
         { commandTimeout: "1 second" }
       )
+      assert.isUndefined(ConnectionInternal.get(connection))
       connection.onPush(() => {
         Deferred.doneUnsafe(received, Effect.void)
       })
@@ -173,7 +209,7 @@ describe("Redis physical session", () => {
           ...transport,
           write: (bytes) =>
             Effect.sync(() => {
-              writes.push(bytes.slice())
+              writes.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes.slice())
             }).pipe(Effect.andThen(transport.write(bytes)))
         })))
       const connection = yield* Connection.make(connector, fixture)
@@ -204,11 +240,11 @@ describe("Redis physical session", () => {
       const connection = yield* Connection.make(
         () =>
           Effect.succeed({
-            read: Queue.take(replies),
+            run: (onBytes) => Effect.forever(Queue.take(replies).pipe(Effect.map(onBytes))),
             close: Effect.void,
             write: (bytes) =>
               Effect.gen(function*() {
-                const decoded = parser.push(bytes)
+                const decoded = parser.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes)
                 requests.push(...decoded)
                 writes++
                 Queue.offerUnsafe(replies, Buffer.from(decoded.map(() => "+OK\r\n").join("")))
@@ -227,10 +263,12 @@ describe("Redis physical session", () => {
         { arguments: ["SET", "binary", bytes] },
         { arguments: ["ECHO", "🥹\uD800"] }
       ]).pipe(Effect.forkChild)
+      const text = yield* connection.execute(["ECHO", "🥹\uD800"]).pipe(Effect.forkChild)
       yield* Effect.yieldNow
       bytes.fill(99)
       yield* Deferred.succeed(release, undefined)
       const results = yield* Fiber.join(pipeline)
+      yield* Fiber.join(text)
       assert.strictEqual(writes, 2)
       assert.isTrue(results.every((result) => result._tag === "Success"))
       const set = requests[1]
@@ -239,6 +277,7 @@ describe("Redis physical session", () => {
         assert.deepStrictEqual(set.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
       }
       assert.deepStrictEqual(Protocol.toValue(requests[2]), ["ECHO", "🥹�"])
+      assert.deepStrictEqual(Protocol.toValue(requests[3]), ["ECHO", "🥹�"])
     }))
 
   it.effect("preserves binary replies when a custom stream reuses its input buffer", () =>
@@ -301,7 +340,8 @@ describe("Redis physical session", () => {
       for (
         const commands of [
           [{ arguments: ["SET", "key", "value"] }, { arguments: [] }],
-          [{ arguments: ["SET", "key", "value".repeat(50)] }]
+          [{ arguments: ["SET", "key", "value".repeat(50)] }],
+          [{ arguments: ["ECHO", "🥹".repeat(20)] }]
         ]
       ) {
         const error = failure(yield* Effect.result(connection.pipeline(commands)))

@@ -1,9 +1,10 @@
 import { makeConnector } from "@effect/platform-node/internal/redisTransport"
 import * as NodeRedis from "@effect/platform-node/NodeRedis"
+import type { Transport } from "@effect/redis/RedisConnection"
 import type { RedisError } from "@effect/redis/RedisError"
 import { startScriptedRedis } from "@effect/redis/test/utils/redis-scripted"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scope } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Layer, Queue, Redacted, Scope } from "effect"
 import type * as Duration from "effect/Duration"
 import * as Redis from "effect/persistence/Redis"
 import type * as Result from "effect/Result"
@@ -125,6 +126,18 @@ class HeldStream extends Duplex {
   }
 }
 
+const collect = Effect.fnUntraced(function*(transport: Transport) {
+  const chunks = yield* Queue.unbounded<Uint8Array, RedisError>()
+  const running = yield* transport.run((bytes) => {
+    Queue.offerUnsafe(chunks, bytes)
+  }).pipe(
+    Effect.catch((error) => Queue.fail(chunks, error)),
+    Effect.ensuring(Queue.shutdown(chunks)),
+    Effect.forkScoped
+  )
+  return { ...transport, read: Queue.take(chunks), running }
+})
+
 describe("Redis transport", () => {
   it.effect("rejects invalid connection timeouts before opening a transport", () =>
     Effect.gen(function*() {
@@ -172,7 +185,7 @@ describe("Redis transport", () => {
           servername: "localhost",
           lookup
         }
-      })
+      }).pipe(Effect.flatMap(collect))
       yield* transport.write(new Uint8Array([1]))
       assert.deepStrictEqual(yield* transport.read, new Uint8Array([1]))
       assert.strictEqual(lookedUp, "redis.invalid")
@@ -182,7 +195,7 @@ describe("Redis transport", () => {
     Effect.gen(function*() {
       const server = yield* makeServer(Net.createServer(echo))
       const scope = yield* Scope.make()
-      const transport = yield* makeConnector()(address(server)).pipe(Scope.provide(scope))
+      const transport = yield* makeConnector()(address(server)).pipe(Effect.flatMap(collect), Scope.provide(scope))
       const bytes = new Uint8Array([0, 13, 10, 255, 128])
       yield* transport.write(bytes)
       assert.deepStrictEqual(yield* transport.read, bytes)
@@ -196,7 +209,7 @@ describe("Redis transport", () => {
   it.live("keeps native socket chunks stable across later reads", () =>
     Effect.gen(function*() {
       const server = yield* makeServer(Net.createServer(echo))
-      const transport = yield* makeConnector()(address(server))
+      const transport = yield* makeConnector()(address(server)).pipe(Effect.flatMap(collect))
       const bytes = new Uint8Array([0, 128, 255])
       yield* transport.write(bytes)
       const first = yield* transport.read
@@ -214,9 +227,9 @@ describe("Redis transport", () => {
       )
       const path = Path.join(directory, "redis.sock")
       yield* makeServer(Net.createServer(echo), path)
-      const transport = yield* makeConnector()({ ...endpoint, path })
-      yield* transport.write(new TextEncoder().encode("unix"))
-      assert.strictEqual(new TextDecoder().decode(yield* transport.read), "unix")
+      const transport = yield* makeConnector()({ ...endpoint, path }).pipe(Effect.flatMap(collect))
+      yield* transport.write("unix🥹\uD800")
+      assert.strictEqual(new TextDecoder().decode(yield* transport.read), "unix🥹�")
     }))
 
   it.live("validates TLS certificates and supports a trusted custom CA", () =>
@@ -225,7 +238,7 @@ describe("Redis transport", () => {
       server.on("tlsClientError", () => {})
       const rejected = yield* Effect.exit(makeConnector()({ ...address(server), tls: true }))
       assert.isTrue(Exit.isFailure(rejected))
-      const transport = yield* makeConnector()({ ...address(server), tls: { ca: cert } })
+      const transport = yield* makeConnector()({ ...address(server), tls: { ca: cert } }).pipe(Effect.flatMap(collect))
       yield* transport.write(new Uint8Array([1, 2, 3]))
       assert.deepStrictEqual(yield* transport.read, new Uint8Array([1, 2, 3]))
       const wrongName = yield* Effect.result(
@@ -334,36 +347,45 @@ describe("Redis transport", () => {
       assert.deepStrictEqual([...source], [9, 1, 2, 9])
     }))
 
-  it.live("copies read buffers and removes interrupted read waiters", () =>
+  it.live("copies custom input and unregisters interrupted consumers", () =>
     Effect.gen(function*() {
       const stream = new HeldStream()
       const transport = yield* makeConnector({ stream: () => stream })(endpoint)
-      const cancelled = yield* transport.read.pipe(Effect.forkChild)
+      const cancelled = yield* transport.run(() => assert.fail("Interrupted consumer received data")).pipe(
+        Effect.forkChild
+      )
       yield* Effect.yieldNow
       yield* Fiber.interrupt(cancelled)
+      assert.strictEqual(stream.readableFlowing, false)
       const bytes = Buffer.from([1, 2])
-      stream.push(bytes)
-      const received = yield* transport.read
+      stream.emit("data", bytes)
       bytes[0] = 99
-      assert.deepStrictEqual([...received], [1, 2])
+      const received = yield* Deferred.make<Uint8Array>()
+      yield* transport.run((bytes) => {
+        Deferred.doneUnsafe(received, Effect.succeed(bytes))
+      }).pipe(Effect.forkChild)
+      assert.deepStrictEqual([...yield* Deferred.await(received)], [1, 2])
     }))
 
-  it.live("pauses after buffering an unread chunk and resumes subsequent reads in order", () =>
+  it.live("delivers buffered and later chunks in order to one persistent consumer", () =>
     Effect.gen(function*() {
       const stream = new HeldStream()
       const transport = yield* makeConnector({ stream: () => stream })(endpoint)
-      const first = yield* transport.read.pipe(Effect.forkChild)
-      yield* Effect.yieldNow
-      stream.push(Buffer.from([1]))
-      assert.deepStrictEqual([...yield* Fiber.join(first)], [1])
-      const second = Buffer.from([2])
-      stream.push(second)
-      yield* Effect.yieldNow
+      const first = Buffer.from([1])
+      stream.emit("data", first)
       assert.strictEqual(stream.readableFlowing, false)
-      second[0] = 99
+      first[0] = 99
+      const chunks = yield* Queue.unbounded<Uint8Array>()
+      yield* transport.run((bytes) => {
+        Queue.offerUnsafe(chunks, bytes)
+      }).pipe(Effect.forkChild)
+      assert.deepStrictEqual([...yield* Queue.take(chunks)], [1])
+      const concurrent = failure(yield* Effect.result(transport.run(() => {})))
+      assert.strictEqual(concurrent.outcome, "NotSent")
+      stream.push(Buffer.from([2]))
       stream.push(Buffer.from([3]))
-      assert.deepStrictEqual([...yield* transport.read], [2])
-      assert.deepStrictEqual([...yield* transport.read], [3])
+      assert.deepStrictEqual([...yield* Queue.take(chunks)], [2])
+      assert.deepStrictEqual([...yield* Queue.take(chunks)], [3])
     }))
 
   it.live("delivers buffered data before peer EOF while rejecting further writes", () =>
@@ -375,8 +397,10 @@ describe("Redis transport", () => {
       stream.emit("data", Buffer.from([1, 2]))
       stream.emit("end")
       assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.write(new Uint8Array([3])))))
-      assert.deepStrictEqual([...yield* transport.read], [1, 2])
-      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.read)))
+      const chunks: Array<Uint8Array> = []
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.run((bytes) => chunks.push(bytes)))))
+      assert.deepStrictEqual(chunks.map((bytes) => [...bytes]), [[1, 2]])
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.run(() => assert.fail("Unexpected data")))))
     }))
 
   it.live("discards buffered data on explicit close after peer EOF", () =>
@@ -386,7 +410,31 @@ describe("Redis transport", () => {
       stream.emit("data", Buffer.from([1, 2]))
       stream.emit("end")
       yield* transport.close
-      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.read)))
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.run(() => assert.fail("Unexpected data")))))
+    }))
+
+  it.live("fails and closes the transport when a byte consumer throws", () =>
+    Effect.gen(function*() {
+      const cause = new Error("Consumer failed")
+      for (const buffered of [false, true]) {
+        const stream = new HeldStream()
+        const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+        if (buffered) {
+          stream.emit("data", Buffer.from([1]))
+          stream.emit("end")
+        }
+        const running = yield* transport.run(() => {
+          throw cause
+        }).pipe(Effect.result, Effect.forkChild)
+        if (!buffered) {
+          yield* Effect.yieldNow
+          stream.push(Buffer.from([1]))
+        }
+        const error = failure(yield* Fiber.join(running))
+        assert.strictEqual(error.cause, cause)
+        yield* transport.close
+        assert.isTrue(stream.destroyed)
+      }
     }))
 
   it.live("destroys a socket when interrupted during TLS negotiation", () =>

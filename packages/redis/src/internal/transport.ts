@@ -12,11 +12,11 @@ export interface Endpoint {
 
 export interface Transport {
   readonly write: (
-    bytes: Uint8Array,
+    bytes: string | Uint8Array,
     options?: { readonly ownership?: "copy" | "transfer" | undefined } | undefined
   ) => Effect.Effect<void, RedisError>
-  /** Returned byte ranges remain stable forever; producers must not reuse or mutate them. */
-  readonly read: Effect.Effect<Uint8Array, RedisError>
+  /** Runs one consumer until interrupted or failed, delivering stable byte ranges synchronously. */
+  readonly run: (onBytes: (bytes: Uint8Array) => void) => Effect.Effect<void, RedisError>
   readonly close: Effect.Effect<void>
 }
 

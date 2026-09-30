@@ -69,9 +69,12 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
   let failure: RedisError | undefined
   let opened = supplied !== undefined
   let closed = socket.closed
-  const readers = new Set<(effect: Effect.Effect<Uint8Array, RedisError>) => void>()
+  let consumer: {
+    readonly onBytes: (bytes: Uint8Array) => void
+    readonly resume: (effect: Effect.Effect<void, RedisError>) => void
+  } | undefined
   interface Writer {
-    bytes: Buffer | undefined
+    bytes: string | Buffer | undefined
     readonly resume: (effect: Effect.Effect<void, RedisError>) => void
   }
   const writers = new Set<Writer>()
@@ -84,7 +87,9 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
   const fail = (error: RedisError) => {
     if (failure !== undefined) return
     failure = error
-    for (const resume of readers) resume(Effect.fail(error))
+    const reading = consumer
+    consumer = undefined
+    reading?.resume(Effect.fail(error))
     const active = activeWriter
     activeWriter = undefined
     active?.resume(Effect.fail(new RedisError({ ...error, outcome: "Unknown" })))
@@ -94,7 +99,6 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
       writer.resume(Effect.fail(new RedisError({ ...error, outcome: "NotSent" })))
     }
     for (const resume of openings) resume(Effect.fail(error))
-    readers.clear()
     openings.clear()
     socket.destroy()
   }
@@ -108,6 +112,21 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
       })
     )
   const onEnd = () => fail(new RedisError({ reason: "Connection", message: "Redis socket ended", outcome: "Unknown" }))
+  const deliver = (bytes: Uint8Array) => {
+    const reading = consumer!
+    try {
+      reading.onBytes(bytes)
+    } catch (cause) {
+      const error = cause instanceof RedisError
+        ? cause
+        : new RedisError({ reason: "Connection", message: "Redis byte consumer failed", cause, outcome: "Unknown" })
+      if (failure === undefined) fail(error)
+      else {
+        consumer = undefined
+        reading.resume(Effect.fail(error))
+      }
+    }
+  }
   const onData = (bytes: Uint8Array) => {
     if (failure !== undefined) return
     // Native sockets transfer stable Buffer chunks to their data listeners.
@@ -115,13 +134,11 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
     const owned = supplied === undefined
       ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
       : Uint8Array.from(bytes)
-    const resume = readers.values().next().value
-    if (resume === undefined) {
+    if (consumer === undefined) {
       buffered = owned
       socket.pause()
     } else {
-      readers.delete(resume)
-      resume(Effect.succeed(owned))
+      deliver(owned)
     }
   }
   const pump = () => {
@@ -186,28 +203,45 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
   socket.on(readyEvent, onOpen)
 
   const transport: Transport = {
-    read: Effect.callback<Uint8Array, RedisError>((resume) => {
-      if (buffered !== undefined) {
-        const bytes = buffered
-        buffered = undefined
-        if (failure === undefined && socket.isPaused()) socket.resume()
-        return resume(Effect.succeed(bytes))
-      }
-      if (failure !== undefined) return resume(Effect.fail(failure))
-      readers.add(resume)
-      if (socket.isPaused()) socket.resume()
-      return Effect.sync(() => {
-        readers.delete(resume)
-      })
-    }),
+    run: (onBytes) =>
+      Effect.callback<void, RedisError>((resume) => {
+        if (consumer !== undefined) {
+          return resume(Effect.fail(
+            new RedisError({
+              reason: "Connection",
+              message: "Redis transport already has a consumer",
+              outcome: "NotSent"
+            })
+          ))
+        }
+        const reading = { onBytes, resume }
+        consumer = reading
+        if (buffered !== undefined) {
+          const bytes = buffered
+          buffered = undefined
+          deliver(bytes)
+        }
+        if (failure !== undefined) {
+          if (consumer === reading) {
+            consumer = undefined
+            resume(Effect.fail(failure))
+          }
+        } else if (socket.isPaused()) socket.resume()
+        return Effect.sync(() => {
+          if (consumer === reading) {
+            consumer = undefined
+            socket.pause()
+          }
+        })
+      }),
     write: (bytes, options) =>
       Effect.callback((resume) => {
         if (failure !== undefined) return resume(Effect.fail(new RedisError({ ...failure, outcome: "NotSent" })))
         // Snapshot ordinary input at admission, including writes waiting behind
         // backpressure. Transferred frames are already private immutable bytes.
-        let snapshot: Buffer
+        let snapshot: string | Buffer
         try {
-          snapshot = options?.ownership === "transfer"
+          snapshot = typeof bytes === "string" ? bytes : options?.ownership === "transfer"
             ? Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
             : Buffer.from(bytes)
         } catch (cause) {
