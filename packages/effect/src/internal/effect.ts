@@ -1632,13 +1632,15 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
   Effect.Error<Eff>,
   Effect.Services<Eff>
 > =>
-  withFiber((parent) =>
-    callback((resume) => {
+  withFiber((parent) => {
+    const fibers = new Set<Fiber.Fiber<any, any>>()
+    // Read fibers on exit to include losers forked after the race settles.
+    onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
+    return callback((resume) => {
       const effects = Arr.fromIterable(all)
       const len = effects.length
       let doneCount = 0
       let done = false
-      const fibers = new Set<Fiber.Fiber<any, any>>()
       const failures: Array<Cause.Reason<any>> = []
       const onExit = (exit: Exit.Exit<any, any>, fiber: Fiber.Fiber<any, any>, i: number) => {
         doneCount++
@@ -1651,11 +1653,7 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
         }
         const isWinner = !done
         done = true
-        resume(
-          fibers.size === 0
-            ? exit
-            : flatMap(uninterruptible(fiberInterruptAll(fibers)), () => exit)
-        )
+        resume(exit)
         if (isWinner && options?.onWinner) {
           options.onWinner({ fiber, index: i, parentFiber: parent })
         }
@@ -1670,10 +1668,8 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
         })
         if (done) break
       }
-
-      return fiberInterruptAll(fibers)
     })
-  )
+  })
 
 /** @internal */
 export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
@@ -1690,19 +1686,11 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
   Effect.Error<Eff>,
   Effect.Services<Eff>
 > =>
-  withFiber((parent) =>
-    callback((resume) => {
+  withFiber((parent) => {
+    const fibers = new Set<Fiber.Fiber<any, any>>()
+    onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
+    return callback((resume) => {
       let done = false
-      const fibers = new Set<Fiber.Fiber<any, any>>()
-      const onExit = (exit: Exit.Exit<any, any>) => {
-        done = true
-        resume(
-          fibers.size === 0
-            ? exit
-            : flatMap(uninterruptible(fiberInterruptAll(fibers)), () => exit)
-        )
-      }
-
       let i = 0
       for (const effect of all) {
         if (done) break
@@ -1712,16 +1700,15 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
           const isWinner = !done
-          onExit(exit)
+          done = true
+          resume(exit)
           if (isWinner && options?.onWinner) {
             options.onWinner({ fiber, index, parentFiber: parent })
           }
         })
       }
-
-      return fiberInterruptAll(fibers)
     })
-  )
+  })
 
 /** @internal */
 export const race: {
