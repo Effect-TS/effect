@@ -34,7 +34,10 @@ const InterruptGroup = RpcGroup.make(
   })
 )
 
-const makeChunkProtocol = <R extends Rpc.Any>(group: RpcGroup.RpcGroup<R>) =>
+const makeChunkProtocol = <R extends Rpc.Any>(
+  group: RpcGroup.RpcGroup<R>,
+  beforeInterrupt?: Effect.Effect<void>
+) =>
   Effect.gen(function*() {
     const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
     const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
@@ -43,7 +46,10 @@ const makeChunkProtocol = <R extends Rpc.Any>(group: RpcGroup.RpcGroup<R>) =>
       supportsAck: false,
       supportsTransferables: false,
       run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
-      send: (_clientId, message) => Queue.offer(sent, message).pipe(Effect.asVoid)
+      send: (_clientId, message) =>
+        (message._tag === "Interrupt" && beforeInterrupt
+          ? beforeInterrupt.pipe(Effect.andThen(Queue.offer(sent, message)))
+          : Queue.offer(sent, message)).pipe(Effect.asVoid)
     })
     const client = yield* RpcClient.make(group).pipe(Effect.provideService(RpcClient.Protocol, protocol))
     const handle = yield* Deferred.await(received)
@@ -142,6 +148,69 @@ describe("RpcClient", () => {
       const readerExit = yield* Fiber.await(reader)
       assert(Exit.isFailure(readerExit) && Cause.hasInterruptsOnly(readerExit.cause))
       assert.strictEqual(yield* Queue.size(sent), 0)
+    }))
+
+  it.effect("external interruption during chunk decoding ends the handler and consumer", () =>
+    Effect.gen(function*() {
+      const decoding = yield* Deferred.make<void>()
+      const continueDecode = yield* Deferred.make<never>()
+      const group = RpcGroup.make(Rpc.make("WaitingDecode", {
+        success: RpcSchema.Stream(
+          Schema.String.pipe(Schema.decode({
+            decode: SchemaGetter.transformOptionalEffect(() =>
+              Deferred.succeed(decoding, void 0).pipe(Effect.andThen(Deferred.await(continueDecode)))
+            ),
+            encode: SchemaGetter.passthrough()
+          })),
+          Schema.Never
+        )
+      }))
+      const { client, handle, sent } = yield* makeChunkProtocol(group)
+      const reader = yield* client.WaitingDecode().pipe(Stream.runDrain, Effect.forkChild)
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["value"] }).pipe(Effect.forkChild)
+      yield* Deferred.await(decoding)
+
+      yield* Fiber.interrupt(receiver)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      const waiting = yield* Fiber.await(reader).pipe(Effect.timeout("1 second"), Effect.forkChild)
+      yield* TestClock.adjust("1 second")
+      const observed = yield* Effect.exit(Fiber.join(waiting))
+      yield* Fiber.interrupt(reader)
+      assert(Exit.isSuccess(observed), "consumer did not end before test cleanup")
+      const readerExit = observed.value
+      assert(Exit.isFailure(readerExit) && Cause.hasInterruptsOnly(readerExit.cause))
+    }))
+
+  it.effect("external interruption during chunk failure cleanup does not lose the server Interrupt", () =>
+    Effect.gen(function*() {
+      const sendingInterrupt = yield* Deferred.make<void>()
+      const releaseInterrupt = yield* Deferred.make<void>()
+      const { client, handle, sent } = yield* makeChunkProtocol(
+        ChunkGroup,
+        Deferred.succeed(sendingInterrupt, void 0).pipe(Effect.andThen(Deferred.await(releaseInterrupt)))
+      )
+      const reader = yield* client.Bad().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      const receiver = yield* handle({
+        _tag: "Chunk",
+        requestId,
+        values: ["not a number"]
+      }).pipe(Effect.forkChild)
+      yield* Deferred.await(sendingInterrupt)
+      const readerExit = yield* Fiber.join(reader)
+
+      // Request cancellation before opening the send gate, without waiting for cleanup to finish.
+      yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+      yield* Deferred.succeed(releaseInterrupt, void 0)
+      const receiveExit = yield* Fiber.await(receiver)
+      const deliveredCount = yield* Queue.size(sent)
+      const delivered = deliveredCount > 0 ? yield* Queue.take(sent) : undefined
+      assert(Exit.isFailure(readerExit))
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      assert.strictEqual(deliveredCount, 1)
+      assert.deepStrictEqual(delivered, { _tag: "Interrupt", requestId })
     }))
 
   for (const consumer of ["queue", "stream"] as const) {
