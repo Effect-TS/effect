@@ -249,9 +249,11 @@ describe("Queue", () => {
     const queue = Effect.runSync(Queue.unbounded<number>())
     Object.defineProperty(queue, "dispatcher", { value: scheduler.makeDispatcher() })
     const taker = Effect.runFork(Queue.takeN(queue, 2), { scheduler })
-    assert.strictEqual(queue.state._tag === "Done" ? 0 : queue.state.takers.size, 1)
+    const state = queue.state
+    if (state._tag === "Done") throw new Error("queue closed before taker registered")
+    assert.strictEqual(state.takers.size, 1)
     let releases = 0
-    const takers = queue.state.takers
+    const takers = state.takers
     const originalDelete = takers.delete.bind(takers)
     takers.delete = (taker) => {
       if (++releases > 100) throw new Error("partial batch repeatedly woke its taker")
