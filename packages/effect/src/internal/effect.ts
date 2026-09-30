@@ -504,24 +504,6 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-interface AsyncContext {
-  runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
-}
-
-// On hosts with `node:async_hooks` (Node.js, Bun, Deno) a fiber captures its
-// async context when it suspends and resumes inside it. Like `await`, a fiber
-// woken from another fiber's stack then keeps its own `AsyncLocalStorage`
-// store instead of inheriting the waker's.
-const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
-  try {
-    return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
-  } catch {
-    return undefined
-  }
-})()
-
-const captureAsyncContext = (): AsyncContext | undefined =>
-  AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
 
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
@@ -565,7 +547,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  declare _asyncContext: AsyncContext | undefined
+  // Captured by the scheduler when the fiber suspends, so a fiber woken from
+  // another stack resumes in the async context it suspended in
+  declare _asyncContext: Scheduler.AsyncContext | undefined
 
   // set in setContext
   declare context: Context.Context<never>
@@ -629,7 +613,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
-      return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      return asyncContext.run(this.evaluate, this, effect)
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
@@ -637,7 +621,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect)
     if (exit === Yield) {
-      this._asyncContext = captureAsyncContext()
+      this._asyncContext = this.cache.scheduler.captureContext?.()
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -5561,7 +5545,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // start in the context the child was forked in, not the one the parent's
     // dispatcher was armed in
-    child._asyncContext = captureAsyncContext()
+    child._asyncContext = parentRuntime.cache.scheduler.captureContext?.()
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   if (!daemon && !child._exit) {
