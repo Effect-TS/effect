@@ -5,7 +5,7 @@
 ## Installation
 
 ```sh
-npm install effect@rc @effect/atom-vue@rc
+npm install effect @effect/atom-vue
 ```
 
 ## Documentation

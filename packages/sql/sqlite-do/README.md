@@ -5,7 +5,7 @@ An Effect SQL client for the SQLite storage in [Cloudflare Durable Objects](http
 ## Installation
 
 ```sh
-npm install effect@rc @effect/sql-sqlite-do@rc
+npm install effect @effect/sql-sqlite-do
 ```
 
 ## Documentation

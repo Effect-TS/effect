@@ -139,6 +139,7 @@ export const layer = <
  * account CA certificate when it is available and falling back to the default
  * dispatcher otherwise.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

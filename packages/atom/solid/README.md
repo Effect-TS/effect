@@ -5,7 +5,7 @@
 ## Installation
 
 ```sh
-npm install effect@rc @effect/atom-solid@rc
+npm install effect @effect/atom-solid
 ```
 
 ## Documentation

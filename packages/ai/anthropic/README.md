@@ -5,7 +5,7 @@ An [Anthropic](https://www.anthropic.com) provider for the Effect AI modules. In
 ## Installation
 
 ```sh
-npm install effect@rc @effect/ai-anthropic@rc
+npm install effect @effect/ai-anthropic
 ```
 
 ## Documentation

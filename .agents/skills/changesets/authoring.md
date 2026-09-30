@@ -26,12 +26,16 @@ because they share the fixed release group in `.changeset/config.json`.
 
 Choose the bump from current release policy:
 
-- On a stable line, use `patch` for compatible fixes, `minor` for compatible
-  additions, and `major` for breaks.
-- In `.changeset/pre.json` `rc` mode, follow the current convention of recording
-  v4 release-candidate changes, including breaking cleanups, as `patch` unless a
-  maintainer requests another level.
-- Ask when release mode or intent is ambiguous.
+- Use `patch` for compatible fixes, `minor` for compatible additions, and
+  `major` for breaks.
+- A break confined to APIs tagged `@stability unstable` is `minor`. A break
+  confined to APIs tagged `@stability experimental` is `patch`. APIs without a
+  stability tag follow strict semver.
+- Use `major` only when a maintainer has approved a major release.
+- The release queue retargets PRs with `minor` changesets to `v4/next-minor`
+  and PRs with `major` changesets to `v4/next-major`. Choose the level the
+  change requires, not the branch you want it to land on.
+- Ask when release intent is ambiguous.
 
 Write for consumers. Use a `### Breaking changes` section when several breaks
 need separate scanning. Include before/after examples only when they materially

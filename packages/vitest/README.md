@@ -7,7 +7,7 @@ Helpers for testing Effect-based code with [Vitest](https://vitest.dev). Provide
 Install Vitest 5 (`>=5.0.0 <6.0.0`) with the package as a dev dependency:
 
 ```sh
-npm install -D vitest@^5 @effect/vitest@rc
+npm install -D vitest@^5 @effect/vitest
 ```
 
 Vitest 5 supports Node.js `^22.12.0 || ^24.0.0 || >=26.0.0` and Vite 6.4 or later within majors 6, 7, and 8.

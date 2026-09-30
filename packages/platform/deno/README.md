@@ -5,7 +5,7 @@
 ## Installation
 
 ```sh
-npm install effect@rc @effect/platform-deno@rc
+npm install effect @effect/platform-deno
 ```
 
 ## Documentation

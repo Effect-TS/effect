@@ -6,6 +6,7 @@
  * or streaming chat completion results back into Effect AI response content and
  * metadata.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
@@ -111,6 +112,7 @@ type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknow
  *
  * @see {@link withConfigOverride} for scoping language model request overrides
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -127,6 +129,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for file prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -145,6 +148,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for reasoning prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -169,6 +173,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for assistant tool-call prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -191,6 +196,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for tool-result prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -213,6 +219,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for text prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -241,6 +248,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to a complete text response part.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -273,6 +281,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed text part starts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -291,6 +300,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed text part ends.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -313,6 +323,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to a complete reasoning response part.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -335,6 +346,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed reasoning part starts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -357,6 +369,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted for a streamed reasoning delta.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -375,6 +388,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed reasoning part ends.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -397,6 +411,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to tool-call response parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -415,6 +430,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to document source citations.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -471,6 +487,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to URL source citations.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -497,6 +514,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to finish response parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -528,6 +546,7 @@ declare module "effect/ai/Response" {
  * @see {@link layer} for creating a `LanguageModel.LanguageModel` layer directly
  * @see {@link make} for constructing the language model service effectfully
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -566,6 +585,7 @@ export const model = (
  * @see {@link layer} for providing the service as a `Layer`
  * @see {@link model} for creating a model descriptor for `AiModel.provide`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -675,6 +695,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  * @see {@link make} for constructing the language model service effectfully
  * @see {@link model} for creating an AI model descriptor
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -699,6 +720,7 @@ export const layer = (options: {
  *
  * @see {@link Config} for the configuration shape
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */

@@ -5,7 +5,7 @@
 ## Installation
 
 ```sh
-npm install effect@rc @effect/platform-node@rc
+npm install effect @effect/platform-node
 ```
 
 ## Documentation
