@@ -9,7 +9,8 @@ coverage; they do not define the general client's capabilities.
 Status: implementation and local validation complete in the separate
 `@effect/redis` package. The real-server matrix targets
 Redis 7.2.6 and 8.10.2. RESP2 is the default and RESP3 is opt-in. The persistence
-adapter supports standalone and Sentinel and explicitly rejects Cluster work.
+adapter supports standalone, Cluster, and Sentinel. Cluster uses per-identity
+hash tags for atomic multi-key operations.
 
 ## Current implementation and migration
 
@@ -99,10 +100,11 @@ Reject known cross-slot operations before submission. Transactions and
 scripts/functions use declared key affinity. `MOVED` updates routing; `ASK`
 does not permanently change ownership. `ASKING` and its redirected command
 must execute together on the same exclusive physical connection. Cluster
-pipelines execute each slot's commands sequentially, including redirect
-recovery, while different slot groups run concurrently. This preserves
-same-slot order at the cost of same-slot pipeline throughput. Results retain
-caller order; there is no global execution order across nodes.
+pipelines batch commands per destination node without awaiting individual
+replies. Node batches and redirect recovery progress independently. Uniform
+redirects are retried as ordered batches, with ASKING paired with each command.
+Results retain caller order; mixed successful and redirected commands cannot
+provide a global execution order across nodes without replaying successes.
 
 Script availability is server-local. Callers handling `NOSCRIPT` must load and
 retry on the actual execution node using a reservation. The generic client
@@ -193,16 +195,24 @@ assignability, rejection, or other compiler contracts.
 
 ## Persistence adapter compatibility
 
-The existing persistence adapters are not automatically Cluster-safe.
-Arbitrary-key MGET/DEL, multi-key Lua operations without shared hash tags, and
-node-local KEYS require an explicit policy. Key-format changes or splitting
-atomic scripts require a separate migration design. Until that policy is
-implemented and tested, do not advertise those adapters as Cluster-compatible.
-This does not relax the generic client's first-release Cluster requirement.
+Cluster persistence uses stable hash tags per cache namespace, queue, and rate
+limiter identity. Related keys and queue locks share one slot; unrelated
+identities can distribute across nodes. Standalone and Sentinel retain their
+existing layouts. Moving existing data to Cluster requires migrating keys to
+the tagged layout. Queue lock renewal batches preserve the existing standalone
+behavior and group by queue in Cluster.
+
+Persistence Redis services always provide scan, send, subscribe, and eval, with
+explicit boolean Cluster state. Redis.make requires scanning and Lua hashing
+implementations. Node, Deno, and Bun adapters supply these operations explicitly;
+the native Cluster layer scans all primary nodes. Reply decoding is validated
+and errors remain in the persistence error channel. Only configuration and
+event-dependent data fields remain optional.
 
 Decode the general client's replies into the existing adapter's expected
-strings, numbers, arrays, and nulls. Its current keyless SCRIPT LOAD and routed
-EVALSHA sequence needs execution-node affinity if used with Cluster. Test cold
+strings, numbers, arrays, and nulls. Cluster computes Lua SHA1 digests locally;
+EVALSHA cache misses use EVAL on the execution node. Only actual NOSCRIPT
+responses trigger fallback, not Lua errors containing the word. Test cold
 script caches on multiple nodes and after Sentinel promotion.
 
 ## Validation and release gates
@@ -277,6 +287,11 @@ binary argument/routing snapshots, client-owned subscription termination,
 binary acknowledgement correlation, RESP numeric grammar, transaction control
 preflight and attribute decoding, typed timeout/reconnect validation, and a
 bounded initial PING with immediate transport cleanup on acquisition failure.
+The follow-up audit removed sequential pipeline/transaction submission, added
+atomic batch admission and coalesced writes, independent node acquisition and
+redirect recovery, single batch completion signaling, and faster RESP encoding,
+ASCII header parsing, and CRC16 routing. Topology engines use tagged contracts
+with required topology-specific hooks.
 
 Tests are consolidated by public module: six Redis unit suites and three Redis
 integration suites, plus NodeRedis unit and integration suites. Cluster and
@@ -284,8 +299,11 @@ Sentinel scenarios live in RedisClient suites; subscription and transaction
 scenarios live beside their respective modules. Fixtures are shared helpers,
 not standalone suites, and duplicate sharded-subscription coverage was removed.
 
-- The mandatory manifest runner passed all 11 suites and 178 tests, with no
+- The mandatory manifest runner passed all 11 suites and 238 tests, with no
   skips, on both Redis 7.2.6 and 8.10.2 using local server binaries.
+- The existing core Redis suite passed its nine tests. A real Redis 7.2.6
+  smoke check passed on Bun 1.3.13 after making constructor scan/hash operations
+  mandatory. Deno is unavailable, so Deno runtime checks could not run.
 - Root type checking, public JSDoc validation, and targeted type tests passed;
   the type tests cover TypeScript 5.9.3 and 6.0.3.
 - Root build and affected-package rebuilds passed. Release declaration checks
@@ -301,11 +319,15 @@ not standalone suites, and duplicate sharded-subscription coverage was removed.
   peer warning or unrelated dependency resolution change was introduced.
 - NodeRedis migration and operational defaults are documented in
   `packages/platform/node/REDIS.md`; one consolidated changeset covers both
-  published packages.
+  published packages, including the core persistence adapter changes.
 - The new CI job runs the same mandatory gate using digest-pinned Redis 7.2.6
   and 8.10.2 images. Local actionlint validation passed with existing custom
   runner labels excluded. Docker is unavailable in this environment, so the
   Docker fixture backend and GitHub-hosted execution remain unverified locally.
-- No comparative performance benchmark was run; no performance equivalence to
-  node-redis is claimed. Cluster pipelines preserve same-slot order by running
-  those commands sequentially through redirects.
+- Pipeline throughput is checked structurally by withholding responses until
+  complete node batches, ASKING/command pairs, and MULTI/EXEC batches arrive.
+  Physical sessions atomically admit and coalesce batches, and unrelated
+  nodes do not wait for another node's acquisition or redirect recovery.
+- An isolated five-round paired comparison against node-redis is recorded in
+  native-redis-throughput.md. Remaining throughput differences are explicit;
+  the result does not establish parity or a release performance guarantee.

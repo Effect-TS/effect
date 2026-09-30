@@ -153,6 +153,87 @@ describe("RedisClient", () => {
         assert.strictEqual(fixture.connections.length, 2)
       }))
 
+    it.live("keeps healthy nodes available while sharing a pending acquisition for another node", () =>
+      Effect.gen(function*() {
+        const healthy = yield* server((request) => request.connection.send("+PONG\r\n"))
+        const cold = yield* server((request) => request.connection.send("+PONG\r\n"))
+        const acquiring = barrier<void>()
+        const release = barrier<void>()
+        const base = makeConnector()
+        let acquisitions = 0
+        const connector: Connector = (endpoint) =>
+          Effect.gen(function*() {
+            if (endpoint.port === cold.port) {
+              acquisitions++
+              acquiring.resolve()
+              yield* Effect.promise(() => release.promise)
+            }
+            return yield* base(endpoint)
+          })
+        const client = yield* Client.make(connector, { topology: { _tag: "Standalone", endpoint: healthy } })
+        const pending = yield* Effect.forEach([1, 2], () => client.execute(["PING"], { node: cold, keyIndexes: [] }), {
+          concurrency: "unbounded"
+        }).pipe(Effect.forkChild)
+        yield* Effect.promise(() => acquiring.promise)
+        assert.strictEqual(Protocol.toValue(yield* client.execute(["PING"]).pipe(Effect.timeout("1 second"))), "PONG")
+        assert.strictEqual(acquisitions, 1)
+        release.resolve()
+        assert.deepStrictEqual((yield* Fiber.join(pending)).map(Protocol.toValue), ["PONG", "PONG"])
+        assert.strictEqual(cold.connections.length, 1)
+      }))
+
+    it.live("batches standalone commands and snapshots binary arguments before node acquisition", () =>
+      Effect.gen(function*() {
+        const source = yield* server((request) =>
+          request.connection.send(args(request)[0] === "PING" ? "+PONG\r\n" : bulk("independent"))
+        )
+        const requests: Array<Request> = []
+        const submitted = barrier<void>()
+        const target = yield* server((request) => {
+          requests.push(request)
+          if (requests.length === 2) submitted.resolve()
+        })
+        const acquiring = barrier<void>()
+        const release = barrier<void>()
+        const base = makeConnector()
+        const connector: Connector = (endpoint) =>
+          Effect.gen(function*() {
+            if (endpoint.port === target.port) {
+              acquiring.resolve()
+              yield* Effect.promise(() => release.promise)
+            }
+            return yield* base(endpoint)
+          })
+        const client = yield* Client.make(connector, { topology: { _tag: "Standalone", endpoint: source } })
+        const key = Buffer.from("bar")
+        const value = Buffer.from("new")
+        const route = { node: { host: target.host, port: target.port }, keyIndexes: [1] }
+        const pipeline = yield* client.pipeline([
+          Command.make(["SET", key, value], Command.text, route),
+          Command.make(["GET", key], Command.text, route),
+          Command.get("foo"),
+          Command.make(["MULTI"], Command.text)
+        ]).pipe(Effect.forkChild)
+        yield* Effect.promise(() => acquiring.promise)
+        key.set(Buffer.from("baz"))
+        value.set(Buffer.from("old"))
+        route.node.port = source.port
+        route.keyIndexes[0] = 100
+        release.resolve()
+        yield* Effect.promise(() => submitted.promise).pipe(Effect.timeout("1 second"))
+        assert.deepStrictEqual(requests.map(args), [["SET", "bar", "new"], ["GET", "bar"]])
+        requests[0].connection.send(Buffer.concat([Buffer.from("+OK\r\n"), bulk("new")]))
+        const results = yield* Fiber.join(pipeline)
+        assert.deepStrictEqual(
+          results.slice(0, 3).map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? result.success : undefined
+          }),
+          ["OK", "new", "independent"]
+        )
+        assert.strictEqual(failure(results[3]).outcome, "NotSent")
+      }))
+
     it.live("allows stream keys and group operands named BLOCK on shared connections", () =>
       Effect.gen(function*() {
         const requests: Array<ReadonlyArray<string>> = []
@@ -311,56 +392,140 @@ describe("RedisClient", () => {
         assert.notStrictEqual(ping[0], askingRequest.connection.number)
       }))
 
-    it.live("preserves same-slot pipeline order through ASK while other slots progress", () =>
+    it.live("submits a whole same-node pipeline before any command replies", () =>
       Effect.gen(function*() {
-        let value = "old"
-        const target = yield* server((request) => {
-          const values = args(request)
-          if (values[0] === "SET") value = values[2]
-          request.connection.send(values[0] === "GET" ? bulk(value) : "+OK\r\n")
+        const requests: Array<Request> = []
+        const submitted = barrier<void>()
+        const fixture = yield* server((request) => {
+          if (discovery(request, fixture)) return
+          requests.push(request)
+          if (requests.length === 3) submitted.resolve()
         })
-        const unrelated = barrier<void>()
-        const sourceRequests: Array<ReadonlyArray<string>> = []
-        const source = yield* server((request) => {
-          if (discovery(request, source)) return
-          const values = args(request)
-          sourceRequests.push(values)
-          if (values[1] === "foo") {
-            request.connection.send(bulk("independent"))
-            unrelated.resolve()
-          } else request.connection.send(`-ASK 5061 ${target.host}:${target.port}\r\n`)
-        })
-        const acquiring = barrier<void>()
-        const release = barrier<void>()
-        const base = makeConnector()
-        let acquisitions = 0
-        const connector: typeof base = (endpoint) =>
-          Effect.gen(function*() {
-            if (endpoint.port === target.port && acquisitions++ === 0) {
-              acquiring.resolve()
-              yield* Effect.promise(() => release.promise)
-            }
-            return yield* base(endpoint)
-          })
-        const client = yield* Client.make(connector, { topology: { _tag: "Cluster", seeds: [source] } })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [fixture] } })
         const pipeline = yield* client.pipeline([
           Command.set("bar", "new"),
           Command.get("bar"),
           Command.get("foo")
         ]).pipe(Effect.forkChild)
-        yield* Effect.promise(() => acquiring.promise)
-        yield* Effect.promise(() => unrelated.promise)
-        // A reply on the source connection observes all preceding submissions.
-        yield* client.execute(["PING"], { node: source, keyIndexes: [] })
-        assert.deepStrictEqual(sourceRequests, [["SET", "bar", "new"], ["GET", "foo"]])
-        release.resolve()
+        yield* Effect.promise(() => submitted.promise).pipe(Effect.timeout("1 second"))
+        assert.deepStrictEqual(requests.map(args), [["SET", "bar", "new"], ["GET", "bar"], ["GET", "foo"]])
+        requests[0].connection.send(Buffer.concat([Buffer.from("+OK\r\n"), bulk("new"), bulk("independent")]))
+        assert.deepStrictEqual(
+          (yield* Fiber.join(pipeline)).map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? result.success : undefined
+          }),
+          ["OK", "new", "independent"]
+        )
+      }))
+
+    it.live("batches ASKING-command pairs in order on one exclusive redirect session", () =>
+      Effect.gen(function*() {
+        const targetRequests: Array<Request> = []
+        const submitted = barrier<void>()
+        const target = yield* server((request) => {
+          targetRequests.push(request)
+          if (targetRequests.length === 4) submitted.resolve()
+        })
+        const sourceRequests: Array<Request> = []
+        const source = yield* server((request) => {
+          if (discovery(request, source)) return
+          sourceRequests.push(request)
+          if (sourceRequests.length === 3) {
+            const redirect = "-ASK 5061 " + target.host + ":" + target.port + "\r\n"
+            request.connection.send(Buffer.concat([Buffer.from(redirect + redirect), bulk("independent")]))
+          }
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const pipeline = yield* client.pipeline([
+          Command.set("bar", "new"),
+          Command.get("bar"),
+          Command.get("foo")
+        ]).pipe(Effect.forkChild)
+        yield* Effect.promise(() => submitted.promise).pipe(Effect.timeout("1 second"))
+        assert.deepStrictEqual(sourceRequests.map(args), [["SET", "bar", "new"], ["GET", "bar"], ["GET", "foo"]])
+        assert.deepStrictEqual(targetRequests.map(args), [["ASKING"], ["SET", "bar", "new"], ["ASKING"], [
+          "GET",
+          "bar"
+        ]])
+        assert.strictEqual(new Set(targetRequests.map((request) => request.connection.number)).size, 1)
+        targetRequests[0].connection.send(Buffer.concat([Buffer.from("+OK\r\n+OK\r\n+OK\r\n"), bulk("new")]))
+        assert.deepStrictEqual(
+          (yield* Fiber.join(pipeline)).map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? result.success : undefined
+          }),
+          ["OK", "new", "independent"]
+        )
+      }))
+
+    it.live("recovers redirects while an unrelated node is still withholding its replies", () =>
+      Effect.gen(function*() {
+        const redirected = barrier<void>()
+        const target = yield* server((request) => {
+          request.connection.send(bulk("value"))
+          redirected.resolve()
+        })
+        const waiting = barrier<Request>()
+        const slow = yield* server((request) => waiting.resolve(request))
+        const source = yield* server((request) => {
+          if (!discovery(request, source)) request.connection.send(`-MOVED 5061 ${target.host}:${target.port}\r\n`)
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const pipeline = yield* client.pipeline([
+          Command.get("bar"),
+          Command.make(["PING"], Command.text, { node: slow, keyIndexes: [] })
+        ]).pipe(Effect.forkChild)
+        const held = yield* Effect.promise(() => waiting.promise)
+        yield* Effect.promise(() => redirected.promise).pipe(Effect.timeout("1 second"))
+        held.connection.send("+PONG\r\n")
+        assert.deepStrictEqual(
+          (yield* Fiber.join(pipeline)).map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? result.success : undefined
+          }),
+          ["value", "PONG"]
+        )
+      }))
+
+    it.live("batches MOVED retries without replaying successful or uncertain mutations", () =>
+      Effect.gen(function*() {
+        const targetRequests: Array<Request> = []
+        const submitted = barrier<void>()
+        const target = yield* server((request) => {
+          targetRequests.push(request)
+          if (targetRequests.length === 2) submitted.resolve()
+        })
+        const sourceRequests: Array<Request> = []
+        const source = yield* server((request) => {
+          if (discovery(request, source)) return
+          sourceRequests.push(request)
+          if (sourceRequests.length === 4) {
+            const redirect = "-MOVED 5061 " + target.host + ":" + target.port + "\r\n"
+            request.connection.socket.end(redirect + redirect + ":1\r\n")
+          }
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const pipeline = yield* client.pipeline([
+          Command.make(["INCR", "{bar}:first"], Command.integer),
+          Command.make(["INCR", "{bar}:second"], Command.integer),
+          Command.make(["INCR", "{bar}:success"], Command.integer),
+          Command.make(["INCR", "{foo}:unknown"], Command.integer)
+        ]).pipe(Effect.forkChild)
+        yield* Effect.promise(() => submitted.promise).pipe(Effect.timeout("1 second"))
+        assert.deepStrictEqual(targetRequests.map(args), [["INCR", "{bar}:first"], ["INCR", "{bar}:second"]])
+        targetRequests[0].connection.send(":1\r\n:1\r\n")
         const results = yield* Fiber.join(pipeline)
-        assert.deepStrictEqual(results.map((result) => result._tag === "Success" ? result.success : result.failure), [
-          "OK",
-          "new",
-          "independent"
-        ])
-        assert.deepStrictEqual(sourceRequests, [["SET", "bar", "new"], ["GET", "foo"], ["GET", "bar"]])
+        assert.deepStrictEqual(
+          results.slice(0, 3).map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? result.success : undefined
+          }),
+          [BigInt(1), BigInt(1), BigInt(1)]
+        )
+        assert.strictEqual(failure(results[3]).outcome, "Unknown")
+        assert.strictEqual(sourceRequests.length, 4)
+        assert.strictEqual(targetRequests.length, 2)
       }))
 
     it.live("bounds redirect cycles instead of repeatedly submitting rejected commands", () =>
@@ -378,6 +543,37 @@ describe("RedisClient", () => {
         assert.strictEqual(error.reason, "Routing")
         assert.strictEqual(error.code, "MOVED")
         assert.strictEqual(mutations, 3)
+        const results = yield* client.pipeline([
+          Command.make(["INCR", "{bar}:first"], Command.integer),
+          Command.make(["INCR", "{bar}:second"], Command.integer)
+        ])
+        for (const result of results) {
+          assert.strictEqual(failure(result).reason, "Routing")
+          assert.strictEqual(failure(result).code, "MOVED")
+        }
+        assert.strictEqual(mutations, 9)
+      }))
+
+    it.live("validates every reserved pipeline command before submitting any connection state", () =>
+      Effect.gen(function*() {
+        const requests: Array<ReadonlyArray<string>> = []
+        const fixture = yield* server((request) => {
+          if (discovery(request, fixture)) return
+          requests.push(args(request))
+          request.connection.send("+OK\r\n")
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [fixture] } })
+        const reserved = yield* client.reserve({ key: "bar" })
+        const error = failure(
+          yield* Effect.result(reserved.pipeline([
+            { arguments: ["MULTI"] },
+            { arguments: ["SET", "foo", "bad"] },
+            { arguments: ["EXEC"] }
+          ]))
+        )
+        assert.strictEqual(error.code, "CROSSSLOT")
+        assert.strictEqual(error.outcome, "NotSent")
+        assert.deepStrictEqual(requests, [])
       }))
 
     it.live("repeats ASKING on each exclusive session in an ASK redirect chain", () =>
@@ -690,20 +886,20 @@ describe("RedisClient", () => {
             mapAddress: (endpoint) => ({ ...endpoint, port: endpoint.port + 100 })
           })
           const from = (yield* topology.resolve(["GET", "bar"])).endpoint
-          assert.deepStrictEqual(topology.redirect!(error("ASK 5061 [::1]:8000"), from), {
+          assert.deepStrictEqual(topology.redirect(error("ASK 5061 [::1]:8000"), from), {
             endpoint: { host: "::1", port: 8100, tls },
             slot: 5061,
             asking: true
           })
           assert.deepStrictEqual((yield* topology.resolve(["GET", "bar"])).endpoint, from)
-          assert.deepStrictEqual(topology.redirect!(error("MOVED 5061 2001:db8::1:9000"), from), {
+          assert.deepStrictEqual(topology.redirect(error("MOVED 5061 2001:db8::1:9000"), from), {
             endpoint: { host: "2001:db8::1", port: 9100, tls },
             slot: 5061,
             asking: false
           })
           assert.strictEqual((yield* topology.resolve(["GET", "bar"])).endpoint.host, "2001:db8::1")
           assert.isTrue(topology.endpoints().some((endpoint) => endpoint.host === "2001:db8::1"))
-          assert.strictEqual(topology.redirect!(error("ASK 5061 :8000"), from)!.endpoint.host, from.host)
+          assert.strictEqual(topology.redirect(error("ASK 5061 :8000"), from)!.endpoint.host, from.host)
           for (
             const message of [
               "MOVED -1 host:1",
@@ -715,10 +911,10 @@ describe("RedisClient", () => {
               "MOVED 1 host:1 extra"
             ]
           ) {
-            assert.strictEqual(topology.redirect!(error(message), from), undefined)
+            assert.strictEqual(topology.redirect(error(message), from), undefined)
           }
           assert.strictEqual(
-            topology.redirect!(new RedisError({ reason: "Connection", message: "MOVED 5061 host:8000" }), from),
+            topology.redirect(new RedisError({ reason: "Connection", message: "MOVED 5061 host:8000" }), from),
             undefined
           )
         }))
@@ -763,6 +959,67 @@ describe("RedisClient", () => {
   })
 
   describe("Sentinel", () => {
+    it.live("batches safely rejected writes after promotion without replaying successful or uncertain commands", () =>
+      Effect.gen(function*() {
+        const role = "*3\r\n$6\r\nmaster\r\n:0\r\n*0\r\n"
+        const submitted = barrier<void>()
+        const nextRequests: Array<Request> = []
+        const next = yield* server((request) => {
+          const command = args(request)[0]
+          if (command === "ROLE") request.connection.send(role)
+          else {
+            nextRequests.push(request)
+            if (nextRequests.length === 2) submitted.resolve()
+          }
+        })
+        let promoted = false
+        const oldRequests: Array<Request> = []
+        const old = yield* server((request) => {
+          const command = args(request)[0]
+          if (command === "ROLE") request.connection.send(role)
+          else if (command === "PING") request.connection.send("+PONG\r\n")
+          else {
+            oldRequests.push(request)
+            if (oldRequests.length === 4) {
+              promoted = true
+              request.connection.socket.end("-READONLY former primary\r\n-READONLY former primary\r\n:1\r\n")
+            }
+          }
+        })
+        let discoveries = 0
+        const sentinel = yield* server((request) => {
+          discoveries++
+          const primary = promoted ? next : old
+          request.connection.send(
+            Buffer.concat([Buffer.from("*2\r\n"), bulk(primary.host), bulk(String(primary.port))])
+          )
+        })
+        const client = yield* Client.make(makeConnector(), {
+          topology: { _tag: "Sentinel", sentinels: [sentinel], masterName: "service", refreshInterval: "1 hour" }
+        })
+        const pipeline = yield* client.pipeline([
+          Command.make(["INCR", "first"], Command.integer),
+          Command.make(["INCR", "second"], Command.integer),
+          Command.make(["INCR", "success"], Command.integer),
+          Command.make(["INCR", "unknown"], Command.integer)
+        ]).pipe(Effect.forkChild)
+        yield* Effect.promise(() => submitted.promise).pipe(Effect.timeout("1 second"))
+        assert.deepStrictEqual(nextRequests.map(args), [["INCR", "first"], ["INCR", "second"]])
+        nextRequests[0].connection.send(":1\r\n:1\r\n")
+        const results = yield* Fiber.join(pipeline)
+        assert.deepStrictEqual(
+          results.slice(0, 3).map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? result.success : undefined
+          }),
+          [BigInt(1), BigInt(1), BigInt(1)]
+        )
+        assert.strictEqual(failure(results[3]).outcome, "Unknown")
+        assert.strictEqual(discoveries, 2)
+        assert.strictEqual(oldRequests.length, 4)
+        assert.strictEqual(nextRequests.length, 2)
+      }))
+
     it.live("redacts exposed data and Sentinel passwords while authenticating both connections", () =>
       Effect.gen(function*() {
         const dataAuth: Array<ReadonlyArray<string>> = []
@@ -933,7 +1190,7 @@ describe("RedisClient", () => {
             refreshInterval: "1 second"
           }).pipe(Scope.provide(scope))
           const promoted = yield* Deferred.make<void>()
-          topology.onChange!(() => {
+          topology.onChange(() => {
             Deferred.doneUnsafe(promoted, Effect.void)
           })
           const resolveBeforeRefresh = topology.resolve(["PING"])

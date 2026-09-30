@@ -2,6 +2,7 @@
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Redacted from "effect/Redacted"
+import type * as Result from "effect/Result"
 import type { Routing } from "../RedisCommand.ts"
 import type { Endpoint } from "../RedisConnection.ts"
 import type { RedisError } from "../RedisError.ts"
@@ -34,10 +35,25 @@ export interface Redirect extends Resolved {
   readonly asking: boolean
 }
 
-export interface Topology {
+interface BaseTopology {
+  readonly resolveSync: (args: ReadonlyArray<Argument>, routing?: Routing) => Result.Result<Resolved, RedisError>
   readonly resolve: (args: ReadonlyArray<Argument>, routing?: Routing) => Effect.Effect<Resolved, RedisError>
   readonly refresh: Effect.Effect<void, RedisError>
   readonly endpoints: () => ReadonlyArray<Endpoint>
-  readonly redirect?: ((error: RedisError, from: Endpoint) => Redirect | undefined) | undefined
-  readonly onChange?: ((listener: () => void) => () => void) | undefined
 }
+
+export interface StandaloneTopology extends BaseTopology {
+  readonly _tag: "Standalone"
+}
+
+export interface ClusterTopology extends BaseTopology {
+  readonly _tag: "Cluster"
+  readonly redirect: (error: RedisError, from: Endpoint) => Redirect | undefined
+}
+
+export interface SentinelTopology extends BaseTopology {
+  readonly _tag: "Sentinel"
+  readonly onChange: (listener: () => void) => () => void
+}
+
+export type Topology = StandaloneTopology | ClusterTopology | SentinelTopology

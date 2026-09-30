@@ -267,6 +267,14 @@ describe("RedisClient", () => {
           assert.strictEqual(Result.getOrThrow(pipeline[0]), "transaction")
           assert.strictEqual(Result.getOrThrow(pipeline[1]), "OK")
           assert.strictEqual(Result.getOrThrow(pipeline[2]), "other-slot")
+          const increments = yield* client.pipeline(Array.from({ length: 128 }, (_, index) =>
+            Command.make(
+              ["INCR", index % 2 === 0 ? "{foo}:pipeline-counter" : "{bar}:pipeline-counter"],
+              Command.integer
+            )))
+          for (let index = 0; index < increments.length; index++) {
+            assert.strictEqual(Result.getOrThrow(increments[index]), BigInt(Math.floor(index / 2) + 1))
+          }
           const scan = Protocol.toValue(
             yield* client.execute(["SCAN", "0"], { node: fixture.nodes[2], keyIndexes: [] })
           ) as [string, Array<string>]
@@ -295,9 +303,12 @@ describe("RedisClient", () => {
           })
           // The slot map still points at the source. Its missing key produces ASK.
           assert.strictEqual(yield* client.run(Command.get(key)), "preserved")
+          const asked = yield* client.pipeline([Command.set(key, "asked"), Command.get(key), Command.get(key)])
+          assert.deepStrictEqual(asked.map(Result.getOrThrow), ["OK", "asked", "asked"])
           // Finalizing ownership produces MOVED from that same cached source.
           yield* Effect.promise(() => fixture.moveSlot(12182, source, target))
-          assert.strictEqual(yield* client.run(Command.get(key)), "preserved")
+          const moved = yield* client.pipeline([Command.set(key, "moved"), Command.get(key), Command.get(key)])
+          assert.deepStrictEqual(moved.map(Result.getOrThrow), ["OK", "moved", "moved"])
           const replica = fixture.nodes[3]
           yield* Effect.promise(() => fixture.failover(replica))
           assert.strictEqual(yield* client.run(Command.set(key, "after-promotion")), "OK")

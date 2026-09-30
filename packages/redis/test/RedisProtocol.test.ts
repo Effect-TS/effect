@@ -105,6 +105,17 @@ describe("RedisProtocol", () => {
       ])
     )
     assert.deepStrictEqual(RedisProtocol.encode([]), bytes("*0\r\n"))
+    const utf16 = fc.array(fc.integer({ min: 0, max: 0xFFFF }), { maxLength: 80 }).map((units) =>
+      String.fromCharCode(...units)
+    )
+    fc.assert(fc.property(utf16, (value) => {
+      const payload = bytes(value)
+      const header = bytes(`*2\r\n$4\r\nECHO\r\n$${payload.length}\r\n`)
+      assert.deepStrictEqual(
+        RedisProtocol.encode(["ECHO", value]),
+        new Uint8Array([...header, ...payload, 13, 10])
+      )
+    }))
   })
 
   it("decodes independent RESP2/RESP3 goldens at every split boundary", () => {
@@ -179,6 +190,7 @@ describe("RedisProtocol", () => {
         ":1.5\r\n",
         ":++1\r\n",
         ":+-1\r\n",
+        ":\uFEFF1\r\n",
         ":\r\n",
         ":9223372036854775808\r\n",
         ":-9223372036854775809\r\n",
@@ -212,6 +224,11 @@ describe("RedisProtocol", () => {
         "$?\r\n;-1\r\n"
       ]
     ) failure(() => RedisProtocol.makeParser().push(bytes(wire)))
+    for (const marker of [":", "(", ",", "$", "!", "=", "*", "%", "~", ">", "|", "#", "_"]) {
+      const parser = RedisProtocol.makeParser()
+      failure(() => parser.push(new Uint8Array([marker.charCodeAt(0), 255, 13, 10])))
+      failure(() => parser.push(bytes("+OK\r\n")))
+    }
   })
 
   it("validates EOF and makes failures terminal", () => {

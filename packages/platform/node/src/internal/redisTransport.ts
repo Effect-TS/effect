@@ -63,6 +63,7 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
       ...(Net.isIP(endpoint.host) === 0 ? { servername: tlsOptions.servername ?? endpoint.host } : {})
     })
     : raw!
+  raw?.setNoDelay(true)
   // Leave the readable side paused. Node's highWaterMark bounds buffering and
   // propagates backpressure to TCP without an additional JavaScript queue.
   socket.pause()

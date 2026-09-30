@@ -2,9 +2,9 @@ import { NodeRedis } from "@effect/platform-node"
 import * as RedisCommand from "@effect/redis/RedisCommand"
 import { RedisError as NativeRedisError } from "@effect/redis/RedisError"
 import * as RedisProtocol from "@effect/redis/RedisProtocol"
-import { startRedis } from "@effect/redis/test/utils/redis-server"
+import { startCluster, startRedis } from "@effect/redis/test/utils/redis-server"
 import { assert, it } from "@effect/vitest"
-import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"
+import { Clock, Duration, Effect, Latch, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as RateLimiterTest from "effect-test/persistence/RateLimiterTest"
@@ -27,6 +27,98 @@ const RedisLayer = Layer.unwrap(
   }).pipe(
     Effect.catchCause(() => Effect.fail(new PersistedCacheTest.TransientError()))
   )
+)
+
+const ClusterRedisLayer = Layer.unwrap(
+  Effect.gen(function*() {
+    const fixture = yield* Effect.acquireRelease(
+      Effect.promise(() => startCluster()),
+      (fixture) => Effect.promise(fixture.stop)
+    )
+    return NodeRedis.layer({ topology: { _tag: "Cluster", seeds: fixture.seeds } })
+  })
+)
+
+PersistedCacheTest.suite(
+  "NodeRedis Cluster",
+  Persistence.layerRedis.pipe(Layer.provide(ClusterRedisLayer))
+)
+
+PersistedQueueTest.suite(
+  "NodeRedis Cluster",
+  PersistedQueue.layerStoreRedis({
+    pollInterval: "50 millis",
+    lockRefreshInterval: "100 millis"
+  }).pipe(Layer.provide(ClusterRedisLayer))
+)
+
+RateLimiterTest.suite(
+  "NodeRedis Cluster",
+  RateLimiter.layerStoreRedis().pipe(Layer.provide(ClusterRedisLayer))
+)
+
+it.layer(Persistence.layerBackingRedis.pipe(Layer.provideMerge(ClusterRedisLayer)), { timeout: "60 seconds" })(
+  "Persistence (NodeRedis Cluster)",
+  (it) => {
+    it.effect("does not replay scripts that fail after writing", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const key = Redis.key(redis, "cluster-script-failure")
+        const run = redis.eval(Redis.script((key: string) => [key], {
+          numberOfKeys: 1,
+          lua: `redis.call("INCR", KEYS[1]); return redis.error_reply("ERR script mentions NOSCRIPT after increment")`
+        }))
+        yield* run(key).pipe(Effect.flip)
+        yield* run(key).pipe(Effect.flip)
+        assert.strictEqual(yield* redis.send("GET", key), "2")
+      }))
+
+    it.effect("clears a namespace across primary nodes without removing another namespace", () =>
+      Effect.gen(function*() {
+        const backing = yield* Persistence.BackingPersistence
+        const first = yield* backing.make("cluster:first{*?[]\\}")
+        const second = yield* backing.make("cluster:second{*?[]\\}")
+        yield* first.setMany([["a", { n: 1 }, undefined], ["b", { n: 2 }, undefined]])
+        yield* second.set("a", { n: 3 }, undefined)
+        assert.deepStrictEqual(yield* first.getMany(["a", "b"]), [{ n: 1 }, { n: 2 }])
+        yield* first.clear
+        assert.deepStrictEqual(yield* first.getMany(["a", "b"]), [undefined, undefined])
+        assert.deepStrictEqual(yield* second.get("a"), { n: 3 })
+        yield* first.clear
+      }))
+
+    it.effect("refreshes active locks independently for queues in different slots", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const store = yield* PersistedQueue.makeStoreRedis({
+          pollInterval: "50 millis",
+          lockRefreshInterval: "100 millis",
+          lockExpiration: "300 millis"
+        })
+        const factory = yield* PersistedQueue.makeFactory.pipe(
+          Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+        )
+        const names = ["cluster-lock-first", "cluster-lock-second"]
+        const queues = yield* Effect.forEach(names, (name) => factory.make({ name, schema: RedisItem }))
+        const taken = Latch.makeUnsafe()
+        let count = 0
+        for (const queue of queues) {
+          yield* queue.offer({ n: 1 }, { id: "shared-lock-id" })
+          yield* queue.take(() =>
+            Effect.gen(function*() {
+              if (++count === queues.length) yield* taken.open
+              return yield* Effect.never
+            })
+          ).pipe(Effect.forkScoped)
+        }
+        yield* taken.await
+        yield* Effect.sleep("750 millis")
+        for (const name of names) {
+          const lock = `${Redis.key(redis, `effectq:${name}`)}:shared-lock-id:lock`
+          assert.isAbove(yield* redis.send<number>("PTTL", lock), 0)
+        }
+      }).pipe(TestClock.withLive))
+  }
 )
 
 PersistedCacheTest.suite(

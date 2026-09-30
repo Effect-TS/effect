@@ -3,8 +3,9 @@ import * as NodeRedis from "@effect/platform-node/NodeRedis"
 import type { RedisError } from "@effect/redis/RedisError"
 import { startScriptedRedis } from "@effect/redis/test/utils/redis-scripted"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Redacted, Scope } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scope } from "effect"
 import type * as Duration from "effect/Duration"
+import * as Redis from "effect/persistence/Redis"
 import type * as Result from "effect/Result"
 import * as Fs from "node:fs"
 import * as Net from "node:net"
@@ -24,6 +25,43 @@ const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
 }
 
 describe("NodeRedis configuration", () => {
+  it.live("scans every page and reports malformed replies as persistence errors", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const acquiring = yield* Layer.build(NodeRedis.layer({ socket: fixture })).pipe(Effect.forkChild)
+      const ping = yield* Effect.promise(fixture.nextRequest)
+      ping.connection.send("+PONG\r\n")
+      const redis = Context.get(yield* Fiber.join(acquiring), Redis.Redis)
+      const scanning = yield* redis.scan("prefix:*").pipe(Effect.forkChild)
+      const first = yield* Effect.promise(fixture.nextRequest)
+      assert.deepStrictEqual(first.args.map((arg) => arg.toString()), [
+        "SCAN",
+        "0",
+        "MATCH",
+        "prefix:*",
+        "COUNT",
+        "100"
+      ])
+      first.connection.send("*2\r\n$1\r\n9\r\n*1\r\n$1\r\na\r\n")
+      const second = yield* Effect.promise(fixture.nextRequest)
+      assert.strictEqual(second.args[1].toString(), "9")
+      second.connection.send("*2\r\n$1\r\n0\r\n*2\r\n$1\r\nb\r\n$1\r\na\r\n")
+      assert.deepStrictEqual(yield* Fiber.join(scanning), ["a", "b"])
+
+      for (
+        const wire of [
+          "*2\r\n:0\r\n*0\r\n",
+          "*2\r\n$3\r\nbad\r\n*0\r\n",
+          "*2\r\n$1\r\n0\r\n*1\r\n:1\r\n"
+        ]
+      ) {
+        const malformed = yield* redis.scan("prefix:*").pipe(Effect.flip, Effect.forkChild)
+        const request = yield* Effect.promise(fixture.nextRequest)
+        request.connection.send(wire)
+        assert.instanceOf(yield* Fiber.join(malformed), Redis.RedisError)
+      }
+    }))
+
   it.live("keeps decoded URL credentials redacted in the exposed client configuration", () =>
     Effect.gen(function*() {
       const fixture = yield* server

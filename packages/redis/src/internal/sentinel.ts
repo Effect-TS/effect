@@ -1,12 +1,13 @@
 // Internal implementation.
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Connection from "../RedisConnection.ts"
 import { RedisError } from "../RedisError.ts"
 import type * as Protocol from "../RedisProtocol.ts"
-import type { SentinelConfig, Topology } from "./topology.ts"
+import type { SentinelConfig, SentinelTopology } from "./topology.ts"
 import { endpointKey } from "./transport.ts"
 
 const text = (reply: Protocol.Reply): string | undefined =>
@@ -156,7 +157,10 @@ export const make = Effect.fnUntraced(
     }))
     yield* refresh
     yield* Effect.forkScoped(Effect.forever(Effect.sleep(interval).pipe(Effect.andThen(Effect.ignoreCause(refresh)))))
-    const topology: Topology = {
+    const resolveSync: SentinelTopology["resolveSync"] = () => Result.succeed({ endpoint: current! })
+    const topology: SentinelTopology = {
+      _tag: "Sentinel",
+      resolveSync,
       resolve: () => Effect.sync(() => ({ endpoint: current! })),
       refresh,
       endpoints: () => current === undefined ? [] : [current],

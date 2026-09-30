@@ -40,13 +40,17 @@ command. SCAN, KEYS, and DBSIZE do not silently aggregate the whole Cluster.
 Multi-key operations must use one hash slot.
 
 Pipelines preserve result positions and return each command's checked result
-or error. Cluster pipelines execute commands sequentially within each slot,
-including redirect recovery, while different slots run concurrently. This
-preserves same-slot order with a throughput cost for same-slot batches.
-They are not cross-node transactions. Use
+or error. Commands are submitted without waiting for individual replies;
+Cluster batches are grouped by destination node and run concurrently. MOVED
+and ASK recovery batches only rejected commands, preserving their input order
+on each destination connection. Successful commands and commands with unknown
+outcomes are never replayed. Slot migration can produce mixed successful and
+redirected commands, so a pipeline cannot guarantee global execution order
+across nodes. Use
 `RedisTransaction.execute` for MULTI/EXEC and optional WATCH work, supplying a
 key affinity in Cluster. EXEC errors remain per-command results; a WATCH
-conflict returns null. Transactions are never automatically replayed.
+conflict returns null. MULTI, queued commands, and EXEC are submitted together
+without waiting between commands. Transactions are never automatically replayed.
 
 Use `reserve({ key?, node? })` for blocking commands, WATCH/MULTI, and
 connection-local state. Reservations require a Scope and are discarded when
@@ -78,10 +82,13 @@ can acquire new sessions. Sentinel polling refreshes discovery every five
 seconds by default; `refreshInterval` adjusts this. Sentinel role verification
 does not provide fencing or a lossless-failover guarantee.
 
-The `effect/persistence/Redis` adapter supports standalone and Sentinel.
-Its current key formats and multi-key scripts do not guarantee Cluster slot
-affinity, so adapter operations fail explicitly under Cluster. The general
-Redis client remains available in that layer.
+The `effect/persistence/Redis` adapter supports standalone, Cluster, and Sentinel.
+Cluster uses hash tags per cache namespace, queue, or rate limiter to keep
+related keys in one slot; separate identities can use different slots.
+Namespace clear and queue cleanup scan all primary nodes. Script cache misses
+execute and cache the script on the key's owning node. Standalone and Sentinel
+retain their existing key layouts. Moving existing data into Cluster requires
+migrating its keys to the tagged layout.
 
 The previous node-redis client, Promise-based `use`, and `RedisClientOptions`
 are replaced by native Effect operations and `NodeRedis.Options`. Socket

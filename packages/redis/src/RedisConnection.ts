@@ -10,6 +10,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
+import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
 import type * as TransportInternal from "./internal/transport.ts"
 import type { Routing } from "./RedisCommand.ts"
@@ -83,6 +84,13 @@ export interface RedisConnection {
     args: ReadonlyArray<Protocol.Argument>,
     routing?: Routing
   ) => Effect.Effect<Protocol.Reply, RedisError>
+  /** Submits commands in order without waiting for individual replies. */
+  readonly pipeline: (
+    commands: ReadonlyArray<{
+      readonly arguments: ReadonlyArray<Protocol.Argument>
+      readonly routing?: Routing | undefined
+    }>
+  ) => Effect.Effect<Array<Result.Result<Protocol.Reply, RedisError>>, RedisError>
   readonly close: Effect.Effect<void>
   readonly closed: Effect.Effect<never, RedisError>
   readonly isOpen: () => boolean
@@ -97,7 +105,7 @@ interface Pending {
   readonly ackChannel: Uint8Array | undefined
   readonly protocol: 2 | 3 | undefined
   readonly reset: boolean
-  readonly resume: (effect: Effect.Effect<Protocol.Reply, RedisError>) => void
+  readonly resume: (result: Result.Result<Protocol.Reply, RedisError>) => void
   canceled: boolean
 }
 
@@ -164,7 +172,23 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const outgoing = yield* Queue.bounded<Pending, RedisError>(limit)
   const terminal = yield* Deferred.make<never, RedisError>()
   const pending = new Set<Pending>()
-  const inflight: Array<Pending> = []
+  const inflight: Array<Pending | undefined> = []
+  let inflightHead = 0
+  const firstInflight = () => inflight[inflightHead]
+  const takeInflight = () => {
+    const entry = inflight[inflightHead]
+    if (entry === undefined) return undefined
+    inflight[inflightHead] = undefined
+    inflightHead++
+    if (inflightHead === inflight.length) {
+      inflight.length = 0
+      inflightHead = 0
+    } else if (inflightHead >= 1024 && inflightHead * 2 >= inflight.length) {
+      inflight.splice(0, inflightHead)
+      inflightHead = 0
+    }
+    return entry
+  }
   const listeners = new Set<(reply: Protocol.Reply) => void>()
   let dead: RedisError | undefined
   let queuedBytes = 0
@@ -172,7 +196,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   let shardSubscriptions = 0
   let protocol = config.protocol ?? 2
 
-  const settle = (entry: Pending, result: Effect.Effect<Protocol.Reply, RedisError>) => {
+  const settle = (entry: Pending, result: Result.Result<Protocol.Reply, RedisError>) => {
     if (entry.state === "Done") return
     if (entry.bytes !== undefined) queuedBytes -= entry.size
     entry.bytes = undefined
@@ -186,7 +210,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     for (const entry of pending) {
       settle(
         entry,
-        Effect.fail(
+        Result.fail(
           new RedisError({
             reason: error.reason,
             message: error.message,
@@ -198,6 +222,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       )
     }
     inflight.length = 0
+    inflightHead = 0
     listeners.clear()
     Queue.failCauseUnsafe(outgoing, Cause.fail(error))
     Deferred.doneUnsafe(terminal, Effect.fail(error))
@@ -207,124 +232,111 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   )
   yield* Scope.addFinalizer(yield* Effect.scope, close)
 
-  const execute = (args: ReadonlyArray<Protocol.Argument>): Effect.Effect<Protocol.Reply, RedisError> =>
+  const prepare = (
+    args: ReadonlyArray<Protocol.Argument>,
+    onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
+  ) => {
+    const command = nameOf(args[0]).toUpperCase()
+    if (
+      args.length === 0 || command === "MONITOR" || command === "QUIT" ||
+      (command === "CLIENT" && nameOf(args[1]).toUpperCase() === "REPLY")
+    ) {
+      throw new RedisError({
+        reason: "Routing",
+        message: "Command requires a different Redis connection mode",
+        outcome: "NotSent"
+      })
+    }
+    if (subscriptionAcks.has(command) && args.length !== 2) {
+      throw new RedisError({
+        reason: "Routing",
+        message: "Submit one subscription channel per command",
+        outcome: "NotSent"
+      })
+    }
+    const bytes = Protocol.encode(args)
+    const result = onResult === undefined ? Deferred.makeUnsafe<Protocol.Reply, RedisError>() : undefined
+    const entry: Pending = {
+      bytes,
+      size: bytes.length,
+      state: "Queued",
+      ack: subscriptionAcks.get(command),
+      ackChannel: subscriptionAcks.has(command)
+        ? typeof args[1] === "string" ? encoder.encode(args[1]) : Uint8Array.from(args[1])
+        : undefined,
+      protocol: command === "RESET"
+        ? 2
+        : command === "HELLO" && nameOf(args[1]) === "2"
+        ? 2
+        : command === "HELLO" && nameOf(args[1]) === "3"
+        ? 3
+        : undefined,
+      reset: command === "RESET",
+      resume: onResult ?? ((value) => {
+        Deferred.doneUnsafe(
+          result!,
+          value._tag === "Success" ? Effect.succeed(value.success) : Effect.fail(value.failure)
+        )
+      }),
+      canceled: false
+    }
+    return { entry, result }
+  }
+  const submit = (
+    commands: ReadonlyArray<ReadonlyArray<Protocol.Argument>>,
+    onResult?: (result: Result.Result<Protocol.Reply, RedisError>, index: number) => void
+  ) =>
+    Effect.try({
+      try: () => {
+        if (dead !== undefined) {
+          throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
+        }
+        // Admission is atomic: local validation or capacity failures never submit
+        // only part of a batch, particularly a MULTI/EXEC transaction.
+        const prepared = commands.map((args, index) =>
+          prepare(args, onResult === undefined ? undefined : (result) => onResult(result, index))
+        )
+        const size = prepared.reduce((total, item) => total + item.entry.size, 0)
+        if (
+          pending.size + prepared.length > limit || queuedBytes + size > byteLimit ||
+          Queue.sizeUnsafe(outgoing) + prepared.length > limit
+        ) {
+          throw new RedisError({
+            reason: "Capacity",
+            message: "Redis command queue capacity exceeded",
+            outcome: "NotSent"
+          })
+        }
+        for (const item of prepared) pending.add(item.entry)
+        queuedBytes += size
+        Queue.offerAllUnsafe(outgoing, prepared.map((item) => item.entry))
+        return prepared
+      },
+      catch: (cause) =>
+        cause instanceof RedisError
+          ? cause
+          : new RedisError({ reason: "Protocol", message: "Cannot encode Redis command", cause, outcome: "NotSent" })
+    })
+  const cancel = (entry: Pending) => {
+    entry.canceled = true
+    if (entry.state === "Queued") {
+      settle(
+        entry,
+        Result.fail(new RedisError({ reason: "Closed", message: "Redis command interrupted", outcome: "NotSent" }))
+      )
+    }
+  }
+  const awaitReply = (item: ReturnType<typeof prepare>): Effect.Effect<Protocol.Reply, RedisError> =>
     Effect.suspend(() => {
       let submitted = false
-      const operation = Effect.callback<Protocol.Reply, RedisError>((resume) => {
-        if (dead !== undefined) {
-          resume(
-            Effect.fail(
-              new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
-            )
-          )
-          return
-        }
-        const command = nameOf(args[0]).toUpperCase()
-        if (
-          args.length === 0 || command === "MONITOR" || command === "QUIT" ||
-          (command === "CLIENT" && nameOf(args[1]).toUpperCase() === "REPLY")
-        ) {
-          resume(
-            Effect.fail(
-              new RedisError({
-                reason: "Routing",
-                message: "Command requires a different Redis connection mode",
-                outcome: "NotSent"
-              })
-            )
-          )
-          return
-        }
-        if (subscriptionAcks.has(command) && args.length !== 2) {
-          resume(
-            Effect.fail(
-              new RedisError({
-                reason: "Routing",
-                message: "Submit one subscription channel per command",
-                outcome: "NotSent"
-              })
-            )
-          )
-          return
-        }
-        let bytes: Uint8Array
-        try {
-          bytes = Protocol.encode(args)
-        } catch (cause) {
-          resume(
-            Effect.fail(
-              cause instanceof RedisError
-                ? cause
-                : new RedisError({
-                  reason: "Protocol",
-                  message: "Cannot encode Redis command",
-                  cause,
-                  outcome: "NotSent"
-                })
-            )
-          )
-          return
-        }
-        if (pending.size >= limit || queuedBytes + bytes.length > byteLimit) {
-          resume(
-            Effect.fail(
-              new RedisError({
-                reason: "Capacity",
-                message: "Redis command queue capacity exceeded",
-                outcome: "NotSent"
-              })
-            )
-          )
-          return
-        }
-        const selectedProtocol = command === "RESET"
-          ? 2
-          : command === "HELLO" && nameOf(args[1]) === "2"
-          ? 2
-          : command === "HELLO" && nameOf(args[1]) === "3"
-          ? 3
-          : undefined
-        const entry: Pending = {
-          bytes,
-          size: bytes.length,
-          state: "Queued",
-          ack: subscriptionAcks.get(command),
-          ackChannel: subscriptionAcks.has(command)
-            ? typeof args[1] === "string" ? encoder.encode(args[1]) : Uint8Array.from(args[1])
-            : undefined,
-          protocol: selectedProtocol,
-          reset: command === "RESET",
-          resume,
-          canceled: false
-        }
-        pending.add(entry)
-        queuedBytes += bytes.length
-        if (!Queue.offerUnsafe(outgoing, entry)) {
-          settle(
-            entry,
-            Effect.fail(
-              new RedisError({
-                reason: "Capacity",
-                message: "Redis dispatch queue capacity exceeded",
-                outcome: "NotSent"
-              })
-            )
-          )
-        }
-        // Read by the timeout branch after interruption has run this finalizer.
-        return Effect.sync(() => {
-          submitted = entry.state === "Sent"
-          entry.canceled = true
-          if (entry.state === "Queued") {
-            settle(
-              entry,
-              Effect.fail(
-                new RedisError({ reason: "Closed", message: "Redis command interrupted", outcome: "NotSent" })
-              )
-            )
-          }
-        })
-      })
+      const operation = Deferred.await(item.result!).pipe(
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            submitted = item.entry.state === "Sent"
+            cancel(item.entry)
+          })
+        )
+      )
       return timeout === undefined ? operation : Effect.timeoutOrElse(operation, {
         duration: timeout,
         orElse: () =>
@@ -337,6 +349,45 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
           )
       })
     })
+  const execute = (args: ReadonlyArray<Protocol.Argument>): Effect.Effect<Protocol.Reply, RedisError> =>
+    Effect.uninterruptibleMask((restore) =>
+      submit([args]).pipe(Effect.flatMap((items) => restore(awaitReply(items[0]))))
+    )
+  const pipeline: RedisConnection["pipeline"] = (commands) =>
+    Effect.uninterruptibleMask((restore) =>
+      Effect.suspend(() => {
+        if (timeout === undefined) {
+          if (commands.length === 0) return Effect.succeed([])
+          const completed = Deferred.makeUnsafe<Array<Result.Result<Protocol.Reply, RedisError>>>()
+          const results = new Array<Result.Result<Protocol.Reply, RedisError>>(commands.length)
+          let remaining = commands.length
+          return submit(commands.map((command) => command.arguments), (result, index) => {
+            results[index] = result
+            if (--remaining === 0) Deferred.doneUnsafe(completed, Effect.succeed(results))
+          }).pipe(Effect.flatMap((items) =>
+            restore(Deferred.await(completed)).pipe(
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  for (const item of items) cancel(item.entry)
+                })
+              )
+            )
+          ))
+        }
+        return submit(commands.map((command) => command.arguments)).pipe(
+          Effect.flatMap((items) =>
+            restore(Effect.forEach(items, (item) => Effect.result(awaitReply(item)), { concurrency: "unbounded" }))
+              .pipe(
+                Effect.onInterrupt(() =>
+                  Effect.sync(() => {
+                    for (const item of items) cancel(item.entry)
+                  })
+                )
+              )
+          )
+        )
+      })
+    )
 
   const failCause = (cause: Cause.Cause<RedisError>) => {
     const error = Cause.squash(cause)
@@ -352,13 +403,20 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   }
   yield* Effect.forkScoped(
     Effect.forever(
-      Queue.take(outgoing).pipe(Effect.flatMap((entry) => {
-        if (entry.state === "Done") return Effect.void
-        const bytes = entry.bytes!
-        entry.bytes = undefined
-        queuedBytes -= entry.size
-        entry.state = "Sent"
-        inflight.push(entry)
+      Queue.takeAll(outgoing).pipe(Effect.flatMap((entries) => {
+        const active = entries.filter((entry) => entry.state !== "Done")
+        if (active.length === 0) return Effect.void
+        const size = active.reduce((total, entry) => total + entry.size, 0)
+        const bytes = active.length === 1 ? active[0].bytes! : new Uint8Array(size)
+        let offset = 0
+        for (const entry of active) {
+          if (active.length > 1) bytes.set(entry.bytes!, offset)
+          offset += entry.size
+          entry.bytes = undefined
+          queuedBytes -= entry.size
+          entry.state = "Sent"
+          inflight.push(entry)
+        }
         return transport.write(bytes)
       }))
     ).pipe(Effect.catchCause(failCause))
@@ -376,7 +434,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       : undefined
     const ack = typeof kind === "string" && [...subscriptionAcks.values()].includes(kind) &&
       (value._tag === "Push" ||
-        (protocol === 2 && (subscriptions + shardSubscriptions > 0 || inflight[0]?.ack === kind)))
+        (protocol === 2 && (subscriptions + shardSubscriptions > 0 || firstInflight()?.ack === kind)))
     const message = protocol === 2 && subscriptions + shardSubscriptions > 0 &&
       (kind === "message" || kind === "pmessage" || kind === "smessage")
     if (value._tag === "Push" || ack || message) {
@@ -393,13 +451,13 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         if (kind === "ssubscribe" || kind === "sunsubscribe") shardSubscriptions = Number(count.value)
         else subscriptions = Number(count.value)
       }
-      if (ack && inflight[0]?.ack === kind && matchesChannel(inflight[0].ackChannel, values?.[1])) {
-        settle(inflight.shift()!, Effect.succeed(reply))
+      if (ack && firstInflight()?.ack === kind && matchesChannel(firstInflight()!.ackChannel, values?.[1])) {
+        settle(takeInflight()!, Result.succeed(reply))
       }
       for (const listener of listeners) listener(reply)
       return
     }
-    const entry = inflight.shift()
+    const entry = takeInflight()
     if (entry === undefined) {
       throw new RedisError({ reason: "Protocol", message: "Unexpected Redis reply without a command" })
     }
@@ -411,8 +469,8 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     settle(
       entry,
       value._tag === "Error"
-        ? Effect.fail(new RedisError({ reason: "Server", message: value.message, code: value.code }))
-        : Effect.succeed(reply)
+        ? Result.fail(new RedisError({ reason: "Server", message: value.message, code: value.code }))
+        : Result.succeed(reply)
     )
   }
   yield* Effect.forkScoped(
@@ -446,6 +504,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const connection: RedisConnection = {
     endpoint,
     execute,
+    pipeline,
     close,
     closed: Deferred.await(terminal),
     isOpen: () => dead === undefined,

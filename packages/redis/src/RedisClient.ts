@@ -11,7 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
-import type * as Result from "effect/Result"
+import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Cluster from "./internal/cluster.ts"
@@ -72,11 +72,11 @@ export interface Affinity {
  * **Gotchas**
  *
  * Use a reserved connection for transactions, blocking operations, and
- * connection-local state. Pipelines preserve result positions. In Cluster,
- * commands in each slot execute sequentially through redirect recovery; distinct
- * slots execute concurrently. This adds a round trip per same-slot command.
- * Standalone pipelines preserve physical connection submission order. Pipelines
- * are not cross-node transactions.
+ * connection-local state. Pipelines preserve result positions and submit each
+ * node's commands in input order without waiting for individual replies.
+ * Cluster redirects retry only rejected commands. During slot migration,
+ * successes on one node and retries on another have no global execution order.
+ * Pipelines are not cross-node transactions.
  * Interrupted or disconnected commands may already have executed.
  *
  * @stability unstable
@@ -122,7 +122,7 @@ const dedicated = new Set(
 const requiresReservation = (args: ReadonlyArray<Protocol.Argument>) => {
   const command = Command.argumentText(args[0]).toUpperCase()
   return dedicated.has(command) ||
-    (Command.parseStreams(args)?.blocking === true) ||
+    ((command === "XREAD" || command === "XREADGROUP") && Command.parseStreams(args)?.blocking === true) ||
     (command === "CLIENT" &&
       ["REPLY", "TRACKING", "CACHING", "SETNAME"].includes(Command.argumentText(args[1]).toUpperCase()))
 }
@@ -200,6 +200,8 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     : topologyConfig._tag === "Sentinel"
     ? yield* Sentinel.make(connector, topologyConfig, config)
     : {
+      _tag: "Standalone",
+      resolveSync: (_args, routing) => Result.succeed({ endpoint: routing?.node ?? topologyConfig.endpoint }),
       resolve: (_args, routing) => Effect.succeed({ endpoint: routing?.node ?? topologyConfig.endpoint }),
       refresh: Effect.void,
       endpoints: () => [topologyConfig.endpoint]
@@ -209,7 +211,7 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     { readonly scope: Scope.Closeable; readonly connection: Connection.RedisConnection }
   >()
   const reservations = new Set<{ readonly scope: Scope.Closeable; readonly endpoint: Connection.Endpoint }>()
-  const lock = Semaphore.makeUnsafe(1)
+  const connectionLocks = new Map<string, Semaphore.Semaphore>()
   const closedSignal = yield* Deferred.make<void>()
   let closed = false
   yield* Scope.addFinalizer(
@@ -218,35 +220,62 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       closed = true
       yield* Deferred.succeed(closedSignal, undefined)
       connections.clear()
+      connectionLocks.clear()
       for (const entry of reservations) yield* Scope.close(entry.scope, Exit.void)
       reservations.clear()
     })
   )
 
   const get = (endpoint: Connection.Endpoint): Effect.Effect<Connection.RedisConnection, RedisError> =>
-    lock.withPermit(Effect.gen(function*() {
+    Effect.suspend(() => {
       if (closed) {
-        return yield* Effect.fail(
+        return Effect.fail(
           new RedisError({ reason: "Closed", message: "Redis client scope closed", outcome: "NotSent" })
         )
       }
       const key = endpointKey(endpoint)
-      const previous = connections.get(key)
-      if (previous?.connection.isOpen()) return previous.connection
-      if (previous !== undefined) {
-        connections.delete(key)
-        yield* Scope.close(previous.scope, Exit.void)
+      const cached = connections.get(key)
+      if (cached?.connection.isOpen()) return Effect.succeed(cached.connection)
+      let lock = connectionLocks.get(key)
+      if (lock === undefined) {
+        lock = Semaphore.makeUnsafe(1)
+        connectionLocks.set(key, lock)
       }
-      const child = yield* Scope.fork(scope)
-      const connection = yield* Connection.make(connector, endpoint, config).pipe(
-        Effect.provideService(Scope.Scope, child),
-        Effect.onError(() => Scope.close(child, Exit.void))
-      )
-      connections.set(key, { scope: child, connection })
-      return connection
-    }))
+      return lock.withPermit(Effect.gen(function*() {
+        if (closed) {
+          return yield* Effect.fail(
+            new RedisError({ reason: "Closed", message: "Redis client scope closed", outcome: "NotSent" })
+          )
+        }
+        const previous = connections.get(key)
+        if (previous?.connection.isOpen()) return previous.connection
+        if (previous !== undefined) {
+          connections.delete(key)
+          yield* Scope.close(previous.scope, Exit.void)
+        }
+        const discovered = topologyConfig._tag === "Sentinel" &&
+          topology.endpoints().some((node) => endpointKey(node) === key)
+        const child = yield* Scope.fork(scope)
+        const connection = yield* Connection.make(connector, endpoint, config).pipe(
+          Effect.provideService(Scope.Scope, child),
+          Effect.onError(() => Scope.close(child, Exit.void))
+        )
+        if (closed || (discovered && !topology.endpoints().some((node) => endpointKey(node) === key))) {
+          yield* Scope.close(child, Exit.void)
+          return yield* Effect.fail(
+            new RedisError({
+              reason: "Closed",
+              message: "Redis destination retired during acquisition",
+              outcome: "NotSent"
+            })
+          )
+        }
+        connections.set(key, { scope: child, connection })
+        return connection
+      }))
+    })
 
-  const retire = lock.withPermit(Effect.gen(function*() {
+  const retire = Effect.gen(function*() {
     if (topologyConfig._tag !== "Sentinel") return
     const current = new Set(topology.endpoints().map(endpointKey))
     for (const [key, entry] of connections) {
@@ -257,13 +286,13 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     for (const entry of reservations) {
       if (!current.has(endpointKey(entry.endpoint))) yield* Scope.close(entry.scope, Exit.void)
     }
-  }))
+  })
   const refresh = Effect.suspend(() =>
     closed
       ? Effect.fail(new RedisError({ reason: "Closed", message: "Redis client scope closed", outcome: "NotSent" }))
       : topology.refresh.pipe(Effect.andThen(retire))
   )
-  if (topology.onChange !== undefined) {
+  if (topology._tag === "Sentinel") {
     const changes = yield* Queue.unbounded<void>()
     const remove = topology.onChange(() => {
       Queue.offerUnsafe(changes, undefined)
@@ -312,7 +341,7 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
             : get(destination.endpoint).pipe(Effect.flatMap((connection) => connection.execute(args)))
           return send.pipe(Effect.catch((error) => {
             if (closed) return Effect.fail(error)
-            const redirect = topology.redirect?.(error, destination.endpoint)
+            const redirect = topology._tag === "Cluster" ? topology.redirect(error, destination.endpoint) : undefined
             if (redirect !== undefined) {
               if (remaining <= 0) {
                 return Effect.fail(
@@ -394,6 +423,35 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       if (resolved.slot === undefined) return reserved
       return {
         ...reserved,
+        pipeline: (commands) =>
+          Effect.gen(function*() {
+            const snapshot = commands.map((command) => ({
+              arguments: snapshotArguments(command.arguments),
+              routing: snapshotRouting(command.routing)
+            }))
+            for (const command of snapshot) {
+              const targetResult = topology.resolveSync(
+                command.arguments,
+                command.routing ?? Command.inferRouting(command.arguments)
+              )
+              if (targetResult._tag === "Failure") return yield* Effect.fail(targetResult.failure)
+              const target = targetResult.success
+              if (
+                (target.slot !== undefined && target.slot !== resolved.slot) ||
+                (command.routing?.node !== undefined && endpointKey(target.endpoint) !== endpointKey(resolved.endpoint))
+              ) {
+                return yield* Effect.fail(
+                  new RedisError({
+                    reason: "Routing",
+                    message: "Reserved connection cannot change Cluster slot",
+                    code: "CROSSSLOT",
+                    outcome: "NotSent"
+                  })
+                )
+              }
+            }
+            return yield* reserved.pipeline(snapshot)
+          }),
         execute: (command: ReadonlyArray<Protocol.Argument>, routing?: Command.Routing) =>
           topology.resolve(command, routing ?? Command.inferRouting(command)).pipe(
             Effect.flatMap((target) =>
@@ -427,33 +485,127 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
           arguments: snapshotArguments(command.arguments),
           routing: snapshotRouting(command.routing)
         }))
-        return (topologyConfig._tag !== "Cluster"
-          ? Effect.forEach(commands, (command) => Effect.result(run(command)), { concurrency: "unbounded" })
-          : Effect.gen(function*() {
-            const results: Array<Result.Result<unknown, RedisError>> = new Array(commands.length)
-            const groups = new Map<string, Array<number>>()
-            for (let index = 0; index < commands.length; index++) {
-              const command = commands[index]
-              const resolved = yield* Effect.result(topology.resolve(command.arguments, command.routing))
-              if (resolved._tag === "Failure") {
-                results[index] = resolved
-                continue
-              }
-              const destination = resolved.success
-              const key = destination.slot === undefined
-                ? `node:${endpointKey(destination.endpoint)}`
-                : `slot:${destination.slot}`
-              const group = groups.get(key)
-              if (group === undefined) groups.set(key, [index])
-              else group.push(index)
+        return Effect.gen(function*() {
+          const results: Array<Result.Result<unknown, RedisError>> = new Array(commands.length)
+          interface Submission {
+            readonly index: number
+            readonly destination: TopologyInternal.Resolved & { readonly asking?: boolean }
+            readonly remaining: number
+          }
+          const pending: Array<Submission> = []
+          for (let index = 0; index < commands.length; index++) {
+            const command = commands[index]
+            if (requiresReservation(command.arguments)) {
+              results[index] = Result.fail(
+                new RedisError({
+                  reason: "Routing",
+                  message: "This command requires a reserved Redis connection",
+                  outcome: "NotSent"
+                })
+              )
+              continue
             }
-            yield* Effect.forEach(groups.values(), (indexes) =>
-              Effect.gen(function*() {
-                // Keep the entire redirect chain ahead of the next same-slot command.
-                for (const index of indexes) results[index] = yield* Effect.result(run(commands[index]))
-              }), { concurrency: "unbounded", discard: true })
-            return results
-          }))
+            const resolved = topology.resolveSync(command.arguments, command.routing)
+            if (resolved._tag === "Failure") results[index] = resolved
+            else {pending.push({
+                index,
+                destination: resolved.success,
+                remaining: topologyConfig._tag === "Cluster" ? topologyConfig.maxRedirects ?? 5 : 1
+              })}
+          }
+          const groupSubmissions = (submissions: Array<Submission>) => {
+            const groups = new Map<string, Array<Submission>>()
+            for (const submission of submissions) {
+              const key = endpointKey(submission.destination.endpoint) +
+                (submission.destination.asking ? ":asking" : "")
+              const group = groups.get(key)
+              if (group === undefined) groups.set(key, [submission])
+              else group.push(submission)
+            }
+            return groups.values()
+          }
+          const process: (submissions: Array<Submission>) => Effect.Effect<void> = Effect.fnUntraced(
+            function*(submissions) {
+              const retries: Array<Submission> = []
+              const readonlyRetries: Array<Submission> = []
+              const destination = submissions[0].destination
+              const batch = submissions.map(({ index }) => commands[index])
+              const response = yield* Effect.result(
+                destination.asking
+                  ? Effect.scoped(
+                    reserve({ node: destination.endpoint }).pipe(Effect.flatMap((connection) =>
+                      connection.pipeline(batch.flatMap((command) => [{ arguments: ["ASKING"] }, command])).pipe(
+                        // ASKING applies to exactly the following command on this exclusive session.
+                        Effect.map((replies) => batch.map((_, index) => replies[index * 2 + 1]))
+                      )
+                    ))
+                  )
+                  : get(destination.endpoint).pipe(Effect.flatMap((connection) =>
+                    connection.pipeline(batch)
+                  ))
+              )
+              const replies = response._tag === "Success"
+                ? response.success
+                : submissions.map(() => Result.fail(response.failure))
+              for (let position = 0; position < submissions.length; position++) {
+                const submission = submissions[position]
+                const reply = replies[position]
+                if (reply._tag === "Success") {
+                  results[submission.index] = commands[submission.index].decode(reply.success)
+                  continue
+                }
+                const error = reply.failure
+                const redirect = !closed && topology._tag === "Cluster"
+                  ? topology.redirect(error, destination.endpoint)
+                  : undefined
+                if (redirect !== undefined && submission.remaining > 0) {
+                  retries.push({ ...submission, destination: redirect, remaining: submission.remaining - 1 })
+                } else if (redirect !== undefined) {
+                  results[submission.index] = Result.fail(
+                    new RedisError({
+                      reason: "Routing",
+                      message: "Redis Cluster redirect limit exceeded",
+                      cause: error,
+                      code: error.code
+                    })
+                  )
+                } else if (
+                  !closed && topologyConfig._tag === "Sentinel" && error.reason === "Server" &&
+                  error.code === "READONLY" && submission.remaining > 0
+                ) {
+                  readonlyRetries.push(submission)
+                } else results[submission.index] = reply
+              }
+              if (readonlyRetries.length > 0) {
+                const refreshed = yield* Effect.result(refresh)
+                for (const submission of readonlyRetries) {
+                  if (refreshed._tag === "Failure") {
+                    results[submission.index] = refreshed
+                    continue
+                  }
+                  const command = commands[submission.index]
+                  const resolved = topology.resolveSync(command.arguments, command.routing)
+                  if (resolved._tag === "Failure") results[submission.index] = resolved
+                  else {retries.push({
+                      ...submission,
+                      destination: resolved.success,
+                      remaining: submission.remaining - 1
+                    })}
+                }
+              } else if (
+                replies.some((reply) =>
+                  reply._tag === "Failure" &&
+                  (reply.failure.reason === "Connection" || reply.failure.reason === "Closed")
+                )
+              ) {
+                yield* Effect.ignoreCause(refresh)
+              }
+              yield* Effect.forEach(groupSubmissions(retries), process, { concurrency: "unbounded", discard: true })
+            }
+          )
+          yield* Effect.forEach(groupSubmissions(pending), process, { concurrency: "unbounded", discard: true })
+          return results
+        })
       }) as any
   }
   const initial = yield* topology.resolve(["PING"], { keyIndexes: [] })

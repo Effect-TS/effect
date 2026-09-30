@@ -3,7 +3,7 @@ import * as Connection from "@effect/redis/RedisConnection"
 import type { RedisError } from "@effect/redis/RedisError"
 import * as Protocol from "@effect/redis/RedisProtocol"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
+import { Deferred, Effect, Exit, Fiber, Queue, Scope } from "effect"
 import type * as Result from "effect/Result"
 import * as TestClock from "effect/testing/TestClock"
 import { Duplex } from "node:stream"
@@ -20,6 +20,129 @@ const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
 }
 
 describe("Redis physical session", () => {
+  it.effect("keeps individual pipeline deadlines when earlier replies complete", () =>
+    Effect.gen(function*() {
+      const written = yield* Deferred.make<void>()
+      const received = yield* Deferred.make<void>()
+      const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
+      const connection = yield* Connection.make(
+        () =>
+          Effect.succeed({
+            read: Queue.take(replies),
+            close: Effect.void,
+            write: () =>
+              Effect.sync(() => {
+                Queue.offerUnsafe(replies, Buffer.from("+FIRST\r\n>1\r\n+barrier\r\n"))
+                Deferred.doneUnsafe(written, Effect.void)
+              })
+          }),
+        { host: "unused", port: 6379 },
+        { commandTimeout: "1 second" }
+      )
+      connection.onPush(() => {
+        Deferred.doneUnsafe(received, Effect.void)
+      })
+      const pending = yield* connection.pipeline([
+        { arguments: ["PING", "first"] },
+        { arguments: ["PING", "second"] }
+      ]).pipe(Effect.forkChild)
+      yield* Deferred.await(written)
+      yield* Deferred.await(received)
+      yield* TestClock.adjust("1 second")
+      const results = yield* Fiber.join(pending)
+      assert.strictEqual(results[0]._tag, "Success")
+      const error = failure(results[1])
+      assert.strictEqual(error.reason, "Timeout")
+      assert.strictEqual(error.outcome, "Unknown")
+    }))
+
+  it.live("retains interrupted pipeline entries until their replies drain", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const connection = yield* Connection.make(makeConnector(), fixture, { maxPendingCommands: 2 })
+      const drained = yield* Deferred.make<void>()
+      connection.onPush(() => {
+        Deferred.doneUnsafe(drained, Effect.void)
+      })
+      const pending = yield* connection.pipeline([
+        { arguments: ["INCR", "first"] },
+        { arguments: ["INCR", "second"] }
+      ]).pipe(Effect.forkChild)
+      const first = yield* Effect.promise(fixture.nextRequest)
+      yield* Effect.promise(fixture.nextRequest)
+      yield* Fiber.interrupt(pending)
+      assert.strictEqual(failure(yield* Effect.result(connection.execute(["PING"]))).reason, "Capacity")
+      first.connection.send(":1\r\n:1\r\n>1\r\n+barrier\r\n")
+      yield* Deferred.await(drained)
+      const next = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
+      const request = yield* Effect.promise(fixture.nextRequest)
+      request.connection.send("+PONG\r\n")
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(next)), "PONG")
+    }))
+
+  it.live("coalesces a pipeline before receiving replies and preserves reply positions", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const writes: Array<Uint8Array> = []
+      const base = makeConnector()
+      const connector: Connection.Connector = (endpoint) =>
+        base(endpoint).pipe(Effect.map((transport) => ({
+          ...transport,
+          write: (bytes) =>
+            Effect.sync(() => {
+              writes.push(bytes.slice())
+            }).pipe(Effect.andThen(transport.write(bytes)))
+        })))
+      const connection = yield* Connection.make(connector, fixture)
+      const pending = yield* connection.pipeline([
+        { arguments: ["SET", "key", "value"] },
+        { arguments: ["LPUSH", "key", "wrong-type"] },
+        { arguments: ["GET", "key"] }
+      ]).pipe(Effect.forkChild)
+      const requests = yield* Effect.forEach([0, 1, 2], () => Effect.promise(fixture.nextRequest))
+      assert.deepStrictEqual(requests.map((request) => request.args[0].toString()), ["SET", "LPUSH", "GET"])
+      assert.strictEqual(writes.length, 1)
+      requests[0].connection.send(Buffer.concat([Buffer.from("+OK\r\n-WRONGTYPE invalid value\r\n"), bulk("value")]))
+      const results = yield* Fiber.join(pending)
+      assert.strictEqual(results[0]._tag, "Success")
+      assert.strictEqual(failure(results[1]).code, "WRONGTYPE")
+      assert.strictEqual(results[2]._tag, "Success")
+      if (results[2]._tag === "Success") assert.strictEqual(Protocol.toValue(results[2].success), "value")
+    }))
+
+  it.live("rejects an invalid batch before writing any of its commands", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      let writes = 0
+      const base = makeConnector()
+      const connection = yield* Connection.make(
+        (endpoint) =>
+          base(endpoint).pipe(Effect.map((transport) => ({
+            ...transport,
+            write: (bytes) =>
+              Effect.sync(() => {
+                writes++
+              }).pipe(Effect.andThen(transport.write(bytes)))
+          }))),
+        fixture,
+        { maxQueuedBytes: 64 }
+      )
+      for (
+        const commands of [
+          [{ arguments: ["SET", "key", "value"] }, { arguments: [] }],
+          [{ arguments: ["SET", "key", "value".repeat(50)] }]
+        ]
+      ) {
+        const error = failure(yield* Effect.result(connection.pipeline(commands)))
+        assert.strictEqual(error.outcome, "NotSent")
+      }
+      assert.strictEqual(writes, 0)
+      const pending = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
+      const request = yield* Effect.promise(fixture.nextRequest)
+      request.connection.send("+PONG\r\n")
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(pending)), "PONG")
+    }))
+
   it.effect("rejects invalid parser limits through the typed channel before dialing", () =>
     Effect.gen(function*() {
       let opens = 0

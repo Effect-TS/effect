@@ -1,15 +1,21 @@
 // Internal implementation.
 import * as Effect from "effect/Effect"
+import * as Result from "effect/Result"
 import * as Semaphore from "effect/Semaphore"
 import * as Command from "../RedisCommand.ts"
 import * as Connection from "../RedisConnection.ts"
 import { RedisError } from "../RedisError.ts"
 import * as Protocol from "../RedisProtocol.ts"
-import type { ClusterConfig, Redirect, Topology } from "./topology.ts"
+import type { ClusterConfig, ClusterTopology, Redirect } from "./topology.ts"
 import { endpointKey } from "./transport.ts"
 
 const encoder = new TextEncoder()
 const slotCount = 16384
+const crc16Table = Uint16Array.from({ length: 256 }, (_, value) => {
+  let crc = value << 8
+  for (let bit = 0; bit < 8; bit++) crc = ((crc << 1) ^ ((crc & 0x8000) ? 0x1021 : 0)) & 0xffff
+  return crc
+})
 
 const routingError = (message: string, cause?: unknown): RedisError =>
   new RedisError({ reason: "Routing", message, cause, outcome: "NotSent" })
@@ -17,8 +23,7 @@ const routingError = (message: string, cause?: unknown): RedisError =>
 export const crc16 = (bytes: Uint8Array): number => {
   let crc = 0
   for (const byte of bytes) {
-    crc ^= byte << 8
-    for (let bit = 0; bit < 8; bit++) crc = ((crc << 1) ^ ((crc & 0x8000) ? 0x1021 : 0)) & 0xffff
+    crc = ((crc << 8) ^ crc16Table[((crc >> 8) ^ byte) & 0xff]) & 0xffff
   }
   return crc
 }
@@ -188,40 +193,43 @@ export const make = Effect.fnUntraced(function*(
     return yield* Effect.fail(routingError("No Cluster seed returned a valid topology", failures))
   }))
   yield* refresh
-  const topology: Topology = {
-    resolve: (args, routing) =>
-      Effect.try({
-        try: () => {
-          if (args.length === 0) throw routingError("Redis commands cannot be empty")
-          const indexes = routing?.keyIndexes ?? Command.inferRouting(args)?.keyIndexes
-          if (indexes === undefined && routing?.node === undefined) {
-            throw routingError("Cluster commands with unknown key positions require explicit routing metadata")
-          }
-          let slot: number | undefined
-          for (const index of indexes ?? []) {
-            if (!Number.isSafeInteger(index) || index < 1 || index >= args.length) {
-              throw routingError("Cluster key index is outside the command arguments")
-            }
-            const current = keySlot(args[index])
-            if (slot !== undefined && current !== slot) {
-              throw new RedisError({
-                reason: "Routing",
-                code: "CROSSSLOT",
-                message: "CROSSSLOT Keys in request do not hash to the same slot",
-                outcome: "NotSent"
-              })
-            }
-            slot = current
-          }
-          const owner = slot === undefined ? primaries[0] : owners[slot]
-          if (owner === undefined) throw routingError("Cluster has no primary for this hash slot")
-          if (slot !== undefined && routing?.node !== undefined && endpointKey(routing.node) !== endpointKey(owner)) {
-            throw routingError("Explicit Cluster destination conflicts with key slot ownership")
-          }
-          return { endpoint: routing?.node ?? owner, slot }
-        },
-        catch: decodeFailure
-      }),
+  const resolveSync: ClusterTopology["resolveSync"] = (args, routing) => {
+    try {
+      if (args.length === 0) throw routingError("Redis commands cannot be empty")
+      const indexes = routing?.keyIndexes ?? Command.inferRouting(args)?.keyIndexes
+      if (indexes === undefined && routing?.node === undefined) {
+        throw routingError("Cluster commands with unknown key positions require explicit routing metadata")
+      }
+      let slot: number | undefined
+      for (const index of indexes ?? []) {
+        if (!Number.isSafeInteger(index) || index < 1 || index >= args.length) {
+          throw routingError("Cluster key index is outside the command arguments")
+        }
+        const current = keySlot(args[index])
+        if (slot !== undefined && current !== slot) {
+          throw new RedisError({
+            reason: "Routing",
+            code: "CROSSSLOT",
+            message: "CROSSSLOT Keys in request do not hash to the same slot",
+            outcome: "NotSent"
+          })
+        }
+        slot = current
+      }
+      const owner = slot === undefined ? primaries[0] : owners[slot]
+      if (owner === undefined) throw routingError("Cluster has no primary for this hash slot")
+      if (slot !== undefined && routing?.node !== undefined && endpointKey(routing.node) !== endpointKey(owner)) {
+        throw routingError("Explicit Cluster destination conflicts with key slot ownership")
+      }
+      return Result.succeed({ endpoint: routing?.node ?? owner, slot })
+    } catch (cause) {
+      return Result.fail(decodeFailure(cause))
+    }
+  }
+  const topology: ClusterTopology = {
+    _tag: "Cluster",
+    resolveSync,
+    resolve: (args, routing) => Effect.suspend(() => Effect.fromResult(resolveSync(args, routing))),
     refresh,
     endpoints: () => primaries,
     redirect: (error, from): Redirect | undefined => {
@@ -236,7 +244,7 @@ export const make = Effect.fnUntraced(function*(
       try {
         const endpoint = address(match[3].slice(0, separator), Number(portText), from, config)
         const asking = match[1] === "ASK"
-        if (!asking) {
+        if (!asking && (owners[slot] === undefined || endpointKey(owners[slot]) !== endpointKey(endpoint))) {
           const next = [...owners]
           next[slot] = endpoint
           owners = next

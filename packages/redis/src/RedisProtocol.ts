@@ -88,19 +88,50 @@ const maxInteger = BigInt("9223372036854775807")
  * @since 4.0.0
  */
 export const encode = (args: ReadonlyArray<Argument>): Uint8Array => {
-  const parts: Array<Uint8Array> = [encoder.encode(`*${args.length}\r\n`)]
-  let length = parts[0].length
+  const lengths: Array<number> = []
+  let length = String(args.length).length + 3
   for (const arg of args) {
-    const value = typeof arg === "string" ? encoder.encode(arg) : arg
-    const header = encoder.encode(`$${value.length}\r\n`)
-    parts.push(header, value, new Uint8Array([13, 10]))
-    length += header.length + value.length + 2
+    let size = typeof arg === "string" ? 0 : arg.length
+    if (typeof arg === "string") {
+      for (let index = 0; index < arg.length; index++) {
+        const code = arg.charCodeAt(index)
+        if (code < 0x80) size++
+        else if (code < 0x800) size += 2
+        else if (code >= 0xD800 && code <= 0xDBFF && index + 1 < arg.length) {
+          const next = arg.charCodeAt(index + 1)
+          if (next >= 0xDC00 && next <= 0xDFFF) {
+            size += 4
+            index++
+          } else size += 3
+        } else size += 3
+      }
+    }
+    lengths.push(size)
+    length += String(size).length + size + 5
   }
   const result = new Uint8Array(length)
   let offset = 0
-  for (const part of parts) {
-    result.set(part, offset)
-    offset += part.length
+  const header = (marker: number, size: number) => {
+    result[offset++] = marker
+    const digits = String(size)
+    for (let index = 0; index < digits.length; index++) result[offset++] = digits.charCodeAt(index)
+    result[offset++] = 13
+    result[offset++] = 10
+  }
+  header(42, args.length)
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index]
+    const size = lengths[index]
+    header(36, size)
+    if (typeof arg !== "string") result.set(arg, offset)
+    else if (size === arg.length) {
+      for (let character = 0; character < arg.length; character++) {
+        result[offset + character] = arg.charCodeAt(character)
+      }
+    } else encoder.encodeInto(arg, result.subarray(offset, offset + size))
+    offset += size
+    result[offset++] = 13
+    result[offset++] = 10
   }
   return result
 }
@@ -221,7 +252,17 @@ export const makeParser = (options: ParserOptions = {}): Parser => {
     state = size === 0 ? "bodyCr" : "body"
   }
   const completeLine = (output: Array<Reply>): void => {
-    const value = decoder.decode(new Uint8Array(line))
+    let value = ""
+    if (marker === "+" || marker === "-") value = decoder.decode(new Uint8Array(line))
+    else {
+      // Numeric headers and control tokens are ASCII. Avoid allocating a byte
+      // buffer and UTF-8 decoder result for every integer or aggregate member.
+      for (let index = 0; index < line.length; index++) {
+        const byte = line[index]
+        if (byte > 127) fail("Non-ASCII RESP header")
+        value += String.fromCharCode(byte)
+      }
+    }
     line = []
     state = "marker"
     switch (marker) {

@@ -20,6 +20,7 @@ import * as Layer from "effect/Layer"
 import * as Redis from "effect/persistence/Redis"
 import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
+import { createHash } from "node:crypto"
 import type { Duplex } from "node:stream"
 import type * as Tls from "node:tls"
 import { makeConnector } from "./internal/redisTransport.ts"
@@ -129,24 +130,11 @@ export const make = Effect.fnUntraced(function*(options: Options = {}) {
 
 const makeContext = Effect.fnUntraced(function*(options: Options = {}) {
   const client = yield* make(options)
-  if (options.topology?._tag === "Cluster") {
-    const unsupported = Effect.fail(
-      new Redis.RedisError({
-        cause: new RedisError({
-          reason: "Routing",
-          message: "The persistence Redis adapter requires standalone or Sentinel topology"
-        })
-      })
-    )
-    const adapter = yield* Redis.make({ send: () => unsupported, subscribe: () => unsupported })
-    return Context.make(NodeRedis, client).pipe(
-      Context.add(RedisClient.RedisClient, client),
-      Context.add(Redis.Redis, adapter)
-    )
-  }
-  const adapter = yield* Redis.make({
-    send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-      client.execute([command, ...args]).pipe(
+  const cluster = options.topology?._tag === "Cluster"
+  const sendTo =
+    (node?: Endpoint): Redis.Redis["Service"]["send"] =>
+    <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+      client.execute([command, ...args], node === undefined ? undefined : { node, keyIndexes: [] }).pipe(
         Effect.flatMap((reply) =>
           Effect.try({
             try: () => RedisProtocol.toValue(reply) as A,
@@ -154,7 +142,20 @@ const makeContext = Effect.fnUntraced(function*(options: Options = {}) {
           })
         ),
         Effect.mapError((cause) => cause instanceof Redis.RedisError ? cause : new Redis.RedisError({ cause }))
-      ),
+      )
+  const adapter = yield* Redis.make({
+    cluster,
+    scriptHash: (lua) =>
+      Effect.try({
+        try: () => createHash("sha1").update(lua).digest("hex"),
+        catch: (cause) => new Redis.RedisError({ cause })
+      }),
+    scan: Effect.fnUntraced(function*(pattern: string) {
+      const nodes = yield* client.nodes
+      const batches = yield* Effect.forEach(nodes, (node) => Redis.scan(sendTo(node), pattern), { concurrency: 16 })
+      return Array.from(new Set(batches.flat()))
+    }),
+    send: sendTo(),
     subscribe: (channel, onMessage) =>
       Effect.gen(function*() {
         const subscription = yield* RedisSubscription.make(client, channel).pipe(
@@ -184,11 +185,11 @@ const makeContext = Effect.fnUntraced(function*(options: Options = {}) {
 /**
  * Provides native Node Redis, general client, and persistence adapter services.
  *
- * **Gotchas**
+ * **Details**
  *
- * The persistence adapter supports standalone and Sentinel. Its existing key
- * formats do not guarantee Cluster slot affinity. The general client supports
- * all three topologies.
+ * Cluster persistence groups related keys with hash tags per cache namespace,
+ * queue, or rate limiter. Standalone and Sentinel retain their existing key
+ * layouts. Moving persisted data into Cluster requires a key migration.
  *
  * @stability unstable
  * @category layers

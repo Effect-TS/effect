@@ -1,6 +1,7 @@
 import { makeConnector } from "@effect/platform-node/internal/redisTransport"
 import * as Client from "@effect/redis/RedisClient"
 import * as Command from "@effect/redis/RedisCommand"
+import * as Protocol from "@effect/redis/RedisProtocol"
 import * as Transaction from "@effect/redis/RedisTransaction"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
@@ -64,7 +65,7 @@ describe("Redis transactions", () => {
       assert.strictEqual(yield* client.run(Command.get("other")), null)
     }))
 
-  it.live("abandons a transaction after queue-time rejection and keeps shared traffic usable", () =>
+  it.live("reports queue-time rejection without applying queued mutations", () =>
     Effect.gen(function*() {
       const fixture = yield* redis
       const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
@@ -82,29 +83,63 @@ describe("Redis transactions", () => {
       assert.strictEqual(yield* client.run(Command.set("healthy", "value")), "OK")
     }))
 
+  it.live("reports an uncertain transaction outcome when MULTI is denied but subsequent writes are permitted", () =>
+    Effect.gen(function*() {
+      const fixture = yield* redis
+      yield* Effect.promise(() =>
+        fixture.command("ACL", "SETUSER", "transactions-denied", "on", ">secret", "~*", "+@all", "-multi")
+      )
+      const client = yield* Client.make(makeConnector(), {
+        topology: { _tag: "Standalone", endpoint: fixture },
+        username: "transactions-denied",
+        password: "secret"
+      })
+      const error = yield* Transaction.execute(client, [Command.set("outside-transaction", "value")]).pipe(Effect.flip)
+      assert.strictEqual(error.reason, "Server")
+      assert.strictEqual(error.code, "NOPERM")
+      assert.strictEqual(error.outcome, "Unknown")
+      assert.strictEqual(yield* client.run(Command.get("outside-transaction")), "value")
+    }))
+
   it.live("does not replay EXEC when Redis commits but its reply is lost", () =>
     Effect.gen(function*() {
       const fixture = yield* redis
-      const upstreams = new Map<number, { readonly socket: Socket; awaitingExec: boolean }>()
+      const upstreams = new Map<number, {
+        readonly socket: Socket
+        readonly parser: Protocol.Parser
+        readonly commands: Array<string>
+        awaitingExec: boolean
+      }>()
       let execCount = 0
       const proxy = yield* Effect.acquireRelease(
         Effect.promise(() =>
           startScriptedRedis((request) => {
             let upstream = upstreams.get(request.connection.number)
             if (upstream === undefined) {
-              upstream = { socket: createConnection(fixture), awaitingExec: false }
+              upstream = {
+                socket: createConnection(fixture),
+                parser: Protocol.makeParser(),
+                commands: [],
+                awaitingExec: false
+              }
               upstreams.set(request.connection.number, upstream)
               upstream.socket.on("error", () => request.connection.disconnect())
               upstream.socket.on("data", (data) => {
-                if (upstream!.awaitingExec) {
-                  // Receiving EXEC's reply establishes that Redis executed the transaction.
-                  request.connection.disconnect()
-                  upstream!.socket.destroy()
-                } else request.connection.send(data)
+                for (const _reply of upstream!.parser.push(typeof data === "string" ? Buffer.from(data) : data)) {
+                  if (upstream!.commands.shift() === "EXEC") {
+                    // Wait for EXEC itself, including when Redis coalesces its
+                    // reply with MULTI and QUEUED acknowledgements.
+                    request.connection.disconnect()
+                    upstream!.socket.destroy()
+                    return
+                  }
+                }
+                if (!upstream!.awaitingExec) request.connection.send(data)
               })
               request.connection.socket.once("close", () => upstream!.socket.destroy())
             }
             const command = request.args[0]?.toString()
+            upstream.commands.push(command)
             if (command === "EXEC") {
               execCount++
               upstream.awaitingExec = true
@@ -163,6 +198,7 @@ describe("Redis transactions", () => {
       assert.isFalse(sent.some((bytes) =>
         new TextDecoder().decode(bytes).includes("{bar}:must-never-be-sent")
       ))
+      assert.isFalse(sent.some((bytes) => new TextDecoder().decode(bytes).includes("MULTI")))
       assert.strictEqual(yield* client.run(Command.get("{foo}:queued")), null)
       const results = yield* Transaction.execute(
         client,

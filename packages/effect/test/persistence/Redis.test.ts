@@ -17,8 +17,9 @@ describe("Redis", () => {
 
   it.effect("clearing an empty persistence store succeeds", () => {
     const redis = Redis.Redis.of({
+      cluster: false,
+      scan: () => Effect.succeed([]),
       send: <A>(command: string, ...args: ReadonlyArray<string>) => {
-        if (command.toUpperCase() === "KEYS") return Effect.succeed([] as unknown as A)
         if (command.toUpperCase() === "DEL" && args.length === 0) {
           return Effect.fail(new Redis.RedisError({ cause: "ERR wrong number of arguments for 'del' command" }))
         }
@@ -40,6 +41,8 @@ describe("Redis", () => {
     const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
     const scripts: Array<unknown> = []
     const redis = Redis.Redis.of({
+      cluster: false,
+      scan: () => Effect.succeed([]),
       send: <A>(command: string, ...args: ReadonlyArray<string>) => {
         commands.push([command, args])
         return Effect.succeed(undefined as unknown as A)
@@ -73,22 +76,23 @@ describe("Redis", () => {
     )
   })
 
-  it.effect("retries script loading when SCRIPT LOAD fails", () =>
+  it.effect("retries computing script hashes after a failure", () =>
     Effect.gen(function*() {
       const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
-      let scriptLoadAttempts = 0
+      let hashAttempts = 0
       const redis = yield* Redis.make({
-        send: (command, ...args) =>
+        scan: () => Effect.die("unused"),
+        scriptHash: () =>
+          Effect.suspend(() => {
+            if (++hashAttempts === 1) {
+              return Effect.fail(new Redis.RedisError({ cause: new Error("Transient script hash failure") }))
+            }
+            return Effect.succeed("sha")
+          }),
+        send: <A>(command: string, ...args: ReadonlyArray<string>) =>
           Effect.suspend(() => {
             commands.push([command, args])
-            if (command === "SCRIPT") {
-              scriptLoadAttempts += 1
-              if (scriptLoadAttempts === 1) {
-                return Effect.fail(new Redis.RedisError({ cause: new Error("ERR transient script load failure") }))
-              }
-              return Effect.succeed("sha" as any)
-            }
-            return Effect.succeed("ok")
+            return Effect.succeed("ok" as A)
           }),
         subscribe: () => Effect.succeed(Effect.never)
       })
@@ -104,31 +108,29 @@ describe("Redis", () => {
 
       assert.strictEqual(first._tag, "Failure")
       assert.strictEqual(second, "ok")
+      assert.strictEqual(hashAttempts, 2)
       assert.deepStrictEqual(commands.map(([command]) => command), [
-        "SCRIPT",
-        "SCRIPT",
         "EVALSHA"
       ])
     }))
 
-  it.effect("reloads and retries scripts when EVALSHA returns NOSCRIPT", () =>
+  it.effect("evaluates and caches missing scripts on the key's owning node", () =>
     Effect.gen(function*() {
       const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
       let evalShaAttempts = 0
       const redis = yield* Redis.make({
-        send: (command, ...args) =>
+        scan: () => Effect.die("unused"),
+        scriptHash: () => Effect.succeed("sha"),
+        send: <A>(command: string, ...args: ReadonlyArray<string>) =>
           Effect.suspend(() => {
             commands.push([command, args])
             if (command === "EVALSHA") {
               evalShaAttempts += 1
             }
-            if (command === "SCRIPT") {
-              return Effect.succeed("sha" as any)
-            }
             if (command === "EVALSHA" && evalShaAttempts === 1) {
               return Effect.fail(new Redis.RedisError({ cause: new Error("NOSCRIPT No matching script") }))
             }
-            return Effect.succeed("ok")
+            return Effect.succeed("ok" as A)
           }),
         subscribe: () => Effect.succeed(Effect.never)
       })
@@ -143,16 +145,16 @@ describe("Redis", () => {
 
       assert.strictEqual(result, "ok")
       assert.deepStrictEqual(commands.map(([command]) => command), [
-        "SCRIPT",
         "EVALSHA",
-        "SCRIPT",
-        "EVALSHA"
+        "EVAL"
       ])
     }))
 
   it.effect("receives messages from a subscription", () =>
     Effect.gen(function*() {
       const redis = yield* Redis.make({
+        scan: () => Effect.die("unused"),
+        scriptHash: () => Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: (_channel, onMessage) =>
           Effect.sync(() => {
@@ -173,6 +175,8 @@ describe("Redis", () => {
     Effect.gen(function*() {
       const error = new Redis.RedisError({ cause: new Error("subscription failed") })
       const redis = yield* Redis.make({
+        scan: () => Effect.die("unused"),
+        scriptHash: () => Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: () => Effect.fail(error)
       })
@@ -186,6 +190,8 @@ describe("Redis", () => {
     Effect.gen(function*() {
       const error = new Redis.RedisError({ cause: new Error("listener failed") })
       const redis = yield* Redis.make({
+        scan: () => Effect.die("unused"),
+        scriptHash: () => Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: () => Effect.succeed(Effect.fail(error))
       })
@@ -199,6 +205,8 @@ describe("Redis", () => {
     Effect.gen(function*() {
       let released = false
       const redis = yield* Redis.make({
+        scan: () => Effect.die("unused"),
+        scriptHash: () => Effect.die("unused"),
         send: () => Effect.die("unused"),
         subscribe: () =>
           Effect.acquireRelease(

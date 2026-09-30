@@ -8,6 +8,88 @@ import * as Result from "effect/Result"
 import { startScriptedRedis } from "./utils/redis-scripted.ts"
 
 describe("Redis transactions", () => {
+  it.live("submits the whole transaction before waiting for acknowledgements", () =>
+    Effect.gen(function*() {
+      const submitted: Array<ReadonlyArray<string>> = []
+      const fixture = yield* Effect.acquireRelease(
+        Effect.promise(() =>
+          startScriptedRedis((request) => {
+            const args = request.args.map((argument) => argument.toString())
+            if (args[0] === "PING") {
+              request.connection.send("+PONG\r\n")
+              return
+            }
+            submitted.push(args)
+            if (args[0] === "EXEC") {
+              request.connection.send("+OK\r\n+QUEUED\r\n+QUEUED\r\n*2\r\n+OK\r\n$5\r\nvalue\r\n")
+            }
+          })
+        ),
+        (fixture) => Effect.promise(fixture.stop)
+      )
+      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+      const results = yield* Transaction.execute(client, [Command.set("key", "value"), Command.get("key")])
+      assert.isNotNull(results)
+      if (results === null) return assert.fail("Transaction unexpectedly conflicted")
+      assert.deepStrictEqual(results.map(Result.getOrThrow), ["OK", "value"])
+      assert.deepStrictEqual(submitted, [["MULTI"], ["SET", "key", "value"], ["GET", "key"], ["EXEC"]])
+    }))
+
+  it.live("rejects an over-capacity transaction without submitting any part of it", () =>
+    Effect.gen(function*() {
+      const requests: Array<string> = []
+      const fixture = yield* Effect.acquireRelease(
+        Effect.promise(() =>
+          startScriptedRedis((request) => {
+            requests.push(request.args[0].toString())
+            request.connection.send("+PONG\r\n")
+          })
+        ),
+        (fixture) => Effect.promise(fixture.stop)
+      )
+      const client = yield* Client.make(makeConnector(), {
+        topology: { _tag: "Standalone", endpoint: fixture },
+        maxPendingCommands: 2
+      })
+      const error = yield* Transaction.execute(client, [Command.set("key", "value")]).pipe(Effect.flip)
+      assert.strictEqual(error.reason, "Capacity")
+      assert.strictEqual(error.outcome, "NotSent")
+      assert.deepStrictEqual(requests, ["PING"])
+    }))
+
+  it.live("snapshots commands before watch callbacks and session acquisition", () =>
+    Effect.gen(function*() {
+      const submitted: Array<ReadonlyArray<string>> = []
+      const fixture = yield* Effect.acquireRelease(
+        Effect.promise(() =>
+          startScriptedRedis((request) => {
+            const args = request.args.map((argument) => argument.toString())
+            if (args[0] === "PING") {
+              request.connection.send("+PONG\r\n")
+              return
+            }
+            submitted.push(args)
+            if (args[0] === "EXEC") request.connection.send("+OK\r\n+QUEUED\r\n*1\r\n+OK\r\n")
+          })
+        ),
+        (fixture) => Effect.promise(fixture.stop)
+      )
+      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+      const value = Buffer.from("value")
+      const args = ["SET", "key", value]
+      const results = yield* Transaction.execute(client, [Command.make(args, Command.text)], {
+        watch: () =>
+          Effect.sync(() => {
+            value.fill(120)
+            args.splice(0, args.length, "RESET")
+          })
+      })
+      assert.isNotNull(results)
+      if (results === null) return assert.fail("Transaction unexpectedly conflicted")
+      assert.deepStrictEqual(results.map(Result.getOrThrow), ["OK"])
+      assert.deepStrictEqual(submitted, [["MULTI"], ["SET", "key", "value"], ["EXEC"]])
+    }))
+
   it.live("rejects transaction control commands before acquiring a session or sending mutations", () =>
     Effect.gen(function*() {
       const requests: Array<string> = []

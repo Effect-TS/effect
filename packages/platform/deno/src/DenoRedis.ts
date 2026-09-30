@@ -74,10 +74,23 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
       catch: (cause) => new Redis.RedisError({ cause })
     })
 
+  const send = <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+    Effect.tryPromise({
+      try: () => client.sendCommand(command, args as Array<string>) as Promise<A>,
+      catch: (cause) => new Redis.RedisError({ cause })
+    })
+
   const redis = yield* Redis.make({
-    send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
+    send,
+    scan: (pattern) => Redis.scan(send, pattern),
+    scriptHash: (lua) =>
       Effect.tryPromise({
-        try: () => client.sendCommand(command, args as Array<string>) as Promise<A>,
+        try: async () => {
+          const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(lua))
+          let hex = ""
+          for (const byte of new Uint8Array(digest)) hex += byte.toString(16).padStart(2, "0")
+          return hex
+        },
         catch: (cause) => new Redis.RedisError({ cause })
       }),
     subscribe: (channel, onMessage) =>
