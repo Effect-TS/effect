@@ -509,9 +509,9 @@ interface AsyncContext {
 }
 
 // Hosts that implement `node:async_hooks` (Node.js, Bun, Deno) propagate
-// `AsyncLocalStorage` through an async context. A fiber captures that context
-// and runs every later step inside it, so a fiber woken from another fiber's
-// stack does not inherit the waker's context.
+// `AsyncLocalStorage` through an async context. Like `await`, a fiber resumes
+// in the context it had when it suspended, so a fiber woken from another
+// fiber's stack does not inherit the waker's context.
 const AsyncContextResource: (new(type: string) => AsyncContext) | undefined = (() => {
   try {
     return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
@@ -565,8 +565,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  // Captured when the fiber is forked or first suspends, so later steps
-  // started from another stack run in the fiber's own async context.
+  // Captured when the fiber is forked and each time it suspends, so the next
+  // step runs in that context whichever stack starts it.
   declare _asyncContext: AsyncContext | undefined
 
   // set in setContext
@@ -642,8 +642,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect)
     if (exit === Yield) {
-      // The first suspension still runs on the stack that started the fiber
-      this._asyncContext ??= captureAsyncContext()
+      this._asyncContext = captureAsyncContext()
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -1132,13 +1131,20 @@ const try_ = <A, E = Cause.UnknownError>(
 /** @internal */
 export { try_ as try }
 
+const nativePromiseThen = Promise.prototype.then
+
+// Reactions registered through the built-in `then` run in the async context
+// that registered them, which is the suspending fiber's own
+const resumesInContext = (promise: PromiseLike<unknown>): boolean =>
+  promise instanceof Promise && promise.then === nativePromiseThen
+
 /** @internal */
 export const promise = <A>(
   evaluate: (signal: AbortSignal) => PromiseLike<A>
 ): Effect.Effect<A> =>
   callbackOptions<A>(function(resume, signal) {
     const promise = evaluate(signal!)
-    const inContext = promise instanceof Promise
+    const inContext = resumesInContext(promise)
     promise.then(
       (a) => resume(succeed(a), inContext),
       (e) => resume(die(e), inContext)
@@ -1157,19 +1163,19 @@ export const tryPromise = <A, E = Cause.UnknownError>(
     ? ((cause: unknown) => new UnknownError(cause, "An error occurred in Effect.tryPromise"))
     : options.catch
   return callbackOptions<A, E>(function(resume, signal) {
-    const failWithCatch = (cause: unknown) => {
+    const failWithCatch = (cause: unknown, inContext?: boolean) => {
       try {
-        resume(fail(internalCall(() => catcher(cause)) as E))
+        resume(fail(internalCall(() => catcher(cause)) as E), inContext)
       } catch (err) {
-        resume(die(err))
+        resume(die(err), inContext)
       }
     }
     try {
       const promise = f(signal!)
-      const inContext = promise instanceof Promise
+      const inContext = resumesInContext(promise)
       promise.then(
         (a) => resume(succeed(a), inContext),
-        failWithCatch
+        (e) => failWithCatch(e, inContext)
       )
     } catch (err) {
       failWithCatch(err)
@@ -1192,7 +1198,7 @@ const callbackOptions: <A, E = never, R = never>(
   register: (
     this: Scheduler.Scheduler,
     // `inContext` skips restoring the fiber's async context, for callers that
-    // resume from a native promise reaction registered by the fiber itself
+    // resume from a built-in promise reaction registered by the fiber itself
     resume: (effect: Effect.Effect<A, E, R>, inContext?: boolean) => void,
     signal?: AbortSignal
   ) => void | Effect.Effect<void, E, R>,
@@ -5575,12 +5581,8 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   const parentRuntime = parent as FiberImpl<FA, FE>
   const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
   const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
-  // The child starts in the running fiber's async context, so both share one
-  // capture
-  const current = getCurrentFiber() as FiberImpl | undefined
-  child._asyncContext = current === undefined
-    ? captureAsyncContext()
-    : (current._asyncContext ??= captureAsyncContext())
+  // The child starts in the context it was forked in
+  child._asyncContext = captureAsyncContext()
   if (immediate) {
     child.evaluateInContext(effect as any)
   } else {
