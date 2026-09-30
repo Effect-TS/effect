@@ -384,6 +384,24 @@ export declare namespace Queue {
       readonly message: A
       readonly resume: (_: Effect<boolean>) => void
     }
+
+  /**
+   * Represents a suspended take waiting for the queue to become readable.
+   *
+   * **Details**
+   *
+   * `ready` reports whether the take can now complete, so a batch take is
+   * only resumed once its minimum is available. `resume` completes the
+   * suspended take, with `void` to retry or with a failure exit when the queue
+   * is done.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Taker<E> {
+    readonly ready: () => boolean
+    readonly resume: (_: Effect<void, E>) => void
+  }
 }
 
 const variance = {
@@ -1926,11 +1944,6 @@ const exitFalse = core.exitSucceed(false)
 const exitTrue = core.exitSucceed(true)
 const exitFailDone = core.exitFail(core.Done()) as Failure<never, Done>
 const exitInterrupt = internalEffect.exitInterrupt() as Failure<never, never>
-
-interface Taker<E> {
-  readonly ready: () => boolean
-  readonly resume: (_: Effect<void, E>) => void
-}
 
 const releaseTakers = <A, E>(self: Enqueue<A, E>) => {
   if (self.state._tag === "Done" || self.state.takers.size === 0) {

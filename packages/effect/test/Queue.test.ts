@@ -229,49 +229,40 @@ describe("Queue", () => {
       assert.deepEqual(b, [3, 4])
     }))
 
-  it("takeN on a partial batch does not monopolize the host", () => {
-    // Drive a finite number of scheduler turns by hand. An unproductive wake
-    // loop leaves more work queued, without starving Vitest's timeout timer.
+  it("takeN on a partial batch does not wake its taker", () => {
+    // Drive the queue's scheduler by hand so every taker release runs
+    // synchronously inside the test instead of on a host timer.
     const tasks: Array<() => void> = []
     const scheduler: Scheduler.Scheduler = {
       executionMode: "async",
-      shouldYield: (fiber) => fiber.currentOpCount >= 2048,
-      makeDispatcher: () => {
-        return {
-          scheduleTask(task, _priority) {
-            tasks.push(task)
-          },
-          flush() {}
-        }
-      }
+      shouldYield: () => false,
+      makeDispatcher: () => ({
+        scheduleTask: (task) => {
+          tasks.push(task)
+        },
+        flush() {}
+      })
     }
-
-    const queue = Effect.runSync(Queue.unbounded<number>())
-    Object.defineProperty(queue, "dispatcher", { value: scheduler.makeDispatcher() })
+    const queue = Effect.runSync(
+      Queue.unbounded<number>().pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+    )
     const taker = Effect.runFork(Queue.takeN(queue, 2), { scheduler })
-    const state = queue.state
-    if (state._tag === "Done") throw new Error("queue closed before taker registered")
-    assert.strictEqual(state.takers.size, 1)
-    let releases = 0
-    const takers = state.takers
-    const originalDelete = takers.delete.bind(takers)
-    takers.delete = (taker) => {
-      if (++releases > 100) throw new Error("partial batch repeatedly woke its taker")
-      return originalDelete(taker)
-    }
-    Queue.offerUnsafe(queue, 1)
-    let error: unknown
-    try {
-      for (let i = 0; i < 100 && tasks.length > 0; i++) tasks.shift()!()
-    } catch (cause) {
-      error = cause
-    } finally {
-      takers.delete = originalDelete
+    assert(queue.state._tag === "Open")
+    const takers = queue.state.takers
+    assert.strictEqual(takers.size, 1)
+    // Releasing a taker deletes it first, so the old wake/retry loop trips
+    // this on its first turn instead of spinning forever.
+    takers.delete = () => {
+      throw new Error("partial batch woke its taker")
     }
 
-    assert.isUndefined(error, "partial batch must not loop while releasing takers")
+    Queue.offerUnsafe(queue, 1)
+    assert.strictEqual(tasks.length, 1)
+    tasks.shift()!()
+
     assert.isUndefined(taker.pollUnsafe())
-    assert.isEmpty(tasks, "partial batch repeatedly rescheduled its taker")
+    assert.strictEqual(takers.size, 1)
+    assert.isEmpty(tasks)
   })
 
   const lostWakeupCases: ReadonlyArray<readonly [string, (queue: Queue.Queue<number>) => Effect.Effect<unknown>]> = [
