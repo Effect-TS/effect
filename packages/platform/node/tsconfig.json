@@ -4,7 +4,8 @@
   "include": ["src"],
   "references": [
     { "path": "../../effect" },
-    { "path": "../node-shared" }
+    { "path": "../node-shared" },
+    { "path": "../../redis" }
   ],
   "compilerOptions": {
     "types": ["node"]

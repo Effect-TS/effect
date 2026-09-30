@@ -171,6 +171,7 @@ export default defineConfig({
         ]
       ),
       ...project("@effect/platform-node-shared", "packages/platform/node-shared", isNode),
+      ...project("@effect/redis", "packages/redis"),
       ...project("@effect/vitest", "packages/vitest"),
       ...project("@effect/sql-clickhouse", "packages/sql/clickhouse"),
       ...project("@effect/sql-d1", "packages/sql/d1", !isDeno),

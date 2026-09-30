@@ -1,6 +1,9 @@
 import { NodeRedis } from "@effect/platform-node"
+import * as RedisCommand from "@effect/redis/RedisCommand"
+import { RedisError as NativeRedisError } from "@effect/redis/RedisError"
+import * as RedisProtocol from "@effect/redis/RedisProtocol"
+import { startRedis } from "@effect/redis/test/utils/redis-server"
 import { assert, it } from "@effect/vitest"
-import { RedisContainer } from "@testcontainers/redis"
 import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
@@ -12,13 +15,13 @@ import { createServer } from "node:net"
 const RedisLayer = Layer.unwrap(
   Effect.gen(function*() {
     const container = yield* Effect.acquireRelease(
-      Effect.promise(() => new RedisContainer("redis:alpine").start()),
-      (container) => Effect.promise(() => container.stop())
+      Effect.promise(() => startRedis()),
+      (container) => Effect.promise(container.stop)
     )
     return NodeRedis.layer({
       socket: {
-        host: container.getHost(),
-        port: container.getMappedPort(6379)
+        host: container.host,
+        port: container.port
       }
     })
   }).pipe(
@@ -142,16 +145,16 @@ it.effect("fails the initial connection by default", () =>
       }
     })).pipe(Effect.flip)
 
-    assert.instanceOf(error, Redis.RedisError)
+    assert.instanceOf(error, NativeRedisError)
   }))
 
 it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
   "PersistedQueue (NodeRedis)",
   (it) => {
-    it.effect("uses the node-redis protocol default", () =>
+    it.effect("defaults to RESP2", () =>
       Effect.gen(function*() {
         const redis = yield* NodeRedis.NodeRedis
-        assert.strictEqual(redis.client.options.RESP, undefined)
+        assert.strictEqual(redis.config.protocol ?? 2, 2)
       }))
 
     it.effect("receives published messages", () =>
@@ -186,14 +189,16 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
 
-        const failed = yield* redis.use((client) => client.lRange(`effectq:${queueName}:failed`, 0, -1))
+        const failed = RedisProtocol.toValue(
+          yield* redis.execute(["LRANGE", `effectq:${queueName}:failed`, "0", "-1"])
+        ) as Array<string>
         assert.strictEqual(failed.length, 1)
         const failedItem = JSON.parse(failed[0])
         assert.strictEqual(failedItem.id, id)
         assert.deepStrictEqual(failedItem.element, { n: 42 })
         assert.strictEqual(failedItem.attempts, 1)
 
-        const pending = yield* redis.use((client) => client.hLen(`effectq:${queueName}:pending`))
+        const pending = RedisProtocol.toValue(yield* redis.execute(["HLEN", `effectq:${queueName}:pending`]))
         assert.strictEqual(pending, 0)
       }))
 
@@ -297,3 +302,18 @@ const closedPort = Effect.promise(
       })
     })
 )
+
+it.live("connects to real Redis through TLS and a Unix socket", () =>
+  Effect.gen(function*() {
+    const fixture = yield* Effect.acquireRelease(
+      Effect.promise(() => startRedis({ tls: true, unixSocket: true })),
+      (fixture) => Effect.promise(fixture.stop)
+    )
+    const tls = yield* NodeRedis.make({
+      socket: { host: fixture.host, port: fixture.tlsPort!, tls: { rejectUnauthorized: false } }
+    })
+    const unix = yield* NodeRedis.make({ socket: { path: fixture.unixSocketPath! } })
+    yield* tls.run(RedisCommand.set("transport-key", "secure-value"))
+    assert.strictEqual(yield* unix.run(RedisCommand.get("transport-key")), "secure-value")
+    assert.strictEqual(RedisProtocol.toValue(yield* tls.execute(["PING"])), "PONG")
+  }))

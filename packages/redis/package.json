@@ -1,33 +1,28 @@
 {
-  "name": "@effect/platform-node",
-  "type": "module",
+  "name": "@effect/redis",
   "version": "4.0.0-rc.118",
+  "type": "module",
   "license": "MIT",
-  "description": "Platform specific implementations for the Node.js runtime",
+  "description": "A native Redis client for Effect",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/platform/node"
+    "directory": "packages/redis"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
   },
   "tags": [
-    "node",
     "typescript",
-    "algebraic-data-types",
-    "functional-programming"
+    "redis",
+    "database"
   ],
   "keywords": [
-    "node",
     "typescript",
-    "algebraic-data-types",
-    "functional-programming"
+    "redis",
+    "database"
   ],
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "sideEffects": [],
   "exports": {
     "./package.json": "./package.json",
@@ -65,18 +60,10 @@
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json"
   },
-  "dependencies": {
-    "@effect/platform-node-shared": "workspace:^",
-    "@effect/redis": "workspace:^",
-    "undici": "^8.11.2"
-  },
-  "peerDependencies": {
+  "devDependencies": {
     "effect": "workspace:^"
   },
-  "devDependencies": {
-    "@testcontainers/mysql": "^12.1.0",
-    "@testcontainers/postgresql": "^12.1.0",
-    "@types/node": "^26.6.3",
+  "peerDependencies": {
     "effect": "workspace:^"
   }
 }

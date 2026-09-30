@@ -5,6 +5,7 @@
   "references": [
     { "path": "ai-docs" },
     { "path": "packages/effect" },
+    { "path": "packages/redis" },
     { "path": "packages/ai/anthropic" },
     { "path": "packages/ai/openai-compat" },
     { "path": "packages/ai/openai" },
