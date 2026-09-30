@@ -61,6 +61,7 @@ export const optionalWithDefault = <S extends Schema.Constraint & Schema.Without
   defaultValue: () => Schema.optionalKey<S>["Type"]
 ): optionalWithDefault<S> => {
   const effect = Effect.sync(defaultValue)
+
   return Schema.optionalKey(schema).pipe(
     Schema.decode<Schema.optionalKey<S>>({
       decode: SchemaGetter.withDefault(effect),
