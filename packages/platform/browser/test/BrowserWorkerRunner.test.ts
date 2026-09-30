@@ -6,7 +6,7 @@ import * as Queue from "effect/Queue"
 
 type Listener = EventListenerOrEventListenerObject
 
-const makePort = () => {
+const makePort = (options: { readonly close?: boolean } = {}) => {
   const listeners = new Map<string, Set<Listener>>()
   const added: Array<readonly [string, Listener]> = []
   const removed: Array<readonly [string, Listener]> = []
@@ -25,7 +25,7 @@ const makePort = () => {
     },
     postMessage() {},
     start() {},
-    close() {}
+    ...(options.close === false ? {} : { close() {} })
   } as unknown as MessagePort
 
   return {
@@ -76,6 +76,20 @@ describe("BrowserWorkerRunner", () => {
       assert.isDefined(added)
       assert.isDefined(removed)
       assert.strictEqual(removed[1], added[1])
+    }))
+
+  it.effect("closes a port without a close method", () =>
+    Effect.gen(function*() {
+      // Bun's worker global implements the messaging surface but not close().
+      const fake = makePort({ close: false })
+      const runner = yield* BrowserWorkerRunner.make(fake.port).start()
+      const fiber = yield* Effect.forkChild(runner.run<void, never, never>(() => {}))
+      yield* Effect.yieldNow
+
+      fake.emit("message", [1])
+      yield* Fiber.join(fiber)
+
+      assert.deepStrictEqual(fake.removed.map(([type]) => type).sort(), ["error", "message", "messageerror"])
     }))
 
   it.effect("emits disconnects for closed SharedWorker ports", () =>
