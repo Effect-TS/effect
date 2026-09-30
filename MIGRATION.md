@@ -43,6 +43,13 @@ with `@stability unstable`.
 releases. `@stability experimental` means it may receive breaking changes
 across patch versions. APIs without a stability tag follow strict semver.
 
+APIs that expose a third-party dependency are also marked `@stability
+unstable`, because that dependency's own releases can change them. This covers
+accessors to underlying clients (for example `NodeRedis`'s `client` and `use`),
+options typed as the dependency's options, and re-exports such as
+`@effect/platform-node/Undici`. It includes the generated provider schemas in
+the `@effect/ai-*` packages and the `@effect/opentelemetry` integration.
+
 Imports using `effect/unstable/<module>` must drop the `unstable` segment.
 For example, replace `effect/unstable/http` with `effect/http` and
 `effect/unstable/ai/LanguageModel` with `effect/ai/LanguageModel`. There

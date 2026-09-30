@@ -5,6 +5,7 @@
  * supports scoped request configuration overrides, and checks that OpenAI
  * returns one numeric vector for each requested input.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
@@ -21,6 +22,7 @@ import type * as OpenAiSchema from "./OpenAiSchema.ts"
 /**
  * Model identifiers supported by OpenAI's embeddings API.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -42,6 +44,7 @@ export type Model = "text-embedding-ada-002" | "text-embedding-3-small" | "text-
  *
  * @see {@link withConfigOverride} for scoping embedding request overrides
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -71,6 +74,7 @@ export class Config extends Context.Service<
  * @see {@link layer} for providing only the embedding model service
  * @see {@link withConfigOverride} for scoped request configuration overrides
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -121,6 +125,7 @@ export const model = (
  * @see {@link model} for creating an `AiModel` that also provides dimensions
  * @see {@link withConfigOverride} for scoped request configuration overrides
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -161,6 +166,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  * @see {@link make} for constructing the embedding model service effectfully
  * @see {@link model} for creating an `AiModel` that also provides embedding dimensions
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -186,6 +192,7 @@ export const layer = (options: {
  *
  * @see {@link Config} for the scoped embedding request configuration service
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */

@@ -77,6 +77,8 @@ export interface Options extends Net.ListenOptions {
    * wiring options the server manages itself. Use this to enable
    * `permessage-deflate` compression or tune payload limits, e.g.
    * `websocket: { perMessageDeflate: true }`.
+   *
+   * @stability unstable
    */
   readonly websocket?:
     | Omit<NodeWS.ServerOptions, "noServer" | "server" | "host" | "port" | "path">
@@ -222,6 +224,7 @@ export const makeHandler = <
  * exposing the upgraded WebSocket as the request's `upgrade` effect and
  * interrupting the request fiber when the socket closes early.
  *
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */

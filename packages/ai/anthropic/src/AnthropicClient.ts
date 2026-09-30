@@ -4,6 +4,7 @@
  * authentication headers, API version headers, response decoding, and error
  * mapping, then exposes helpers for regular and streaming message requests.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as AiError from "effect/ai/AiError"
@@ -36,6 +37,7 @@ import * as Errors from "./internal/errors.ts"
  * Represents the Anthropic client service with methods for the Messages API, including regular and streaming message
  * creation.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -98,6 +100,7 @@ export interface Service {
  * - `content_block_stop`: End of a content block
  * - `error`: Error events with type and message
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -126,6 +129,7 @@ export type MessageStreamEvent =
  * @see {@link layer} for providing a client from explicit options
  * @see {@link layerConfig} for providing a client from `Config`
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -155,6 +159,7 @@ export class AnthropicClient extends Context.Service<AnthropicClient, Service>()
  * @see {@link layer} for providing an Anthropic client from explicit options
  * @see {@link layerConfig} for loading Anthropic client settings from `Config`
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -216,6 +221,7 @@ const withRedactedHeaders = Effect.updateService(
  * @see {@link layer} for providing the client as a `Layer` from explicit options
  * @see {@link layerConfig} for providing the client as a `Layer` with `Config`-based settings
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -400,6 +406,7 @@ export const make = Effect.fnUntraced(
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -419,6 +426,7 @@ export const layer = (options: Options): Layer.Layer<AnthropicClient, never, Htt
  * @see {@link layer} for providing the client from explicit options instead of `Config`
  * @see {@link make} for constructing the client service effectfully
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

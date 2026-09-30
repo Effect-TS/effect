@@ -6,6 +6,7 @@
  * non-streaming or streaming response results back into Effect AI response
  * content and metadata.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
@@ -45,6 +46,7 @@ const SharedModelIds = Generated.ModelIdsShared.members[1]
 /**
  * OpenAI model identifiers supported by the Responses API language model.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -76,6 +78,7 @@ type PromptCacheBreakpoint = { readonly mode: "explicit" }
  *
  * @see {@link withConfigOverride} for scoping language model request overrides
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -139,6 +142,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-specific options for system messages.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -160,6 +164,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-specific options for file prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -178,6 +183,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-specific options for reasoning prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -202,6 +208,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-specific options for assistant tool-call prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -228,6 +235,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-specific options for tool-result prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -254,6 +262,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-specific options for text prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -289,6 +298,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata attached to a complete text response part.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -321,6 +331,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed text part starts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -339,6 +350,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed text part ends.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -361,6 +373,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata attached to a complete reasoning response part.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -383,6 +396,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed reasoning part starts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -405,6 +419,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata emitted for a streamed reasoning delta.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -423,6 +438,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata emitted when a streamed reasoning part ends.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -445,6 +461,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata attached to tool-call response parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -463,6 +480,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata attached to document source citations.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -519,6 +537,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata attached to URL source citations.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -545,6 +564,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI metadata attached to finish response parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -577,6 +597,7 @@ declare module "effect/ai/Response" {
  * @see {@link layer} for creating a `LanguageModel.LanguageModel` layer directly
  * @see {@link make} for constructing the language model service effectfully
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -616,6 +637,7 @@ export const model = (
  * @see {@link layer} for providing the service as a `Layer`
  * @see {@link model} for creating a model descriptor for `Effect.provide`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -741,6 +763,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  * @see {@link model} for creating a model descriptor for `Effect.provide`
  * @see {@link withConfigOverride} for scoped request configuration overrides
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -768,6 +791,7 @@ export const layer = (options: {
  *
  * @see {@link Config} for the scoped configuration service consumed by this function
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */

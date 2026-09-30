@@ -83,6 +83,7 @@ export {
  * Service tag for the Undici `Dispatcher` used by the Undici-backed HTTP
  * client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -96,6 +97,7 @@ const loadUndici = Effect.promise(() => import("./Undici.ts"))
  * Acquires a new Undici `Agent` dispatcher and destroys it when the enclosing
  * scope is finalized.
  *
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
@@ -107,6 +109,7 @@ export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope
 /**
  * Provides the `Dispatcher` service using a scoped Undici `Agent`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -116,6 +119,7 @@ export const layerDispatcher: Layer.Layer<Dispatcher> = Layer.effect(Dispatcher)
  * Provides the `Dispatcher` service from Undici's process-global dispatcher,
  * without creating or owning a new agent.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -127,6 +131,7 @@ export const dispatcherLayerGlobal: Layer.Layer<Dispatcher> = Layer.effect(Dispa
  * Fiber reference containing default Undici request options applied to requests
  * sent by `makeUndici`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -140,6 +145,7 @@ export const UndiciOptions = Context.Reference<Partial<Undici.Dispatcher.Request
  * `Dispatcher`, converts Effect HTTP bodies to Undici bodies, and maps
  * transport and decode failures to `HttpClientError`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -350,6 +356,7 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
  * Provides an Undici-backed `HttpClient` using the current `Dispatcher`
  * service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -363,6 +370,7 @@ export const layerUndiciNoDispatcher: Layer.Layer<
  * Provides an Undici-backed `HttpClient` together with a scoped default
  * Undici `Agent` dispatcher.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -169,6 +169,11 @@ export interface MssqlClient extends Client.SqlClient {
 
   readonly config: MssqlClientConfig
 
+  /**
+   * Creates a statement parameter with an explicit `tedious` data type.
+   *
+   * @stability unstable
+   */
   readonly param: (
     type: DataType,
     value: unknown,
@@ -230,6 +235,11 @@ export interface MssqlClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
 
+  /**
+   * Overrides the `tedious` data type used for each primitive parameter kind.
+   *
+   * @stability unstable
+   */
   readonly parameterTypes?: Record<Statement.PrimitiveKind, DataType> | undefined
 
   readonly spanAttributes?: Record<string, unknown> | undefined
@@ -722,6 +732,7 @@ const byteArrayParameterType: DataType = {
 /**
  * Default mapping from Effect SQL primitive value kinds to Tedious SQL Server parameter data types.
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */

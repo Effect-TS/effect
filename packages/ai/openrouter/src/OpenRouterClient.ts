@@ -2,6 +2,7 @@
  * HTTP client for OpenRouter's chat completions and alpha Decisions APIs,
  * with authentication, site ranking headers, typed errors, and chat streaming.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
@@ -36,6 +37,7 @@ import * as OpenRouterSchema from "./OpenRouterSchema.ts"
  * Provides methods for interacting with OpenRouter's Chat Completions API,
  * including both synchronous and streaming message creation.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -75,6 +77,7 @@ export interface Service {
  * The payload contains streamed choices, model metadata, optional usage, and may
  * include an OpenRouter error object for a streamed response.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -96,6 +99,7 @@ export type ChatStreamingResponseChunkData = typeof Generated.ChatStreamingRespo
  * @see {@link layer} for providing a client from explicit options
  * @see {@link layerConfig} for providing a client from `Config`
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -111,6 +115,7 @@ export class OpenRouterClient extends Context.Service<
 /**
  * Configuration for creating an OpenRouter client.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -163,6 +168,7 @@ export type Options = {
  * @see {@link layer} for providing this client from explicit options
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -314,6 +320,7 @@ export const make = Effect.fnUntraced(
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -337,6 +344,7 @@ export const layer = (options: Options): Layer.Layer<OpenRouterClient, never, Ht
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layer} for providing the client from already-resolved options
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
