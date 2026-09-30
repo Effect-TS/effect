@@ -5093,8 +5093,8 @@ export interface brand<S extends Constraint, B extends string> extends
   readonly identifier: string
 }
 /**
- * Adds a nominal brand to a schema, intersecting the output type with
- * `Brand.Brand<B>` to prevent accidental mixing of structurally identical types.
+ * Intersects a schema's output type with `Brand.Brand<B>` to prevent accidental
+ * mixing of structurally identical types.
  *
  * **When to use**
  *
@@ -5105,21 +5105,24 @@ export interface brand<S extends Constraint, B extends string> extends
  *
  * - `identifier` must be a single concrete string literal. Widened strings,
  *   unions, and open template literal types are rejected.
- * - `brand` adds brand metadata and narrows the TypeScript output type, but it
- *   does not add runtime checks.
+ * - `brand` only narrows the TypeScript output type. It does not change the
+ *   schema's runtime AST or add runtime checks.
+ * - Schema representations and generated schema code omit the brand. Reapply
+ *   `brand` after rebuilding or generating a schema when the nominal type is
+ *   still required.
  *
- * @see {@link fromBrand} for applying a Brand constructor's checks along with the brand tag
+ * @see {@link fromBrand} for applying a Brand constructor's checks along with its branded type
  *
  * @category branding
  * @since 3.10.0
  */
 export function brand<B extends string>(identifier: B & EnsureSingleBrandKey<B>) {
   return <S extends ConstraintRebuildable>(schema: S): brand<S["Rebuild"], B> =>
-    make(SchemaAST.brand(schema.ast, identifier), { schema, identifier })
+    make(schema.ast, { schema, identifier })
 }
 /**
  * Creates a branded schema from a {@link Brand.Constructor}, applying the
- * constructor's checks and brand tag to the underlying schema.
+ * constructor's checks and branded type to the underlying schema.
  *
  * **When to use**
  *
@@ -15266,6 +15269,8 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
  * Use {@link toType} before this function to represent the type side instead.
  * The optional reference policy controls which candidates are extracted into the document's reference table. By
  * default, only candidates with a resolved identifier become references; recursive candidates always require one.
+ * TypeScript-only distinctions such as those added by {@link brand} are not
+ * part of the schema AST and are therefore omitted.
  *
  * @see {@link SchemaRepresentation.toRepresentation} for converting a `SchemaAST.AST` directly
  *
@@ -16069,8 +16074,8 @@ export declare namespace Annotations {
   }
   /**
    * Base annotations shared by all composite schema nodes. Extends
-   * {@link Documentation} with error messages, branding, and arbitrary
-   * generation hooks. {@link Declaration} and other annotation
+   * {@link Documentation} with error messages and arbitrary generation hooks.
+   * {@link Declaration} and other annotation
    * interfaces build on top of this.
    *
    * @category models
@@ -16108,10 +16113,6 @@ export declare namespace Annotations {
      * filter/refinement instead.
      */
     readonly identifier?: string | undefined
-    /**
-     * Accumulated brands when multiple brands are added with `Schema.brand`.
-     */
-    readonly brands?: ReadonlyArray<string> | undefined
   }
   /**
    * Helpers for projecting declaration type-parameter schemas into decoded or

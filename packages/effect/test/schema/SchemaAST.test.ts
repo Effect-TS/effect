@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import { Effect, Schema, SchemaAST, SchemaGetter, SchemaTransformation } from "effect"
 import { runInNewContext } from "node:vm"
 import { describe, it } from "vitest"
@@ -100,6 +101,21 @@ describe("SchemaAST", () => {
       deepStrictEqual(updated.annotations, { title: "Item", description: "An item identifier" })
       strictEqual(annotated.annotations?.description, undefined)
       strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<unknown>>(updated))("item-a"), "item-a")
+    })
+
+    it("restores the outer context without restoring an earlier encoding", () => {
+      const source = Schema.NumberFromString.ast
+      const optional = SchemaAST.optionalKey(source)
+      const restored = SchemaAST.replaceContext(optional, source.context)
+      const schema = Schema.make<Schema.Codec<unknown>>(
+        new SchemaAST.Objects([new SchemaAST.PropertySignature("value", restored)], [])
+      )
+
+      assert.strictEqual(restored.encoding, optional.encoding)
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toType(restored)), false)
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toEncoded(restored)), true)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ value: "1" }), { value: 1 })
+      assert.strictEqual(Schema.decodeUnknownExit(schema)({})._tag, "Failure")
     })
 
     it("shares the memoized suspended thunk when copying metadata", () => {
@@ -279,6 +295,44 @@ describe("SchemaAST", () => {
   })
 
   describe("toType", () => {
+    it("preserves different key optionality on the decoded and encoded sides", () => {
+      const value = Schema.NumberFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("1")))
+      const schema = Schema.Struct({ value })
+
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toType(value.ast)), false)
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toEncoded(value.ast)), true)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({}), { value: 1 })
+      assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.toEncoded(schema))({}), {})
+      assert.strictEqual(Schema.decodeUnknownExit(Schema.toType(schema))({})._tag, "Failure")
+    })
+
+    it("preserves declaration parsers when projecting contextual copies", () => {
+      const ast = new SchemaAST.Declaration(
+        [],
+        () => () => Effect.succeed("decoded"),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        () => () => Effect.succeed("encoded")
+      )
+      const contextual = SchemaAST.optionalKey(ast)
+      const decoded = SchemaAST.toType(contextual)
+      const encoded = SchemaAST.toEncoded(contextual)
+
+      assert.strictEqual(SchemaAST.isOptional(decoded), true)
+      assert.strictEqual(SchemaAST.isOptional(encoded), true)
+      assert.strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<string>>(decoded))("input"), "decoded")
+      assert.strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<string>>(encoded))("input"), "encoded")
+      assert.strictEqual(
+        Schema.decodeUnknownSync(Schema.make<Schema.Codec<string>>(SchemaAST.toType(SchemaAST.flip(contextual))))(
+          "input"
+        ),
+        "encoded"
+      )
+    })
+
     it("removes outer encoding and promotes checks when children are unchanged", () => {
       const encoding: SchemaAST.Encoding = [new SchemaAST.Link(SchemaAST.unknown, SchemaTransformation.passthrough())]
       const context = new SchemaAST.Context(true, false)
@@ -400,6 +454,57 @@ describe("SchemaAST", () => {
       strictEqual(SchemaAST.isObjects(ast), true)
       strictEqual(ast.checks?.length, 1)
       strictEqual(ast.encodingChecks, undefined)
+    })
+
+    it("toEncoded preserves parent checks when projecting checked children without transformations", () => {
+      const schema = Schema.Struct({
+        xs: Schema.Array(Schema.String).check(Schema.isMinLength(1))
+      }).check(Schema.makeFilter((o) => o.xs[0] === "ok"))
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(Schema.decodeUnknownExit(schema)({ xs: ["bad"] })._tag, "Failure")
+      strictEqual(Schema.decodeUnknownExit(encoded)({ xs: ["bad"] })._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)({ xs: ["ok"] }), { xs: ["ok"] })
+    })
+
+    it("toEncoded preserves union checks when projecting checked members without transformations", () => {
+      const schema = Schema.Union([
+        Schema.Array(Schema.String).check(Schema.isMinLength(1)),
+        Schema.String
+      ]).check(Schema.makeFilter((value) => typeof value === "string" || value[0] === "ok"))
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(Schema.decodeUnknownExit(encoded)(["bad"])._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)(["ok"]), ["ok"])
+      strictEqual(Schema.decodeUnknownSync(encoded)("ok"), "ok")
+    })
+
+    it("toEncoded drops parent checks when a union member has a transformation", () => {
+      const schema = Schema.Struct({
+        a: Schema.Union([Schema.NumberFromString, Schema.Boolean])
+      }).check(Schema.makeFilter((o) => typeof o.a === "boolean" || o.a > 0))
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(Schema.decodeUnknownExit(schema)({ a: "-1" })._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)({ a: "-1" }), { a: "-1" })
+    })
+
+    it.each([false, true])("treats suspended children as opaque (already evaluated: %s)", (evaluated) => {
+      let calls = 0
+      const suspended = Schema.suspend(() => {
+        calls++
+        return Schema.String
+      })
+      if (evaluated) Schema.decodeUnknownSync(suspended)("ok")
+      const schema = Schema.Struct({ a: Schema.optionalKey(suspended) }).check(
+        Schema.makeFilter((o) => o.a !== "bad"),
+        Schema.isMinProperties(1)
+      )
+      const encoded = Schema.toEncoded(schema)
+
+      strictEqual(calls, evaluated ? 1 : 0)
+      strictEqual(Schema.decodeUnknownExit(encoded)({})._tag, "Failure")
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)({ a: "bad" }), { a: "bad" })
     })
 
     it("drops encodingChecks when contained type shape changes", () => {

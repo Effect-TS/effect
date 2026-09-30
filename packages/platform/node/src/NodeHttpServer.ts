@@ -17,6 +17,7 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
 import { flow, type LazyArg } from "effect/Function"
@@ -278,7 +279,7 @@ export const makeUpgradeHandler = <
                 resume(Effect.succeed(ws))
               })
             ),
-            (ws) => Effect.sync(() => ws.close())
+            (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
       ))
       const context = Context.add(
@@ -514,6 +515,9 @@ export const layerTest: Layer.Layer<
 // -----------------------------------------------------------------------------
 // Internal
 // -----------------------------------------------------------------------------
+
+const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
+  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
 const handleResponse = (
   request: HttpServerRequest,
