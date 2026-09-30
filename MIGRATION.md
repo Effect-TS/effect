@@ -1,5 +1,9 @@
 # Migrating from Effect v3 to Effect v4
 
+> **Note:** If you run into a migration issue this guide doesn't cover, let us
+> know on [Discord](https://discord.gg/effect-ts) or open an
+> [issue](https://github.com/Effect-TS/effect/issues).
+
 ## Background
 
 Effect v4 is a major release with structural and organizational changes across
