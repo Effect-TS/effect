@@ -50,6 +50,8 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
+import type { PreparedParameters } from "./internal/mcpToolkitParameters.ts"
+import { mcpParseOptions } from "./internal/mcpToolkitParameters.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
@@ -100,8 +102,18 @@ interface QueuedServerNotification {
   readonly requestHeaders?: Headers.Headers | undefined
 }
 
+interface InternalToolRegistration {
+  readonly tool: McpTool
+  readonly annotations: Context.Context<never>
+  readonly handle: (
+    payload: unknown,
+    prepared?: PreparedParameters
+  ) => Effect.Effect<CallToolResult | McpSchema.InputRequired, InternalError | InvalidParams, McpRequestContext>
+}
+
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
+  readonly addTool: (options: InternalToolRegistration) => Effect.Effect<void>
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
   readonly notificationDelivery: { consumers: number }
 }>()
@@ -374,6 +386,61 @@ export class McpServer extends Context.Service<McpServer, {
         ))
     })
 
+    const addTool = Effect.fnUntraced(function*(options: InternalToolRegistration) {
+      const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
+      if (existingIndex === -1) {
+        tools.push(options)
+      } else {
+        tools[existingIndex] = options
+      }
+      const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+      yield* internalCore.tools.register({
+        descriptor: new McpTool({
+          ...options.tool,
+          title: options.tool.title ?? options.tool.annotations?.title
+        }),
+        isVisible: (profile) =>
+          enabledWhen === undefined || enabledWhen(
+            {
+              protocolVersion: profile.protocolVersion,
+              capabilities: profile.clientCapabilities,
+              clientInfo: profile.clientInfo
+            }
+          ),
+        handle: (call, invocation, prepared) =>
+          provideInvocationContext(
+            options.handle(call.arguments, prepared),
+            invocation
+          ).pipe(
+            Effect.catchTags({
+              InternalError: (error) =>
+                Effect.fail(
+                  new McpCore.ToolExecutionError({
+                    name: options.tool.name,
+                    message: error.message
+                  })
+                ),
+              InvalidParams: (error) =>
+                Effect.fail(
+                  new (invocation.requestContext.requestState === undefined &&
+                      invocation.requestContext.inputResponses === undefined
+                    ? McpCore.InvalidToolInput
+                    : McpCore.InvalidToolContinuation)({
+                    name: options.tool.name,
+                    message: error.message
+                  })
+                )
+            }),
+            Effect.map((result) =>
+              Predicate.isTagged(result, "InputRequired")
+                ? McpCore.OperationOutcome.InputRequired(result)
+                : McpCore.OperationOutcome.Complete(result)
+            )
+          )
+      })
+      yield* notifications.client["notifications/tools/list_changed"]({})
+    })
+
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
@@ -393,58 +460,7 @@ export class McpServer extends Context.Service<McpServer, {
       get tools() {
         return tools
       },
-      addTool: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
-          if (existingIndex === -1) {
-            tools.push(options)
-          } else {
-            tools[existingIndex] = options
-          }
-          const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-          yield* internalCore.tools.register({
-            descriptor: new McpTool({
-              ...options.tool,
-              title: options.tool.title ?? options.tool.annotations?.title
-            }),
-            isVisible: (profile) =>
-              enabledWhen === undefined || enabledWhen(
-                {
-                  protocolVersion: profile.protocolVersion,
-                  capabilities: profile.clientCapabilities,
-                  clientInfo: profile.clientInfo
-                }
-              ),
-            handle: (call, invocation) =>
-              provideInvocationContext(options.handle(call.arguments), invocation).pipe(
-                Effect.catchTags({
-                  InternalError: (error) =>
-                    Effect.fail(
-                      new McpCore.ToolExecutionError({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    ),
-                  InvalidParams: (error) =>
-                    Effect.fail(
-                      new (invocation.requestContext.requestState === undefined &&
-                          invocation.requestContext.inputResponses === undefined
-                        ? McpCore.InvalidToolInput
-                        : McpCore.InvalidToolContinuation)({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    )
-                }),
-                Effect.map((result) =>
-                  Predicate.isTagged(result, "InputRequired")
-                    ? McpCore.OperationOutcome.InputRequired(result)
-                    : McpCore.OperationOutcome.Complete(result)
-                )
-              )
-          })
-          yield* notifications.client["notifications/tools/list_changed"]({})
-        }),
+      addTool,
       callTool: (request) =>
         Effect.gen(function*() {
           const client = yield* McpServerClient
@@ -634,7 +650,7 @@ export class McpServer extends Context.Service<McpServer, {
         }
       })
     })
-    internalState.set(service, { core: internalCore, notifications: notificationsQueue, notificationDelivery })
+    internalState.set(service, { core: internalCore, addTool, notifications: notificationsQueue, notificationDelivery })
     return service
   })
 
@@ -646,6 +662,20 @@ export class McpServer extends Context.Service<McpServer, {
    */
   static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.effect(McpServer)(McpServer.make) as any
 }
+
+/** @internal */
+export const getCore = (server: McpServer["Service"]): Effect.Effect<McpCore.McpCore> =>
+  Effect.map(getInternalState(server), (state) => state.core)
+
+const getInternalState = Effect.fnUntraced(function*(server: McpServer["Service"]) {
+  const state = internalState.get(server)
+  if (state === undefined) {
+    return yield* Effect.die(
+      new Cause.IllegalArgumentError("McpServer internal state is unavailable; use McpServer.make or McpServer.layer")
+    )
+  }
+  return state
+})
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
@@ -806,7 +836,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
         })
     })
   const handlers = yield* runtime.installHandlers({
-    core: internalState.get(server)!.core,
+    core: yield* getCore(server),
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
     ...(!protocol.supportsNotifications ? {} : {
       sendNotification,
@@ -1207,7 +1237,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
       })
   })
 
-  const { notificationDelivery, notifications } = internalState.get(server)!
+  const { notificationDelivery, notifications } = yield* getInternalState(server)
   yield* Effect.acquireRelease(
     Effect.sync(() => {
       notificationDelivery.consumers++
@@ -1406,6 +1436,7 @@ const layerWithRuntime = (options: {
   Layer.effectDiscard(
     Effect.gen(function*() {
       const runtime = yield* McpRuntime.ServerRuntime
+      runtime.setCore(yield* getCore(yield* McpServer))
       yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
     })
   ).pipe(
@@ -1800,19 +1831,27 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
 ) => Effect.Effect<
   void,
   never,
-  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext>
+  McpServer | Tool.HandlersFor<Tools>
 > = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
   const registry = yield* McpServer
-  const built = yield* (toolkit as any as Effect.Effect<
-    Toolkit.WithHandler<Tools>,
+  const addTool = internalState.get(registry)?.addTool ??
+    ((options: InternalToolRegistration) => registry.addTool(options))
+  // Execution clones retain handler IDs and result schemas; discovery uses the original tools.
+  const preparedToolkit = Toolkit.make(
+    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+  )
+  // The clones use the original handler IDs, so both evaluations need the original handler services.
+  const [built, preparedBuilt] = yield* (Effect.all([toolkit, preparedToolkit]) as unknown as Effect.Effect<
+    readonly [Toolkit.WithHandler<Record<string, Tool.Any>>, Effect.Success<typeof preparedToolkit>],
     never,
     Exclude<Tool.HandlersFor<Tools>, McpRequestContext>
   >).pipe(Effect.updateContext((context: Context.Context<Exclude<Tool.HandlersFor<Tools>, McpRequestContext>>) => {
     // Toolkit handlers also retain the context in which their layer was built.
     const services = new Map(context.mapUnsafe)
     for (const tool of Object.values(toolkit.tools)) {
+      // Toolkit.toLayer stores each handler under this tool ID; mapUnsafe erases the entry type.
       const handler = services.get(tool.id) as Tool.Handler<string> | undefined
       if (handler !== undefined) {
         services.set(tool.id, { ...handler, context: omitRequestServices(handler.context) })
@@ -1832,7 +1871,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         Effect.as(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
       )
   }
-  const registrations: Array<Parameters<typeof registry.addTool>[0]> = []
+  const registrations: Array<InternalToolRegistration> = []
   for (const tool of Object.values(built.tools)) {
     const strict = Tool.getStrictMode(tool) === true
     const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
@@ -1841,10 +1880,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
       )
     }
-    const decodeOptions: SchemaAST.ParseOptions = {
-      onExcessProperty: strict ? "error" : "ignore",
-      errors: "all"
-    }
+    const decodeOptions = mcpParseOptions(tool)
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
@@ -1906,8 +1942,11 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     registrations.push({
       tool: mcpTool,
       annotations,
-      handle(payload) {
-        return built.handle(tool.name as keyof Tools, payload ?? {}, undefined, decodeOptions).pipe(
+      handle: Effect.fnUntraced(function*(payload, prepared) {
+        const stream = prepared === undefined
+          ? built.handle(tool.name, payload ?? {}, undefined, decodeOptions)
+          : preparedBuilt.handle(tool.name, prepared.parameters, undefined, decodeOptions)
+        return yield* stream.pipe(
           Stream.unwrap,
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),
@@ -1927,13 +1966,14 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               )
           ),
           Effect.catchCause(handleCause),
-          Effect.provideContext(services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>)
+          // Tool.Any erases services already supplied by handler contexts and the current invocation.
+          Effect.provideContext(services as Context.Context<unknown>)
         )
-      }
+      })
     })
   }
   for (const registration of registrations) {
-    yield* registry.addTool(registration)
+    yield* addTool(registration)
   }
 })
 

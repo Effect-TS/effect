@@ -26,6 +26,7 @@ import type * as SchemaAST from "../SchemaAST.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as AiError from "./AiError.ts"
+import * as ToolkitHandlers from "./internal/toolkitHandlers.ts"
 import * as Tool from "./Tool.ts"
 
 const TypeId = "~effect/ai/Toolkit" as const
@@ -475,18 +476,7 @@ const Proto = {
     this: Toolkit<Record<string, Tool.Any>>,
     build: Record<string, (params: any) => any> | Effect.Effect<Record<string, (params: any) => any>>
   ) {
-    return Effect.gen({ self: this }, function*() {
-      const services = yield* Effect.context<never>()
-      const handlers = Effect.isEffect(build) ? yield* build : build
-      const context = new Map<string, unknown>()
-      for (const [name, handler] of Object.entries(handlers)) {
-        const tool = Object.hasOwn(this.tools, name) ? this.tools[name] : undefined
-        if (tool !== undefined) {
-          context.set(tool.id, { name, handler, context: services })
-        }
-      }
-      return Context.makeUnsafe(context)
-    })
+    return ToolkitHandlers.make(this.tools, build)
   },
   toLayer(
     this: Toolkit<Record<string, Tool.Any>>,
