@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import { Effect, Schema, SchemaAST, SchemaGetter, SchemaTransformation } from "effect"
 import { runInNewContext } from "node:vm"
 import { describe, it } from "vitest"
@@ -100,6 +101,21 @@ describe("SchemaAST", () => {
       deepStrictEqual(updated.annotations, { title: "Item", description: "An item identifier" })
       strictEqual(annotated.annotations?.description, undefined)
       strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<unknown>>(updated))("item-a"), "item-a")
+    })
+
+    it("restores the outer context without restoring an earlier encoding", () => {
+      const source = Schema.NumberFromString.ast
+      const optional = SchemaAST.optionalKey(source)
+      const restored = SchemaAST.replaceContext(optional, source.context)
+      const schema = Schema.make<Schema.Codec<unknown>>(
+        new SchemaAST.Objects([new SchemaAST.PropertySignature("value", restored)], [])
+      )
+
+      assert.strictEqual(restored.encoding, optional.encoding)
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toType(restored)), false)
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toEncoded(restored)), true)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ value: "1" }), { value: 1 })
+      assert.strictEqual(Schema.decodeUnknownExit(schema)({})._tag, "Failure")
     })
 
     it("shares the memoized suspended thunk when copying metadata", () => {
@@ -279,6 +295,44 @@ describe("SchemaAST", () => {
   })
 
   describe("toType", () => {
+    it("preserves different key optionality on the decoded and encoded sides", () => {
+      const value = Schema.NumberFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("1")))
+      const schema = Schema.Struct({ value })
+
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toType(value.ast)), false)
+      assert.strictEqual(SchemaAST.isOptional(SchemaAST.toEncoded(value.ast)), true)
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({}), { value: 1 })
+      assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.toEncoded(schema))({}), {})
+      assert.strictEqual(Schema.decodeUnknownExit(Schema.toType(schema))({})._tag, "Failure")
+    })
+
+    it("preserves declaration parsers when projecting contextual copies", () => {
+      const ast = new SchemaAST.Declaration(
+        [],
+        () => () => Effect.succeed("decoded"),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        () => () => Effect.succeed("encoded")
+      )
+      const contextual = SchemaAST.optionalKey(ast)
+      const decoded = SchemaAST.toType(contextual)
+      const encoded = SchemaAST.toEncoded(contextual)
+
+      assert.strictEqual(SchemaAST.isOptional(decoded), true)
+      assert.strictEqual(SchemaAST.isOptional(encoded), true)
+      assert.strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<string>>(decoded))("input"), "decoded")
+      assert.strictEqual(Schema.decodeUnknownSync(Schema.make<Schema.Codec<string>>(encoded))("input"), "encoded")
+      assert.strictEqual(
+        Schema.decodeUnknownSync(Schema.make<Schema.Codec<string>>(SchemaAST.toType(SchemaAST.flip(contextual))))(
+          "input"
+        ),
+        "encoded"
+      )
+    })
+
     it("removes outer encoding and promotes checks when children are unchanged", () => {
       const encoding: SchemaAST.Encoding = [new SchemaAST.Link(SchemaAST.unknown, SchemaTransformation.passthrough())]
       const context = new SchemaAST.Context(true, false)

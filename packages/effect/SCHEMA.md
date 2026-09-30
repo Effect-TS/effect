@@ -6113,10 +6113,12 @@ inline even when the same AST occurs more than once. Recursive schemas always re
 available, the converter assigns a synthetic name such as `Objects_` or `Suspend_`.
 
 The default policy uses an explicit `identifier` as the reference name. Reusing the same schema shares its reference.
-Context-only copies created through `SchemaAST.replaceContext` retain the original AST as their reference owner, including
-across several successive context changes. Context still belongs to each occurrence and does not, by itself, create a new
-candidate. Independently constructed ASTs are not canonicalized merely because they are structurally equal. When distinct
-schemas request the same name, the first schema keeps it and later schemas receive numeric suffixes in encounter order,
+AST copies that change only their own `context` or `encoding` share a decoded body. Type and encoded projections preserve
+this sharing while keeping each occurrence's context and following its actual encoding chain. Changing checks, value
+annotations, or children creates a distinct body; child contexts are part of the parent's structure. Reference owners omit
+their own encoding, so reference policies inspect the represented body. Independently constructed ASTs are not
+canonicalized merely because they are structurally equal. When distinct schemas request the same name, the first schema
+keeps it and later schemas receive numeric suffixes in encounter order,
 such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation hints; their generated names
 use the `Encoded` suffix and follow the same collision rules.
 
