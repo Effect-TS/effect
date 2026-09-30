@@ -32,6 +32,8 @@ import * as preResponseHandler from "./internal/preResponseHandler.ts"
 
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
+ * The request scope closes with the original handler failure, even when the
+ * response pipeline or middleware handles that failure.
  *
  * @stability unstable
  * @category combinators
@@ -45,9 +47,9 @@ export const toHandled = <E, R, EH, RH>(
   ) => Effect.Effect<unknown, EH, RH>,
   middleware?: HttpMiddleware | undefined
 ): Effect.Effect<void, never, Exclude<R | RH | HttpServerRequest, Scope.Scope>> => {
-  const handleCause = (request: HttpServerRequest, cause: Cause.Cause<E | EH | HttpServerError>) => {
-    // `causeResponse` rewrites the cause before the request scope closes with it
-    ;(Context.getUnsafe(Fiber.getCurrent()!.context, Scope.Scope) as any)[handlerCause] = cause
+  const handleCause = (frame: RequestFrame, cause: Cause.Cause<E | EH | HttpServerError>) => {
+    frame.cause = cause
+    const request = frame.request
     return Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
@@ -88,14 +90,15 @@ export const toHandled = <E, R, EH, RH>(
     })
   }
 
-  const withMiddleware = (request: HttpServerRequest): Effect.Effect<
+  const withMiddleware = (frame: RequestFrame): Effect.Effect<
     unknown,
     E | EH | HttpServerError,
     HttpServerRequest | R | RH
   > => {
+    const request = frame.request
     const responded = Effect.matchCauseEffect(self, {
       onSuccess: (response) => sendResponse(request, response),
-      onFailure: (cause) => handleCause(request, cause)
+      onFailure: (cause) => handleCause(frame, cause)
     })
     return middleware === undefined ?
       responded :
@@ -119,9 +122,9 @@ export const toHandled = <E, R, EH, RH>(
   }
 
   // Apply tracing lazily so disabled requests can use the single-frame path.
-  const traced = (request: HttpServerRequest) =>
+  const traced = (frame: RequestFrame) =>
     tracer(
-      withMiddleware(request) as Effect.Effect<
+      withMiddleware(frame) as Effect.Effect<
         HttpServerResponse,
         E | EH | HttpServerError,
         HttpServerRequest | R | RH
@@ -138,13 +141,14 @@ export const toHandled = <E, R, EH, RH>(
     Effect.onExitPrimitive(effect, (exit) => {
       fiber.setContext(frame.prev)
       if (scopeEjected in frame.scope) return undefined
-      return Scope.closeUnsafe(frame.scope, exit)
+      return Scope.closeUnsafe(frame.scope, frame.cause === undefined ? exit : Exit.failCause(frame.cause))
     }, true)
 
   class RequestFrame {
     readonly scope: Scope.Closeable
     readonly prev: Context.Context<never>
     readonly request: HttpServerRequest
+    cause: Cause.Cause<E | EH | HttpServerError> | undefined
     constructor(scope: Scope.Closeable, prev: Context.Context<never>, request: HttpServerRequest) {
       this.scope = scope
       this.prev = prev
@@ -162,7 +166,7 @@ export const toHandled = <E, R, EH, RH>(
       return finishAfter(this, fiber, sent)
     }
     [contE](cause: Cause.Cause<E | EH | HttpServerError>, fiber: Fiber.Fiber<unknown, unknown>) {
-      return finishAfter(this, fiber, handleCause(this.request, cause))
+      return finishAfter(this, fiber, handleCause(this, cause))
     }
   }
 
@@ -180,7 +184,7 @@ export const toHandled = <E, R, EH, RH>(
       ;(fiber as any)._stack.push(frame)
       return self
     }
-    return finishAfter(frame, fiber, middleware === undefined ? traced(frame.request) : withMiddleware(frame.request))
+    return finishAfter(frame, fiber, middleware === undefined ? traced(frame) : withMiddleware(frame))
   }) as any
 }
 
@@ -229,31 +233,6 @@ export const scopeTransferToStream = (
 }
 
 const scopeEjected = Symbol.for("effect/http/HttpEffect/scopeEjected")
-
-/**
- * Returns the cause recorded while handling an HTTP failure in the given scope,
- * or `undefined` if no cause was recorded there.
- *
- * **When to use**
- *
- * Use to react to the original HTTP failure from a scope finalizer, for
- * example to choose a WebSocket close code.
- *
- * **Details**
- *
- * The scope where the failure was handled may close with the exit of the
- * response write, which can carry a derived response as a defect or succeed
- * even though the handler failed. The cause is recorded before the response
- * is derived from it. Middleware may cause this to be a child scope rather
- * than the request scope.
- *
- * @stability unstable
- * @category resource management
- * @since 4.0.0
- */
-export const scopeHandlerCause = (scope: Scope.Scope): Cause.Cause<unknown> | undefined => (scope as any)[handlerCause]
-
-const handlerCause = Symbol.for("effect/http/HttpEffect/handlerCause")
 
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.

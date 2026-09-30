@@ -702,7 +702,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
                 )
                 ws.data.run = wsDefaultRun
                 ws.data.onClose = constVoid
-                ws.close(closeCode(scope, exit))
+                ws.close(closeCode(exit))
                 return Effect.void
               })
           )
@@ -730,10 +730,8 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
 }
 
 // Maps the exit of the scope that owns a server WebSocket to a close code.
-const closeCode = (scope: Scope.Scope, exit: Exit.Exit<unknown, unknown>): number => {
-  const cause = HttpEffect.scopeHandlerCause(scope) ?? (Exit.isFailure(exit) ? exit.cause : undefined)
-  return cause === undefined ? 1000 : Cause.hasInterruptsOnly(cause) ? 1001 : 1011
-}
+const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
+  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
 const emptyReadbleStream = new ReadableStream({
   start(controller) {

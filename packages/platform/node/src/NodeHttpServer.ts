@@ -272,16 +272,15 @@ export const makeUpgradeHandler = <
       const upgradeEffect = Socket.fromWebSocket(Effect.flatMap(
         lazyWss,
         (wss) =>
-          Effect.flatMap(Effect.scope, (scope) =>
-            Effect.acquireRelease(
-              Effect.callback<NodeWS.WebSocket>((resume) =>
-                wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
-                  upgraded = true
-                  resume(Effect.succeed(ws))
-                })
-              ),
-              (ws, exit) => Effect.sync(() => ws.close(closeCode(scope, exit)))
-            ))
+          Effect.acquireRelease(
+            Effect.callback<NodeWS.WebSocket>((resume) =>
+              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                upgraded = true
+                resume(Effect.succeed(ws))
+              })
+            ),
+            (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
+          )
       ))
       const context = Context.add(
         services,
@@ -518,10 +517,8 @@ export const layerTest: Layer.Layer<
 // -----------------------------------------------------------------------------
 
 // Maps the exit of the scope that owns a server WebSocket to a close code.
-const closeCode = (scope: Scope.Scope, exit: Exit.Exit<unknown, unknown>): number => {
-  const cause = HttpEffect.scopeHandlerCause(scope) ?? (Exit.isFailure(exit) ? exit.cause : undefined)
-  return cause === undefined ? 1000 : Cause.hasInterruptsOnly(cause) ? 1001 : 1011
-}
+const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
+  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
 const handleResponse = (
   request: HttpServerRequest,
