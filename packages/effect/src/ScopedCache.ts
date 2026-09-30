@@ -296,8 +296,6 @@ export const get: {
                   Deferred.doneUnsafe(deferred, exit)
                   return Scope.close(scope, exit)
                 }
-                // Stamp the expiry before completing the Deferred: a waiter it resumes can call
-                // `get` again at once, and must not find the entry with no expiry yet.
                 try {
                   const ttl = self.timeToLive(exit, key)
                   if (Duration.isFinite(ttl)) {
