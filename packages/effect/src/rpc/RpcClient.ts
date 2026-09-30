@@ -732,24 +732,17 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         const requestId = RequestId(message.requestId)
         const entry = entries.get(requestId)
         if (!entry || Option.isNone(entry.schemas.decodeChunk)) return Effect.void
-        const decodeChunk = entry.schemas.decodeChunk.value
-        return Effect.uninterruptibleMask((restore) =>
-          restore(
-            decodeChunk(message.values).pipe(
-              Effect.provideContext(entry.context),
-              Effect.orDie
+        return entry.schemas.decodeChunk.value(message.values).pipe(
+          Effect.provideContext(entry.context),
+          Effect.orDie,
+          Effect.flatMap((chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk })),
+          Effect.onError((cause) =>
+            write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
+              Effect.andThen(Cause.hasInterrupts(cause) ? Effect.void : Effect.ignore(interruptRequest(requestId)))
             )
-          ).pipe(
-            Effect.matchCauseEffect({
-              onSuccess: (chunk) => restore(write({ _tag: "Chunk", clientId: 0, requestId, values: chunk })),
-              onFailure: (cause) =>
-                write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
-                  Effect.andThen(() =>
-                    Cause.hasInterrupts(cause) ? Effect.failCause(cause) : Effect.ignore(interruptRequest(requestId))
-                  )
-                )
-            })
-          )
+          ),
+          // a decode failure only ends its own request; interruption still propagates
+          Effect.catchCauseIf((cause) => !Cause.hasInterrupts(cause), () => Effect.void)
         ) as Effect.Effect<void>
       }
       case "Exit": {
