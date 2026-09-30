@@ -298,11 +298,14 @@ export const get: {
                 }
                 // Stamp the expiry before completing the Deferred: a waiter it resumes can call
                 // `get` again at once, and must not find the entry with no expiry yet.
-                const ttl = self.timeToLive(exit, key)
-                if (Duration.isFinite(ttl)) {
-                  entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
+                try {
+                  const ttl = self.timeToLive(exit, key)
+                  if (Duration.isFinite(ttl)) {
+                    entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
+                  }
+                } finally {
+                  Deferred.doneUnsafe(deferred, exit)
                 }
-                Deferred.doneUnsafe(deferred, exit)
                 return effect.void
               }),
               true,
