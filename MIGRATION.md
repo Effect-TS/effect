@@ -1,8 +1,8 @@
 # Migrating from Effect v3 to Effect v4
 
-> **Note:** Effect v4 is currently in beta. APIs may change between beta
-> releases. This guide will evolve as the beta progresses and community
-> feedback is incorporated.
+> **Note:** If you run into a migration issue this guide doesn't cover, let us
+> know on [Discord](https://discord.gg/effect-ts) or open an
+> [issue](https://github.com/Effect-TS/effect/issues).
 
 ## Background
 
