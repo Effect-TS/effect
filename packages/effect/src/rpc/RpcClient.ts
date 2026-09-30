@@ -671,6 +671,12 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   }
   const entries = new Map<RequestId, ClientEntry>()
 
+  const interruptRequest = (requestId: RequestId): Effect.Effect<void, RpcClientError> => {
+    if (!entries.has(requestId)) return Effect.void
+    entries.delete(requestId)
+    return send(clientId, { _tag: "Interrupt", requestId }) as Effect.Effect<void, RpcClientError>
+  }
+
   const { client, write } = yield* makeNoSerialization(group, {
     ...options,
     supportsAck,
@@ -711,13 +717,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           }) as Effect.Effect<void, RpcClientError>
         }
         case "Interrupt": {
-          const entry = entries.get(message.requestId)
-          if (!entry) return Effect.void
-          entries.delete(message.requestId)
-          return send(clientId, {
-            _tag: "Interrupt",
-            requestId: message.requestId
-          }) as Effect.Effect<void, RpcClientError>
+          return interruptRequest(message.requestId)
         }
         case "Eof": {
           return Effect.void
@@ -735,17 +735,17 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         return entry.schemas.decodeChunk.value(message.values).pipe(
           Effect.provideContext(entry.context),
           Effect.orDie,
-          Effect.flatMap((chunk) =>
-            write({ _tag: "Chunk", clientId: 0, requestId: RequestId(message.requestId), values: chunk })
-          ),
-          Effect.onError((cause) =>
-            write({
-              _tag: "Exit",
-              clientId: 0,
-              requestId: RequestId(message.requestId),
-              exit: Exit.failCause(cause)
-            })
-          )
+          Effect.matchCauseEffect({
+            onFailure: (cause) =>
+              Cause.hasInterrupts(cause)
+                ? Effect.failCause(cause)
+                : write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
+                  Effect.andThen(
+                    Effect.suspend(() => interruptRequest(requestId).pipe(Effect.catch(() => Effect.void)))
+                  )
+                ),
+            onSuccess: (chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk })
+          })
         ) as Effect.Effect<void>
       }
       case "Exit": {
