@@ -1,7 +1,28 @@
 import * as Command from "@effect/redis/RedisCommand"
+import type { Reply } from "@effect/redis/RedisProtocol"
 import { assert, describe, it } from "@effect/vitest"
+import * as Result from "effect/Result"
 
-describe("Redis stream command grammar", () => {
+describe("RedisCommand", () => {
+  it("decodes text without letting mutation of an earlier result change future values", () => {
+    for (const value of ["OK", "QUEUED", "PONG", "héllo", "é".repeat(33)]) {
+      const bytes = new TextEncoder().encode(value)
+      const replies: Array<Reply> = [
+        { _tag: "SimpleString", value },
+        { _tag: "BlobString", value: bytes },
+        { _tag: "VerbatimString", format: "txt", value: bytes },
+        { _tag: "Attribute", entries: [], value: { _tag: "SimpleString", value } }
+      ]
+      for (const reply of replies) {
+        const decoded = Command.text(reply)
+        assert.strictEqual(Result.getOrThrow(decoded), value)
+        Reflect.set(decoded, "success", "changed")
+        assert.strictEqual(Result.getOrThrow(Command.text(reply)), value)
+      }
+    }
+    assert.isTrue(Result.isFailure(Command.text({ _tag: "Integer", value: BigInt(1) })))
+  })
+
   it("treats stream keys and IDs as opaque after the STREAMS delimiter", () => {
     const args = ["XREAD", "COUNT", "2", "STREAMS", "BLOCK", "STREAMS", "0", "0"]
     assert.deepStrictEqual(Command.parseStreams(args), { keyIndexes: [4, 5], blocking: false })

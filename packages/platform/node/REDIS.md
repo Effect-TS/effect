@@ -51,6 +51,9 @@ across nodes. Use
 key affinity in Cluster. EXEC errors remain per-command results; a WATCH
 conflict returns null. MULTI, queued commands, and EXEC are submitted together
 without waiting between commands. Transactions are never automatically replayed.
+Watchless transactions with ordinary commands reuse exclusively leased sessions
+separate from shared client connections. Concurrent transactions acquire separate
+sessions; WATCH and connection-local state use fresh scoped reservations.
 
 Use `reserve({ key?, node? })` for blocking commands, WATCH/MULTI, and
 connection-local state. Reservations require a Scope and are discarded when

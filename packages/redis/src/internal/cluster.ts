@@ -29,7 +29,20 @@ export const crc16 = (bytes: Uint8Array): number => {
 }
 
 export const keySlot = (key: Protocol.Argument): number => {
-  const bytes = typeof key === "string" ? encoder.encode(key) : key
+  if (typeof key === "string") {
+    const open = key.indexOf("{")
+    const close = open === -1 ? -1 : key.indexOf("}", open + 1)
+    const start = close > open + 1 ? open + 1 : 0
+    const end = close > open + 1 ? close : key.length
+    let crc = 0
+    for (let index = start; index < end; index++) {
+      const byte = key.charCodeAt(index)
+      if (byte > 127) return crc16(encoder.encode(key.slice(start, end))) % slotCount
+      crc = ((crc << 8) ^ crc16Table[((crc >> 8) ^ byte) & 0xff]) & 0xffff
+    }
+    return crc % slotCount
+  }
+  const bytes = key
   const start = bytes.indexOf(123)
   if (start !== -1) {
     const end = bytes.indexOf(125, start + 1)

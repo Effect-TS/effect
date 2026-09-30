@@ -11,7 +11,11 @@ export interface Endpoint {
 }
 
 export interface Transport {
-  readonly write: (bytes: Uint8Array) => Effect.Effect<void, RedisError>
+  readonly write: (
+    bytes: Uint8Array,
+    options?: { readonly ownership?: "copy" | "transfer" | undefined } | undefined
+  ) => Effect.Effect<void, RedisError>
+  /** Returned byte ranges remain stable forever; producers must not reuse or mutate them. */
   readonly read: Effect.Effect<Uint8Array, RedisError>
   readonly close: Effect.Effect<void>
 }

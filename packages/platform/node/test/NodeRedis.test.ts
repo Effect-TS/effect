@@ -193,6 +193,19 @@ describe("Redis transport", () => {
       assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.write(bytes))))
     }))
 
+  it.live("keeps native socket chunks stable across later reads", () =>
+    Effect.gen(function*() {
+      const server = yield* makeServer(Net.createServer(echo))
+      const transport = yield* makeConnector()(address(server))
+      const bytes = new Uint8Array([0, 128, 255])
+      yield* transport.write(bytes)
+      const first = yield* transport.read
+      bytes.fill(99)
+      yield* transport.write(bytes)
+      assert.deepStrictEqual(yield* transport.read, bytes)
+      assert.deepStrictEqual(first, new Uint8Array([0, 128, 255]))
+    }))
+
   it.live("exchanges data over Unix sockets", () =>
     Effect.gen(function*() {
       const directory = yield* Effect.acquireRelease(
@@ -242,6 +255,7 @@ describe("Redis transport", () => {
       assert.isTrue(Exit.isFailure(yield* Fiber.await(writing)))
       assert.isTrue(stream.destroyed)
       assert.strictEqual(stream.listenerCount("readable"), 0)
+      assert.strictEqual(stream.listenerCount("data"), 0)
       assert.strictEqual(stream.listenerCount("drain"), 0)
       assert.strictEqual(stream.listenerCount("error"), 0)
     }))
@@ -263,7 +277,64 @@ describe("Redis transport", () => {
       yield* Fiber.join(second)
     }))
 
-  it.live("copies pull-read buffers and removes interrupted read waiters", () =>
+  it.live("removes interrupted queued writes and preserves FIFO under backpressure", () =>
+    Effect.gen(function*() {
+      const stream = new HeldStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.write(new Uint8Array([1])).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      const second = yield* transport.write(new Uint8Array([2])).pipe(Effect.forkChild)
+      const queued = new Uint8Array([3])
+      const third = yield* transport.write(queued).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      queued[0] = 99
+      yield* Fiber.interrupt(second)
+      assert.strictEqual(stream.writes.length, 1)
+      stream.release!()
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(stream.writes.map((bytes) => [...bytes]), [[1], [3]])
+      stream.release!()
+      yield* Fiber.join(first)
+      yield* Fiber.join(third)
+    }))
+
+  it.live("distinguishes submitted and queued write outcomes when closing under backpressure", () =>
+    Effect.gen(function*() {
+      const stream = new HeldStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.write(new Uint8Array([1])).pipe(Effect.result, Effect.forkChild)
+      yield* Effect.yieldNow
+      const second = yield* transport.write(new Uint8Array([2])).pipe(Effect.result, Effect.forkChild)
+      yield* Effect.yieldNow
+      yield* transport.close
+      assert.strictEqual(failure(yield* Fiber.join(first)).outcome, "Unknown")
+      assert.strictEqual(failure(yield* Fiber.join(second)).outcome, "NotSent")
+      assert.deepStrictEqual(stream.writes.map((bytes) => [...bytes]), [[1]])
+    }))
+
+  it.live("accepts transferred immutable byte views without copying or altering them", () =>
+    Effect.gen(function*() {
+      const stream = new HeldStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const detached = new Uint8Array(1)
+      structuredClone(detached.buffer, { transfer: [detached.buffer] })
+      const error = failure(yield* Effect.result(transport.write(detached, { ownership: "transfer" })))
+      assert.strictEqual(error.outcome, "NotSent")
+      assert.strictEqual(stream.writes.length, 0)
+      const source = new Uint8Array([9, 1, 2, 9])
+      const bytes = source.subarray(1, 3)
+      const writing = yield* transport.write(bytes, { ownership: "transfer" }).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      const written = stream.writes[0]!
+      assert.deepStrictEqual([...written], [1, 2])
+      assert.strictEqual(written.buffer, source.buffer)
+      assert.strictEqual(written.byteOffset, bytes.byteOffset)
+      stream.release!()
+      yield* Fiber.join(writing)
+      assert.deepStrictEqual([...source], [9, 1, 2, 9])
+    }))
+
+  it.live("copies read buffers and removes interrupted read waiters", () =>
     Effect.gen(function*() {
       const stream = new HeldStream()
       const transport = yield* makeConnector({ stream: () => stream })(endpoint)
@@ -275,6 +346,47 @@ describe("Redis transport", () => {
       const received = yield* transport.read
       bytes[0] = 99
       assert.deepStrictEqual([...received], [1, 2])
+    }))
+
+  it.live("pauses after buffering an unread chunk and resumes subsequent reads in order", () =>
+    Effect.gen(function*() {
+      const stream = new HeldStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.read.pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      stream.push(Buffer.from([1]))
+      assert.deepStrictEqual([...yield* Fiber.join(first)], [1])
+      const second = Buffer.from([2])
+      stream.push(second)
+      yield* Effect.yieldNow
+      assert.strictEqual(stream.readableFlowing, false)
+      second[0] = 99
+      stream.push(Buffer.from([3]))
+      assert.deepStrictEqual([...yield* transport.read], [2])
+      assert.deepStrictEqual([...yield* transport.read], [3])
+    }))
+
+  it.live("delivers buffered data before peer EOF while rejecting further writes", () =>
+    Effect.gen(function*() {
+      const stream = new HeldStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      // A terminal event can follow the last data event before the consumer has
+      // registered another read, even after the stream was paused.
+      stream.emit("data", Buffer.from([1, 2]))
+      stream.emit("end")
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.write(new Uint8Array([3])))))
+      assert.deepStrictEqual([...yield* transport.read], [1, 2])
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.read)))
+    }))
+
+  it.live("discards buffered data on explicit close after peer EOF", () =>
+    Effect.gen(function*() {
+      const stream = new HeldStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      stream.emit("data", Buffer.from([1, 2]))
+      stream.emit("end")
+      yield* transport.close
+      assert.isTrue(Exit.isFailure(yield* Effect.exit(transport.read)))
     }))
 
   it.live("destroys a socket when interrupted during TLS negotiation", () =>

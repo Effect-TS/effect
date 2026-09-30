@@ -3,6 +3,7 @@ import * as Client from "@effect/redis/RedisClient"
 import * as Command from "@effect/redis/RedisCommand"
 import * as Protocol from "@effect/redis/RedisProtocol"
 import * as Subscription from "@effect/redis/RedisSubscription"
+import * as Transaction from "@effect/redis/RedisTransaction"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -351,6 +352,12 @@ describe("RedisClient", () => {
           })
           const old = yield* Effect.promise(fixture.primary)
           yield* client.run(Command.set("sentinel-key", "before-promotion"))
+          const cachedTransaction = yield* Transaction.execute(client, [
+            Command.set("sentinel-transaction", "before-promotion")
+          ])
+          assert.isNotNull(cachedTransaction)
+          if (cachedTransaction === null) return assert.fail("Transaction unexpectedly conflicted")
+          assert.strictEqual(Result.getOrThrow(cachedTransaction[0]), "OK")
           const subscription = yield* Subscription.make(client, "sentinel-events")
           const promoted = yield* Effect.promise(fixture.failover)
           yield* Effect.promise(() =>
@@ -364,6 +371,12 @@ describe("RedisClient", () => {
           assert.strictEqual(yield* client.run(Command.set("sentinel-key", "after-promotion")), "OK")
           assert.strictEqual(yield* client.run(Command.get("sentinel-key")), "after-promotion")
           assert.strictEqual((yield* client.nodes)[0].port, promoted.port)
+          const currentTransaction = yield* Transaction.execute(client, [
+            Command.set("sentinel-transaction", "after-promotion")
+          ])
+          assert.isNotNull(currentTransaction)
+          if (currentTransaction === null) return assert.fail("Transaction unexpectedly conflicted")
+          assert.strictEqual(Result.getOrThrow(currentTransaction[0]), "OK")
           const currentNode = fixture.dataNodes.find((node) => node.port === promoted.port)!
           // Retire the old subscription socket to exercise rediscovery and resubscription.
           const previousNode = fixture.dataNodes.find((node) => node.port === old.port)!
@@ -381,7 +394,7 @@ describe("RedisClient", () => {
           )
           const oldNode = fixture.dataNodes.find((node) => node.port === old.port)!
           const clients = String(yield* Effect.promise(() => oldNode.command("CLIENT", "LIST")))
-          // CLIENT LIST itself is the administration connection; the old native session must be gone.
+          // The old ordinary, subscription, and cached transaction sessions must all be gone.
           assert.strictEqual(
             clients.trim().split("\n").filter((line) => line.includes("name=effect-sentinel-acceptance")).length,
             0

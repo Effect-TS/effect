@@ -28,7 +28,11 @@ const failure = (run: () => unknown, reason: "Protocol" | "Decode" = "Protocol")
 // Hand-written RESP wire examples are independent from the command encoder.
 const goldens: ReadonlyArray<readonly [string, RedisProtocol.Reply]> = [
   ["+OK\r\n", simple("OK")],
+  ["+QUEUED\r\n", simple("QUEUED")],
   ["+héllo ☃\r\n", simple("héllo ☃")],
+  [`+${"a".repeat(64)}\r\n`, simple("a".repeat(64))],
+  [`+${"a".repeat(65)}\r\n`, simple("a".repeat(65))],
+  [`+${"é".repeat(33)}\r\n`, simple("é".repeat(33))],
   ["-WRONGTYPE Operation against a key holding the wrong kind of value\r\n", {
     _tag: "Error",
     code: "WRONGTYPE",
@@ -38,6 +42,13 @@ const goldens: ReadonlyArray<readonly [string, RedisProtocol.Reply]> = [
   [":9223372036854775807\r\n", integer(9223372036854775807n)],
   [":+9223372036854775807\r\n", integer(9223372036854775807n)],
   [":+0\r\n", integer(0n)],
+  [":9007199254740989\r\n", integer(9007199254740989n)],
+  [":9007199254740990\r\n", integer(9007199254740990n)],
+  [":9007199254740991\r\n", integer(9007199254740991n)],
+  [":9007199254740992\r\n", integer(9007199254740992n)],
+  [":9007199254740993\r\n", integer(9007199254740993n)],
+  [":-9007199254740993\r\n", integer(-9007199254740993n)],
+  [":-000000000000000000000001\r\n", integer(-1n)],
   ["$0\r\n\r\n", blob("")],
   ["$6\r\nhéllo\r\n", blob("héllo")],
   ["$-1\r\n", nil],
@@ -141,13 +152,68 @@ describe("RedisProtocol", () => {
     parser.end()
   })
 
-  it("keeps decoded binary bytes independent from input and later replies", () => {
+  it("preserves arbitrary signed 64-bit integers exactly", () => {
+    fc.assert(fc.property(fc.bigInt({ min: -9223372036854775808n, max: 9223372036854775807n }), (value) => {
+      assert.deepStrictEqual(parse(`:${value}\r\n`), integer(value))
+    }))
+  })
+
+  it("keeps later acknowledgements unchanged after attempted mutation of an earlier reply", () => {
+    for (const value of ["OK", "QUEUED", "PONG"]) {
+      const reply = parse(`+${value}\r\n`)
+      Reflect.set(reply, "value", "changed")
+      Reflect.set(reply, "_tag", "Error")
+      assert.deepStrictEqual(parse(`+${value}\r\n`), simple(value))
+    }
+    for (const value of ["ok", "OK ", "PONG!", "QUÉUED", "é".repeat(33)]) {
+      assert.deepStrictEqual(parse(`+${value}\r\n`), simple(value))
+    }
+  })
+
+  it("keeps binary views independent from input, sibling mutations, and later replies", () => {
     const parser = RedisProtocol.makeParser()
-    const input = new Uint8Array([...bytes("$4\r\n"), 0, 255, 13, 10, 13, 10])
-    const result = parser.push(input)[0]
+    const input = new Uint8Array([
+      ...bytes("$4\r\n"),
+      0,
+      255,
+      13,
+      10,
+      13,
+      10,
+      ...bytes("=8\r\ntxt:last\r\n$4\r\nne")
+    ])
+    const [result, sibling] = parser.push(input)
     input.fill(0)
-    parser.push(bytes("$4\r\nnext\r\n"))
+    const next = parser.push(bytes("xt\r\n"))[0]
     assert.deepStrictEqual(result, { _tag: "BlobString", value: new Uint8Array([0, 255, 13, 10]) })
+    assert.deepStrictEqual(sibling, { _tag: "VerbatimString", format: "txt", value: bytes("last") })
+    assert.deepStrictEqual(next, blob("next"))
+    assert.strictEqual(result._tag, "BlobString")
+    assert.strictEqual(sibling._tag, "VerbatimString")
+    assert.strictEqual(next._tag, "BlobString")
+    if (result._tag === "BlobString" && sibling._tag === "VerbatimString" && next._tag === "BlobString") {
+      result.value.fill(7)
+      assert.deepStrictEqual(sibling.value, bytes("last"))
+      assert.deepStrictEqual(next.value, bytes("next"))
+      sibling.value.fill(8)
+      next.value.fill(9)
+      assert.deepStrictEqual(result.value, new Uint8Array([7, 7, 7, 7]))
+      assert.deepStrictEqual(sibling.value, new Uint8Array([8, 8, 8, 8]))
+    }
+    parser.end()
+  })
+
+  it("bounds retained snapshots when one input contains many small binary replies", () => {
+    const parser = RedisProtocol.makeParser({ maxFrameSize: 32 })
+    const input = bytes("$1\r\nx\r\n".repeat(10_000))
+    const output = parser.push(input)
+    input.fill(0)
+    parser.end()
+    assert.strictEqual(output.length, 10_000)
+    for (const reply of output) {
+      assert.deepStrictEqual(reply, blob("x"))
+      if (reply._tag === "BlobString") assert.isAtMost(reply.value.buffer.byteLength, 32)
+    }
   })
 
   it("handles arbitrary binary bodies and independently generated chunk partitions", () => {
@@ -167,7 +233,9 @@ describe("RedisProtocol", () => {
           let part = 0
           while (offset < wire.length) {
             const next = Math.min(offset + widths[part++ % widths.length], wire.length)
-            output.push(...parser.push(wire.subarray(offset, next)))
+            const chunk = wire.subarray(offset, next)
+            output.push(...parser.push(chunk))
+            chunk.fill(254)
             offset = next
           }
           parser.end()

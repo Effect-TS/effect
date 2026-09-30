@@ -8,14 +8,16 @@ import * as Cause from "effect/Cause"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
+import { encodeCommand, encodeCommands } from "./internal/encoding.ts"
+import { makeParser } from "./internal/protocol.ts"
+import * as Replies from "./internal/replies.ts"
 import type * as TransportInternal from "./internal/transport.ts"
 import type { Routing } from "./RedisCommand.ts"
 import { RedisError } from "./RedisError.ts"
-import * as Protocol from "./RedisProtocol.ts"
+import type * as Protocol from "./RedisProtocol.ts"
 
 /**
  * Address of a Redis server, optionally using TLS or a Unix socket.
@@ -28,6 +30,14 @@ export type Endpoint = TransportInternal.Endpoint
 
 /**
  * Scoped byte transport with interruptible reads and writes.
+ *
+ * **Details**
+ *
+ * Writes copy their input by default. With `ownership: "transfer"`, callers
+ * promise never to mutate the supplied bytes, and transports may retain them
+ * without copying. Transports must not modify those bytes in either mode.
+ * Reads transfer a stable byte range: transports must never mutate or reuse
+ * returned bytes. Producers that reuse their buffers must copy before returning.
  *
  * @stability unstable
  * @category models
@@ -117,8 +127,10 @@ const subscriptionAcks = new Map([
   ["PUNSUBSCRIBE", "punsubscribe"],
   ["SUNSUBSCRIBE", "sunsubscribe"]
 ])
+const subscriptionAckKinds = new Set(subscriptionAcks.values())
 
 const encoder = new TextEncoder()
+const transferredWrite = { ownership: "transfer" } as const
 const zero = BigInt(0)
 const maxSubscriptionCount = BigInt(Number.MAX_SAFE_INTEGER)
 
@@ -152,7 +164,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     )
   }
   const parser = yield* Effect.try({
-    try: () => Protocol.makeParser(config),
+    try: () => makeParser(config, "transfer"),
     catch: (cause) =>
       new RedisError({ reason: "Protocol", message: "Invalid Redis parser configuration", cause, outcome: "NotSent" })
   })
@@ -169,7 +181,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     )
   }
   const transport = yield* connector(endpoint)
-  const outgoing = yield* Queue.bounded<Pending, RedisError>(limit)
+  let outgoing: Array<Pending> = []
   const terminal = yield* Deferred.make<never, RedisError>()
   const pending = new Set<Pending>()
   const inflight: Array<Pending | undefined> = []
@@ -195,6 +207,34 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   let subscriptions = 0
   let shardSubscriptions = 0
   let protocol = config.protocol ?? 2
+  let writer: ((effect: Effect.Effect<Array<Pending>, RedisError>) => void) | undefined
+  const takeOutgoing = Effect.callback<Array<Pending>, RedisError>((resume) => {
+    if (dead !== undefined) return resume(Effect.fail(dead))
+    if (outgoing.length > 0) {
+      const entries = outgoing
+      outgoing = []
+      return resume(Effect.succeed(entries))
+    }
+    writer = resume
+    return Effect.sync(() => {
+      if (writer === resume) writer = undefined
+    })
+  })
+  let flushScheduled = false
+  const wakeWriter = () => {
+    if (flushScheduled) return
+    flushScheduled = true
+    // Coalesce this turn's complete submissions before resuming the scoped writer.
+    queueMicrotask(() => {
+      flushScheduled = false
+      if (writer === undefined || outgoing.length === 0) return
+      const resume = writer
+      const entries = outgoing
+      writer = undefined
+      outgoing = []
+      resume(Effect.succeed(entries))
+    })
+  }
 
   const settle = (entry: Pending, result: Result.Result<Protocol.Reply, RedisError>) => {
     if (entry.state === "Done") return
@@ -224,7 +264,10 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     inflight.length = 0
     inflightHead = 0
     listeners.clear()
-    Queue.failCauseUnsafe(outgoing, Cause.fail(error))
+    outgoing = []
+    const resume = writer
+    writer = undefined
+    resume?.(Effect.fail(error))
     Deferred.doneUnsafe(terminal, Effect.fail(error))
   }
   const close = Effect.sync(() => fatal(new RedisError({ reason: "Closed", message: "Redis connection closed" }))).pipe(
@@ -234,6 +277,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
 
   const prepare = (
     args: ReadonlyArray<Protocol.Argument>,
+    bytes: Uint8Array,
     onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
   ) => {
     const command = nameOf(args[0]).toUpperCase()
@@ -254,7 +298,6 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         outcome: "NotSent"
       })
     }
-    const bytes = Protocol.encode(args)
     const result = onResult === undefined ? Deferred.makeUnsafe<Protocol.Reply, RedisError>() : undefined
     const entry: Pending = {
       bytes,
@@ -282,40 +325,64 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     }
     return { entry, result }
   }
+  const encodingError = (cause: unknown) =>
+    cause instanceof RedisError
+      ? cause
+      : new RedisError({ reason: "Protocol", message: "Cannot encode Redis command", cause, outcome: "NotSent" })
+  const submitOneUnsafe = (
+    args: ReadonlyArray<Protocol.Argument>,
+    onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
+  ) => {
+    if (dead !== undefined) {
+      throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
+    }
+    const item = prepare(args, encodeCommand(args), onResult)
+    if (pending.size >= limit || queuedBytes + item.entry.size > byteLimit || outgoing.length >= limit) {
+      throw new RedisError({ reason: "Capacity", message: "Redis command queue capacity exceeded", outcome: "NotSent" })
+    }
+    pending.add(item.entry)
+    queuedBytes += item.entry.size
+    outgoing.push(item.entry)
+    wakeWriter()
+    return item
+  }
+  const submitUnsafe = (
+    commands: ReadonlyArray<ReadonlyArray<Protocol.Argument>>,
+    onResult?: (result: Result.Result<Protocol.Reply, RedisError>, index: number) => void
+  ) => {
+    if (dead !== undefined) {
+      throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
+    }
+    // Admission is atomic: local validation or capacity failures never submit
+    // only part of a batch, particularly a MULTI/EXEC transaction.
+    const frames = encodeCommands(commands)
+    const prepared = commands.map((args, index) =>
+      prepare(args, frames[index], onResult === undefined ? undefined : (result) => onResult(result, index))
+    )
+    const size = prepared.reduce((total, item) => total + item.entry.size, 0)
+    if (
+      pending.size + prepared.length > limit || queuedBytes + size > byteLimit ||
+      outgoing.length + prepared.length > limit
+    ) {
+      throw new RedisError({
+        reason: "Capacity",
+        message: "Redis command queue capacity exceeded",
+        outcome: "NotSent"
+      })
+    }
+    for (const item of prepared) pending.add(item.entry)
+    queuedBytes += size
+    for (const item of prepared) outgoing.push(item.entry)
+    wakeWriter()
+    return prepared
+  }
   const submit = (
     commands: ReadonlyArray<ReadonlyArray<Protocol.Argument>>,
     onResult?: (result: Result.Result<Protocol.Reply, RedisError>, index: number) => void
   ) =>
     Effect.try({
-      try: () => {
-        if (dead !== undefined) {
-          throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
-        }
-        // Admission is atomic: local validation or capacity failures never submit
-        // only part of a batch, particularly a MULTI/EXEC transaction.
-        const prepared = commands.map((args, index) =>
-          prepare(args, onResult === undefined ? undefined : (result) => onResult(result, index))
-        )
-        const size = prepared.reduce((total, item) => total + item.entry.size, 0)
-        if (
-          pending.size + prepared.length > limit || queuedBytes + size > byteLimit ||
-          Queue.sizeUnsafe(outgoing) + prepared.length > limit
-        ) {
-          throw new RedisError({
-            reason: "Capacity",
-            message: "Redis command queue capacity exceeded",
-            outcome: "NotSent"
-          })
-        }
-        for (const item of prepared) pending.add(item.entry)
-        queuedBytes += size
-        Queue.offerAllUnsafe(outgoing, prepared.map((item) => item.entry))
-        return prepared
-      },
-      catch: (cause) =>
-        cause instanceof RedisError
-          ? cause
-          : new RedisError({ reason: "Protocol", message: "Cannot encode Redis command", cause, outcome: "NotSent" })
+      try: () => submitUnsafe(commands, onResult),
+      catch: encodingError
     })
   const cancel = (entry: Pending) => {
     entry.canceled = true
@@ -350,31 +417,42 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       })
     })
   const execute = (args: ReadonlyArray<Protocol.Argument>): Effect.Effect<Protocol.Reply, RedisError> =>
-    Effect.uninterruptibleMask((restore) =>
-      submit([args]).pipe(Effect.flatMap((items) => restore(awaitReply(items[0]))))
-    )
+    timeout === undefined ?
+      Effect.callback((resume) => {
+        try {
+          const item = submitOneUnsafe(args, (result) => {
+            resume(result._tag === "Success" ? Effect.succeed(result.success) : Effect.fail(result.failure))
+          })
+          return Effect.sync(() => cancel(item.entry))
+        } catch (cause) {
+          resume(Effect.fail(encodingError(cause)))
+        }
+      }) :
+      Effect.uninterruptibleMask((restore) =>
+        Effect.try({ try: () => submitOneUnsafe(args), catch: encodingError }).pipe(
+          Effect.flatMap((item) => restore(awaitReply(item)))
+        )
+      )
   const pipeline: RedisConnection["pipeline"] = (commands) =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.suspend(() => {
-        if (timeout === undefined) {
-          if (commands.length === 0) return Effect.succeed([])
-          const completed = Deferred.makeUnsafe<Array<Result.Result<Protocol.Reply, RedisError>>>()
+    timeout === undefined ?
+      Effect.callback((resume) => {
+        if (commands.length === 0) return resume(Effect.succeed([]))
+        try {
           const results = new Array<Result.Result<Protocol.Reply, RedisError>>(commands.length)
           let remaining = commands.length
-          return submit(commands.map((command) => command.arguments), (result, index) => {
+          const items = submitUnsafe(commands.map((command) => command.arguments), (result, index) => {
             results[index] = result
-            if (--remaining === 0) Deferred.doneUnsafe(completed, Effect.succeed(results))
-          }).pipe(Effect.flatMap((items) =>
-            restore(Deferred.await(completed)).pipe(
-              Effect.onInterrupt(() =>
-                Effect.sync(() => {
-                  for (const item of items) cancel(item.entry)
-                })
-              )
-            )
-          ))
+            if (--remaining === 0) resume(Effect.succeed(results))
+          })
+          return Effect.sync(() => {
+            for (const item of items) cancel(item.entry)
+          })
+        } catch (cause) {
+          resume(Effect.fail(encodingError(cause)))
         }
-        return submit(commands.map((command) => command.arguments)).pipe(
+      }) :
+      Effect.uninterruptibleMask((restore) =>
+        submit(commands.map((command) => command.arguments)).pipe(
           Effect.flatMap((items) =>
             restore(Effect.forEach(items, (item) => Effect.result(awaitReply(item)), { concurrency: "unbounded" }))
               .pipe(
@@ -386,8 +464,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
               )
           )
         )
-      })
-    )
+      )
 
   const failCause = (cause: Cause.Cause<RedisError>) => {
     const error = Cause.squash(cause)
@@ -403,21 +480,40 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   }
   yield* Effect.forkScoped(
     Effect.forever(
-      Queue.takeAll(outgoing).pipe(Effect.flatMap((entries) => {
+      takeOutgoing.pipe(Effect.flatMap((entries) => {
+        if (entries.length === 1) {
+          const entry = entries[0]
+          if (entry.state === "Done") return Effect.void
+          const bytes = entry.bytes!
+          entry.bytes = undefined
+          queuedBytes -= entry.size
+          entry.state = "Sent"
+          inflight.push(entry)
+          return transport.write(bytes, transferredWrite)
+        }
         const active = entries.filter((entry) => entry.state !== "Done")
         if (active.length === 0) return Effect.void
-        const size = active.reduce((total, entry) => total + entry.size, 0)
-        const bytes = active.length === 1 ? active[0].bytes! : new Uint8Array(size)
+        const first = active[0].bytes!
+        let size = 0
+        let contiguous = true
+        for (const entry of active) {
+          const bytes = entry.bytes!
+          if (bytes.buffer !== first.buffer || bytes.byteOffset !== first.byteOffset + size) contiguous = false
+          size += entry.size
+        }
+        const bytes = contiguous
+          ? active.length === 1 ? first : new Uint8Array(first.buffer, first.byteOffset, size)
+          : new Uint8Array(size)
         let offset = 0
         for (const entry of active) {
-          if (active.length > 1) bytes.set(entry.bytes!, offset)
+          if (!contiguous) bytes.set(entry.bytes!, offset)
           offset += entry.size
           entry.bytes = undefined
           queuedBytes -= entry.size
           entry.state = "Sent"
           inflight.push(entry)
         }
-        return transport.write(bytes)
+        return transport.write(bytes, transferredWrite)
       }))
     ).pipe(Effect.catchCause(failCause))
   )
@@ -425,14 +521,18 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const receive = (reply: Protocol.Reply) => {
     let value = reply
     while (value._tag === "Attribute") value = value.value
-    const values = value._tag === "Push" || value._tag === "Array" ? value.values : undefined
+    const values = value._tag === "Push" ||
+        (value._tag === "Array" && protocol === 2 &&
+          (subscriptions + shardSubscriptions > 0 || firstInflight()?.ack !== undefined))
+      ? value.values
+      : undefined
     const first = values?.[0]
     const kind = first?._tag === "SimpleString"
       ? first.value
       : first?._tag === "BlobString"
       ? new TextDecoder().decode(first.value)
       : undefined
-    const ack = typeof kind === "string" && [...subscriptionAcks.values()].includes(kind) &&
+    const ack = typeof kind === "string" && subscriptionAckKinds.has(kind) &&
       (value._tag === "Push" ||
         (protocol === 2 && (subscriptions + shardSubscriptions > 0 || firstInflight()?.ack === kind)))
     const message = protocol === 2 && subscriptions + shardSubscriptions > 0 &&
@@ -470,7 +570,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       entry,
       value._tag === "Error"
         ? Result.fail(new RedisError({ reason: "Server", message: value.message, code: value.code }))
-        : Result.succeed(reply)
+        : Replies.succeed(reply)
     )
   }
   yield* Effect.forkScoped(

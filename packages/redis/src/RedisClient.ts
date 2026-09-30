@@ -15,8 +15,10 @@ import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Cluster from "./internal/cluster.ts"
+import { prepareSnapshots } from "./internal/encoding.ts"
 import * as Sentinel from "./internal/sentinel.ts"
 import type * as TopologyInternal from "./internal/topology.ts"
+import * as TransactionInternal from "./internal/transaction.ts"
 import { endpointKey } from "./internal/transport.ts"
 import * as Command from "./RedisCommand.ts"
 import * as Connection from "./RedisConnection.ts"
@@ -124,7 +126,10 @@ const requiresReservation = (args: ReadonlyArray<Protocol.Argument>) => {
   return dedicated.has(command) ||
     ((command === "XREAD" || command === "XREADGROUP") && Command.parseStreams(args)?.blocking === true) ||
     (command === "CLIENT" &&
-      ["REPLY", "TRACKING", "CACHING", "SETNAME"].includes(Command.argumentText(args[1]).toUpperCase()))
+      ["REPLY", "TRACKING", "CACHING", "SETNAME", "SETINFO", "NO-EVICT", "NO-TOUCH"].includes(
+        Command.argumentText(args[1]).toUpperCase()
+      )) ||
+    (command === "SCRIPT" && Command.argumentText(args[1]).toUpperCase() === "DEBUG")
 }
 
 const snapshotArguments = (args: ReadonlyArray<Protocol.Argument>): ReadonlyArray<Protocol.Argument> =>
@@ -307,7 +312,6 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
   ): Effect.Effect<Protocol.Reply, RedisError> =>
     Effect.suspend(() => {
       const args = snapshotArguments(inputArgs)
-      const routing = snapshotRouting(inputRouting)
       if (closed) {
         return Effect.fail(
           new RedisError({ reason: "Closed", message: "Redis client scope closed", outcome: "NotSent" })
@@ -322,6 +326,14 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
           })
         )
       }
+      if (topologyConfig._tag === "Standalone" && inputRouting?.node === undefined) {
+        const cached = connections.get(endpointKey(topologyConfig.endpoint))
+        // Standalone has no discovery or redirects to refresh. Submit directly
+        // on its live session; acquisition still replaces a failed session on
+        // the next invocation without replaying uncertain commands.
+        if (cached?.connection.isOpen()) return cached.connection.execute(args)
+      }
+      const routing = snapshotRouting(inputRouting)
       const attempt = (
         destination: TopologyInternal.Resolved & { readonly asking?: boolean },
         remaining: number
@@ -368,11 +380,10 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
             return Effect.fail(error)
           }))
         })
-      return topology.resolve(args, routing).pipe(
-        Effect.flatMap((resolved) =>
-          attempt(resolved, topologyConfig._tag === "Cluster" ? topologyConfig.maxRedirects ?? 5 : 1)
-        )
-      )
+      const resolved = topology.resolveSync(args, routing)
+      return resolved._tag === "Failure"
+        ? Effect.fail(resolved.failure)
+        : attempt(resolved.success, topologyConfig._tag === "Cluster" ? topologyConfig.maxRedirects ?? 5 : 1)
     })
 
   const run = <A>(command: Command.RedisCommand<A>): Effect.Effect<A, RedisError> =>
@@ -480,13 +491,91 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     nodes: Effect.sync(topology.endpoints),
     pipeline: (inputCommands) =>
       Effect.suspend(() => {
-        const commands = inputCommands.map((command) => ({
-          ...command,
-          arguments: snapshotArguments(command.arguments),
-          routing: snapshotRouting(command.routing)
-        }))
+        let standalone = topology._tag === "Standalone"
+        let binary = false
+        const commands = inputCommands.map((command) => {
+          const routing = topology._tag === "Standalone" && command.routing?.node === undefined
+            ? undefined
+            : snapshotRouting(command.routing)
+          if (routing?.node !== undefined) standalone = false
+          return {
+            arguments: command.arguments.map((argument) => {
+              if (typeof argument !== "string") binary = true
+              return argument
+            }),
+            decode: command.decode,
+            routing
+          }
+        })
+        if (binary) {
+          try {
+            prepareSnapshots(commands.map((command) => command.arguments))
+          } catch (cause) {
+            const error = cause instanceof RedisError
+              ? cause
+              : new RedisError({
+                reason: "Protocol",
+                message: "Cannot encode Redis command",
+                cause,
+                outcome: "NotSent"
+              })
+            return Effect.succeed(commands.map((command) =>
+              Result.fail(
+                requiresReservation(command.arguments)
+                  ? new RedisError({
+                    reason: "Routing",
+                    message: "This command requires a reserved Redis connection",
+                    outcome: "NotSent"
+                  })
+                  : error
+              )
+            ))
+          }
+        }
         return Effect.gen(function*() {
           const results: Array<Result.Result<unknown, RedisError>> = new Array(commands.length)
+          if (standalone) {
+            // Standalone commands without explicit destinations all share one
+            // connection. Preserve errors in place without allocating routing
+            // results, submissions or destination groups for every command.
+            let indexes: Array<number> | undefined
+            for (let index = 0; index < commands.length; index++) {
+              if (requiresReservation(commands[index].arguments)) {
+                results[index] = Result.fail(
+                  new RedisError({
+                    reason: "Routing",
+                    message: "This command requires a reserved Redis connection",
+                    outcome: "NotSent"
+                  })
+                )
+                indexes ??= Array.from({ length: index }, (_, position) => position)
+              } else if (indexes !== undefined) indexes.push(index)
+            }
+            const batch = indexes === undefined ? commands : indexes.map((index) => commands[index])
+            if (batch.length === 0) return results
+            const resolved = topology.resolveSync([], undefined)
+            const response = resolved._tag === "Failure"
+              ? resolved
+              : yield* Effect.result(
+                get(resolved.success.endpoint).pipe(
+                  Effect.flatMap((connection) => connection.pipeline(batch))
+                )
+              )
+            let refreshConnection = false
+            for (let position = 0; position < batch.length; position++) {
+              const index = indexes === undefined ? position : indexes[position]
+              const reply = response._tag === "Success"
+                ? response.success[position]
+                : Result.fail(response.failure)
+              results[index] = reply._tag === "Success" ? commands[index].decode(reply.success) : reply
+              if (
+                reply._tag === "Failure" &&
+                (reply.failure.reason === "Connection" || reply.failure.reason === "Closed")
+              ) refreshConnection = true
+            }
+            if (refreshConnection) yield* Effect.ignoreCause(refresh)
+            return results
+          }
           interface Submission {
             readonly index: number
             readonly destination: TopologyInternal.Resolved & { readonly asking?: boolean }
@@ -524,6 +613,13 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
             }
             return groups.values()
           }
+          const processGroups = (submissions: Array<Submission>): Effect.Effect<void> => {
+            if (submissions.length === 0) return Effect.void
+            const groups = Array.from(groupSubmissions(submissions))
+            return groups.length === 1
+              ? process(groups[0])
+              : Effect.forEach(groups, process, { concurrency: "unbounded", discard: true })
+          }
           const process: (submissions: Array<Submission>) => Effect.Effect<void> = Effect.fnUntraced(
             function*(submissions) {
               const retries: Array<Submission> = []
@@ -533,16 +629,16 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
               const response = yield* Effect.result(
                 destination.asking
                   ? Effect.scoped(
-                    reserve({ node: destination.endpoint }).pipe(Effect.flatMap((connection) =>
-                      connection.pipeline(batch.flatMap((command) => [{ arguments: ["ASKING"] }, command])).pipe(
-                        // ASKING applies to exactly the following command on this exclusive session.
-                        Effect.map((replies) => batch.map((_, index) => replies[index * 2 + 1]))
+                    reserve({ node: destination.endpoint }).pipe(
+                      Effect.flatMap((connection) =>
+                        connection.pipeline(batch.flatMap((command) => [{ arguments: ["ASKING"] }, command])).pipe(
+                          // ASKING applies to exactly the following command on this exclusive session.
+                          Effect.map((replies) => batch.map((_, index) => replies[index * 2 + 1]))
+                        )
                       )
-                    ))
+                    )
                   )
-                  : get(destination.endpoint).pipe(Effect.flatMap((connection) =>
-                    connection.pipeline(batch)
-                  ))
+                  : get(destination.endpoint).pipe(Effect.flatMap((connection) => connection.pipeline(batch)))
               )
               const replies = response._tag === "Success"
                 ? response.success
@@ -600,14 +696,163 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
               ) {
                 yield* Effect.ignoreCause(refresh)
               }
-              yield* Effect.forEach(groupSubmissions(retries), process, { concurrency: "unbounded", discard: true })
+              if (retries.length > 0) yield* processGroups(retries)
             }
           )
-          yield* Effect.forEach(groupSubmissions(pending), process, { concurrency: "unbounded", discard: true })
+          if (pending.length > 0) yield* processGroups(pending)
           return results
         })
       }) as any
   }
+  interface TransactionSession {
+    readonly scope: Scope.Closeable
+    readonly endpoint: Connection.Endpoint
+    readonly connection: Connection.RedisConnection
+  }
+  const transactionIdle = new Map<string, Array<TransactionSession>>()
+  TransactionInternal.register(client, (commands, affinity) => {
+    // Connection-local operations and WATCH callbacks must never lend their
+    // altered state to another transaction. Ordinary batches can lease a clean
+    // transaction-only session, including when command deadlines are enabled.
+    if (commands.some((command) => requiresReservation(command.arguments))) {
+      return undefined
+    }
+    return Effect.suspend(() => {
+      if (closed) {
+        return Effect.fail(
+          new RedisError({ reason: "Closed", message: "Redis client scope closed", outcome: "NotSent" })
+        )
+      }
+      const resolved = topology.resolveSync(
+        affinity?.key === undefined ? ["PING"] : ["GET", affinity.key],
+        { keyIndexes: affinity?.key === undefined ? [] : [1], node: affinity?.node }
+      )
+      if (resolved._tag === "Failure") return Effect.fail(resolved.failure)
+      let endpoint = resolved.success.endpoint
+      let slot = resolved.success.slot
+      if (topology._tag === "Cluster") {
+        let requiredNode: string | undefined
+        for (const command of commands) {
+          const target = topology.resolveSync(
+            command.arguments,
+            command.routing ?? Command.inferRouting(command.arguments)
+          )
+          if (target._tag === "Failure") return Effect.fail(target.failure)
+          if (slot === undefined && target.success.slot !== undefined) {
+            slot = target.success.slot
+            if (affinity?.node === undefined) endpoint = target.success.endpoint
+          }
+          const node = command.routing?.node === undefined ? undefined : endpointKey(target.success.endpoint)
+          if (
+            (target.success.slot !== undefined && target.success.slot !== slot) ||
+            (node !== undefined && requiredNode !== undefined && requiredNode !== node)
+          ) {
+            return Effect.fail(
+              new RedisError({
+                reason: "Routing",
+                message: "Transaction commands must use one Cluster slot and destination",
+                code: "CROSSSLOT",
+                outcome: "NotSent"
+              })
+            )
+          }
+          if (node !== undefined) requiredNode = node
+        }
+        if (requiredNode !== undefined && requiredNode !== endpointKey(endpoint)) {
+          return Effect.fail(
+            new RedisError({
+              reason: "Routing",
+              message: "Transaction commands must use one Cluster slot and destination",
+              code: "CROSSSLOT",
+              outcome: "NotSent"
+            })
+          )
+        }
+      }
+      const key = endpointKey(endpoint)
+      // Exclusive leases isolate even an unrecognized EXEC that leaves Redis
+      // in MULTI. Concurrent transactions acquire separate sessions rather
+      // than waiting for an in-use connection or sharing ordinary commands.
+      return Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function*() {
+          if (closed) {
+            return yield* Effect.fail(
+              new RedisError({ reason: "Closed", message: "Redis client scope closed", outcome: "NotSent" })
+            )
+          }
+          let idle = transactionIdle.get(key)
+          let session = idle?.pop()
+          while (session !== undefined && !session.connection.isOpen()) {
+            yield* Scope.close(session.scope, Exit.void)
+            session = idle?.pop()
+          }
+          if (session === undefined) {
+            const child = yield* Scope.fork(scope)
+            const reservation = { scope: child, endpoint }
+            reservations.add(reservation)
+            let acquired: TransactionSession | undefined
+            yield* Scope.addFinalizer(
+              child,
+              Effect.sync(() => {
+                reservations.delete(reservation)
+                if (acquired === undefined) return
+                const idle = transactionIdle.get(key)
+                const index = idle?.indexOf(acquired) ?? -1
+                if (idle !== undefined && index !== -1) idle.splice(index, 1)
+                if (idle?.length === 0) transactionIdle.delete(key)
+              })
+            )
+            const connection = yield* restore(
+              Connection.make(connector, endpoint, config).pipe(
+                Effect.provideService(Scope.Scope, child),
+                Effect.onError(() => Scope.close(child, Exit.void))
+              )
+            )
+            if (
+              closed || !connection.isOpen() ||
+              (topology._tag === "Sentinel" && !topology.endpoints().some((node) => endpointKey(node) === key))
+            ) {
+              yield* Scope.close(child, Exit.void)
+              return yield* Effect.fail(
+                new RedisError({
+                  reason: "Closed",
+                  message: "Redis transaction destination retired during acquisition",
+                  outcome: "NotSent"
+                })
+              )
+            }
+            session = acquired = { scope: child, endpoint, connection }
+          }
+          const leased = session
+          return yield* restore(leased.connection.pipeline([
+            { arguments: ["MULTI"], routing: { keyIndexes: [] } },
+            ...commands,
+            { arguments: ["EXEC"], routing: { keyIndexes: [] } }
+          ])).pipe(
+            Effect.flatMap((replies) => Effect.fromResult(TransactionInternal.validate(replies, commands.length))),
+            Effect.onExit((exit) =>
+              Effect.suspend(() => {
+                if (
+                  exit._tag === "Failure" ||
+                  closed || !leased.connection.isOpen() ||
+                  (topology._tag === "Sentinel" && !topology.endpoints().some((node) => endpointKey(node) === key))
+                ) {
+                  return Scope.close(leased.scope, Exit.void)
+                }
+                idle = transactionIdle.get(key)
+                // Bound idle retention, while leaving active transaction concurrency
+                // to the caller instead of serializing it behind a connection limit.
+                if (idle !== undefined && idle.length >= 16) return Scope.close(leased.scope, Exit.void)
+                if (idle === undefined) transactionIdle.set(key, [leased])
+                else idle.push(leased)
+                return Effect.void
+              })
+            )
+          )
+        })
+      )
+    })
+  })
   const initial = yield* topology.resolve(["PING"], { keyIndexes: [] })
   yield* get(initial.endpoint).pipe(
     Effect.flatMap((connection) =>

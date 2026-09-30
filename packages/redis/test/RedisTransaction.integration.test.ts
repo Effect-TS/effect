@@ -65,6 +65,26 @@ describe("Redis transactions", () => {
       assert.strictEqual(yield* client.run(Command.get("other")), null)
     }))
 
+  it.live("isolates transaction connection state from ordinary commands and later transactions", () =>
+    Effect.gen(function*() {
+      const fixture = yield* redis
+      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+      yield* client.run(Command.set("transaction:database", "zero"))
+      const selected = yield* Transaction.execute(client, [
+        Command.make(["SELECT", "1"], Command.text),
+        Command.set("transaction:database", "one"),
+        Command.get("transaction:database")
+      ])
+      assert.isNotNull(selected)
+      if (selected === null) return assert.fail("Transaction unexpectedly conflicted")
+      assert.deepStrictEqual(selected.map(Result.getOrThrow), ["OK", "OK", "one"])
+      assert.strictEqual(yield* client.run(Command.get("transaction:database")), "zero")
+      const subsequent = yield* Transaction.execute(client, [Command.get("transaction:database")])
+      assert.isNotNull(subsequent)
+      if (subsequent === null) return assert.fail("Transaction unexpectedly conflicted")
+      assert.deepStrictEqual(subsequent.map(Result.getOrThrow), ["zero"])
+    }))
+
   it.live("reports queue-time rejection without applying queued mutations", () =>
     Effect.gen(function*() {
       const fixture = yield* redis
@@ -99,6 +119,54 @@ describe("Redis transactions", () => {
       assert.strictEqual(error.code, "NOPERM")
       assert.strictEqual(error.outcome, "Unknown")
       assert.strictEqual(yield* client.run(Command.get("outside-transaction")), "value")
+    }))
+
+  it.live("retires transaction sessions when EXEC is denied", () =>
+    Effect.gen(function*() {
+      const fixture = yield* redis
+      yield* Effect.promise(() =>
+        fixture.command(
+          "ACL",
+          "SETUSER",
+          "exec-denied",
+          "on",
+          ">secret",
+          "~*",
+          "+@all",
+          "-exec"
+        )
+      )
+      const client = yield* Client.make(makeConnector(), {
+        topology: { _tag: "Standalone", endpoint: fixture },
+        username: "exec-denied",
+        password: "secret"
+      })
+      const error = yield* Transaction.execute(client, [Command.set("transaction:queued", "value")]).pipe(Effect.flip)
+      assert.strictEqual(error.reason, "Server")
+      assert.isTrue(error.code === "NOPERM" || error.code === "EXECABORT")
+      assert.strictEqual(yield* client.run(Command.get("transaction:queued")), null)
+      assert.strictEqual(yield* client.run(Command.set("after-rejected-exec", "value")), "OK")
+      assert.strictEqual(yield* client.run(Command.get("after-rejected-exec")), "value")
+    }))
+
+  it.live("isolates an unrecognized EXEC from ordinary commands and never reuses the transaction session", () =>
+    Effect.gen(function*() {
+      const fixture = yield* Effect.acquireRelease(
+        Effect.promise(() => startRedis({ config: ["rename-command EXEC \"\""] })),
+        (fixture) => Effect.promise(fixture.stop)
+      )
+      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+      const failed = yield* Transaction.execute(client, [Command.set("transaction:uncommitted", "value")])
+        .pipe(Effect.flip)
+      assert.strictEqual(failed.reason, "Server")
+      assert.strictEqual(failed.code, "ERR")
+      assert.strictEqual(yield* client.run(Command.get("transaction:uncommitted")), null)
+      assert.strictEqual(yield* client.run(Command.set("ordinary:after-unknown-exec", "value")), "OK")
+      assert.strictEqual(yield* client.run(Command.get("ordinary:after-unknown-exec")), "value")
+      const second = yield* Transaction.execute(client, [Command.set("transaction:second", "value")]).pipe(Effect.flip)
+      assert.strictEqual(second.reason, "Server")
+      assert.strictEqual(second.code, "ERR")
+      assert.strictEqual(yield* client.run(Command.get("transaction:second")), null)
     }))
 
   it.live("does not replay EXEC when Redis commits but its reply is lost", () =>
@@ -195,6 +263,18 @@ describe("Redis transactions", () => {
       assert.strictEqual(crossSlot.reason, "Routing")
       assert.strictEqual(crossSlot.code, "CROSSSLOT")
       assert.strictEqual(crossSlot.outcome, "NotSent")
+      const inferredCrossSlot = yield* Transaction.execute(client, [
+        Command.set("{foo}:queued", "value"),
+        Command.set("{bar}:must-never-be-sent", "value")
+      ]).pipe(Effect.flip)
+      assert.strictEqual(inferredCrossSlot.code, "CROSSSLOT")
+      assert.strictEqual(inferredCrossSlot.outcome, "NotSent")
+      const conflictingNode = yield* Transaction.execute(client, [
+        Command.make(["INFO"], Command.text, { keyIndexes: [], node: fixture.seeds[0] }),
+        Command.set("{foo}:must-never-be-sent", "value")
+      ]).pipe(Effect.flip)
+      assert.strictEqual(conflictingNode.code, "CROSSSLOT")
+      assert.strictEqual(conflictingNode.outcome, "NotSent")
       assert.isFalse(sent.some((bytes) =>
         new TextDecoder().decode(bytes).includes("{bar}:must-never-be-sent")
       ))
@@ -212,5 +292,9 @@ describe("Redis transactions", () => {
       if (results === null) return assert.fail("Transaction unexpectedly conflicted")
       assert.strictEqual(Result.getOrThrow(results[0]), "OK")
       assert.strictEqual(Result.getOrThrow(results[1]), "embstr")
+      const inferred = yield* Transaction.execute(client, [Command.get("{foo}:object")])
+      assert.isNotNull(inferred)
+      if (inferred === null) return assert.fail("Transaction unexpectedly conflicted")
+      assert.deepStrictEqual(inferred.map(Result.getOrThrow), ["value"])
     }), 90_000)
 })

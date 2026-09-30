@@ -20,6 +20,89 @@ const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
 }
 
 describe("Redis physical session", () => {
+  it.effect("keeps repeated command and pipeline effects independent with immediate replies", () =>
+    Effect.gen(function*() {
+      const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
+      const requests = Protocol.makeParser()
+      let counter = 0
+      let writes = 0
+      const connection = yield* Connection.make(
+        () =>
+          Effect.succeed({
+            read: Queue.take(replies),
+            close: Effect.void,
+            write: (bytes) =>
+              Effect.sync(() => {
+                writes++
+                const response = requests.push(bytes).map(() => `:${++counter}\r\n`).join("")
+                Queue.offerUnsafe(replies, Buffer.from(response))
+              })
+          }),
+        { host: "unused", port: 6379 }
+      )
+      const command = connection.execute(["INCR", "counter"])
+      const individual = yield* Effect.all([command, command], { concurrency: "unbounded" })
+      assert.deepStrictEqual(individual.map(Protocol.toValue), [1, 2])
+      assert.strictEqual(writes, 1)
+      const pipeline = connection.pipeline([
+        { arguments: ["INCR", "counter"] },
+        { arguments: ["INCR", "counter"] }
+      ])
+      const batches = yield* Effect.all([pipeline, pipeline], { concurrency: "unbounded" })
+      assert.deepStrictEqual(
+        batches.map((batch) =>
+          batch.map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? Protocol.toValue(result.success) : undefined
+          })
+        ),
+        [[3, 4], [5, 6]]
+      )
+      assert.strictEqual(writes, 2)
+    }))
+
+  it.effect("keeps later command results unchanged after mutation of earlier acknowledgements", () =>
+    Effect.gen(function*() {
+      const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
+      const connection = yield* Connection.make(
+        () =>
+          Effect.succeed({
+            read: Queue.take(replies),
+            close: Effect.void,
+            write: () =>
+              Effect.sync(() => {
+                Queue.offerUnsafe(replies, Buffer.from("+OK\r\n+QUEUED\r\n+PONG\r\n|1\r\n+ttl\r\n:10\r\n+PONG\r\n"))
+              })
+          }),
+        { host: "unused", port: 6379 }
+      )
+      const pipeline = connection.pipeline(Array.from({ length: 4 }, () => ({ arguments: ["PING"] })))
+      const first = yield* pipeline
+      for (const result of first) {
+        assert.strictEqual(result._tag, "Success")
+        if (result._tag !== "Success") continue
+        const reply = result.success
+        if (reply._tag === "Attribute") Reflect.set(reply.entries, "length", 0)
+        Reflect.set(reply, "value", "changed")
+        Reflect.set(result, "success", { _tag: "SimpleString", value: "changed" })
+      }
+      const later = yield* pipeline
+      const values = later.map((result) => {
+        assert.strictEqual(result._tag, "Success")
+        return result._tag === "Success" ? Protocol.toValue(result.success) : undefined
+      })
+      assert.deepStrictEqual(values, ["OK", "QUEUED", "PONG", "PONG"])
+      const attributed = later[3]
+      assert.strictEqual(attributed._tag, "Success")
+      if (attributed._tag === "Success") {
+        assert.deepStrictEqual(attributed.success, {
+          _tag: "Attribute",
+          entries: [[{ _tag: "SimpleString", value: "ttl" }, { _tag: "Integer", value: 10n }]],
+          value: { _tag: "SimpleString", value: "PONG" }
+        })
+      }
+    }))
+
   it.effect("keeps individual pipeline deadlines when earlier replies complete", () =>
     Effect.gen(function*() {
       const written = yield* Deferred.make<void>()
@@ -108,6 +191,94 @@ describe("Redis physical session", () => {
       assert.strictEqual(failure(results[1]).code, "WRONGTYPE")
       assert.strictEqual(results[2]._tag, "Success")
       if (results[2]._tag === "Success") assert.strictEqual(Protocol.toValue(results[2].success), "value")
+    }))
+
+  it.effect("snapshots queued pipeline binary arguments and encodes Unicode in a single write", () =>
+    Effect.gen(function*() {
+      const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
+      const written = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const requests: Array<Protocol.Reply> = []
+      const parser = Protocol.makeParser()
+      let writes = 0
+      const connection = yield* Connection.make(
+        () =>
+          Effect.succeed({
+            read: Queue.take(replies),
+            close: Effect.void,
+            write: (bytes) =>
+              Effect.gen(function*() {
+                const decoded = parser.push(bytes)
+                requests.push(...decoded)
+                writes++
+                Queue.offerUnsafe(replies, Buffer.from(decoded.map(() => "+OK\r\n").join("")))
+                if (writes === 1) {
+                  Deferred.doneUnsafe(written, Effect.void)
+                  yield* Deferred.await(release)
+                }
+              })
+          }),
+        { host: "unused", port: 6379 }
+      )
+      yield* connection.execute(["PING"]).pipe(Effect.forkChild)
+      yield* Deferred.await(written)
+      const bytes = new Uint8Array([0, 128, 255])
+      const pipeline = yield* connection.pipeline([
+        { arguments: ["SET", "binary", bytes] },
+        { arguments: ["ECHO", "🥹\uD800"] }
+      ]).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      bytes.fill(99)
+      yield* Deferred.succeed(release, undefined)
+      const results = yield* Fiber.join(pipeline)
+      assert.strictEqual(writes, 2)
+      assert.isTrue(results.every((result) => result._tag === "Success"))
+      const set = requests[1]
+      assert.strictEqual(set._tag, "Array")
+      if (set._tag === "Array") {
+        assert.deepStrictEqual(set.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
+      }
+      assert.deepStrictEqual(Protocol.toValue(requests[2]), ["ECHO", "🥹�"])
+    }))
+
+  it.effect("preserves binary replies when a custom stream reuses its input buffer", () =>
+    Effect.gen(function*() {
+      const written = yield* Queue.unbounded<void>()
+      const stream = new class extends Duplex {
+        override _read() {}
+        override _write(_bytes: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+          Queue.offerUnsafe(written, undefined)
+          callback()
+        }
+      }()
+      const connection = yield* Connection.make(makeConnector({ stream: () => stream }), { host: "unused", port: 6379 })
+      const pending = yield* connection.pipeline([
+        { arguments: ["GET", "first"] },
+        { arguments: ["GET", "second"] }
+      ]).pipe(Effect.forkChild)
+      yield* Queue.take(written)
+      const producer = Buffer.concat([bulk(new Uint8Array([0, 128, 255])), bulk(new Uint8Array([1, 129, 254]))])
+      stream.emit("data", producer)
+      producer.fill(99)
+      const replies = (yield* Fiber.join(pending)).map((result) => {
+        assert.strictEqual(result._tag, "Success")
+        if (result._tag !== "Success") return assert.fail("Expected binary reply")
+        assert.strictEqual(result.success._tag, "BlobString")
+        if (result.success._tag !== "BlobString") return assert.fail("Expected binary reply")
+        return result.success.value
+      })
+      assert.deepStrictEqual(replies[0], new Uint8Array([0, 128, 255]))
+      assert.deepStrictEqual(replies[1], new Uint8Array([1, 129, 254]))
+      replies[0][0] = 42
+      assert.deepStrictEqual(replies[1], new Uint8Array([1, 129, 254]))
+      const next = yield* connection.execute(["GET", "third"]).pipe(Effect.forkChild)
+      yield* Queue.take(written)
+      const later = bulk(new Uint8Array([2, 130, 253]))
+      stream.emit("data", later)
+      later.fill(99)
+      assert.deepStrictEqual(yield* Fiber.join(next), { _tag: "BlobString", value: new Uint8Array([2, 130, 253]) })
+      assert.deepStrictEqual(replies[0], new Uint8Array([42, 128, 255]))
+      assert.deepStrictEqual(replies[1], new Uint8Array([1, 129, 254]))
     }))
 
   it.live("rejects an invalid batch before writing any of its commands", () =>

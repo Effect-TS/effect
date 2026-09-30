@@ -9,7 +9,7 @@ import { RedisError } from "@effect/redis/RedisError"
 import * as Protocol from "@effect/redis/RedisProtocol"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope } from "effect"
-import type * as Result from "effect/Result"
+import * as Result from "effect/Result"
 import * as TestClock from "effect/testing/TestClock"
 import { barrier, bulk, type Request, startScriptedRedis } from "./utils/redis-scripted.ts"
 
@@ -118,6 +118,10 @@ describe("RedisClient", () => {
             ["EXEC"],
             ["WATCH", "key"],
             ["AUTH", "secret"],
+            ["CLIENT", "SETINFO", "LIB-NAME", "example"],
+            ["CLIENT", "NO-EVICT", "ON"],
+            ["CLIENT", "NO-TOUCH", "ON"],
+            ["SCRIPT", "DEBUG", "YES"],
             ["SELECT", "1"],
             ["HELLO", "3"],
             ["ASKING"],
@@ -232,6 +236,162 @@ describe("RedisClient", () => {
           ["OK", "new", "independent"]
         )
         assert.strictEqual(failure(results[3]).outcome, "NotSent")
+      }))
+
+    it.effect("snapshots pipeline bytes before a held writer and reads inputs again when the effect is reused", () =>
+      Effect.gen(function*() {
+        const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
+        const written = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const requests: Array<Protocol.Reply> = []
+        const parser = Protocol.makeParser()
+        let writes = 0
+        const client = yield* Client.make(() =>
+          Effect.succeed({
+            read: Queue.take(replies),
+            close: Effect.void,
+            write: (bytes) =>
+              Effect.gen(function*() {
+                const decoded = parser.push(bytes)
+                requests.push(...decoded)
+                writes++
+                Queue.offerUnsafe(replies, Buffer.from(decoded.map(() => "+OK\r\n").join("")))
+                if (writes === 2) {
+                  Deferred.doneUnsafe(written, Effect.void)
+                  yield* Deferred.await(release)
+                }
+              })
+          })
+        )
+        const blocked = yield* client.execute(["ECHO", "hold"]).pipe(Effect.forkChild)
+        yield* Deferred.await(written)
+        const bytes = new Uint8Array([0, 128, 255])
+        const operation = client.pipeline([
+          Command.set("binary", bytes),
+          Command.make(["ECHO", "🥹\uD800"], Command.text)
+        ])
+        const running = yield* operation.pipe(Effect.forkChild)
+        yield* Effect.yieldNow
+        bytes.fill(99)
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(blocked)
+        assert.isTrue((yield* Fiber.join(running)).every((result) => result._tag === "Success"))
+        assert.strictEqual(writes, 3)
+        const original = requests[2]
+        assert.strictEqual(original._tag, "Array")
+        if (original._tag === "Array") {
+          assert.deepStrictEqual(original.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
+        }
+        assert.deepStrictEqual(Protocol.toValue(requests[3]), ["ECHO", "🥹�"])
+        assert.isTrue((yield* operation).every((result) => result._tag === "Success"))
+        const updated = requests[4]
+        assert.strictEqual(updated._tag, "Array")
+        if (updated._tag === "Array") {
+          assert.deepStrictEqual(updated.values[2], { _tag: "BlobString", value: new Uint8Array([99, 99, 99]) })
+        }
+        assert.strictEqual(writes, 4)
+      }))
+
+    it.live("returns encoding failures without partially submitting a binary pipeline", () =>
+      Effect.gen(function*() {
+        const requests: Array<ReadonlyArray<string>> = []
+        const fixture = yield* server((request) => {
+          requests.push(args(request))
+          request.connection.send("+PONG\r\n")
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const broken = new Proxy(new Uint8Array([1]), {
+          get: (target, property, receiver) => {
+            if (property === "length") throw new Error("Cannot read binary argument")
+            return Reflect.get(target, property, receiver)
+          }
+        })
+        const results = yield* client.pipeline([
+          Command.set("valid", new Uint8Array([0, 128, 255])),
+          Command.set("broken", broken),
+          Command.make(["MULTI"], Command.text)
+        ])
+        for (const index of [0, 1]) {
+          assert.strictEqual(failure(results[index]).reason, "Protocol")
+          assert.strictEqual(failure(results[index]).outcome, "NotSent")
+        }
+        assert.strictEqual(failure(results[2]).reason, "Routing")
+        assert.strictEqual(failure(results[2]).outcome, "NotSent")
+        assert.deepStrictEqual(requests, [["PING"]])
+      }))
+
+    it.live("preserves standalone pipeline positions while batching allowed commands before replies", () =>
+      Effect.gen(function*() {
+        const requests: Array<Request> = []
+        const submitted = barrier<void>()
+        const fixture = yield* server((request) => {
+          if (args(request)[0] === "PING") request.connection.send("+PONG\r\n")
+          else {
+            requests.push(request)
+            if (requests.length === 4) submitted.resolve()
+          }
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const pipeline = yield* client.pipeline([
+          Command.make(["INCR", "counter"], Command.integer),
+          Command.make(["MULTI"], Command.text),
+          Command.get("text"),
+          Command.make(["BLPOP", "queue", "0"], Command.text),
+          Command.getBytes("binary"),
+          Command.make(["ECHO", "text"], Command.integer)
+        ]).pipe(Effect.forkChild)
+        yield* Effect.promise(() => submitted.promise).pipe(Effect.timeout("1 second"))
+        assert.deepStrictEqual(requests.map(args), [
+          ["INCR", "counter"],
+          ["GET", "text"],
+          ["GET", "binary"],
+          ["ECHO", "text"]
+        ])
+        const bytes = Buffer.from([0, 128, 255])
+        requests[0].connection.send(Buffer.concat([Buffer.from(":1\r\n"), bulk("value"), bulk(bytes), bulk("text")]))
+        const results = yield* Fiber.join(pipeline)
+        assert.strictEqual(Result.getOrThrow(results[0]), BigInt(1))
+        assert.strictEqual(Result.getOrThrow(results[2]), "value")
+        const received = Result.getOrThrow(results[4])
+        assert.instanceOf(received, Uint8Array)
+        if (received instanceof Uint8Array) assert.deepStrictEqual([...received], [...bytes])
+        for (const index of [1, 3]) {
+          assert.strictEqual(failure(results[index]).reason, "Routing")
+          assert.strictEqual(failure(results[index]).outcome, "NotSent")
+        }
+        assert.strictEqual(failure(results[5]).reason, "Decode")
+        assert.deepStrictEqual(yield* client.pipeline([]), [])
+        const rejected = yield* client.pipeline([
+          Command.make(["WATCH", "key"], Command.text),
+          Command.make(["XREAD", "BLOCK", "0", "STREAMS", "stream", "0"], Command.text)
+        ])
+        assert.isTrue(rejected.every((result) => failure(result).outcome === "NotSent"))
+        assert.strictEqual(requests.length, 4)
+      }))
+
+    it.live("does not replay uncertain standalone pipeline writes and reconnects for subsequent commands", () =>
+      Effect.gen(function*() {
+        const requests: Array<ReadonlyArray<string>> = []
+        let counter = 0
+        const fixture = yield* server((request) => {
+          const values = args(request)
+          requests.push(values)
+          if (values[0] === "INCR") {
+            counter++
+            if (counter === 2) request.connection.socket.end(":1\r\n")
+          } else request.connection.send(values[0] === "GET" ? bulk(String(counter)) : "+PONG\r\n")
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const results = yield* client.pipeline([
+          Command.make(["INCR", "counter"], Command.integer),
+          Command.make(["INCR", "counter"], Command.integer)
+        ])
+        assert.strictEqual(Result.getOrThrow(results[0]), BigInt(1))
+        assert.strictEqual(failure(results[1]).reason, "Connection")
+        assert.strictEqual(failure(results[1]).outcome, "Unknown")
+        assert.strictEqual(yield* client.run(Command.get("counter")), "2")
+        assert.strictEqual(requests.filter((values) => values[0] === "INCR").length, 2)
+        assert.strictEqual(fixture.connections.length, 2)
       }))
 
     it.live("allows stream keys and group operands named BLOCK on shared connections", () =>
@@ -736,6 +896,9 @@ describe("RedisClient", () => {
         assert.strictEqual(Cluster.keySlot(new Uint8Array([0, 255, 123, 0, 255, 125, 42])), 7920)
         assert.strictEqual(Cluster.keySlot(new Uint8Array([0, 255])), 7920)
         assert.strictEqual(Cluster.keySlot(encoder.encode("é{bar}☃")), 5061)
+        for (const key of ["é{bar}☃", "{☃}:one", "é{}☃", "😀", "\ud800", "\udfff{é}", "foo{{☃}}", "é{\ud800}"]) {
+          assert.strictEqual(Cluster.keySlot(key), Cluster.keySlot(encoder.encode(key)))
+        }
       })
 
       it("parses RESP2 field arrays and RESP3 maps in SHARDS and ignores replicas", () => {
