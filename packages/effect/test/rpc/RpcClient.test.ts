@@ -113,7 +113,7 @@ describe("RpcClient", () => {
       assert.strictEqual(unaryRequest._tag, "Request")
       if (unaryRequest._tag !== "Request") return
       yield* handle({ _tag: "Chunk", requestId: goodRequest.id, values: ["alive"] })
-      yield* handle({ _tag: "Exit", requestId: goodRequest.id, exit: { _tag: "Success", value: undefined } })
+      yield* handle({ _tag: "Exit", requestId: goodRequest.id, exit: { _tag: "Success", value: null } })
       yield* handle({ _tag: "Exit", requestId: unaryRequest.id, exit: { _tag: "Success", value: "ok" } })
       assert.deepStrictEqual(Array.from(yield* Fiber.join(good)), ["alive"])
       assert.strictEqual(yield* Fiber.join(unary), "ok")
@@ -129,7 +129,10 @@ describe("RpcClient", () => {
       yield* Effect.exit(handle({ _tag: "Chunk", requestId: request.id, values: ["invalid"] }))
       const exit = yield* Fiber.join(reader)
       assert(Exit.isFailure(exit))
-      assert.deepStrictEqual(yield* Queue.poll(sent), Option.some({ _tag: "Interrupt" as const, requestId: request.id }))
+      assert.deepStrictEqual(
+        yield* Queue.poll(sent),
+        Option.some({ _tag: "Interrupt" as const, requestId: request.id })
+      )
     }))
 
   it.effect("preserves interruption of an independently cancelled stream", () =>
