@@ -21,6 +21,7 @@ export interface RedisFixture extends Endpoint {
   readonly directory: string
   readonly unixSocketPath: string | undefined
   readonly tlsPort: number | undefined
+  readonly clusterBusPort: number | undefined
   readonly process: ChildProcess
   readonly stop: () => Promise<void>
   readonly command: (...args: ReadonlyArray<string>) => Promise<Reply>
@@ -153,6 +154,7 @@ export interface RedisOptions extends Credentials {
   readonly sentinel?: boolean
   readonly unixSocket?: boolean
   readonly tls?: boolean
+  readonly cluster?: boolean
 }
 
 const quote = (value: string): string => JSON.stringify(value)
@@ -173,6 +175,19 @@ const findBinary = async (): Promise<string | undefined> => {
 }
 
 export const startRedis = async (options: RedisOptions = {}): Promise<RedisFixture> => {
+  for (let attempt = 0;; attempt++) {
+    try {
+      return await startRedisOnce(options)
+    } catch (error) {
+      // Closing an ephemeral-port probe cannot reserve the port until Redis
+      // binds it, especially while Docker starts. Retry only bind collisions
+      // for automatically allocated ports; explicit endpoints must stay fixed.
+      if (options.port !== undefined || attempt >= 4 || !/bind: Address already in use/.test(String(error))) throw error
+    }
+  }
+}
+
+const startRedisOnce = async (options: RedisOptions): Promise<RedisFixture> => {
   const binary = options.binary ?? process.env.REDIS_SERVER_BIN ??
     (process.env.REDIS_TEST_IMAGE ? undefined : await findBinary())
   if (!binary && process.platform !== "linux") {
@@ -180,9 +195,18 @@ export const startRedis = async (options: RedisOptions = {}): Promise<RedisFixtu
   }
   const directory = await mkdtemp(join(tmpdir(), "effect-redis-"))
   const port = options.port ?? await freePort()
+  const allocated = new Set([port])
+  const nextPort = async () => {
+    let candidate: number
+    do candidate = await freePort()
+    while (allocated.has(candidate))
+    allocated.add(candidate)
+    return candidate
+  }
   const endpoint = { host: "127.0.0.1", port }
   const unixSocketPath = options.unixSocket ? join(directory, "redis.sock") : undefined
-  const tlsPort = options.tls ? await freePort() : undefined
+  const tlsPort = options.tls ? await nextPort() : undefined
+  const clusterBusPort = options.cluster ? await nextPort() : undefined
   if (tlsPort) {
     await copyFile(
       fileURLToPath(new URL("../../../platform/node/test/fixtures/tls/cert.pem", import.meta.url)),
@@ -201,6 +225,7 @@ export const startRedis = async (options: RedisOptions = {}): Promise<RedisFixtu
     "appendonly no",
     `dir ${quote(directory)}`,
     "loglevel warning",
+    ...(clusterBusPort ? [`cluster-port ${clusterBusPort}`, `cluster-announce-bus-port ${clusterBusPort}`] : []),
     ...(unixSocketPath ? [`unixsocket ${quote(unixSocketPath)}`] : []),
     ...(tlsPort ?
       [
@@ -294,6 +319,7 @@ export const startRedis = async (options: RedisOptions = {}): Promise<RedisFixtu
     directory,
     unixSocketPath,
     tlsPort,
+    clusterBusPort,
     process: child,
     stop,
     command: (...args: ReadonlyArray<string>) => command(endpoint, args, options)
@@ -332,24 +358,20 @@ export interface ClusterFixture {
 
 export const startCluster = async (options: RedisOptions = {}): Promise<ClusterFixture> => {
   const fixtures: Array<RedisFixture> = []
-  const busPorts: Array<number> = []
   const stop = async () => {
     await Promise.all(fixtures.map((fixture) => fixture.stop()))
   }
   try {
     for (let i = 0; i < 6; i++) {
-      const busPort = await freePort()
-      busPorts.push(busPort)
       fixtures.push(
         await startRedis({
           ...options,
+          cluster: true,
           config: [
             ...options.config ?? [],
             "cluster-enabled yes",
             "cluster-config-file nodes.conf",
             "cluster-node-timeout 1000",
-            `cluster-port ${busPort}`,
-            `cluster-announce-bus-port ${busPort}`,
             "cluster-announce-ip 127.0.0.1",
             ...(options.password ? [`masterauth ${quote(options.password)}`] : []),
             ...(options.username ? [`masteruser ${quote(options.username)}`] : [])
@@ -364,7 +386,7 @@ export const startCluster = async (options: RedisOptions = {}): Promise<ClusterF
     })))
     for (let i = 1; i < nodes.length; i++) {
       const node = nodes[i]
-      await nodes[0].command("CLUSTER", "MEET", node.host, String(node.port), String(busPorts[i]))
+      await nodes[0].command("CLUSTER", "MEET", node.host, String(node.port), String(node.clusterBusPort))
     }
     await waitUntil(async () => {
       const result = await Promise.all(nodes.map((node) => node.command("CLUSTER", "INFO")))
