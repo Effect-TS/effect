@@ -5093,7 +5093,7 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
       terminal = defect
       done = true
       return fibers && fibers.size > 0
-        ? flatMap(uninterruptible(fiberInterruptAll(Array.from(fibers))), () => defect)
+        ? flatMap(uninterruptible(fiberInterruptAll(Array.from(fibers))), () => terminal ?? defect)
         : defect
     }
 
@@ -5155,9 +5155,7 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
               } else {
                 const result = step(state, item, exit, currentIndex)
                 if (result) {
-                  terminal = result._tag === "Failure"
-                    ? exitFailCause(causeFromReasons(result.cause.reasons.slice()))
-                    : result
+                  terminal = result
                   go()
                 }
               }
