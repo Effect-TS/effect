@@ -1,6 +1,6 @@
 import { describe, it, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Cause, Context, Effect, Option, References, Scope, Stream, Tracer } from "effect"
+import { Cause, Context, Effect, Exit, Option, References, Scope, Stream, Tracer } from "effect"
 import { identity } from "effect/Function"
 import { HttpEffect, HttpServerRequest, HttpServerResponse } from "effect/http"
 import { appendPreResponseHandlerUnsafe, requestPreResponseHandlers } from "effect/http/internal/preResponseHandler"
@@ -33,7 +33,7 @@ describe("HttpEffect", () => {
     )
   })
 
-  describe("scopeHandlerCause", () => {
+  describe("request scope exit", () => {
     const tracer = Tracer.make({
       span: (options) => new Tracer.NativeSpan(options)
     })
@@ -44,21 +44,25 @@ describe("HttpEffect", () => {
         ["with a tracer", undefined, Context.make(Tracer.Tracer, tracer)]
       ] as const
     ) {
-      it.effect(`records the handler cause ${name}`, () => {
+      it.effect(`closes with the handler exit ${name}`, () => {
         const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
         const error = new Error("handler failed")
         const defect = new Error("handler defect")
         let result: Effect.Effect<HttpServerResponse.HttpServerResponse, Error> = Effect.fail(error)
-        let recorded: Cause.Cause<unknown> | undefined
+        let recorded: Exit.Exit<unknown, unknown> | undefined
+        let childExit: Exit.Exit<unknown, unknown> | undefined
         const handled = HttpEffect.toHandled(
           Effect.gen(function*() {
             const scope = yield* Effect.scope
-            yield* Scope.addFinalizer(
-              scope,
+            const child = yield* Scope.fork(scope)
+            yield* Scope.addFinalizerExit(child, (exit) =>
               Effect.sync(() => {
-                recorded = HttpEffect.scopeHandlerCause(scope)
-              })
-            )
+                childExit = exit
+              }))
+            yield* Scope.addFinalizerExit(scope, (exit) =>
+              Effect.sync(() => {
+                recorded = exit
+              }))
             return yield* result
           }),
           () => Effect.void,
@@ -67,24 +71,68 @@ describe("HttpEffect", () => {
         const run = (next: typeof result) => {
           result = next
           recorded = undefined
+          childExit = undefined
           return Effect.exit(handled)
+        }
+        const verify = (exit: Exit.Exit<unknown, unknown> | undefined, expected: unknown) => {
+          strictEqual(exit !== undefined && Exit.isFailure(exit), true)
+          if (expected === "interrupt") {
+            strictEqual(Cause.hasInterruptsOnly((exit as Exit.Failure<unknown, unknown>).cause), true)
+          } else {
+            strictEqual(Cause.squash((exit as Exit.Failure<unknown, unknown>).cause), expected)
+            strictEqual((exit as Exit.Failure<unknown, unknown>).cause.reasons.length, 1)
+          }
         }
         return Effect.gen(function*() {
           yield* run(Effect.fail(error))
-          strictEqual(Cause.squash(recorded!), error)
+          verify(recorded, error)
+          verify(childExit, error)
           yield* run(Effect.die(defect))
-          strictEqual(Cause.squash(recorded!), defect)
+          verify(recorded, defect)
+          verify(childExit, defect)
           yield* run(Effect.interrupt)
-          strictEqual(Cause.hasInterruptsOnly(recorded!), true)
-          // a later request through the same handled effect starts clean
+          verify(recorded, "interrupt")
+          verify(childExit, "interrupt")
+          // Reusing the handled effect must not carry the previous cause forward.
           yield* run(Effect.succeed(HttpServerResponse.empty()))
-          strictEqual(recorded, undefined)
+          strictEqual(recorded !== undefined && Exit.isSuccess(recorded), true)
+          strictEqual(childExit !== undefined && Exit.isSuccess(childExit), true)
         }).pipe(
           Effect.provideService(HttpServerRequest.HttpServerRequest, request),
           Effect.provideContext(services)
         )
       })
     }
+
+    it.effect("middleware observes the response defect before the request scope closes", () => {
+      const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+      const error = new Error("handler failed")
+      let observed: Exit.Exit<unknown, unknown> | undefined
+      const handled = HttpEffect.toHandled(
+        Effect.fail(error),
+        () => Effect.void,
+        (app) =>
+          Effect.onExit(app, (exit) =>
+            Effect.sync(() => {
+              observed = exit
+            }))
+      )
+      return Effect.gen(function*() {
+        yield* handled
+        strictEqual(observed !== undefined && Exit.isFailure(observed), true)
+        const reasons = (observed as Exit.Failure<unknown, unknown>).cause.reasons
+        strictEqual(reasons.length, 2)
+        strictEqual(reasons[0]._tag, "Fail")
+        if (reasons[0]._tag === "Fail") strictEqual(reasons[0].error, error)
+        strictEqual(reasons[1]._tag, "Die")
+        if (reasons[1]._tag === "Die") {
+          strictEqual(HttpServerResponse.isHttpServerResponse(reasons[1].defect), true)
+        }
+      }).pipe(
+        Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+        Effect.provideService(References.TracerEnabled, false)
+      )
+    })
   })
 
   describe("toWebHandler", () => {

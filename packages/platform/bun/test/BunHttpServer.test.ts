@@ -413,7 +413,6 @@ describe("BunHttpServer", () => {
     it.effect(`closes a WebSocket with the handler's ${name} code`, () =>
       Effect.gen(function*() {
         const opened = yield* Deferred.make<void>()
-        const closed = yield* Deferred.make<void>()
         // Bun's graceful stop can wait indefinitely for a server-initiated close.
         // Capture this test's server so cleanup can force-stop it after observing the frame.
         const serve = Bun.serve
@@ -442,22 +441,15 @@ describe("BunHttpServer", () => {
             const writer = yield* socket.writer
             yield* writer.write(new Socket.CloseEvent(4400, "handler closed"))
           }
-          const result = exit === "interrupt" ?
-            Exit.interrupt()
-            : exit === "failure" || exit === "explicit" ?
-            Exit.fail(new Error("handler failed"))
-            : exit === "defect" ?
-            Exit.die(new Error("handler defect"))
-            : Exit.void
-          yield* Scope.close(readerScope, result)
-          yield* Deferred.await(closed)
+          if (exit === "interrupt") return yield* Effect.interrupt
+          if (exit === "failure" || exit === "explicit") return yield* Effect.fail(new Error("handler failed"))
+          if (exit === "defect") return yield* Effect.die(new Error("handler defect"))
           return HttpServerResponse.empty()
         }))
         yield* Effect.addFinalizer(() => Effect.sync(() => forceStop?.()))
         const port = (server.address as NetAddress.InetAddress).port
         const actual = yield* readWebSocketClose(port, opened)
         forceStop?.()
-        yield* Deferred.succeed(closed, undefined)
         assert.strictEqual(actual, code)
       }).pipe(Effect.timeout("5 seconds")), 10000)
   }
