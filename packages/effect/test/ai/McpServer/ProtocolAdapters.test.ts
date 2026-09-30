@@ -744,6 +744,32 @@ const textResult = (message: JsonRpcResponse): string => {
 }
 
 describe("McpServer protocol adapters", () => {
+  for (const method of ["tasks/get", "tasks/update", "tasks/cancel"]) {
+    it.effect(`should report an unavailable method when ${method} is called without the extension installed`, () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeFixture()
+        const headers = { ...modernHeaders(method), "Mcp-Name": "missing-task" }
+        const unsupported = yield* fixture.post(
+          modernRequest(1, method, { taskId: "missing-task", inputResponses: {} }),
+          headers
+        )
+        assert.strictEqual(errorOf(yield* readJsonRpcResponse(unsupported)).code, -32601)
+
+        const supported = yield* fixture.post(
+          modernRequest(
+            2,
+            method,
+            { taskId: "missing-task", inputResponses: {} },
+            modernMetadata({
+              extensions: { "io.modelcontextprotocol/tasks": {} }
+            })
+          ),
+          headers
+        )
+        assert.strictEqual(errorOf(yield* readJsonRpcResponse(supported)).code, -32601)
+      }))
+  }
+
   it.effect("should negotiate a stateful protocol when initialize offers the stateless revision", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
