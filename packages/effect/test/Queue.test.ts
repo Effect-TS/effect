@@ -229,6 +229,42 @@ describe("Queue", () => {
       assert.deepEqual(b, [3, 4])
     }))
 
+  it("takeN on a partial batch does not wake its taker", () => {
+    // Drive the queue's scheduler by hand so every taker release runs
+    // synchronously inside the test instead of on a host timer.
+    const tasks: Array<() => void> = []
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "async",
+      shouldYield: () => false,
+      makeDispatcher: () => ({
+        scheduleTask: (task) => {
+          tasks.push(task)
+        },
+        flush() {}
+      })
+    }
+    const queue = Effect.runSync(
+      Queue.unbounded<number>().pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+    )
+    const taker = Effect.runFork(Queue.takeN(queue, 2), { scheduler })
+    assert(queue.state._tag === "Open")
+    const takers = queue.state.takers
+    assert.strictEqual(takers.size, 1)
+    // Releasing a taker deletes it first, so the old wake/retry loop trips
+    // this on its first turn instead of spinning forever.
+    takers.delete = () => {
+      throw new Error("partial batch woke its taker")
+    }
+
+    Queue.offerUnsafe(queue, 1)
+    assert.strictEqual(tasks.length, 1)
+    tasks.shift()!()
+
+    assert.isUndefined(taker.pollUnsafe())
+    assert.strictEqual(takers.size, 1)
+    assert.isEmpty(tasks)
+  })
+
   const lostWakeupCases: ReadonlyArray<readonly [string, (queue: Queue.Queue<number>) => Effect.Effect<unknown>]> = [
     ["take", Queue.take],
     ["takeN", (queue) => Queue.takeN(queue, 1)],
