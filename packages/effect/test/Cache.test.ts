@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cache, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Latch, MutableHashMap, Option } from "effect"
 import { Persistable, PersistedCache, Persistence } from "effect/persistence"
 import { TestClock } from "effect/testing"
+import { collectGarbage } from "./utils/gc.ts"
 
 describe("Cache", () => {
   describe("constructors", () => {
@@ -166,6 +167,33 @@ describe("Cache", () => {
 
   describe("basic operations", () => {
     describe("get", () => {
+      // This collection hook is Node-specific
+      it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+        "does not retain previous lookup keys on hits with new equal keys",
+        () =>
+          Effect.gen(function*() {
+            const references: Array<WeakRef<object>> = []
+            const control = new WeakRef({})
+            let lookups = 0
+            const cache = yield* Cache.make({
+              capacity: 16,
+              lookup: (_key: { readonly region: string; readonly service: string }) => Effect.sync(() => ++lookups)
+            })
+            // A new, structurally equal object key on every call
+            for (let i = 0; i < 10; i++) {
+              const key = { region: "us-east-1", service: "s3" }
+              references.push(new WeakRef(key))
+              assert.strictEqual(yield* Cache.get(cache, key), 1)
+            }
+            assert.strictEqual(lookups, 1)
+            // The most recent key is the one held by the cache
+            references.pop()
+            yield* collectGarbage
+            assert.isUndefined(control.deref())
+            for (const reference of references) assert.isUndefined(reference.deref())
+          })
+      )
+
       it.effect("does not retain a synchronous zero-TTL lookup", () =>
         Effect.gen(function*() {
           const cache = yield* Cache.makeWith(

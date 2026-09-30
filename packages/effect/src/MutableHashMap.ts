@@ -457,6 +457,7 @@ export const set: {
   const bucket = self.buckets.get(hash)
   if (bucket === undefined) {
     self.buckets.set(hash, [key])
+    referentialKeysCache.delete(key)
     self.backing.set(key, value)
     return self
   }
@@ -464,6 +465,7 @@ export const set: {
   refKey = getRefKey(bucket, key)
   if (refKey === undefined) {
     bucket.push(key)
+    referentialKeysCache.delete(key)
     refKey = key
   }
   self.backing.set(refKey, value)
