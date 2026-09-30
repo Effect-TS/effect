@@ -196,7 +196,10 @@ export const makeUpgradeHandler = <R, E>(
                 resume(Effect.succeed(ws as any))
               })
             ),
-            (ws) => Effect.sync(() => ws.close())
+            (ws, exit) =>
+              Effect.sync(() => {
+                ws.close(exit._tag === "Success" ? 1000 : Cause.isInterruptedOnly(exit.cause) ? 1001 : 1011)
+              })
           )
       ))
       const fiber = runFork(

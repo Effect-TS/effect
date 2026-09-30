@@ -799,6 +799,97 @@ describe("HttpServer", () => {
   })
 
   describe("HttpServerRequest.upgrade", () => {
+    it.scoped("preserves middleware state across upgrade requests", () =>
+      Effect.gen(function*() {
+        const observed: Array<number> = []
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.get(
+            "/ws",
+            Effect.gen(function*() {
+              const socket = yield* HttpServerRequest.upgrade
+              yield* Effect.forkScoped(socket.runRaw(constVoid))
+              const write = yield* socket.writer
+              yield* write("ready")
+              return HttpServerResponse.empty()
+            }).pipe(Effect.scoped)
+          ),
+          HttpServer.serveEffect((app) => {
+            let count = 0
+            return Effect.zipRight(
+              Effect.sync(() => {
+                observed.push(++count)
+              }),
+              app
+            )
+          })
+        )
+        const address = (yield* HttpServer.HttpServer).address
+        assert(address._tag === "TcpAddress")
+        for (let i = 0; i < 2; i++) {
+          const { frames } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
+          assert.strictEqual(frames[0].payload.toString(), "ready")
+          assert.strictEqual(frames[1].payload.readUInt16BE(0), 1001)
+        }
+        assert.deepStrictEqual(observed, [1, 2])
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+    it.scoped("closes with 1001 when the handler ends while the socket is running", () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.get(
+            "/ws",
+            Effect.gen(function*() {
+              const socket = yield* HttpServerRequest.upgrade
+              yield* Effect.forkScoped(socket.runRaw(constVoid))
+              const write = yield* socket.writer
+              yield* write("ready")
+              return HttpServerResponse.empty()
+            }).pipe(Effect.scoped)
+          ),
+          HttpServer.serveEffect()
+        )
+        const address = (yield* HttpServer.HttpServer).address
+        assert(address._tag === "TcpAddress")
+        const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws"))
+        assert.strictEqual(frames.length, 2)
+        assert.strictEqual(frames[0].opcode, 1)
+        assert.strictEqual(frames[0].payload.toString(), "ready")
+        assert.strictEqual(frames[1].opcode, 8)
+        assert.strictEqual(frames[1].payload.length, 2)
+        assert.strictEqual(frames[1].payload.readUInt16BE(0), 1001)
+        assert.strictEqual(trailing.length, 0)
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+    for (
+      const [name, finish] of [
+        ["failure", Effect.fail(new Error("socket failed"))],
+        ["defect", Effect.die(new Error("socket defect"))]
+      ] as const
+    ) {
+      it.scoped(`closes with 1011 on socket ${name}`, () =>
+        Effect.gen(function*() {
+          yield* HttpRouter.empty.pipe(
+            HttpRouter.get(
+              "/ws",
+              Effect.gen(function*() {
+                const socket = yield* HttpServerRequest.upgrade
+                yield* socket.runRaw(() => finish)
+                return HttpServerResponse.empty()
+              })
+            ),
+            HttpServer.serveEffect()
+          )
+          const address = (yield* HttpServer.HttpServer).address
+          assert(address._tag === "TcpAddress")
+          const { frames, trailing } = yield* Effect.promise(() => rawWebSocket(address.port, "/ws", "hello"))
+          assert.strictEqual(frames.length, 1)
+          assert.strictEqual(frames[0].opcode, 8)
+          assert.strictEqual(frames[0].payload.length, 2)
+          assert.strictEqual(frames[0].payload.readUInt16BE(0), 1011)
+          assert.strictEqual(trailing.length, 0)
+        }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+    }
+
     it.scoped("does not write the HTTP response to an upgraded connection", () =>
       Effect.gen(function*() {
         yield* HttpRouter.empty.pipe(
@@ -823,6 +914,7 @@ describe("HttpServer", () => {
         assert.strictEqual(frames[0].payload.toString(), "refused")
         assert.strictEqual(frames[1].opcode, 8)
         assert.strictEqual(frames[1].payload.readUInt16BE(0), 4400)
+        assert.strictEqual(frames[1].payload.subarray(2).toString(), "refused")
         assert.strictEqual(trailing.toString(), "")
       }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
@@ -891,20 +983,25 @@ const upgradeRequest = (path: string): string =>
     ""
   ].join("\r\n")
 
-const closeFrame = (code: number): Buffer.Buffer => {
-  const payload = Buffer.Buffer.alloc(2)
-  payload.writeUInt16BE(code, 0)
+const maskedFrame = (opcode: number, payload: Buffer.Buffer): Buffer.Buffer => {
   const mask = randomBytes(4)
   const masked = Buffer.Buffer.from(payload)
   for (let index = 0; index < masked.length; index++) {
     masked[index] = masked[index] ^ mask[index % 4]
   }
-  return Buffer.Buffer.concat([Buffer.Buffer.from([0x88, 0x80 | payload.length]), mask, masked])
+  return Buffer.Buffer.concat([Buffer.Buffer.from([0x80 | opcode, 0x80 | payload.length]), mask, masked])
+}
+
+const closeFrame = (code: number): Buffer.Buffer => {
+  const payload = Buffer.Buffer.alloc(2)
+  payload.writeUInt16BE(code, 0)
+  return maskedFrame(8, payload)
 }
 
 const rawWebSocket = (
   port: number,
-  path: string
+  path: string,
+  message?: string
 ): Promise<{ readonly frames: ReadonlyArray<WebSocketFrame>; readonly trailing: Buffer.Buffer }> =>
   new Promise((resolve, reject) => {
     const socket = createConnection({ host: "127.0.0.1", port })
@@ -929,6 +1026,9 @@ const rawWebSocket = (
         }
         upgraded = true
         stream = Buffer.Buffer.from(stream.subarray(headerEnd + 4))
+        if (message !== undefined) {
+          socket.write(maskedFrame(1, Buffer.Buffer.from(message)))
+        }
       }
       if (!closeEchoed) {
         const close = parseWebSocketFrames(stream).frames.find((frame) => frame.opcode === 8)
