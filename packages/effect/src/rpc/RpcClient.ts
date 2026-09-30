@@ -736,15 +736,13 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           Effect.provideContext(entry.context),
           Effect.orDie,
           Effect.matchCauseEffect({
+            onSuccess: (chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk }),
             onFailure: (cause) =>
-              Cause.hasInterrupts(cause)
-                ? Effect.failCause(cause)
-                : write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
-                  Effect.andThen(
-                    Effect.suspend(() => interruptRequest(requestId).pipe(Effect.catch(() => Effect.void)))
-                  )
-                ),
-            onSuccess: (chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk })
+              write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) }).pipe(
+                Effect.andThen(() =>
+                  Cause.hasInterrupts(cause) ? Effect.failCause(cause) : Effect.ignore(interruptRequest(requestId))
+                )
+              )
           })
         ) as Effect.Effect<void>
       }
