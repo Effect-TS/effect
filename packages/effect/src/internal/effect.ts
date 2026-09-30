@@ -1156,7 +1156,7 @@ const callbackOptions: <A, E = never, R = never>(
     this: Scheduler.Scheduler,
     resume: (effect: Effect.Effect<A, E, R>) => void,
     signal?: AbortSignal
-  ) => void | Effect.Effect<void, never, R>,
+  ) => void | Effect.Effect<void, E, R>,
   withSignal: boolean
 ) => Effect.Effect<A, E, R> = (function() {
   const Proto = makePrimitiveProto({
@@ -1214,7 +1214,7 @@ const asyncFinalizer: (
   },
   [contE](cause, _fiber) {
     return hasInterrupts(cause)
-      ? flatMap(this[args](), () => failCause(cause))
+      ? flatMap(combineFinalizerCause(exitFailCause(cause), this[args]()), () => failCause(cause))
       : failCause(cause)
   }
 })
@@ -1225,7 +1225,7 @@ export const callback = <A, E = never, R = never>(
     this: Scheduler.Scheduler,
     resume: (effect: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
-  ) => void | Effect.Effect<void, never, R>
+  ) => void | Effect.Effect<void, E, R>
 ): Effect.Effect<A, E, R> => callbackOptions(register as any, register.length >= 2)
 
 /** @internal */
@@ -5072,7 +5072,6 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
     let parentFiber: Fiber.Fiber<any, any> | undefined
     let fibers: Set<Fiber.Fiber<any, any>> | undefined
     let resume: ((effect: Effect.Effect<void, E | E2, R>) => void) | undefined
-    let interrupted = false
     let terminal: Exit.Exit<void, E | E2> | void
     let effect: Effect.Effect<X, E, R> | undefined
 
@@ -5080,9 +5079,8 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
       const defect = exitDie(error)
       terminal = defect
       done = true
-      interrupted = true
       return fibers && fibers.size > 0
-        ? flatMap(uninterruptible(fiberInterruptAll(Array.from(fibers))), () => defect)
+        ? flatMap(uninterruptible(fiberInterruptAll(Array.from(fibers))), () => terminal ?? defect)
         : defect
     }
 
@@ -5092,12 +5090,9 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
         const item = items[index]
         const eff = effect ?? onItem(state, item, index)
 
-        // fast case (already an exit)
         if (effectIsExit(eff)) {
           terminal = step(state, item, eff, index)
           if (terminal) break
-
-          // We have an effect, so enter "async" mode
         } else if (!parentFiber) {
           return callback((cb) => {
             parentFiber = getCurrentFiber()!
@@ -5112,15 +5107,15 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             }
             if (result) return cb(result)
             return suspend(() => {
-              terminal = exitVoid
-              interrupted = true
-              return fibers ? fiberInterruptAll(fibers) : void_
+              terminal ??= exitVoid
+              return flatMap(
+                fibers ? fiberInterruptAll(fibers) : void_,
+                () => terminal?._tag === "Failure" ? terminal : void_
+              )
             })
           })
-
-          // Fork the effect with concurrency > 1
         } else {
-          // Clear the temporary effect from capturing the parentFiber
+          // Clear the effect cached before the parent fiber was available.
           effect = undefined
 
           const fiber = forkUnsafe(parentFiber, eff, true, true, "inherit")
@@ -5130,7 +5125,6 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             continue
           }
 
-          // Add the fiber to the Set
           fibers!.add(fiber)
 
           const currentIndex = index
@@ -5138,22 +5132,17 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             fibers!.delete(fiber)
             try {
               if (terminal) {
-                if (!interrupted && exit._tag === "Failure") {
-                  for (const reason of exit.cause.reasons) {
-                    if (reason._tag === "Interrupt") continue
-                    else if (terminal._tag === "Failure") {
-                      ;(terminal.cause.reasons as Array<any>).push(reason)
-                    } else {
-                      terminal = exitFailCause(causeFromReasons([reason]))
-                    }
+                if (exit._tag === "Failure") {
+                  const reasons = exit.cause.reasons.filter((reason) => reason._tag !== "Interrupt")
+                  if (reasons.length > 0) {
+                    const cause = causeFromReasons(reasons)
+                    terminal = exitFailCause(terminal._tag === "Failure" ? causeCombine(terminal.cause, cause) : cause)
                   }
                 }
               } else {
                 const result = step(state, item, exit, currentIndex)
                 if (result) {
-                  terminal = result._tag === "Failure"
-                    ? exitFailCause(causeFromReasons(result.cause.reasons.slice()))
-                    : result
+                  terminal = result
                   go()
                 }
               }
@@ -5169,7 +5158,6 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
             }
           })
 
-          // Check if we have reached the concurrency limit
           if (fibers!.size < concurrency) continue
           paused = true
           index++
