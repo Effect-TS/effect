@@ -38,6 +38,7 @@ const asRecord = (input: unknown): Record<string, unknown> | undefined =>
 
 const protocolVersionClaim = (input: unknown): { readonly present: boolean; readonly value: unknown } => {
   const metadata = asRecord(input)
+
   return metadata !== undefined && PROTOCOL_VERSION_METADATA_KEY in metadata
     ? { present: true, value: metadata[PROTOCOL_VERSION_METADATA_KEY] }
     : { present: false, value: undefined }

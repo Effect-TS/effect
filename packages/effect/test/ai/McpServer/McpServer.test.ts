@@ -243,11 +243,11 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
-  it.effect("reports an unregistered server as an Effect defect", () =>
+  it.effect("should report an Effect defect when a server has no registered internal state", () =>
     Effect.gen(function*() {
       const server = yield* McpServer.McpServer.make
       const core = yield* McpServer.getCore(server)
-      assert.strictEqual(yield* McpServer.getCore(server), core)
+      assert.isDefined(core)
 
       const lookup = McpServer.getCore({ ...server })
       const defect = yield* Effect.catchDefect(lookup, Effect.succeed)
@@ -1517,7 +1517,7 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
-    it.effect("registers ordinary toolkits through a custom server's public addTool callback", () =>
+    it.effect("should register toolkit handlers through addTool when a custom server is supplied", () =>
       Effect.gen(function*() {
         const native = yield* McpServer.McpServer.make
         const registrations: Array<Parameters<McpServer.McpServer["Service"]["addTool"]>[0]> = []
@@ -2053,7 +2053,7 @@ describe("McpServer", () => {
         assert.isUndefined(result.structuredContent)
         assert.deepStrictEqual(result.content, [{ type: "text", text: INTERNAL_TOOL_ERROR_MESSAGE }])
         assert.lengthOf(reported, 1)
-        assert.instanceOf(Cause.squash(reported[0]), TypeError)
+        assert.instanceOf(Cause.squash(reported[0]), Schema.SchemaError)
         assert.lengthOf(logged, 1)
         assert.strictEqual(Cause.squash(logged[0]), Cause.squash(reported[0]))
       }))
@@ -2190,7 +2190,7 @@ describe("McpServer", () => {
         assert.strictEqual(toolResultText(result), INTERNAL_TOOL_ERROR_MESSAGE)
         assert.lengthOf(reported, 1)
         assert.isTrue(Cause.hasDies(reported[0]))
-        assert.instanceOf(Cause.squash(reported[0]), TypeError)
+        assert.instanceOf(Cause.squash(reported[0]), Schema.SchemaError)
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>

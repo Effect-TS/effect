@@ -414,6 +414,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const resourceRegistrations: Array<ResourceRegistration> = []
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
+
   const completionRegistrations = new Map<
     string,
     (

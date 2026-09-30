@@ -94,6 +94,12 @@ import * as Toolkit from "./Toolkit.ts"
 
 type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
+const encodeJsonSync = Schema.encodeSync(Schema.UnknownFromJsonString)
+const decodeJsonSync = Schema.decodeSync(Schema.UnknownFromJsonString)
+const encodeJson = Schema.encodeEffect(Schema.UnknownFromJsonString)
+const decodeJson = Schema.decodeEffect(Schema.UnknownFromJsonString)
+const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
+
 interface QueuedServerNotification {
   readonly notification: McpCore.ServerNotification
   readonly targetClientId?: number | undefined
@@ -117,13 +123,14 @@ const internalState = new WeakMap<object, {
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
   readonly notificationDelivery: { consumers: number }
 }>()
+
 type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
+
 type ServerNotificationRequest<
   R extends Rpc.Any = RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>
 > = R extends Rpc.Any ? RpcMessage.Request<R> : never
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
-const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
 
 const toInternalServerNotification = (
   message: ServerNotificationRequest
@@ -236,7 +243,6 @@ export class McpServer extends Context.Service<McpServer, {
   readonly callTool: (
     requests: typeof CallTool.payloadSchema.Type
   ) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient>
-
   readonly resources: ReadonlyArray<{
     readonly resource: Resource
     readonly annotations: Context.Context<never>
@@ -250,7 +256,6 @@ export class McpServer extends Context.Service<McpServer, {
       McpRequestContext
     >
   }) => Effect.Effect<void>
-
   readonly resourceTemplates: ReadonlyArray<{
     readonly template: ResourceTemplate
     readonly annotations: Context.Context<never>
@@ -277,11 +282,9 @@ export class McpServer extends Context.Service<McpServer, {
       >
     }
   ) => Effect.Effect<void>
-
   readonly findResource: (
     uri: string
   ) => Effect.Effect<ReadResourceResult, McpErrorBase | InvalidParams | InternalError, McpServerClient>
-
   readonly prompts: ReadonlyArray<{
     readonly prompt: Prompt
     readonly annotations: Context.Context<never>
@@ -303,7 +306,6 @@ export class McpServer extends Context.Service<McpServer, {
   readonly getPromptResult: (
     request: typeof GetPrompt.payloadSchema.Type
   ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpServerClient>
-
   readonly completion: (
     complete: typeof Complete.payloadSchema.Type
   ) => Effect.Effect<CompleteResult, InvalidParams | InternalError, McpServerClient>
@@ -385,7 +387,6 @@ export class McpServer extends Context.Service<McpServer, {
           })
         ))
     })
-
     const addTool = Effect.fnUntraced(function*(options: InternalToolRegistration) {
       const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
       if (existingIndex === -1) {
