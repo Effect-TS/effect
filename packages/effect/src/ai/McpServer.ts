@@ -652,7 +652,6 @@ export class McpServer extends Context.Service<McpServer, {
     internalState.set(service, { core: internalCore, addTool, notifications: notificationsQueue, notificationDelivery })
     return service
   })
-
   /**
    * Layer that provides the MCP server and client services.
    *
@@ -679,7 +678,9 @@ const getInternalState = Effect.fnUntraced(function*(server: McpServer["Service"
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
+
 const cancelledResponses = new WeakMap<object, string | number>()
+
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
 interface ActiveRequest {
@@ -850,7 +851,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
     defaultLogLevel,
     serverInfo: options
   })
-
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(key: McpClientKey) {
       const selectedProtocol = runtime.selectProtocol(key.profile.protocolVersion)
@@ -891,12 +891,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
       const client = yield* selectedProtocol.makeReverseClient(key.profile).pipe(
         Effect.provideService(RpcClient.Protocol, reverseProtocol)
       )
-
       return { client, write } as const
     }),
     idleTimeToLive: 10000
   })
-
   const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, rpc }) => {
     const session = runtime.resolveRequest(client.id, headers)
     const isInitialize = rpc._tag.endsWith("/initialize")
@@ -972,7 +970,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
       runtime.effectLogLevel(client.id, headers, defaultLogLevel)
     )
   })
-
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
     send: (clientId, response) => {
@@ -1336,7 +1333,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
             const level = Predicate.hasProperty(metadata, "io.modelcontextprotocol/logLevel")
               ? metadata["io.modelcontextprotocol/logLevel"]
               : undefined
-
             if (
               requestContext?.clientId !== clientId ||
               !isLoggingLevel(level) ||
@@ -1387,7 +1383,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
     Effect.forever,
     Effect.forkScoped
   )
-
   return yield* RpcServer.make(runtime.clientRpcs, {
     spanPrefix: "McpServer",
     disableFatalDefects: true
@@ -1546,14 +1541,14 @@ const mcpStdioSerialization = (
               const offered = getJsonRpcProtocolVersion(frame)
               selectedProtocol = McpRuntime.selectStatefulProtocol(protocols, offered)
             }
-            decoded.push(...parser.decode(JSON.stringify(frame)))
+            decoded.push(...parser.decode(encodeJsonSync(frame)))
           }
           return decoded
         },
         encode: (response) => {
           const invalidBatchExit = decodeInvalidBatchExit(response)
           if (Result.isSuccess(invalidBatchExit)) {
-            return JSON.stringify({
+            return encodeJsonSync({
               jsonrpc: "2.0",
               id: null,
               error: {
@@ -1682,7 +1677,7 @@ const layerMcpProtocolHttp = (options: {
       }
       return Effect.gen(function*() {
         const parsed = yield* Effect.result(
-          Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
+          Effect.flatMap(request.text, decodeJson)
         )
         const admission = runtime.admitHttp(request.headers, parsed)
         if (admission._tag === "Rejected") {
@@ -1764,7 +1759,7 @@ function mcpJsonRpcSerialization(options?: {
           const encoded = parser.encode(response)
           if (typeof encoded !== "string") return encoded
           if (cancelledIds.size === 0 && !encoded.includes("\"_tag\":\"Cause\"")) return encoded
-          let message: unknown = JSON.parse(encoded)
+          let message = decodeJsonSync(encoded)
           if (cancelledIds.size > 0) {
             // Count cancelled completions toward the batch, but never write their responses.
             // https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
@@ -1779,7 +1774,7 @@ function mcpJsonRpcSerialization(options?: {
               return undefined
             }
           }
-          return JSON.stringify(normalizeMcpJsonRpcResponse(message))
+          return encodeJsonSync(normalizeMcpJsonRpcResponse(message))
         }
       }
     }
@@ -1867,8 +1862,11 @@ const toolErrorResult = (message: string): CallToolResult =>
     content: [{ type: "text", text: message }]
   })
 
-const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
-  encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
+const toolResultContent = Effect.fnUntraced(function*(encoded: unknown): Effect.fn.Return<CallToolResult["content"]> {
+  if (encoded === undefined) return []
+  const text = yield* encodeJson(encoded).pipe(Effect.orDie)
+  return [{ type: "text", text }]
+})
 
 /**
  * Registers a `Toolkit` with the `McpServer`.
@@ -1945,8 +1943,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const declaredFailureResult = (error: unknown) =>
       error instanceof Error && error.message !== ""
         ? Effect.succeed(toolErrorResult(error.message))
-        : Effect.map(encodeFailure(error), (encoded) =>
-          new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
+        : encodeFailure(error).pipe(
+          Effect.flatMap(toolResultContent),
+          Effect.map((content) => new CallToolResult({ isError: true, content }))
+        )
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
@@ -2005,21 +2005,20 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Stream.unwrap,
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),
-          Effect.flatMap((result) =>
+          Effect.flatMap(Effect.fnUntraced(function*(result) {
             // Declared failures return their encoded payload; anything else is classified by origin.
-            result.isFailure && result.failureOrigin !== "handler"
-              ? Effect.failCause(Cause.annotate(
+            if (result.isFailure && result.failureOrigin !== "handler") {
+              return yield* Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
-              : Effect.succeed(
-                new CallToolResult({
-                  isError: result.isFailure,
-                  structuredContent: result.isFailure ? undefined : result.encodedResult,
-                  content: toolResultContent(result.encodedResult)
-                })
-              )
-          ),
+            }
+            return new CallToolResult({
+              isError: result.isFailure,
+              structuredContent: result.isFailure ? undefined : result.encodedResult,
+              content: yield* toolResultContent(result.encodedResult)
+            })
+          })),
           Effect.catchCause(handleCause),
           // Tool.Any erases services already supplied by handler contexts and the current invocation.
           Effect.provideContext(services as Context.Context<unknown>)
@@ -2640,7 +2639,6 @@ const makeUriMatcher = <A>() => {
     router.on("GET", `/${uri}`, value)
   }
   const find = (uri: string) => router.find("GET", `/${uri}`)
-
   return { add, find } as const
 }
 

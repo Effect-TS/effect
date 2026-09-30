@@ -285,19 +285,24 @@ export const make = Effect.fnUntraced(function*(
     const metadata = asRecord(asRecord(inputRecord?.params)?._meta)
     const claim = protocolVersionClaim(metadata)
     const id = inputRecord?.id
+
     const isInitialize = inputRecord?.jsonrpc === "2.0" && inputRecord.method === "initialize" &&
       (typeof id === "string" || typeof id === "number")
+
     const isCancellationNotification = inputRecord?.jsonrpc === "2.0" &&
       inputRecord.method === "notifications/cancelled" && id === undefined
+
     const isStatelessRequest = claim.present || ((!isInitialize || stateful === undefined) &&
       statelessProtocol !== undefined &&
       (protocolVersion === statelessProtocol.protocolVersion ||
         (stateful === undefined && inputRecord?.jsonrpc === "2.0" &&
           typeof inputRecord.method === "string" && (typeof id === "string" || typeof id === "number"))))
+
     if (isStatelessRequest) {
       if (protocolVersion === undefined) {
         return headerMismatch("MCP-Protocol-Version header is required")
       }
+
       if (!isCancellationNotification && (metadata === undefined || typeof claim.value !== "string")) {
         return {
           _tag: "Rejected",
@@ -308,9 +313,11 @@ export const make = Effect.fnUntraced(function*(
           }
         }
       }
+
       if ((!isCancellationNotification || claim.present) && claim.value !== protocolVersion) {
         return headerMismatch("MCP-Protocol-Version header does not match request metadata")
       }
+
       if (!isCancellationNotification && asRecord(metadata?.[CLIENT_CAPABILITIES_METADATA_KEY]) === undefined) {
         return {
           _tag: "Rejected",
@@ -321,6 +328,7 @@ export const make = Effect.fnUntraced(function*(
           }
         }
       }
+
       if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
         return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
       }
@@ -350,6 +358,7 @@ export const make = Effect.fnUntraced(function*(
     }
     return selectHttpSession(headers, isInitialize)
   }
+
   return ServerRuntime.of({
     protocols: registry.protocols,
     clientRpcs: registry.clientRpcs,
@@ -362,6 +371,7 @@ export const make = Effect.fnUntraced(function*(
       const requestedVersion = typeof claim.value === "string" ? claim.value : undefined
       const binding = claim.present ? undefined : stateful?.resolve(clientId, headers)
       let protocol: PublicMcpProtocol.AnyProtocolAdapter
+
       if (claim.present) {
         protocol = registry.protocols.find((protocol) => protocol.protocolVersion === requestedVersion) ??
           statelessProtocol ?? registry.protocols[0]
@@ -370,12 +380,14 @@ export const make = Effect.fnUntraced(function*(
       } else if (request.tag === "initialize") {
         const offeredVersion = (request.payload as any)?.protocolVersion
         const selected = selectStatefulProtocol(registry.protocols, offeredVersion)
+
         if (selected === undefined) {
           return yield* new McpProtocol.ProtocolError({
             code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
             message: `initialize is not supported by the configured MCP protocols (requested '${offeredVersion}')`
           })
         }
+
         protocol = selected
       } else if (request.tag === "ping") {
         // An unversioned ping may precede initialize, even with a stateless adapter first.
@@ -403,13 +415,16 @@ export const make = Effect.fnUntraced(function*(
       if (requestedVersion !== undefined && requestedVersion !== protocol.protocolVersion) {
         return yield* new McpProtocol.ProtocolError(unsupportedProtocolVersion(requestedVersion))
       }
+
       const decodedProfile = yield* statelessDescriptor.profileFromRequestMetadata(metadata)
+
       const profile: McpCore.NegotiatedProtocolProfile<string> = {
         protocolVersion: decodedProfile.protocolVersion,
         clientCapabilities: decodedProfile.clientCapabilities,
         clientInfo: decodedProfile.clientInfo,
         requestMetadata: decodedProfile.requestMetadata
       }
+
       const requestContext = PublicMcpSchema.McpRequestContext.of({
         clientId,
         protocolVersion: profile.protocolVersion,
@@ -417,6 +432,7 @@ export const make = Effect.fnUntraced(function*(
         clientInfo: profile.clientInfo,
         requestMetadata: profile.requestMetadata
       })
+
       return { protocol, profile, requestContext }
     }),
     resolveRequest: (clientId, headers) => stateful?.resolve(clientId, headers),
@@ -427,11 +443,13 @@ export const make = Effect.fnUntraced(function*(
           ? HttpServerResponse.empty({ status })
           : HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
       })
+
       if (Result.isFailure(parsed)) {
         const version = headers[MCP_PROTOCOL_VERSION_HEADER]
         if (version !== undefined && !protocolVersions.includes(version)) {
           return reject(400, unsupportedProtocolVersion(version))
         }
+
         const admission = selectHttpProtocol(headers, undefined)
         // Session and protocol-header errors take precedence over parse errors.
         return admission._tag === "Rejected" &&
@@ -439,12 +457,16 @@ export const make = Effect.fnUntraced(function*(
           ? reject(admission.status, admission.error)
           : reject(200, new PublicMcpSchema.ParseError({ message: "Parse error" }))
       }
+
       const input = parsed.success
+
       if (Array.isArray(input)) {
         if (input.length === 0) {
           return reject(400, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }))
         }
+
         const admission = selectHttpProtocol(headers, input)
+
         if (
           admission._tag === "Rejected" ||
           input.some(hasRequestProtocolVersion) ||
@@ -453,6 +475,7 @@ export const make = Effect.fnUntraced(function*(
         ) {
           return reject(400)
         }
+
         return {
           _tag: "Accepted",
           acknowledge: !input.some((message) =>
@@ -461,24 +484,31 @@ export const make = Effect.fnUntraced(function*(
           isSubscription: false
         }
       }
+
       const hasId = Predicate.hasProperty(input, "id")
       const id = hasId && (typeof input.id === "string" || typeof input.id === "number") ? input.id : null
       const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
       const hasValidRequestId = !hasId || typeof input.id === "string" || typeof input.id === "number"
+
       const isRequest = isJsonRpc && hasValidRequestId &&
         Predicate.hasProperty(input, "method") && typeof input.method === "string"
+
       const hasValidResponseId = hasId &&
         (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
+
       const hasResult = Predicate.hasProperty(input, "result")
       const hasError = Predicate.hasProperty(input, "error")
       const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
       const admission = selectHttpProtocol(headers, input)
+
       if (admission._tag === "Rejected") {
         return reject(admission.status, admission.error, id)
       }
+
       if (!isRequest && !isResponse) {
         return reject(200, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }), id)
       }
+
       const isInitialize = Predicate.hasProperty(input, "method") && input.method === "initialize"
       const hasSession = headers[MCP_SESSION_ID_HEADER] !== undefined
       if (isInitialize && hasSession) {
@@ -497,6 +527,7 @@ export const make = Effect.fnUntraced(function*(
           id
         )
       }
+
       if (
         isRequest && admission.protocol?.runtime._tag === "Stateless" &&
         !((admission.protocol as unknown as McpProtocol.ProtocolAdapter).handlerRpcs?.requests.has(
@@ -506,6 +537,7 @@ export const make = Effect.fnUntraced(function*(
       ) {
         return reject(404, new PublicMcpSchema.MethodNotFound({ message: `Method not found: ${input.method}` }), id)
       }
+
       return {
         _tag: "Accepted",
         acknowledge: !isRequest || !hasId,
@@ -550,6 +582,7 @@ export const make = Effect.fnUntraced(function*(
     installHandlers: Effect.fnUntraced(function*(options) {
       installedCore = options.core
       const contextMap = new Map<string, unknown>()
+
       const installationContext: McpProtocol.HandlerInstallationContext = {
         subscribeServerNotifications: options.subscribeServerNotifications,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
@@ -563,21 +596,28 @@ export const make = Effect.fnUntraced(function*(
         serverInfo: options.serverInfo,
         registrationPresence: options.core.registrationPresence
       }
+
       const handlerTarget = registry.handlerTarget(contextMap, installationContext)
+
       for (const protocol of registry.protocols) {
         if (protocol.runtime._tag === "Stateless") {
           yield* protocol.installHandlers(options.core, undefined, handlerTarget)
           continue
         }
+
         if (stateful === undefined) {
           return yield* Effect.die("MCP sessionful runtime invariant failed")
         }
+
         yield* handlerTarget.install(protocol, PingRpcs, PingRpcs.of({ ping: () => Effect.succeed({}) }))
+
         const lifecycle: McpProtocol.LifecycleRuntime = {
           initialize: Effect.fnUntraced(function*(protocolVersion, profile, clientId) {
             const presence = yield* options.core.registrationPresence
+
             return yield* Effect.withFiber((fiber) => {
               const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
+
               const capabilities: McpCore.CanonicalServerCapabilities = {
                 completions: true,
                 logging: true,
@@ -588,12 +628,14 @@ export const make = Effect.fnUntraced(function*(
                 ...(presence.prompts ? { prompts: { listChanged: true } } : {}),
                 ...(options.serverInfo.extensions ? { extensions: options.serverInfo.extensions } : {})
               }
+
               const initializePayload = PublicMcpSchema.Initialize.payloadSchema.make({
                 protocolVersion,
                 capabilities: profile.clientCapabilities,
                 clientInfo: profile.clientInfo!,
                 _meta: profile.requestMetadata
               })
+
               const registration: McpStatefulRuntime.Registration = {
                 initializePayload,
                 negotiatedProfile: profile,
@@ -602,6 +644,7 @@ export const make = Effect.fnUntraced(function*(
                   capabilities.resources?.subscribe === true,
                 logLevel: options.defaultLogLevel
               }
+
               if (httpRequest !== undefined) {
                 const sessionId = crypto.randomUUID()
                 stateful.registerHttp(sessionId, registration)
@@ -616,6 +659,7 @@ export const make = Effect.fnUntraced(function*(
               } else {
                 stateful.registerConnection(clientId, registration)
               }
+
               return Effect.succeed({
                 capabilities,
                 instructions: options.serverInfo.instructions,
@@ -638,8 +682,10 @@ export const make = Effect.fnUntraced(function*(
             }
           })
         }
+
         yield* protocol.installHandlers(options.core, lifecycle, handlerTarget)
       }
+
       return Context.makeUnsafe(contextMap)
     })
   })

@@ -463,6 +463,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     register: (registration) =>
       Effect.sync(() => {
         const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
+
         if (index === -1) {
           resourceRegistrations.push(registration)
         } else {
@@ -474,6 +475,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         const index = resourceTemplateRegistrations.findIndex(
           (entry) => entry.descriptor.uriTemplate === registration.descriptor.uriTemplate
         )
+
         if (index === -1) {
           resourceTemplateRegistrations.push(registration)
         } else {
@@ -494,15 +496,19 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       ),
     read: Effect.fnUntraced(function*(uri, invocation) {
       const resource = resourceRegistrations.find((entry) => entry.descriptor.uri === uri)
+
       if (resource !== undefined && resource.isVisible(invocation.protocol)) {
         return yield* resource.read(invocation)
       }
+
       for (const template of resourceTemplateRegistrations) {
         const params = template.match(uri)
+
         if (params !== undefined && template.isVisible(invocation.protocol)) {
           return yield* template.read(uri, params, invocation)
         }
       }
+
       return yield* new ResourceNotFound({ uri })
     })
   }
@@ -520,9 +526,11 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       ),
     get: Effect.fnUntraced(function*(name, args, invocation) {
       const registration = promptRegistrations.get(name)
+
       if (registration === undefined || !registration.isVisible(invocation.protocol)) {
         return yield* new PromptNotFound({ name })
       }
+
       return yield* registration.get(args, invocation)
     })
   }
@@ -536,12 +544,16 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       const key = request.reference.type === "prompt"
         ? `prompt/${request.reference.name}/${request.argument.name}`
         : `resource/${request.reference.uriTemplate}/${request.argument.name}`
+
       const complete = completionRegistrations.get(key)
+
       if (complete === undefined) {
         return yield* new McpSchema.InvalidParams({ message: "Unknown completion reference or argument" })
       }
+
       const result = yield* complete(request, invocation)
       const values = Arr.take(result.values, 100)
+
       return {
         ...result,
         values,
