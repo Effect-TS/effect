@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Pool, Scope } from "effect"
+import { Deferred, Effect, Exit, Fiber, FiberSet, Latch, Pool, Queue, Scope, Semaphore } from "effect"
 import { AsyncLocalStorage } from "node:async_hooks"
 
 // A fiber woken by another fiber must resume in its own async context, not
@@ -76,4 +76,316 @@ describe("AsyncLocalStorage", () => {
       })
     })
   }
+
+  describe("wake-ups", () => {
+    // `Effect.runFork` runs the waiter synchronously until it suspends on
+    // `wait`, so the waker always runs after the waiter has suspended.
+    const wakeFromAnotherContext = async (
+      setup: Effect.Effect<{ readonly wait: Effect.Effect<unknown>; readonly wake: Effect.Effect<unknown> }>
+    ) => {
+      const { wait, wake } = Effect.runSync(setup)
+      const waiter = storage.run("waiter", () => Effect.runFork(Effect.andThen(wait, observe)))
+      assert.isUndefined(waiter.pollUnsafe())
+      const waker = await runWithStore("waker", Effect.andThen(wake, Effect.sync(current)))
+      assert.strictEqual(waker, "waker")
+      assert.deepStrictEqual(await Effect.runPromise(Fiber.join(waiter)), expected("waiter"))
+    }
+
+    it("Latch.await", () =>
+      wakeFromAnotherContext(Effect.sync(() => {
+        const latch = Latch.makeUnsafe(false)
+        return { wait: latch.await, wake: latch.open }
+      })))
+
+    it("Semaphore.take", () =>
+      wakeFromAnotherContext(Effect.gen(function*() {
+        const semaphore = Semaphore.makeUnsafe(1)
+        yield* semaphore.take(1)
+        return { wait: semaphore.take(1), wake: semaphore.release(1) }
+      })))
+
+    it("Queue.take", () =>
+      wakeFromAnotherContext(Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        return { wait: Queue.take(queue), wake: Queue.offer(queue, 1) }
+      })))
+
+    it("Fiber.join", () =>
+      wakeFromAnotherContext(Effect.sync(() => {
+        const deferred = Deferred.makeUnsafe<void>()
+        const fiber = Effect.runFork(Deferred.await(deferred))
+        return { wait: Fiber.join(fiber), wake: Deferred.succeed(deferred, undefined) }
+      })))
+
+    it("Effect.all parent", () =>
+      wakeFromAnotherContext(Effect.sync(() => {
+        const first = Deferred.makeUnsafe<void>()
+        const second = Deferred.makeUnsafe<void>()
+        return {
+          wait: Effect.all([Deferred.await(first), Deferred.await(second)], { concurrency: "unbounded" }),
+          wake: Effect.andThen(Deferred.succeed(first, undefined), Deferred.succeed(second, undefined))
+        }
+      })))
+  })
+
+  describe("interruption", () => {
+    // Suspends forever and records the store seen by its interrupt handlers.
+    const interruptible = () => {
+      const seen: Record<string, string> = {}
+      let onSuspended!: () => void
+      const suspended = new Promise<void>((resolve) => {
+        onSuspended = resolve
+      })
+      const program = Effect.callback<never>(() => {
+        onSuspended()
+      }).pipe(
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            seen.onInterrupt = current()
+          })
+        ),
+        Effect.ensuring(Effect.gen(function*() {
+          seen.finalizer = current()
+          seen.finalizerPromise = yield* Effect.promise(async () => current())
+          yield* Effect.sleep(1)
+          seen.finalizerAfterSleep = current()
+        }))
+      )
+      const fiber = storage.run("waiter", () => Effect.runFork(program))
+      return { fiber, seen, suspended }
+    }
+    const expectedSeen = {
+      onInterrupt: "waiter",
+      finalizer: "waiter",
+      finalizerPromise: "waiter",
+      finalizerAfterSleep: "waiter"
+    }
+
+    it("Fiber.interrupt from another context runs handlers in the fiber's context", async () => {
+      const { fiber, seen, suspended } = interruptible()
+      await suspended
+      const interrupter = await runWithStore(
+        "interrupter",
+        Effect.andThen(Fiber.interrupt(fiber), Effect.sync(current))
+      )
+      assert.strictEqual(interrupter, "interrupter")
+      assert.deepStrictEqual(seen, expectedSeen)
+    })
+
+    it("interruptUnsafe from another context runs handlers in the fiber's context", async () => {
+      const { fiber, seen, suspended } = interruptible()
+      await suspended
+      const interrupter = storage.run("interrupter", () => {
+        fiber.interruptUnsafe()
+        return current()
+      })
+      assert.strictEqual(interrupter, "interrupter")
+      assert.isTrue(Exit.hasInterrupts(await Effect.runPromise(Fiber.await(fiber))))
+      assert.deepStrictEqual(seen, expectedSeen)
+    })
+  })
+
+  describe("promises", () => {
+    interface Source {
+      readonly promise: PromiseLike<number>
+      readonly settle: (outcome: "fulfill" | "reject") => void
+    }
+
+    // Each source settles by calling the fiber's callbacks from the caller's
+    // context.
+    const sources: Record<string, () => Source> = {
+      "native Promise": () => {
+        let resolve!: (n: number) => void
+        let reject!: (e: unknown) => void
+        const promise = new Promise<number>((res, rej) => {
+          resolve = res
+          reject = rej
+        })
+        return { promise, settle: (outcome) => outcome === "fulfill" ? resolve(1) : reject("boom") }
+      },
+      "custom thenable": () => {
+        let callbacks!: [(n: number) => void, (e: unknown) => void]
+        const promise: PromiseLike<number> = {
+          // oxlint-disable-next-line unicorn/no-thenable -- the thenable under test
+          then: ((onFulfilled: any, onRejected: any) => {
+            callbacks = [onFulfilled, onRejected]
+          }) as any
+        }
+        return { promise, settle: (outcome) => outcome === "fulfill" ? callbacks[0](1) : callbacks[1]("boom") }
+      },
+      "Promise subclass overriding then": () => {
+        let callbacks!: [(n: number) => void, (e: unknown) => void]
+        class SavedCallbacks<A> extends Promise<A> {
+          // oxlint-disable-next-line unicorn/no-thenable -- the override under test
+          override then(onFulfilled: any, onRejected: any): any {
+            callbacks = [onFulfilled, onRejected]
+            return this
+          }
+        }
+        const promise = new SavedCallbacks<number>(() => {})
+        return { promise, settle: (outcome) => outcome === "fulfill" ? callbacks[0](1) : callbacks[1]("boom") }
+      },
+      "Promise with an own then": () => {
+        let callbacks!: [(n: number) => void, (e: unknown) => void]
+        const promise = new Promise<number>(() => {})
+        // oxlint-disable-next-line unicorn/no-thenable -- the own `then` under test
+        Object.defineProperty(promise, "then", {
+          value: (onFulfilled: any, onRejected: any) => {
+            callbacks = [onFulfilled, onRejected]
+          }
+        })
+        return { promise, settle: (outcome) => outcome === "fulfill" ? callbacks[0](1) : callbacks[1]("boom") }
+      }
+    }
+
+    const apis: Record<string, (promise: PromiseLike<number>) => Effect.Effect<number, unknown>> = {
+      "Effect.promise": (promise) => Effect.promise(() => promise),
+      "Effect.tryPromise": (promise) => Effect.tryPromise({ try: () => promise, catch: (e) => e })
+    }
+
+    for (const [sourceName, makeSource] of Object.entries(sources)) {
+      for (const [apiName, api] of Object.entries(apis)) {
+        for (const outcome of ["fulfill", "reject"] as const) {
+          it(`${apiName} resumes in the fiber's context when a ${sourceName} settles (${outcome})`, async () => {
+            const source = makeSource()
+            // The promise API registers its callbacks before the fiber suspends
+            const fiber = storage.run(
+              "waiter",
+              () => Effect.runFork(Effect.andThen(Effect.exit(api(source.promise)), observe))
+            )
+            assert.isUndefined(fiber.pollUnsafe())
+            storage.run("waker", () => source.settle(outcome))
+            assert.deepStrictEqual(await Effect.runPromise(Fiber.join(fiber)), expected("waiter"))
+          })
+        }
+      }
+    }
+  })
+
+  describe("forks", () => {
+    // Waits on a Deferred completed from the "waker" context, then observes.
+    const wokenFromWaker = (deferred: Deferred.Deferred<void>) => Effect.andThen(Deferred.await(deferred), observe)
+    const wake = (deferred: Deferred.Deferred<void>) =>
+      storage.run("waker", () => Deferred.doneUnsafe(deferred, Exit.void))
+
+    for (const startImmediately of [false, true]) {
+      for (const parentSuspendedFirst of [false, true]) {
+        const label = `${startImmediately ? "immediate" : "scheduled"} child, parent ${
+          parentSuspendedFirst ? "already" : "not yet"
+        } suspended`
+
+        it(`forkChild shares the parent's context (${label})`, async () => {
+          const childGate = Deferred.makeUnsafe<void>()
+          const parentGate = Deferred.makeUnsafe<void>()
+          const parent = storage.run("parent", () =>
+            Effect.runFork(Effect.gen(function*() {
+              if (parentSuspendedFirst) yield* Effect.yieldNow
+              const child = yield* Effect.forkChild(
+                Effect.sync(current).pipe(
+                  Effect.flatMap((started) => Effect.map(wokenFromWaker(childGate), (after) => ({ started, after })))
+                ),
+                { startImmediately }
+              )
+              const afterFork = current()
+              const parentAfter = yield* wokenFromWaker(parentGate)
+              return { afterFork, parentAfter, child: yield* Fiber.join(child) }
+            })))
+          await Effect.runPromise(Effect.yieldNow)
+          wake(childGate)
+          wake(parentGate)
+          assert.deepStrictEqual(await Effect.runPromise(Fiber.join(parent)), {
+            afterFork: "parent",
+            parentAfter: expected("parent"),
+            child: { started: "parent", after: expected("parent") }
+          })
+        })
+
+        it(`a fiber forked inside a nested storage.run keeps the nested context (${label})`, async () => {
+          const childGate = Deferred.makeUnsafe<void>()
+          const parentGate = Deferred.makeUnsafe<void>()
+          const parent = storage.run("parent", () =>
+            Effect.runFork(Effect.gen(function*() {
+              if (parentSuspendedFirst) yield* Effect.yieldNow
+              // A fiber started inside a nested run from the parent's stack
+              const child = yield* Effect.sync(() =>
+                storage.run("nested", () =>
+                  Effect.runFork(Effect.gen(function*() {
+                    const inner = yield* Effect.forkChild(
+                      Effect.sync(current).pipe(
+                        Effect.flatMap((started) =>
+                          Effect.map(wokenFromWaker(childGate), (after) => ({ started, after }))
+                        )
+                      ),
+                      { startImmediately }
+                    )
+                    return yield* Fiber.join(inner)
+                  })))
+              )
+              const afterNestedRun = current()
+              const parentAfter = yield* wokenFromWaker(parentGate)
+              return { afterNestedRun, parentAfter, child: yield* Fiber.join(child) }
+            })))
+          await Effect.runPromise(Effect.yieldNow)
+          wake(childGate)
+          wake(parentGate)
+          assert.deepStrictEqual(await Effect.runPromise(Fiber.join(parent)), {
+            afterNestedRun: "parent",
+            parentAfter: expected("parent"),
+            child: { started: "nested", after: expected("nested") }
+          })
+        })
+      }
+    }
+
+    it("FiberSet.runtime forks in the caller's context, not the context that created the runtime", async () => {
+      const scope = Scope.makeUnsafe()
+      try {
+        const run = await runWithStore(
+          "runtime",
+          Effect.gen(function*() {
+            const set = yield* FiberSet.make<unknown>()
+            return yield* FiberSet.runtime(set)<never>()
+          }).pipe(Scope.provide(scope))
+        )
+        const gate = Deferred.makeUnsafe<void>()
+        const fiber = storage.run("caller", () =>
+          run(
+            Effect.sync(current).pipe(
+              Effect.flatMap((started) => Effect.map(wokenFromWaker(gate), (after) => ({ started, after })))
+            )
+          ))
+        await Effect.runPromise(Effect.yieldNow)
+        wake(gate)
+        assert.deepStrictEqual(await Effect.runPromise(Fiber.join(fiber)), {
+          started: "caller",
+          after: expected("caller")
+        })
+      } finally {
+        await Effect.runPromise(Scope.close(scope, Exit.void))
+      }
+    })
+
+    it("a child start and yield scheduled on a dispatcher armed by another context", async () => {
+      const gate = Deferred.makeUnsafe<void>()
+      const parent = storage.run("parent", () =>
+        Effect.runFork(Effect.gen(function*() {
+          yield* Deferred.await(gate)
+          const child = yield* Effect.forkChild(Effect.sync(current))
+          yield* Effect.yieldNow
+          const afterYield = current()
+          return { afterYield, child: yield* Fiber.join(child) }
+        })))
+      assert.isUndefined(parent.pollUnsafe())
+      storage.run("foreign", () => {
+        // Arms the parent's idle dispatcher from this context, then wakes the
+        // parent so its child start and yield join the same batch
+        parent.currentDispatcher.scheduleTask(() => {}, 0)
+        Deferred.doneUnsafe(gate, Exit.void)
+      })
+      assert.deepStrictEqual(await Effect.runPromise(Fiber.join(parent)), {
+        afterYield: "parent",
+        child: "parent"
+      })
+    })
+  })
 })
