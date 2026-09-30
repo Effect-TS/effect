@@ -344,13 +344,13 @@ export declare namespace Queue {
   export type State<A, E> =
     | {
       readonly _tag: "Open"
-      readonly takers: Set<(_: Effect<void, E>) => void>
+      readonly takers: Set<Taker<E>>
       readonly offers: Set<OfferEntry<A>>
       readonly awaiters: Set<(_: Effect<void, E>) => void>
     }
     | {
       readonly _tag: "Closing"
-      readonly takers: Set<(_: Effect<void, E>) => void>
+      readonly takers: Set<Taker<E>>
       readonly offers: Set<OfferEntry<A>>
       readonly awaiters: Set<(_: Effect<void, E>) => void>
       readonly exit: Failure<never, E>
@@ -1927,13 +1927,19 @@ const exitTrue = core.exitSucceed(true)
 const exitFailDone = core.exitFail(core.Done()) as Failure<never, Done>
 const exitInterrupt = internalEffect.exitInterrupt() as Failure<never, never>
 
+interface Taker<E> {
+  readonly ready: () => boolean
+  readonly resume: (_: Effect<void, E>) => void
+}
+
 const releaseTakers = <A, E>(self: Enqueue<A, E>) => {
   if (self.state._tag === "Done" || self.state.takers.size === 0) {
     return
   }
   for (const taker of self.state.takers) {
+    if (!taker.ready()) continue
     self.state.takers.delete(taker)
-    taker(internalEffect.exitVoid)
+    taker.resume(internalEffect.exitVoid)
     if (self.messages.length === 0) {
       break
     }
@@ -1983,9 +1989,10 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
   internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
-    self.state.takers.add(resume)
+    const taker = { ready, resume }
+    self.state.takers.add(taker)
     return internalEffect.sync(() => {
-      if (self.state._tag !== "Done") self.state.takers.delete(resume)
+      if (self.state._tag !== "Done") self.state.takers.delete(taker)
     })
   })
 
@@ -2082,7 +2089,7 @@ const finalize = <A, E>(self: Enqueue<A, E> | Dequeue<A, E>, exit: Failure<never
   const openState = self.state
   self.state = { _tag: "Done", exit }
   for (const taker of openState.takers) {
-    taker(exit)
+    taker.resume(exit)
   }
   openState.takers.clear()
   for (const awaiter of openState.awaiters) {
