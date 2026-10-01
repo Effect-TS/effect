@@ -3127,14 +3127,16 @@ describe("fromJsonSchemaDocument", () => {
       })
 
       it("applies patterns whose source is canonicalized by RegExp", () => {
-        for (const [pattern, matching, nonMatching] of [
-          ["a/b", "a/b", "ab"],
-          ["", "anything", undefined],
-          ["\n", "a\nb", "ab"],
-          ["\r", "a\rb", "ab"],
-          ["\u2028", "a\u2028b", "ab"],
-          ["\u2029", "a\u2029b", "ab"]
-        ] as const) {
+        for (
+          const [pattern, matching, nonMatching] of [
+            ["a/b", "a/b", "ab"],
+            ["", "anything", undefined],
+            ["\n", "a\nb", "ab"],
+            ["\r", "a\rb", "ab"],
+            ["\u2028", "a\u2028b", "ab"],
+            ["\u2029", "a\u2029b", "ab"]
+          ] as const
+        ) {
           const schema = toSchemaFromJsonSchemaDocument(
             JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern })
           )
