@@ -1,12 +1,11 @@
-// Internal topology contracts referenced by the public client types.
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Redacted from "effect/Redacted"
 import type * as Result from "effect/Result"
 import type { Routing } from "../RedisCommand.ts"
-import type { Endpoint } from "../RedisConnection.ts"
 import type { RedisError } from "../RedisError.ts"
 import type { Argument } from "../RedisProtocol.ts"
+import type { Endpoint } from "./transport.ts"
 
 export interface ClusterConfig {
   readonly _tag: "Cluster"
@@ -28,6 +27,7 @@ export interface SentinelConfig {
 
 export interface Resolved {
   readonly endpoint: Endpoint
+  /** The Cluster hash slot of the command's keys, when it has any. */
   readonly slot?: number | undefined
 }
 
@@ -35,25 +35,18 @@ export interface Redirect extends Resolved {
   readonly asking: boolean
 }
 
-interface BaseTopology {
-  readonly resolveSync: (args: ReadonlyArray<Argument>, routing?: Routing) => Result.Result<Resolved, RedisError>
+export interface Topology {
+  readonly _tag: "Standalone" | "Cluster" | "Sentinel"
+  readonly route: (args: ReadonlyArray<Argument>, routing?: Routing) => Result.Result<Resolved, RedisError>
   readonly resolve: (args: ReadonlyArray<Argument>, routing?: Routing) => Effect.Effect<Resolved, RedisError>
   readonly refresh: Effect.Effect<void, RedisError>
   readonly endpoints: () => ReadonlyArray<Endpoint>
-}
-
-export interface StandaloneTopology extends BaseTopology {
-  readonly _tag: "Standalone"
-}
-
-export interface ClusterTopology extends BaseTopology {
-  readonly _tag: "Cluster"
+  /** Interprets a MOVED or ASK error, updating the slot map for MOVED. */
   readonly redirect: (error: RedisError, from: Endpoint) => Redirect | undefined
-}
-
-export interface SentinelTopology extends BaseTopology {
-  readonly _tag: "Sentinel"
+  /** Registers a listener for primary changes. */
   readonly onChange: (listener: () => void) => () => void
 }
 
-export type Topology = StandaloneTopology | ClusterTopology | SentinelTopology
+export const validEndpoint = (endpoint: Endpoint): boolean =>
+  typeof endpoint.host === "string" && endpoint.host.length > 0 && !/\s/.test(endpoint.host) &&
+  Number.isSafeInteger(endpoint.port) && endpoint.port >= 1 && endpoint.port <= 65535

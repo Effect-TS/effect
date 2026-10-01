@@ -1,419 +1,314 @@
-// Internal implementation.
 import { RedisError } from "../RedisError.ts"
-import type { Parser, ParserOptions, Reply } from "../RedisProtocol.ts"
-import * as Replies from "./replies.ts"
+import type { Argument, Parser, ParserOptions, Reply } from "../RedisProtocol.ts"
 
+const encoder = new TextEncoder()
 const decoder = new TextDecoder()
-const minInteger = BigInt("-9223372036854775808")
-const maxInteger = BigInt("9223372036854775807")
+
+const CR = 13
+const LF = 10
+
+export const encode = (args: ReadonlyArray<Argument>): Uint8Array => {
+  const values = args.map((arg) => typeof arg === "string" ? encoder.encode(arg) : arg)
+  let size = String(values.length).length + 3
+  for (const value of values) size += String(value.length).length + value.length + 5
+  const bytes = new Uint8Array(size)
+  let offset = writeHeader(bytes, 0, "*", values.length)
+  for (const value of values) {
+    offset = writeHeader(bytes, offset, "$", value.length)
+    bytes.set(value, offset)
+    offset += value.length
+    bytes[offset++] = CR
+    bytes[offset++] = LF
+  }
+  return bytes
+}
+
+const writeHeader = (bytes: Uint8Array, offset: number, marker: string, length: number): number => {
+  const header = `${marker}${length}\r\n`
+  for (let i = 0; i < header.length; i++) bytes[offset++] = header.charCodeAt(i)
+  return offset
+}
+
+const minInteger = -(BigInt("2") ** BigInt("63"))
+const maxInteger = BigInt("2") ** BigInt("63") - BigInt("1")
+const integerPattern = /^[+-]?\d+$/
+const lengthPattern = /^\d+$/
+const doublePattern = /^(?:[+-]?inf|nan|[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)$/
+
+type AggregateMarker = "*" | "%" | "~" | ">" | "|"
 
 interface Aggregate {
-  readonly marker: string
-  readonly expected: number | undefined
+  readonly marker: AggregateMarker
+  /** Expected member count, or undefined for a streamed aggregate. */
+  readonly size: number | undefined
+  readonly limit: number
   readonly values: Array<Reply>
 }
 
-const errorReply = (message: string): Reply => ({
-  _tag: "Error",
-  message,
-  code: message.split(" ", 1)[0]
-})
-
-const pairs = (values: ReadonlyArray<Reply>): Array<readonly [Reply, Reply]> => {
-  const result: Array<readonly [Reply, Reply]> = []
-  for (let i = 0; i < values.length; i += 2) result.push([values[i], values[i + 1]])
-  return result
+interface Body {
+  readonly marker: "$" | "!" | "=" | ";"
+  readonly bytes: Uint8Array
+  filled: number
 }
 
-export const makeParser = (options: ParserOptions, ownership: "copy" | "transfer"): Parser => {
+const errorReply = (message: string): Reply => ({ _tag: "Error", message, code: message.split(" ", 1)[0] })
+
+const pairs = (values: ReadonlyArray<Reply>): Array<readonly [Reply, Reply]> => {
+  const entries: Array<readonly [Reply, Reply]> = []
+  for (let i = 0; i + 1 < values.length; i += 2) entries.push([values[i], values[i + 1]])
+  return entries
+}
+
+const aggregateReply = ({ marker, values }: Aggregate): Reply => {
+  switch (marker) {
+    case "*":
+      return { _tag: "Array", values }
+    case "~":
+      return { _tag: "Set", values }
+    case ">":
+      return { _tag: "Push", values }
+    case "%":
+      return { _tag: "Map", entries: pairs(values) }
+    case "|":
+      return { _tag: "Attribute", entries: pairs(values.slice(0, -1)), value: values[values.length - 1] }
+  }
+}
+
+export const makeParser = (options: ParserOptions = {}): Parser => {
   const maxFrameSize = options.maxFrameSize ?? 64 * 1024 * 1024
   const maxDepth = options.maxDepth ?? 128
   const maxAggregateLength = options.maxAggregateLength ?? 1_000_000
+
+  let closed = false
   const fail = (message: string): never => {
     closed = true
     throw new RedisError({ reason: "Protocol", message })
   }
-  let closed = false
-  for (
-    const [name, limit, minimum] of [
-      ["maxFrameSize", maxFrameSize, 1],
-      ["maxDepth", maxDepth, 1],
-      ["maxAggregateLength", maxAggregateLength, 0]
-    ] as const
-  ) {
-    if (!Number.isSafeInteger(limit) || limit < minimum) fail(`Invalid ${name}`)
-  }
-  let state: "marker" | "line" | "lineLf" | "body" | "bodyCr" | "bodyLf" = "marker"
-  let marker = ""
-  let line: Array<number> = []
-  const emptyBody = new Uint8Array(0)
-  let body: Uint8Array = emptyBody
-  let bodySize = 0
-  let bodyOffset = 0
-  let frameSize = 0
-  let streamed: Array<Uint8Array> | undefined
-  let streamedSize = 0
-  const stack: Array<Aggregate> = []
 
-  const aggregateReply = (aggregate: Aggregate): Reply => {
-    switch (aggregate.marker) {
-      case "*":
-        return { _tag: "Array", values: aggregate.values }
-      case "~":
-        return { _tag: "Set", values: aggregate.values }
-      case ">":
-        return { _tag: "Push", values: aggregate.values }
-      case "%":
-        return { _tag: "Map", entries: pairs(aggregate.values) }
-      default:
-        return {
-          _tag: "Attribute",
-          entries: pairs(aggregate.values.slice(0, -1)),
-          value: aggregate.values[aggregate.values.length - 1]
-        }
-    }
+  if (!Number.isSafeInteger(maxFrameSize) || maxFrameSize < 1) fail("Invalid maxFrameSize")
+  if (!Number.isSafeInteger(maxDepth) || maxDepth < 1) fail("Invalid maxDepth")
+  if (!Number.isSafeInteger(maxAggregateLength) || maxAggregateLength < 0) fail("Invalid maxAggregateLength")
+
+  let buffer: Uint8Array = new Uint8Array(0)
+  // Bytes consumed by the top-level reply currently being decoded.
+  let frameSize = 0
+  let body: Body | undefined
+  let streamed: Array<Uint8Array> | undefined
+  const stack: Array<Aggregate> = []
+  let output: Array<Reply> = []
+
+  const consume = (size: number) => {
+    frameSize += size
+    if (frameSize > maxFrameSize) fail("Frame size limit exceeded")
   }
-  const accept = (reply: Reply, output: Array<Reply>): void => {
+
+  const emit = (reply: Reply): void => {
     while (stack.length > 0) {
       const parent = stack[stack.length - 1]
       parent.values.push(reply)
-      const memberLimit = parent.marker === "%" || parent.marker === "|"
-        ? maxAggregateLength * 2 + (parent.marker === "|" ? 1 : 0)
-        : maxAggregateLength
-      if (parent.values.length > memberLimit) fail("Aggregate member limit exceeded")
-      if (parent.expected === undefined || parent.values.length < parent.expected) return
+      if (parent.values.length > parent.limit) fail("Aggregate member limit exceeded")
+      if (parent.size === undefined || parent.values.length < parent.size) return
       stack.pop()
       reply = aggregateReply(parent)
     }
     output.push(reply)
     frameSize = 0
   }
-  const integer = (value: string): bigint => {
-    if (!/^[+-]?\d+$/.test(value)) fail("Invalid RESP integer")
-    return BigInt(value)
-  }
-  const integerLine = (): bigint => {
-    let offset = line[0] === 43 || line[0] === 45 ? 1 : 0
-    if (offset === line.length) fail("Invalid RESP integer")
-    let value = 0
-    for (; offset < line.length; offset++) {
-      const byte = line[offset]
-      if (byte > 127) fail("Non-ASCII RESP header")
-      if (byte < 48 || byte > 57) fail("Invalid RESP integer")
-      value = value * 10 + (byte - 48)
-    }
-    if (Number.isSafeInteger(value)) return BigInt(line[0] === 45 ? -value : value)
+
+  const ascii = (bytes: Uint8Array): string => {
     let text = ""
-    for (const byte of line) text += String.fromCharCode(byte)
+    for (const byte of bytes) {
+      if (byte > 127) fail("Non-ASCII RESP header")
+      text += String.fromCharCode(byte)
+    }
+    return text
+  }
+
+  const length = (text: string): number => {
+    const value = lengthPattern.test(text) ? Number(text) : NaN
+    if (!Number.isSafeInteger(value)) fail("Invalid RESP length")
+    return value
+  }
+
+  const integer = (text: string): bigint => {
+    if (!integerPattern.test(text)) fail("Invalid RESP integer")
     return BigInt(text)
   }
-  // Complete short integer frames need neither retained header bytes nor a
-  // second digit pass. Larger integers keep the exact signed-64-bit path.
-  const completeInteger = (chunk: Uint8Array, offset: number, output: Array<Reply>): number => {
-    const end = Math.min(chunk.length, offset + 24)
-    let cursor = offset + 1
-    const negative = chunk[cursor] === 45
-    if (negative || chunk[cursor] === 43) cursor++
-    const start = cursor
-    let value = 0
-    for (; cursor < end; cursor++) {
-      const byte = chunk[cursor]
-      if (byte === 13) {
-        if (cursor === start || cursor + 1 >= end || chunk[cursor + 1] !== 10 || !Number.isSafeInteger(value)) break
-        const next = cursor + 2
-        if (frameSize + next - offset > maxFrameSize) fail("Frame size limit exceeded")
-        frameSize += next - offset
-        // Every safe integer is also inside Redis's signed 64-bit range.
-        accept({ _tag: "Integer", value: BigInt(negative ? -value : value) }, output)
-        return next
+
+  const startBody = (marker: Body["marker"], size: number) => {
+    consume(size + 2)
+    body = { marker, bytes: new Uint8Array(size), filled: 0 }
+  }
+
+  const startAggregate = (marker: AggregateMarker, header: string) => {
+    if (marker === "*" && header === "-1") return emit({ _tag: "Null" })
+    const isStreamed = header === "?" && (marker === "*" || marker === "%" || marker === "~")
+    const count = isStreamed ? undefined : length(header)
+    if (count !== undefined && count > maxAggregateLength) fail("Aggregate member limit exceeded")
+    if (stack.length >= maxDepth) fail("Aggregate depth limit exceeded")
+    const members = (value: number) => marker === "%" ? value * 2 : marker === "|" ? value * 2 + 1 : value
+    const aggregate: Aggregate = {
+      marker,
+      size: count === undefined ? undefined : members(count),
+      limit: members(maxAggregateLength),
+      values: []
+    }
+    if (aggregate.size === 0) emit(aggregateReply(aggregate))
+    else stack.push(aggregate)
+  }
+
+  const endStreamedAggregate = (header: string) => {
+    const aggregate = stack[stack.length - 1]
+    if (header !== "" || aggregate === undefined || aggregate.size !== undefined) fail("Unexpected streamed terminator")
+    if (aggregate.marker === "%" && aggregate.values.length % 2 !== 0) fail("Streamed map has an unmatched key")
+    stack.pop()
+    emit(aggregateReply(aggregate))
+  }
+
+  const line = (marker: string, content: Uint8Array) => {
+    if (streamed !== undefined) {
+      if (marker !== ";") fail("Unexpected RESP marker")
+      const size = length(ascii(content))
+      if (size > 0) return startBody(";", size)
+      const parts = streamed
+      streamed = undefined
+      const value = new Uint8Array(parts.reduce((total, part) => total + part.length, 0))
+      let offset = 0
+      for (const part of parts) {
+        value.set(part, offset)
+        offset += part.length
       }
-      if (byte < 48 || byte > 57) break
-      value = value * 10 + (byte - 48)
+      return emit({ _tag: "BlobString", value })
     }
-    return offset
-  }
-  const length = (value: string): number => {
-    if (!/^\d+$/.test(value)) fail("Invalid RESP length")
-    const result = Number(value)
-    if (!Number.isSafeInteger(result)) fail("RESP length exceeds safe integer range")
-    return result
-  }
-  const startBody = (size: number): void => {
-    if (size + frameSize + 2 > maxFrameSize) fail("Frame size limit exceeded")
-    bodySize = size
-    if (size === 0) body = emptyBody
-    bodyOffset = 0
-    state = size === 0 ? "bodyCr" : "body"
-  }
-  // Ordinary complete bulk headers need no retained digit array or string.
-  // Bound lookahead; fragmented, streamed, null and unusual headers use the
-  // same validating line parser as before.
-  const completeBulkHeader = (chunk: Uint8Array, offset: number): number => {
-    const end = Math.min(chunk.length, offset + 20)
-    let size = 0
-    for (let cursor = offset + 1; cursor < end; cursor++) {
-      const byte = chunk[cursor]
-      if (byte === 13) {
-        if (cursor === offset + 1 || cursor + 1 >= end || chunk[cursor + 1] !== 10 || !Number.isSafeInteger(size)) break
-        const next = cursor + 2
-        frameSize += next - offset
-        marker = "$"
-        startBody(size)
-        return next
-      }
-      if (byte < 48 || byte > 57) break
-      size = size * 10 + (byte - 48)
-    }
-    return offset
-  }
-  const completeSimpleString = (chunk: Uint8Array, offset: number, output: Array<Reply>): number => {
-    const reply = Replies.simpleStringFrame(chunk, offset)
-    if (reply === undefined) return offset
-    const size = reply.value.length + 3
-    if (frameSize + size > maxFrameSize) fail("Frame size limit exceeded")
-    frameSize += size
-    accept(reply, output)
-    return offset + size
-  }
-  const completeLine = (output: Array<Reply>): void => {
-    if (marker === ":") {
-      const parsed = integerLine()
-      if (parsed < minInteger || parsed > maxInteger) fail("RESP integer exceeds signed 64-bit range")
-      line = []
-      state = "marker"
-      accept({ _tag: "Integer", value: parsed }, output)
-      return
-    }
-    if (marker === "+") {
-      const reply = Replies.simpleString(line)
-      if (reply !== undefined) {
-        line = []
-        state = "marker"
-        accept(reply, output)
-        return
-      }
-    }
-    let value = ""
-    const text = marker === "+" || marker === "-"
-    if (text && line.length > 64) value = decoder.decode(new Uint8Array(line))
-    else {
-      // Short ASCII acknowledgements and numeric headers need neither a byte
-      // allocation nor UTF-8 decoding. Text still permits arbitrary UTF-8.
-      for (let index = 0; index < line.length; index++) {
-        const byte = line[index]
-        if (byte > 127) {
-          if (!text) fail("Non-ASCII RESP header")
-          value = decoder.decode(new Uint8Array(line))
-          break
-        }
-        value += String.fromCharCode(byte)
-      }
-    }
-    line = []
-    state = "marker"
     switch (marker) {
       case "+":
-        accept({ _tag: "SimpleString", value }, output)
-        return
+        return emit({ _tag: "SimpleString", value: decoder.decode(content) })
       case "-":
-        accept(errorReply(value), output)
-        return
-      case "(":
-        accept({ _tag: "BigNumber", value: integer(value) }, output)
-        return
-      case "_":
-        if (value !== "") fail("Invalid RESP null")
-        accept({ _tag: "Null" }, output)
-        return
-      case "#":
-        if (value !== "t" && value !== "f") fail("Invalid RESP boolean")
-        accept({ _tag: "Boolean", value: value === "t" }, output)
-        return
-      case ",": {
-        if (!/^(?:-?inf|nan|[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(value)) {
-          fail("Invalid RESP double")
-        }
-        const parsed = value === "inf" ? Infinity : value === "-inf" ? -Infinity : Number(value)
-        accept({ _tag: "Double", value: parsed }, output)
-        return
+        return emit(errorReply(decoder.decode(content)))
+      case ":": {
+        const value = integer(ascii(content))
+        if (value < minInteger || value > maxInteger) fail("RESP integer exceeds the signed 64-bit range")
+        return emit({ _tag: "Integer", value })
       }
-      case "$":
-        if (value === "-1") {
-          accept({ _tag: "Null" }, output)
-          return
-        }
-        if (value === "?") {
+      case "(":
+        return emit({ _tag: "BigNumber", value: integer(ascii(content)) })
+      case ",": {
+        const text = ascii(content)
+        if (!doublePattern.test(text)) fail("Invalid RESP double")
+        const value = text.endsWith("inf") ? (text.startsWith("-") ? -Infinity : Infinity) : Number(text)
+        return emit({ _tag: "Double", value })
+      }
+      case "#": {
+        const text = ascii(content)
+        if (text !== "t" && text !== "f") fail("Invalid RESP boolean")
+        return emit({ _tag: "Boolean", value: text === "t" })
+      }
+      case "_":
+        if (content.length !== 0) fail("Invalid RESP null")
+        return emit({ _tag: "Null" })
+      case "$": {
+        const header = ascii(content)
+        if (header === "-1") return emit({ _tag: "Null" })
+        if (header === "?") {
           streamed = []
-          streamedSize = 0
           return
         }
-        startBody(length(value))
-        return
+        return startBody("$", length(header))
+      }
       case "!":
       case "=":
-        startBody(length(value))
-        return
-      case ";": {
-        const size = length(value)
-        if (size > 0) {
-          startBody(size)
-          return
-        }
-        const result = new Uint8Array(streamedSize)
-        let offset = 0
-        for (const part of streamed!) {
-          result.set(part, offset)
-          offset += part.length
-        }
-        streamed = undefined
-        accept({ _tag: "BlobString", value: result }, output)
-        return
-      }
-      case ".": {
-        const aggregate = stack[stack.length - 1]
-        if (value !== "" || aggregate?.expected !== undefined || !aggregate) fail("Unexpected streamed terminator")
-        if (aggregate.marker === "%" && aggregate.values.length % 2 !== 0) fail("Streamed map has unmatched key")
-        stack.pop()
-        accept(aggregateReply(aggregate), output)
-        return
-      }
-      default: {
-        if (marker === "*" && value === "-1") {
-          accept({ _tag: "Null" }, output)
-          return
-        }
-        const isStreamed = value === "?" && (marker === "*" || marker === "%" || marker === "~")
-        const members = isStreamed ? undefined : length(value)
-        if (members !== undefined && members > maxAggregateLength) fail("Aggregate member limit exceeded")
-        if (stack.length >= maxDepth) fail("Aggregate depth limit exceeded")
-        const expected = members === undefined
-          ? undefined
-          : marker === "%"
-          ? members * 2
-          : marker === "|"
-          ? members * 2 + 1
-          : members
-        const aggregate: Aggregate = { marker, expected, values: [] }
-        if (expected === 0) accept(aggregateReply(aggregate), output)
-        else stack.push(aggregate)
-      }
+        return startBody(marker, length(ascii(content)))
+      case "*":
+      case "%":
+      case "~":
+      case ">":
+      case "|":
+        return startAggregate(marker, ascii(content))
+      case ".":
+        return endStreamedAggregate(ascii(content))
+      default:
+        return fail("Unexpected RESP marker")
     }
   }
-  const completeBody = (output: Array<Reply>): void => {
-    state = "marker"
+
+  const completeBody = ({ bytes, marker }: Body) => {
     switch (marker) {
       case ";":
-        streamed!.push(body)
-        streamedSize += body.length
+        streamed!.push(bytes)
         return
+      case "$":
+        return emit({ _tag: "BlobString", value: bytes })
       case "!":
-        accept(errorReply(decoder.decode(body)), output)
-        return
-      case "=":
-        if (body.length < 4 || body[3] !== 58 || body.subarray(0, 3).some((byte) => byte < 33 || byte > 126)) {
+        return emit(errorReply(decoder.decode(bytes)))
+      case "=": {
+        const format = bytes.subarray(0, 3)
+        if (bytes.length < 4 || bytes[3] !== 58 || format.some((byte) => byte < 33 || byte > 126)) {
           fail("Invalid verbatim string format")
         }
-        accept({ _tag: "VerbatimString", format: decoder.decode(body.subarray(0, 3)), value: body.subarray(4) }, output)
-        return
-      default:
-        accept({ _tag: "BlobString", value: body }, output)
+        return emit({ _tag: "VerbatimString", format: decoder.decode(format), value: bytes.subarray(4) })
+      }
     }
   }
+
+  // Decodes as much of `buffer` as possible and returns the consumed length.
+  const decode = (): number => {
+    let offset = 0
+    while (true) {
+      if (body !== undefined) {
+        const count = Math.min(body.bytes.length - body.filled, buffer.length - offset)
+        body.bytes.set(buffer.subarray(offset, offset + count), body.filled)
+        body.filled += count
+        offset += count
+        if (body.filled < body.bytes.length || buffer.length - offset < 2) return offset
+        if (buffer[offset] !== CR || buffer[offset + 1] !== LF) fail("RESP body requires CRLF")
+        offset += 2
+        const complete = body
+        body = undefined
+        completeBody(complete)
+        continue
+      }
+      let end = offset
+      while (end < buffer.length && buffer[end] !== CR) {
+        if (buffer[end] === LF) fail("RESP line requires CRLF")
+        end++
+      }
+      if (end + 1 >= buffer.length) {
+        if (frameSize + buffer.length - offset > maxFrameSize) fail("Frame size limit exceeded")
+        return offset
+      }
+      if (buffer[end + 1] !== LF) fail("RESP line requires CRLF")
+      consume(end + 2 - offset)
+      const marker = String.fromCharCode(buffer[offset])
+      const content = buffer.subarray(offset + 1, end)
+      offset = end + 2
+      line(marker, content)
+    }
+  }
+
   return {
     push(chunk) {
       if (closed) fail("Parser is closed")
-      const output: Array<Reply> = []
-      let ownedChunk: Uint8Array<ArrayBuffer> | undefined
-      let ownedStart = 0
-      let ownedEnd = 0
-      for (let offset = 0; offset < chunk.length;) {
-        if (state === "marker" && streamed === undefined && chunk[offset] === 58) {
-          const next = completeInteger(chunk, offset, output)
-          if (next !== offset) {
-            offset = next
-            continue
-          }
-        } else if (state === "marker" && streamed === undefined) {
-          const next = chunk[offset] === 36
-            ? completeBulkHeader(chunk, offset)
-            : chunk[offset] === 43
-            ? completeSimpleString(chunk, offset, output)
-            : offset
-          if (next !== offset) {
-            offset = next
-            continue
-          }
-        }
-        if (state === "body") {
-          if (bodyOffset === 0) {
-            if (bodySize <= chunk.length - offset) {
-              if (frameSize + bodySize > maxFrameSize) fail("Frame size limit exceeded")
-              if (ownership === "transfer") {
-                // Transport producers surrender this byte range permanently.
-                // Disjoint complete bodies can retain it without another copy.
-                body = chunk.subarray(offset, offset + bodySize)
-              } else {
-                // Share bounded owned snapshots through disjoint body views.
-                // A tiny frame never forces a copy of an arbitrary input tail.
-                if (ownedChunk === undefined || offset + bodySize > ownedEnd) {
-                  ownedStart = offset
-                  ownedEnd = Math.min(chunk.length, offset + Math.max(bodySize, Math.min(64 * 1024, maxFrameSize)))
-                  ownedChunk = new Uint8Array(chunk.subarray(ownedStart, ownedEnd))
-                }
-                body = ownedChunk.subarray(offset - ownedStart, offset - ownedStart + bodySize)
-              }
-              bodyOffset = bodySize
-              frameSize += bodySize
-              offset += bodySize
-              state = "bodyCr"
-              continue
-            }
-            body = new Uint8Array(bodySize)
-          }
-          const count = Math.min(body.length - bodyOffset, chunk.length - offset)
-          if (frameSize + count > maxFrameSize) fail("Frame size limit exceeded")
-          body.set(chunk.subarray(offset, offset + count), bodyOffset)
-          frameSize += count
-          bodyOffset += count
-          offset += count
-          if (bodyOffset === body.length) state = "bodyCr"
-          continue
-        }
-        const byte = chunk[offset++]
-        if (++frameSize > maxFrameSize) fail("Frame size limit exceeded")
-        switch (state) {
-          case "marker":
-            marker = String.fromCharCode(byte)
-            if (streamed ? marker !== ";" : !"+-:,$!_=#(*%~>|.".includes(marker) || marker === ";") {
-              fail("Unexpected RESP marker")
-            }
-            state = "line"
-            break
-          case "line":
-            if (byte === 13) state = "lineLf"
-            else if (byte === 10) fail("RESP line requires CRLF")
-            else line.push(byte)
-            break
-          case "lineLf":
-            if (byte !== 10) fail("RESP line requires CRLF")
-            completeLine(output)
-            break
-          case "bodyCr":
-            if (byte !== 13) fail("RESP body requires CRLF")
-            state = "bodyLf"
-            break
-          case "bodyLf":
-            if (byte !== 10) fail("RESP body requires CRLF")
-            completeBody(output)
-            body = emptyBody
-            break
-        }
+      if (buffer.length === 0) {
+        buffer = chunk
+      } else {
+        const joined = new Uint8Array(buffer.length + chunk.length)
+        joined.set(buffer)
+        joined.set(chunk, buffer.length)
+        buffer = joined
       }
-      return output
+      output = []
+      const consumed = decode()
+      // Retain a private copy of any incomplete header; callers may reuse chunks.
+      buffer = buffer.slice(consumed)
+      const replies = output
+      output = []
+      return replies
     },
     end() {
       if (closed) fail("Parser is closed")
-      if (state !== "marker" || stack.length !== 0 || streamed !== undefined) fail("Incomplete RESP reply at EOF")
+      if (buffer.length > 0 || body !== undefined || streamed !== undefined || stack.length > 0) {
+        fail("Incomplete RESP reply at EOF")
+      }
       closed = true
     }
   }

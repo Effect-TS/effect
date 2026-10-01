@@ -4,8 +4,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import { encodeCommand } from "./internal/encoding.ts"
-import { makeParser as makeParserInternal } from "./internal/protocol.ts"
+import * as internal from "./internal/protocol.ts"
 import { RedisError } from "./RedisError.ts"
 
 /**
@@ -22,11 +21,9 @@ export type Argument = string | Uint8Array
  *
  * **Details**
  *
- * Integer replies preserve precision as `bigint`. Binary fields retain
- * parser-owned bytes independent of input buffers and subsequent parser calls.
- * Fields can share an allocation through nonoverlapping views; mutating one
- * view's bytes leaves other fields unchanged. Attributes retain their metadata
- * and the value that follows them.
+ * Integer replies preserve precision as `bigint`. Binary fields own their
+ * bytes, independent of the parser's input chunks. Attributes retain their
+ * metadata and the value that follows them.
  *
  * @stability unstable
  * @category models
@@ -88,7 +85,7 @@ const decoder = new TextDecoder()
  * @category encoding
  * @since 4.0.0
  */
-export const encode: (args: ReadonlyArray<Argument>) => Uint8Array = encodeCommand
+export const encode: (args: ReadonlyArray<Argument>) => Uint8Array = internal.encode
 
 /**
  * Creates a bounded incremental RESP2/RESP3 parser, including streamed strings
@@ -98,10 +95,8 @@ export const encode: (args: ReadonlyArray<Argument>) => Uint8Array = encodeComma
  *
  * Defaults allow 64 MiB per complete reply, 128 aggregate nesting levels, and
  * one million members per aggregate. Frame limits include metadata and nested
- * replies. Input is consumed once, without repeatedly copying incomplete bodies.
- * Complete binary bodies use nonoverlapping views into bounded, parser-owned
- * input snapshots. Each snapshot holds at most 64 KiB or one validated body,
- * bounded by the frame limit. Fragmented bodies retain separate buffers.
+ * replies. Bodies split across chunks are filled in place rather than
+ * re-buffered.
  *
  * **Gotchas**
  *
@@ -113,7 +108,7 @@ export const encode: (args: ReadonlyArray<Argument>) => Uint8Array = encodeComma
  * @category constructors
  * @since 4.0.0
  */
-export const makeParser = (options: ParserOptions = {}): Parser => makeParserInternal(options, "copy")
+export const makeParser: (options?: ParserOptions) => Parser = internal.makeParser
 
 /**
  * Converts replies to JavaScript values with UTF-8 strings and safe integer numbers.

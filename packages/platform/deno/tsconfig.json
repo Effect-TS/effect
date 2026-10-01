@@ -1,23 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../../../tsconfig.base.json",
-  "include": [
-    "src"
-  ],
+  "include": ["src"],
   "references": [
-    {
-      "path": "../../effect"
-    },
-    {
-      "path": "../node-shared"
-    },
-    {
-      "path": "../../redis"
-    }
+    { "path": "../../effect" },
+    { "path": "../node-shared" },
+    { "path": "../../redis" }
   ],
   "compilerOptions": {
-    "types": [
-      "deno"
-    ]
+    "types": ["deno"]
   }
 }

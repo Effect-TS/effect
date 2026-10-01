@@ -1,7 +1,9 @@
-// Internal transport contracts referenced by the public connection types.
+import * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
-import type { RedisError } from "../RedisError.ts"
+import { RedisError } from "../RedisError.ts"
+import type { Argument } from "../RedisProtocol.ts"
 
 export interface Endpoint {
   readonly host: string
@@ -11,11 +13,7 @@ export interface Endpoint {
 }
 
 export interface Transport {
-  readonly write: (
-    bytes: string | Uint8Array | ReadonlyArray<string | Uint8Array>,
-    options?: { readonly ownership?: "copy" | "transfer" | undefined } | undefined
-  ) => Effect.Effect<void, RedisError>
-  /** Runs one consumer until interrupted or failed, delivering stable byte ranges synchronously. */
+  readonly write: (bytes: string | Uint8Array) => Effect.Effect<void, RedisError>
   readonly run: (onBytes: (bytes: Uint8Array) => void) => Effect.Effect<void, RedisError>
   readonly close: Effect.Effect<void>
 }
@@ -26,3 +24,28 @@ export const endpointKey = (endpoint: Endpoint): string =>
   endpoint.path === undefined
     ? `${endpoint.tls ? "tls" : "tcp"}://${endpoint.host}:${endpoint.port}`
     : `unix:${endpoint.path}`
+
+export const notSent = (reason: RedisError["reason"], message: string, cause?: unknown): RedisError =>
+  new RedisError({ reason, message, cause, outcome: "NotSent" })
+
+export const withOutcome = (error: RedisError, outcome: "NotSent" | "Unknown"): RedisError =>
+  new RedisError({ reason: error.reason, message: error.message, cause: error.cause, code: error.code, outcome })
+
+/**
+ * Converts a duration input to milliseconds, or `undefined` when it is invalid.
+ */
+export const durationMillis = (input: Duration.Input): number | undefined => {
+  const duration = Duration.fromInput(input)
+  return Option.isNone(duration) || hasNaN(input) ? undefined : Duration.toMillis(duration.value)
+}
+
+// Duration inputs coerce NaN to zero, so reject it explicitly.
+const hasNaN = (input: unknown): boolean =>
+  typeof input === "number"
+    ? Number.isNaN(input)
+    : typeof input === "object" && input !== null && !Duration.isDuration(input) && Object.values(input).some(hasNaN)
+
+const decoder = new TextDecoder()
+
+export const argumentText = (arg: Argument | undefined): string =>
+  typeof arg === "string" ? arg : arg === undefined ? "" : decoder.decode(arg)

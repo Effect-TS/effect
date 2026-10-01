@@ -5,7 +5,7 @@
  * @since 4.0.0
  */
 import * as Result from "effect/Result"
-import * as Replies from "./internal/replies.ts"
+import { argumentText } from "./internal/transport.ts"
 import type { Endpoint } from "./RedisConnection.ts"
 import { RedisError } from "./RedisError.ts"
 import type * as Protocol from "./RedisProtocol.ts"
@@ -65,9 +65,9 @@ export const make = <A>(
 export const text = (reply: Protocol.Reply): Result.Result<string | null, RedisError> => {
   if (reply._tag === "Attribute") return text(reply.value)
   if (reply._tag === "Null") return Result.succeed(null)
-  if (reply._tag === "SimpleString") return Replies.text(reply.value)
+  if (reply._tag === "SimpleString") return Result.succeed(reply.value)
   if (reply._tag === "BlobString" || reply._tag === "VerbatimString") {
-    return Replies.text(decoder.decode(reply.value))
+    return Result.succeed(decoder.decode(reply.value))
   }
   return Result.fail(new RedisError({ reason: "Decode", message: "Expected a Redis string or null" }))
 }
@@ -132,10 +132,6 @@ export const set = (
   value: Protocol.Argument,
   ...options: ReadonlyArray<Protocol.Argument>
 ): RedisCommand<string | null> => make(["SET", key, value, ...options], text, { keyIndexes: [1] })
-
-/** @internal */
-export const argumentText = (arg: Protocol.Argument | undefined): string =>
-  typeof arg === "string" ? arg : arg === undefined ? "" : decoder.decode(arg)
 
 const singleKey = new Set(
   ("GET SET SETNX SETEX PSETEX GETSET GETDEL GETEX APPEND STRLEN INCR INCRBY INCRBYFLOAT DECR DECRBY GETRANGE SETRANGE " +

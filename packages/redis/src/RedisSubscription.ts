@@ -10,6 +10,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
+import { notSent } from "./internal/transport.ts"
 import type { RedisClient } from "./RedisClient.ts"
 import type { Endpoint, RedisConnection } from "./RedisConnection.ts"
 import { RedisError } from "./RedisError.ts"
@@ -37,6 +38,7 @@ export interface Message {
  */
 export interface Options {
   readonly mode?: "channel" | "pattern" | "sharded" | undefined
+  /** Maximum number of unconsumed messages. Defaults to 1024. */
   readonly capacity?: number | undefined
 }
 
@@ -45,10 +47,10 @@ export interface Options {
  *
  * **Gotchas**
  *
- * Redis Pub/Sub does not recover publications missed while reconnecting.
- * Exceeding the bounded capacity fails the subscription rather than silently
- * dropping messages. One subscription owns one dedicated connection.
- * Closing the client fails subscriptions with a `Closed` error.
+ * Messages published while reconnecting are lost. Exceeding the capacity
+ * fails the subscription with a `Capacity` error rather than dropping
+ * messages. Each subscription uses its own connection. Closing the client
+ * fails the subscription with a `Closed` error.
  *
  * @stability unstable
  * @category models
@@ -61,8 +63,18 @@ export interface RedisSubscription {
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
-const binary = (reply: Protocol.Reply | undefined): Uint8Array | undefined =>
+
+const bytesOf = (reply: Protocol.Reply | undefined): Uint8Array | undefined =>
   reply?._tag === "BlobString" ? reply.value : reply?._tag === "SimpleString" ? encoder.encode(reply.value) : undefined
+
+const redirectPattern = /^(MOVED|ASK) \d+ (\S*):(\d+)$/
+
+interface Generation {
+  readonly scope: Scope.Closeable
+  readonly connection: RedisConnection
+  /** Completes when Redis drops a sharded subscription after a slot migration. */
+  readonly restart: Deferred.Deferred<void>
+}
 
 /**
  * Acquires an acknowledged subscription and restores it after connection loss.
@@ -75,86 +87,76 @@ export const make = Effect.fnUntraced(
   function*(client: RedisClient, channel: Protocol.Argument, options: Options = {}) {
     const capacity = options.capacity ?? 1024
     if (!Number.isSafeInteger(capacity) || capacity < 1) {
-      return yield* Effect.fail(
-        new RedisError({
-          reason: "Capacity",
-          message: "Subscription capacity must be a positive integer",
-          outcome: "NotSent"
-        })
-      )
+      return yield* Effect.fail(notSent("Capacity", "Subscription capacity must be a positive integer"))
     }
-    const parent = yield* Effect.scope
-    const scope = yield* Scope.fork(parent)
-    const messages = yield* Queue.bounded<Message, RedisError>(capacity)
-    const overflow = yield* Deferred.make<never, RedisError>()
     const mode = options.mode ?? "channel"
-    const target = typeof channel === "string" ? channel : Uint8Array.from(channel)
     const command = mode === "pattern" ? "PSUBSCRIBE" : mode === "sharded" ? "SSUBSCRIBE" : "SUBSCRIBE"
-    let activeScope: Scope.Closeable | undefined
-    let overflowing = false
-    const close = Scope.close(scope, Exit.void)
-    yield* Scope.addFinalizer(scope, Queue.shutdown(messages))
+    const target = typeof channel === "string" ? channel : channel.slice()
+    const topology = client.config.topology
 
-    let lastEndpoint: Endpoint | undefined
-    const connectOnce = (node?: Endpoint, asking = false) =>
+    const scope = yield* Scope.fork(yield* Effect.scope)
+    const close = Scope.close(scope, Exit.void)
+    const messages = yield* Queue.bounded<Message, RedisError>(capacity)
+    yield* Scope.addFinalizer(scope, Queue.shutdown(messages))
+    let overflowed = false
+
+    const onPush = (restart: Deferred.Deferred<void>) => (reply: Protocol.Reply) => {
+      while (reply._tag === "Attribute") reply = reply.value
+      if (reply._tag !== "Push" && reply._tag !== "Array") return
+      const kind = decoder.decode(bytesOf(reply.values[0]))
+      if (mode === "sharded" && kind === "sunsubscribe") {
+        Deferred.doneUnsafe(restart, Effect.void)
+        return
+      }
+      const isPattern = kind === "pmessage"
+      if (kind !== "message" && kind !== "smessage" && !isPattern) return
+      const offset = isPattern ? 1 : 0
+      const destination = bytesOf(reply.values[offset + 1])
+      const message = bytesOf(reply.values[offset + 2])
+      if (destination === undefined || message === undefined) return
+      const pattern = isPattern ? bytesOf(reply.values[1]) : undefined
+      if (!Queue.offerUnsafe(messages, { channel: destination, message, pattern }) && !overflowed) {
+        overflowed = true
+        Queue.failCauseUnsafe(
+          messages,
+          Cause.fail(new RedisError({ reason: "Capacity", message: "Redis subscription message capacity exceeded" }))
+        )
+        Deferred.doneUnsafe(restart, Effect.void)
+      }
+    }
+
+    const subscribeAt = (node: Endpoint | undefined, asking: boolean): Effect.Effect<Generation, RedisError> =>
       Effect.gen(function*() {
-        const child = yield* Scope.fork(scope)
-        activeScope = child
-        const restart = yield* Deferred.make<void>()
-        const connection = yield* client.reserve(
-          node !== undefined ? { node } : mode === "sharded" ? { key: target } : {}
-        ).pipe(
-          Effect.provideService(Scope.Scope, child),
-          Effect.onError(() => Scope.close(child, Exit.void))
+        const generationScope = yield* Scope.fork(scope)
+        const restart = Deferred.makeUnsafe<void>()
+        const affinity = node !== undefined ? { node } : mode === "sharded" ? { key: target } : {}
+        return yield* Effect.gen(function*() {
+          const connection = yield* client.reserve(affinity)
+          const remove = connection.onPush(onPush(restart))
+          yield* Scope.addFinalizer(generationScope, Effect.sync(remove))
+          if (asking) yield* connection.execute(["ASKING"])
+          yield* connection.execute([command, target])
+          return { scope: generationScope, connection, restart }
+        }).pipe(
+          Scope.provide(generationScope),
+          Effect.onError(() => Scope.close(generationScope, Exit.void))
         )
-        lastEndpoint = connection.endpoint
-        const remove = connection.onPush((reply) => {
-          while (reply._tag === "Attribute") reply = reply.value
-          if (reply._tag !== "Push" && reply._tag !== "Array") return
-          const kindBytes = binary(reply.values[0])
-          const kind = kindBytes === undefined ? "" : decoder.decode(kindBytes)
-          // Redis removes sharded subscriptions when their slot changes owner,
-          // without closing the physical connection. Re-resolve that generation.
-          if (mode === "sharded" && kind === "sunsubscribe") {
-            Deferred.doneUnsafe(restart, Effect.void)
-            return
-          }
-          const isPattern = kind === "pmessage"
-          if (kind !== "message" && kind !== "smessage" && !isPattern) return
-          const destination = binary(reply.values[isPattern ? 2 : 1])
-          const payload = binary(reply.values[isPattern ? 3 : 2])
-          const pattern = isPattern ? binary(reply.values[1]) : undefined
-          if (destination === undefined || payload === undefined) return
-          if (!Queue.offerUnsafe(messages, { channel: destination, message: payload, pattern }) && !overflowing) {
-            overflowing = true
-            const error = new RedisError({
-              reason: "Capacity",
-              message: "Redis subscription message capacity exceeded"
-            })
-            Queue.failCauseUnsafe(messages, Cause.fail(error))
-            Deferred.doneUnsafe(overflow, Effect.fail(error))
-          }
-        })
-        yield* Scope.addFinalizer(child, Effect.sync(remove))
-        yield* (asking ? connection.execute(["ASKING"]).pipe(Effect.asVoid) : Effect.void).pipe(
-          Effect.andThen(connection.execute([command, target])),
-          Effect.onError(() => Scope.close(child, Exit.void))
-        )
-        return { connection, restart }
       })
-    const connect = Effect.gen(function*() {
-      const topology = client.config.topology
-      const limit = topology?._tag === "Cluster" ? topology.maxRedirects ?? 5 : 0
+
+    // Sharded channels live on the slot owner, so follow Cluster redirects.
+    const subscribe = Effect.gen(function*() {
+      const maxRedirects = topology?._tag === "Cluster" ? topology.maxRedirects ?? 5 : 0
       let node: Endpoint | undefined
       let asking = false
       for (let redirects = 0;; redirects++) {
-        const result = yield* Effect.result(connectOnce(node, asking))
+        const result = yield* Effect.result(subscribeAt(node, asking))
         if (result._tag === "Success") return result.success
         const error = result.failure
-        if (mode !== "sharded" || topology?._tag !== "Cluster" || (error.code !== "MOVED" && error.code !== "ASK")) {
+        const match = redirectPattern.exec(error.message)
+        if (mode !== "sharded" || topology?._tag !== "Cluster" || error.reason !== "Server" || match === null) {
           return yield* Effect.fail(error)
         }
-        if (redirects >= limit) {
+        if (redirects >= maxRedirects) {
           return yield* Effect.fail(
             new RedisError({
               reason: "Routing",
@@ -164,83 +166,43 @@ export const make = Effect.fnUntraced(
             })
           )
         }
-        const match = /^(MOVED|ASK) (\d+) (.*):(\d+)$/.exec(error.message)
-        const port = match === null ? NaN : Number(match[4])
-        const slot = match === null ? NaN : Number(match[2])
-        if (match === null || port < 1 || port > 65535 || slot < 0 || slot > 16383) return yield* Effect.fail(error)
-        const host = match[3].replace(/^\[|\]$/g, "") || lastEndpoint!.host
-        node = { host, port, tls: lastEndpoint?.tls }
-        if (topology.mapAddress !== undefined) {
-          const redirected = node
-          node = yield* Effect.try({
-            try: () => topology.mapAddress!(redirected),
-            catch: (cause) =>
-              new RedisError({
-                reason: "Routing",
-                message: "Redis subscription address mapping failed",
-                cause,
-                outcome: "NotSent"
-              })
-          })
+        const redirected = {
+          host: match[2].replace(/^\[(.*)\]$/, "$1"),
+          port: Number(match[3]),
+          tls: topology.seeds[0]?.tls
         }
+        node = topology.mapAddress === undefined ? redirected : topology.mapAddress(redirected)
         asking = match[1] === "ASK"
-        yield* Effect.ignoreCause(client.refresh)
+        yield* Effect.ignore(client.refresh)
       }
     })
-    let generation: { readonly connection: RedisConnection; readonly restart: Deferred.Deferred<void> } = yield* connect
-      .pipe(Effect.onError(() => close))
+
+    let generation = yield* subscribe.pipe(Effect.onError(() => close))
+
+    const reconnect = Effect.gen(function*() {
+      while (true) {
+        yield* Effect.sleep(client.config.reconnectDelay ?? "100 millis")
+        yield* Effect.ignore(client.refresh)
+        const result = yield* Effect.result(subscribe)
+        if (result._tag === "Success") return result.success
+      }
+    })
+
     const listen = Effect.gen(function*() {
       while (true) {
-        yield* Effect.result(Effect.raceFirst(
-          Effect.raceFirst(generation.connection.closed, Deferred.await(generation.restart)),
-          Deferred.await(overflow)
-        ))
-        if (activeScope !== undefined) yield* Scope.close(activeScope, Exit.void)
-        if (overflowing) return
-        let connected = false
-        while (!connected) {
-          yield* Effect.sleep(client.config.reconnectDelay ?? "100 millis")
-          yield* Effect.ignoreCause(client.refresh)
-          const result = yield* Effect.result(connect)
-          if (result._tag === "Success") {
-            generation = result.success
-            connected = true
-          }
-        }
+        yield* Effect.exit(Effect.raceFirst(generation.connection.closed, Deferred.await(generation.restart)))
+        yield* Scope.close(generation.scope, Exit.void)
+        if (overflowed) return
+        generation = yield* reconnect
       }
     })
-    const clientClosed = client.closed.pipe(
-      Effect.andThen(Effect.sync(() => {
-        Queue.failCauseUnsafe(
-          messages,
-          Cause.fail(
-            new RedisError({
-              reason: "Closed",
-              message: "Redis client scope closed",
-              outcome: "NotSent"
-            })
-          )
-        )
-      })),
-      Effect.andThen(
-        Effect.suspend(() => activeScope === undefined ? Effect.void : Scope.close(activeScope, Exit.void))
-      )
+
+    const onClientClosed = client.closed.pipe(
+      Effect.andThen(Queue.fail(messages, notSent("Closed", "Redis client scope closed"))),
+      Effect.andThen(Effect.suspend(() => Scope.close(generation.scope, Exit.void)))
     )
-    const guardedListen = listen.pipe(Effect.onError((cause) =>
-      Cause.hasInterruptsOnly(cause)
-        ? Effect.void
-        : Queue.failCause(messages, cause).pipe(
-          Effect.andThen(
-            Effect.suspend(() => activeScope === undefined ? Effect.void : Scope.close(activeScope, Exit.void))
-          )
-        )
-    ))
-    yield* Effect.forkScoped(
-      Effect.raceFirst(guardedListen, clientClosed).pipe(Effect.provideService(Scope.Scope, scope))
-    )
-      .pipe(
-        Effect.provideService(Scope.Scope, scope)
-      )
+
+    yield* Effect.raceFirst(listen, onClientClosed).pipe(Effect.forkIn(scope))
     return { messages: Queue.asDequeue(messages), close } satisfies RedisSubscription
   }
 )

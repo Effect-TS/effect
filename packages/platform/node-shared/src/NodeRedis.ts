@@ -25,6 +25,8 @@ import type { Duplex } from "node:stream"
 import type * as Tls from "node:tls"
 import { makeConnector } from "./internal/redisTransport.ts"
 
+const decoder = new TextDecoder()
+
 /**
  * Native client configuration with Node socket and URL settings.
  *
@@ -58,54 +60,39 @@ export interface Options extends RedisClient.Config {
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(options: Options = {}) {
+  const { connectTimeout, socket, stream, url: urlOption, ...config } = options
+  const invalid = (message: string) => new RedisError({ reason: "Connection", message, outcome: "NotSent" })
   let url: URL | undefined
-  if (options.url !== undefined) {
-    const source = Redacted.isRedacted(options.url) ? Redacted.value(options.url) : options.url
-    url = yield* Effect.try({
-      try: () => new URL(source),
-      catch: () => new RedisError({ reason: "Connection", message: "Invalid Redis URL", outcome: "NotSent" })
-    })
+  if (urlOption !== undefined) {
+    const source = Redacted.isRedacted(urlOption) ? Redacted.value(urlOption) : urlOption
+    url = yield* Effect.try({ try: () => new URL(source), catch: () => invalid("Invalid Redis URL") })
     if (url.protocol !== "redis:" && url.protocol !== "rediss:") {
-      return yield* Effect.fail(
-        new RedisError({ reason: "Connection", message: "Redis URL must use redis or rediss", outcome: "NotSent" })
-      )
+      return yield* Effect.fail(invalid("Redis URL must use redis or rediss"))
     }
   }
-  const database = options.database ?? (url?.pathname && url.pathname !== "/" ? Number(url.pathname.slice(1)) : 0)
-  const port = options.socket?.port ?? (url?.port ? Number(url.port) : 6379)
+  const database = config.database ?? (url?.pathname && url.pathname !== "/" ? Number(url.pathname.slice(1)) : 0)
+  const port = socket?.port ?? (url?.port ? Number(url.port) : 6379)
   if (!Number.isSafeInteger(database) || database < 0 || !Number.isSafeInteger(port) || port < 1 || port > 65535) {
-    return yield* Effect.fail(
-      new RedisError({ reason: "Connection", message: "Invalid Redis port or database", outcome: "NotSent" })
-    )
+    return yield* Effect.fail(invalid("Invalid Redis port or database"))
   }
-  const decoded = (value: string | undefined) =>
+  const decode = (value: string | undefined) =>
     Effect.try({
       try: () => value ? decodeURIComponent(value) : undefined,
-      catch: () =>
-        new RedisError({ reason: "Connection", message: "Invalid Redis URL credential encoding", outcome: "NotSent" })
+      catch: () => invalid("Invalid Redis URL credential encoding")
     })
-  const username = options.username ?? (yield* decoded(url?.username))
-  const password = options.password ?? (yield* decoded(url?.password))
-  const tls = options.socket?.tls ?? (url?.protocol === "rediss:")
-  return yield* RedisClient.make(makeConnector({ connectTimeout: options.connectTimeout, stream: options.stream }), {
-    username,
+  const password = config.password ?? (yield* decode(url?.password))
+  const tls = socket?.tls ?? url?.protocol === "rediss:"
+  return yield* RedisClient.make(makeConnector({ connectTimeout, stream }), {
+    ...config,
+    username: config.username ?? (yield* decode(url?.username)),
     password: typeof password === "string" ? Redacted.make(password) : password,
     database,
-    protocol: options.protocol,
-    clientName: options.clientName,
-    commandTimeout: options.commandTimeout,
-    maxPendingCommands: options.maxPendingCommands,
-    maxQueuedBytes: options.maxQueuedBytes,
-    maxFrameSize: options.maxFrameSize,
-    maxDepth: options.maxDepth,
-    maxAggregateLength: options.maxAggregateLength,
-    reconnectDelay: options.reconnectDelay,
-    topology: options.topology ?? {
+    topology: config.topology ?? {
       _tag: "Standalone",
       endpoint: {
-        host: options.socket?.host ?? url?.hostname.replace(/^\[|\]$/g, "") ?? "127.0.0.1",
+        host: socket?.host ?? url?.hostname.replace(/^\[(.*)\]$/, "$1") ?? "127.0.0.1",
         port,
-        path: options.socket?.path,
+        path: socket?.path,
         tls: typeof tls === "object" ? { ...tls } : tls
       }
     }
@@ -157,10 +144,7 @@ export const makeContext = Effect.fnUntraced(function*(options: Options = {}) {
             Effect.mapError((cause) => new Redis.RedisError({ cause })),
             Effect.flatMap((message) =>
               Effect.sync(() =>
-                onMessage({
-                  channel: new TextDecoder().decode(message.channel),
-                  message: new TextDecoder().decode(message.message)
-                })
+                onMessage({ channel: decoder.decode(message.channel), message: decoder.decode(message.message) })
               )
             )
           )

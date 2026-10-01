@@ -9,8 +9,6 @@
 
 Add `@effect/redis`, a native general-purpose client supporting standalone, Cluster, Sentinel, RESP2/3, transactions, and Pub/Sub. NodeRedis, BunRedis, and DenoRedis use the same client and shared socket transport, replacing the external `redis` and `@db/redis` integrations and Bun's built-in Redis client.
 
-Reduce per-command allocations, reply parsing overhead, and binary pipeline allocations while retaining input snapshots, batched execution, and the optimized idle socket write path.
-
 ### Breaking changes
 
 - Migrate each adapter's raw `client` and Promise-based `use` to native Effect operations (`run`, `execute`, and `reserve`) and its new `Options`. Deno's `hostname` and `db` become `socket.host` and `database`; Bun's `connectionTimeout` becomes `connectTimeout`. Configure Bun's URL explicitly or through `layerConfig` instead of relying on implicit environment defaults. URL query parameters and former driver-specific options no longer configure connections.
