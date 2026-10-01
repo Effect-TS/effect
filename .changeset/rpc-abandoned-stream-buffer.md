@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Release a stream chunk delivery blocked on a full buffer when the stream's consumer is interrupted, so it no longer stalls the protocol receive loop shared by every other request.
+Fix `RpcClient` stream interruption leaving chunk delivery blocked on a full buffer and stalling the shared protocol receive loop.
