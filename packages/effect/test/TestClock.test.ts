@@ -1,7 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Clock from "effect/Clock"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
+import * as Latch from "effect/Latch"
+import * as Queue from "effect/Queue"
+import * as Semaphore from "effect/Semaphore"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("TestClock", () => {
@@ -139,4 +145,80 @@ describe("TestClock", () => {
       Effect.provide(TestClock.layer({})),
       Effect.runPromise
     ))
+
+  // Work woken by a timer runs at that timer's time: before the clock moves
+  // past it and before adjust returns. That covers any chain of cross-fiber
+  // wakes, followed by one step that a primitive schedules on a dispatcher
+  // (Queue, Semaphore, Latch.open, a fork start), which is what the clock's
+  // yield after each timer already guaranteed when wakes were synchronous.
+  describe("wakes at the current time", () => {
+    // Each hop waits for the previous one, then records the time it ran at
+    type Hop = (wait: Effect.Effect<void>, record: Effect.Effect<void>) => Effect.Effect<Effect.Effect<void>>
+
+    const hops: Record<string, Hop> = {
+      Deferred: (wait, record) =>
+        Effect.gen(function*() {
+          const deferred = yield* Deferred.make<void>()
+          yield* Effect.forkChild(Effect.andThen(wait, Deferred.succeed(deferred, undefined)))
+          return Effect.andThen(Deferred.await(deferred), record)
+        }),
+      Queue: (wait, record) =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.unbounded<void>()
+          yield* Effect.forkChild(Effect.andThen(wait, Queue.offer(queue, undefined)))
+          return Effect.andThen(Queue.take(queue), record)
+        }),
+      Semaphore: (wait, record) =>
+        Effect.gen(function*() {
+          const semaphore = yield* Semaphore.make(1)
+          yield* semaphore.take(1)
+          yield* Effect.forkChild(Effect.andThen(wait, semaphore.release(1)))
+          return Effect.andThen(semaphore.take(1), record)
+        }),
+      "Latch.open": (wait, record) =>
+        Effect.gen(function*() {
+          const latch = yield* Latch.make(false)
+          yield* Effect.forkChild(Effect.andThen(wait, latch.open))
+          return Effect.andThen(latch.await, record)
+        }),
+      "fork start": (wait, record) =>
+        Effect.gen(function*() {
+          const started = yield* Deferred.make<void>()
+          yield* Effect.forkChild(
+            Effect.andThen(wait, Effect.forkDetach(Effect.andThen(record, Deferred.succeed(started, undefined))))
+          )
+          return Deferred.await(started)
+        })
+    }
+
+    // A timer at 1 second starts a chain of hops, and a second timer at 2
+    // seconds records too. The clock is adjusted to each in turn.
+    const run = (kinds: ReadonlyArray<string>) =>
+      Effect.gen(function*() {
+        const seen: Array<string> = []
+        const record = (label: string) =>
+          Effect.flatMap(Clock.currentTimeMillis, (millis) => Effect.sync(() => seen.push(`${label} at ${millis}`)))
+        let wait: Effect.Effect<void> = Effect.andThen(Effect.sleep("1 second"), record("timer"))
+        for (let i = 0; i < kinds.length; i++) {
+          wait = yield* hops[kinds[i]](wait, record(`hop ${i + 1}`))
+        }
+        yield* Effect.forkChild(wait)
+        yield* Effect.forkChild(Effect.andThen(Effect.sleep("2 seconds"), record("later timer")))
+        yield* TestClock.adjust("1 second")
+        const afterFirstAdjust = [...seen]
+        yield* TestClock.adjust("1 second")
+        const hopsAt1000 = kinds.map((_, i) => `hop ${i + 1} at 1000`)
+        assert.deepStrictEqual(afterFirstAdjust, ["timer at 1000", ...hopsAt1000])
+        assert.deepStrictEqual(seen, ["timer at 1000", ...hopsAt1000, "later timer at 2000"])
+      })
+
+    it.effect("a chain of Deferred wakes", () => run(["Deferred", "Deferred", "Deferred"]))
+
+    for (const kind of ["Queue", "Semaphore", "Latch.open", "fork start"]) {
+      it.effect(`a ${kind} step`, () => run([kind]))
+
+      it.effect(`a chain of Deferred wakes followed by a ${kind} step`, () =>
+        run(["Deferred", "Deferred", "Deferred", kind]))
+    }
+  })
 })
