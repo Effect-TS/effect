@@ -3,7 +3,7 @@ import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, S
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
-import { RpcClientError } from "effect/rpc/RpcClientError"
+import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
 import * as Worker from "effect/workers/Worker"
@@ -93,6 +93,30 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  it.effect("does not fail a new request started synchronously during protocol error delivery", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
+      })
+      const caller = yield* client.Unary().pipe(
+        Effect.catch((received) => {
+          assert.strictEqual(received, error)
+          return client.Unary()
+        }),
+        Effect.exit,
+        Effect.forkChild
+      )
+      takeRequestId(yield* Queue.take(sent))
+      // Let the first call suspend before delivering the error.
+      yield* Effect.yieldNow
+      yield* handle({ _tag: "ClientProtocolError", error })
+
+      const retryRequestId = takeRequestId(yield* Queue.take(sent))
+      yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
