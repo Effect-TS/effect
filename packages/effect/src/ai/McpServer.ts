@@ -1713,7 +1713,7 @@ function mcpJsonRpcSerialization(options?: {
   })
 }
 
-const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse, subscription = false) => {
+const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse, keepAlive: boolean) => {
   const encoder = new TextEncoder()
   const decoder = new TextDecoder()
   const frame = (data: Uint8Array) =>
@@ -1726,17 +1726,16 @@ const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse, sub
     contentType: "text/event-stream"
   }
   if (response.body._tag === "Stream") {
-    const messages = response.body.stream.pipe(Stream.map(frame))
-    const body = subscription
-      ? messages.pipe(Stream.merge(
-        Stream.tick("15 seconds").pipe(
-          Stream.drop(1),
-          Stream.map(() => encoder.encode(": keepalive\n\n"))
-        ),
-        { haltStrategy: "left" }
-      ))
-      : messages
-    return HttpServerResponse.stream(body, options)
+    const events = response.body.stream.pipe(Stream.map(frame))
+    if (!keepAlive) {
+      return HttpServerResponse.stream(events, options)
+    }
+    // Idle subscriptions otherwise have no pending timer or I/O, which workerd treats as a hung request.
+    const keepAliveComments = Stream.tick("15 seconds").pipe(
+      Stream.drop(1),
+      Stream.map(() => encoder.encode(": keepalive\n\n"))
+    )
+    return HttpServerResponse.stream(Stream.merge(events, keepAliveComments, { haltStrategy: "left" }), options)
   }
   if (response.body._tag === "Uint8Array") {
     return HttpServerResponse.uint8Array(frame(response.body.body), options)
