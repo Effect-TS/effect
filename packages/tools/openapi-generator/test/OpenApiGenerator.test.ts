@@ -1140,7 +1140,7 @@ export const TestClientError = <Tag extends string, E>(
                         }
                       }
                     }
-                  } as any,
+                  },
                   responses: { "204": { description: "Transcribed" } },
                   tags: ["Audio"],
                   security: []
