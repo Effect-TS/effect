@@ -2098,6 +2098,93 @@ describe("Effect", () => {
   })
 
   describe("interruption", () => {
+    for (const name of ["catch", "catchCause"] as const) {
+      for (const cause of [Cause.fail(42), Cause.die("defect"), Cause.combine(Cause.fail(42), Cause.die("defect"))]) {
+        it.effect(`pending interruption strips failures and preserves defects with ${name}: ${cause}`, () =>
+          Effect.gen(function*() {
+            const resume = yield* Latch.make()
+            let caught = false
+            const effect = Effect.uninterruptible(Effect.andThen(resume.await, Effect.failCause(cause)))
+            const recover = () => {
+              caught = true
+              return Effect.succeed(0)
+            }
+            const child = yield* (name === "catch" ? Effect.catch(effect, recover) : Effect.catchCause(effect, recover))
+              .pipe(Effect.forkChild({ startImmediately: true }))
+
+            child.interruptUnsafe(123)
+            assert.isUndefined(child.pollUnsafe())
+            yield* resume.open
+            const exit = yield* Fiber.await(child)
+
+            assert.isFalse(caught)
+            assert.isTrue(Exit.isFailure(exit))
+            if (Exit.isFailure(exit)) {
+              assert.isFalse(Cause.hasFails(exit.cause))
+              assert.deepStrictEqual(Cause.interruptors(exit.cause), new Set([123]))
+              assert.deepStrictEqual(
+                exit.cause.reasons.filter((reason) => reason._tag === "Die"),
+                cause.reasons.filter((reason) => reason._tag === "Die")
+              )
+            }
+          }))
+      }
+    }
+
+    it.effect("an outer uninterruptible handler observes the interruption after an inner handler is skipped", () =>
+      Effect.gen(function*() {
+        const resume = yield* Latch.make()
+        let caught = false
+        let observed: Exit.Exit<number> | undefined
+        const child = yield* Effect.uninterruptible(
+          Effect.exit(Effect.interruptible(
+            Effect.uninterruptible(Effect.andThen(resume.await, Effect.fail(42))).pipe(
+              Effect.catch(() => {
+                caught = true
+                return Effect.succeed(0)
+              })
+            )
+          )).pipe(Effect.tap((exit) => {
+            observed = exit
+            return Effect.void
+          }))
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+
+        child.interruptUnsafe(123)
+        yield* resume.open
+        yield* Fiber.await(child)
+
+        assert.isFalse(caught)
+        assert.isDefined(observed)
+        const exit = observed!
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.isTrue(Cause.hasInterruptsOnly(exit.cause))
+          assert.deepStrictEqual(Cause.interruptors(exit.cause), new Set([123]))
+        }
+      }))
+
+    it.effect("a handler inside an uninterruptible region still recovers a failure with interruption pending", () =>
+      Effect.gen(function*() {
+        const resume = yield* Latch.make()
+        let caught: number | undefined
+        const child = yield* Effect.uninterruptible(
+          Effect.andThen(resume.await, Effect.fail(42)).pipe(
+            Effect.catch((error) => {
+              caught = error
+              return Effect.succeed(0)
+            })
+          )
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+
+        child.interruptUnsafe(123)
+        yield* resume.open
+        const exit = yield* Fiber.await(child)
+
+        assert.strictEqual(caught, 42)
+        assert.isTrue(Exit.hasInterrupts(exit))
+      }))
+
     it("a map callback that interrupts its own fiber skips the next map", () => {
       let ran = false
       const exit = Effect.runSyncExit(

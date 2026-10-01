@@ -279,6 +279,48 @@ export const causeFromReasons = <E>(
   reasons: ReadonlyArray<Cause.Reason<E>>
 ): Cause.Cause<E> => new CauseImpl(reasons)
 
+const dedupeReasons = <E>(
+  self: ReadonlyArray<Cause.Reason<E>>,
+  that: ReadonlyArray<Cause.Reason<E>>
+): Array<Cause.Reason<E>> => {
+  // Keep deduplication local so causeCombine does not retain Array.ts in the core bundle.
+  // Snapshot both arrays before invoking user-defined hash or equality methods.
+  const buckets = new Map<number, Array<Cause.Reason<E>>>()
+  const out: Array<Cause.Reason<E>> = []
+  for (const reason of self.concat(that)) {
+    const hash = Hash.hash(reason)
+    const bucket = buckets.get(hash)
+    if (bucket === undefined) {
+      buckets.set(hash, [reason])
+    } else if (bucket.some((previous) => Equal.equals(previous, reason))) {
+      continue
+    } else {
+      bucket.push(reason)
+    }
+    out.push(reason)
+  }
+  return out
+}
+
+/** @internal */
+export const causeCombine: {
+  <E2>(that: Cause.Cause<E2>): <E>(self: Cause.Cause<E>) => Cause.Cause<E | E2>
+  <E, E2>(self: Cause.Cause<E>, that: Cause.Cause<E2>): Cause.Cause<E | E2>
+} = dual(
+  2,
+  <E, E2>(self: Cause.Cause<E>, that: Cause.Cause<E2>): Cause.Cause<E | E2> => {
+    if (self.reasons.length === 0) {
+      return that as Cause.Cause<E | E2>
+    } else if (that.reasons.length === 0) {
+      return self as Cause.Cause<E | E2>
+    }
+    const newCause = new CauseImpl<E | E2>(
+      dedupeReasons<E | E2>(self.reasons, that.reasons)
+    )
+    return Equal.equals(self, newCause) ? self : newCause
+  }
+)
+
 /** @internal */
 export const causeEmpty: Cause.Cause<never> = new CauseImpl([])
 
@@ -546,7 +588,15 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
       annotated = true
     }
     let cont = fiber.getCont(contE)
-    while (fiber.interruptible && fiber._interruptedCause && cont) {
+    while (fiber.interruptible && fiber._interruptedCause) {
+      // Strip typed failures when skipping a handler, but preserve failures that
+      // only pass through synthetic interruptibility restoration continuations.
+      if (cont && identifier in cont) {
+        cause = causeFromReasons(cause.reasons.filter((reason) => reason._tag !== "Fail"))
+      }
+      cause = causeCombine(cause, fiber._interruptedCause)
+      annotated = true
+      if (!cont) break
       cont = fiber.getCont(contE)
     }
     return cont

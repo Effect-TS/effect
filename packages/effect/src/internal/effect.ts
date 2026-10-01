@@ -50,6 +50,7 @@ import type { Primitive } from "./core.ts"
 import {
   args,
   causeAnnotate,
+  causeCombine,
   causeDie,
   causeEmpty,
   causeFromReasons,
@@ -238,47 +239,7 @@ export const causeAnnotations = <E>(
   return Context.makeUnsafe(map)
 }
 
-const dedupeReasons = <E>(
-  self: ReadonlyArray<Cause.Reason<E>>,
-  that: ReadonlyArray<Cause.Reason<E>>
-): Array<Cause.Reason<E>> => {
-  // Keep deduplication local so causeCombine does not retain Array.ts in the core bundle.
-  // Snapshot both arrays before invoking user-defined hash or equality methods.
-  const buckets = new Map<number, Array<Cause.Reason<E>>>()
-  const out: Array<Cause.Reason<E>> = []
-  for (const reason of self.concat(that)) {
-    const hash = Hash.hash(reason)
-    const bucket = buckets.get(hash)
-    if (bucket === undefined) {
-      buckets.set(hash, [reason])
-    } else if (bucket.some((previous) => Equal.equals(previous, reason))) {
-      continue
-    } else {
-      bucket.push(reason)
-    }
-    out.push(reason)
-  }
-  return out
-}
-
-/** @internal */
-export const causeCombine: {
-  <E2>(that: Cause.Cause<E2>): <E>(self: Cause.Cause<E>) => Cause.Cause<E | E2>
-  <E, E2>(self: Cause.Cause<E>, that: Cause.Cause<E2>): Cause.Cause<E | E2>
-} = dual(
-  2,
-  <E, E2>(self: Cause.Cause<E>, that: Cause.Cause<E2>): Cause.Cause<E | E2> => {
-    if (self.reasons.length === 0) {
-      return that as Cause.Cause<E | E2>
-    } else if (that.reasons.length === 0) {
-      return self as Cause.Cause<E | E2>
-    }
-    const newCause = new CauseImpl<E | E2>(
-      dedupeReasons<E | E2>(self.reasons, that.reasons)
-    )
-    return Equal.equals(self, newCause) ? self : newCause
-  }
-)
+export { causeCombine } from "./core.ts"
 
 /** @internal */
 export const causeMap: {
