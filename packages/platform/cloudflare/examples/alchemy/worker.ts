@@ -6,13 +6,13 @@
  */
 import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
 import * as Cloudflare from "alchemy/Cloudflare"
+import { Entity, Singleton } from "effect/cluster"
 import * as Effect from "effect/Effect"
+import { HttpServerRequest } from "effect/http/HttpServerRequest"
+import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
+import { Rpc } from "effect/rpc"
 import * as Schema from "effect/Schema"
-import { Entity, Singleton } from "effect/unstable/cluster"
-import { HttpServerRequest } from "effect/unstable/http/HttpServerRequest"
-import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
-import { Rpc } from "effect/unstable/rpc"
 
 const Counter = Entity.make("Counter", [
   Rpc.make("Increment", { success: Schema.Number })

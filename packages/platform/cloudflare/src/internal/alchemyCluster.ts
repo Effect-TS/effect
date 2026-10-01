@@ -6,11 +6,11 @@
  *
  * @internal
  */
+import type * as Entity from "effect/cluster/Entity"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import type * as Entity from "effect/unstable/cluster/Entity"
 import * as CloudflareCluster from "../CloudflareCluster.ts"
 import type { Cluster } from "./cluster.ts"
 

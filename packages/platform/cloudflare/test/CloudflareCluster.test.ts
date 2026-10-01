@@ -6,16 +6,8 @@ import {
 } from "@effect/platform-cloudflare/internal/entityReply"
 import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
-import {
-  ClusterSchema,
-  DeliverAt,
-  Entity,
-  EntityProxy,
-  EntityProxyServer,
-  Sharding,
-  Singleton
-} from "effect/unstable/cluster"
-import { Rpc, RpcSchema, RpcTest } from "effect/unstable/rpc"
+import { ClusterSchema, DeliverAt, Entity, EntityProxy, EntityProxyServer, Sharding, Singleton } from "effect/cluster"
+import { Rpc, RpcSchema, RpcTest } from "effect/rpc"
 
 const User = Entity.make("User", [
   Rpc.make("Ping", { success: Schema.String })

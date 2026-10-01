@@ -40,12 +40,12 @@
  * @since 4.0.0
  */
 import * as Cloudflare from "alchemy/Cloudflare"
+import type * as Entity from "effect/cluster/Entity"
+import type { Sharding } from "effect/cluster/Sharding"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
-import type * as Entity from "effect/unstable/cluster/Entity"
-import type { Sharding } from "effect/unstable/cluster/Sharding"
-import type { PersistedQueueFactory } from "effect/unstable/persistence/PersistedQueue"
-import type { WorkflowEngine } from "effect/unstable/workflow/WorkflowEngine"
+import type { PersistedQueueFactory } from "effect/persistence/PersistedQueue"
+import type { WorkflowEngine } from "effect/workflow/WorkflowEngine"
 import {
   type DurableObjectProgramState,
   makeClusterDurableQueueProgram,

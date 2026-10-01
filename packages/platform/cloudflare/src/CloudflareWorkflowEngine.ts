@@ -20,8 +20,8 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Workflow from "effect/unstable/workflow/Workflow"
-import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
+import * as Workflow from "effect/workflow/Workflow"
+import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { encodeName } from "./internal/clusterName.ts"
 import {
   CurrentExecutionHandle,

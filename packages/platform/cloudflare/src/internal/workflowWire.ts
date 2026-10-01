@@ -3,7 +3,7 @@ import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as Schema from "effect/Schema"
-import * as Workflow from "effect/unstable/workflow/Workflow"
+import * as Workflow from "effect/workflow/Workflow"
 import { runWith } from "./entityWire.ts"
 
 const AnyOrVoid = Schema.Union([Schema.Undefined, Schema.Any])

@@ -8,8 +8,8 @@ import { decodeRequest } from "@effect/platform-cloudflare/internal/entityWire"
 import { getSingletonRegistration } from "@effect/platform-cloudflare/internal/singletonRegistry"
 import { assert, describe, it } from "@effect/vitest"
 import { Cron, Effect, Layer, Option } from "effect"
+import { ClusterCron } from "effect/cluster"
 import { TestClock } from "effect/testing"
-import { ClusterCron } from "effect/unstable/cluster"
 
 interface MessageRow {
   readonly requestId: string

@@ -6,8 +6,8 @@ import { makeQueueRuntime, type QueueRuntime } from "@effect/platform-cloudflare
 import { earliestLeaseExpiry } from "@effect/platform-cloudflare/internal/queueStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, Schedule, Schema } from "effect"
-import * as PersistedQueueTest from "effect-test/unstable/persistence/PersistedQueueTest"
-import { PersistedQueue } from "effect/unstable/persistence"
+import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
+import { PersistedQueue } from "effect/persistence"
 
 interface ItemRow {
   readonly id: string
