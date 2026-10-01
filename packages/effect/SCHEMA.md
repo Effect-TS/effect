@@ -4669,9 +4669,9 @@ Serialization converts typed values into a format suitable for storage or transm
 
 ## JSON Support
 
-#### UnknownFromJsonString
+#### fromJsonString(Unknown)
 
-A schema that decodes a JSON-encoded string into an unknown value.
+`Schema.fromJsonString(Schema.Unknown)` decodes a JSON-encoded string into an unknown value.
 
 This schema takes a string as input and attempts to parse it as JSON during decoding. If parsing succeeds, the result is passed along as an unknown value. If the string is not valid JSON, decoding fails.
 
@@ -4682,7 +4682,7 @@ When encoding, any value is converted back into a JSON string using JSON.stringi
 ```ts
 import { Schema } from "effect"
 
-Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(`{"a":1,"b":2}`)
+Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(`{"a":1,"b":2}`)
 // => { a: 1, b: 2 }
 ```
 

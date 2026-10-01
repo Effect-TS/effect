@@ -839,8 +839,8 @@ effect/Schema#OptionFromUndefinedOr:
   replacement: Schema.OptionFromUndefinedOr
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#parseJson:
-  replacement: Schema.UnknownFromJsonString / Schema.fromJsonString(schema)
-  note: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
+  replacement: Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)
+  note: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 effect/Schema#ParseJsonOptions:
   replacement: none
   note: The old parse-json options type was removed; configure `fromJsonString` and its underlying getter directly.
