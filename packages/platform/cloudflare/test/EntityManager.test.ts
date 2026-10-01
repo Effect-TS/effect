@@ -7,8 +7,8 @@ import { makeEntityManager } from "@effect/platform-cloudflare/internal/entityRu
 import { ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Schema, Stream } from "effect"
-import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/unstable/cluster"
-import { Rpc, RpcSchema } from "effect/unstable/rpc"
+import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
+import { Rpc, RpcSchema } from "effect/rpc"
 import { DatabaseSync, type SQLInputValue } from "node:sqlite"
 
 class SqliteStorage {

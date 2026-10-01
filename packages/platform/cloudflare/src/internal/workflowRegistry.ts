@@ -9,8 +9,8 @@
  */
 import * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
-import type * as Workflow from "effect/unstable/workflow/Workflow"
-import * as WorkflowEngine from "effect/unstable/workflow/WorkflowEngine"
+import type * as Workflow from "effect/workflow/Workflow"
+import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import type { ClusterWorkflowRunOptions } from "../CloudflareDurableObjectPrograms.ts"
 import { makeRegistry } from "./registry.ts"
 
