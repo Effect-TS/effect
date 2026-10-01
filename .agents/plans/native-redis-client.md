@@ -6,17 +6,18 @@ Cluster, and Sentinel support are required in the first release before the
 node-redis dependency is removed. Persistence consumers provide compatibility
 coverage; they do not define the general client's capabilities.
 
-Status: the separate `@effect/redis` implementation through `784071a66`
-passed refreshed correctness and package gates. Matched comparisons support the
-retained performance changes. The completed eight-workload reference run
-establishes parity in seven workloads; sequential requests remain inconclusive,
-so overall performance acceptance is incomplete. The completed hosted baseline
-covers earlier `9f03aae4d`; final-source CI is pending at this checkpoint.
-Exact evidence is recorded
-below and in `native-redis-throughput.md`. The real-server matrix targets
-Redis 7.2.6 and 8.10.2. RESP2 is the default and RESP3 is opt-in. The persistence
-adapter supports standalone, Cluster, and Sentinel. Cluster uses per-identity
-hash tags for atomic multi-key operations.
+Status: NodeRedis, BunRedis, and DenoRedis all use the shared native engine.
+The Bun/Deno migration passed their actual runtime tests, both Redis 7/8
+mandatory manifests, and six-package strict/stripped consumer validation.
+Final-source hosted CI is pending at publication of this checkpoint.
+The retained performance baseline at `784071a66` establishes parity in seven
+of eight workloads; sequential requests remain inconclusive, so performance
+acceptance is incomplete. This migration relocates the transport without
+changing its bytes and adds runtime service bindings; it does not change Redis
+command execution. Exact evidence is recorded below and in
+`native-redis-throughput.md`. RESP2 is the default and RESP3 is opt-in.
+Persistence supports standalone, Cluster, and Sentinel; Cluster uses
+per-identity hash tags for atomic multi-key operations.
 
 ## Current implementation and migration
 
@@ -68,14 +69,16 @@ Configured deadlines, Sentinel, Cluster, and explicit-node routing retain the
 normal execution path. These implementation paths introduce no optional public
 operations or runtime-specific engine hooks.
 
-Redis protocol and topology logic are shared. Runtime connectors supply scoped
-byte transports; NodeRedis supplies the Node connector and service layers.
-Bun and Deno can use that connector through their Node compatibility APIs.
-The existing `@effect/platform-bun/BunRedis` adapter remains backed by Bun's
-built-in `RedisClient`; `@effect/platform-deno/DenoRedis` remains backed by
-`@db/redis`. Both still provide `effect/persistence/Redis` and their runtime
-service with raw `client`/`use`. They do not provide the new `RedisClient` service.
-Migrating those adapters to the shared driver is separate work.
+Redis protocol and topology logic live in `@effect/redis`. Shared platform
+construction and the byte transport live in
+`@effect/platform-node-shared/NodeRedis`. NodeRedis, BunRedis, and DenoRedis
+provide independent runtime tags for the same general client and persistence
+services. Bun and Deno use their Node compatibility socket APIs; both have
+migrated off their former Redis clients. The Deno `@db/redis` dependency and
+unused transitive packages are removed. All three modules expose native
+`Options`, `make`, `layer`, and `layerConfig`; raw `client`/Promise-based
+`use` migrate to native Effect operations. Migration details are in
+`packages/platform/node/REDIS.md`.
 
 The implemented interfaces cover:
 
@@ -430,3 +433,48 @@ Keep the PR draft until final performance acceptance passes and obtain successfu
 final-source hosted CI before release. Any further runtime change requires
 focused correctness, both mandatory Redis manifests, fresh packed consumers,
 and stable measurements before updating acceptance claims.
+
+## Bun and Deno migration validation
+
+All three runtime modules now expose `Options`, `make`, `layer`, and
+`layerConfig` through `@effect/platform-node-shared/NodeRedis`. Each runtime
+retains its own service identity and provides the same client under the generic
+Redis tag, together with the persistence service. The external Deno driver and
+its unused dependencies are removed. The one consolidated changeset includes
+all six affected packages and documents the raw-client/options/error migration.
+
+Validation on the migrated source:
+
+- Redis 7.2.6 and 8.10.2: both mandatory 11-file manifests passed 276 tests
+  without skips. Logs are `/tmp/native-redis-runtime-migration-redis7.log` and
+  `/tmp/native-redis-runtime-migration-redis8.log`.
+- Bun 1.4.0: both module-named files passed all 10 tests without skips,
+  including configured service identity, scoped cleanup, interrupted/failed
+  acquisition, binary RESP2/3, transactions, Pub/Sub, Lua/SCAN, Cluster,
+  Sentinel, Unix sockets, and trusted/untrusted/wrong-host RSA TLS.
+  Report: `/tmp/native-redis-bun-migration-verified.json`.
+- Deno 2.9.4: the existing module-named integration file passed all 28 tests
+  without skips, including persistence compatibility, native commands,
+  topology bindings, Unix sockets, and Ed25519 TLS trust/hostname validation.
+  Explicit source/test `deno check --no-lock --node-modules-dir=manual`
+  passed. Report: `/tmp/native-redis-deno-binding-report.json`.
+- Root `pnpm lint-fix`, `pnpm check`, and `pnpm jsdocs --check` passed.
+  A full local `deno check .` encountered generated package AI docs from
+  local builds; explicit affected source/test checking passed instead. Fresh
+  hosted CI remains required. Deno's automatic root workspace edit was removed.
+- Six fresh builds/tarballs passed all 12 public Redis entrypoints with
+  `skipLibCheck: false`, including stripped declarations from Redis, shared,
+  Node, Bun, and Deno packages. The isolated install has no external Redis
+  driver. Compiled NodeRedis passed Node 18.20.5/24.21.0, BunRedis passed Bun
+  1.4.0, and DenoRedis passed Deno 2.9.4 with RESP2/3, distinct tags, shared
+  client identity, layer/config constructors, vectors/mutation safety, batching,
+  transactions, Pub/Sub, persistence SCAN, and Lua/NOSCRIPT recovery.
+  All six generated output directories were cleaned before a forced build.
+  Tarball JS/declaration paths match current source exactly, with no stale
+  core Redis modules or former Node transport. This supersedes the earlier
+  local tarballs.
+  Artifact: `/tmp/effect-redis-clean-runtimes-packed-edPdvQ/report.json`.
+
+Bun's known Ed25519 TLS fixture failure remains separate from the passing RSA
+TLS coverage. Benchmark results above describe the prior recorded baseline;
+this migration does not establish a new full performance acceptance result.

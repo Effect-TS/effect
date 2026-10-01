@@ -2,26 +2,21 @@
 
 `@effect/redis` provides the portable client, protocol, command descriptors,
 transactions, and subscriptions. Its only peer dependency is `effect`.
-`@effect/platform-node/NodeRedis` supplies Node TCP, TLS, and Unix sockets.
+`NodeRedis`, `BunRedis`, and `DenoRedis` provide runtime service layers over the
+same TCP, TLS, and Unix socket transport in `@effect/platform-node-shared`.
 Standalone, Redis Cluster, and Sentinel are supported.
 The acceptance matrix covers Redis 7.2.6 and 8.10.2. RESP2 is the default;
 set `protocol: 3` to use RESP3.
 
-The shared package implements Redis protocol and client behavior. Runtime
-connectors supply scoped byte transports; NodeRedis provides the Node connector
-and service layers. Its TCP path has passed compiled-package RESP2/RESP3 smoke
-checks on Node 18.20.5, Node 24.21.0, Bun 1.4.0, and Deno 2.9.4 through their
-Node compatibility APIs.
+The shared Redis package implements protocol and client behavior. Runtime
+layers provide both `@effect/redis/RedisClient` and `effect/persistence/Redis`,
+plus their own runtime service tag referring to the same client. Bun and Deno
+use their Node compatibility APIs for socket integration. Neither adapter uses
+Bun's built-in Redis client or `@db/redis`.
 
-`@effect/platform-bun/BunRedis` remains available through Bun's built-in
-`RedisClient`, and `@effect/platform-deno/DenoRedis` remains available through
-`@db/redis`. Both provide `effect/persistence/Redis` and their runtime service
-with raw `client` and `use`; neither provides the new `@effect/redis/RedisClient`
-service. To use the shared native client on those runtimes, use NodeRedis through
-the Node compatibility APIs. Migrating the existing adapters is separate work.
-The cross-runtime smoke covers TCP; two additional Bun TLS tests using the
-Ed25519 fixture fail during handshake, including in a direct `node:tls` probe
-without Redis. These checks do not establish complete Bun TLS support.
+TLS trust and hostname checks pass with RSA certificates on Bun 1.4.0 and
+Ed25519 certificates on Deno 2.9.4. Bun 1.4.0 rejects the existing Ed25519 test
+certificate during handshake; this also reproduces without Redis in `node:tls`.
 
 ```ts
 import * as NodeRedis from "@effect/platform-node/NodeRedis"
@@ -109,11 +104,27 @@ execute and cache the script on the key's owning node. Standalone and Sentinel
 retain their existing key layouts. Moving existing data into Cluster requires
 migrating its keys to the tagged layout.
 
-The previous node-redis client, Promise-based `use`, and `RedisClientOptions`
-are replaced by native Effect operations and `NodeRedis.Options`. Socket
-settings still live under `socket`; protocol selection uses `protocol`.
-Layer construction now fails with `@effect/redis/RedisError`. Persistence
-operations continue mapping failures into their existing persistence error.
+The previous raw clients and Promise-based `use` helpers in all three adapters
+are replaced by native Effect operations. Each module exports `Options`, `make`,
+`layer`, and `layerConfig`. Use `run(RedisCommand.get(key))` for a typed result,
+or `execute(["GET", key])` for a lossless raw reply. `layer` provides the runtime
+tag, general client, and persistence service; `make` returns a scoped client.
+
+Connection settings use `socket.host`, `socket.port`, `socket.path`, and
+`socket.tls`; use `database` for the selected database and `protocol` for RESP2/3.
+Deno's former `RedisOptions` becomes `DenoRedis.Options`, with `hostname` and
+`db` moving to `socket.host` and `database`. URL credentials come from the
+authority and the database from the pathname; query parameters do not configure
+connections. Explicit options override URL values. Bun's client-specific retry
+and idle settings are replaced by the shared client's connection, deadline,
+capacity, and recovery settings; commands with uncertain outcomes are never
+automatically replayed. Bun subscriptions now reconnect and re-subscribe.
+Use `connectTimeout` in place of Bun's `connectionTimeout`. Bun's implicit
+`REDIS_URL`/`VALKEY_URL` defaults no longer apply: configure `url` directly or
+read it with `layerConfig`. URLs must use `redis:` or `rediss:`.
+Layer construction validates the connection and fails with
+`@effect/redis/RedisError`, including on Bun. Persistence operations continue
+mapping failures into their existing persistence error.
 
 Run the complete acceptance gate from the repository root with either
 `REDIS_SERVER_BIN=/path/to/redis-server node scripts/test-redis.mjs` or

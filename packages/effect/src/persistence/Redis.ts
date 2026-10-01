@@ -60,10 +60,8 @@ export class Redis extends Context.Service<Redis, {
 
   /**
    * Subscribes to a Redis pub/sub channel for the lifetime of the current
-   * scope. Node and Deno subscribers reconnect and re-subscribe after an
-   * interruption, so messages published during recovery appear as delivery
-   * gaps. Bun subscribers do not reconnect: a dropped connection fails the
-   * dequeue, and the caller must subscribe again.
+   * scope. Node, Bun, and Deno adapters reconnect and re-subscribe after a
+   * connection loss. Messages published during recovery can be missed.
    */
   readonly subscribe: (
     channel: string

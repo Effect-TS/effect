@@ -7,23 +7,14 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Shared from "@effect/platform-node-shared/NodeRedis"
 import * as RedisClient from "@effect/redis/RedisClient"
-import type { Endpoint } from "@effect/redis/RedisConnection"
-import { RedisError } from "@effect/redis/RedisError"
-import * as RedisProtocol from "@effect/redis/RedisProtocol"
-import * as RedisSubscription from "@effect/redis/RedisSubscription"
+import type { RedisError } from "@effect/redis/RedisError"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
-import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Redis from "effect/persistence/Redis"
-import * as Queue from "effect/Queue"
-import * as Redacted from "effect/Redacted"
-import { createHash } from "node:crypto"
-import type { Duplex } from "node:stream"
-import type * as Tls from "node:tls"
-import { makeConnector } from "./internal/redisTransport.ts"
+import type * as Redis from "effect/persistence/Redis"
 
 /**
  * Native client configuration with Node socket and URL settings.
@@ -38,17 +29,7 @@ import { makeConnector } from "./internal/redisTransport.ts"
  * @category configuration
  * @since 4.0.0
  */
-export interface Options extends RedisClient.Config {
-  readonly url?: string | Redacted.Redacted<string> | undefined
-  readonly socket?: {
-    readonly host?: string | undefined
-    readonly port?: number | undefined
-    readonly path?: string | undefined
-    readonly tls?: boolean | Tls.ConnectionOptions | undefined
-  } | undefined
-  readonly connectTimeout?: Duration.Input | undefined
-  readonly stream?: ((endpoint: Endpoint) => Duplex) | undefined
-}
+export interface Options extends Shared.Options {}
 
 /**
  * Service tag for the native Node Redis client.
@@ -73,113 +54,11 @@ export class NodeRedis
  * @category constructors
  * @since 4.0.0
  */
-export const make = Effect.fnUntraced(function*(options: Options = {}) {
-  let url: URL | undefined
-  if (options.url !== undefined) {
-    const source = Redacted.isRedacted(options.url) ? Redacted.value(options.url) : options.url
-    url = yield* Effect.try({
-      try: () => new URL(source),
-      catch: () => new RedisError({ reason: "Connection", message: "Invalid Redis URL", outcome: "NotSent" })
-    })
-    if (url.protocol !== "redis:" && url.protocol !== "rediss:") {
-      return yield* Effect.fail(
-        new RedisError({ reason: "Connection", message: "Redis URL must use redis or rediss", outcome: "NotSent" })
-      )
-    }
-  }
-  const database = options.database ?? (url?.pathname && url.pathname !== "/" ? Number(url.pathname.slice(1)) : 0)
-  const port = options.socket?.port ?? (url?.port ? Number(url.port) : 6379)
-  if (!Number.isSafeInteger(database) || database < 0 || !Number.isSafeInteger(port) || port < 1 || port > 65535) {
-    return yield* Effect.fail(
-      new RedisError({ reason: "Connection", message: "Invalid Redis port or database", outcome: "NotSent" })
-    )
-  }
-  const decoded = (value: string | undefined) =>
-    Effect.try({
-      try: () => value ? decodeURIComponent(value) : undefined,
-      catch: () =>
-        new RedisError({ reason: "Connection", message: "Invalid Redis URL credential encoding", outcome: "NotSent" })
-    })
-  const username = options.username ?? (yield* decoded(url?.username))
-  const password = options.password ?? (yield* decoded(url?.password))
-  const tls = options.socket?.tls ?? (url?.protocol === "rediss:")
-  return yield* RedisClient.make(makeConnector({ connectTimeout: options.connectTimeout, stream: options.stream }), {
-    username,
-    password: typeof password === "string" ? Redacted.make(password) : password,
-    database,
-    protocol: options.protocol,
-    clientName: options.clientName,
-    commandTimeout: options.commandTimeout,
-    maxPendingCommands: options.maxPendingCommands,
-    maxQueuedBytes: options.maxQueuedBytes,
-    maxFrameSize: options.maxFrameSize,
-    maxDepth: options.maxDepth,
-    maxAggregateLength: options.maxAggregateLength,
-    reconnectDelay: options.reconnectDelay,
-    topology: options.topology ?? {
-      _tag: "Standalone",
-      endpoint: {
-        host: options.socket?.host ?? url?.hostname.replace(/^\[|\]$/g, "") ?? "127.0.0.1",
-        port,
-        path: options.socket?.path,
-        tls: typeof tls === "object" ? { ...tls } : tls
-      }
-    }
-  })
-})
+export const make = Shared.make
 
 const makeContext = Effect.fnUntraced(function*(options: Options = {}) {
-  const client = yield* make(options)
-  const cluster = options.topology?._tag === "Cluster"
-  const sendTo =
-    (node?: Endpoint): Redis.Redis["Service"]["send"] =>
-    <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-      client.execute([command, ...args], node === undefined ? undefined : { node, keyIndexes: [] }).pipe(
-        Effect.flatMap((reply) =>
-          Effect.try({
-            try: () => RedisProtocol.toValue(reply) as A,
-            catch: (cause) => new Redis.RedisError({ cause })
-          })
-        ),
-        Effect.mapError((cause) => cause instanceof Redis.RedisError ? cause : new Redis.RedisError({ cause }))
-      )
-  const adapter = yield* Redis.make({
-    cluster,
-    scriptHash: (lua) =>
-      Effect.try({
-        try: () => createHash("sha1").update(lua).digest("hex"),
-        catch: (cause) => new Redis.RedisError({ cause })
-      }),
-    scan: Effect.fnUntraced(function*(pattern: string) {
-      const nodes = yield* client.nodes
-      const batches = yield* Effect.forEach(nodes, (node) => Redis.scan(sendTo(node), pattern), { concurrency: 16 })
-      return Array.from(new Set(batches.flat()))
-    }),
-    send: sendTo(),
-    subscribe: (channel, onMessage) =>
-      Effect.gen(function*() {
-        const subscription = yield* RedisSubscription.make(client, channel).pipe(
-          Effect.mapError((cause) => new Redis.RedisError({ cause }))
-        )
-        return Effect.forever(
-          Queue.take(subscription.messages).pipe(
-            Effect.mapError((cause) => new Redis.RedisError({ cause })),
-            Effect.flatMap((message) =>
-              Effect.sync(() =>
-                onMessage({
-                  channel: new TextDecoder().decode(message.channel),
-                  message: new TextDecoder().decode(message.message)
-                })
-              )
-            )
-          )
-        )
-      })
-  })
-  return Context.make(NodeRedis, client).pipe(
-    Context.add(RedisClient.RedisClient, client),
-    Context.add(Redis.Redis, adapter)
-  )
+  const context = yield* Shared.makeContext(options)
+  return Context.add(context, NodeRedis, Context.get(context, RedisClient.RedisClient))
 })
 
 /**

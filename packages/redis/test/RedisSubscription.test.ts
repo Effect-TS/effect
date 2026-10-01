@@ -1,4 +1,4 @@
-import { makeConnector } from "@effect/platform-node/internal/redisTransport"
+import { makeConnector } from "@effect/platform-node-shared/internal/redisTransport"
 import * as Client from "@effect/redis/RedisClient"
 import * as Subscription from "@effect/redis/RedisSubscription"
 import { assert, describe, it } from "@effect/vitest"

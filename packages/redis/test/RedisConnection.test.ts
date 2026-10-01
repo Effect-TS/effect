@@ -1,4 +1,4 @@
-import { makeConnector } from "@effect/platform-node/internal/redisTransport"
+import { makeConnector } from "@effect/platform-node-shared/internal/redisTransport"
 import * as ConnectionInternal from "@effect/redis/internal/connection"
 import * as Connection from "@effect/redis/RedisConnection"
 import type { RedisError } from "@effect/redis/RedisError"

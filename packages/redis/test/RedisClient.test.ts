@@ -1,4 +1,4 @@
-import { makeConnector } from "@effect/platform-node/internal/redisTransport"
+import { makeConnector } from "@effect/platform-node-shared/internal/redisTransport"
 import * as Cluster from "@effect/redis/internal/cluster"
 import * as Sentinel from "@effect/redis/internal/sentinel"
 import type { ClusterConfig } from "@effect/redis/internal/topology"
