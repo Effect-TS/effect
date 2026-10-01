@@ -2220,6 +2220,215 @@ describe("Sharding shard lock failover", () => {
       }).pipe(Effect.provide(layer), Effect.withLogger(logger), Effect.scoped)
     }))
 
+  it.effect("keeps shards acquired while an earlier lock refresh is in flight", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const acquireStarted = yield* Deferred.make<void>()
+      const refreshStarted = yield* Deferred.make<void>()
+      const acquireDone = yield* Deferred.make<void>()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => {
+          const storage = makeFailoverStorage(storageState, clock)
+          return RunnerStorage.RunnerStorage.of({
+            ...storage,
+            acquire: Effect.fnUntraced(function*(address, shardIds) {
+              if (yield* Deferred.isDone(acquireDone)) {
+                return yield* storage.acquire(address, shardIds)
+              }
+              yield* Deferred.succeed(acquireStarted, void 0)
+              yield* Deferred.await(refreshStarted)
+              const acquired = yield* storage.acquire(address, shardIds)
+              yield* Deferred.succeed(acquireDone, void 0)
+              return acquired
+            }),
+            refresh: Effect.fnUntraced(function*(address, shardIds) {
+              const shards = globalThis.Array.from(shardIds)
+              if ((yield* Deferred.isDone(acquireStarted)) && !(yield* Deferred.isDone(acquireDone))) {
+                assert.deepStrictEqual(shards, [])
+                yield* Deferred.succeed(refreshStarted, void 0)
+                yield* Deferred.await(acquireDone)
+              }
+              return yield* storage.refresh(address, shards)
+            })
+          })
+        })
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 3000,
+        shardLockRefreshInterval: 100,
+        entityTerminationTimeout: 0,
+        refreshAssignmentsInterval: 10
+      })
+      const layer = Sharding.layer.pipe(
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = ShardId.make("default", 1)
+
+        yield* TestClock.adjust(100)
+        assert.isTrue(yield* Deferred.isDone(acquireDone))
+        assert.isTrue(sharding.hasShardId(shardId))
+
+        yield* TestClock.adjust(500)
+
+        assert.isTrue(sharding.hasShardId(shardId), "shard acquired during the refresh was dropped")
+        assert.deepStrictEqual(storageState.releaseCalls, [])
+        assert.strictEqual(storageState.acquireCalls.length, 1)
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("releases a lost requested shard without dropping a shard acquired during refresh", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const firstShard = ShardId.make("default", 1)
+      const secondShard = ShardId.make("default", 2)
+      const refreshStarted = yield* Deferred.make<void>()
+      const refreshResponse = yield* Deferred.make<void>()
+      let acquireCount = 0
+      let lostShard = false
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => {
+          const storage = makeFailoverStorage(storageState, clock)
+          return RunnerStorage.RunnerStorage.of({
+            ...storage,
+            acquire: Effect.fnUntraced(function*(address, shardIds) {
+              acquireCount++
+              if (acquireCount === 1) {
+                return yield* storage.acquire(address, [firstShard])
+              }
+              if (acquireCount === 2) {
+                yield* Deferred.await(refreshStarted)
+              }
+              return yield* storage.acquire(
+                address,
+                globalThis.Array.from(shardIds).filter((shard) => shard.id !== firstShard.id)
+              )
+            }),
+            refresh: Effect.fnUntraced(function*(address, shardIds) {
+              const shards = globalThis.Array.from(shardIds)
+              if (!lostShard && shards.length > 0) {
+                lostShard = true
+                assert.deepStrictEqual(shards, [firstShard])
+                yield* Deferred.succeed(refreshStarted, void 0)
+                yield* Deferred.await(refreshResponse)
+                return []
+              }
+              return yield* storage.refresh(address, shards)
+            })
+          })
+        })
+      )
+      const layer = Sharding.layer.pipe(
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 2,
+          shardLockExpiration: 30_000,
+          shardLockRefreshInterval: 2000,
+          entityTerminationTimeout: 0,
+          refreshAssignmentsInterval: 10
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+
+        yield* TestClock.adjust(2000)
+        assert.isTrue(yield* Deferred.isDone(refreshStarted))
+        assert.isTrue(sharding.hasShardId(firstShard))
+        assert.isTrue(sharding.hasShardId(secondShard))
+
+        yield* Deferred.succeed(refreshResponse, void 0)
+        yield* TestClock.adjust(1)
+
+        assert.isFalse(sharding.hasShardId(firstShard))
+        assert.isTrue(sharding.hasShardId(secondShard))
+
+        yield* TestClock.adjust(1000)
+
+        assert.isFalse(sharding.hasShardId(firstShard))
+        assert.isTrue(sharding.hasShardId(secondShard))
+        assert.deepStrictEqual(storageState.releaseCalls, [firstShard])
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("refreshes a newly acquired shard when retrying a failed lock refresh", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const acquireStarted = yield* Deferred.make<void>()
+      const refreshFailed = yield* Deferred.make<void>()
+      const retryShards = yield* Deferred.make<Array<ShardId.ShardId>>()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => {
+          const storage = makeFailoverStorage(storageState, clock)
+          return RunnerStorage.RunnerStorage.of({
+            ...storage,
+            acquire: Effect.fnUntraced(function*(address, shardIds) {
+              yield* Deferred.succeed(acquireStarted, void 0)
+              yield* Deferred.await(refreshFailed)
+              return yield* storage.acquire(address, shardIds)
+            }),
+            refresh: Effect.fnUntraced(function*(address, shardIds) {
+              const shards = globalThis.Array.from(shardIds)
+              if (yield* Deferred.isDone(refreshFailed)) {
+                yield* Deferred.succeed(retryShards, shards)
+              } else if (yield* Deferred.isDone(acquireStarted)) {
+                assert.deepStrictEqual(shards, [])
+                yield* Deferred.succeed(refreshFailed, void 0)
+                return yield* Effect.fail(new ClusterError.PersistenceError({ cause: "refresh failed" }))
+              }
+              return yield* storage.refresh(address, shards)
+            })
+          })
+        })
+      )
+      const layer = Sharding.layer.pipe(
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 1,
+          shardLockExpiration: 30_000,
+          shardLockRefreshInterval: 1000,
+          entityTerminationTimeout: 0,
+          refreshAssignmentsInterval: 10
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = ShardId.make("default", 1)
+
+        yield* TestClock.adjust(1000)
+        assert.isTrue(yield* Deferred.isDone(refreshFailed))
+        assert.isTrue(sharding.hasShardId(shardId))
+        assert.isFalse(yield* Deferred.isDone(retryShards))
+
+        yield* TestClock.adjust(50)
+
+        assert.isTrue(yield* Deferred.isDone(retryShards))
+        assert.deepStrictEqual(yield* Deferred.await(retryShards), [shardId])
+        assert.isTrue(sharding.hasShardId(shardId))
+        assert.deepStrictEqual(storageState.releaseCalls, [])
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("reacquires shards when the liveness probe succeeds while lock refresh is hung", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()

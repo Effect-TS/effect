@@ -549,30 +549,27 @@ const make = Effect.gen(function*() {
       return Effect.logInfo("Shard lock storage has recovered")
     })
 
-    const refreshShardLocks = Effect.suspend(() =>
-      runnerStorage.refresh(selfAddress, [
-        ...acquiredShards,
-        ...releasingShards
-      ])
-    ).pipe(
-      Effect.flatMap((acquired) => {
-        for (const shardId of acquiredShards) {
-          if (!acquired.includes(shardId)) {
-            MutableHashSet.remove(acquiredShards, shardId)
-            MutableHashSet.add(releasingShards, shardId)
-          }
+    const refreshShardLocks = Effect.gen(function*() {
+      const refreshed = [...acquiredShards, ...releasingShards]
+      const acquired = yield* runnerStorage.refresh(selfAddress, refreshed)
+      // Shards acquired during the request are absent from its response.
+      for (const shardId of refreshed) {
+        if (MutableHashSet.has(acquiredShards, shardId) && !acquired.includes(shardId)) {
+          MutableHashSet.remove(acquiredShards, shardId)
+          MutableHashSet.add(releasingShards, shardId)
         }
-        for (let i = 0; i < acquired.length; i++) {
-          const shardId = acquired[i]
-          if (!MutableHashSet.has(selfShards, shardId)) {
-            MutableHashSet.remove(acquiredShards, shardId)
-            MutableHashSet.add(releasingShards, shardId)
-          }
+      }
+      for (let i = 0; i < acquired.length; i++) {
+        const shardId = acquired[i]
+        if (!MutableHashSet.has(selfShards, shardId)) {
+          MutableHashSet.remove(acquiredShards, shardId)
+          MutableHashSet.add(releasingShards, shardId)
         }
-        return MutableHashSet.size(releasingShards) > 0
-          ? activeShardsLatch.open
-          : Effect.void
-      }),
+      }
+      if (MutableHashSet.size(releasingShards) > 0) {
+        yield* activeShardsLatch.open
+      }
+    }).pipe(
       Effect.retry({
         times: 5,
         schedule: Schedule.spaced(50)
