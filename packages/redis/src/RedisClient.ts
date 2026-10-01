@@ -233,7 +233,7 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       shared.set(key, entry)
       return Connection.make(connector, endpoint, config).pipe(
         Scope.provide(entry.scope),
-        Effect.tapError(() => dropShared(key, entry)),
+        Effect.onError(() => dropShared(key, entry)),
         Deferred.into(entry.connection),
         Effect.forkIn(scope),
         Effect.andThen(Deferred.await(entry.connection))

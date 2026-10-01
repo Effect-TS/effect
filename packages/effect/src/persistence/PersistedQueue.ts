@@ -690,6 +690,16 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   )
   const prefix = options?.prefix ?? "effectq:"
   const escapedPrefix = prefix.replace(/[\\*?[\]]/g, "\\$&")
+  const ownsCleanupKey = (key: string, suffix: string): boolean => {
+    if (!key.endsWith(suffix)) return false
+    const base = key.slice(0, -suffix.length)
+    if (!redis.cluster) return base.startsWith(prefix)
+    if (!base.startsWith("{")) return false
+    const tagEnd = base.indexOf("}:")
+    if (tagEnd === -1) return false
+    const logicalKey = base.slice(tagEnd + 2)
+    return logicalKey.startsWith(prefix) && Redis.key(redis, logicalKey) === base
+  }
   const lockPrefixFor = (name: string) => redis.cluster ? `${Redis.key(redis, `${prefix}${name}`)}:` : prefix
   const keyLock = (name: string, id: string) => `${lockPrefixFor(name)}${id}:lock`
   const keysFor = (name: string) => {
@@ -957,18 +967,18 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     cleanup: ({ failedTimeToLive, timeToLive }) =>
       Effect.gen(function*() {
         const now = clock.currentTimeMillisUnsafe()
-        const idsKeys = yield* redis.scan(`${redis.cluster ? "*:" : ""}${escapedPrefix}*:ids`)
+        const idsKeys = yield* redis.scan(`${redis.cluster ? "{*}:" : ""}${escapedPrefix}*:ids`)
         const cutoff = now - Duration.toMillis(timeToLive)
         yield* Effect.forEach(
-          idsKeys,
+          idsKeys.filter((key) => ownsCleanupKey(key, ":ids")),
           (key) => redis.send("ZREMRANGEBYSCORE", key, "-inf", `(${cutoff}`),
           { concurrency: 16, discard: true }
         )
         if (failedTimeToLive !== undefined) {
           const failedCutoff = now - Duration.toMillis(failedTimeToLive)
-          const failedKeys = yield* redis.scan(`${redis.cluster ? "*:" : ""}${escapedPrefix}*:failed`)
+          const failedKeys = yield* redis.scan(`${redis.cluster ? "{*}:" : ""}${escapedPrefix}*:failed`)
           yield* Effect.forEach(
-            failedKeys,
+            failedKeys.filter((key) => ownsCleanupKey(key, ":failed")),
             (key) =>
               trimFailed(key, `${key.slice(0, -":failed".length)}:ids`, failedCutoff).pipe(
                 // each call trims at most one batch, so drain until done

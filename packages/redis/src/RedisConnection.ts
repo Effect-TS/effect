@@ -385,7 +385,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         throw new RedisError({ reason: "Protocol", message: "Invalid Redis subscription acknowledgement" })
       }
       // Redis counts global and sharded subscriptions separately.
-      if (kind.startsWith("s")) shardSubscriptions = Number(count.value)
+      if (kind === "ssubscribe" || kind === "sunsubscribe") shardSubscriptions = Number(count.value)
       else subscriptions = Number(count.value)
       const head = nextInflight()
       if (head?.subscription?.kind === kind && sameBytes(head.subscription.channel, bytesOf(values[1]))) {
