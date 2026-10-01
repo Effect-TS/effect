@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, Layer, pipe, Reloadable, Schedule } from "effect"
+import { Context, Effect, Fiber, Layer, pipe, Reloadable, Schedule, TestClock } from "effect"
 import * as Counter from "./utils/counter.js"
 
 const DummyServiceTypeId = Symbol.for("effect/test/Reloadable/DummyService")
@@ -37,18 +37,21 @@ describe("Reloadable", () => {
       const acquired = yield* counter.acquired()
       strictEqual(acquired, 2)
     }))
-  it.live("auto releases its scope", () =>
+  it.effect("auto releases its scope", () =>
     Effect.gen(function*() {
       const layer = Reloadable.auto(Tag, {
         layer: Layer.succeed(Tag, DummyService),
         schedule: Schedule.spaced("1 hour")
       })
-      const released = yield* pipe(
+      const fiber = yield* pipe(
         Effect.scoped(Layer.build(layer)),
         Effect.as(true),
         Effect.disconnect,
-        Effect.timeoutTo({ duration: "1 second", onSuccess: (released) => released, onTimeout: () => false })
+        Effect.timeoutTo({ duration: "1 second", onSuccess: (released) => released, onTimeout: () => false }),
+        Effect.fork
       )
+      yield* TestClock.adjust("1 second")
+      const released = yield* Fiber.join(fiber)
       assertTrue(released)
     }))
 })
