@@ -136,6 +136,67 @@ describe("Redis physical session", () => {
       assert.strictEqual(writes, 2)
     }))
 
+  it.live("allows other fibers to progress during synchronous and microtask reply chains", () =>
+    Effect.gen(function*() {
+      for (const microtaskReplies of [false, true]) {
+        const requests = Protocol.makeParser()
+        const completed = yield* Deferred.make<Array<number>, RedisError>()
+        const values: Array<number> = []
+        let onBytes: ((bytes: Uint8Array) => void) | undefined
+        let counter = 0
+        const connection = yield* Connection.make(
+          () =>
+            Effect.succeed({
+              run: (receive) =>
+                Effect.callback<never>(() => {
+                  onBytes = receive
+                  return Effect.sync(() => {
+                    onBytes = undefined
+                  })
+                }),
+              close: Effect.void,
+              write: (bytes) =>
+                Effect.sync(() => {
+                  const response = Buffer.from(
+                    requests.push(wireBytes(bytes)).map(() => `:${++counter}\r\n`).join("")
+                  )
+                  const receive = onBytes!
+                  if (microtaskReplies) queueMicrotask(() => receive(response))
+                  else receive(response)
+                })
+            }),
+          { host: "unused", port: 6379 }
+        )
+        const submit = ConnectionInternal.get(connection)
+        assert.isDefined(submit)
+        if (submit === undefined) return assert.fail("Expected concrete command submission")
+        // Submit from the reply callback so caller-side scheduling cannot hide
+        // a transport that monopolizes the event loop.
+        const receive = (result: Result.Result<Protocol.Reply, RedisError>): void => {
+          if (result._tag === "Failure") {
+            Deferred.doneUnsafe(completed, Effect.fail(result.failure))
+            return
+          }
+          values.push(Protocol.toValue(result.success) as number)
+          if (values.length < 512) submit(["INCR", "counter"], receive)
+          else Deferred.doneUnsafe(completed, Effect.succeed(values))
+        }
+        const observing = yield* Effect.callback<number>((resume) => {
+          const handle = setImmediate(() => resume(Effect.succeed(values.length)))
+          submit(["INCR", "counter"], receive)
+          return Effect.sync(() => clearImmediate(handle))
+        }).pipe(Effect.forkChild)
+        const progressedAt = yield* Fiber.join(observing)
+        assert.isAbove(progressedAt, 0)
+        assert.isBelow(progressedAt, 512)
+        assert.deepStrictEqual(
+          yield* Deferred.await(completed),
+          Array.from({ length: 512 }, (_, index) => index + 1)
+        )
+        yield* connection.close
+      }
+    }))
+
   it.effect("keeps later command results unchanged after mutation of earlier acknowledgements", () =>
     Effect.gen(function*() {
       const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
