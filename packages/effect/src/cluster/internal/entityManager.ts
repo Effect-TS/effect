@@ -202,9 +202,9 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
-    // Closed while unfinished requests are replayed onto replacement handlers,
-    // so new arrivals cannot overtake them
-    const replayReady = Latch.makeUnsafe(true)
+    // Opened when shutdown starts, so requests waiting for replacement handlers
+    // are refused without waiting for them
+    const retired = Latch.makeUnsafe()
     const isActive = () => activeServers.get(address.entityId) === state
 
     // the server is stored in a ref, so if there is a defect, we can
@@ -213,7 +213,6 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.fnUntraced(function*(handlerScope) {
         let isShuttingDown = false
-        let hasDefect = false
 
         const handlerContext = context.pipe(
           Context.add(CurrentAddress, address),
@@ -330,11 +329,7 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                // Only the first defect of a generation starts a rebuild, and a
-                // generation that is already retiring never rebuilds its successor.
-                if (hasDefect || isShuttingDown) return Effect.void
-                hasDefect = true
-                return Effect.forkIn(onDefect(Cause.die(response.defect)), managerScope)
+                return Effect.forkIn(onDefect(Cause.die(response.defect), handlerScope), managerScope)
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -358,18 +353,20 @@ export const make = Effect.fnUntraced(function*<
       address
     )
 
-    function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
+    // Replaces the handlers of the generation owning `from`. Only its first
+    // defect does so; defects from handlers that were already replaced are
+    // ignored.
+    function onDefect(cause: Cause.Cause<never>, from: Scope.Scope): Effect.Effect<void> {
       if (!isActive()) {
         return endLatch.open
       }
-      replayReady.closeUnsafe()
       // Requests still waiting for their first dispatch are not replayed, their
-      // writer delivers them once the latch reopens.
+      // writer delivers them once the replacement is ready.
       const requests: Array<Snowflake.Snowflake> = []
       for (const [id, request] of activeRequests) {
         if (request.delivered) requests.push(id)
       }
-      const rebuild = writeRef.rebuildUnsafe()
+      // Replayed before the replacement admits any other message.
       const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
         if (!isActive()) return
         for (const id of requests) {
@@ -381,17 +378,21 @@ export const make = Effect.fnUntraced(function*<
           // owns the remaining requests. Never send them to a retired server.
           if (writeRef.state.current._tag !== "Acquired" || writeRef.state.current.value !== write) return
         }
-        yield* replayReady.open
       })
+      const rebuild = writeRef.rebuildUnsafe({ from, onAcquired: replay })
+      if (!rebuild) {
+        return Effect.void
+      }
+      const generation = writeRef.scopeUnsafe()!
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver(void 0))),
-        Effect.flatMap(() => isActive() ? Effect.flatMap(rebuild, replay) : endLatch.open),
+        Effect.flatMap(() => isActive() ? Effect.asVoid(rebuild) : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
           runner: options.runnerAddress
         }),
-        Effect.catchCause(onDefect)
+        Effect.catchCause((cause) => onDefect(cause, generation))
       )
     }
 
@@ -405,12 +406,10 @@ export const make = Effect.fnUntraced(function*<
           if (message._tag === "Request" && !isActive()) {
             return Effect.interrupt
           }
-          if (!replayReady.isOpen()) {
-            return Effect.andThen(replayReady.await, state.write(clientId, message, writeOptions))
-          }
           const current = writeRef.state.current
-          if (current._tag !== "Acquired") {
-            return Effect.andThen(writeRef.await, state.write(clientId, message, writeOptions))
+          if (current._tag !== "Acquired" || !writeRef.latch.isOpen()) {
+            const ready = message._tag === "Request" ? Effect.raceFirst(writeRef.await, retired.await) : writeRef.await
+            return Effect.andThen(ready, state.write(clientId, message, writeOptions))
           }
           if (message._tag === "Request") {
             const request = activeRequests.get(Snowflake.Snowflake(message.id))
@@ -434,9 +433,7 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.suspend(() => {
         activeServers.delete(address.entityId)
-        // Wake queued requests so they can observe shutdown, and let EOF reach
-        // a replacement whose acquisition is still finishing.
-        replayReady.openUnsafe()
+        retired.openUnsafe()
         acquireEntity(address)
         return Effect.raceFirst(
           state.write(0, { _tag: "Eof" }).pipe(

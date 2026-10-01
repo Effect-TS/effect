@@ -13,7 +13,6 @@
 import * as Arr from "../Array.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
@@ -156,45 +155,27 @@ export const make = Effect.fnUntraced(function*(options: {
     )
   })
 
-  let lockConnRebuilding = false
-  // Incremented every time the reserved connection is replaced, so failures
-  // from operations that ran on an already replaced connection do not trigger
-  // another rebuild.
-  let lockConnGeneration = 0
-  const rebuildLockConn = (generation: number) => {
-    if (
-      !lockConn ||
-      lockConnRebuilding ||
-      generation !== lockConnGeneration ||
-      lockConn.state.current._tag === "Closed"
-    ) return Effect.void
-    lockConnRebuilding = true
+  // Replace the reserved connection of generation `from` when an operation
+  // failed on it. Only the first failure on each connection replaces it, while
+  // failures on a rebuilt connection replace that one in turn.
+  const rebuildLockConn = (from: Scope.Scope) => {
+    const rebuild = lockConn?.rebuildUnsafe({ from })
+    if (!rebuild) return Effect.void
     // The rebuild starts by closing the previous scope, releasing the
-    // unresponsive connection back to the pool. Bound it with `withDeadline`
-    // so a release that never completes cannot leave `lockConnRebuilding` set
-    // forever, which would disable every subsequent rebuild.
-    return withDeadline(lockConn.rebuildUnsafe()).pipe(
+    // unresponsive connection back to the pool. Bound it with `withDeadline`:
+    // a release that never completes is left to finish detached, and the next
+    // failure on the pending generation replaces it again.
+    return withDeadline(rebuild).pipe(
       Effect.exit,
-      Effect.tap((exit) =>
-        Effect.sync(() => {
-          if (Exit.isSuccess(exit) && lockConn.state.current._tag === "Acquired") {
-            lockConnGeneration++
-          }
-        })
-      ),
-      Effect.ensuring(Effect.sync(() => {
-        lockConnRebuilding = false
-      })),
       Effect.forkIn(layerScope, { startImmediately: true }),
       Effect.asVoid
     )
   }
-  // Rebuild the reserved connection when `effect` fails on it. Failures keep
-  // scheduling rebuilds, so a rebuilt connection that is also unresponsive is
-  // replaced again.
+  // Rebuild the reserved connection when `effect` fails on it.
   const onErrorRebuildLockConn = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.suspend(() => {
-      const generation = lockConnGeneration
+      const generation = lockConn?.scopeUnsafe()
+      if (!generation) return effect
       return Effect.onError(effect, () => rebuildLockConn(generation))
     })
 
