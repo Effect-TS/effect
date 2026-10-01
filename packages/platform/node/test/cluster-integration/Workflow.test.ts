@@ -15,7 +15,7 @@ const EndToEndWorkflow = Workflow.make("ClusterIntegrationEndToEnd", {
   idempotencyKey: ({ id }) => id
 })
 
-let endToEndGate = Latch.makeUnsafe(true)
+let endToEndGate = Latch.makeUnsafe("open")
 let endToEndEntered = Latch.makeUnsafe()
 const endToEndRuns = new Map<string, number>()
 
@@ -288,7 +288,7 @@ const activityHandoffState = {
   start: Latch.makeUnsafe(),
   faultArmed: false,
   persisted: Latch.makeUnsafe(),
-  faultRelease: Latch.makeUnsafe(true),
+  faultRelease: Latch.makeUnsafe("open"),
   runs: new Map<string, number>(),
   compensations: new Set<string>(),
   resourceEvents: new Map<string, Array<"acquire" | "release">>()
@@ -304,7 +304,7 @@ const resetActivityHandoffState = (id: string, options?: { readonly faultRelease
   activityHandoffState.start = Latch.makeUnsafe()
   activityHandoffState.faultArmed = false
   activityHandoffState.persisted = Latch.makeUnsafe()
-  activityHandoffState.faultRelease = Latch.makeUnsafe(options?.faultReleaseOpen ?? true)
+  activityHandoffState.faultRelease = Latch.makeUnsafe((options?.faultReleaseOpen ?? true) ? "open" : "closed")
   activityHandoffState.runs.delete(id)
   activityHandoffState.compensations.delete(id)
   activityHandoffState.resourceEvents.set(id, [])

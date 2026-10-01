@@ -11,6 +11,14 @@ import type * as Effect from "./Effect.ts"
 import * as internal from "./internal/effect.ts"
 
 /**
+ * Open or closed state passed to a `Latch` constructor.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type State = "open" | "closed"
+
+/**
  * A reusable coordination primitive that lets fibers wait until they are
  * released by the latch.
  *
@@ -134,14 +142,14 @@ export interface Latch {
  *
  * **Details**
  *
- * The latch starts closed by default; pass `true` to create it open.
+ * The latch starts closed by default; pass `"open"` to create it open.
  *
  * **Example** (Creating a latch unsafely)
  *
  * ```ts import.meta.vitest
  * import { Effect, Fiber, Latch } from "effect"
  *
- * const latch = Latch.makeUnsafe(false)
+ * const latch = Latch.makeUnsafe("closed")
  * const waiter = latch.await.pipe(Effect.as("opened"))
  *
  * const program = Effect.gen(function*() {
@@ -158,7 +166,7 @@ export interface Latch {
  * @category constructors
  * @since 4.0.0
  */
-export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLatchUnsafe
+export const makeUnsafe = (initialState: State = "closed"): Latch => internal.makeLatchUnsafe(initialState === "open")
 
 /**
  * Creates a `Latch` inside `Effect`.
@@ -169,7 +177,7 @@ export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLa
  *
  * **Details**
  *
- * The latch starts closed by default; pass `true` to create it open.
+ * The latch starts closed by default; pass `"open"` to create it open.
  *
  * **Example** (Creating a latch)
  *
@@ -177,7 +185,7 @@ export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLa
  * import { Effect, Fiber, Latch } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   const latch = yield* Latch.make(false)
+ *   const latch = yield* Latch.make("closed")
  *   const waiter = latch.await.pipe(Effect.as("opened"))
  *
  *   const fiber = yield* Effect.forkChild(waiter)
@@ -193,7 +201,8 @@ export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLa
  * @category constructors
  * @since 4.0.0
  */
-export const make: (open?: boolean | undefined) => Effect.Effect<Latch> = internal.makeLatch
+export const make = (initialState: State = "closed"): Effect.Effect<Latch> =>
+  internal.makeLatch(initialState === "open")
 
 /**
  * Opens the latch and releases fibers waiting on it.

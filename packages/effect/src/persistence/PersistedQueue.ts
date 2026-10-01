@@ -402,7 +402,7 @@ const makeQueueStates = (): {
       if (state === undefined) {
         // the placeholder is overwritten by take before any mailbox reads it,
         // and is kept int32-safe for SQL parameters
-        state = { maxAttempts: 2147483647, nudge: Latch.makeUnsafe(false) }
+        state = { maxAttempts: 2147483647, nudge: Latch.makeUnsafe("closed") }
         states.set(name, state)
       }
       return state
@@ -538,7 +538,7 @@ export const layerStoreMemory: Layer.Layer<
       let queue = queues.get(name)
       if (!queue) {
         queue = {
-          latch: Latch.makeUnsafe(false),
+          latch: Latch.makeUnsafe("closed"),
           entries: new Map(),
           pending: new Set()
         }

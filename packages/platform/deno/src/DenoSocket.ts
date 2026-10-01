@@ -80,7 +80,7 @@ export const fromConn = <RO>(
     } | undefined
     let tearingDown = false
     let writeClosed = false
-    const latch = Latch.makeUnsafe(false)
+    const latch = Latch.makeUnsafe("closed")
     const openServices = fiber.context as Context.Context<RO>
 
     const reader: Socket.Socket["reader"] = Effect.gen(function*() {

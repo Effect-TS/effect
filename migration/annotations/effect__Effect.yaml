@@ -298,7 +298,7 @@ effect/Effect#loop:
   note: "Use an explicit `Effect.gen` loop and collect results when needed. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
 effect/Effect#makeLatch:
   replacement: "Latch.make"
-  note: "Latch constructors moved to `effect/Latch`. Adapt arguments and imports to the v4 API."
+  note: "Latch constructors moved to `effect/Latch`. Pass `\"closed\"` or `\"open\"` for the initial state instead of a boolean."
 effect/Effect#makeSemaphore:
   replacement: "Semaphore.make"
   note: "Semaphore constructors moved to `effect/Semaphore`. Adapt arguments and imports to the v4 API."
@@ -548,7 +548,7 @@ effect/Effect#unlessEffect:
   note: "Negate the effectful boolean condition, then use the consolidated `when`. Adapt arguments and imports to the v4 API."
 effect/Effect#unsafeMakeLatch:
   replacement: "Latch.makeUnsafe"
-  note: "The unsafe constructor moved to `effect/Latch`. Adapt arguments and imports to the v4 API."
+  note: "The unsafe constructor moved to `effect/Latch`. Pass `\"closed\"` or `\"open\"` for the initial state instead of a boolean."
 effect/Effect#unsafeMakeSemaphore:
   replacement: "Semaphore.makeUnsafe"
   note: "The unsafe constructor moved to `effect/Semaphore`. Adapt arguments and imports to the v4 API."

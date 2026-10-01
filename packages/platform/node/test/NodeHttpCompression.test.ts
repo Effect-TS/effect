@@ -191,7 +191,7 @@ describe("NodeHttpCompression", () => {
       const path = Path.join(directory, "random.bin")
       Fs.writeFileSync(path, Crypto.randomBytes(1024 * 1024))
 
-      const closed = yield* Latch.make(false)
+      const closed = yield* Latch.make("closed")
       const response = yield* HttpServerResponse.file(path, { headers: { "content-type": "text/plain" } })
         .pipe(
           Effect.tap((response) =>
@@ -217,7 +217,7 @@ describe("NodeHttpCompression", () => {
 
   it.effect("flushes compressed chunks incrementally over the wire", () =>
     Effect.gen(function*() {
-      const latch = yield* Latch.make(false)
+      const latch = yield* Latch.make("closed")
       const encoder = new TextEncoder()
       yield* HttpRouter.add(
         "GET",

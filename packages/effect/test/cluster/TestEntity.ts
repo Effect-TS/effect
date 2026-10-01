@@ -63,7 +63,7 @@ export class TestEntityState extends Context.Service<TestEntityState>()("TestEnt
     >()
     const defectTrigger = MutableRef.make(false)
     const layerBuilds = MutableRef.make(0)
-    const buildLatch = Latch.makeUnsafe(true)
+    const buildLatch = Latch.makeUnsafe("open")
 
     return {
       messages,

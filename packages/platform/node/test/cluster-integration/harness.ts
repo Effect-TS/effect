@@ -149,7 +149,7 @@ interface LockSession {
 }
 
 const makeLockFaultController = (sql: SqlClient.SqlClient) => {
-  const releaseGate = Latch.makeUnsafe(true)
+  const releaseGate = Latch.makeUnsafe("open")
   let persistentFault: "stuck" | "hangRelease" | undefined
   let currentSession: LockSession | undefined
 
@@ -234,7 +234,7 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
 }
 
 const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"]) => {
-  const gate = Latch.makeUnsafe(true)
+  const gate = Latch.makeUnsafe("open")
   const refreshPaused = Latch.makeUnsafe()
   const syncPaused = Latch.makeUnsafe()
   let mode: "frozen" | "killed" | "running" = "running"

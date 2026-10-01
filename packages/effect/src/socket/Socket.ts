@@ -903,7 +903,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
     let currentWS: WebSocketLike | undefined
-    const latch = Latch.makeUnsafe(false)
+    const latch = Latch.makeUnsafe("closed")
     const acquireContext = fiber.context as Context.Context<RO>
 
     const reader: Socket["reader"] = Effect.gen(function*() {
@@ -1204,7 +1204,7 @@ export const fromTransformStream = <R>(
   acquire: Effect.Effect<InputTransformStream, SocketError, R>
 ): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
-    const latch = Latch.makeUnsafe(false)
+    const latch = Latch.makeUnsafe("closed")
     let currentStream: {
       readonly stream: InputTransformStream
       readonly fail: (error: SocketError) => void

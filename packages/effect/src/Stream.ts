@@ -2662,7 +2662,7 @@ export const timeoutOrElse: {
         const clock = parent.getRef(Clock)
         const durationMs = Duration.toMillis(duration)
         let deadline: number | undefined = undefined
-        const latch = Latch.makeUnsafe(false)
+        const latch = Latch.makeUnsafe("closed")
         return merge(
           transformPull(self, (pull, _scope) =>
             Effect.suspend(() => {
@@ -8842,7 +8842,7 @@ export const aggregateWithin: {
   fromChannel(Channel.fromTransformBracket(Effect.fnUntraced(function*(_upstream, _, scope) {
     const pull = yield* Channel.toPullScoped(self.channel, _)
 
-    const pullLatch = Latch.makeUnsafe(false)
+    const pullLatch = Latch.makeUnsafe("closed")
     const scheduleStep = Symbol()
     const buffer = yield* Queue.make<Arr.NonEmptyReadonlyArray<A> | typeof scheduleStep, E | Cause.Done<void>>({
       capacity: 0
@@ -11309,7 +11309,7 @@ export const toReadableStreamWith: {
   ): ReadableStream<A> => {
     let currentResolve: (() => void) | undefined = undefined
     let fiber: Fiber.Fiber<void, E> | undefined = undefined
-    const latch = Latch.makeUnsafe(false)
+    const latch = Latch.makeUnsafe("closed")
 
     return new ReadableStream<A>({
       start(controller) {

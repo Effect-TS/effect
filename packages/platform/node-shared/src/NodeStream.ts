@@ -86,7 +86,7 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
   Channel.fromTransform((upstream, scope) => {
     const duplex = options.evaluate()
     const exit = MutableRef.make<Exit.Exit<never, IE | E | Cause.Done> | undefined>(undefined)
-    const latch = Latch.makeUnsafe(false)
+    const latch = Latch.makeUnsafe("closed")
 
     return pullIntoWritable({
       pull: upstream,
@@ -343,7 +343,7 @@ const readableToPullUnsafe = <A, E>(options: {
 
   const closeOnDone = options.closeOnDone ?? true
   const exit = options.exit ?? MutableRef.make(undefined)
-  const latch = options.latch ?? Latch.makeUnsafe(false)
+  const latch = options.latch ?? Latch.makeUnsafe("closed")
   function onReadable() {
     latch.openUnsafe()
   }
@@ -405,7 +405,7 @@ class StreamAdapter<E, R> extends Readable {
     stream: Stream.Stream<Uint8Array | string, E, R>
   ) {
     super({})
-    this.readLatch = Latch.makeUnsafe(false)
+    this.readLatch = Latch.makeUnsafe("closed")
     this.fiber = Stream.runForEachArray(stream, (chunk) =>
       this.readLatch.whenOpen(Effect.sync(() => {
         this.readLatch.closeUnsafe()
