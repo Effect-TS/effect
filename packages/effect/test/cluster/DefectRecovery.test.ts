@@ -140,15 +140,8 @@ describe("entity defect recovery", () => {
         const calls = yield* Ref.make<Array<readonly [number, string]>>([])
         const completed = yield* Ref.make<Array<string>>([])
         const thirdRequestId = yield* Deferred.make<Snowflake.Snowflake>()
-        const thirdExecutions = yield* Ref.make<
-          Array<{
-            readonly requestId: Snowflake.Snowflake
-            readonly successReplyAlreadyStored: boolean
-          }>
-        >([])
         const entityLayer = entity.toLayer(
           Effect.gen(function*() {
-            const driver = yield* MessageStorage.MemoryDriver
             const generation = yield* Ref.updateAndGet(generations, (n) => n + 1)
             if (generation === 2) {
               yield* Deferred.succeed(acquiring, undefined)
@@ -157,15 +150,6 @@ describe("entity defect recovery", () => {
             return entity.of({
               run: Effect.fnUntraced(function*({ payload, requestId }) {
                 if (payload.id === "third") {
-                  const replies = yield* driver.encoded.repliesFor([String(requestId)]).pipe(Effect.orDie)
-                  yield* Ref.update(thirdExecutions, (executions) => [...executions, {
-                    requestId,
-                    successReplyAlreadyStored: Array.some(
-                      replies,
-                      (reply) =>
-                        reply._tag === "WithExit" && reply.exit._tag === "Success" && reply.exit.value === "third"
-                    )
-                  }])
                   yield* Deferred.succeed(thirdRequestId, requestId)
                 }
                 yield* Ref.update(calls, (calls) => [...calls, [generation, payload.id] as const])
@@ -198,16 +182,17 @@ describe("entity defect recovery", () => {
           yield* TestClock.adjust(1)
           yield* Deferred.succeed(acquired, undefined)
           yield* TestClock.adjust("30 seconds")
-          assert.deepStrictEqual(
-            Array.findFirst(yield* Ref.get(calls), ([generation]) => generation === 2),
-            Option.some([2, "first"] as const)
-          )
           assert.strictEqual(yield* Fiber.join(first), "first")
           assert.strictEqual(yield* Fiber.join(second), "second")
           assert.strictEqual(yield* Fiber.join(third), "third")
+          const recorded = yield* Ref.get(calls)
+          assert.deepStrictEqual(
+            Array.findFirst(recorded, ([generation]) => generation === 2),
+            Option.some([2, "first"] as const)
+          )
+          // A request still waiting for its first dispatch is not replayed as well
+          assert.strictEqual(Array.filter(recorded, ([, id]) => id === "third").length, 1)
           const requestId = yield* Deferred.await(thirdRequestId)
-          // Inspect the encoded store at handler entry, not just successful body completion.
-          assert.deepStrictEqual(yield* Ref.get(thirdExecutions), [{ requestId, successReplyAlreadyStored: false }])
           const driver = yield* MessageStorage.MemoryDriver
           const replies = yield* driver.encoded.repliesFor([String(requestId)]).pipe(Effect.orDie)
           assert.strictEqual(
@@ -260,7 +245,7 @@ describe("entity defect recovery", () => {
       yield* manager.sendLocal(
         new Message.IncomingRequestLocal<typeof run>({
           envelope: Envelope.makeRequest<typeof run>({
-            requestId: (yield* Snowflake.Generator).nextUnsafe(),
+            requestId: yield* sharding.getSnowflake,
             address,
             tag: "run",
             payload: undefined,

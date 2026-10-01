@@ -77,7 +77,10 @@ export class ResourceRef<A, E = never> {
     return Option.none()
   }
 
-  rebuildUnsafe(): Effect.Effect<void, E> {
+  /**
+   * Replaces the current resource. Resolves with the newly acquired value.
+   */
+  rebuildUnsafe(): Effect.Effect<A, E> {
     const s = this.state.current
     if (s._tag === "Closed") {
       return Effect.interrupt
@@ -99,7 +102,7 @@ export class ResourceRef<A, E = never> {
           return Effect.interrupt
         }
         MutableRef.set(this.state, { _tag: "Acquired", scope, value })
-        return this.latch.open
+        return Effect.as(this.latch.open, value)
       })
     ).pipe(
       Effect.onExit((exit) => {
