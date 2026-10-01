@@ -29,6 +29,7 @@ const failure = (run: () => unknown, reason: "Protocol" | "Decode" = "Protocol")
 const goldens: ReadonlyArray<readonly [string, RedisProtocol.Reply]> = [
   ["+OK\r\n", simple("OK")],
   ["+QUEUED\r\n", simple("QUEUED")],
+  ["+PONG\r\n", simple("PONG")],
   ["+héllo ☃\r\n", simple("héllo ☃")],
   [`+${"a".repeat(64)}\r\n`, simple("a".repeat(64))],
   [`+${"a".repeat(65)}\r\n`, simple("a".repeat(65))],
@@ -54,6 +55,9 @@ const goldens: ReadonlyArray<readonly [string, RedisProtocol.Reply]> = [
   [":-9007199254740993\r\n", integer(-9007199254740993n)],
   [":-000000000000000000000001\r\n", integer(-1n)],
   ["$0\r\n\r\n", blob("")],
+  ["$000\r\n\r\n", blob("")],
+  ["$003\r\nfoo\r\n", blob("foo")],
+  ["$000000000000000000000003\r\nfoo\r\n", blob("foo")],
   ["$6\r\nhéllo\r\n", blob("héllo")],
   ["$-1\r\n", nil],
   ["*-1\r\n", nil],
@@ -314,7 +318,16 @@ describe("RedisProtocol", () => {
         ":1x\r\n",
         ":\u00FF\r\n",
         ":9223372036854775808\r\n",
-        ":-9223372036854775809\r\n"
+        ":-9223372036854775809\r\n",
+        "$\r\n",
+        "$1x\r\n",
+        "$1\n",
+        "$1\rx",
+        "$+0\r\n",
+        "$9007199254740992\r\n",
+        "+OK\rx",
+        "+PONG\n",
+        "+QUEUED\rx"
       ]
     ) {
       const input = bytes(`:1\r\n${wire}:2\r\n`)
@@ -360,7 +373,22 @@ describe("RedisProtocol", () => {
     const nested = RedisProtocol.makeParser({ maxFrameSize: 10 })
     nested.push(bytes("*2\r\n:1\r\n"))
     failure(() => nested.push(bytes(":2\r\n")))
-    for (const wire of [":1\r\n", ":+0\r\n", "*2\r\n:1\r\n:2\r\n", "|0\r\n:1\r\n"]) {
+    for (
+      const wire of [
+        ":1\r\n",
+        ":+0\r\n",
+        "*2\r\n:1\r\n:2\r\n",
+        "|0\r\n:1\r\n",
+        "+OK\r\n",
+        "+QUEUED\r\n",
+        "+PONG\r\n",
+        "$0\r\n\r\n",
+        "$003\r\nfoo\r\n",
+        "$000000000000000000000003\r\nfoo\r\n",
+        "*3\r\n+OK\r\n$3\r\nfoo\r\n+QUEUED\r\n",
+        "|0\r\n$3\r\nfoo\r\n"
+      ]
+    ) {
       const input = bytes(wire)
       const expected = RedisProtocol.makeParser().push(input)
       for (let split = 0; split <= input.length; split++) {

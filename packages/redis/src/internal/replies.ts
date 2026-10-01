@@ -2,9 +2,9 @@
 import * as Result from "effect/Result"
 import type { Reply } from "../RedisProtocol.ts"
 
-const ok: Reply = Object.freeze({ _tag: "SimpleString", value: "OK" })
-const queued: Reply = Object.freeze({ _tag: "SimpleString", value: "QUEUED" })
-const pong: Reply = Object.freeze({ _tag: "SimpleString", value: "PONG" })
+const ok = Object.freeze({ _tag: "SimpleString" as const, value: "OK" })
+const queued = Object.freeze({ _tag: "SimpleString" as const, value: "QUEUED" })
+const pong = Object.freeze({ _tag: "SimpleString" as const, value: "PONG" })
 const okReply = Object.freeze(Result.succeed(ok))
 const queuedReply = Object.freeze(Result.succeed(queued))
 const pongReply = Object.freeze(Result.succeed(pong))
@@ -22,6 +22,28 @@ export const simpleString = (line: ReadonlyArray<number>): Reply | undefined => 
       return line[0] === 80 && line[1] === 79 && line[2] === 78 && line[3] === 71 ? pong : undefined
     case 6:
       return line[0] === 81 && line[1] === 85 && line[2] === 69 && line[3] === 85 && line[4] === 69 && line[5] === 68
+        ? queued
+        : undefined
+  }
+}
+
+// Match only complete exact acknowledgements, including their CRLF. Partial
+// or longer strings stay on the ordinary line parser without retaining a view.
+export const simpleStringFrame = (
+  bytes: Uint8Array,
+  offset: number
+): Extract<Reply, { readonly _tag: "SimpleString" }> | undefined => {
+  switch (bytes[offset + 1]) {
+    case 79:
+      return bytes[offset + 2] === 75 && bytes[offset + 3] === 13 && bytes[offset + 4] === 10 ? ok : undefined
+    case 80:
+      return bytes[offset + 2] === 79 && bytes[offset + 3] === 78 && bytes[offset + 4] === 71 &&
+          bytes[offset + 5] === 13 && bytes[offset + 6] === 10
+        ? pong
+        : undefined
+    case 81:
+      return bytes[offset + 2] === 85 && bytes[offset + 3] === 69 && bytes[offset + 4] === 85 &&
+          bytes[offset + 5] === 69 && bytes[offset + 6] === 68 && bytes[offset + 7] === 13 && bytes[offset + 8] === 10
         ? queued
         : undefined
   }

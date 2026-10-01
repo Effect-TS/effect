@@ -145,6 +145,36 @@ export const makeParser = (options: ParserOptions, ownership: "copy" | "transfer
     bodyOffset = 0
     state = size === 0 ? "bodyCr" : "body"
   }
+  // Ordinary complete bulk headers need no retained digit array or string.
+  // Bound lookahead; fragmented, streamed, null and unusual headers use the
+  // same validating line parser as before.
+  const completeBulkHeader = (chunk: Uint8Array, offset: number): number => {
+    const end = Math.min(chunk.length, offset + 20)
+    let size = 0
+    for (let cursor = offset + 1; cursor < end; cursor++) {
+      const byte = chunk[cursor]
+      if (byte === 13) {
+        if (cursor === offset + 1 || cursor + 1 >= end || chunk[cursor + 1] !== 10 || !Number.isSafeInteger(size)) break
+        const next = cursor + 2
+        frameSize += next - offset
+        marker = "$"
+        startBody(size)
+        return next
+      }
+      if (byte < 48 || byte > 57) break
+      size = size * 10 + (byte - 48)
+    }
+    return offset
+  }
+  const completeSimpleString = (chunk: Uint8Array, offset: number, output: Array<Reply>): number => {
+    const reply = Replies.simpleStringFrame(chunk, offset)
+    if (reply === undefined) return offset
+    const size = reply.value.length + 3
+    if (frameSize + size > maxFrameSize) fail("Frame size limit exceeded")
+    frameSize += size
+    accept(reply, output)
+    return offset + size
+  }
   const completeLine = (output: Array<Reply>): void => {
     if (marker === ":") {
       const parsed = integerLine()
@@ -297,8 +327,15 @@ export const makeParser = (options: ParserOptions, ownership: "copy" | "transfer
       let ownedStart = 0
       let ownedEnd = 0
       for (let offset = 0; offset < chunk.length;) {
-        if (state === "marker" && streamed === undefined && chunk[offset] === 58) {
-          const next = completeInteger(chunk, offset, output)
+        if (state === "marker" && streamed === undefined) {
+          const byte = chunk[offset]
+          const next = byte === 58
+            ? completeInteger(chunk, offset, output)
+            : byte === 36
+            ? completeBulkHeader(chunk, offset)
+            : byte === 43
+            ? completeSimpleString(chunk, offset, output)
+            : offset
           if (next !== offset) {
             offset = next
             continue
