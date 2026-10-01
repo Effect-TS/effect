@@ -4548,7 +4548,6 @@ describe("Effect", () => {
     const runWithStore = <A, E>(store: string | undefined, effect: Effect.Effect<A, E>): Promise<A> =>
       store === undefined ? Effect.runPromise(effect) : storage.run(store, () => Effect.runPromise(effect))
 
-    // Reads the store on resumption and inside async work started afterwards.
     const observe = Effect.gen(function*() {
       const resumed = current()
       const promise = yield* Effect.promise(async () => current())
@@ -4585,7 +4584,7 @@ describe("Effect", () => {
           try {
             const pool = await Effect.runPromise(
               Pool.make({ acquire: Effect.succeed("conn"), size: 1 }).pipe(
-                // Borrow once so the item is available before the holder runs.
+                // Warm the pool before starting the holder.
                 Effect.tap((pool) => Effect.scoped(Pool.get(pool))),
                 Scope.provide(scope)
               )

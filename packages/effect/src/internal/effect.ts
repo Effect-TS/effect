@@ -508,10 +508,6 @@ interface AsyncContext {
   runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
 }
 
-// On hosts with `node:async_hooks` (Node.js, Bun, Deno) a fiber captures its
-// async context when it suspends and resumes inside it. Like `await`, a fiber
-// woken from another fiber's stack then keeps its own `AsyncLocalStorage`
-// store instead of inheriting the waker's.
 const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
   try {
     return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
@@ -1148,7 +1144,7 @@ export const tryPromise = <A, E = Cause.UnknownError>(
     ? ((cause: unknown) => new UnknownError(cause, "An error occurred in Effect.tryPromise"))
     : options.catch
   return callbackOptions<A, E>(function(resume, signal) {
-    // the catcher runs once the fiber has resumed, in its own async context
+    // Defer the catcher until the fiber restores its async context.
     const failWithCatch = (cause: unknown) =>
       suspend(() => {
         try {
@@ -5559,8 +5555,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   if (immediate) {
     child.evaluate(effect as any)
   } else {
-    // start in the context the child was forked in, not the one the parent's
-    // dispatcher was armed in
+    // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
