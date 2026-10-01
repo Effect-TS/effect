@@ -2771,15 +2771,16 @@ export class SlidingStrategy<in out A> implements PubSub.Strategy<A> {
     let next = it.next()
     if (!next.done && pubsub.capacity > 0) {
       let a = next.value
-      let loop = true
-      while (loop) {
-        pubsub.slide()
-        const pub = pubsub.publish(a)
-        if (pub && (next = it.next()) && !next.done) {
-          a = next.value
-        } else if (pub) {
-          loop = false
+      while (true) {
+        // Subscribers may have taken values since the publish that overflowed,
+        // so only drop the oldest value when there is still no room
+        if (!pubsub.publish(a)) {
+          pubsub.slide()
+          continue
         }
+        next = it.next()
+        if (next.done) break
+        a = next.value
       }
     }
   }

@@ -365,10 +365,13 @@ export const make = Effect.fnUntraced(function*(
       entry.latch.openUnsafe()
       // Fibers woken from another stack resume in a promise reaction (a
       // microtask), and only then schedule follow-up work such as a Queue
-      // taker release or a fork start on a dispatcher (a macrotask). The first
-      // yield is itself a dispatcher task, so it runs after every pending
-      // reaction, and the second yield is then scheduled behind the work those
-      // reactions scheduled. Time advances only after that work has run.
+      // taker release or a fork start on a dispatcher. With the default
+      // dispatcher, which runs tasks as FIFO host macrotasks, the first yield
+      // runs after every pending reaction, and the second yield is then
+      // scheduled behind the work those reactions scheduled, so time advances
+      // only after that work has run. Dispatchers that run tasks as
+      // microtasks, including the fallback used when timers are unavailable,
+      // or custom schedulers do not get this ordering.
       yield* Effect.yieldNow
       yield* Effect.yieldNow
     }
