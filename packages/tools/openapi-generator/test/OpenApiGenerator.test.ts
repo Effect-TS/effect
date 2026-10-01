@@ -1089,6 +1089,81 @@ export const TestClientError = <Tag extends string, E>(
         ]
       ))
 
+    for (
+      const [format, assertIncludes, payloadType] of [
+        ["httpclient", assertRuntimeIncludes, "typeof TranscribeRequestJson.Encoded"],
+        ["httpclient-type-only", assertTypeOnlyIncludes, "TranscribeRequestJson"]
+      ] as const
+    ) {
+      it.effect(`prefers JSON when a request body also offers form encodings (${format})`, () =>
+        assertIncludes(
+          {
+            openapi: "3.1.0",
+            info: { title: "Test API", version: "1.0.0" },
+            paths: {
+              "/transcriptions": {
+                post: {
+                  operationId: "transcribe",
+                  parameters: [],
+                  requestBody: {
+                    required: true,
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            input: {
+                              type: "object",
+                              properties: { data: { type: "string" } },
+                              required: ["data"],
+                              additionalProperties: false
+                            }
+                          },
+                          required: ["input"],
+                          additionalProperties: false
+                        }
+                      },
+                      "multipart/form-data": {
+                        schema: {
+                          type: "object",
+                          properties: { file: { type: "string", format: "binary" } },
+                          required: ["file"],
+                          additionalProperties: false
+                        }
+                      },
+                      "application/x-www-form-urlencoded": {
+                        schema: {
+                          type: "object",
+                          properties: { data: { type: "string" } },
+                          required: ["data"],
+                          additionalProperties: false
+                        }
+                      }
+                    }
+                  } as any,
+                  responses: { "204": { description: "Transcribed" } },
+                  tags: ["Audio"],
+                  security: []
+                }
+              }
+            },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: []
+          },
+          [
+            `HttpClientRequest.bodyJsonUnsafe(options.payload)`,
+            `readonly payload: ${payloadType}`,
+            `export type TranscribeRequestFormData =`,
+            `export type TranscribeRequestFormUrlEncoded =`
+          ],
+          [
+            `HttpClientRequest.bodyFormDataRecord(`,
+            `HttpClientRequest.bodyUrlParams(`
+          ]
+        ))
+    }
+
     it.effect("preserves response variants and routes binary and bodiless statuses", () =>
       assertRuntimeIncludes(responseMatchingSpec, [
         `export const PollDeviceToken400 = Schema.Union(`,

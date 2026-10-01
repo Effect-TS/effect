@@ -402,29 +402,39 @@ const parseOpenApi = (
           })
         }
 
-        if (Predicate.isNotUndefined(content["application/json"]?.schema)) {
+        // Clients send a single encoding. Prefer JSON when it is offered, since
+        // form encodings cannot represent nested request schemas.
+        const hasJsonPayload = Predicate.isNotUndefined(content["application/json"]?.schema)
+
+        if (hasJsonPayload) {
           op.payload = addSchema(`${schemaId}RequestJson`, content["application/json"].schema, op)
           requestSchemaNames.set("application/json", op.payload)
         }
 
         if (Predicate.isNotUndefined(content["multipart/form-data"]?.schema)) {
-          op.payload = addSchema(
+          const schemaName = addSchema(
             `${schemaId}RequestFormData`,
             transformMultipart(content["multipart/form-data"].schema),
             op
           )
-          op.payloadFormData = true
-          requestSchemaNames.set("multipart/form-data", op.payload)
+          requestSchemaNames.set("multipart/form-data", schemaName)
+          if (!hasJsonPayload) {
+            op.payload = schemaName
+            op.payloadFormData = true
+          }
         }
 
         if (Predicate.isNotUndefined(content["application/x-www-form-urlencoded"]?.schema)) {
-          op.payload = addSchema(
+          const schemaName = addSchema(
             `${schemaId}RequestFormUrlEncoded`,
             content["application/x-www-form-urlencoded"].schema,
             op
           )
-          op.payloadFormUrlEncoded = true
-          requestSchemaNames.set("application/x-www-form-urlencoded", op.payload)
+          requestSchemaNames.set("application/x-www-form-urlencoded", schemaName)
+          if (!hasJsonPayload) {
+            op.payload = schemaName
+            op.payloadFormUrlEncoded = true
+          }
         }
 
         if (isHttpApi) {
