@@ -504,7 +504,6 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
@@ -528,6 +527,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._deferredInterrupt = false
     this._parent = undefined
     this._wake = undefined
+    this._resuming = false
+    this._pendingInterrupt = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
@@ -551,6 +552,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   // fiber itself runs in the fiber's own async context, so a fiber woken from
   // another stack resumes a microtask later in its own context.
   declare _wake: ((effect: Primitive) => void) | undefined
+  // Set from the first wake until its reaction runs
+  declare _resuming: boolean
+  // Interrupts that arrived while a wake was pending
+  declare _pendingInterrupt: Cause.Cause<never> | undefined
 
   // set in setContext
   declare context: Context.Context<never>
@@ -594,6 +599,15 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     if (annotations) {
       cause = causeAnnotate(cause, annotations)
     }
+    if (this._resuming) {
+      // A wake arrived first. Deliver the interrupt once it has run, as if it
+      // arrived after a synchronous resume
+      this._pendingInterrupt = this._pendingInterrupt ? causeCombine(this._pendingInterrupt, cause) : cause
+      return
+    }
+    this.interruptWith(cause)
+  }
+  interruptWith(cause: Cause.Cause<never>): void {
     this._interruptedCause = this._interruptedCause
       ? causeCombine(this._interruptedCause, cause)
       : cause
@@ -614,10 +628,21 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._wake !== undefined) {
       const wake = this._wake
       this._wake = undefined
-      // treated as running until the reaction fires, so an interrupt that
-      // arrives in between is deferred into the run loop
+      // The first wake wins. Retiring the suspension now drops later wakes
+      // for it, as its callbacks' `resumed` guards do, and the fiber counts as
+      // running until the reaction fires, so an interrupt that arrives in
+      // between is deferred into the run loop
+      this._resuming = true
       this._running = true
+      if (this._yielded !== undefined) {
+        const yielded = this._yielded as () => void
+        this._yielded = undefined
+        yielded()
+      }
       return wake(effect)
+    } else if (this._resuming) {
+      // a wake for this suspension is already pending
+      return
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
@@ -661,8 +686,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }).then(this.resumeWith)
   }
   resumeWith = (effect: Primitive): void => {
+    this._resuming = false
     this._running = false
     this.evaluate(effect)
+    const interrupt = this._pendingInterrupt
+    if (interrupt !== undefined) {
+      this._pendingInterrupt = undefined
+      if (!this._exit) this.interruptWith(interrupt)
+    }
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
     const prevFiber = (globalThis as any)[currentFiberTypeId]
