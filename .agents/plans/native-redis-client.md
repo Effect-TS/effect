@@ -6,8 +6,14 @@ Cluster, and Sentinel support are required in the first release before the
 node-redis dependency is removed. Persistence consumers provide compatibility
 coverage; they do not define the general client's capabilities.
 
-Status: implementation and local validation complete in the separate
-`@effect/redis` package. The real-server matrix targets
+Status: the separate `@effect/redis` implementation through `784071a66`
+passed refreshed correctness and package gates. Matched comparisons support the
+retained performance changes. The completed eight-workload reference run
+establishes parity in seven workloads; sequential requests remain inconclusive,
+so overall performance acceptance is incomplete. The completed hosted baseline
+covers earlier `9f03aae4d`; final-source CI is pending at this checkpoint.
+Exact evidence is recorded
+below and in `native-redis-throughput.md`. The real-server matrix targets
 Redis 7.2.6 and 8.10.2. RESP2 is the default and RESP3 is opt-in. The persistence
 adapter supports standalone, Cluster, and Sentinel. Cluster uses per-identity
 hash tags for atomic multi-key operations.
@@ -43,6 +49,33 @@ The package has only an Effect peer dependency. No Redis implementation lives
 in core `effect`. `packages/platform/node/src/NodeRedis.ts` remains the Node
 connector and layer entrypoint, with the existing persistence service adapted
 above the general client.
+
+The transport requires a persistent scoped `run(onBytes)` consumer and writes
+accepting UTF-8 strings, byte arrays, or ordered vectors of either. The Node data
+handler delivers stable byte ranges synchronously; interruption unregisters its
+consumer and callback failure closes the transport. Default byte writes snapshot at admission, while
+private immutable frames transfer without another copy. Custom Duplex inputs
+are copied before delivery. The public parser continues to copy caller input;
+the internal physical-session parser may retain transferred stable ranges.
+Binary replies can share bounded storage through disjoint byte ranges without
+overlapping sibling values or changing earlier replies during later reads.
+
+Concrete sessions without command deadlines register private synchronous
+submission in a WeakMap. Cached standalone typed commands capture and encode
+arguments before their caller first yields and decode replies directly into
+that caller. Decoder defects do not escape into the shared receive loop.
+Configured deadlines, Sentinel, Cluster, and explicit-node routing retain the
+normal execution path. These implementation paths introduce no optional public
+operations or runtime-specific engine hooks.
+
+Redis protocol and topology logic are shared. Runtime connectors supply scoped
+byte transports; NodeRedis supplies the Node connector and service layers.
+Bun and Deno can use that connector through their Node compatibility APIs.
+The existing `@effect/platform-bun/BunRedis` adapter remains backed by Bun's
+built-in `RedisClient`; `@effect/platform-deno/DenoRedis` remains backed by
+`@db/redis`. Both still provide `effect/persistence/Redis` and their runtime
+service with raw `client`/`use`. They do not provide the new `RedisClient` service.
+Migrating those adapters to the shared driver is separate work.
 
 The implemented interfaces cover:
 
@@ -276,58 +309,124 @@ baselines rather than inventing them.
 - [x] Pass all required standalone, Cluster, Sentinel, and fault suites.
 - [x] Verify compiled consumer imports, minimum runtime, and dependency removal.
 - [x] Complete documentation, generated exports, and release note.
+- [ ] Establish parity for all eight workloads on the final performance source.
 
 ## Validation record
 
-The final code review covered protocol/physical sessions, client/topology,
-subscriptions/transactions, the Node connector/layer, public API conventions,
-package surfaces, CI, and release policy. Review corrections include immediate
-cleanup after failed client acquisition, bounded redirect configuration,
-binary argument/routing snapshots, client-owned subscription termination,
-binary acknowledgement correlation, RESP numeric grammar, transaction control
-preflight and attribute decoding, typed timeout/reconnect validation, and a
-bounded initial PING with immediate transport cleanup on acquisition failure.
-The follow-up audit removed sequential pipeline/transaction submission, added
-atomic batch admission and coalesced writes, independent node acquisition and
-redirect recovery, single batch completion signaling, and faster RESP encoding,
-ASCII header parsing, and CRC16 routing. Topology engines use tagged contracts
-with required topology-specific hooks.
+The latest validated runtime is local commit
+`784071a66c11f0daaef1a5e4c6c6a6af2e7db71d` (Streamline Redis integer parsing
+and reply completion). Review covered protocol and physical sessions,
+client/topology, subscriptions/transactions, the Node connector and persistence
+layer, public API contracts, package surfaces, and release policy. Follow-up
+corrections preserve bounded acquisition and shutdown, binary argument/routing
+snapshots, reply ownership after cancellation, no uncertain replay, atomic batch
+admission, independent per-node progress, and exclusive transaction sessions.
 
-Tests are consolidated by public module: six Redis unit suites and three Redis
-integration suites, plus NodeRedis unit and integration suites. Cluster and
-Sentinel scenarios live in RedisClient suites; subscription and transaction
-scenarios live beside their respective modules. Fixtures are shared helpers,
-not standalone suites, and duplicate sharded-subscription coverage was removed.
+Tests are consolidated by public module: six native Redis unit suites and three
+native integration suites, plus NodeRedis unit and integration suites. Cluster
+and Sentinel cases live in RedisClient suites; subscription and transaction
+cases live beside their modules. Shared fixtures are helpers, not separate suites.
 
-- The mandatory manifest runner passed all 11 suites and 238 tests, with no
-  skips, on both Redis 7.2.6 and 8.10.2 using local server binaries.
-- The existing core Redis suite passed its nine tests. A real Redis 7.2.6
-  smoke check passed on Bun 1.3.13 after making constructor scan/hash operations
-  mandatory. Deno is unavailable, so Deno runtime checks could not run.
-- Root type checking, public JSDoc validation, and targeted type tests passed;
-  the type tests cover TypeScript 5.9.3 and 6.0.3.
-- Root build and affected-package rebuilds passed. Release declaration checks
-  exposed file-level `@internal` comments stripping required imports; those
-  comments were corrected before the final package build.
-- An isolated packed consumer passed on Node 18.20.5 and Node 24.21.0 against
-  Redis 7.2.6, covering RESP2/3, binary values, pipelines, transactions, every
-  public Redis entrypoint, blocked internal exports, and absence of node-redis.
-  Packed declarations passed with `skipLibCheck: false`, including a second
-  pass using `stripInternal: true` output.
-- Root `pnpm install` removed node-redis and its unused transitive packages.
-  Remaining peer warnings concern existing Babel/TypeScript tooling; no Redis
-  peer warning or unrelated dependency resolution change was introduced.
-- NodeRedis migration and operational defaults are documented in
-  `packages/platform/node/REDIS.md`; one consolidated changeset covers both
-  published packages, including the core persistence adapter changes.
-- The new CI job runs the same mandatory gate using digest-pinned Redis 7.2.6
-  and 8.10.2 images. Local actionlint validation passed with existing custom
-  runner labels excluded. Docker is unavailable in this environment, so the
-  Docker fixture backend and GitHub-hosted execution remain unverified locally.
-- Pipeline throughput is checked structurally by withholding responses until
-  complete node batches, ASKING/command pairs, and MULTI/EXEC batches arrive.
-  Physical sessions atomically admit and coalesce batches, and unrelated
-  nodes do not wait for another node's acquisition or redirect recovery.
-- An isolated five-round paired comparison against node-redis is recorded in
-  native-redis-throughput.md. Remaining throughput differences are explicit;
-  the result does not establish parity or a release performance guarantee.
+### Current local correctness and packaging evidence
+
+- Both mandatory Redis manifests passed all 11 suites and 276 tests without
+  skips on Redis 7.2.6 and 8.10.2 using local server binaries. Coverage includes
+  standalone, Cluster, Sentinel, persistence compatibility, ownership,
+  backpressure, cancellation, and vectored writes.
+- Root lint-fix, type checking, public JSDoc checks, and focused runtime/public
+  type tests passed, including 135 focused runtime tests. Public type coverage
+  ran on TypeScript 5.9.3 and 6.0.3.
+  The existing core persistence Redis suite passed its nine tests.
+- Exact Bun 1.4.0 passed all nine native Redis suites and 153 tests without skips,
+  including all three real-server integration suites against Redis 7.2.6.
+  A prior optional additional Node transport suite run under Bun passed 25 of 27
+  tests. Two TLS tests failed with `SSLV3_ALERT_HANDSHAKE_FAILURE`; a direct
+  `node:tls` echo probe using the same Ed25519 certificate/key reproduced the
+  failure on Bun 1.4.0 without Redis and succeeded on Node 24.21.0. Native-suite
+  and TCP smoke success do not establish complete Bun TLS coverage.
+- Fresh builds and tarballs of `effect`, `@effect/redis`,
+  `@effect/platform-node-shared`, and `@effect/platform-node` passed isolated
+  strict NodeNext consumption with `skipLibCheck: false`. All eight public
+  Redis entrypoints and 17 declarations passed, including a separate pass with
+  emitted `stripInternal: true` declarations. Internal exports remain blocked.
+- Compiled TCP smoke tests passed Node 18.20.5, Node 24.21.0, Bun 1.4.0, and
+  Deno 2.9.4 against Redis 8.10.2 with RESP2 and RESP3. They verify shared and
+  distinct 4 KiB payloads, mixed vector pipelines, repeated Effects after source
+  mutation, one logical corked batch and observed multi-chunk `_writev`
+  batching. Existing small single-write pipelines, reserved sessions,
+  transactions, Pub/Sub, persistence SCAN, Lua caching, and NOSCRIPT recovery
+  also passed. Artifacts: `/tmp/effect-redis-integer-packed-wz510k/report.json`.
+- The package audit confirms that `@effect/redis` has only an Effect peer
+  dependency, no runtime dependencies, and no external Redis client in the
+  isolated installation. Root dependency removal eliminated node-redis and its
+  unused transitive packages without unrelated dependency resolution changes.
+  NodeRedis migration/defaults are documented in `packages/platform/node/REDIS.md`.
+  One consolidated changeset covers `@effect/redis`, `@effect/platform-node`,
+  `effect`, `@effect/platform-bun`, and `@effect/platform-deno`.
+
+The validated transport accepts strings, bytes, and ordered vectors with exact
+UTF-8 byte accounting. Ordinary input copies at admission; private immutable
+frames transfer without recopying. Large binary inputs share a private slab only
+for exact input-object identities within one invocation. Distinct views and
+subsequent Effect executions receive independent current snapshots. Bounded
+text-frame caching compares argument values on each invocation. Node vectors
+submit every accepted part before waiting for drain, preserving FIFO and never
+replaying an accepted prefix. Structural tests withhold responses until complete
+node batches, ASKING/command pairs, and MULTI/EXEC batches arrive.
+
+### Hosted CI and publication status
+
+Hosted [run 36783609269](https://github.com/Effect-TS/effect/actions/runs/36783609269)
+passed all ten jobs at `9f03aae4df4e178cd3582e83e0fd8a3b19f8c1a4`, including
+Node, Bun, Deno, Redis 7/8, types, documentation, lint, build, and bundle checks.
+That run does not cover the later performance commits through `784071a66`.
+They have the local validation recorded above. Final-source hosted CI is pending
+at publication of this checkpoint; its current status is available on
+[draft PR 8638](https://github.com/Effect-TS/effect/pull/8638/checks).
+
+The Redis CI job uses the same mandatory manifest runner and digest-pinned
+Redis 7.2.6 and 8.10.2 images. Local actionlint validation passed with existing
+custom runner labels excluded. Docker is unavailable locally; server binaries
+provided the local matrix, while the older hosted run exercised Docker fixtures.
+Keep the PR draft until the performance target and final-source gates pass.
+
+### Performance acceptance and remaining work
+
+The final full reference comparison completed on frozen `784071a66` against
+isolated `redis@5.0.1`: eight workloads, 19 paired fresh-process rounds,
+3,000 ms target, 500 ms warmup, and the existing 5% overhead acceptance margin.
+All correctness checks passed and source remained stable. Seven workloads
+establish parity; sequential requests remain inconclusive (native/reference
+ratio 1.050066, 95% interval 0.995848–1.071013). `--require-parity` exited 1.
+Correctness and package gates are complete; overall performance acceptance is
+incomplete. Final-source hosted CI is pending at this checkpoint. The complete report is
+`tmp/runtimeperf/results/redis-parity-784071a66.json`.
+
+Matched sequential comparisons support the retained combined changes:
+`a63ab5ff9` to `2e3e4726c` had head/base ratio 0.939367 (95% interval
+0.916050–0.966462), and `2e3e4726c` to `784071a66` had ratio 0.933629
+(0.909175–0.967907). Both used 13 pairs, 1,500 ms targets, 500 ms warmups,
+identical workers, alternating order, and stable isolated source. They measure
+combined changes without attributing gains to individual optimizations or
+establishing reference parity.
+
+The preceding full reference run at `2e3e4726c` established parity in seven
+workloads, with sequential requests regressing (1.091, 1.070–1.127). The later
+sequential-only `784071a66` screen was inconclusive (1.035, 1.002–1.082).
+The writer-yield candidate `4999664fd` was removed at `7b289e71b` after both its
+reference screen and matched comparison were inconclusive; its fairness test
+remains. Exact settings, source hashes, all intervals, and retained report paths
+are consolidated in `native-redis-throughput.md`.
+
+The retained implementation uses bounded text-frame/metadata caches, immutable
+binary snapshots and vectors, exclusive transaction leases, complete safe-integer
+parsing with exact int64 fallback, and private completion values. Public reply,
+callback, decoding, pipeline, deadline, package, and transport contracts remain
+unchanged by the latest parser/completion optimizations. The encoder and metadata
+caches each retain one entry independently, so intervening batches can retain
+two distinct text frames, each bounded to 4,096 wire bytes.
+
+Keep the PR draft until final performance acceptance passes and obtain successful
+final-source hosted CI before release. Any further runtime change requires
+focused correctness, both mandatory Redis manifests, fresh packed consumers,
+and stable measurements before updating acceptance claims.

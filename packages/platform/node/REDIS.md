@@ -7,6 +7,22 @@ Standalone, Redis Cluster, and Sentinel are supported.
 The acceptance matrix covers Redis 7.2.6 and 8.10.2. RESP2 is the default;
 set `protocol: 3` to use RESP3.
 
+The shared package implements Redis protocol and client behavior. Runtime
+connectors supply scoped byte transports; NodeRedis provides the Node connector
+and service layers. Its TCP path has passed compiled-package RESP2/RESP3 smoke
+checks on Node 18.20.5, Node 24.21.0, Bun 1.4.0, and Deno 2.9.4 through their
+Node compatibility APIs.
+
+`@effect/platform-bun/BunRedis` remains available through Bun's built-in
+`RedisClient`, and `@effect/platform-deno/DenoRedis` remains available through
+`@db/redis`. Both provide `effect/persistence/Redis` and their runtime service
+with raw `client` and `use`; neither provides the new `@effect/redis/RedisClient`
+service. To use the shared native client on those runtimes, use NodeRedis through
+the Node compatibility APIs. Migrating the existing adapters is separate work.
+The cross-runtime smoke covers TCP; two additional Bun TLS tests using the
+Ed25519 fixture fail during handshake, including in a direct `node:tls` probe
+without Redis. These checks do not establish complete Bun TLS support.
+
 ```ts
 import * as NodeRedis from "@effect/platform-node/NodeRedis"
 import { RedisClient, RedisCommand } from "@effect/redis"
@@ -105,3 +121,9 @@ Run the complete acceptance gate from the repository root with either
 Docker fixtures require Linux host networking; local binaries use isolated
 temporary directories and loopback ports. Both backends clean up their owned
 servers. The runner verifies every expected suite executed without skips.
+
+The local Node 24.21.0 / Redis 7.2.6 comparison against `redis@5.0.1` establishes
+parity within a 5% overhead margin for seven of eight workloads. Sequential
+requests remain inconclusive, so overall performance acceptance is incomplete.
+See the [measurement protocol and results](../../../.agents/plans/native-redis-throughput.md)
+for workloads, confidence intervals, and environment limits.
