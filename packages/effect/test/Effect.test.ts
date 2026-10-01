@@ -2098,6 +2098,69 @@ describe("Effect", () => {
   })
 
   describe("interruption", () => {
+    it.effect("skipped handlers drop failures and keep defects when interrupted", () =>
+      Effect.gen(function*() {
+        const latch = yield* Latch.make()
+        const fiber = yield* latch.await.pipe(
+          Effect.andThen(Effect.failCause(Cause.combine(Cause.fail("error"), Cause.die("defect")))),
+          Effect.uninterruptible,
+          Effect.catchCause(() => Effect.void),
+          Effect.forkChild({ startImmediately: true })
+        )
+        fiber.interruptUnsafe(123)
+        yield* latch.open
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.isFalse(Cause.hasFails(exit.cause))
+          assert.isTrue(Cause.hasDies(exit.cause))
+          assert.deepStrictEqual(Cause.interruptors(exit.cause), new Set([123]))
+        }
+      }))
+
+    it.effect("uninterruptible handlers observe the interruption after skipped handlers", () =>
+      Effect.gen(function*() {
+        const latch = yield* Latch.make()
+        let result: Exit.Exit<void> | undefined
+        const fiber = yield* latch.await.pipe(
+          Effect.andThen(Effect.fail("error")),
+          Effect.uninterruptible,
+          Effect.catch(() => Effect.void),
+          Effect.interruptible,
+          Effect.exit,
+          Effect.map((exit) => {
+            result = exit
+          }),
+          Effect.uninterruptible,
+          Effect.forkChild({ startImmediately: true })
+        )
+        fiber.interruptUnsafe(123)
+        yield* latch.open
+        yield* Fiber.await(fiber)
+        assert.isTrue(result !== undefined && Exit.isFailure(result) && Cause.hasInterruptsOnly(result.cause))
+      }))
+
+    it.effect("handlers inside an uninterruptible region recover with interruption pending", () =>
+      Effect.gen(function*() {
+        const latch = yield* Latch.make()
+        let recovered = false
+        const fiber = yield* latch.await.pipe(
+          Effect.andThen(Effect.fail("error")),
+          Effect.catch(() =>
+            Effect.sync(() => {
+              recovered = true
+            })
+          ),
+          Effect.uninterruptible,
+          Effect.forkChild({ startImmediately: true })
+        )
+        fiber.interruptUnsafe(123)
+        yield* latch.open
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(recovered)
+        assert.isTrue(Exit.hasInterrupts(exit))
+      }))
+
     it("a map callback that interrupts its own fiber skips the next map", () => {
       let ran = false
       const exit = Effect.runSyncExit(
