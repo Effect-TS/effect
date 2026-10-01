@@ -558,12 +558,29 @@ describe("cluster workflow integration", () => {
         const id = `${backend}-end-to-end`
         endToEndGate = Effect.unsafeMakeLatch()
         endToEndEntered = Effect.unsafeMakeLatch()
-        const cluster = yield* make({ backend, entities })
+        const duplicate = Effect.unsafeMakeLatch()
+        const requestIds = new Set<string>()
+        const cluster = yield* make({
+          backend,
+          entities,
+          onSaveRequest: (message, result) => {
+            if (
+              message.envelope.address.entityType !== `Workflow/${EndToEndWorkflow.name}` ||
+              message.envelope.tag !== "run"
+            ) return
+            requestIds.add(String(message.envelope.requestId))
+            if (requestIds.size >= 2 && result._tag === "Duplicate") duplicate.unsafeOpen()
+          }
+        })
         yield* cluster.start(3)
         yield* cluster.waitForStableAssignments()
         const first = yield* withWorkflow(cluster, EndToEndWorkflow.execute({ id, value: 41 })).pipe(Effect.forkScoped)
         yield* cluster.waitUntil("The end-to-end activity did not start", Effect.as(endToEndEntered.await, true))
         const second = yield* withWorkflow(cluster, EndToEndWorkflow.execute({ id, value: 41 })).pipe(Effect.forkScoped)
+        yield* cluster.waitUntil("The overlapping caller did not reach storage", Effect.as(duplicate.await, true))
+        assert.isTrue(Option.isNone(yield* Fiber.poll(first)))
+        assert.isTrue(Option.isNone(yield* Fiber.poll(second)))
+        assert.strictEqual(endToEndRuns.get(id), 1)
         yield* endToEndGate.open
         assert.strictEqual(yield* Fiber.join(first), 42)
         assert.strictEqual(yield* Fiber.join(second), 42)

@@ -594,6 +594,54 @@ describe.concurrent("Sharding", () => {
 })
 
 describe("Sharding shard lock failover", () => {
+  for (const mode of ["reassignment", "cancellation"] as const) {
+    it.effect(`singleton ${mode} ${mode === "reassignment" ? "preserves" : "cancels"} its durable request`, () =>
+      Effect.gen(function*() {
+        const storageState = makeFailoverStorageState()
+        const layer = makeFailoverLayer(storageState, {
+          entityTerminationTimeout: 0,
+          shardLockExpiration: 3000,
+          shardLockRefreshInterval: 100
+        })
+        yield* Effect.gen(function*() {
+          const sharding = yield* Sharding.Sharding
+          const driver = yield* MessageStorage.MemoryDriver
+          const client = yield* TestEntity.client
+          const shard = sharding.getShardId(EntityId.make("1"), "default")
+          for (let i = 0; i < 100 && !sharding.hasShardId(shard); i++) yield* TestClock.adjust(10)
+          assert.isTrue(sharding.hasShardId(shard))
+          const cancel = Effect.unsafeMakeLatch()
+          let stopped = false
+          const call = mode === "reassignment" ? client("1").Never() : Effect.gen(function*() {
+            const caller = yield* client("1").Never().pipe(Effect.forkScoped)
+            yield* cancel.await
+            yield* Fiber.interrupt(caller)
+          })
+          yield* sharding.registerSingleton(
+            "durable-caller",
+            call.pipe(
+              Effect.ensuring(Effect.sync(() => {
+                stopped = true
+              })),
+              Effect.scoped
+            )
+          )
+          for (let i = 0; i < 100 && driver.journal.length === 0; i++) yield* TestClock.adjust(10)
+          assert.deepStrictEqual(driver.journal.map((envelope) => envelope._tag), ["Request"])
+          if (mode === "reassignment") storageState.assignSelf = false
+          else yield* cancel.open
+          for (let i = 0; i < 100 && !stopped; i++) yield* TestClock.adjust(10)
+          assert.isTrue(stopped)
+          assert.isFalse(yield* sharding.isShutdown)
+          assert.strictEqual(sharding.hasShardId(shard), mode === "cancellation")
+          assert.deepStrictEqual(
+            driver.journal.map((envelope) => envelope._tag),
+            mode === "reassignment" ? ["Request"] : ["Request", "Interrupt"]
+          )
+        }).pipe(Effect.provide(layer), Effect.scoped)
+      }))
+  }
+
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
@@ -891,7 +939,8 @@ const makeFailoverLayer = (state: FailoverStorageState, config: Partial<Sharding
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provideMerge(TestEntityState.Default),
     Layer.provide(Runners.layerNoop),
-    Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(Snowflake.layerGenerator),
     Layer.provide(ShardingConfig.layer({
       runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
       shardsPerGroup: 1,

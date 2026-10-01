@@ -220,15 +220,23 @@ describe("cluster message persistence integration", () => {
         )
         assert.deepStrictEqual(yield* cluster.messageCounts(), { failed: 2, replied: 1, unprocessed: 0 })
       }))
-    it.scopedLive(`${backend}: abandons a stream chunk acknowledgement during shutdown without stranding either runner`, () =>
+    it.scopedLive(`${backend}: persists stream chunk acknowledgements during owner shutdown without stranding either runner`, () =>
       Effect.gen(function*() {
         state = freshState()
-        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        const entityId = `${backend}-shutdown-stream`, id = `${entityId}-restart`
+        let acknowledgements = 0
+        const cluster = yield* make({
+          backend,
+          entities: PersistenceEntityLayer,
+          onSaveEnvelope: (message) => {
+            if (message.envelope._tag === "AckChunk" && message.envelope.address.entityId === entityId) {
+              acknowledgements++
+            }
+          }
+        })
         const runners = yield* cluster.start(2)
         yield* cluster.waitForStableAssignments()
-        const client = yield* cluster.getClient(PersistenceEntity),
-          entityId = `${backend}-shutdown-stream`,
-          id = `${entityId}-restart`
+        const client = yield* cluster.getClient(PersistenceEntity)
         const owner = yield* cluster.ownerOfEntity(PersistenceEntity, entityId)
         assert.isDefined(owner)
         const peer = runners.find((r) => r !== owner)
@@ -242,12 +250,15 @@ describe("cluster message persistence integration", () => {
           Effect.as(state.streamThirdEntered.await, true)
         )
         const stopping = yield* cluster.stop(owner!).pipe(Effect.forkScoped)
+        yield* cluster.waitUntil("The stream owner did not enter shutdown", owner!.sharding.isShutdown)
+        const before = acknowledgements
         yield* state.streamThirdGate.open
         yield* Fiber.join(stopping)
         yield* cluster.waitForStableAssignments()
         const healthyId = `${backend}-shutdown-stream-healthy`
         assert.strictEqual(yield* client(entityId).Healthy(new KeyedPayload({ id: healthyId })), `healthy:${healthyId}`)
         assert.deepStrictEqual(Array.from(yield* Fiber.join(values)), [0, 1, 2, 3, 4])
+        assert.isAbove(acknowledgements, before)
         assert.strictEqual(yield* cluster.ownerOfEntity(PersistenceEntity, entityId), peer)
       }))
     it.scopedLive(`${backend}: round-trips a chunked reply through storage`, () =>

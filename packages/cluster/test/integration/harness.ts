@@ -2,7 +2,8 @@ import {
   ClusterWorkflowEngine,
   type Entity,
   EntityId,
-  type MessageStorage,
+  type Message,
+  MessageStorage,
   RunnerAddress,
   RunnerHealth,
   Runners,
@@ -179,6 +180,11 @@ export const make = Effect.fnUntraced(function*(options: {
   readonly entities: RunnerEntities | ((options: { readonly prefix: string }) => RunnerEntities)
   readonly config?: Partial<ShardingConfig.ShardingConfig["Type"]>
   readonly trackSockets?: boolean
+  readonly onSaveRequest?: <R extends Rpc.Any>(
+    message: Message.OutgoingRequest<R>,
+    result: MessageStorage.SaveResult<R>
+  ) => void
+  readonly onSaveEnvelope?: (message: Parameters<MessageStorage.MessageStorage["Type"]["saveEnvelope"]>[0]) => void
 }) {
   const parentScope = yield* Effect.scope
   const prefix = `cluster_${process.pid}_${nextCluster++}`
@@ -196,7 +202,17 @@ export const make = Effect.fnUntraced(function*(options: {
     Layer.buildWithScope(parentScope),
     Effect.provide(database)
   )
-  const shared = Context.merge(database, messageStorage)
+  const rawMessages = Context.get(messageStorage, MessageStorage.MessageStorage)
+  const observedMessages = MessageStorage.MessageStorage.of({
+    ...rawMessages,
+    saveRequest: (message) =>
+      rawMessages.saveRequest(message).pipe(
+        Effect.tap((result) => Effect.sync(() => options.onSaveRequest?.(message, result)))
+      ),
+    saveEnvelope: (message) =>
+      rawMessages.saveEnvelope(message).pipe(Effect.tap(() => Effect.sync(() => options.onSaveEnvelope?.(message))))
+  })
+  const shared = Context.add(Context.merge(database, messageStorage), MessageStorage.MessageStorage, observedMessages)
   const entities = typeof options.entities === "function" ? options.entities({ prefix }) : options.entities
   const runners: Array<ClusterRunner> = []
   const protocol = NodeClusterSocket.layerClientProtocol.pipe(Layer.provide(RpcSerialization.layerNdjson))

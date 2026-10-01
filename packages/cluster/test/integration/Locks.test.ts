@@ -52,8 +52,16 @@ describe("cluster lock-storage integration", () => {
           Effect.sync(() => {
             const assignments = Object.values(cluster.assignmentMap())
             assert(assignments.every((owners) => owners.length <= 1), "A shard had multiple owners")
+            assert(
+              assignments.every((owners) => !owners.includes(faultedAddress)),
+              "The faulted runner reacquired a shard"
+            )
             return assignments.some((owners) => owners.includes(peerAddress))
           })
+        )
+        assert(
+          Object.values(cluster.assignmentMap()).every((owners) => !owners.includes(faultedAddress)),
+          "The faulted runner reacquired a shard before release completed"
         )
         yield* cluster.faultLock(faulted, "clear")
         let previous = "", stablePolls = 0
