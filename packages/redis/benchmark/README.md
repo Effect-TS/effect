@@ -1,66 +1,81 @@
-# Redis client throughput
+# Native Redis performance
 
-`RedisClient.ts` compares the native Node client with an isolated `redis@5.0.1` installation. The reference stays outside
-the workspace dependency graph. Node 24 is required to run the TypeScript source directly. Install the reference once:
+Run from the repository root with Node 24 or newer. The benchmark compares native clients at two committed revisions,
+without installing or loading another Redis driver:
 
 ```sh
-mkdir -p /tmp/effect-redis-reference
-pnpm --dir /tmp/effect-redis-reference add redis@5.0.1 --save-exact
+REDIS_SERVER_BIN=/path/to/redis-server node packages/redis/benchmark/RedisClient.ts \
+  --base <baseline-commit> --head <candidate-commit> --fail-on-regression
 ```
 
-Run from the repository root on an otherwise idle machine:
+The coordinator creates detached worktrees and links only their own Effect, Redis, Node and Node-shared workspace
+packages. It overlays its canonical `RedisClientWorker.ts` into both so the operation remains identical even when the
+benchmark changed since the baseline. Reports record the canonical source, overlay path, worker/coordinator/fixture/stats
+hashes, harness Git HEAD and diff hash. Runtime sources retain their committed contents; only the worker overlay may
+differ from HEAD. Resolution guards verify that the worker, Node facade and shared transport load their own modules.
+
+Verify every workload before measuring:
 
 ```sh
-REDIS_SERVER_BIN=/path/to/redis-server \
-  node packages/redis/benchmark/RedisClient.ts \
-  --reference-dir /tmp/effect-redis-reference --require-parity
+REDIS_SERVER_BIN=/path/to/redis-server node packages/redis/benchmark/RedisClient.ts --head <commit> --validate
 ```
 
-Without `REDIS_SERVER_BIN`, the integration fixture searches `PATH` and then uses Docker. Docker's host networking
-requires Linux. Both clients use the same fixture, Redis version, loopback transport and Node executable. The Cluster
-fixture has three primaries and three replicas. Server startup, client connection, command construction and payload
-construction happen outside timing. Transactions use the native watchless `RedisTransaction.execute` API and the
-reference's `multi().exec()` API through their connected clients. Their complete transaction execution is timed.
-
-The eight workloads cover a 128-command standalone pipeline, a reserved connection pipeline, same-slot and multiple-slot
-Cluster pipelines, one-command sequential requests, 128-command transactions, and 128-command binary GET and SET pipelines
-with 4 KiB values containing every byte. INCR replies must match their exact expected values in input order; counters are
-checked after every warmup, calibration and measured run. Binary reads and final stored values must match every byte;
-every SET must acknowledge `OK`. Both implementations retain the same output arrays for fixed chunks of at most 64
-iterations (at most 32 MiB of binary reply bytes). Chunk elapsed times are accumulated into each observation; every reply
-is validated after its chunk, and final stored state is checked after the complete run. Validation and conversion between
-bigint and numeric replies occur outside timing. This bounds retained memory independently of the measurement duration.
-
-Each observation runs in a fresh Node process and warms its reusable state for 250 ms. Calibration chooses one common
-number of iterations for both clients, targeting at least one second for the faster client. Calibration samples are not
-statistical observations. Nine measured pairs alternate native/reference execution order. Workers and cases never run
-concurrently. JSON reports retain every paired observation, calibration samples, measurement configuration, versions,
-resolved Git HEAD, working tree diff hash, and harness hashes under `tmp/runtimeperf/results/`. A sorted path/content hash
-covers tracked and untracked runtime source files. The runtime, worker, coordinator and statistical helper hashes must
-remain unchanged through the complete run; any change invalidates the report and fails the command.
-
-The report uses the runtimeperf deterministic bootstrap of paired log elapsed-time ratios. A workload establishes parity
-when its 95% upper confidence bound is at most `1.05`: the explicit target permits at most 5% native elapsed-time overhead.
-A lower bound above `1.05` classifies regression; an interval crossing the threshold is inconclusive. Faster native
-results also pass. `--require-parity` fails unless every selected workload establishes parity. `--fail-on-regression`
-fails only for a classified regression. Without these flags, results remain diagnostic and benchmark failures still fail.
-Cross-library results measure these public APIs and are not a portable ranking; source optimization claims additionally
-require matched base/head measurements of the affected workload.
-
-Select a workload or change measurement settings:
+This runs two iterations after warmup, validates every reply and final stored state, and makes no performance claim. An
+equal-ref run exercises calibration, pairing and reporting:
 
 ```sh
-node packages/redis/benchmark/RedisClient.ts --reference-dir /tmp/effect-redis-reference \
-  --case standalone-transactions128 --rounds 13 --time 1500 --warmup-time 500
-```
-
-A short fixture check validates the harness without establishing parity:
-
-```sh
-node packages/redis/benchmark/RedisClient.ts --reference-dir /tmp/effect-redis-reference \
+node packages/redis/benchmark/RedisClient.ts --base <commit> --head <same-commit> \
   --rounds 2 --time 100 --warmup-time 50
 ```
 
-Short runs and measurements collected while tests or other benchmarks are running cannot support acceptance claims. Keep
-the same machine load, Node and Redis versions and all settings when comparing revisions. Repeat a borderline result
-with more paired rounds and longer measurement time; retain the earlier report as part of the evidence.
+All eight workloads remain selectable: `standalone-pipeline128`, `standalone-reserved-pipeline128`,
+`cluster-same-slot-pipeline128`, `cluster-multiple-slots-pipeline128`, `standalone-sequential`,
+`standalone-transactions128`, `standalone-binary-get128`, and `standalone-binary-set128`. Binary values contain every byte
+and are 4 KiB each. Repeat `--case <name>` to select a subset.
+
+Without `REDIS_SERVER_BIN`, the fixture searches PATH and then uses Docker. Docker host networking requires Linux. Only
+selected topologies start: standalone uses one Redis server; Cluster has three primaries and three replicas. Reports
+record selected cases and topologies. Both revisions share Redis version, fixture, loopback transport and Node executable.
+Startup, connection, command construction and payload construction occur outside timing.
+
+Each observation uses a fresh process with 500 ms warmup by default. Calibration chooses a common iteration count
+targeting 1500 ms for the faster revision and is excluded from statistics. Thirteen pairs alternate base/head order.
+`--rounds`, `--time` and `--warmup-time` override these defaults. Workers and cases never run concurrently.
+
+Both revisions retain replies in fixed chunks of at most 64 iterations, bounding binary bytes at 32 MiB. Chunk elapsed
+times accumulate into the observation. Every ordered INCR reply, binary read and SET acknowledgment is validated after
+its chunk, outside timing. Final counters and binary values are checked after warmup, calibration and every observation.
+Reports retain raw samples, refs, settings and sorted runtime source hashes under `tmp/runtimeperf/results/`. Source,
+worker, module resolution and harness hashes must remain unchanged; changes invalidate the report. Fixtures and temporary
+worktrees close in `finally`, including failure and interruption paths, with cleanup status recorded.
+
+The deterministic runtimeperf bootstrap analyzes paired head/base log elapsed-time ratios with 10,000 resamples at 95%
+confidence. An upper bound below 1 establishes improvement; a lower bound above 1 establishes regression; an interval
+containing 1 is inconclusive. `--fail-on-regression` fails on classified regression. Fixture, worker, configuration,
+stability and cleanup errors always fail. Use exact report bounds, since table values are rounded.
+
+Finish correctness checks and freeze sources before measuring on an otherwise idle machine. Preselect workloads and
+settings; preserve earlier evidence when increasing precision. Short runs or runs concurrent with tests, builds or other
+benchmarks cannot support optimization claims.
+
+## Warmed CPU profiles
+
+Profiles are exploratory diagnostics, separate from throughput comparisons:
+
+```sh
+REDIS_SERVER_BIN=/path/to/redis-server node packages/redis/benchmark/RedisClient.ts --head <commit> --profile \
+  --case standalone-sequential --case standalone-pipeline128 \
+  --case standalone-binary-get128 --case standalone-binary-set128 \
+  --warmup-time 1000 --profile-time 10000 --sampling-interval 1000 \
+  --output tmp/runtimeperf/results/redis-native-profile.json
+```
+
+Sampling starts after validated warmup, at approximately 1 kHz by default. Setup, assertions and final-state reads are
+outside the profile. The worker executes 64-iteration chunks and retains only the latest. After sampling stops, it checks
+that chunk's replies and the complete final stored counters or binary values. Intermediate profiled replies are not
+individually validated; fixture checks and unprofiled comparisons validate every reply. Retained memory remains bounded.
+
+Every workload uses a fresh process and saves a `.cpuprofile` beside the JSON report. The report records the profile hash,
+sampling configuration and leading self-time frames. Inspect caller stacks to distinguish client, protocol and transport
+work from Effect scheduling, Node I/O, garbage collection and idle time. Normal output-array allocation and the chunk loop
+remain in the profile. Validate a proposed optimization with unprofiled paired base/head comparisons.
