@@ -72,7 +72,9 @@ describe("RedisConnection", () => {
         const [config, reason] of [
           [{ maxFrameSize: 0 }, "Protocol"],
           [{ maxDepth: 0 }, "Protocol"],
-          [{ commandTimeout: -1 }, "Timeout"]
+          [{ commandTimeout: -1 }, "Timeout"],
+          [{ commandTimeout: NaN }, "Timeout"],
+          [{ maxPendingCommands: 0 }, "Capacity"]
         ] as const
       ) {
         const error = failure(yield* Effect.result(Connection.make(connector, { host: "unused", port: 6379 }, config)))
@@ -80,6 +82,37 @@ describe("RedisConnection", () => {
         assert.strictEqual(error.outcome, "NotSent")
       }
       assert.strictEqual(opens, 0)
+    }))
+
+  it.live("rejects commands beyond the pending limit without sending them", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const connection = yield* Connection.make(makeConnector(), fixture, { maxPendingCommands: 1 })
+      const first = yield* connection.execute(["GET", "first"]).pipe(Effect.forkChild)
+      const request = yield* nextRequest(fixture)
+      const error = failure(yield* Effect.result(connection.execute(["GET", "rejected"])))
+      assert.strictEqual(error.reason, "Capacity")
+      assert.strictEqual(error.outcome, "NotSent")
+      request.connection.send(bulk("first"))
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(first)), "first")
+      const next = yield* connection.execute(["GET", "next"]).pipe(Effect.forkChild)
+      assert.deepStrictEqual((yield* nextRequest(fixture)).args.map(String), ["GET", "next"])
+      request.connection.send(bulk("next"))
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(next)), "next")
+    }))
+
+  it.live("rejects a command larger than the queued byte limit without sending it", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const connection = yield* Connection.make(makeConnector(), fixture, { maxQueuedBytes: 32 })
+      const error = failure(yield* Effect.result(connection.execute(["SET", "key", "x".repeat(32)])))
+      assert.strictEqual(error.reason, "Capacity")
+      assert.strictEqual(error.outcome, "NotSent")
+      const next = yield* connection.execute(["GET", "key"]).pipe(Effect.forkChild)
+      const request = yield* nextRequest(fixture)
+      assert.deepStrictEqual(request.args.map(String), ["GET", "key"])
+      request.connection.send("$-1\r\n")
+      assert.isNull(Protocol.toValue(yield* Fiber.join(next)))
     }))
 
   it.live("matches replies to concurrent commands in FIFO order", () =>

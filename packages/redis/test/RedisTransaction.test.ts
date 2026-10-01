@@ -6,7 +6,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Scope } from "effect"
 import * as Result from "effect/Result"
 import type { Socket } from "node:net"
-import { barrier, type Request, startScriptedRedis } from "./utils/redis-scripted.ts"
+import { barrier, bulk, type Request, type ScriptedRedis, startScriptedRedis } from "./utils/redis-scripted.ts"
 
 const serve = (handle: (request: Request, command: string) => void) =>
   Effect.acquireRelease(
@@ -28,7 +28,57 @@ const onClose = (socket: Socket): Effect.Effect<void> => {
   return Effect.promise(() => closed)
 }
 
+// Two Cluster primaries: slots 0-8191 on `low` ({bar} = 5061), 8192-16383 on `high` ({foo} = 12182).
+const twoPrimaries = Effect.gen(function*() {
+  const commands = { low: [] as Array<string>, high: [] as Array<string> }
+  let slots: Buffer | undefined
+  const node = (name: keyof typeof commands) =>
+    serve((request, command) => {
+      if (command === "CLUSTER") {
+        request.connection.send(request.args[1].toString() === "SLOTS" ? slots! : "-ERR unknown subcommand\r\n")
+        return
+      }
+      commands[name].push(command)
+      if (command === "EXEC") request.connection.send("+OK\r\n+QUEUED\r\n+QUEUED\r\n*2\r\n+OK\r\n+OK\r\n")
+    })
+  const low = yield* node("low")
+  const high = yield* node("high")
+  const range = (start: number, end: number, owner: ScriptedRedis) =>
+    Buffer.concat([
+      Buffer.from(`*3\r\n:${start}\r\n:${end}\r\n*2\r\n`),
+      bulk(owner.host),
+      Buffer.from(`:${owner.port}\r\n`)
+    ])
+  slots = Buffer.concat([Buffer.from("*2\r\n"), range(0, 8191, low), range(8192, 16383, high)])
+  const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [low] } })
+  return { client, commands }
+})
+
 describe("RedisTransaction", () => {
+  it.live("runs a Cluster transaction on the node owning its first key's slot", () =>
+    Effect.gen(function*() {
+      const { client, commands } = yield* twoPrimaries
+      const results = yield* Transaction.execute(client, [
+        Command.set("{foo}:a", "1"),
+        Command.set("{foo}:b", "2")
+      ])
+      assert.deepStrictEqual(results?.map(Result.getOrThrow), ["OK", "OK"])
+      assert.deepStrictEqual(commands.high, ["MULTI", "SET", "SET", "EXEC"])
+      assert.deepStrictEqual(commands.low, [])
+    }))
+
+  it.live("rejects a cross-slot Cluster transaction before sending it", () =>
+    Effect.gen(function*() {
+      const { client, commands } = yield* twoPrimaries
+      const error = yield* Transaction.execute(client, [
+        Command.set("{foo}:a", "1"),
+        Command.set("{bar}:b", "2")
+      ]).pipe(Effect.flip)
+      assert.strictEqual(error.code, "CROSSSLOT")
+      assert.strictEqual(error.outcome, "NotSent")
+      assert.deepStrictEqual(commands, { low: [], high: [] })
+    }))
+
   it.live("submits MULTI, commands and EXEC before waiting for acknowledgements", () =>
     Effect.gen(function*() {
       const submitted: Array<ReadonlyArray<string>> = []

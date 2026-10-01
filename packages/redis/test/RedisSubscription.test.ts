@@ -2,7 +2,7 @@ import { makeConnector } from "@effect/platform-node-shared/internal/redisTransp
 import * as Client from "@effect/redis/RedisClient"
 import * as Subscription from "@effect/redis/RedisSubscription"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Queue, Scope } from "effect"
+import { Cause, Effect, Exit, Fiber, Queue, Scope } from "effect"
 import type { Socket } from "node:net"
 import { array, bulk, type ScriptedRedis, startScriptedRedis } from "./utils/redis-scripted.ts"
 
@@ -21,9 +21,9 @@ const makeClient = Effect.fnUntraced(function*(fixture: ScriptedRedis) {
   return yield* Fiber.join(acquiring)
 })
 
-const asCluster = (client: Client.RedisClient, seed: ScriptedRedis): Client.RedisClient => ({
+const asCluster = (client: Client.RedisClient, seed: ScriptedRedis, maxRedirects?: number): Client.RedisClient => ({
   ...client,
-  config: { ...client.config, topology: { _tag: "Cluster", seeds: [seed] } }
+  config: { ...client.config, topology: { _tag: "Cluster", seeds: [seed], maxRedirects } }
 })
 
 const ack = (kind: string, channel: string, count = 1) =>
@@ -163,5 +163,39 @@ describe("RedisSubscription", () => {
       const subscription = yield* Fiber.join(acquiring)
       subscribed.connection.send(array("smessage", "{foo}:channel", "asked"))
       assert.strictEqual(text(yield* Queue.take(subscription.messages)), "asked")
+    }))
+
+  it.live("fails a sharded subscription once its redirect limit is exhausted", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const client = asCluster(yield* makeClient(fixture), fixture, 1)
+      const acquiring = yield* Subscription.make(client, "{foo}:channel", { mode: "sharded" }).pipe(
+        Effect.flip,
+        Effect.forkChild
+      )
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const request = yield* Effect.promise(fixture.nextRequest)
+        assert.strictEqual(request.args[0].toString(), "SSUBSCRIBE")
+        request.connection.send(`-MOVED 12182 ${fixture.host}:${fixture.port}\r\n`)
+      }
+      const error = yield* Fiber.join(acquiring)
+      assert.strictEqual(error.reason, "Routing")
+      assert.strictEqual(error.code, "MOVED")
+    }))
+
+  it.live("fails consumers with a defect raised while reconnecting", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const original = yield* makeClient(fixture)
+      const defect = new Error("reconnect defect")
+      let reservations = 0
+      const client: Client.RedisClient = {
+        ...original,
+        reserve: (affinity) => ++reservations === 1 ? original.reserve(affinity) : Effect.die(defect)
+      }
+      const { connection, subscription } = yield* subscribe(fixture, client)
+      connection.disconnect()
+      const result = yield* Queue.take(subscription.messages).pipe(Effect.exit, Effect.timeout("2 seconds"))
+      assert.isTrue(Exit.isFailure(result) && Cause.squash(result.cause) === defect)
     }))
 })

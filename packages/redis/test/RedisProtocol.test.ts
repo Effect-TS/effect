@@ -148,6 +148,9 @@ describe("RedisProtocol", () => {
     const chunked = RedisProtocol.makeParser({ maxFrameSize: 10 })
     chunked.push(bytes("*2\r\n:1\r\n"))
     assertFails(() => chunked.push(bytes(":2\r\n")))
+    const unterminated = RedisProtocol.makeParser({ maxFrameSize: 10 })
+    unterminated.push(bytes("+aaaaa"))
+    assertFails(() => unterminated.push(bytes("aaaaa")))
   })
 
   it("limits aggregate depth and length", () => {
