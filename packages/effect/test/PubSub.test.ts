@@ -12,6 +12,68 @@ describe("PubSub", () => {
       assert.isFalse(PubSub.isPubSub(null))
     }))
 
+  it.effect.each([2, 3])(
+    "sliding publishAll preserves buffered values after a waiting take frees space (capacity: %s)",
+    (capacity) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.sliding<number>(capacity)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        // Starting immediately registers exactly one take before publishing.
+        // It cannot drain the remaining buffer, even with synchronous wakes.
+        const waiter = yield* PubSub.take(subscription).pipe(Effect.forkChild({ startImmediately: true }))
+        const values = Array.range(0, capacity)
+
+        assert.isTrue(yield* PubSub.publishAll(pubsub, values))
+        assert.strictEqual(yield* Fiber.join(waiter), 0)
+        assert.deepStrictEqual(yield* PubSub.takeAll(subscription), values.slice(1))
+      })
+  )
+
+  it.effect.each([2, 3])(
+    "sliding publish preserves buffered values when space opens before surplus handling (capacity: %s)",
+    (capacity) =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.sliding<number>(capacity)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const values = Array.range(0, capacity - 1)
+        yield* PubSub.publishAll(pubsub, values)
+
+        // publish does not complete waiting subscribers on its failed attempt.
+        // Inject a take at the strategy boundary to exercise stale fullness
+        // deterministically, without relying on scheduler preemption.
+        const handleSurplus = pubsub.strategy.handleSurplus.bind(pubsub.strategy)
+        pubsub.strategy.handleSurplus = (...args) =>
+          Effect.gen(function*() {
+            assert.isTrue(pubsub.pubsub.isFull())
+            assert.strictEqual(yield* PubSub.take(subscription), 0)
+            return yield* handleSurplus(...args)
+          })
+
+        assert.isTrue(yield* PubSub.publish(pubsub, capacity))
+        assert.deepStrictEqual(yield* PubSub.takeAll(subscription), Array.range(1, capacity))
+      })
+  )
+
+  for (const batch of [false, true]) {
+    it.effect.each([2, 3])(
+      `sliding drops only the oldest value from a genuinely full buffer (capacity: %s, batch: ${batch})`,
+      (capacity) =>
+        Effect.gen(function*() {
+          const pubsub = yield* PubSub.sliding<number>(capacity)
+          const subscription = yield* PubSub.subscribe(pubsub)
+          yield* PubSub.publishAll(pubsub, Array.range(0, capacity - 1))
+          assert.isTrue(pubsub.pubsub.isFull())
+
+          assert.isTrue(
+            yield* (batch
+              ? PubSub.publishAll(pubsub, [capacity])
+              : PubSub.publish(pubsub, capacity))
+          )
+          assert.deepStrictEqual(yield* PubSub.takeAll(subscription), Array.range(1, capacity))
+        })
+    )
+  }
+
   for (const batch of [false, true]) {
     it.effect.each([1, 2, 3])(
       `sliding capacity %s delivers each retained message once per subscriber (batch: ${batch})`,
