@@ -588,16 +588,21 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
       annotated = true
     }
     let cont = fiber.getCont(contE)
-    while (fiber.interruptible && fiber._interruptedCause) {
-      // Strip typed failures when skipping a handler, but preserve failures that
-      // only pass through synthetic interruptibility restoration continuations.
-      if (cont && identifier in cont) {
+    const interruptedCause = fiber._interruptedCause
+    if (interruptedCause && fiber.interruptible) {
+      // A pending interruption skips handlers until the fiber is uninterruptible.
+      // Skipped handlers can no longer recover typed failures, so drop them.
+      // Synthetic continuations, such as interruptibility restoration, have no identifier.
+      let skippedHandler = false
+      while (cont && fiber.interruptible) {
+        skippedHandler ||= identifier in cont
+        cont = fiber.getCont(contE)
+      }
+      if (skippedHandler) {
         cause = causeFromReasons(cause.reasons.filter((reason) => reason._tag !== "Fail"))
       }
-      cause = causeCombine(cause, fiber._interruptedCause)
+      cause = causeCombine(cause, interruptedCause)
       annotated = true
-      if (!cont) break
-      cont = fiber.getCont(contE)
     }
     return cont
       ? cont[contE](cause, fiber, annotated ? undefined : this)

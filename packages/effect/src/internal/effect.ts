@@ -239,8 +239,6 @@ export const causeAnnotations = <E>(
   return Context.makeUnsafe(map)
 }
 
-export { causeCombine } from "./core.ts"
-
 /** @internal */
 export const causeMap: {
   <E, E2>(f: (error: NoInfer<E>) => E2): (self: Cause.Cause<E>) => Cause.Cause<E2>
