@@ -1,8 +1,8 @@
 import { inertClusterHandle, makeClusterHandle } from "@effect/platform-cloudflare/internal/alchemyCluster"
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect } from "effect"
-import { Singleton } from "effect/unstable/cluster"
-import { Sharding } from "effect/unstable/cluster/Sharding"
+import { Singleton } from "effect/cluster"
+import { Sharding } from "effect/cluster/Sharding"
 
 // The public `AlchemyCloudflareCluster.make` wires these handles to alchemy's
 // Durable Object declarations. The alchemy runtime tracks the published

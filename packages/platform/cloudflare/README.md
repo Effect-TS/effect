@@ -47,8 +47,8 @@ The package ships four Durable Object classes. Re-export them from your Worker e
 // src/worker.ts
 import { CloudflareCluster, CloudflareDurableObjects } from "@effect/platform-cloudflare"
 import { Effect, Layer, ManagedRuntime, Schema } from "effect"
-import { Entity, Singleton } from "effect/unstable/cluster"
-import { Rpc } from "effect/unstable/rpc"
+import { Entity, Singleton } from "effect/cluster"
+import { Rpc } from "effect/rpc"
 
 export {
   ClusterDurableQueue,

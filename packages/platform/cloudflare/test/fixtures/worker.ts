@@ -7,8 +7,8 @@ import { ClusterEntity as BaseClusterEntity } from "@effect/platform-cloudflare/
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import { registerEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
 import { Context, Deferred, Effect, Schema, Stream } from "effect"
-import { ClusterSchema, Entity } from "effect/unstable/cluster"
-import { Rpc, RpcSchema } from "effect/unstable/rpc"
+import { ClusterSchema, Entity } from "effect/cluster"
+import { Rpc, RpcSchema } from "effect/rpc"
 
 const Add = Rpc.make("Add", {
   payload: { operationId: Schema.String },

@@ -16,8 +16,8 @@ import {
   Stream,
   Tracer
 } from "effect"
-import { ClusterMetrics, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/unstable/cluster"
-import { Rpc, RpcSchema } from "effect/unstable/rpc"
+import { ClusterMetrics, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
+import { Rpc, RpcSchema } from "effect/rpc"
 
 const User = Entity.make("User", [
   Rpc.make("Ping", { success: Schema.String })
