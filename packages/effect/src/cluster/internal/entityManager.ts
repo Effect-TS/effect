@@ -441,7 +441,6 @@ export const make = Effect.fnUntraced(function*<
         )
       })
     )
-    // The shard may have been released while this entity was building.
     if (!options.sharding.hasShardId(address.shardId)) {
       return yield* new EntityNotAssignedToRunner({ address })
     }
