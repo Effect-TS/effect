@@ -792,7 +792,7 @@ effect/Schema#Number:
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#NumberFromString:
   replacement: Schema.NumberFromString
-  note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+  note: "Decoding now uses JavaScript number coercion and no longer fails on non-numeric input: `\"abc\"` decodes to `NaN` and `\"\"` to `0`, where v3 failed both. Use `FiniteFromString` to keep rejecting non-numeric strings (it still decodes `\"\"` to `0`)."
 effect/Schema#Object:
   replacement: Schema.ObjectKeyword
   note: Rename the object keyword schema.
@@ -846,7 +846,7 @@ effect/Schema#ParseJsonOptions:
   note: The old parse-json options type was removed; configure `fromJsonString` and its underlying getter directly.
 effect/Schema#parseNumber:
   replacement: Schema.NumberFromString
-  note: Use the built-in string-to-number codec.
+  note: "Use the built-in string-to-number codec. It decodes non-numeric strings to `NaN` instead of failing; use `FiniteFromString` to reject them."
 effect/Schema#partial:
   replacement: schema.mapFields(Struct.map(Schema.optional))
   note: Map struct fields with `Schema.optional`.
