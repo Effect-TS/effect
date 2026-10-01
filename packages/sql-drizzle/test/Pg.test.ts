@@ -51,6 +51,22 @@ describe.sequential("Pg", () => {
     timeout: 60000
   })
 
+  it.effect("$count", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* ORM
+
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
+      yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
+      const result = yield* db.$count(users)
+      assert.strictEqual(result, 1)
+    }).pipe(
+      Effect.provide(ORM.Client),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), {
+    timeout: 60000
+  })
+
   it.effect("remote callback", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
