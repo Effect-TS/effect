@@ -283,7 +283,7 @@ const dedupeReasons = <E>(
   self: ReadonlyArray<Cause.Reason<E>>,
   that: ReadonlyArray<Cause.Reason<E>>
 ): Array<Cause.Reason<E>> => {
-  // Keep deduplication local so causeCombine does not retain Array.ts in the core bundle.
+  // Avoid importing Array.ts into the core bundle.
   // Snapshot both arrays before invoking user-defined hash or equality methods.
   const buckets = new Map<number, Array<Cause.Reason<E>>>()
   const out: Array<Cause.Reason<E>> = []
@@ -590,9 +590,8 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     let cont = fiber.getCont(contE)
     const interruptedCause = fiber._interruptedCause
     if (interruptedCause && fiber.interruptible) {
-      // A pending interruption skips handlers until the fiber is uninterruptible.
-      // Skipped handlers can no longer recover typed failures, so drop them.
-      // Synthetic continuations, such as interruptibility restoration, have no identifier.
+      // Drop typed failures only when interruption skips a recovery handler.
+      // Interruptibility-restoration continuations have no identifier.
       let skippedHandler = false
       while (cont && fiber.interruptible) {
         skippedHandler ||= identifier in cont
