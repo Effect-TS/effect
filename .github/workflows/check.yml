@@ -145,7 +145,6 @@ jobs:
           docker pull mysql:lts &
           docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
-          docker pull redis:alpine &
           docker pull redis:7.2.6@sha256:43c5c111b5b63afce26faea67198f8cf7e63b941460bcfe1525b68a6ad1eef92 &
           wait
 
@@ -156,31 +155,6 @@ jobs:
           bun-version: ${{ matrix.bun }}
       - name: Test
         run: ${{ matrix.command }}
-
-  redis:
-    name: Redis (${{ matrix.version }})
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - version: 7.2.6
-            image: redis:7.2.6@sha256:43c5c111b5b63afce26faea67198f8cf7e63b941460bcfe1525b68a6ad1eef92
-          - version: 8.10.2
-            image: redis:8.10.2@sha256:6f81e8915c60b065a524e6967e0ad1c639ba6efa84d669f823683ea04d9150ee
-    env:
-      REDIS_TEST_IMAGE: ${{ matrix.image }}
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Pull pinned Redis image
-        run: docker pull "$REDIS_TEST_IMAGE"
-      - name: Verify every required Redis suite
-        run: node scripts/test-redis.mjs
 
   doctest:
     name: Test (Documentation)

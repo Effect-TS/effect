@@ -114,24 +114,19 @@ describe("Redis", () => {
       ])
     }))
 
-  it.effect("evaluates and caches missing scripts on the key's owning node", () =>
+  it.effect("falls back to EVAL only when EVALSHA reports NOSCRIPT", () =>
     Effect.gen(function*() {
-      for (const message of ["NOSCRIPT No matching script", "-NOSCRIPT No matching script"]) {
-        const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
-        let evalShaAttempts = 0
+      const run = Effect.fnUntraced(function*(message: string) {
+        const commands: Array<string> = []
         const redis = yield* Redis.make({
           scan: () => Effect.die("unused"),
           scriptHash: () => Effect.succeed("sha"),
-          send: <A>(command: string, ...args: ReadonlyArray<string>) =>
+          send: <A>(command: string) =>
             Effect.suspend(() => {
-              commands.push([command, args])
-              if (command === "EVALSHA") {
-                evalShaAttempts += 1
-              }
-              if (command === "EVALSHA" && evalShaAttempts === 1) {
-                return Effect.fail(new Redis.RedisError({ cause: new Error(message) }))
-              }
-              return Effect.succeed("ok" as A)
+              commands.push(command)
+              return command === "EVALSHA"
+                ? Effect.fail(new Redis.RedisError({ cause: new Error(message) }))
+                : Effect.succeed("ok" as A)
             }),
           subscribe: () => Effect.succeed(Effect.never)
         })
@@ -141,15 +136,18 @@ describe("Redis", () => {
             numberOfKeys: 1
           }).withReturnType<string>()
         )
+        const result = yield* Effect.exit(evalScript("key"))
+        return { commands, success: Exit.isSuccess(result) }
+      })
 
-        const result = yield* evalScript("key")
-
-        assert.strictEqual(result, "ok")
-        assert.deepStrictEqual(commands.map(([command]) => command), [
-          "EVALSHA",
-          "EVAL"
-        ])
-      }
+      assert.deepStrictEqual(yield* run("NOSCRIPT No matching script"), {
+        commands: ["EVALSHA", "EVAL"],
+        success: true
+      })
+      assert.deepStrictEqual(yield* run("ERR script failed after writing: NOSCRIPT"), {
+        commands: ["EVALSHA"],
+        success: false
+      })
     }))
 
   it.effect("receives messages from a subscription", () =>

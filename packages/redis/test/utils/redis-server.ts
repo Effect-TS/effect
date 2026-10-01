@@ -1,3 +1,5 @@
+import * as Effect from "effect/Effect"
+import type * as Scope from "effect/Scope"
 import { type ChildProcess, execFile, spawn } from "node:child_process"
 import { constants } from "node:fs"
 import { access, copyFile, mkdtemp, rm, writeFile } from "node:fs/promises"
@@ -12,72 +14,79 @@ export interface Endpoint {
   readonly port: number
 }
 
-export interface Credentials {
+interface Credentials {
   readonly password?: string
   readonly username?: string
 }
 
+export type Reply = string | number | null | Array<Reply>
+
 export interface RedisFixture extends Endpoint {
-  readonly directory: string
   readonly unixSocketPath: string | undefined
   readonly tlsPort: number | undefined
   readonly clusterBusPort: number | undefined
-  readonly process: ChildProcess
   readonly stop: () => Promise<void>
   readonly command: (...args: ReadonlyArray<string>) => Promise<Reply>
 }
 
-export type Reply = string | number | null | Array<Reply>
+export interface RedisOptions extends Credentials {
+  readonly config?: ReadonlyArray<string>
+  readonly sentinel?: boolean
+  readonly unixSocket?: boolean
+  readonly tls?: boolean
+  readonly cluster?: boolean
+}
 
-/** An independent, deliberately small RESP2 administration client. */
-export const command = (
-  endpoint: Endpoint,
-  args: ReadonlyArray<string>,
-  credentials: Credentials = {}
-): Promise<Reply> =>
+/** Starts a fixture for the current scope and stops it when the scope closes. */
+export const acquire = <A extends { readonly stop: () => Promise<void> }>(
+  start: () => Promise<A>
+): Effect.Effect<A, never, Scope.Scope> =>
+  Effect.acquireRelease(Effect.promise(start), (fixture) => Effect.promise(() => fixture.stop()))
+
+/** An independent RESP2 client for administering fixtures. */
+const command = (endpoint: Endpoint, args: ReadonlyArray<string>, credentials: Credentials = {}): Promise<Reply> =>
   new Promise((resolve, reject) => {
     const socket = createConnection(endpoint)
+    const pending = [
+      ...(credentials.password === undefined ? [] : [
+        credentials.username === undefined
+          ? ["AUTH", credentials.password]
+          : ["AUTH", credentials.username, credentials.password]
+      ]),
+      args
+    ]
     let buffer = Buffer.alloc(0)
-    let authenticated = credentials.password === undefined
-    const send = (values: ReadonlyArray<string>) => {
-      socket.write(Buffer.concat([
-        Buffer.from(`*${values.length}\r\n`),
-        ...values.flatMap((value) => {
-          const data = Buffer.from(value)
-          return [Buffer.from(`$${data.length}\r\n`), data, Buffer.from("\r\n")]
-        })
-      ]))
-    }
-    const fail = (error: Error) => {
+    const fail = (error: unknown) => {
       socket.destroy()
       reject(error)
     }
     socket.setTimeout(5_000, () => fail(new Error(`Redis administration command timed out: ${args[0]}`)))
     socket.on("error", reject)
+    socket.on("end", () => reject(new Error("Redis administration socket ended before its reply")))
     socket.on("connect", () => {
-      if (authenticated) send(args)
-      else {send(
-          credentials.username ? ["AUTH", credentials.username, credentials.password!] : ["AUTH", credentials.password!]
-        )}
+      for (const values of pending) {
+        socket.write(
+          `*${values.length}\r\n` + values.map((value) => `$${Buffer.byteLength(value)}\r\n${value}\r\n`).join("")
+        )
+      }
     })
     socket.on("data", (data) => {
       buffer = Buffer.concat([buffer, Buffer.isBuffer(data) ? data : Buffer.from(data)])
       try {
-        const parsed = parseReply(buffer)
-        if (!parsed) return
-        buffer = buffer.subarray(parsed[1])
-        if (!authenticated) {
-          authenticated = true
-          send(args)
-        } else {
-          socket.end()
-          resolve(parsed[0])
+        while (true) {
+          const parsed = parseReply(buffer)
+          if (!parsed) return
+          buffer = buffer.subarray(parsed[1])
+          pending.shift()
+          if (pending.length === 0) {
+            socket.end()
+            return resolve(parsed[0])
+          }
         }
       } catch (error) {
-        fail(error instanceof Error ? error : new Error(String(error)))
+        fail(error)
       }
     })
-    socket.on("end", () => reject(new Error("Redis administration socket ended before its reply")))
   })
 
 const parseReply = (buffer: Buffer, offset = 0): readonly [Reply, number] | undefined => {
@@ -85,20 +94,20 @@ const parseReply = (buffer: Buffer, offset = 0): readonly [Reply, number] | unde
   if (end === -1) return
   const header = buffer.toString("utf8", offset + 1, end)
   const next = end + 2
-  switch (buffer[offset]) {
-    case 43:
+  switch (String.fromCharCode(buffer[offset])) {
+    case "+":
       return [header, next]
-    case 45:
+    case "-":
       throw new Error(header)
-    case 58:
+    case ":":
       return [Number(header), next]
-    case 36: {
+    case "$": {
       const length = Number(header)
       if (length === -1) return [null, next]
       if (buffer.length < next + length + 2) return
       return [buffer.toString("utf8", next, next + length), next + length + 2]
     }
-    case 42: {
+    case "*": {
       const length = Number(header)
       if (length === -1) return [null, next]
       const values: Array<Reply> = []
@@ -116,7 +125,7 @@ const parseReply = (buffer: Buffer, offset = 0): readonly [Reply, number] | unde
   }
 }
 
-export const freePort = (): Promise<number> =>
+const freePort = (): Promise<number> =>
   new Promise((resolve, reject) => {
     const server = createServer()
     server.once("error", reject)
@@ -127,19 +136,14 @@ export const freePort = (): Promise<number> =>
     })
   })
 
-export const waitUntil = async (
-  check: () => Promise<boolean>,
-  message: string,
-  timeout = 30_000,
-  retryError?: () => boolean
-): Promise<void> => {
+/** Polls `check` until it returns true, retrying thrown errors until the timeout. */
+export const waitUntil = async (check: () => Promise<boolean>, message: string, timeout = 30_000): Promise<void> => {
   const deadline = Date.now() + timeout
   let lastError: unknown
   while (Date.now() < deadline) {
     try {
       if (await check()) return
     } catch (error) {
-      if (retryError && !retryError()) throw error
       lastError = error
     }
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -147,19 +151,9 @@ export const waitUntil = async (
   throw new Error(`${message}${lastError ? `: ${String(lastError)}` : ""}`)
 }
 
-export interface RedisOptions extends Credentials {
-  readonly binary?: string
-  readonly port?: number
-  readonly config?: ReadonlyArray<string>
-  readonly sentinel?: boolean
-  readonly unixSocket?: boolean
-  readonly tls?: boolean
-  readonly cluster?: boolean
-}
-
 const quote = (value: string): string => JSON.stringify(value)
 const runFile = promisify(execFile)
-export const redisImage = "redis:7.2.6@sha256:43c5c111b5b63afce26faea67198f8cf7e63b941460bcfe1525b68a6ad1eef92"
+const redisImage = "redis:7.2.6@sha256:43c5c111b5b63afce26faea67198f8cf7e63b941460bcfe1525b68a6ad1eef92"
 
 const findBinary = async (): Promise<string | undefined> => {
   for (const directory of (process.env.PATH ?? "").split(":")) {
@@ -168,54 +162,52 @@ const findBinary = async (): Promise<string | undefined> => {
       await access(path, constants.X_OK)
       return path
     } catch {
-      // Continue searching PATH before choosing Docker.
+      continue
     }
   }
   return undefined
 }
 
+/**
+ * Starts `redis-server` from `REDIS_SERVER_BIN` or `PATH`, falling back to the
+ * pinned Docker image (or `REDIS_TEST_IMAGE`) with host networking.
+ */
 export const startRedis = async (options: RedisOptions = {}): Promise<RedisFixture> => {
   for (let attempt = 0;; attempt++) {
     try {
       return await startRedisOnce(options)
     } catch (error) {
-      // Closing an ephemeral-port probe cannot reserve the port until Redis
-      // binds it, especially while Docker starts. Retry only bind collisions
-      // for automatically allocated ports; explicit endpoints must stay fixed.
-      if (options.port !== undefined || attempt >= 4 || !/bind: Address already in use/.test(String(error))) throw error
+      // A probed free port is not reserved, so another process may bind it first.
+      if (attempt >= 4 || !/bind: Address already in use/.test(String(error))) throw error
     }
   }
 }
 
 const startRedisOnce = async (options: RedisOptions): Promise<RedisFixture> => {
-  const binary = options.binary ?? process.env.REDIS_SERVER_BIN ??
-    (process.env.REDIS_TEST_IMAGE ? undefined : await findBinary())
+  const binary = process.env.REDIS_SERVER_BIN ?? (process.env.REDIS_TEST_IMAGE ? undefined : await findBinary())
   if (!binary && process.platform !== "linux") {
     throw new Error("Redis Docker fixtures require Linux host networking; set REDIS_SERVER_BIN on other platforms")
   }
   const directory = await mkdtemp(join(tmpdir(), "effect-redis-"))
-  const port = options.port ?? await freePort()
-  const allocated = new Set([port])
+  const ports = new Set<number>()
   const nextPort = async () => {
-    let candidate: number
-    do candidate = await freePort()
-    while (allocated.has(candidate))
-    allocated.add(candidate)
-    return candidate
+    let port: number
+    do port = await freePort()
+    while (ports.has(port))
+    ports.add(port)
+    return port
   }
-  const endpoint = { host: "127.0.0.1", port }
+  const port = await nextPort()
   const unixSocketPath = options.unixSocket ? join(directory, "redis.sock") : undefined
   const tlsPort = options.tls ? await nextPort() : undefined
   const clusterBusPort = options.cluster ? await nextPort() : undefined
   if (tlsPort) {
-    await copyFile(
-      fileURLToPath(new URL("../../../platform/node/test/fixtures/tls/cert.pem", import.meta.url)),
-      join(directory, "cert.pem")
-    )
-    await copyFile(
-      fileURLToPath(new URL("../../../platform/node/test/fixtures/tls/key.pem", import.meta.url)),
-      join(directory, "key.pem")
-    )
+    for (const file of ["cert.pem", "key.pem"]) {
+      await copyFile(
+        fileURLToPath(new URL(`../../../platform/node/test/fixtures/tls/${file}`, import.meta.url)),
+        join(directory, file)
+      )
+    }
   }
   const config = [
     "bind 127.0.0.1",
@@ -243,9 +235,9 @@ const startRedisOnce = async (options: RedisOptions): Promise<RedisFixture> => {
   ].join("\n")
   const path = join(directory, "redis.conf")
   await writeFile(path, config)
-  const containerName = `effect-redis-${process.pid}-${directory.slice(directory.lastIndexOf("/") + 1)}`
   const serverArgs = [path, ...options.sentinel ? ["--sentinel"] : []]
-  const child = binary
+  const containerName = `effect-redis-${process.pid}-${directory.slice(directory.lastIndexOf("/") + 1)}`
+  const child: ChildProcess = binary
     ? spawn(binary, serverArgs, { stdio: ["ignore", "pipe", "pipe"] })
     : spawn("docker", [
       "run",
@@ -264,78 +256,49 @@ const startRedisOnce = async (options: RedisOptions): Promise<RedisFixture> => {
       "redis-server",
       ...serverArgs
     ], { stdio: ["ignore", "pipe", "pipe"] })
-  const spawned = new Promise<void>((resolve, reject) => {
-    child.once("spawn", resolve)
-    child.once("error", reject)
-  })
   let diagnostics = ""
   child.stdout?.on("data", (chunk) => diagnostics = (diagnostics + String(chunk)).slice(-16_384))
   child.stderr?.on("data", (chunk) => diagnostics = (diagnostics + String(chunk)).slice(-16_384))
   let spawnError: Error | undefined
   child.on("error", (error) => spawnError = error)
+  const exited = () => spawnError !== undefined || child.exitCode !== null || child.signalCode !== null
+
   let stopped = false
-  const removeContainer = async () => {
-    if (binary || spawnError) return
-    try {
-      await runFile("docker", ["rm", "--force", containerName], { timeout: 10_000 })
-    } catch (error) {
-      if (!String(error).includes("No such container")) throw error
-    }
-  }
-  const terminate = async () => {
-    if (child.exitCode !== null || child.signalCode !== null || spawnError) return
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(() => child.kill("SIGKILL"), 2_000)
-      child.once("exit", () => {
-        clearTimeout(timer)
-        resolve()
-      })
-      child.kill("SIGTERM")
-    })
-  }
   const stop = async () => {
     if (stopped) return
     stopped = true
-    try {
-      // Try to stop the server while its Docker CLI can still report exit.
-      await removeContainer().catch(() => {})
-    } finally {
-      try {
-        await terminate()
-      } finally {
-        try {
-          // A slow Docker create may have completed after the first removal.
-          // Failure here is reported, but cannot bypass local cleanup.
-          await removeContainer()
-        } finally {
-          await rm(directory, { recursive: true, force: true })
-        }
-      }
+    if (!binary && !spawnError) {
+      await runFile("docker", ["rm", "--force", containerName], { timeout: 10_000 }).catch(() => {})
     }
+    if (!exited()) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => child.kill("SIGKILL"), 2_000)
+        child.once("exit", () => {
+          clearTimeout(timer)
+          resolve()
+        })
+        child.kill("SIGTERM")
+      })
+    }
+    await rm(directory, { recursive: true, force: true })
   }
 
-  const fixture = {
+  const endpoint = { host: "127.0.0.1", port }
+  const fixture: RedisFixture = {
     ...endpoint,
-    directory,
     unixSocketPath,
     tlsPort,
     clusterBusPort,
-    process: child,
     stop,
-    command: (...args: ReadonlyArray<string>) => command(endpoint, args, options)
+    command: (...args) => command(endpoint, args, options)
   }
   try {
-    await spawned
     await waitUntil(
-      async () => {
-        if (spawnError) throw spawnError
-        if (child.exitCode !== null) throw new Error(`Redis exited: ${diagnostics}`)
-        return await fixture.command("PING") === "PONG"
-      },
-      `Could not start Redis; install Docker or set REDIS_SERVER_BIN to a redis-server executable`,
-      binary ? 10_000 : 90_000,
-      () => !spawnError && child.exitCode === null
+      async () => exited() || await fixture.command("PING") === "PONG",
+      "Could not start Redis; install Docker or set REDIS_SERVER_BIN to a redis-server executable",
+      binary ? 10_000 : 90_000
     )
+    if (exited()) throw spawnError ?? new Error("Redis exited during startup")
     return fixture
   } catch (error) {
     await stop()
@@ -345,10 +308,10 @@ const startRedisOnce = async (options: RedisOptions): Promise<RedisFixture> => {
 
 export interface ClusterNode extends RedisFixture {
   readonly id: string
-  readonly initialRole: "primary" | "replica"
 }
 
 export interface ClusterFixture {
+  /** Primaries are `nodes[0..2]`; `nodes[i + 3]` replicates `nodes[i]`. */
   readonly nodes: ReadonlyArray<ClusterNode>
   readonly seeds: ReadonlyArray<Endpoint>
   readonly stop: () => Promise<void>
@@ -356,11 +319,15 @@ export interface ClusterFixture {
   readonly failover: (replica: ClusterNode) => Promise<void>
 }
 
+/** Starts a six-node Cluster: three primaries, each with one replica. */
 export const startCluster = async (options: RedisOptions = {}): Promise<ClusterFixture> => {
   const fixtures: Array<RedisFixture> = []
   const stop = async () => {
     await Promise.all(fixtures.map((fixture) => fixture.stop()))
   }
+  const allNodes = (check: (node: ClusterNode) => Promise<boolean>) => async () =>
+    (await Promise.all(nodes.map(check))).every(Boolean)
+  let nodes: Array<ClusterNode> = []
   try {
     for (let i = 0; i < 6; i++) {
       fixtures.push(
@@ -379,103 +346,94 @@ export const startCluster = async (options: RedisOptions = {}): Promise<ClusterF
         })
       )
     }
-    const nodes: Array<ClusterNode> = await Promise.all(fixtures.map(async (fixture, i) => ({
+    nodes = await Promise.all(fixtures.map(async (fixture) => ({
       ...fixture,
-      id: String(await fixture.command("CLUSTER", "MYID")),
-      initialRole: i < 3 ? "primary" : "replica"
+      id: String(await fixture.command("CLUSTER", "MYID"))
     })))
-    for (let i = 1; i < nodes.length; i++) {
-      const node = nodes[i]
+    for (const node of nodes.slice(1)) {
       await nodes[0].command("CLUSTER", "MEET", node.host, String(node.port), String(node.clusterBusPort))
     }
-    await waitUntil(async () => {
-      const result = await Promise.all(nodes.map((node) => node.command("CLUSTER", "INFO")))
-      return result.every((info) => String(info).includes("cluster_known_nodes:6"))
-    }, "Redis Cluster members did not discover each other")
+    await waitUntil(
+      allNodes(async (node) => String(await node.command("CLUSTER", "INFO")).includes("cluster_known_nodes:6")),
+      "Redis Cluster members did not discover each other"
+    )
     for (let i = 0; i < 3; i++) {
       const start = Math.floor(i * 16_384 / 3)
       const end = Math.floor((i + 1) * 16_384 / 3) - 1
       await nodes[i].command("CLUSTER", "ADDSLOTSRANGE", String(start), String(end))
       await nodes[i + 3].command("CLUSTER", "REPLICATE", nodes[i].id)
     }
-    await waitUntil(async () => {
-      const result = await Promise.all(nodes.map((node) => node.command("CLUSTER", "INFO")))
-      return result.every((info) => String(info).includes("cluster_state:ok"))
-    }, "Redis Cluster did not become ready")
-    await waitUntil(async () => {
-      const result = await Promise.all(nodes.slice(3).map((node) => node.command("INFO", "replication")))
-      return result.every((info) => String(info).includes("master_link_status:up"))
-    }, "Redis Cluster replicas did not synchronize")
-    const slotOwners = async (node: ClusterNode): Promise<Array<string>> => {
-      const slots = await node.command("CLUSTER", "SLOTS") as Array<Array<Reply>>
-      const owners = Array<string>(16_384).fill("")
-      for (const [start, end, primary] of slots) {
-        const id = (primary as Array<Reply>)[2] as string
-        owners.fill(id, start as number, (end as number) + 1)
-      }
-      return owners
-    }
-    return {
-      nodes,
-      seeds: nodes.slice(0, 3).map(({ host, port }) => ({ host, port })),
-      stop,
-      moveSlot: async (slot, source, target) => {
-        await target.command("CLUSTER", "SETSLOT", String(slot), "IMPORTING", source.id)
-        await source.command("CLUSTER", "SETSLOT", String(slot), "MIGRATING", target.id)
-        while (true) {
-          const keys = await source.command("CLUSTER", "GETKEYSINSLOT", String(slot), "100") as Array<string>
-          if (keys.length === 0) break
-          await source.command(
-            "MIGRATE",
-            target.host,
-            String(target.port),
-            "",
-            "0",
-            "5000",
-            ...(options.password ? ["AUTH", options.password] : []),
-            "KEYS",
-            ...keys
-          )
-        }
-        await Promise.all(
-          nodes.slice(0, 3).map((node) => node.command("CLUSTER", "SETSLOT", String(slot), "NODE", target.id))
-        )
-        // Replicas learn ownership through cluster gossip, independently of
-        // replication. Wait before a subsequent promotion can claim this slot.
-        await waitUntil(async () => {
-          const owners = await Promise.all(nodes.map(slotOwners))
-          return owners.every((ownership) => ownership[slot] === target.id)
-        }, "Redis Cluster slot migration did not converge")
-      },
-      failover: async (replica) => {
-        const previousRole = await replica.command("ROLE") as Array<Reply>
-        const primary = nodes.find((node) => node.port === previousRole[2])
-        if (previousRole[0] !== "slave" || !primary) throw new Error("Expected a Redis Cluster replica")
-        const expectedOwners = (await slotOwners(primary)).map((id) => id === primary.id ? replica.id : id)
-        await replica.command("CLUSTER", "FAILOVER")
-        await waitUntil(async () => {
-          const role = await replica.command("ROLE") as Array<Reply>
-          return role[0] === "master"
-        }, "Redis Cluster replica was not promoted")
-        // ROLE changes before every node has applied the new ownership epoch.
-        // A client command during that gap can correctly receive CLUSTERDOWN.
-        await waitUntil(async () => {
-          const states = await Promise.all(nodes.map(async (node) => ({
-            info: String(await node.command("CLUSTER", "INFO")),
-            owners: await slotOwners(node)
-          })))
-          const oldRole = await primary.command("ROLE") as Array<Reply>
-          return oldRole[0] === "slave" && oldRole[2] === replica.port &&
-            states.every(({ info, owners }) =>
-              info.includes("cluster_state:ok") &&
-              owners.every((id, slot) => id !== "" && id === expectedOwners[slot])
-            )
-        }, "Redis Cluster promotion did not converge")
-      }
-    }
+    await waitUntil(
+      allNodes(async (node) => String(await node.command("CLUSTER", "INFO")).includes("cluster_state:ok")),
+      "Redis Cluster did not become ready"
+    )
+    await waitUntil(
+      async () =>
+        (await Promise.all(nodes.slice(3).map((node) => node.command("INFO", "replication"))))
+          .every((info) => String(info).includes("master_link_status:up")),
+      "Redis Cluster replicas did not synchronize"
+    )
   } catch (error) {
     await stop()
     throw error
+  }
+
+  const slotOwners = async (node: ClusterNode): Promise<Array<string>> => {
+    const slots = await node.command("CLUSTER", "SLOTS") as Array<Array<Reply>>
+    const owners = Array<string>(16_384).fill("")
+    for (const [start, end, primary] of slots) {
+      owners.fill((primary as Array<Reply>)[2] as string, start as number, (end as number) + 1)
+    }
+    return owners
+  }
+
+  return {
+    nodes,
+    seeds: nodes.slice(0, 3).map(({ host, port }) => ({ host, port })),
+    stop,
+    moveSlot: async (slot, source, target) => {
+      await target.command("CLUSTER", "SETSLOT", String(slot), "IMPORTING", source.id)
+      await source.command("CLUSTER", "SETSLOT", String(slot), "MIGRATING", target.id)
+      while (true) {
+        const keys = await source.command("CLUSTER", "GETKEYSINSLOT", String(slot), "100") as Array<string>
+        if (keys.length === 0) break
+        await source.command(
+          "MIGRATE",
+          target.host,
+          String(target.port),
+          "",
+          "0",
+          "5000",
+          ...(options.password ? ["AUTH", options.password] : []),
+          "KEYS",
+          ...keys
+        )
+      }
+      await Promise.all(
+        nodes.slice(0, 3).map((node) => node.command("CLUSTER", "SETSLOT", String(slot), "NODE", target.id))
+      )
+      // Replicas learn ownership through gossip; wait so a later promotion sees it.
+      await waitUntil(
+        allNodes(async (node) => (await slotOwners(node))[slot] === target.id),
+        "Redis Cluster slot migration did not converge"
+      )
+    },
+    failover: async (replica) => {
+      const previousRole = await replica.command("ROLE") as Array<Reply>
+      const primary = nodes.find((node) => node.port === previousRole[2])
+      if (previousRole[0] !== "slave" || !primary) throw new Error("Expected a Redis Cluster replica")
+      const expected = (await slotOwners(primary)).map((id) => id === primary.id ? replica.id : id)
+      await replica.command("CLUSTER", "FAILOVER")
+      // ROLE flips before every node applies the new epoch; until then commands may see CLUSTERDOWN.
+      await waitUntil(async () => {
+        const oldRole = await primary.command("ROLE") as Array<Reply>
+        if (oldRole[0] !== "slave" || oldRole[2] !== replica.port) return false
+        return allNodes(async (node) =>
+          String(await node.command("CLUSTER", "INFO")).includes("cluster_state:ok") &&
+          (await slotOwners(node)).every((id, slot) => id === expected[slot])
+        )()
+      }, "Redis Cluster promotion did not converge")
+    }
   }
 }
 
@@ -485,18 +443,20 @@ export interface SentinelFixture {
   readonly sentinels: ReadonlyArray<RedisFixture>
   readonly stop: () => Promise<void>
   readonly primary: () => Promise<Endpoint>
+  /** Triggers `SENTINEL FAILOVER` and resolves with the promoted primary. */
   readonly failover: () => Promise<Endpoint>
+  /** Stops the primary process and resolves with the promoted primary. */
   readonly killPrimary: () => Promise<Endpoint>
 }
 
 export interface SentinelOptions extends RedisOptions {
   readonly sentinelPassword?: string
   readonly sentinelUsername?: string
-  readonly serviceName?: string
 }
 
+/** Starts one primary with two replicas, monitored by three Sentinels. */
 export const startSentinel = async (options: SentinelOptions = {}): Promise<SentinelFixture> => {
-  const serviceName = options.serviceName ?? "effect-primary"
+  const serviceName = "effect-primary"
   const dataNodes: Array<RedisFixture> = []
   const sentinels: Array<RedisFixture> = []
   const stop = async () => {
@@ -517,14 +477,15 @@ export const startSentinel = async (options: SentinelOptions = {}): Promise<Sent
         })
       )
     }
-    await waitUntil(async () => {
-      const result = await Promise.all(dataNodes.slice(1).map((node) => node.command("INFO", "replication")))
-      return result.every((info) => String(info).includes("master_link_status:up"))
-    }, "Sentinel data replicas did not synchronize")
+    await waitUntil(
+      async () =>
+        (await Promise.all(dataNodes.slice(1).map((node) => node.command("INFO", "replication"))))
+          .every((info) => String(info).includes("master_link_status:up")),
+      "Sentinel data replicas did not synchronize"
+    )
     for (let i = 0; i < 3; i++) {
       sentinels.push(
         await startRedis({
-          ...(options.binary ? { binary: options.binary } : {}),
           sentinel: true,
           ...(options.sentinelPassword ? { password: options.sentinelPassword } : {}),
           ...(options.sentinelUsername ? { username: options.sentinelUsername } : {}),
@@ -539,49 +500,52 @@ export const startSentinel = async (options: SentinelOptions = {}): Promise<Sent
         })
       )
     }
-    await waitUntil(async () => {
-      const result = await Promise.all(sentinels.map((node) => node.command("SENTINEL", "CKQUORUM", serviceName)))
-      return result.every((value) => String(value).startsWith("OK"))
-    }, "Sentinel quorum did not become ready")
-    const primary = async () => {
-      const result = await sentinels[0].command("SENTINEL", "GET-MASTER-ADDR-BY-NAME", serviceName) as Array<string>
-      return { host: result[0], port: Number(result[1]) }
-    }
-    const waitForPromotion = async (old: Endpoint): Promise<Endpoint> => {
-      let current = old
-      await waitUntil(
-        async () => {
-          current = await primary()
-          if (current.port === old.port) return false
-          const result = await command(current, ["ROLE"], options) as Array<Reply>
-          return result[0] === "master"
-        },
-        "Sentinel did not promote and announce a new primary",
-        45_000
-      )
-      return current
-    }
-    return {
-      serviceName,
-      dataNodes,
-      sentinels,
-      stop,
-      primary,
-      failover: async () => {
-        const old = await primary()
-        await sentinels[0].command("SENTINEL", "FAILOVER", serviceName)
-        return waitForPromotion(old)
-      },
-      killPrimary: async () => {
-        const old = await primary()
-        const node = dataNodes.find((node) => node.port === old.port)
-        if (!node) throw new Error("Sentinel selected an unknown primary")
-        await node.stop()
-        return waitForPromotion(old)
-      }
-    }
+    await waitUntil(
+      async () =>
+        (await Promise.all(sentinels.map((node) => node.command("SENTINEL", "CKQUORUM", serviceName))))
+          .every((value) => String(value).startsWith("OK")),
+      "Sentinel quorum did not become ready"
+    )
   } catch (error) {
     await stop()
     throw error
+  }
+
+  const primary = async () => {
+    const result = await sentinels[0].command("SENTINEL", "GET-MASTER-ADDR-BY-NAME", serviceName) as Array<string>
+    return { host: result[0], port: Number(result[1]) }
+  }
+  const waitForPromotion = async (old: Endpoint): Promise<Endpoint> => {
+    let current = old
+    await waitUntil(
+      async () => {
+        current = await primary()
+        if (current.port === old.port) return false
+        const role = await command(current, ["ROLE"], options) as Array<Reply>
+        return role[0] === "master"
+      },
+      "Sentinel did not promote and announce a new primary",
+      45_000
+    )
+    return current
+  }
+  return {
+    serviceName,
+    dataNodes,
+    sentinels,
+    stop,
+    primary,
+    failover: async () => {
+      const old = await primary()
+      await sentinels[0].command("SENTINEL", "FAILOVER", serviceName)
+      return waitForPromotion(old)
+    },
+    killPrimary: async () => {
+      const old = await primary()
+      const node = dataNodes.find((node) => node.port === old.port)
+      if (!node) throw new Error("Sentinel selected an unknown primary")
+      await node.stop()
+      return waitForPromotion(old)
+    }
   }
 }

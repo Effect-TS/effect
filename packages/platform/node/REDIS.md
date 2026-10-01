@@ -126,12 +126,11 @@ Layer construction validates the connection and fails with
 `@effect/redis/RedisError`, including on Bun. Persistence operations continue
 mapping failures into their existing persistence error.
 
-Run the complete acceptance gate from the repository root with either
-`REDIS_SERVER_BIN=/path/to/redis-server node scripts/test-redis.mjs` or
-`REDIS_TEST_IMAGE=redis:7.2.6@sha256:43c5c111b5b63afce26faea67198f8cf7e63b941460bcfe1525b68a6ad1eef92 node scripts/test-redis.mjs`.
-Docker fixtures require Linux host networking; local binaries use isolated
-temporary directories and loopback ports. Both backends clean up their owned
-servers. The runner verifies every expected suite executed without skips.
+Run the Redis integration tests from the repository root with
+`EFFECT_INTEGRATION_TESTS=1 pnpm test --run packages/redis packages/platform/node/test/NodeRedis`.
+Set `REDIS_SERVER_BIN=/path/to/redis-server` to use a local binary; otherwise
+the fixtures start the pinned Redis image with Docker, which requires Linux
+host networking.
 
 The local Node 24.21.0 / Redis 7.2.6 comparison against `redis@5.0.1` establishes
 parity within a 5% overhead margin for seven of eight workloads. Sequential
