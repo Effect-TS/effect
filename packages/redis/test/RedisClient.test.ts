@@ -144,6 +144,68 @@ describe("RedisClient", () => {
         assert.deepStrictEqual(requests, [["PING"]])
       }))
 
+    it.live("reclassifies reused commands after their names or reservation-sensitive operands change", () =>
+      Effect.gen(function*() {
+        const requests: Array<ReadonlyArray<string>> = []
+        const fixture = yield* server((request) => {
+          requests.push(args(request))
+          request.connection.send("+PONG\r\n")
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const cases = [
+          [["PING"], ["MULTI"]],
+          [["cLiEnT", "ID"], ["cLiEnT", "REPLY", "OFF"]],
+          [["sCrIpT", "EXISTS", "hash"], ["sCrIpT", "DEBUG", "YES"]],
+          [["xReAd", "STREAMS", "stream", "$"], ["xReAd", "BLOCK", "0", "STREAMS", "stream", "$"]],
+          [
+            ["xReAdGrOuP", "GROUP", "group", "consumer", "STREAMS", "stream", ">"],
+            ["xReAdGrOuP", "GROUP", "group", "consumer", "BLOCK", "0", "STREAMS", "stream", ">"]
+          ]
+        ]
+        for (const mode of ["run", "execute", "pipeline"] as const) {
+          for (const [allowed, reserved] of cases) {
+            const values = allowed.slice()
+            const command = Command.make(values, Command.text)
+            const operation = mode === "run"
+              ? client.run(command)
+              : mode === "execute"
+              ? client.execute(values).pipe(Effect.map(Protocol.toValue))
+              : client.pipeline([command]).pipe(Effect.flatMap((replies) => Effect.fromResult(replies[0])))
+            assert.strictEqual(yield* operation, "PONG")
+            const before = requests.length
+            values.splice(0, values.length, ...reserved)
+            const error = failure(yield* Effect.result(operation))
+            assert.strictEqual(error.reason, "Routing")
+            assert.strictEqual(error.outcome, "NotSent")
+            assert.strictEqual(requests.length, before)
+            values.splice(0, values.length, ...allowed)
+            assert.strictEqual(yield* operation, "PONG")
+            assert.deepStrictEqual(requests.slice(before - 1), [allowed, allowed])
+          }
+        }
+        assert.strictEqual(fixture.connections.length, 1)
+      }))
+
+    it.live("reclassifies mutated binary command names on a reused typed operation", () =>
+      Effect.gen(function*() {
+        const requests: Array<ReadonlyArray<string>> = []
+        const fixture = yield* server((request) => {
+          requests.push(args(request))
+          request.connection.send("+PONG\r\n")
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const name = Buffer.from("PING")
+        const operation = client.run(Command.make([name], Command.text))
+        assert.strictEqual(yield* operation, "PONG")
+        name.set(Buffer.from("WAIT"))
+        const error = failure(yield* Effect.result(operation))
+        assert.strictEqual(error.reason, "Routing")
+        assert.strictEqual(error.outcome, "NotSent")
+        name.set(Buffer.from("PING"))
+        assert.strictEqual(yield* operation, "PONG")
+        assert.deepStrictEqual(requests, [["PING"], ["PING"], ["PING"]])
+      }))
+
     it.live("does not replay uncertain mutations and reconnects for subsequent commands", () =>
       Effect.gen(function*() {
         const requests: Array<ReadonlyArray<string>> = []

@@ -122,15 +122,29 @@ const dedicated = new Set(
   "MULTI EXEC DISCARD WATCH UNWATCH AUTH SELECT HELLO RESET WAIT WAITAOF READONLY READWRITE ASKING MONITOR QUIT SUBSCRIBE PSUBSCRIBE SSUBSCRIBE UNSUBSCRIBE PUNSUBSCRIBE SUNSUBSCRIBE BLPOP BRPOP BRPOPLPUSH BLMOVE BZPOPMIN BZPOPMAX BLMPOP BZMPOP"
     .split(" ")
 )
-const requiresReservation = (args: ReadonlyArray<Protocol.Argument>) => {
-  const command = Command.argumentText(args[0]).toUpperCase()
-  return dedicated.has(command) ||
-    ((command === "XREAD" || command === "XREADGROUP") && Command.parseStreams(args)?.blocking === true) ||
-    (command === "CLIENT" &&
-      ["REPLY", "TRACKING", "CACHING", "SETNAME", "SETINFO", "NO-EVICT", "NO-TOUCH"].includes(
-        Command.argumentText(args[1]).toUpperCase()
-      )) ||
-    (command === "SCRIPT" && Command.argumentText(args[1]).toUpperCase() === "DEBUG")
+const makeReservationChecker = () => {
+  let previous: string | undefined
+  let reserved = false
+  return (args: ReadonlyArray<Protocol.Argument>) => {
+    const name = args[0]
+    if (typeof name === "string" && name === previous) return reserved
+    const command = Command.argumentText(name).toUpperCase()
+    const dynamic = command === "XREAD" || command === "XREADGROUP" || command === "CLIENT" || command === "SCRIPT"
+    const required = dedicated.has(command) ||
+      ((command === "XREAD" || command === "XREADGROUP") && Command.parseStreams(args)?.blocking === true) ||
+      (command === "CLIENT" &&
+        ["REPLY", "TRACKING", "CACHING", "SETNAME", "SETINFO", "NO-EVICT", "NO-TOUCH"].includes(
+          Command.argumentText(args[1]).toUpperCase()
+        )) ||
+      (command === "SCRIPT" && Command.argumentText(args[1]).toUpperCase() === "DEBUG")
+    // Compare current name values, never descriptor or argument-array identity.
+    // Argument-dependent modes and binary names must be classified each time.
+    if (typeof name === "string" && name.length <= 64 && !dynamic) {
+      previous = name
+      reserved = required
+    }
+    return required
+  }
 }
 
 const snapshotArguments = (args: ReadonlyArray<Protocol.Argument>): ReadonlyArray<Protocol.Argument> =>
@@ -165,6 +179,7 @@ export const make = Effect.fnUntraced(function*(connector: Connection.Connector,
 })
 
 const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, options: Config) {
+  const requiresReservation = makeReservationChecker()
   if (options.reconnectDelay !== undefined) {
     const input = options.reconnectDelay
     const reconnectDelay = yield* Effect.try({

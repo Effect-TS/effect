@@ -229,9 +229,25 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     }
   }
   const inflight: Array<Pending | undefined> = []
+  let inflightSingle: Pending | undefined
   let inflightHead = 0
-  const firstInflight = () => inflight[inflightHead]
+  const addInflight = (entry: Pending) => {
+    if (inflightSingle !== undefined) {
+      inflight.push(inflightSingle, entry)
+      inflightSingle = undefined
+    } else if (inflight.length === 0) {
+      inflightSingle = entry
+    } else {
+      inflight.push(entry)
+    }
+  }
+  const firstInflight = () => inflightSingle ?? inflight[inflightHead]
   const takeInflight = () => {
+    if (inflightSingle !== undefined) {
+      const entry = inflightSingle
+      inflightSingle = undefined
+      return entry
+    }
     const entry = inflight[inflightHead]
     if (entry === undefined) return undefined
     inflight[inflightHead] = undefined
@@ -302,6 +318,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     }
     if (pendingSingle !== undefined) failPending(pendingSingle)
     for (const entry of pending) failPending(entry)
+    inflightSingle = undefined
     inflight.length = 0
     inflightHead = 0
     listeners.clear()
@@ -444,9 +461,25 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         outcome: "NotSent"
       })
     }
-    for (const item of prepared) addPending(item)
+    if (prepared.length === 1) {
+      addPending(prepared[0])
+    } else if (prepared.length > 1) {
+      if (pendingSingle !== undefined) {
+        pending.add(pendingSingle)
+        pendingSingle = undefined
+      }
+      for (const item of prepared) pending.add(item)
+    }
     queuedBytes += size
-    for (const item of prepared) addOutgoing(item)
+    if (prepared.length === 1) {
+      addOutgoing(prepared[0])
+    } else if (prepared.length > 1) {
+      if (outgoingSingle !== undefined) {
+        outgoing.push(outgoingSingle)
+        outgoingSingle = undefined
+      }
+      for (const item of prepared) outgoing.push(item)
+    }
     wakeWriter()
     return prepared
   }
@@ -562,11 +595,15 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
           entry.bytes = undefined
           queuedBytes -= entry.size
           entry.state = "Sent"
-          inflight.push(entry)
+          addInflight(entry)
           return transport.write(bytes, transferredWrite)
         }
         const active = entries.filter((entry) => entry.state !== "Done")
         if (active.length === 0) return Effect.void
+        if (inflightSingle !== undefined) {
+          inflight.push(inflightSingle)
+          inflightSingle = undefined
+        }
         if (active.some((entry) => isVector(entry.bytes!))) {
           const parts: Array<string | Uint8Array> = []
           for (const entry of active) {
