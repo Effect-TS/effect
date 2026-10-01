@@ -1,181 +1,236 @@
-import type * as Cause from "../../Cause.ts"
+import * as Deferred from "../../Deferred.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
-import * as Latch from "../../Latch.ts"
-import * as MutableRef from "../../MutableRef.ts"
-import * as Option from "../../Option.ts"
+import * as Fiber from "../../Fiber.ts"
 import * as Scope from "../../Scope.ts"
 import type { EntityAddress } from "../EntityAddress.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 
+type Pending<A> = {
+  readonly _tag: "Pending"
+  readonly scope: Scope.Closeable
+  /** The generation being replaced, until this rebuild has closed it. */
+  readonly replaces: Scope.Closeable | undefined
+  retiring: boolean
+  /** Completed once a generation is ready, or this one fails. */
+  readonly ready: Deferred.Deferred<A>
+  /** Set while the acquired value is prepared. */
+  value: A | undefined
+  prepare: Fiber.Fiber<void> | undefined
+  superseded: boolean
+}
+
+type State<A> =
+  | { readonly _tag: "Closed" }
+  | { readonly _tag: "Ready"; readonly scope: Scope.Closeable; readonly value: A }
+  | Pending<A>
+  | { readonly _tag: "Failed"; readonly ready: Deferred.Deferred<A> }
+
 /**
- * Each generation of the resource is identified by its scope.
+ * A resource that is replaced in place. Each acquisition is a generation,
+ * identified by the value it produced.
  *
  * @internal
  */
-export type State<A, E> = {
-  readonly _tag: "Closed"
-} | {
-  readonly _tag: "Acquiring"
-  readonly scope: Scope.Closeable
-  /** The replaced generation, until the rebuild has closed it. */
-  readonly retiring?: Scope.Closeable | undefined
-} | {
-  readonly _tag: "Acquired"
-  readonly scope: Scope.Closeable
-  readonly value: A
-} | {
-  readonly _tag: "Failed"
-  readonly scope: Scope.Closeable
-  readonly cause: Cause.Cause<E>
-}
-
-/**
- * @internal
- */
-export class ResourceRef<A, E = never> {
-  static from = Effect.fnUntraced(function*<A, E>(
+export class ResourceRef<A> {
+  static from = Effect.fnUntraced(function*<A>(
     parentScope: Scope.Scope,
-    acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
+    acquire: (scope: Scope.Scope) => Effect.Effect<A>,
     teardownAddress?: EntityAddress
   ) {
-    const ref = new ResourceRef<A, E>(MutableRef.make<State<A, E>>({ _tag: "Closed" }), acquire, teardownAddress)
+    const ref = new ResourceRef(parentScope, acquire, teardownAddress)
     yield* Scope.addFinalizerExit(parentScope, (exit) => ref.close(exit))
-
-    const scope = yield* Scope.make()
-    MutableRef.set(ref.state, { _tag: "Acquiring", scope })
-    const value = yield* acquire(scope)
-    if (ref.scopeUnsafe() === scope) {
-      MutableRef.set(ref.state, { _tag: "Acquired", scope, value })
-      ref.latch.openUnsafe()
+    const pending = ref.pending(undefined, Deferred.makeUnsafe())
+    const value = yield* acquire(pending.scope)
+    if (ref.state === pending) {
+      ref.state = { _tag: "Ready", scope: pending.scope, value }
+      Deferred.doneUnsafe(pending.ready, Exit.succeed(value))
     }
     return ref
   })
 
-  readonly state: MutableRef.MutableRef<State<A, E>>
-  readonly acquire: (scope: Scope.Scope) => Effect.Effect<A, E>
-  readonly teardownAddress: EntityAddress | undefined
-  constructor(
-    state: MutableRef.MutableRef<State<A, E>>,
-    acquire: (scope: Scope.Scope) => Effect.Effect<A, E>,
-    teardownAddress?: EntityAddress
+  private state: State<A> = { _tag: "Closed" }
+  private readonly parentScope: Scope.Scope
+  private readonly acquire: (scope: Scope.Scope) => Effect.Effect<A>
+  private readonly teardownAddress: EntityAddress | undefined
+  private constructor(
+    parentScope: Scope.Scope,
+    acquire: (scope: Scope.Scope) => Effect.Effect<A>,
+    teardownAddress: EntityAddress | undefined
   ) {
-    this.state = state
+    this.parentScope = parentScope
     this.acquire = acquire
     this.teardownAddress = teardownAddress
   }
 
   /**
-   * Open once the current generation is ready for use, has failed, or the ref
-   * has closed.
+   * The ready value, or `undefined` while a generation is being built or
+   * prepared.
    */
-  latch = Latch.makeUnsafe(false)
-
-  /**
-   * The current value, if it is ready for use.
-   */
-  getUnsafe(): Option.Option<A> {
-    const s = this.state.current
-    return s._tag === "Acquired" && this.latch.isOpen() ? Option.some(s.value) : Option.none()
+  getUnsafe(): A | undefined {
+    return this.state._tag === "Ready" ? this.state.value : undefined
   }
 
   /**
-   * The scope identifying the current generation, unless the ref is closed.
+   * Resolves with the ready value. Interrupts once the ref is closed.
    */
-  scopeUnsafe(): Scope.Scope | undefined {
-    const s = this.state.current
-    return s._tag === "Closed" ? undefined : s.scope
-  }
-
-  /**
-   * Replaces the resource, resolving with the newly acquired value.
-   *
-   * With `from`, only the generation owning that scope is replaced, so each
-   * generation is replaced at most once. Returns `undefined` when `from` is no
-   * longer current.
-   *
-   * The new value is published only if no other rebuild started meanwhile.
-   * Waiters are admitted after `onAcquired` has run, unless a later rebuild has
-   * taken over by then.
-   */
-  rebuildUnsafe(): Effect.Effect<A, E>
-  rebuildUnsafe(options: {
-    readonly from: Scope.Scope
-    readonly onAcquired?: ((value: A) => Effect.Effect<void>) | undefined
-  }): Effect.Effect<A, E> | undefined
-  rebuildUnsafe(options?: {
-    readonly from: Scope.Scope
-    readonly onAcquired?: ((value: A) => Effect.Effect<void>) | undefined
-  }): Effect.Effect<A, E> | undefined {
-    const prev = this.state.current
-    if (prev._tag === "Closed") {
-      return options ? undefined : Effect.interrupt
-    } else if (options && prev.scope !== options.from) {
-      return undefined
+  readonly await: Effect.Effect<A> = Effect.suspend(() => {
+    const s = this.state
+    switch (s._tag) {
+      case "Closed":
+        return Effect.interrupt
+      case "Ready":
+        return Effect.succeed(s.value)
+      case "Pending":
+      case "Failed":
+        return Deferred.await(s.ready)
     }
-    const scope = Scope.makeUnsafe()
-    this.latch.closeUnsafe()
-    MutableRef.set(this.state, { _tag: "Acquiring", scope, retiring: prev.scope })
-    const teardownAddress = this.teardownAddress
-    const onAcquired = options?.onAcquired
-    return Effect.suspend(() => {
-      let close = Scope.close(prev.scope, Exit.void)
-      if (prev._tag === "Acquiring" && prev.retiring) {
-        close = Effect.andThen(Scope.close(prev.retiring, Exit.void), close)
+  })
+
+  /**
+   * Replaces the current generation. Returns `undefined` when refused:
+   * - with `from`, unless the ready or preparing value is `from`, so each
+   *   generation is replaced at most once
+   * - without `from`, while a rebuild is already acquiring or preparing
+   *
+   * Waiters are held from the moment the rebuild is accepted. The returned
+   * effect closes the replaced generation, acquires the new one and runs
+   * `prepare` with it before admitting them. It interrupts if the ref closes
+   * or another rebuild replaces this generation first, interrupting `prepare`
+   * too. If it fails, waiters are released with the same cause and the next
+   * rebuild without `from` is accepted. A rebuild interrupted while still
+   * closing the replaced generation instead leaves its waiters to the next
+   * rebuild.
+   */
+  rebuildUnsafe(options?: {
+    readonly from?: A | undefined
+    readonly prepare?: ((value: A) => Effect.Effect<void>) | undefined
+  }): Effect.Effect<void> | undefined {
+    const s = this.state
+    const from = options?.from
+    let pending: Pending<A>
+    switch (s._tag) {
+      case "Closed":
+        return undefined
+      case "Ready": {
+        if (from !== undefined && from !== s.value) return undefined
+        pending = this.pending(s.scope, Deferred.makeUnsafe())
+        break
       }
-      if (!teardownAddress) return close
-      acquireEntity(teardownAddress)
-      return Effect.ensuring(close, Effect.sync(() => releaseEntity(teardownAddress)))
+      case "Failed": {
+        if (from !== undefined) return undefined
+        pending = this.pending(undefined, s.ready)
+        break
+      }
+      case "Pending": {
+        if (from === undefined || s.value !== from) return undefined
+        s.superseded = true
+        s.prepare?.interruptUnsafe()
+        pending = this.pending(s.scope, s.ready)
+        break
+      }
+    }
+    return this.run(pending, options?.prepare)
+  }
+
+  private pending(replaces: Scope.Closeable | undefined, ready: Deferred.Deferred<A>): Pending<A> {
+    const pending: Pending<A> = {
+      _tag: "Pending",
+      scope: Scope.makeUnsafe(),
+      replaces,
+      retiring: false,
+      ready,
+      value: undefined,
+      prepare: undefined,
+      superseded: false
+    }
+    this.state = pending
+    return pending
+  }
+
+  private run(pending: Pending<A>, prepare: ((value: A) => Effect.Effect<void>) | undefined): Effect.Effect<void> {
+    return Effect.suspend(() => {
+      if (this.state !== pending) return Effect.interrupt
+      if (!pending.replaces) return Effect.void
+      pending.retiring = true
+      return Effect.andThen(
+        this.retire(pending.replaces),
+        Effect.sync(() => {
+          pending.retiring = false
+        })
+      )
     }).pipe(
-      Effect.andThen(this.acquire(scope)),
+      Effect.andThen(Effect.suspend(() => this.acquire(pending.scope))),
+      Effect.tap((value) => {
+        if (this.state !== pending) return Effect.interrupt
+        pending.value = value
+        if (!prepare) return Effect.void
+        return Effect.flatMap(Effect.forkChild(prepare(value)), (fiber) => {
+          pending.prepare = fiber
+          if (pending.superseded) fiber.interruptUnsafe()
+          return Fiber.join(fiber)
+        })
+      }),
       Effect.flatMap((value) => {
-        if (this.scopeUnsafe() !== scope) {
-          return Effect.interrupt
-        }
-        MutableRef.set(this.state, { _tag: "Acquired", scope, value })
-        if (!onAcquired) return Effect.as(this.latch.open, value)
-        return onAcquired(value).pipe(
-          Effect.andThen(Effect.suspend(() => this.scopeUnsafe() === scope ? this.latch.open : Effect.void)),
-          Effect.as(value)
-        )
+        if (this.state !== pending) return Effect.interrupt
+        this.state = { _tag: "Ready", scope: pending.scope, value }
+        Deferred.doneUnsafe(pending.ready, Exit.succeed(value))
+        return Effect.void
       }),
       Effect.onExit((exit) => {
-        if (Exit.isSuccess(exit)) {
+        if (Exit.isSuccess(exit) || this.state !== pending) {
           return Effect.void
         }
-        return Scope.close(scope, exit).pipe(
-          Effect.ensuring(Effect.sync(() => {
-            if (this.scopeUnsafe() === scope) {
-              MutableRef.set(this.state, { _tag: "Failed", scope, cause: exit.cause })
-              this.latch.openUnsafe()
+        // Release the failed generation before anything can rebuild it.
+        return Effect.andThen(
+          Scope.close(pending.scope, exit),
+          Effect.sync(() => {
+            if (this.state !== pending) return
+            if (pending.retiring) {
+              // Abandoned while the replaced generation is still closing:
+              // nothing was acquired yet, so waiters are left to the next
+              // rebuild.
+              this.state = { _tag: "Failed", ready: pending.ready }
+            } else {
+              this.state = { _tag: "Failed", ready: Deferred.makeUnsafe() }
+              Deferred.doneUnsafe(pending.ready, Exit.failCause(exit.cause))
             }
-          }))
+          })
         )
       })
     )
   }
 
-  await: Effect.Effect<A, E> = Effect.suspend(() => {
-    const s = this.state.current
-    if (s._tag === "Closed") {
-      return Effect.interrupt
-    } else if (s._tag === "Failed") {
-      return Effect.failCause(s.cause)
-    } else if (s._tag === "Acquired" && this.latch.isOpen()) {
-      return Effect.succeed(s.value)
-    }
-    return Effect.flatMap(this.latch.await, () => this.await)
-  })
+  // The replaced generation is closed in the parent scope, so a release that
+  // never completes cannot prevent this rebuild from being interrupted.
+  private retire(scope: Scope.Closeable): Effect.Effect<void> {
+    const teardownAddress = this.teardownAddress
+    const close = teardownAddress
+      ? Effect.suspend(() => {
+        acquireEntity(teardownAddress)
+        return Effect.ensuring(Scope.close(scope, Exit.void), Effect.sync(() => releaseEntity(teardownAddress)))
+      })
+      : Scope.close(scope, Exit.void)
+    return Effect.flatMap(Effect.forkIn(close, this.parentScope), Fiber.join)
+  }
 
   private close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> {
-    const s = this.state.current
-    if (s._tag === "Closed") {
-      return Effect.void
+    const s = this.state
+    this.state = { _tag: "Closed" }
+    switch (s._tag) {
+      case "Closed":
+        return Effect.void
+      case "Ready":
+        return Scope.close(s.scope, exit)
+      case "Failed": {
+        Deferred.doneUnsafe(s.ready, Effect.interrupt)
+        return Effect.void
+      }
+      case "Pending": {
+        Deferred.doneUnsafe(s.ready, Effect.interrupt)
+        const close = Scope.close(s.scope, exit)
+        return s.replaces ? Effect.andThen(Scope.close(s.replaces, exit), close) : close
+      }
     }
-    MutableRef.set(this.state, { _tag: "Closed" })
-    // Wake waiters so they observe the closure instead of a pending acquisition.
-    this.latch.openUnsafe()
-    const close = Scope.close(s.scope, exit)
-    return s._tag === "Acquiring" && s.retiring ? Effect.andThen(Scope.close(s.retiring, exit), close) : close
   }
 }

@@ -207,6 +207,18 @@ export const make = Effect.fnUntraced(function*<
     const retired = Latch.makeUnsafe()
     const isActive = () => activeServers.get(address.entityId) === state
 
+    // Replays the requests that replaced handlers were handed, before their
+    // replacement admits anything else. Requests still waiting for their first
+    // dispatch are left to their writer.
+    const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
+      if (!isActive()) return
+      for (const [id, request] of Array.from(activeRequests)) {
+        if (!request.delivered || !activeRequests.has(id)) continue
+        request.sentExit = false
+        yield* write(0, replayEnvelope(request), requestWriteOptions(request))
+      }
+    })
+
     // the server is stored in a ref, so if there is a defect, we can
     // swap the server without losing the active requests
     const writeRef = yield* ResourceRef.from(
@@ -249,13 +261,10 @@ export const make = Effect.fnUntraced(function*<
                 request.sentReply = true
                 request.sentExit = true
 
-                // While a rebuild retires these handlers, their interrupts are
-                // not replies: the request is replayed on the replacement.
-                if (
-                  isShuttingDown &&
-                  Exit.hasInterrupts(response.exit) &&
-                  writeRef.state.current._tag === "Acquiring"
-                ) {
+                // Handlers are only closed while the entity is still active
+                // when a rebuild replaces them. Their interrupts are not
+                // replies: the request is replayed on the replacement.
+                if (isShuttingDown && Exit.hasInterrupts(response.exit) && isActive()) {
                   return Effect.void
                 }
 
@@ -329,7 +338,11 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                return Effect.forkIn(onDefect(Cause.die(response.defect), handlerScope), managerScope)
+                if (!isActive()) return endLatch.open
+                // Only the first defect of these handlers replaces them.
+                const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
+                if (!rebuild) return Effect.void
+                return Effect.forkIn(restart(Cause.die(response.defect), rebuild), managerScope)
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -353,46 +366,22 @@ export const make = Effect.fnUntraced(function*<
       address
     )
 
-    // Replaces the handlers of the generation owning `from`. Only its first
-    // defect does so; defects from handlers that were already replaced are
-    // ignored.
-    function onDefect(cause: Cause.Cause<never>, from: Scope.Scope): Effect.Effect<void> {
-      if (!isActive()) {
-        return endLatch.open
-      }
-      // Requests still waiting for their first dispatch are not replayed, their
-      // writer delivers them once the replacement is ready.
-      const requests: Array<Snowflake.Snowflake> = []
-      for (const [id, request] of activeRequests) {
-        if (request.delivered) requests.push(id)
-      }
-      // Replayed before the replacement admits any other message.
-      const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
-        if (!isActive()) return
-        for (const id of requests) {
-          const request = activeRequests.get(id)
-          if (!request) continue
-          request.sentExit = false
-          yield* write(0, replayEnvelope(request), requestWriteOptions(request))
-          // A replay can synchronously start another rebuild, whose snapshot now
-          // owns the remaining requests. Never send them to a retired server.
-          if (writeRef.state.current._tag !== "Acquired" || writeRef.state.current.value !== write) return
-        }
-      })
-      const rebuild = writeRef.rebuildUnsafe({ from, onAcquired: replay })
-      if (!rebuild) {
-        return Effect.void
-      }
-      const generation = writeRef.scopeUnsafe()!
+    // Runs a rebuild after the restart backoff, unless the entity was retired
+    // meanwhile. A failed rebuild is attempted again, while a superseded or
+    // closed one is not.
+    function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver(void 0))),
-        Effect.flatMap(() => isActive() ? Effect.asVoid(rebuild) : endLatch.open),
+        Effect.flatMap(() => isActive() ? rebuild : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
           runner: options.runnerAddress
         }),
-        Effect.catchCause((cause) => onDefect(cause, generation))
+        Effect.catchCause((cause) => {
+          const retry = isActive() ? writeRef.rebuildUnsafe({ prepare: replay }) : undefined
+          return retry ? restart(cause, retry) : Effect.void
+        })
       )
     }
 
@@ -406,8 +395,8 @@ export const make = Effect.fnUntraced(function*<
           if (message._tag === "Request" && !isActive()) {
             return Effect.interrupt
           }
-          const current = writeRef.state.current
-          if (current._tag !== "Acquired" || !writeRef.latch.isOpen()) {
+          const write = writeRef.getUnsafe()
+          if (write === undefined) {
             const ready = message._tag === "Request" ? Effect.raceFirst(writeRef.await, retired.await) : writeRef.await
             return Effect.andThen(ready, state.write(clientId, message, writeOptions))
           }
@@ -416,7 +405,7 @@ export const make = Effect.fnUntraced(function*<
             if (!request) return Effect.void
             request.delivered = true
           }
-          return current.value(clientId, message, writeOptions)
+          return write(clientId, message, writeOptions)
         })
       },
       activeRequests,
