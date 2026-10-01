@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Cause from "../Cause.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
@@ -172,9 +173,10 @@ export const make = Effect.fnUntraced(function*(options: {
       Effect.asVoid
     )
   }
-  // Run `f` on the reserved connection, replacing it when `f` fails on it. An
-  // operation that had to wait for a replacement does not blame the
-  // connection it was then given, as with an operation that timed out first.
+  // Run `f` on the reserved connection, replacing it when the connection fails
+  // `f`. Only an operation that started on that connection blames it for an
+  // interruption: one that had to wait for it may have reached its deadline
+  // while waiting.
   const useLockConn = <A, E, R>(
     f: (conn: Connection, pid: number) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> =>
@@ -182,7 +184,11 @@ export const make = Effect.fnUntraced(function*(options: {
       const ready = lockConn!.getUnsafe()
       return Effect.flatMap(
         lockConn!.await,
-        (held) => Effect.onError(f(held[0], held[1]), () => held === ready ? rebuildLockConn(held) : Effect.void)
+        (held) =>
+          Effect.onError(
+            f(held[0], held[1]),
+            (cause) => held === ready || !Cause.hasInterruptsOnly(cause) ? rebuildLockConn(held) : Effect.void
+          )
       )
     })
 
