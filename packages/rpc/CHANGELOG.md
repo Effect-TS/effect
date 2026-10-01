@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.76.3
+
+### Patch Changes
+
+- [#8587](https://github.com/Effect-TS/effect/pull/8587) [`6bb0ea2`](https://github.com/Effect-TS/effect/commit/6bb0ea2de7b19d753bcb381ec767b09ce17639e6) Thanks @janecakemaster! - Fail in-flight RPC requests on a missed pong when `retryTransientErrors` is enabled.
+
+- Updated dependencies [[`97d80c9`](https://github.com/Effect-TS/effect/commit/97d80c91fef755966ffd0adbfb00b3eb4ae7eace), [`e730f59`](https://github.com/Effect-TS/effect/commit/e730f59d29db5f1e312be6476a95d07bcad45788), [`05803bd`](https://github.com/Effect-TS/effect/commit/05803bd0219a71ea91d7e99e3d5a86b56f832c1c)]:
+  - effect@3.22.3
+
 ## 0.76.2
 
 ### Patch Changes
