@@ -170,6 +170,24 @@ describe("RpcClient", () => {
       assert.isTrue(observedInterrupt)
     }))
 
+  it.effect("releases a chunk blocked on a full buffer when its stream consumer is interrupted", () =>
+    Effect.gen(function*() {
+      const consuming = yield* Deferred.make<void>()
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const reader = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach(() => Deferred.succeed(consuming, void 0).pipe(Effect.andThen(Effect.never))),
+        Effect.forkChild
+      )
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["a", "b", "c"] }).pipe(Effect.forkChild)
+      yield* Deferred.await(consuming)
+      assert.isUndefined(receiver.pollUnsafe())
+      yield* Fiber.interrupt(reader)
+
+      assert(Exit.isSuccess(yield* Fiber.await(receiver)))
+      assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
+    }))
+
   for (const consumer of ["queue", "stream"] as const) {
     it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
       Effect.gen(function*() {
