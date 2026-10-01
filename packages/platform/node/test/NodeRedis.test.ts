@@ -4,7 +4,7 @@ import type { Transport } from "@effect/redis/RedisConnection"
 import type { RedisError } from "@effect/redis/RedisError"
 import { startScriptedRedis } from "@effect/redis/test/utils/redis-scripted"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Exit, Fiber, Layer, Queue, Redacted, Scope } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Layer, Queue, Redacted, Scheduler, Scope } from "effect"
 import type * as Duration from "effect/Duration"
 import * as Redis from "effect/persistence/Redis"
 import type * as Result from "effect/Result"
@@ -295,19 +295,21 @@ describe("Redis transport", () => {
 
   it.live("keeps backpressure after interruption without resubmitting accepted bytes", () =>
     Effect.gen(function*() {
-      const stream = new HeldStream()
-      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
-      const first = yield* transport.write(new Uint8Array([1])).pipe(Effect.forkChild)
-      yield* Effect.yieldNow
-      yield* Fiber.interrupt(first)
-      const second = yield* transport.write(new Uint8Array([2])).pipe(Effect.forkChild)
-      yield* Effect.yieldNow
-      assert.strictEqual(stream.writes.length, 1)
-      stream.release!()
-      yield* Effect.yieldNow
-      assert.deepStrictEqual(stream.writes.map((bytes) => [...bytes]), [[1], [2]])
-      stream.release!()
-      yield* Fiber.join(second)
+      for (const text of [false, true]) {
+        const stream = new HeldStream()
+        const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+        const first = yield* transport.write(text ? "\x01" : new Uint8Array([1])).pipe(Effect.forkChild)
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(first)
+        const second = yield* transport.write(text ? "\x02" : new Uint8Array([2])).pipe(Effect.forkChild)
+        yield* Effect.yieldNow
+        assert.strictEqual(stream.writes.length, 1)
+        stream.release!()
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(stream.writes.map((bytes) => [...bytes]), [[1], [2]])
+        stream.release!()
+        yield* Fiber.join(second)
+      }
     }))
 
   it.live("removes interrupted queued writes and preserves FIFO under backpressure", () =>
@@ -333,16 +335,18 @@ describe("Redis transport", () => {
 
   it.live("distinguishes submitted and queued write outcomes when closing under backpressure", () =>
     Effect.gen(function*() {
-      const stream = new HeldStream()
-      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
-      const first = yield* transport.write(new Uint8Array([1])).pipe(Effect.result, Effect.forkChild)
-      yield* Effect.yieldNow
-      const second = yield* transport.write(new Uint8Array([2])).pipe(Effect.result, Effect.forkChild)
-      yield* Effect.yieldNow
-      yield* transport.close
-      assert.strictEqual(failure(yield* Fiber.join(first)).outcome, "Unknown")
-      assert.strictEqual(failure(yield* Fiber.join(second)).outcome, "NotSent")
-      assert.deepStrictEqual(stream.writes.map((bytes) => [...bytes]), [[1]])
+      for (const text of [false, true]) {
+        const stream = new HeldStream()
+        const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+        const first = yield* transport.write(text ? "\x01" : new Uint8Array([1])).pipe(Effect.result, Effect.forkChild)
+        yield* Effect.yieldNow
+        const second = yield* transport.write(text ? "\x02" : new Uint8Array([2])).pipe(Effect.result, Effect.forkChild)
+        yield* Effect.yieldNow
+        yield* transport.close
+        assert.strictEqual(failure(yield* Fiber.join(first)).outcome, "Unknown")
+        assert.strictEqual(failure(yield* Fiber.join(second)).outcome, "NotSent")
+        assert.deepStrictEqual(stream.writes.map((bytes) => [...bytes]), [[1]])
+      }
     }))
 
   it.live("accepts transferred immutable byte views without copying or altering them", () =>
@@ -497,6 +501,51 @@ describe("Redis transport", () => {
       assert.deepStrictEqual(stream.batches.map((batch) => batch.map((part) => part.toString())), [["a", "b"]])
     }))
 
+  it.live("preserves FIFO when a custom stream submits another write synchronously", () =>
+    Effect.gen(function*() {
+      let reenter: (() => void) | undefined
+      const writes: Array<string> = []
+      class ReentrantStream extends Duplex {
+        override _read() {}
+        override _write(bytes: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+          writes.push(bytes.toString())
+          if (writes.length === 1) reenter!()
+          callback()
+        }
+      }
+      const stream = new ReentrantStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      let second: Fiber.Fiber<void, RedisError> | undefined
+      reenter = () => {
+        second = Effect.runFork(transport.write("second"))
+      }
+      yield* transport.write("first")
+      assert.isDefined(second)
+      if (second === undefined) return assert.fail("Missing reentrant write")
+      yield* Fiber.join(second)
+      assert.deepStrictEqual(writes, ["first", "second"])
+    }))
+
+  it.live("reports synchronous string write failures as uncertain and closes the socket", () =>
+    Effect.gen(function*() {
+      for (const event of [false, true]) {
+        const stream = new HeldStream()
+        stream.write = (() => {
+          const cause = new Error("Write failed")
+          if (event) {
+            stream.emit("error", cause)
+            return false
+          }
+          throw cause
+        }) as typeof stream.write
+        const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+        assert.strictEqual(failure(yield* Effect.result(transport.write("first"))).outcome, "Unknown")
+        assert.strictEqual(failure(yield* Effect.result(transport.write("second"))).outcome, "NotSent")
+        yield* transport.close
+        assert.isTrue(stream.destroyed)
+      }
+    }))
+
   it.live("copies custom input and unregisters interrupted consumers", () =>
     Effect.gen(function*() {
       const stream = new HeldStream()
@@ -614,5 +663,64 @@ describe("Redis transport", () => {
         assert.strictEqual(result.failure.reason, "Connection")
         assert.strictEqual(result.failure.outcome, "NotSent")
       }
+    }))
+
+  it.live("retains each string write's drain completion before callback registration", () =>
+    Effect.gen(function*() {
+      const stream = new HeldStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const pauseAfterWrite = (count: number) => {
+        let paused = false
+        const tasks: Array<() => void> = []
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield() {
+            if (!paused && stream.writes.length === count) {
+              paused = true
+              return true
+            }
+            return false
+          }
+        }
+        return {
+          scheduler,
+          wasPaused: () => paused,
+          flush: () => {
+            while (tasks.length > 0) tasks.shift()!()
+          }
+        }
+      }
+      const firstScheduler = pauseAfterWrite(1)
+      const first = yield* transport.write("first").pipe(
+        Effect.provideService(Scheduler.Scheduler, firstScheduler.scheduler),
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.isTrue(firstScheduler.wasPaused())
+      assert.isUndefined(first.pollUnsafe())
+      stream.release!()
+
+      const secondScheduler = pauseAfterWrite(2)
+      const second = yield* transport.write("second").pipe(
+        Effect.provideService(Scheduler.Scheduler, secondScheduler.scheduler),
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.isTrue(secondScheduler.wasPaused())
+      assert.isTrue(stream.writableNeedDrain)
+      firstScheduler.flush()
+      assert.isDefined(first.pollUnsafe())
+      yield* Fiber.join(first)
+      assert.isUndefined(second.pollUnsafe())
+      assert.deepStrictEqual(stream.writes.map((bytes) => bytes.toString()), ["first", "second"])
+
+      stream.release!()
+      secondScheduler.flush()
+      yield* Fiber.join(second)
+      assert.isFalse(stream.writableNeedDrain)
     }))
 })

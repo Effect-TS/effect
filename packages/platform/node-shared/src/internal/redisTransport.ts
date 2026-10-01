@@ -223,6 +223,47 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
   const snapshotBytes = (bytes: Uint8Array, transfer: boolean): Buffer =>
     transfer ? Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength) : Buffer.from(bytes)
 
+  const queuedWrite: Transport["write"] = (bytes, options) =>
+    Effect.callback((resume) => {
+      if (failure !== undefined) return resume(Effect.fail(new RedisError({ ...failure, outcome: "NotSent" })))
+      // Snapshot ordinary input at admission, including writes waiting behind
+      // backpressure. Transferred frames are already private immutable bytes.
+      let snapshot: string | Buffer | Array<string | Buffer>
+      try {
+        const transfer = options?.ownership === "transfer"
+        if (typeof bytes === "string") snapshot = bytes
+        else if (Array.isArray(bytes)) {
+          if (bytes.length === 0) return resume(Effect.void)
+          const copied = new Map<Uint8Array, Buffer>()
+          snapshot = bytes.map((part: string | Uint8Array) => {
+            if (typeof part === "string") return part
+            let owned = copied.get(part)
+            if (owned === undefined) {
+              owned = snapshotBytes(part, transfer)
+              copied.set(part, owned)
+            }
+            return owned
+          })
+        } else snapshot = snapshotBytes(bytes as Uint8Array, transfer)
+      } catch (cause) {
+        return resume(Effect.fail(
+          new RedisError({ reason: "Connection", message: "Cannot prepare Redis write", cause, outcome: "NotSent" })
+        ))
+      }
+      const writer: Writer = { bytes: snapshot, resume }
+      writers.add(writer)
+      pump()
+      // A synchronous completion leaves no writer to cancel. Backpressured
+      // and queued writes retain their interruptible cleanup below.
+      if (activeWriter !== writer && !writers.has(writer)) return
+      return Effect.sync(() => {
+        writers.delete(writer)
+        writer.bytes = undefined
+        if (activeWriter === writer) activeWriter = undefined
+        pump()
+      })
+    })
+
   const transport: Transport = {
     run: (onBytes) =>
       Effect.callback<void, RedisError>((resume) => {
@@ -256,43 +297,46 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
         })
       }),
     write: (bytes, options) =>
-      Effect.callback((resume) => {
-        if (failure !== undefined) return resume(Effect.fail(new RedisError({ ...failure, outcome: "NotSent" })))
-        // Snapshot ordinary input at admission, including writes waiting behind
-        // backpressure. Transferred frames are already private immutable bytes.
-        let snapshot: string | Buffer | Array<string | Buffer>
-        try {
-          const transfer = options?.ownership === "transfer"
-          if (typeof bytes === "string") snapshot = bytes
-          else if (Array.isArray(bytes)) {
-            if (bytes.length === 0) return resume(Effect.void)
-            const copied = new Map<Uint8Array, Buffer>()
-            snapshot = bytes.map((part: string | Uint8Array) => {
-              if (typeof part === "string") return part
-              let owned = copied.get(part)
-              if (owned === undefined) {
-                owned = snapshotBytes(part, transfer)
-                copied.set(part, owned)
-              }
-              return owned
-            })
-          } else snapshot = snapshotBytes(bytes as Uint8Array, transfer)
-        } catch (cause) {
-          return resume(Effect.fail(
-            new RedisError({ reason: "Connection", message: "Cannot prepare Redis write", cause, outcome: "NotSent" })
-          ))
+      typeof bytes !== "string" ? queuedWrite(bytes, options) : Effect.suspend(() => {
+        if (failure !== undefined) return Effect.fail(new RedisError({ ...failure, outcome: "NotSent" }))
+        if (pumping || activeWriter !== undefined || writers.size > 0 || socket.writableNeedDrain) {
+          return queuedWrite(bytes, options)
         }
-        const writer: Writer = { bytes: snapshot, resume }
-        writers.add(writer)
-        pump()
-        // A synchronous completion leaves no writer to cancel. Backpressured
-        // and queued writes retain their interruptible cleanup below.
-        if (activeWriter !== writer && !writers.has(writer)) return
-        return Effect.sync(() => {
-          writers.delete(writer)
-          writer.bytes = undefined
-          if (activeWriter === writer) activeWriter = undefined
+        // An idle socket accepts a string synchronously. Keep asynchronous
+        // registration and queue entries for writes that actually need them.
+        pumping = true
+        try {
+          socket.write(bytes)
+        } catch (cause) {
+          fail(new RedisError({ reason: "Connection", message: "Redis write failed", cause, outcome: "Unknown" }))
+        } finally {
+          pumping = false
+        }
+        const writeFailure = failure as RedisError | undefined
+        if (writeFailure !== undefined) return Effect.fail(new RedisError({ ...writeFailure, outcome: "Unknown" }))
+        if (!socket.writableNeedDrain) {
           pump()
+          return Effect.void
+        }
+        // Reserve the accepted write before returning another Effect. Drain,
+        // failure, or interruption can run before its callback is evaluated.
+        let completed: Effect.Effect<void, RedisError> | undefined
+        let waiting: ((effect: Effect.Effect<void, RedisError>) => void) | undefined
+        const writer: Writer = {
+          bytes: undefined,
+          resume: (effect) => {
+            if (waiting === undefined) completed = effect
+            else waiting(effect)
+          }
+        }
+        activeWriter = writer
+        return Effect.callback<void, RedisError>((resume) => {
+          if (completed !== undefined) return resume(completed)
+          waiting = resume
+          return Effect.sync(() => {
+            if (activeWriter === writer) activeWriter = undefined
+            pump()
+          })
         })
       }),
     close: Effect.callback<void>((resume) => {
