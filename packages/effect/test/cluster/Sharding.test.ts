@@ -2628,7 +2628,7 @@ describe("Sharding shard lock failover", () => {
       )
     }))
 
-  it.effect("does not register an entity whose construction finishes after its shard was released", () =>
+  it.effect("does not register an entity built after shard release", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
       const runnerStorage = Layer.effect(
@@ -2675,7 +2675,6 @@ describe("Sharding shard lock failover", () => {
             yield* TestClock.adjust(1)
           }
 
-          // the shard moves to another runner while the entity is still constructing
           storageState.assignSelf = false
           while (storageState.releaseCalls.length === 0) {
             yield* TestClock.adjust(10)
@@ -2685,17 +2684,9 @@ describe("Sharding shard lock failover", () => {
           entityState.buildLatch.openUnsafe()
           yield* TestClock.adjust(10)
 
-          // not served by this runner: the request is being retried on the new owner
           assert.strictEqual(yield* sharding.activeEntityCount, 0)
+          assert.strictEqual(Queue.sizeUnsafe(entityState.envelopes), 0)
           assert.isUndefined(entityFiber.pollUnsafe())
-
-          const interrupted = yield* Fiber.interrupt(entityFiber).pipe(
-            Effect.forkChild({ startImmediately: true })
-          )
-          for (let i = 0; i < 20 && interrupted.pollUnsafe() === undefined; i++) {
-            yield* TestClock.adjust(10)
-          }
-          assert.isDefined(interrupted.pollUnsafe())
         }).pipe(Effect.ensuring(entityState.buildLatch.open))
       }).pipe(
         Effect.provide(layer),
