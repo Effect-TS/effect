@@ -33,23 +33,6 @@ export interface Scheduler {
   readonly executionMode: "sync" | "async"
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean
   makeDispatcher(): SchedulerDispatcher
-  /**
-   * Captures the current async context when a fiber suspends. The fiber runs
-   * its next step inside it, whichever stack wakes it, so host context such
-   * as `AsyncLocalStorage` does not leak between fibers. Optional: hosts with
-   * no async context omit it.
-   */
-  readonly captureContext?: (() => AsyncContext | undefined) | undefined
-}
-
-/**
- * A captured async context. `run` calls `fn` inside it.
- *
- * @category models
- * @since 4.0.0
- */
-export interface AsyncContext {
-  run<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
 }
 
 /**
@@ -179,16 +162,13 @@ class PriorityBuckets {
 export class MixedScheduler implements Scheduler {
   readonly executionMode: "sync" | "async"
   readonly setImmediate: (f: () => void) => () => void
-  readonly captureContext: (() => AsyncContext | undefined) | undefined
 
   constructor(
     executionMode: "sync" | "async" = "async",
-    setImmediateFn?: (f: () => void) => () => void,
-    captureContext?: () => AsyncContext | undefined
+    setImmediateFn?: (f: () => void) => () => void
   ) {
     this.executionMode = executionMode
     this.setImmediate = setImmediateFn ?? (executionMode === "sync" ? setMicrotask : setImmediate)
-    this.captureContext = captureContext
   }
 
   /**
