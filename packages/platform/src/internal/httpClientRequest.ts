@@ -394,11 +394,9 @@ export const setBody = dual<
     if (contentType) {
       headers = Headers.set(headers, "content-type", contentType)
     }
-
-    const contentLength = body.contentLength
-    if (contentLength) {
-      headers = Headers.set(headers, "content-length", contentLength.toString())
-    }
+    // Do not set content-length here — the transport layer (fetch/undici)
+    // computes the correct value from what it actually sends on the wire.
+    // See https://github.com/Effect-TS/effect/issues/6240
   }
   return makeInternal(
     self.method,
