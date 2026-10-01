@@ -307,6 +307,28 @@ describe("RedisClient", () => {
         assert.strictEqual(fixture.connections.length, 2)
       }))
 
+    it.live("retries a shared connection whose acquisition died", () =>
+      Effect.gen(function*() {
+        const fixture = yield* server((request) => request.connection.send("+PONG\r\n"))
+        const base = makeConnector()
+        const defect = new Error("acquisition defect")
+        let attempts = 0
+        const connector: Connector = (endpoint) =>
+          endpoint.host === "replica"
+            ? Effect.suspend(() => ++attempts === 1 ? Effect.die(defect) : base({ ...endpoint, host: fixture.host }))
+            : base(endpoint)
+        const client = yield* Client.make(connector, { topology: { _tag: "Standalone", endpoint: fixture } })
+        const replica = { host: "replica", port: fixture.port }
+
+        const first = yield* Effect.exit(client.execute(["PING"], { node: replica, keyIndexes: [] }))
+        assert.isTrue(Exit.isFailure(first) && Cause.squash(first.cause) === defect)
+        const second = yield* client.execute(["PING"], { node: replica, keyIndexes: [] }).pipe(
+          Effect.timeout("2 seconds")
+        )
+        assert.strictEqual(Protocol.toValue(second), "PONG")
+        assert.strictEqual(attempts, 2)
+      }))
+
     it.live("releases shared and reserved sockets when its scope closes", () =>
       Effect.gen(function*() {
         const fixture = yield* server((request) => request.connection.send("+PONG\r\n"))

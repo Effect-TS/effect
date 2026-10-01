@@ -342,6 +342,31 @@ it.layer(Persistence.layerBackingRedis.pipe(Layer.provideMerge(ClusterRedisLayer
         yield* first.clear
       }))
 
+    it.effect("cleans up only the queues under its own prefix", () =>
+      Effect.gen(function*() {
+        const redis = yield* Redis.Redis
+        const failOne = Effect.fnUntraced(function*(prefix: string, name: string) {
+          const store = yield* PersistedQueue.makeStoreRedis({ prefix, pollInterval: "50 millis" })
+          const factory = yield* PersistedQueue.makeFactory.pipe(
+            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+          )
+          const queue = yield* factory.make({ name, schema: RedisItem, maxAttempts: 1 })
+          yield* queue.offer({ n: 1 })
+          yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
+          return store
+        })
+        const owner = yield* failOne("cleanup:", "jobs")
+        // Another store whose queue name contains the first store's prefix.
+        yield* failOne("other:", "cleanup:jobs")
+        const failed = (key: string) => redis.send<number>("LLEN", `${Redis.key(redis, key)}:failed`)
+        assert.strictEqual(Number(yield* failed("other:cleanup:jobs")), 1)
+
+        yield* Effect.sleep("10 millis")
+        yield* owner.cleanup({ timeToLive: Duration.zero, failedTimeToLive: Duration.zero })
+        assert.strictEqual(Number(yield* failed("cleanup:jobs")), 0)
+        assert.strictEqual(Number(yield* failed("other:cleanup:jobs")), 1)
+      }).pipe(TestClock.withLive))
+
     it.effect("refreshes active locks independently for queues in different slots", () =>
       Effect.gen(function*() {
         const redis = yield* Redis.Redis

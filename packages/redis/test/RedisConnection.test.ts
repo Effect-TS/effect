@@ -282,6 +282,23 @@ describe("RedisConnection", () => {
       assert.deepStrictEqual(messages, [["subscribe", "channel", 1], ["message", "channel", "payload"]])
     }))
 
+  it.live("leaves RESP2 subscription mode after the last channel is unsubscribed", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const connection = yield* Connection.make(makeConnector(), fixture)
+      const roundTrip = Effect.fnUntraced(function*(args: ReadonlyArray<string>, wire: string | Uint8Array) {
+        const pending = yield* connection.execute(args).pipe(Effect.forkChild)
+        const request = yield* nextRequest(fixture)
+        assert.deepStrictEqual(request.args.map(String), args)
+        request.connection.send(wire)
+        return Protocol.toValue(yield* Fiber.join(pending).pipe(Effect.timeout("2 seconds")))
+      })
+      yield* roundTrip(["SUBSCRIBE", "channel"], "*3\r\n$9\r\nsubscribe\r\n$7\r\nchannel\r\n:1\r\n")
+      yield* roundTrip(["UNSUBSCRIBE", "channel"], "*3\r\n$11\r\nunsubscribe\r\n$7\r\nchannel\r\n:0\r\n")
+      assert.deepStrictEqual(yield* roundTrip(["MGET", "a", "b"], array("message", "value")), ["message", "value"])
+      assert.strictEqual(yield* roundTrip(["PING"], "+PONG\r\n"), "PONG")
+    }))
+
   it.live("retains RESP3 attributes on replies", () =>
     Effect.gen(function*() {
       const fixture = yield* server
