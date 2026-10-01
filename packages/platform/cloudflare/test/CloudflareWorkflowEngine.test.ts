@@ -6,7 +6,7 @@ import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-clou
 import { loadExecution } from "@effect/platform-cloudflare/internal/workflowStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Option, Schema } from "effect"
-import { RpcTest } from "effect/unstable/rpc"
+import { RpcTest } from "effect/rpc"
 import {
   Activity,
   DurableClock,
@@ -15,7 +15,7 @@ import {
   WorkflowEngine,
   WorkflowProxy,
   WorkflowProxyServer
-} from "effect/unstable/workflow"
+} from "effect/workflow"
 
 class FakeSql {
   execution: Record<string, unknown> | undefined
