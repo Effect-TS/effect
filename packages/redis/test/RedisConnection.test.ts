@@ -19,9 +19,13 @@ const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
   if (result._tag !== "Failure") return assert.fail("Expected Redis failure")
   return result.failure
 }
+const wireBytes = (bytes: Parameters<Connection.Transport["write"]>[0]): Uint8Array =>
+  typeof bytes === "string" ? Buffer.from(bytes) : Array.isArray(bytes)
+    ? Buffer.concat(bytes.map((part) => Buffer.from(part)))
+    : bytes as Uint8Array
 
 describe("Redis physical session", () => {
-  it.effect("captures binary arguments when a command is admitted", () =>
+  it.effect("captures current command arguments on every submission", () =>
     Effect.gen(function*() {
       const replies = yield* Queue.unbounded<Uint8Array, RedisError>()
       const requests = Protocol.makeParser()
@@ -32,7 +36,7 @@ describe("Redis physical session", () => {
           close: Effect.void,
           write: (bytes) =>
             Effect.sync(() => {
-              captured = requests.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes)[0]
+              captured = requests.push(wireBytes(bytes))[0]
               Queue.offerUnsafe(replies, Buffer.from("+OK\r\n"))
             })
         })
@@ -51,6 +55,31 @@ describe("Redis physical session", () => {
       if (captured?._tag === "Array") {
         assert.deepStrictEqual(captured.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
       }
+      const args: Array<Protocol.Argument> = ["ECHO", "first"]
+      const command = connection.execute(args)
+      for (
+        const value of [
+          "first",
+          "🥹\uD800",
+          "last",
+          "first",
+          ...Array.from({ length: 32 }, (_, index) => `${index}`)
+        ]
+      ) {
+        args[1] = value
+        yield* command
+        assert.deepStrictEqual(Protocol.toValue(captured!), ["ECHO", value.replace("\uD800", "�")])
+      }
+      args[1] = "x".repeat(4096)
+      yield* command
+      assert.deepStrictEqual(Protocol.toValue(captured!), args)
+      args[1] = "first"
+      args.push("extra")
+      yield* command
+      assert.deepStrictEqual(Protocol.toValue(captured!), args)
+      args.pop()
+      yield* command
+      assert.deepStrictEqual(Protocol.toValue(captured!), args)
     }))
 
   it.effect("keeps repeated command and pipeline effects independent with immediate replies", () =>
@@ -67,9 +96,7 @@ describe("Redis physical session", () => {
             write: (bytes) =>
               Effect.sync(() => {
                 writes++
-                const response = requests.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes).map(() =>
-                  `:${++counter}\r\n`
-                ).join("")
+                const response = requests.push(wireBytes(bytes)).map(() => `:${++counter}\r\n`).join("")
                 Queue.offerUnsafe(replies, Buffer.from(response))
               })
           }),
@@ -209,7 +236,7 @@ describe("Redis physical session", () => {
           ...transport,
           write: (bytes) =>
             Effect.sync(() => {
-              writes.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes.slice())
+              writes.push(wireBytes(bytes).slice())
             }).pipe(Effect.andThen(transport.write(bytes)))
         })))
       const connection = yield* Connection.make(connector, fixture)
@@ -244,7 +271,7 @@ describe("Redis physical session", () => {
             close: Effect.void,
             write: (bytes) =>
               Effect.gen(function*() {
-                const decoded = parser.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes)
+                const decoded = parser.push(wireBytes(bytes))
                 requests.push(...decoded)
                 writes++
                 Queue.offerUnsafe(replies, Buffer.from(decoded.map(() => "+OK\r\n").join("")))
@@ -259,13 +286,25 @@ describe("Redis physical session", () => {
       yield* connection.execute(["PING"]).pipe(Effect.forkChild)
       yield* Deferred.await(written)
       const bytes = new Uint8Array([0, 128, 255])
-      const pipeline = yield* connection.pipeline([
+      const other = new Uint8Array([255, 127, 0])
+      const shared = new Uint8Array(4096).fill(2)
+      const distinct = new Uint8Array(4096).fill(3)
+      const operation = connection.pipeline([
         { arguments: ["SET", "binary", bytes] },
-        { arguments: ["ECHO", "🥹\uD800"] }
-      ]).pipe(Effect.forkChild)
+        { arguments: ["ECHO", "🥹\uD800"] },
+        { arguments: ["MSET", "🥹\uD800", bytes, "µ", other] },
+        { arguments: ["MSET", "🥹\uD800", other, "µ", bytes] },
+        { arguments: ["MSET", "unique", new Uint8Array([2])] },
+        { arguments: ["MSET", "shared", shared, "distinct", distinct] },
+        { arguments: ["MSET", "shared", shared, "distinct", shared] }
+      ])
+      const pipeline = yield* operation.pipe(Effect.forkChild)
       const text = yield* connection.execute(["ECHO", "🥹\uD800"]).pipe(Effect.forkChild)
       yield* Effect.yieldNow
       bytes.fill(99)
+      other.fill(98)
+      shared.fill(97)
+      distinct.fill(96)
       yield* Deferred.succeed(release, undefined)
       const results = yield* Fiber.join(pipeline)
       yield* Fiber.join(text)
@@ -277,7 +316,36 @@ describe("Redis physical session", () => {
         assert.deepStrictEqual(set.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
       }
       assert.deepStrictEqual(Protocol.toValue(requests[2]), ["ECHO", "🥹�"])
-      assert.deepStrictEqual(Protocol.toValue(requests[3]), ["ECHO", "🥹�"])
+      for (
+        const [index, first, second] of [[3, [0, 128, 255], [255, 127, 0]], [4, [255, 127, 0], [0, 128, 255]]] as const
+      ) {
+        const command = requests[index]
+        assert.strictEqual(command._tag, "Array")
+        if (command._tag === "Array") {
+          assert.deepStrictEqual(command.values[2], { _tag: "BlobString", value: new Uint8Array(first) })
+          assert.deepStrictEqual(command.values[4], { _tag: "BlobString", value: new Uint8Array(second) })
+          assert.strictEqual(Protocol.toValue(command.values[1]), "🥹�")
+          assert.strictEqual(Protocol.toValue(command.values[3]), "µ")
+        }
+      }
+      assert.deepStrictEqual(Protocol.toValue(requests[5]), ["MSET", "unique", "\u0002"])
+      for (const [index, second] of [[6, 3], [7, 2]] as const) {
+        const command = requests[index]
+        assert.strictEqual(command._tag, "Array")
+        if (command._tag === "Array") {
+          assert.deepStrictEqual(command.values[2], { _tag: "BlobString", value: new Uint8Array(4096).fill(2) })
+          assert.deepStrictEqual(command.values[4], { _tag: "BlobString", value: new Uint8Array(4096).fill(second) })
+        }
+      }
+      assert.deepStrictEqual(Protocol.toValue(requests[8]), ["ECHO", "🥹�"])
+      assert.isTrue((yield* operation).every((result) => result._tag === "Success"))
+      assert.strictEqual(writes, 3)
+      const changed = requests[14]
+      assert.strictEqual(changed._tag, "Array")
+      if (changed._tag === "Array") {
+        assert.deepStrictEqual(changed.values[2], { _tag: "BlobString", value: new Uint8Array(4096).fill(97) })
+        assert.deepStrictEqual(changed.values[4], { _tag: "BlobString", value: new Uint8Array(4096).fill(96) })
+      }
     }))
 
   it.effect("preserves binary replies when a custom stream reuses its input buffer", () =>

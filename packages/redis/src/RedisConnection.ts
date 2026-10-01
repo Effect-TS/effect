@@ -12,7 +12,7 @@ import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
 import * as ConnectionInternal from "./internal/connection.ts"
-import { encodeFrame, encodeFrames } from "./internal/encoding.ts"
+import { encodeFrames, type Frame, isVector, makeFrameEncoder } from "./internal/encoding.ts"
 import { makeParser } from "./internal/protocol.ts"
 import * as Replies from "./internal/replies.ts"
 import type * as TransportInternal from "./internal/transport.ts"
@@ -34,7 +34,9 @@ export type Endpoint = TransportInternal.Endpoint
  *
  * **Details**
  *
- * Strings are written as UTF-8. Byte writes copy their input by default. With
+ * Writes accept UTF-8 strings, byte arrays, or ordered vectors of both.
+ * Capacity uses exact UTF-8 wire bytes. Vectors snapshot their structure at
+ * admission in both ownership modes. Byte writes copy their input by default. With
  * `ownership: "transfer"`, callers promise never to mutate the supplied bytes,
  * and transports may retain them without copying. Transports must not modify
  * those bytes in either mode.
@@ -112,7 +114,7 @@ export interface RedisConnection {
 }
 
 interface Pending {
-  bytes: string | Uint8Array | undefined
+  bytes: Frame["bytes"] | undefined
   readonly size: number
   state: "Queued" | "Sent" | "Done"
   readonly ack: string | undefined
@@ -185,6 +187,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     )
   }
   const transport = yield* connector(endpoint)
+  const encodeOne = makeFrameEncoder()
   let outgoing: Array<Pending> = []
   const terminal = yield* Deferred.make<never, RedisError>()
   const pending = new Set<Pending>()
@@ -281,7 +284,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
 
   const prepare = (
     args: ReadonlyArray<Protocol.Argument>,
-    frame: ReturnType<typeof encodeFrame>,
+    frame: Frame,
     onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
   ) => {
     const command = nameOf(args[0]).toUpperCase()
@@ -340,7 +343,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     if (dead !== undefined) {
       throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
     }
-    const item = prepare(args, encodeFrame(args), onResult)
+    const item = prepare(args, encodeOne(args), onResult)
     if (pending.size >= limit || queuedBytes + item.entry.size > byteLimit || outgoing.length >= limit) {
       throw new RedisError({ reason: "Capacity", message: "Redis command queue capacity exceeded", outcome: "NotSent" })
     }
@@ -497,12 +500,28 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         }
         const active = entries.filter((entry) => entry.state !== "Done")
         if (active.length === 0) return Effect.void
-        const first = active[0].bytes!
+        if (active.some((entry) => isVector(entry.bytes!))) {
+          const parts: Array<string | Uint8Array> = []
+          for (const entry of active) {
+            const bytes = entry.bytes!
+            if (isVector(bytes)) {
+              for (const part of bytes) parts.push(part)
+            } else parts.push(bytes)
+          }
+          for (const entry of active) {
+            entry.bytes = undefined
+            queuedBytes -= entry.size
+            entry.state = "Sent"
+            inflight.push(entry)
+          }
+          return transport.write(parts, transferredWrite)
+        }
+        const first = active[0].bytes! as string | Uint8Array
         let size = 0
         let contiguous = typeof first !== "string"
         let allStrings = typeof first === "string"
         for (const entry of active) {
-          const bytes = entry.bytes!
+          const bytes = entry.bytes! as string | Uint8Array
           if (typeof bytes === "string") contiguous = false
           else {
             allStrings = false
@@ -522,7 +541,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         let offset = 0
         for (const entry of active) {
           if (!allStrings && !contiguous && typeof bytes !== "string") {
-            const frame = entry.bytes!
+            const frame = entry.bytes! as string | Uint8Array
             if (typeof frame === "string") encoder.encodeInto(frame, bytes.subarray(offset, offset + entry.size))
             else bytes.set(frame, offset)
           }

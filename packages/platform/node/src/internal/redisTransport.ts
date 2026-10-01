@@ -74,7 +74,7 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
     readonly resume: (effect: Effect.Effect<void, RedisError>) => void
   } | undefined
   interface Writer {
-    bytes: string | Buffer | undefined
+    bytes: string | Buffer | Array<string | Buffer> | undefined
     readonly resume: (effect: Effect.Effect<void, RedisError>) => void
   }
   const writers = new Set<Writer>()
@@ -82,6 +82,7 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
   const closings = new Set<() => void>()
   let activeWriter: Writer | undefined
   let pumping = false
+  let submittingVector = false
   let buffered: Uint8Array | undefined
 
   const fail = (error: RedisError) => {
@@ -153,11 +154,28 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
         const bytes = writer.bytes!
         writer.bytes = undefined
         try {
-          const accepted = socket.write(bytes)
+          if (Array.isArray(bytes)) {
+            submittingVector = true
+            try {
+              socket.cork()
+              try {
+                // Every part belongs to one admitted batch. A false write
+                // accepts its part; finish the batch before waiting for drain.
+                for (const part of bytes) {
+                  if (failure !== undefined) break
+                  socket.write(part)
+                }
+              } finally {
+                socket.uncork()
+              }
+            } finally {
+              submittingVector = false
+            }
+          } else socket.write(bytes)
           if (failure !== undefined) break
           // A false result accepted these bytes. Wait for drain without ever
           // writing them again, including after interruption of this caller.
-          if (!accepted && socket.writableNeedDrain) break
+          if (socket.writableNeedDrain) break
           activeWriter = undefined
           writer.resume(Effect.void)
         } catch (cause) {
@@ -169,7 +187,7 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
     }
   }
   const onDrain = () => {
-    if (socket.writableNeedDrain) return
+    if (submittingVector || socket.writableNeedDrain) return
     const writer = activeWriter
     activeWriter = undefined
     writer?.resume(Effect.void)
@@ -201,6 +219,9 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
   socket.on("data", onData)
   socket.on("drain", onDrain)
   socket.on(readyEvent, onOpen)
+
+  const snapshotBytes = (bytes: Uint8Array, transfer: boolean): Buffer =>
+    transfer ? Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength) : Buffer.from(bytes)
 
   const transport: Transport = {
     run: (onBytes) =>
@@ -239,11 +260,23 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
         if (failure !== undefined) return resume(Effect.fail(new RedisError({ ...failure, outcome: "NotSent" })))
         // Snapshot ordinary input at admission, including writes waiting behind
         // backpressure. Transferred frames are already private immutable bytes.
-        let snapshot: string | Buffer
+        let snapshot: string | Buffer | Array<string | Buffer>
         try {
-          snapshot = typeof bytes === "string" ? bytes : options?.ownership === "transfer"
-            ? Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-            : Buffer.from(bytes)
+          const transfer = options?.ownership === "transfer"
+          if (typeof bytes === "string") snapshot = bytes
+          else if (Array.isArray(bytes)) {
+            if (bytes.length === 0) return resume(Effect.void)
+            const copied = new Map<Uint8Array, Buffer>()
+            snapshot = bytes.map((part: string | Uint8Array) => {
+              if (typeof part === "string") return part
+              let owned = copied.get(part)
+              if (owned === undefined) {
+                owned = snapshotBytes(part, transfer)
+                copied.set(part, owned)
+              }
+              return owned
+            })
+          } else snapshot = snapshotBytes(bytes as Uint8Array, transfer)
         } catch (cause) {
           return resume(Effect.fail(
             new RedisError({ reason: "Connection", message: "Cannot prepare Redis write", cause, outcome: "NotSent" })

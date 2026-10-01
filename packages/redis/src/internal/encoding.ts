@@ -2,14 +2,34 @@
 import type { Argument } from "../RedisProtocol.ts"
 
 const encoder = new TextEncoder()
-const preparedFrames = new WeakMap<ReadonlyArray<Argument>, Uint8Array>()
+const preparedFrames = new WeakMap<ReadonlyArray<Argument>, Frame>()
 
 export interface Frame {
-  readonly bytes: string | Uint8Array
+  readonly bytes: string | Uint8Array | ReadonlyArray<string | Uint8Array>
   readonly size: number
 }
 
-const measure = (args: ReadonlyArray<Argument>) => {
+export const isVector: (bytes: Frame["bytes"]) => bytes is ReadonlyArray<string | Uint8Array> = Array.isArray
+
+const hasLargeBinary = (args: ReadonlyArray<Argument>): boolean => {
+  for (const arg of args) {
+    if (typeof arg !== "string" && arg.length >= 1024) return true
+  }
+  return false
+}
+
+interface Layout {
+  readonly fixed: ReadonlyArray<{ readonly offset: number; readonly bytes: Uint8Array }>
+  readonly binary: ReadonlyArray<{ readonly index: number; readonly offset: number; readonly size: number }>
+}
+
+interface Measured {
+  readonly lengths: ReadonlyArray<number>
+  readonly size: number
+  layout?: Layout
+}
+
+const measure = (args: ReadonlyArray<Argument>): Measured => {
   const lengths: Array<number> = []
   let size = String(args.length).length + 3
   for (const arg of args) {
@@ -48,14 +68,37 @@ const sameShape = (left: ReadonlyArray<Argument>, right: ReadonlyArray<Argument>
 
 // Repeated batch shapes share immutable length metadata. Binary bytes are
 // still copied separately for each command, even when their lengths match.
+const compileLayout = (args: ReadonlyArray<Argument>, lengths: ReadonlyArray<number>): Layout => {
+  const fixed: Array<{ readonly offset: number; readonly bytes: Uint8Array }> = []
+  const binary: Array<{ readonly index: number; readonly offset: number; readonly size: number }> = []
+  let offset = 0
+  let text = `*${args.length}\r\n`
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index]
+    const size = lengths[index]
+    text += `$${size}\r\n`
+    if (typeof arg === "string") text += `${arg}\r\n`
+    else {
+      const bytes = encoder.encode(text)
+      fixed.push({ offset, bytes })
+      offset += bytes.length
+      binary.push({ index, offset, size })
+      offset += size
+      text = "\r\n"
+    }
+  }
+  if (text.length > 0) fixed.push({ offset, bytes: encoder.encode(text) })
+  return { fixed, binary }
+}
+
 const measureCommands = (commands: ReadonlyArray<ReadonlyArray<Argument>>) => {
-  const measured: Array<ReturnType<typeof measure>> = []
+  const measured: Array<Measured> = []
   for (let index = 0; index < commands.length; index++) {
-    measured.push(
-      index > 0 && sameShape(commands[index], commands[index - 1])
-        ? measured[index - 1]
-        : measure(commands[index])
-    )
+    if (index > 0 && sameShape(commands[index], commands[index - 1])) {
+      const previous = measured[index - 1]
+      previous.layout ??= compileLayout(commands[index], previous.lengths)
+      measured.push(previous)
+    } else measured.push(measure(commands[index]))
   }
   return measured
 }
@@ -65,8 +108,18 @@ const write = (
   lengths: ReadonlyArray<number>,
   bytes: Uint8Array,
   start: number,
-  snapshot?: Array<Argument>
+  snapshot?: Array<Argument>,
+  layout?: Layout
 ) => {
+  if (layout !== undefined) {
+    for (const span of layout.fixed) bytes.set(span.bytes, start + span.offset)
+    for (const field of layout.binary) {
+      const offset = start + field.offset
+      bytes.set(args[field.index] as Uint8Array, offset)
+      if (snapshot !== undefined) snapshot[field.index] = bytes.subarray(offset, offset + field.size)
+    }
+    return
+  }
   let offset = start
   const header = (marker: number, size: number) => {
     bytes[offset++] = marker
@@ -105,7 +158,12 @@ export const encodeCommand = (args: ReadonlyArray<Argument>): Uint8Array => {
 // byte counts separate from JS string length for capacity and Unicode headers.
 export const encodeFrame = (args: ReadonlyArray<Argument>): Frame => {
   const prepared = preparedFrames.get(args)
-  if (prepared !== undefined) return { bytes: prepared, size: prepared.length }
+  if (prepared !== undefined) return prepared
+  if (hasLargeBinary(args)) {
+    const snapshot = args.slice()
+    prepareSnapshots([snapshot])
+    return preparedFrames.get(snapshot)!
+  }
   for (const arg of args) {
     if (typeof arg !== "string") {
       const bytes = encodeCommand(args)
@@ -118,20 +176,112 @@ export const encodeFrame = (args: ReadonlyArray<Argument>): Frame => {
   return { bytes, size }
 }
 
+// A physical session retains at most one small immutable text frame. Validate
+// owned argument values on each invocation, including repeated Effects using
+// caller arrays that can change; binary inputs always retain the copy path.
+export const makeFrameEncoder = (): (args: ReadonlyArray<Argument>) => Frame => {
+  let previous: ReadonlyArray<string> | undefined
+  let previousFrame: Frame | undefined
+  return (args) => {
+    let same = previous !== undefined && args.length === previous.length
+    for (let index = 0; index < args.length; index++) {
+      const arg = args[index]
+      if (typeof arg !== "string") return encodeFrame(args)
+      if (same && arg !== previous![index]) same = false
+    }
+    if (same) return previousFrame!
+    const snapshot = args.slice() as Array<string>
+    const frame = encodeFrame(snapshot)
+    if (frame.size <= 4096) {
+      previous = snapshot
+      previousFrame = frame
+    } else {
+      previous = undefined
+      previousFrame = undefined
+    }
+    return frame
+  }
+}
+
+const vectorFrame = (args: ReadonlyArray<Argument>, measured: Measured): Frame => {
+  const layout = measured.layout ??= compileLayout(args, measured.lengths)
+  const parts: Array<string | Uint8Array> = []
+  for (let index = 0; index < layout.binary.length; index++) {
+    parts.push(layout.fixed[index].bytes)
+    parts.push(args[layout.binary[index].index] as Uint8Array)
+  }
+  parts.push(layout.fixed[layout.fixed.length - 1].bytes)
+  return { bytes: parts, size: measured.size }
+}
+
+const prepareVectorSnapshots = (commands: ReadonlyArray<Array<Argument>>, measured: ReadonlyArray<Measured>) => {
+  const snapshots = new Map<Uint8Array, { readonly offset: number; bytes?: Uint8Array }>()
+  let size = 0
+  for (const args of commands) {
+    for (const arg of args) {
+      if (typeof arg !== "string" && !snapshots.has(arg)) {
+        snapshots.set(arg, { offset: size })
+        size += arg.length
+      }
+    }
+  }
+  // Only exact source identities share a snapshot, within this invocation.
+  // Distinct views, even with equal lengths or contents, keep distinct ranges.
+  const owned = new Uint8Array(size)
+  for (const [arg, snapshot] of snapshots) {
+    owned.set(arg, snapshot.offset)
+    snapshot.bytes = owned.subarray(snapshot.offset, snapshot.offset + arg.length)
+  }
+  const large = commands.map(hasLargeBinary)
+  const small = new Uint8Array(measured.reduce((total, command, index) => total + (large[index] ? 0 : command.size), 0))
+  let offset = 0
+  for (let index = 0; index < commands.length; index++) {
+    const args = commands[index]
+    for (let argument = 0; argument < args.length; argument++) {
+      const value = args[argument]
+      if (typeof value !== "string") args[argument] = snapshots.get(value)!.bytes!
+    }
+    const metadata = measured[index]
+    if (large[index]) preparedFrames.set(args, vectorFrame(args, metadata))
+    else {
+      write(args, metadata.lengths, small, offset, undefined, metadata.layout)
+      preparedFrames.set(args, { bytes: small.subarray(offset, offset + metadata.size), size: metadata.size })
+      offset += metadata.size
+    }
+  }
+}
+
 // These arrays belong to one client invocation and never escape to the caller.
-// Copy binary payloads into their wire positions and retain stable argument
-// views for routing and retries, avoiding a separate payload snapshot buffer.
+// Small binary batches snapshot into contiguous wire positions. Large payloads
+// use one owned slab for unique source objects, retained by vectors and routing
+// views without copying repeated payloads into every command frame.
 export const prepareSnapshots = (commands: ReadonlyArray<Array<Argument>>): void => {
   const measured = measureCommands(commands)
+  if (commands.some(hasLargeBinary)) return prepareVectorSnapshots(commands, measured)
   const bytes = new Uint8Array(measured.reduce((total, command) => total + command.size, 0))
   let offset = 0
   for (let index = 0; index < commands.length; index++) {
     const args = commands[index]
-    const { lengths, size } = measured[index]
-    write(args, lengths, bytes, offset, args)
-    preparedFrames.set(args, bytes.subarray(offset, offset + size))
+    const { lengths, size, layout } = measured[index]
+    write(args, lengths, bytes, offset, args, layout)
+    preparedFrames.set(args, { bytes: bytes.subarray(offset, offset + size), size })
     offset += size
   }
+}
+
+const frameBytes = (frame: Frame): Uint8Array => {
+  if (typeof frame.bytes === "string") return encoder.encode(frame.bytes)
+  if (!isVector(frame.bytes)) return frame.bytes
+  const bytes = new Uint8Array(frame.size)
+  let offset = 0
+  for (const part of frame.bytes) {
+    if (typeof part === "string") offset += encoder.encodeInto(part, bytes.subarray(offset)).written
+    else {
+      bytes.set(part, offset)
+      offset += part.length
+    }
+  }
+  return bytes
 }
 
 // Each entry retains its frame for cancellation/capacity accounting while the
@@ -142,7 +292,7 @@ export const encodeCommands = (commands: ReadonlyArray<ReadonlyArray<Argument>>)
   for (let index = 0; index < commands.length; index++) {
     const prepared = preparedFrames.get(commands[index])
     if (prepared !== undefined) {
-      frames[index] = prepared
+      frames[index] = frameBytes(prepared)
       cached = true
     }
   }
@@ -158,8 +308,8 @@ export const encodeCommands = (commands: ReadonlyArray<ReadonlyArray<Argument>>)
   const bytes = new Uint8Array(measured.reduce((total, command) => total + command.size, 0))
   let offset = 0
   for (let index = 0; index < commands.length; index++) {
-    const { lengths, size } = measured[index]
-    write(commands[index], lengths, bytes, offset)
+    const { lengths, size, layout } = measured[index]
+    write(commands[index], lengths, bytes, offset, undefined, layout)
     frames[index] = bytes.subarray(offset, offset + size)
     offset += size
   }
@@ -167,6 +317,35 @@ export const encodeCommands = (commands: ReadonlyArray<ReadonlyArray<Argument>>)
 }
 
 export const encodeFrames = (commands: ReadonlyArray<ReadonlyArray<Argument>>): Array<Frame> => {
+  let vector = false
+  for (const args of commands) {
+    const prepared = preparedFrames.get(args)
+    if ((prepared !== undefined && isVector(prepared.bytes)) || hasLargeBinary(args)) {
+      vector = true
+      break
+    }
+  }
+  if (vector) {
+    const frames = new Array<Frame>(commands.length)
+    const snapshots: Array<Array<Argument>> = []
+    const indexes: Array<number> = []
+    for (let index = 0; index < commands.length; index++) {
+      const args = commands[index]
+      const prepared = preparedFrames.get(args)
+      if (prepared !== undefined) frames[index] = prepared
+      else {
+        snapshots.push(args.slice())
+        indexes.push(index)
+      }
+    }
+    if (snapshots.length > 0) {
+      prepareSnapshots(snapshots)
+      for (let index = 0; index < snapshots.length; index++) {
+        frames[indexes[index]] = preparedFrames.get(snapshots[index])!
+      }
+    }
+    return frames
+  }
   for (const args of commands) {
     for (const arg of args) {
       if (typeof arg !== "string") {

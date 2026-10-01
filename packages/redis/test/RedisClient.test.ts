@@ -4,7 +4,7 @@ import * as Sentinel from "@effect/redis/internal/sentinel"
 import type { ClusterConfig } from "@effect/redis/internal/topology"
 import * as Client from "@effect/redis/RedisClient"
 import * as Command from "@effect/redis/RedisCommand"
-import type { Connector, Endpoint } from "@effect/redis/RedisConnection"
+import type { Connector, Endpoint, Transport } from "@effect/redis/RedisConnection"
 import { RedisError } from "@effect/redis/RedisError"
 import * as Protocol from "@effect/redis/RedisProtocol"
 import { assert, describe, it } from "@effect/vitest"
@@ -19,6 +19,10 @@ const server = (handle: (request: Request) => void) =>
     (fixture) => Effect.promise(fixture.stop)
   )
 const args = (request: Request): Array<string> => request.args.map((arg) => arg.toString())
+const wireBytes = (input: Parameters<Transport["write"]>[0]): Uint8Array => {
+  const parts = typeof input === "string" || input instanceof Uint8Array ? [input] : input
+  return Buffer.concat(parts.map((part) => typeof part === "string" ? new TextEncoder().encode(part) : part))
+}
 const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
   assert.strictEqual(result._tag, "Failure")
   if (result._tag !== "Failure") return assert.fail("Expected Redis failure")
@@ -268,6 +272,13 @@ describe("RedisClient", () => {
           const written = yield* Deferred.make<void>()
           const release = yield* Deferred.make<void>()
           const requests: Array<Protocol.Reply> = []
+          const assertBody = (index: number, bytes: Uint8Array) => {
+            const request = requests[index]
+            assert.strictEqual(request._tag, "Array")
+            if (request._tag === "Array") {
+              assert.deepStrictEqual(request.values[2], { _tag: "BlobString", value: bytes })
+            }
+          }
           const parser = Protocol.makeParser()
           let writes = 0
           const client = yield* Client.make(() =>
@@ -277,7 +288,7 @@ describe("RedisClient", () => {
               close: Effect.void,
               write: (bytes) =>
                 Effect.gen(function*() {
-                  const decoded = parser.push(typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes)
+                  const decoded = parser.push(wireBytes(bytes))
                   requests.push(...decoded)
                   writes++
                   Queue.offerUnsafe(replies, Buffer.from(decoded.map(() => "+OK\r\n").join("")))
@@ -290,33 +301,41 @@ describe("RedisClient", () => {
           )
           const blocked = yield* client.execute(["ECHO", "hold"]).pipe(Effect.forkChild)
           yield* Deferred.await(written)
-          const bytes = new Uint8Array([0, 128, 255])
+          const bytes = Uint8Array.from({ length: 4096 }, (_, index) => [0, 128, 255][index % 3])
+          const second = Uint8Array.from({ length: 4096 }, (_, index) => [255, 128, 0][index % 3])
+          const original = bytes.slice()
+          const originalSecond = second.slice()
           const operation = mode === "run" ?
             client.run(Command.set("binary", bytes)).pipe(
               Effect.map((value) => [Result.succeed(value)])
             ) :
             client.pipeline([
               Command.set("binary", bytes),
+              Command.set("binary", bytes),
+              Command.set("binary", second),
               Command.make(["ECHO", "🥹\uD800"], Command.text)
             ])
           const running = yield* operation.pipe(Effect.forkChild)
           yield* Effect.yieldNow
           bytes.fill(99)
+          second.fill(77)
           yield* Deferred.succeed(release, undefined)
           yield* Fiber.join(blocked)
           assert.isTrue((yield* Fiber.join(running)).every((result) => result._tag === "Success"))
           assert.strictEqual(writes, 3)
-          const original = requests[2]
-          assert.strictEqual(original._tag, "Array")
-          if (original._tag === "Array") {
-            assert.deepStrictEqual(original.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
+          assertBody(2, original)
+          if (mode === "pipeline") {
+            assertBody(3, original)
+            assertBody(4, originalSecond)
+            assert.deepStrictEqual(Protocol.toValue(requests[5]), ["ECHO", "🥹�"])
           }
-          if (mode === "pipeline") assert.deepStrictEqual(Protocol.toValue(requests[3]), ["ECHO", "🥹�"])
+          const rerunStart = requests.length
           assert.isTrue((yield* operation).every((result) => result._tag === "Success"))
-          const updated = requests[mode === "run" ? 3 : 4]
-          assert.strictEqual(updated._tag, "Array")
-          if (updated._tag === "Array") {
-            assert.deepStrictEqual(updated.values[2], { _tag: "BlobString", value: new Uint8Array([99, 99, 99]) })
+          assertBody(rerunStart, new Uint8Array(4096).fill(99))
+          if (mode === "pipeline") {
+            assertBody(rerunStart + 1, new Uint8Array(4096).fill(99))
+            assertBody(rerunStart + 2, new Uint8Array(4096).fill(77))
+            assert.deepStrictEqual(Protocol.toValue(requests[rerunStart + 3]), ["ECHO", "🥹�"])
           }
           assert.strictEqual(writes, 4)
         }
@@ -885,12 +904,11 @@ describe("RedisClient", () => {
                 run: (onBytes: (bytes: Uint8Array) => void) =>
                   Queue.take(replies).pipe(Effect.map(onBytes), Effect.forever),
                 close,
-                write: (bytes: string | Uint8Array) =>
+                write: (bytes: Parameters<Transport["write"]>[0]) =>
                   Effect.try({
                     try: () => {
                       // Discovery commands only contain ASCII arguments; decode their bulk framing independently.
-                      const parts = new TextDecoder().decode(typeof bytes === "string" ? encoder.encode(bytes) : bytes)
-                        .split("\r\n")
+                      const parts = new TextDecoder().decode(wireBytes(bytes)).split("\r\n")
                       const args: Array<string> = []
                       for (let i = 2; i < parts.length - 1; i += 2) args.push(parts[i])
                       commands.push([endpoint, args])
@@ -1335,12 +1353,11 @@ describe("RedisClient", () => {
                 run: (onBytes: (bytes: Uint8Array) => void) =>
                   Queue.take(replies).pipe(Effect.map(onBytes), Effect.forever),
                 close,
-                write: (bytes: string | Uint8Array) =>
+                write: (bytes: Parameters<Transport["write"]>[0]) =>
                   Effect.try({
                     try: () => {
                       // Independent decoder for this fixture's ASCII bulk command arguments.
-                      const wire = new TextDecoder().decode(typeof bytes === "string" ? encoder.encode(bytes) : bytes)
-                        .split("\r\n")
+                      const wire = new TextDecoder().decode(wireBytes(bytes)).split("\r\n")
                       const args: Array<string> = []
                       for (let index = 2; index < wire.length - 1; index += 2) args.push(wire[index])
                       commands.push([endpoint, args])

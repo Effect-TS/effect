@@ -126,6 +126,26 @@ class HeldStream extends Duplex {
   }
 }
 
+class HeldVectorStream extends Duplex {
+  readonly batches: Array<Array<Buffer>> = []
+  release: ((error?: Error | null) => void) | undefined
+  constructor(highWaterMark = 1) {
+    super({ writableHighWaterMark: highWaterMark })
+  }
+  override _read() {}
+  override _write(bytes: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+    this.batches.push([bytes])
+    this.release = callback
+  }
+  override _writev(
+    chunks: Array<{ chunk: Buffer; encoding: BufferEncoding }>,
+    callback: (error?: Error | null) => void
+  ) {
+    this.batches.push(chunks.map((part) => part.chunk))
+    this.release = callback
+  }
+}
+
 const collect = Effect.fnUntraced(function*(transport: Transport) {
   const chunks = yield* Queue.unbounded<Uint8Array, RedisError>()
   const running = yield* transport.run((bytes) => {
@@ -345,6 +365,136 @@ describe("Redis transport", () => {
       stream.release!()
       yield* Fiber.join(writing)
       assert.deepStrictEqual([...source], [9, 1, 2, 9])
+    }))
+
+  it.live("snapshots queued vectors and coalesces each logical batch without interleaving", () =>
+    Effect.gen(function*() {
+      const stream = new HeldVectorStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.write(["first:", new Uint8Array([1])]).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      const source = new Uint8Array([0, 255])
+      const parts: Array<string | Uint8Array> = ["🥹", source, source]
+      const second = yield* transport.write(parts).pipe(Effect.forkChild)
+      const cancelled = yield* transport.write(["cancelled:", new Uint8Array([9])]).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      source.fill(99)
+      parts.splice(0, parts.length, "changed")
+      yield* Fiber.interrupt(cancelled)
+      // An empty batch has no bytes to serialize behind the held write.
+      yield* transport.write([])
+      assert.strictEqual(stream.batches.length, 1)
+      assert.deepStrictEqual(stream.batches[0].map((bytes) => [...bytes]), [[102, 105, 114, 115, 116, 58], [1]])
+      stream.release!()
+      yield* Fiber.join(first)
+      yield* Effect.yieldNow
+      assert.strictEqual(stream.batches.length, 2)
+      const batch = stream.batches[1]
+      assert.strictEqual(batch[0].toString(), "🥹")
+      assert.deepStrictEqual([...batch[1]], [0, 255])
+      assert.deepStrictEqual([...batch[2]], [0, 255])
+      assert.strictEqual(stream.writableCorked, 0)
+      stream.release!()
+      yield* Fiber.join(second)
+    }))
+
+  it.live("keeps transferred vector views and snapshots the caller's vector structure", () =>
+    Effect.gen(function*() {
+      const stream = new HeldVectorStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.write("held").pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      const source = new Uint8Array([9, 1, 2, 9])
+      const view = source.subarray(1, 3)
+      const parts: Array<string | Uint8Array> = ["prefix:", view, view, ":suffix"]
+      const pending = yield* transport.write(parts, { ownership: "transfer" }).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      parts.splice(0, parts.length, "changed")
+      stream.release!()
+      yield* Fiber.join(first)
+      yield* Effect.yieldNow
+      const batch = stream.batches[1]
+      assert.strictEqual(batch.length, 4)
+      assert.strictEqual(batch[1].buffer, source.buffer)
+      assert.strictEqual(batch[1].byteOffset, view.byteOffset)
+      assert.deepStrictEqual([...batch[1]], [1, 2])
+      assert.deepStrictEqual([...batch[2]], [1, 2])
+      stream.release!()
+      yield* Fiber.join(pending)
+    }))
+
+  it.live("never replays vector prefixes after interruption under backpressure", () =>
+    Effect.gen(function*() {
+      const stream = new HeldVectorStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.write(["a", "b", "c"]).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(first)
+      const second = yield* transport.write(["d", "e"]).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(stream.batches.map((batch) => batch.map((part) => part.toString())), [["a", "b", "c"]])
+      stream.release!()
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(stream.batches.map((batch) => batch.map((part) => part.toString())), [["a", "b", "c"], [
+        "d",
+        "e"
+      ]])
+      stream.release!()
+      yield* Fiber.join(second)
+    }))
+
+  it.live("fails an active vector as uncertain and leaves queued vectors unsent on batch write failure", () =>
+    Effect.gen(function*() {
+      const stream = new HeldVectorStream()
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.write(["a", "b"]).pipe(Effect.result, Effect.forkChild)
+      yield* Effect.yieldNow
+      const second = yield* transport.write(["c", "d"]).pipe(Effect.result, Effect.forkChild)
+      yield* Effect.yieldNow
+      stream.release!(new Error("Batch failed"))
+      assert.strictEqual(failure(yield* Fiber.join(first)).outcome, "Unknown")
+      assert.strictEqual(failure(yield* Fiber.join(second)).outcome, "NotSent")
+      assert.deepStrictEqual(stream.batches.map((batch) => batch.map((part) => part.toString())), [["a", "b"]])
+      assert.strictEqual(stream.writableCorked, 0)
+    }))
+
+  it.live("uncorks and closes after a synchronous failure partway through vector submission", () =>
+    Effect.gen(function*() {
+      const stream = new HeldVectorStream()
+      const original = stream.write.bind(stream)
+      let submitted = 0
+      stream.write = ((...args: Parameters<typeof stream.write>) => {
+        if (++submitted === 2) throw new Error("Second part failed")
+        return original(...args)
+      }) as typeof stream.write
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const error = failure(yield* Effect.result(transport.write(["a", "b", "c"])))
+      assert.strictEqual(error.outcome, "Unknown")
+      assert.strictEqual(submitted, 2)
+      assert.strictEqual(stream.writableCorked, 0)
+      assert.deepStrictEqual(stream.batches.map((batch) => batch.map((part) => part.toString())), [["a"]])
+      assert.strictEqual(failure(yield* Effect.result(transport.write(["d", "e"]))).outcome, "NotSent")
+      yield* transport.close
+      assert.isTrue(stream.destroyed)
+    }))
+
+  it.live("does not finish a vector when drain fires synchronously during its submission", () =>
+    Effect.gen(function*() {
+      const stream = new HeldVectorStream()
+      const original = stream.write.bind(stream)
+      stream.write = ((...args: Parameters<typeof stream.write>) => {
+        stream.emit("drain")
+        return original(...args)
+      }) as typeof stream.write
+      const transport = yield* makeConnector({ stream: () => stream })(endpoint)
+      const first = yield* transport.write(["a", "b"]).pipe(Effect.result, Effect.forkChild)
+      yield* Effect.yieldNow
+      const second = yield* transport.write(["c", "d"]).pipe(Effect.result, Effect.forkChild)
+      yield* Effect.yieldNow
+      yield* transport.close
+      assert.strictEqual(failure(yield* Fiber.join(first)).outcome, "Unknown")
+      assert.strictEqual(failure(yield* Fiber.join(second)).outcome, "NotSent")
+      assert.deepStrictEqual(stream.batches.map((batch) => batch.map((part) => part.toString())), [["a", "b"]])
     }))
 
   it.live("copies custom input and unregisters interrupted consumers", () =>

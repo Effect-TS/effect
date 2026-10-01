@@ -12,7 +12,7 @@ export interface Endpoint {
 
 export interface Transport {
   readonly write: (
-    bytes: string | Uint8Array,
+    bytes: string | Uint8Array | ReadonlyArray<string | Uint8Array>,
     options?: { readonly ownership?: "copy" | "transfer" | undefined } | undefined
   ) => Effect.Effect<void, RedisError>
   /** Runs one consumer until interrupted or failed, delivering stable byte ranges synchronously. */

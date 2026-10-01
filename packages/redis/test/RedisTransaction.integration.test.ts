@@ -246,9 +246,12 @@ describe("Redis transactions", () => {
       const connector: typeof base = (endpoint) =>
         base(endpoint).pipe(Effect.map((transport) => ({
           ...transport,
-          write: (bytes: string | Uint8Array) =>
+          write: (bytes: Parameters<typeof transport.write>[0]) =>
             Effect.sync(() => {
-              sent.push(typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes.slice())
+              const parts = typeof bytes === "string" || bytes instanceof Uint8Array ? [bytes] : bytes
+              sent.push(Buffer.concat(parts.map((part) =>
+                typeof part === "string" ? new TextEncoder().encode(part) : part
+              )))
             }).pipe(Effect.andThen(transport.write(bytes)))
         })))
       const client = yield* Client.make(connector, { topology: { _tag: "Cluster", seeds: fixture.seeds } })
