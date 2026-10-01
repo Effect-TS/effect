@@ -36,7 +36,8 @@ describe("Reloadable", () => {
       yield* pipe(Reloadable.reload(Tag), Effect.provide(layer))
       const acquired = yield* counter.acquired()
       strictEqual(acquired, 2)
-    }))
+}))
+
   it.effect("auto releases its scope", () =>
     Effect.gen(function*() {
       const layer = Reloadable.auto(Tag, {
