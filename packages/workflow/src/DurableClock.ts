@@ -84,7 +84,7 @@ export const sleep: (
     return
   }
 
-  const inMemoryThreshold = options.inMemoryThreshold
+  const inMemoryThreshold = options.inMemoryThreshold !== undefined
     ? Duration.decode(options.inMemoryThreshold)
     : defaultInMemoryThreshold
 

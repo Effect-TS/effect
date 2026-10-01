@@ -6,8 +6,6 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { SqlClient } from "@effect/sql/SqlClient"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, Option, TestClock } from "effect"
-import { MysqlContainer } from "./fixtures/utils-mysql.js"
-import { PgContainer } from "./fixtures/utils-pg.js"
 import {
   LongKeyRpc,
   LongKeyTest,
@@ -18,7 +16,9 @@ import {
   PrimaryKeyTest,
   StreamRpc,
   StreamTest
-} from "./MessageStorage.test.js"
+} from "./fixtures/message-storage.js"
+import { MysqlContainer } from "./fixtures/utils-mysql.js"
+import { PgContainer } from "./fixtures/utils-pg.js"
 
 const StorageLive = SqlMessageStorage.layer.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
@@ -40,6 +40,60 @@ describe("SqlMessageStorage", () => {
     it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
       timeout: 120000
     })(label, (it) => {
+      if (label === "mysql") {
+        for (
+          const [representation, id] of [
+            ["number", 226271763047567360n],
+            ["string", 226271763047567361n]
+          ] as const
+        ) {
+          for (const operation of ["duplicate detection", "primary-key lookup", "reply matching"] as const) {
+            it.effect(`normalizes MySQL ${representation} IDs through ${operation}`, () =>
+              Effect.gen(function*() {
+                yield* truncate
+                const sql = yield* SqlClient
+                const storage = yield* MessageStorage.MessageStorage
+                const rpc = Rpc.fromTaggedRequest(PrimaryKeyTest)
+                const request = yield* makeRequest({ rpc, payload: new PrimaryKeyTest({ id: 987655 }) })
+                const original = new Message.OutgoingRequest({
+                  ...request,
+                  envelope: Envelope.makeRequest<any>({ ...request.envelope, requestId: Snowflake.Snowflake(id) })
+                })
+                assert.strictEqual((yield* storage.saveRequest(original))._tag, "Success")
+                const rows = yield* sql<{ id: string | number }>`SELECT id FROM cluster_messages`
+                assert.strictEqual(rows.length, 1)
+                assert.strictEqual(typeof rows[0].id, representation)
+                assert.strictEqual(BigInt(rows[0].id), id)
+
+                if (operation === "primary-key lookup") {
+                  const found = yield* storage.requestIdForPrimaryKey({
+                    address: original.envelope.address,
+                    tag: original.envelope.tag,
+                    id: "987655"
+                  })
+                  assert(Option.isSome(found))
+                  assert.strictEqual<bigint>(found.value, id)
+                  return
+                }
+
+                const duplicate = yield* storage.saveRequest(request)
+                assert(duplicate._tag === "Duplicate")
+                if (operation === "duplicate detection") {
+                  assert.strictEqual<bigint>(duplicate.originalId, id)
+                  return
+                }
+
+                const pending = new Map([[duplicate.originalId, request.envelope.requestId]])
+                yield* storage.saveReply(yield* makeReply(original))
+                const replies = yield* storage.repliesFor([original])
+                assert.strictEqual(replies.length, 1)
+                assert.strictEqual<bigint>(replies[0].requestId, id)
+                assert.strictEqual(pending.get(replies[0].requestId), request.envelope.requestId)
+              }))
+          }
+        }
+      }
+
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage
@@ -63,6 +117,21 @@ describe("SqlMessageStorage", () => {
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(5)
           expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([6, 7, 8, 9, 10])
+        }))
+
+      it.effect("by-ID reads preserve chunk acknowledgement reply IDs", () =>
+        Effect.gen(function*() {
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest({ rpc: StreamRpc, payload: new StreamTest({ id: 987654 }) })
+          yield* storage.saveRequest(request)
+          const chunk = yield* makeChunkReply(request)
+          yield* storage.saveReply(chunk)
+          const ack = yield* makeAckChunk(request, chunk)
+          yield* storage.saveEnvelope(ack)
+          const messages = yield* storage.unprocessedMessagesById([ack.envelope.id])
+          assert.strictEqual(messages.length, 1)
+          assert(messages[0].envelope._tag === "AckChunk")
+          assert.strictEqual(messages[0].envelope.replyId, chunk.reply.id)
         }))
 
       it.effect("saveReply + saveRequest duplicate", () =>

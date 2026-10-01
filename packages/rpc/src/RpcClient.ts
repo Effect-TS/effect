@@ -479,7 +479,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           })
       ),
       span ? Effect.withParentSpan(span) : identity,
-      Effect.catchAllCause((error) => mailbox.failCause(error)),
+      Effect.onError((error) => mailbox.failCause(error)),
       Effect.interruptible,
       Effect.forkIn(scope)
     )

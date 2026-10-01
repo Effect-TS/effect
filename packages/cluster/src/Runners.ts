@@ -77,7 +77,7 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
   >
 
   /**
-   * Notify a Runner that a message is available, then read replies from storage.
+   * Notify a Runner that a message is available.
    */
   readonly notify: <R extends Rpc.Any>(
     options: {
@@ -85,7 +85,10 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly message: Message.Outgoing<R>
       readonly discard: boolean
     }
-  ) => Effect.Effect<void, PersistenceError>
+  ) => Effect.Effect<
+    void,
+    EntityNotAssignedToRunner | RunnerUnavailable | MailboxFull | AlreadyProcessingMessage | PersistenceError
+  >
 
   /**
    * Notify the current Runner that a message is available, then read replies from
@@ -134,7 +137,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
     const rpc = message.rpc as any as Rpc.AnyWithProps
     const persisted = Context.get(rpc.annotations, Persisted)
     if (!persisted) {
-      return Effect.dieMessage("Runners.notify only supports persisted messages")
+      return afterPersist(message, false)
     }
 
     if (message._tag === "OutgoingEnvelope") {
@@ -424,10 +427,11 @@ export class Rpcs extends RpcGroup.make(
   Rpc.make("Ping"),
   Rpc.make("Notify", {
     payload: {
-      envelope: Envelope.PartialEncoded
+      envelope: Envelope.PartialEncoded,
+      persisted: Schema.Boolean
     },
     success: Schema.Void,
-    error: Schema.Union(EntityNotAssignedToRunner, AlreadyProcessingMessage)
+    error: rpcErrors
   }),
   Rpc.make("Effect", {
     payload: {
@@ -603,12 +607,15 @@ export const makeRpc: Effect.Effect<
         message._tag === "OutgoingRequest"
           ? Effect.orDie(Message.serializeRequest(message))
           : Effect.succeed(message.envelope)
-      return Effect.flatMap(encode, (envelope) =>
+      const rpc = message.rpc as any as Rpc.AnyWithProps
+      const isPersisted = Context.get(rpc.annotations, Persisted)
+      const notify = Effect.flatMap(encode, (envelope) =>
         RcMap.get(clients, address.value).pipe(
-          Effect.flatMap((client) => client.Notify({ envelope })),
+          Effect.flatMap((client) => client.Notify({ envelope, persisted: isPersisted })),
           Effect.scoped,
-          Effect.ignore
+          Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address: address.value })))
         ))
+      return isPersisted ? Effect.ignore(notify) : notify
     },
     onRunnerUnavailable: (address) => RcMap.invalidate(clients, address)
   })

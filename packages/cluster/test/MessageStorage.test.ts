@@ -1,4 +1,5 @@
 import {
+  ClusterError,
   EntityAddress,
   EntityId,
   EntityType,
@@ -7,22 +8,220 @@ import {
   MessageStorage,
   Reply,
   ShardId,
-  ShardingConfig,
   Snowflake
 } from "@effect/cluster"
-import { Headers } from "@effect/platform"
-import { Rpc, RpcSchema } from "@effect/rpc"
-import { describe, expect, it } from "@effect/vitest"
-import { Context, Effect, Exit, Layer, Option, PrimaryKey, Schema } from "effect"
+import { Rpc } from "@effect/rpc"
+import { assert, describe, expect, it } from "@effect/vitest"
+import { Cause, Effect, Exit, Fiber, Option, Schema, TestServices } from "effect"
 import * as TestClock from "effect/TestClock"
-
-const MemoryLive = MessageStorage.layerMemory.pipe(
-  Layer.provideMerge(Snowflake.layerGenerator),
-  Layer.provide(ShardingConfig.layerDefaults)
-)
+import { abandonmentCause, MemoryLive } from "./fixtures/abandonment.js"
+import {
+  makeAckChunk,
+  makeChunkReply,
+  makeReply,
+  makeRequest,
+  PrimaryKeyTest,
+  StreamRpc,
+  StreamTest
+} from "./fixtures/message-storage.js"
 
 describe("MessageStorage", () => {
   describe("memory", () => {
+    it.effect("rebalance releases parked reply waiters with a routing error", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest()
+        const waiter = yield* Effect.fork(storage.registerReplyHandler(request))
+        yield* TestClock.adjust(1)
+        yield* storage.unregisterShardReplyHandlers(request.envelope.address.shardId)
+        const exit = yield* Fiber.await(waiter)
+        assert(Exit.isFailure(exit))
+        assert.instanceOf(Cause.squash(exit.cause), ClusterError.EntityNotAssignedToRunner)
+      }).pipe(Effect.provide(MemoryLive)))
+
+    for (const invalidFailure of [false, true]) {
+      it.effect(`persists and delivers a defect for a malformed terminal reply (error=${invalidFailure})`, () =>
+        Effect.gen(function*() {
+          const storage = yield* MessageStorage.MessageStorage
+          const rpc = Rpc.make("InvalidReply", { success: Schema.Int, error: Schema.Int })
+          const responses: Array<Reply.Reply<typeof rpc>> = []
+          const request = new Message.OutgoingRequest({
+            ...yield* makeRequest({ rpc }),
+            respond: (reply: Reply.Reply<typeof rpc>) =>
+              Effect.sync(() => {
+                responses.push(reply)
+              })
+          })
+          yield* storage.saveRequest(request)
+          const waiter = yield* storage.registerReplyHandler(request).pipe(Effect.forkScoped)
+          yield* TestClock.adjust(1)
+          assert(Option.isNone(yield* Fiber.poll(waiter)), "reply waiter must be parked before saving")
+          const id = (yield* Snowflake.Generator).unsafeNext()
+          yield* storage.saveReply(
+            new Reply.ReplyWithContext<typeof rpc>({
+              rpc,
+              context: request.context,
+              reply: new Reply.WithExit<typeof rpc>({
+                id,
+                requestId: request.envelope.requestId,
+                exit: invalidFailure ? Exit.fail(1.5) : Exit.succeed(1.5)
+              })
+            })
+          )
+          const released = yield* Fiber.await(waiter).pipe(
+            Effect.timeoutOption("1 second"),
+            TestServices.provideLive,
+            Effect.ensuring(Fiber.interrupt(waiter))
+          )
+          const replies = yield* storage.repliesFor([request])
+          assert.strictEqual(replies.length, 1)
+          const stored = replies[0]
+          assert(stored._tag === "WithExit")
+          assert(Exit.isFailure(stored.exit))
+          assert(Cause.isDie(stored.exit.cause))
+          assert.include(Cause.pretty(stored.exit.cause), "MalformedMessage")
+          assert.strictEqual(stored.id, id)
+          assert.strictEqual(stored.requestId, request.envelope.requestId)
+          assert.strictEqual((yield* storage.unprocessedMessages([request.envelope.address.shardId])).length, 0)
+          assert(Option.isSome(released) && Exit.isSuccess(released.value), "terminal defect must release the waiter")
+          assert.strictEqual(responses.length, 1)
+          const delivered = responses[0]
+          assert(delivered._tag === "WithExit")
+          assert(
+            Exit.isFailure(delivered.exit) && Cause.isDie(delivered.exit.cause),
+            "caller must receive the stored defect, not the malformed terminal reply"
+          )
+          assert.include(Cause.pretty(delivered.exit.cause), "MalformedMessage")
+          assert.strictEqual(delivered.id, stored.id)
+          assert.strictEqual(delivered.requestId, stored.requestId)
+        }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
+    }
+
+    for (const malformed of [false, true]) {
+      it.effect(`persisted stream chunks preserve waiter and caller semantics (malformed=${malformed})`, () =>
+        Effect.gen(function*() {
+          const storage = yield* MessageStorage.MessageStorage
+          const rpc = Rpc.make("Values", { success: Schema.Int, stream: true })
+          const responses: Array<Reply.Reply<typeof rpc>> = []
+          const request = new Message.OutgoingRequest({
+            ...yield* makeRequest({ rpc }),
+            respond: (reply: Reply.Reply<typeof rpc>) =>
+              Effect.sync(() => {
+                responses.push(reply)
+              })
+          })
+          yield* storage.saveRequest(request)
+          const waiter = yield* storage.registerReplyHandler(request).pipe(Effect.forkScoped)
+          yield* TestClock.adjust(1)
+          assert(Option.isNone(yield* Fiber.poll(waiter)), "reply waiter must be parked before saving")
+          const id = (yield* Snowflake.Generator).unsafeNext()
+          const chunk = new Reply.Chunk<typeof rpc>({
+            id,
+            requestId: request.envelope.requestId,
+            sequence: 0,
+            values: malformed ? [1.5] : [1, 2]
+          })
+          yield* storage.saveReply(new Reply.ReplyWithContext({ rpc, context: request.context, reply: chunk }))
+          const replies = yield* storage.repliesFor([request])
+          assert.strictEqual(replies.length, 1)
+          const stored = replies[0]
+          if (!malformed) {
+            assert.deepStrictEqual(stored, chunk)
+            assert.deepStrictEqual(responses, [chunk])
+            assert(Option.isNone(yield* Fiber.poll(waiter)), "a valid chunk must retain its reply waiter")
+            const terminal = new Reply.WithExit<typeof rpc>({
+              id: (yield* Snowflake.Generator).unsafeNext(),
+              requestId: request.envelope.requestId,
+              exit: Exit.void
+            })
+            yield* storage.saveReply(new Reply.ReplyWithContext({ rpc, context: request.context, reply: terminal }))
+            const released = yield* Fiber.await(waiter).pipe(
+              Effect.timeoutOption("1 second"),
+              TestServices.provideLive,
+              Effect.ensuring(Fiber.interrupt(waiter))
+            )
+            assert(
+              Option.isSome(released) && Exit.isSuccess(released.value),
+              "normal completion must release the waiter"
+            )
+            assert.deepStrictEqual(responses, [chunk, terminal])
+            assert.deepStrictEqual(yield* storage.repliesFor([request]), [chunk, terminal])
+          } else {
+            assert(stored._tag === "WithExit")
+            assert(Exit.isFailure(stored.exit))
+            assert(Cause.isDie(stored.exit.cause))
+            assert.include(Cause.pretty(stored.exit.cause), "MalformedMessage")
+            assert.strictEqual(stored.id, id)
+            assert.strictEqual(stored.requestId, request.envelope.requestId)
+            const released = yield* Fiber.await(waiter).pipe(
+              Effect.timeoutOption("1 second"),
+              TestServices.provideLive,
+              Effect.ensuring(Fiber.interrupt(waiter))
+            )
+            assert.deepStrictEqual(
+              {
+                waiterReleased: Option.isSome(released) && Exit.isSuccess(released.value),
+                deliveredTags: responses.map((reply) => reply._tag)
+              },
+              { waiterReleased: true, deliveredTags: ["WithExit"] },
+              "the stored terminal defect must release the waiter and replace the malformed chunk for the caller"
+            )
+            const delivered = responses[0]
+            assert(delivered._tag === "WithExit")
+            assert(Exit.isFailure(delivered.exit))
+            assert(Cause.isDie(delivered.exit.cause))
+            assert.include(Cause.pretty(delivered.exit.cause), "MalformedMessage")
+            assert.strictEqual(delivered.id, stored.id)
+            assert.strictEqual(delivered.requestId, stored.requestId)
+          }
+          assert.strictEqual((yield* storage.unprocessedMessages([request.envelope.address.shardId])).length, 0)
+        }).pipe(Effect.scoped, Effect.provide(MemoryLive)))
+    }
+
+    it.effect("removes a queued Interrupt when clearing an address", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const snowflake = yield* Snowflake.Generator
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
+          id: snowflake.unsafeNext(),
+          requestId: request.envelope.requestId,
+          address: request.envelope.address
+        }))
+
+        yield* storage.clearAddress(request.envelope.address)
+
+        const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+        assert.deepStrictEqual(messages.map(({ envelope }) => envelope._tag), [])
+      }).pipe(Effect.provide(MemoryLive)))
+
+    it.effect("removes the primary-key index when clearing an address", () =>
+      Effect.gen(function*() {
+        const driver = yield* MessageStorage.MemoryDriver
+        const address = EntityAddress.EntityAddress.make({
+          shardId: ShardId.make("default", 1),
+          entityType: EntityType.EntityType.make("Repro"),
+          entityId: EntityId.make("one")
+        })
+        const envelope: Envelope.Request.Encoded = {
+          _tag: "Request",
+          requestId: "1",
+          address: { shardId: { group: "default", id: 1 }, entityType: "Repro", entityId: "one" },
+          tag: "Repro",
+          payload: {},
+          headers: {}
+        }
+        yield* driver.encoded.saveEnvelope({ envelope, primaryKey: "dedup-key", deliverAt: null })
+        yield* driver.encoded.clearAddress(address)
+        const result = yield* driver.encoded.saveEnvelope({
+          envelope: { ...envelope, requestId: "2" },
+          primaryKey: "dedup-key",
+          deliverAt: null
+        })
+        assert.strictEqual(result._tag, "Success")
+      }).pipe(Effect.provide(MessageStorage.MemoryDriver.Default)))
+
     it.effect("saves a request", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
@@ -138,127 +337,36 @@ describe("MessageStorage", () => {
   })
 })
 
-export const GetUserRpc = Rpc.make("GetUser", {
-  payload: { id: Schema.Number }
+describe("reply waiters and address cleanup", () => {
+  it.effect("shutdown interrupts reply waiters instead of exposing a routing error", () =>
+    Effect.gen(function*() {
+      assert(Cause.isInterruptedOnly(yield* abandonmentCause))
+    }).pipe(Effect.provide(MemoryLive)))
+
+  it.effect("clearAddress removes AckChunk without deleting another entity's messages", () =>
+    Effect.gen(function*() {
+      const storage = yield* MessageStorage.MessageStorage
+      const request = yield* makeRequest({ rpc: StreamRpc, payload: new StreamTest({ id: 1 }) })
+      const other = new Message.OutgoingRequest({
+        ...request,
+        envelope: Envelope.makeRequest<any>({
+          ...request.envelope,
+          requestId: (yield* Snowflake.Generator).unsafeNext(),
+          address: EntityAddress.make({
+            shardId: ShardId.make("default", 1),
+            entityType: EntityType.EntityType.make("other"),
+            entityId: EntityId.make("2")
+          })
+        })
+      })
+      yield* storage.saveRequest(request)
+      yield* storage.saveRequest(other)
+      const chunk = yield* makeChunkReply(request)
+      yield* storage.saveReply(chunk)
+      const ack = yield* makeAckChunk(request, chunk)
+      yield* storage.saveEnvelope(ack)
+      yield* storage.clearAddress(request.envelope.address)
+      const pending = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+      assert.deepStrictEqual(pending.map(({ envelope }) => envelope.requestId), [other.envelope.requestId])
+    }).pipe(Effect.provide(MemoryLive)))
 })
-
-export const makeRequest = Effect.fnUntraced(function*(options?: {
-  readonly rpc?: Rpc.AnyWithProps
-  readonly payload?: any
-}) {
-  const snowflake = yield* Snowflake.Generator
-  const rpc = options?.rpc ?? GetUserRpc
-  return new Message.OutgoingRequest({
-    envelope: Envelope.makeRequest<any>({
-      requestId: snowflake.unsafeNext(),
-      address: EntityAddress.EntityAddress.make({
-        shardId: ShardId.make("default", 1),
-        entityType: EntityType.EntityType.make("test"),
-        entityId: EntityId.EntityId.make("1")
-      }),
-      tag: rpc._tag,
-      payload: options?.payload ?? { id: 123 },
-      traceId: "noop",
-      spanId: "noop",
-      sampled: false,
-      headers: Headers.empty
-    }),
-    context: Context.empty() as any,
-    rpc,
-    lastReceivedReply: Option.none(),
-    respond() {
-      return Effect.void
-    }
-  })
-})
-
-export class PrimaryKeyTest extends Schema.TaggedRequest<PrimaryKeyTest>()("PrimaryKeyTest", {
-  success: Schema.Void,
-  failure: Schema.Never,
-  payload: {
-    id: Schema.Number
-  }
-}) {
-  [PrimaryKey.symbol]() {
-    return this.id.toString()
-  }
-}
-
-export class LongKeyTest extends Schema.TaggedRequest<LongKeyTest>()("LongKeyTest", {
-  success: Schema.Void,
-  failure: Schema.Never,
-  payload: { id: Schema.String }
-}) {
-  [PrimaryKey.symbol]() {
-    return this.id
-  }
-}
-
-export const LongKeyRpc = Rpc.fromTaggedRequest(LongKeyTest)
-
-export class StreamTest extends Schema.TaggedRequest<StreamTest>()("StreamTest", {
-  success: RpcSchema.Stream({
-    success: Schema.Void,
-    failure: Schema.Never
-  }),
-  failure: Schema.Never,
-  payload: {
-    id: Schema.Number
-  }
-}) {
-  [PrimaryKey.symbol]() {
-    return this.id.toString()
-  }
-}
-export const StreamRpc = Rpc.fromTaggedRequest(StreamTest)
-
-export const makeReply = Effect.fnUntraced(function*(request: Message.OutgoingRequest<any>) {
-  const snowflake = yield* Snowflake.Generator
-  return new Reply.ReplyWithContext({
-    reply: new Reply.WithExit({
-      id: snowflake.unsafeNext(),
-      requestId: request.envelope.requestId,
-      exit: Exit.void as any
-    }),
-    context: request.context,
-    rpc: request.rpc
-  })
-})
-
-export const makeAckChunk = Effect.fnUntraced(function*(
-  request: Message.OutgoingRequest<any>,
-  chunk: Reply.ReplyWithContext<any>
-) {
-  const snowflake = yield* Snowflake.Generator
-  return new Message.OutgoingEnvelope({
-    envelope: new Envelope.AckChunk({
-      id: snowflake.unsafeNext(),
-      address: request.envelope.address,
-      requestId: chunk.reply.requestId,
-      replyId: chunk.reply.id
-    }),
-    rpc: request.rpc
-  })
-})
-
-export const makeChunkReply = Effect.fnUntraced(function*(request: Message.OutgoingRequest<any>, sequence = 0) {
-  const snowflake = yield* Snowflake.Generator
-  return new Reply.ReplyWithContext({
-    reply: new Reply.Chunk({
-      id: snowflake.unsafeNext(),
-      requestId: request.envelope.requestId,
-      sequence,
-      values: [undefined]
-    }),
-    context: request.context,
-    rpc: request.rpc
-  })
-})
-
-export const makeEmptyReply = (request: Message.OutgoingRequest<any>) => {
-  return new Reply.ReplyWithContext({
-    reply: Reply.Chunk.emptyFrom(request.envelope.requestId),
-    context: request.context,
-    rpc: request.rpc
-  })
-}

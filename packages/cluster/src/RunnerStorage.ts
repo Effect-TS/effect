@@ -179,22 +179,25 @@ export const makeEncoded = (encoded: Encoded) =>
  * @category constructors
  */
 export const makeMemory = Effect.gen(function*() {
-  const runners = MutableHashMap.empty<RunnerAddress, Runner>()
+  const runners = MutableHashMap.empty<RunnerAddress, readonly [runner: Runner, healthy: boolean]>()
   let acquired: Array<ShardId> = []
   let id = 0
 
   return RunnerStorage.of({
-    getRunners: Effect.sync(() => Array.from(MutableHashMap.values(runners), (runner) => [runner, true])),
-    register: (runner) =>
+    getRunners: Effect.sync(() => Array.from(MutableHashMap.values(runners))),
+    register: (runner, healthy) =>
       Effect.sync(() => {
-        MutableHashMap.set(runners, runner.address, runner)
+        MutableHashMap.set(runners, runner.address, [runner, healthy])
         return MachineId.make(id++)
       }),
     unregister: (address) =>
       Effect.sync(() => {
         MutableHashMap.remove(runners, address)
       }),
-    setRunnerHealth: () => Effect.void,
+    setRunnerHealth: (address, healthy) =>
+      Effect.sync(() => {
+        MutableHashMap.modify(runners, address, ([runner]) => [runner, healthy] as const)
+      }),
     acquire: (_address, shardIds) => {
       acquired = Array.from(shardIds)
       return Effect.succeed(acquired)

@@ -19,6 +19,7 @@ import { EntityNotAssignedToRunner, MalformedMessage } from "./ClusterError.js"
 import * as DeliverAt from "./DeliverAt.js"
 import type { EntityAddress } from "./EntityAddress.js"
 import * as Envelope from "./Envelope.js"
+import * as ClusterAbandon from "./internal/clusterAbandon.js"
 import * as Message from "./Message.js"
 import * as Reply from "./Reply.js"
 import type { ShardId } from "./ShardId.js"
@@ -45,11 +46,12 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   ) => Effect.Effect<void, PersistenceError | MalformedMessage>
 
   /**
-   * Save the provided `Reply` and its associated metadata.
+   * Save the provided `Reply`, returning the reply actually persisted.
+   * Encoding failures return the persisted defect reply instead of the original.
    */
   readonly saveReply: <R extends Rpc.Any>(
     reply: Reply.ReplyWithContext<R>
-  ) => Effect.Effect<void, PersistenceError | MalformedMessage>
+  ) => Effect.Effect<Reply.ReplyWithContext<R>, PersistenceError | MalformedMessage>
 
   /**
    * Clear the `Reply`s for the given request id.
@@ -98,8 +100,13 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
 
   /**
    * Unregister the reply handlers for the specified ShardId.
+   * Waiters fail with EntityNotAssignedToRunner, or receive an abandonment
+   * interrupt for replay when `interrupt` is set.
    */
-  readonly unregisterShardReplyHandlers: (shardId: ShardId) => Effect.Effect<void>
+  readonly unregisterShardReplyHandlers: (
+    shardId: ShardId,
+    options?: { readonly interrupt?: boolean | undefined }
+  ) => Effect.Effect<void>
 
   /**
    * Retrieves the unprocessed messages for the specified shards.
@@ -406,7 +413,7 @@ export const make = (
             ))
           }
         }),
-      unregisterShardReplyHandlers: (shardId) =>
+      unregisterShardReplyHandlers: (shardId, options) =>
         Effect.sync(() => {
           const id = shardId.toString()
           const shardSet = replyHandlersShard.get(id)
@@ -414,20 +421,22 @@ export const make = (
           replyHandlersShard.delete(id)
           shardSet.forEach((handler) => {
             replyHandlers.delete(handler.message.envelope.requestId)
-            handler.resume(Effect.fail(
-              new EntityNotAssignedToRunner({
-                address: handler.message.envelope.address
-              })
-            ))
+            handler.resume(
+              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
+                new EntityNotAssignedToRunner({
+                  address: handler.message.envelope.address
+                })
+              )
+            )
           })
         }),
       saveReply(reply) {
         const requestId = reply.reply.requestId
-        return Effect.flatMap(storage.saveReply(reply), () => {
+        return Effect.flatMap(storage.saveReply(reply), (persisted) => {
           const handlers = replyHandlers.get(requestId)
           if (!handlers) {
-            return Effect.void
-          } else if (reply.reply._tag === "WithExit") {
+            return Effect.succeed(persisted)
+          } else if (persisted.reply._tag === "WithExit") {
             replyHandlers.delete(requestId)
             for (let i = 0; i < handlers.length; i++) {
               const handler = handlers[i]
@@ -435,9 +444,12 @@ export const make = (
               handler.resume(Effect.void)
             }
           }
-          return handlers.length === 1
-            ? handlers[0].respond(reply)
-            : Effect.forEach(handlers, (handler) => handler.respond(reply))
+          return Effect.as(
+            handlers.length === 1
+              ? handlers[0].respond(persisted)
+              : Effect.forEach(handlers, (handler) => handler.respond(persisted)),
+            persisted
+          )
         })
       }
     })
@@ -494,7 +506,22 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) => Effect.flatMap(Reply.serialize(reply), encoded.saveReply),
+    saveReply: (reply) =>
+      Reply.serialize(reply).pipe(
+        Effect.map((encodedReply) => ({ encodedReply, persisted: reply })),
+        Effect.catchTag("MalformedMessage", (error) => {
+          const persisted = Reply.ReplyWithContext.fromDefect({
+            id: reply.reply.id,
+            requestId: reply.reply.requestId,
+            defect: error
+          })
+          return Effect.map(
+            Effect.orDie(Reply.serialize(persisted)),
+            (encodedReply) => ({ encodedReply, persisted })
+          )
+        }),
+        Effect.flatMap(({ encodedReply, persisted }) => Effect.as(encoded.saveReply(encodedReply), persisted))
+      ),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -585,7 +612,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
               ? new Message.IncomingRequest({
                 envelope: message.envelope,
                 lastSentReply: envelope.lastSentReply,
-                respond: storage.saveReply
+                respond: (reply) => Effect.asVoid(storage.saveReply(reply))
               })
               : new Message.IncomingEnvelope({
                 envelope: message.envelope
@@ -655,7 +682,7 @@ export const noop: MessageStorage["Type"] = globalValue(
     Effect.runSync(make({
       saveRequest: () => Effect.succeed(SaveResult.Success()),
       saveEnvelope: () => Effect.void,
-      saveReply: () => Effect.void,
+      saveReply: (reply) => Effect.succeed(reply),
       clearReplies: () => Effect.void,
       repliesFor: () => Effect.succeed([]),
       repliesForUnfiltered: () => Effect.succeed([]),
@@ -855,15 +882,22 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
       resetAddress: () => Effect.void,
       clearAddress: (address) =>
         Effect.sync(() => {
+          const sameAddress = (envelope: Envelope.Envelope.Encoded) =>
+            address.entityType === envelope.address.entityType && address.entityId === envelope.address.entityId
+          for (const [primaryKey, entry] of requestsByPrimaryKey) {
+            if (sameAddress(entry.envelope)) {
+              requestsByPrimaryKey.delete(primaryKey)
+            }
+          }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
-            const sameAddress = address.entityType === envelope.address.entityType &&
-              address.entityId === envelope.address.entityId
-            if (!sameAddress || envelope._tag !== "Request") {
+            if (!sameAddress(envelope)) {
               continue
             }
             unprocessed.delete(envelope)
-            requests.delete(envelope.requestId)
+            if (envelope._tag === "Request") {
+              requests.delete(envelope.requestId)
+            }
             journal.splice(i, 1)
           }
         }),
