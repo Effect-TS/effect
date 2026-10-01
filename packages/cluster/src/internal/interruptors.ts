@@ -37,6 +37,7 @@ export const make = () => {
       around(shardKey(shardId), effect),
     aroundEntityType: <A, E, R>(entityType: string, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
       around(entityTypeKey(entityType), effect),
+    isShardActive: (shardId: ShardId): boolean => counts.has(shardKey(shardId)),
     isActive: (address: EntityAddress): boolean =>
       counts.size > 0 && (counts.has(entityKey(address)) ||
         counts.has(shardKey(address.shardId)) ||

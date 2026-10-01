@@ -1248,9 +1248,11 @@ const make = Effect.gen(function*() {
               // for durable messages, we ignore interrupts on shutdown or as a
               // result of a shard being resassigned
               const caller = Context.getOption(entry.services, CurrentAddress)
+              const singletonShard = Context.getOption(entry.services, SingletonShardTag)
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
                 options.message.interruptors.some(ClusterAbandon.isInterruptor) ||
-                (Option.isSome(caller) && activeTeardown.isActive(caller.value))
+                (Option.isSome(caller) && activeTeardown.isActive(caller.value)) ||
+                (Option.isSome(singletonShard) && activeTeardown.isShardActive(singletonShard.value))
               if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
                 return Effect.void
               }
@@ -1406,7 +1408,7 @@ const make = Effect.gen(function*() {
         Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty()),
         Effect.andThen(Effect.never),
         Effect.scoped,
-        Effect.provide(context),
+        Effect.provide(Context.add(context, SingletonShardTag, address.shardId)),
         Effect.orDie,
         Effect.interruptible
       ) as Effect.Effect<never>
@@ -1631,3 +1633,4 @@ export const layer: Layer.Layer<
 // Utilities
 
 const ClientAddressTag = Context.GenericTag<EntityAddress>("@effect/cluster/Sharding/ClientAddress")
+const SingletonShardTag = Context.GenericTag<ShardId>("@effect/cluster/Sharding/SingletonShard")
