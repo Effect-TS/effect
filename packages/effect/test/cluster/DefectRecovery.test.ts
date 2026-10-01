@@ -274,4 +274,77 @@ describe("entity defect recovery", () => {
       Effect.provide(TestCluster),
       Effect.provide(Snowflake.layerGenerator)
     ))
+
+  it.effect("interrupts a queued arrival when shutdown starts during replacement acquisition", () =>
+    Effect.gen(function*() {
+      const acquiring = yield* Deferred.make<void>()
+      const acquired = yield* Deferred.make<void>()
+      const generations = yield* Ref.make(0)
+      const run = Rpc.make("run")
+      const entity = Entity.make("ShutdownQueuedArrival", [run])
+      const sharding = yield* Sharding.Sharding
+      const manager = yield* EntityManager.make(
+        entity,
+        Effect.gen(function*() {
+          const generation = yield* Ref.updateAndGet(generations, (n) => n + 1)
+          if (generation === 2) {
+            yield* Deferred.succeed(acquiring, undefined)
+            yield* Deferred.await(acquired)
+          }
+          return entity.of({
+            run: () => Effect.die("restart")
+          })
+        }),
+        {
+          sharding,
+          storage: MessageStorage.noop,
+          runnerAddress: RunnerAddress.make("localhost", 1234),
+          residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+          maxIdleTime: Infinity,
+          defectRetryPolicy: Schedule.spaced(1)
+        }
+      )
+      const entityId = EntityId.make("shutdown-queued")
+      const shardId = sharding.getShardId(entityId, "default")
+      const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId })
+      const send = Effect.fnUntraced(function*() {
+        return yield* manager.sendLocal(
+          new Message.IncomingRequestLocal<typeof run>({
+            envelope: Envelope.makeRequest<typeof run>({
+              requestId: yield* sharding.getSnowflake,
+              address,
+              tag: "run",
+              payload: undefined,
+              headers: Headers.empty
+            }),
+            lastSentReply: Option.none(),
+            annotations: Context.empty(),
+            respond: () => Effect.void
+          })
+        )
+      })
+      yield* TestClock.adjust(1)
+      yield* send()
+      yield* TestClock.adjust(10)
+      yield* Deferred.await(acquiring)
+      // Arrives while the replacement handlers are still being built, so it
+      // queues behind the replay of unfinished requests.
+      const queued = yield* send().pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(queued.pollUnsafe(), undefined)
+      yield* manager.interruptShard(shardId).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* manager.activeEntityCount, 0)
+      // The queued request must be refused as soon as the activation is retired,
+      // without waiting for the replacement handlers.
+      const exit = queued.pollUnsafe()
+      assert.isDefined(exit, "queued arrival must not wait for replacement acquisition")
+      assert.isTrue(Exit.hasInterrupts(exit), "queued arrival must be interrupted")
+      yield* Deferred.succeed(acquired, undefined)
+    }).pipe(
+      Effect.provide(EntityReaper.layer),
+      Effect.provide(ShardingConfig.layer({ entityTerminationTimeout: 1000 })),
+      Effect.provide(TestCluster),
+      Effect.provide(Snowflake.layerGenerator)
+    ))
 })
