@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`0963a1c17f5be8e26676ed5ffc9c542bd26f97f0`)
+Base: `origin/v3` (`b57b7f6e3c0dd929d0069050ddb277a72646c576`)
 
-Head: `HEAD` (`072cdc42a84421694593035d65d0f3375d1a17fd`)
+Head: `HEAD` (`e5d3b06339c85632fa03f01bcf71f0de2516c2a2`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14435,7 +14435,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Number` -> `Schema.Number`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.NumberFromString` -> `Schema.NumberFromString`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.NumberFromString` -> `Schema.NumberFromString`: Decoding now uses JavaScript number coercion and no longer fails on non-numeric input: `"abc"` decodes to `NaN` and `""` to `0`, where v3 failed both. Use `FiniteFromString` to keep rejecting non-numeric strings (it still decodes `""` to `0`).
 
 - `Schema.Object` -> `Schema.ObjectKeyword`: Rename the object keyword schema.
 
@@ -14925,7 +14925,7 @@ Schema.toFormatter(schema)
 
 - `Schema.parseJson` -> `Schema.UnknownFromJsonString / Schema.fromJsonString(schema)`: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
 
-- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec.
+- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec. It decodes non-numeric strings to `NaN` instead of failing; use `FiniteFromString` to reject them.
 
 - `Schema.partial` -> `schema.mapFields(Struct.map(Schema.optional))`: Map struct fields with `Schema.optional`.
 
