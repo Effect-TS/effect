@@ -43,6 +43,7 @@ export const auto = <I, S, E, In, R>(
             reloadable.reload,
             effect.ignoreLogged,
             schedule_.schedule_Effect(options.schedule),
+            core.interruptible,
             fiberRuntime.forkDaemon
           ),
           core.interruptFiber
