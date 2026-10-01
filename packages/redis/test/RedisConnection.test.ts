@@ -330,6 +330,56 @@ describe("Redis physical session", () => {
       if (results[2]._tag === "Success") assert.strictEqual(Protocol.toValue(results[2].success), "value")
     }))
 
+  it.effect("preserves queued command order when a middle command is interrupted before transmission", () =>
+    Effect.gen(function*() {
+      const written = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const parser = Protocol.makeParser()
+      const requests: Array<string> = []
+      let onBytes: ((bytes: Uint8Array) => void) | undefined
+      let writes = 0
+      const connection = yield* Connection.make(
+        () =>
+          Effect.succeed({
+            run: (receive) =>
+              Effect.callback<never>(() => {
+                onBytes = receive
+                return Effect.sync(() => {
+                  onBytes = undefined
+                })
+              }),
+            close: Effect.void,
+            write: (bytes) =>
+              Effect.gen(function*() {
+                const values = parser.push(wireBytes(bytes)).map((reply) => {
+                  const args = Protocol.toValue(reply) as Array<string>
+                  requests.push(args[1])
+                  return args[1]
+                })
+                writes++
+                if (writes === 1) {
+                  yield* Deferred.succeed(written, undefined)
+                  yield* Deferred.await(release)
+                }
+                onBytes!(Buffer.concat(values.map((value) => bulk(value))))
+              })
+          }),
+        { host: "unused", port: 6379 }
+      )
+      const held = yield* connection.execute(["ECHO", "held"]).pipe(Effect.forkChild)
+      yield* Deferred.await(written)
+      const first = yield* connection.execute(["ECHO", "first"]).pipe(Effect.forkChild)
+      const canceled = yield* connection.execute(["ECHO", "canceled"]).pipe(Effect.forkChild)
+      const last = yield* connection.execute(["ECHO", "last"]).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(canceled)
+      yield* Deferred.succeed(release, undefined)
+      const results = yield* Effect.forEach([held, first, last], Fiber.join)
+      assert.deepStrictEqual(results.map(Protocol.toValue), ["held", "first", "last"])
+      assert.deepStrictEqual(requests, ["held", "first", "last"])
+      assert.strictEqual(writes, 2)
+    }))
+
   it.effect("snapshots queued pipeline binary arguments and encodes Unicode in a single write", () =>
     Effect.gen(function*() {
       const replies = yield* Queue.unbounded<Uint8Array, RedisError>()

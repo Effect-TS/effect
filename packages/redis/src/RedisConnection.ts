@@ -279,17 +279,18 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     })
   })
   let flushScheduled = false
+  const flushWriter = () => {
+    flushScheduled = false
+    if (writer === undefined || (outgoingSingle === undefined && outgoing.length === 0)) return
+    const resume = writer
+    writer = undefined
+    resume(Effect.succeed(drainOutgoing()))
+  }
   const wakeWriter = () => {
     if (flushScheduled) return
     flushScheduled = true
     // Coalesce this turn's complete submissions before resuming the scoped writer.
-    queueMicrotask(() => {
-      flushScheduled = false
-      if (writer === undefined || (outgoingSingle === undefined && outgoing.length === 0)) return
-      const resume = writer
-      writer = undefined
-      resume(Effect.succeed(drainOutgoing()))
-    })
+    queueMicrotask(flushWriter)
   }
 
   const settle = (entry: Pending, result: Protocol.Reply | RedisError) => {
@@ -598,7 +599,13 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
           addInflight(entry)
           return transport.write(bytes, transferredWrite)
         }
-        const active = entries.filter((entry) => entry.state !== "Done")
+        // The detached writer queue is private, so compact canceled entries in place.
+        let activeLength = 0
+        for (const entry of entries) {
+          if (entry.state !== "Done") entries[activeLength++] = entry
+        }
+        entries.length = activeLength
+        const active = entries
         if (active.length === 0) return Effect.void
         if (inflightSingle !== undefined) {
           inflight.push(inflightSingle)
