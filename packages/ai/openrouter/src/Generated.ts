@@ -32916,7 +32916,7 @@ export const make = (
           "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
           "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
         }),
-        HttpClientRequest.bodyFormData(options.payload as any),
+        HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CreateAudioTranscriptions200),
           "400": decodeError("CreateAudioTranscriptions400", CreateAudioTranscriptions400),
@@ -34629,7 +34629,7 @@ export interface OpenRouterClient {
   readonly "createAudioTranscriptions": <Config extends OperationConfig>(
     options: {
       readonly params?: typeof CreateAudioTranscriptionsParams.Encoded | undefined
-      readonly payload: typeof CreateAudioTranscriptionsRequestFormData.Encoded
+      readonly payload: typeof CreateAudioTranscriptionsRequestJson.Encoded
       readonly config?: Config | undefined
     }
   ) => Effect.Effect<

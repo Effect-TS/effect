@@ -36,6 +36,40 @@ describe("OpenRouterClient", () => {
       body: {}
     }))))
 
+  it.effect("sends audio transcription requests as JSON so provider options are preserved", () =>
+    Effect.gen(function*() {
+      const client = yield* OpenRouterClient.OpenRouterClient
+      const payload = {
+        model: "x-ai/grok-stt-1.0",
+        input_audio: { data: "UklGRiQA", format: "wav" },
+        response_format: "verbose_json",
+        timestamp_granularities: ["word"],
+        provider: { options: { xai: { diarize: true } } }
+      } as const
+
+      const result = yield* client.client.createAudioTranscriptions({ payload })
+
+      const requests = yield* MockHttpClient.requests
+      const request = requests[0]
+      assert.include(request?.url, "/audio/transcriptions")
+      assert.strictEqual(request?.body._tag, "Uint8Array")
+      if (request?.body._tag !== "Uint8Array") {
+        return yield* Effect.die(new Error("Expected a JSON request body"))
+      }
+      assert.strictEqual(request.body.contentType, "application/json")
+      assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)), payload)
+      assert.deepStrictEqual(result.words?.map((word) => word.speaker), [0, 1])
+    }).pipe(Effect.provide(makeTestLayer({
+      _tag: "Json",
+      body: {
+        text: "Hello. Hi.",
+        words: [
+          { word: "Hello.", start: 0, end: 0.5, speaker: 0 },
+          { word: "Hi.", start: 0.6, end: 0.9, speaker: 1 }
+        ]
+      }
+    }))))
+
   it.effect("redacts the API key in AI error context", () =>
     Effect.gen(function*() {
       const client = yield* OpenRouterClient.OpenRouterClient
