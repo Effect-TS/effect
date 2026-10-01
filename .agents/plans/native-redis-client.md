@@ -7,11 +7,20 @@ node-redis dependency is removed. Persistence consumers provide compatibility
 coverage; they do not define the general client's capabilities.
 
 Status: NodeRedis, BunRedis, and DenoRedis all use the shared native engine.
-Frozen runtime HEAD `e0f359e27` establishes parity in all eight reference
-workloads under the unchanged 5% overhead margin. A separate matched comparison
-supports approximately 5.7% lower sequential elapsed time than `3d1f7569f`.
+Original performance acceptance is complete, and all ten hosted CI jobs passed
+on published checkpoint `b9d958400`. Further optimization compares committed
+native revisions only; the benchmark no longer loads another Redis driver.
+The current candidate `e63d3ea93` retains complete bulk-header/acknowledgement
+parsing and within-batch binary vector reuse, with the original integer dispatch
+and connection writer preserved. Its full native comparison supports 4.5% lower
+transaction elapsed time, 6.1% lower binary GET elapsed time, and 4.3% lower
+binary SET elapsed time versus native `b9d958400`. Five workloads are
+inconclusive; none is classified as a regression. All 152 pairs verified and
+source/cleanup checks passed. The regression gate exited 0.
 Actual runtime tests and clean six-package strict/stripped consumer checks
-passed. Final-source hosted CI is pending at publication of this checkpoint.
+passed at the previous published checkpoint. The new runtime source passed root
+lint/type checks, 282 mandatory tests each on Redis 7/8, 111 actual Bun tests,
+and 28 actual Deno integration tests plus explicit Deno static checking.
 Exact settings, intervals, source hashes, and retained reports are recorded in
 `native-redis-throughput.md`. Earlier sections below record historical
 checkpoints; the final validation section supersedes their acceptance status.

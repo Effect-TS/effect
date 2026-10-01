@@ -9,7 +9,7 @@
 
 Add `@effect/redis`, a native general-purpose client supporting standalone, Cluster, Sentinel, RESP2/3, transactions, and Pub/Sub. NodeRedis, BunRedis, and DenoRedis use the same client and shared socket transport, replacing the external `redis` and `@db/redis` integrations and Bun's built-in Redis client.
 
-Reduce per-command allocations and idle socket write overhead for sequential requests while retaining batched pipeline execution.
+Reduce per-command allocations, reply parsing overhead, and binary pipeline allocations while retaining input snapshots, batched execution, and the optimized idle socket write path.
 
 ### Breaking changes
 

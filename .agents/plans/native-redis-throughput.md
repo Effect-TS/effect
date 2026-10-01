@@ -1,12 +1,229 @@
 # Native Redis throughput investigation
 
-The release target is parity with `redis@5.0.1` across ordinary standalone,
-reserved, Cluster, sequential, transaction, and binary workloads. The repeatable
-comparison lives in `packages/redis/benchmark`; the reference installation stays
-outside the workspace dependency graph. Performance work belongs to draft PR
+Original driver parity is complete. Further work targets improvements over
+committed native Redis revisions, without loading or comparing another driver.
+The native-only comparison and warmed profiler live in
+`packages/redis/benchmark`; their method is documented in its `README.md`.
+The completed original acceptance and earlier diagnostics below are historical
+evidence. Performance work belongs to draft PR
 https://github.com/Effect-TS/effect/pull/8638.
 
-## Acceptance protocol
+## Native revision comparison protocol
+
+`RedisClient.ts` now compares committed native base/head revisions only.
+Detached worktrees resolve their own Effect, Redis, Node, and Node-shared
+modules. One canonical native-only worker is overlaid into each checkout;
+the report records that overlay, harness revision/diff, and all source hashes.
+No external driver is installed or loaded. All eight original operations,
+keys, payloads, reply checks, and bounded 64-iteration chunks are preserved.
+
+Fresh processes warm reusable state for 500 ms. Common calibrated iterations
+target 1,500 ms by default, with 13 alternating paired rounds. Calibration is
+excluded from the deterministic 10,000-resample paired log-ratio bootstrap.
+At 95% confidence, an upper head/base ratio bound below 1 establishes an
+improvement; a lower bound above 1 establishes regression; crossing 1 is
+inconclusive. `--fail-on-regression` rejects classified regressions. Raw pairs,
+exact settings, refs, module-resolution guards, stability, and cleanup status
+remain in the report. Every measured reply and final stored value is checked
+outside timing. Tests/builds stop before measurement; cases and workers run
+serially. Source or harness changes invalidate a run.
+
+Full eight-case validation and equal-ref smoke passed on
+`b9d958400bd924190add20b41a51dd6d5e63941b`:
+`tmp/runtimeperf/results/redis-native-validate-b9d958400.json` and
+`tmp/runtimeperf/results/redis-native-smoke-b9d958400.json`.
+The smoke uses two pairs, 100 ms targets, and 50 ms warmups, and supports
+fixture/harness correctness only. Sources stayed stable; fixtures and
+worktrees were removed. The native-only harness is committed at `b72c912d2`.
+
+### Exploratory warmed profiles
+
+`tmp/runtimeperf/results/redis-native-profile-b9d958400.json` and its five
+`.cpuprofile` artifacts record the committed native baseline. Each fresh
+process has a validated 1,000 ms warmup followed by 10 seconds of CPU sampling
+at approximately 1 kHz. Setup, assertions, and final-state reads are excluded
+from sampling. The profile retains the last bounded chunk; that chunk's replies
+and the complete final stored state are verified afterward. Intermediate
+profiled replies are not individually checked. Full unprofiled comparisons
+check every reply instead. Source stayed stable and all resources closed.
+
+| Workload     | Observed self-time hotspot                                   |
+| ------------ | ------------------------------------------------------------ |
+| Binary GET   | Parser push 11.65%; length parsing 2.27%; completeLine 1.73% |
+| Binary SET   | prepareVectorSnapshots 8.03%; garbage collection 13.49%      |
+| Pipeline     | submitUnsafe 5.71%; encodeFrames 3.11%; prepare 2.96%        |
+| Transactions | Parser push 7.81%; transaction execute 5.64%                 |
+| Sequential   | Idle 48.85%; native writeUtf8String 26.68%                   |
+
+These percentages include idle time and are exploratory attribution, not
+optimization effect sizes. Inspector overhead is visible; paired throughput
+runs do not enable profiling. Caller stacks are retained in
+`tmp/runtimeperf/results/redis-native-profile-b9d958400-stacks.json`.
+They identify reply-header work, queue allocation, and vector construction
+as candidates; sequential time is dominated by the socket path and idle time.
+
+| Artifact           | SHA-256                                                            |
+| ------------------ | ------------------------------------------------------------------ |
+| Native worker      | `ad4a0864cd71815bcf6bc68486727bf03aaa6217c361b8b8c0c557ae2b3b721c` |
+| Native coordinator | `6652b71e6437ba0062711f3685e8149bae11b7a55971876e582c8cbe35b6f529` |
+| Baseline runtime   | `f7ddb6f6b9d4490d54c26e9723bb23cb773296423743c27a74998a6cd5653d57` |
+
+### Native candidate comparisons
+
+The isolated vector-reuse comparison
+`tmp/runtimeperf/results/redis-native-matched-cd4988-072d680f8.json`
+compares `cd4988ee23f1f16de5f286c7e6e912876fe8959f` with
+`072d680f80549c55b1fc1e5e8cf3eadbc285e3e9` on binary SET. Thirteen alternating
+pairs, 1,500 ms targets, 500 ms warmups, and 218,240 common commands per
+observation produce ratio **0.958733** (95% interval **0.943620–0.982853**).
+This supports approximately **4.1% lower paired elapsed time** for the encoding
+change in that standalone-only fixture environment. It does not establish the
+combined candidate's improvement over the earlier native baseline.
+
+The first combined comparison
+`tmp/runtimeperf/results/redis-native-matched-b9d958400-072d680f8.json`
+compares `b9d958400bd924190add20b41a51dd6d5e63941b` with the same candidate.
+It uses the same pair count, timing settings, worker, and machine, with both
+standalone and Cluster fixtures selected. All 104 pairs verified replies,
+counters, and binary bytes; source stayed stable and cleanup completed.
+
+| Workload                | Head/base ratio | 95% interval      | Classification |
+| ----------------------- | --------------: | ----------------- | -------------- |
+| Standalone pipeline     |        0.979596 | 0.946489–1.007303 | Inconclusive   |
+| Reserved pipeline       |        1.019038 | 0.988943–1.049911 | Inconclusive   |
+| Cluster, same slot      |        0.997854 | 0.974318–1.009414 | Inconclusive   |
+| Cluster, multiple slots |        1.032747 | 1.019642–1.045779 | Regression     |
+| Sequential              |        1.025189 | 0.963363–1.060145 | Inconclusive   |
+| Transactions            |        0.987537 | 0.947187–1.004809 | Inconclusive   |
+| Binary GET              |        0.937874 | 0.934281–0.951914 | Improvement    |
+| Binary SET              |        0.999684 | 0.991548–1.024432 | Inconclusive   |
+
+The combined candidate establishes a binary GET gain but has a classified
+multiple-slot Cluster regression; `--fail-on-regression` exited 1. It is not
+accepted for publication. Native component comparisons will isolate the parser
+and connection changes before retaining, removing, or revising them. No
+contribution is attributed from the combined result alone. Both reports retain
+all observations and must remain part of the evidence.
+
+The two component comparisons use the same 13-pair, 1,500 ms target,
+500 ms warmup protocol with both fixture topologies selected:
+
+| Comparison          | Workload       | Head/base ratio | 95% interval      | Classification |
+| ------------------- | -------------- | --------------: | ----------------- | -------------- |
+| Baseline → parser   | Cluster, mixed |        0.999348 | 0.992284–1.018210 | Inconclusive   |
+| Baseline → parser   | Binary SET     |        0.999749 | 0.987767–1.034906 | Inconclusive   |
+| Parser → connection | Cluster, mixed |        0.979508 | 0.963560–1.034605 | Inconclusive   |
+| Parser → connection | Binary SET     |        1.000147 | 0.984142–1.025882 | Inconclusive   |
+
+Reports are `redis-native-diagnose-b9d958400-c798e32fe.json` and
+`redis-native-diagnose-c798e32fe-cd4988ee2.json` under
+`tmp/runtimeperf/results/`. All observations verified, source remained stable,
+and all resources closed. Neither comparison reproduces or attributes the
+original combined regression. They also do not establish a throughput benefit
+from the connection allocation candidate.
+
+At `badc17304`, `RedisConnection.ts` is restored exactly to the native baseline;
+its queued-middle-cancellation contract test is retained. The parser and
+within-invocation vector reuse remain. A final native comparison against
+`b9d958400` preselects all eight workloads, 19 pairs, 2,000 ms targets,
+and 500 ms warmups to assess the retained source with greater precision.
+No earlier regression is relabeled or discarded.
+
+The retained run also classifies reserved pipelines as a regression: ratio
+1.032355, 95% interval 1.011924–1.040172. It is not accepted for publication.
+The next source experiment restores the original integer dispatch before the
+new bulk/simple-string paths. This is a code-layout hypothesis, not an
+established attribution: the current dispatch already checks integers first.
+Correctness review found no concrete defect in the retained parser or vector
+changes. All native measurements and negative evidence remain retained.
+
+The completed retained report is
+`tmp/runtimeperf/results/redis-native-matched-b9d958400-badc17304.json`.
+All 152 pairs verified replies and final state; sources stayed stable,
+fixtures/worktrees closed, and cleanup recorded no errors. The regression
+gate exited 1.
+
+| Workload                | Head/base ratio | 95% interval      | Classification |
+| ----------------------- | --------------: | ----------------- | -------------- |
+| Standalone pipeline     |        0.997149 | 0.986673–1.029290 | Inconclusive   |
+| Reserved pipeline       |        1.032355 | 1.011924–1.040172 | Regression     |
+| Cluster, same slot      |        1.007717 | 0.985020–1.044301 | Inconclusive   |
+| Cluster, multiple slots |        0.995942 | 0.978060–1.028059 | Inconclusive   |
+| Sequential              |        1.041305 | 0.989974–1.083609 | Inconclusive   |
+| Transactions            |        0.961371 | 0.937313–0.981208 | Improvement    |
+| Binary GET              |        0.921239 | 0.904942–0.932465 | Improvement    |
+| Binary SET              |        1.012001 | 0.992945–1.032148 | Inconclusive   |
+
+At `e63d3ea93`, the original integer compound-if and completeInteger body
+are restored verbatim. A following else-if handles the new bulk/simple-string
+paths, preserving incomplete integer fallback. The next full eight-workload
+comparison is preselected with the same 19 pairs, 2,000 ms target, and 500 ms
+warmup. No causal claim follows from the dispatch layout alone.
+
+### Completed native optimization pass
+
+`tmp/runtimeperf/results/redis-native-matched-b9d958400-e63d3ea93.json`
+compares native baseline `b9d958400bd924190add20b41a51dd6d5e63941b` with
+retained source `e63d3ea936c5168f5db4a3c2b143acf7882462e8`. The environment is
+Node 24.21.0, Redis 7.2.6, Linux 6.18.54, Xeon Platinum 8272CL, loopback TCP,
+RESP2, with standalone and Cluster fixtures. The preselected full eight-case
+matrix uses 19 alternating fresh-process pairs, a 2,000 ms target, 500 ms warmup,
+and the unchanged deterministic 10,000-resample paired bootstrap at 95% confidence.
+
+| Workload                | Head/base ratio | 95% interval      | Classification |
+| ----------------------- | --------------: | ----------------- | -------------- |
+| Standalone pipeline     |        0.996774 | 0.971768–1.016331 | Inconclusive   |
+| Reserved pipeline       |        1.001090 | 0.960182–1.045370 | Inconclusive   |
+| Cluster, same slot      |        1.007554 | 0.984013–1.022921 | Inconclusive   |
+| Cluster, multiple slots |        1.002611 | 0.980388–1.009681 | Inconclusive   |
+| Sequential              |        1.001904 | 0.983432–1.025091 | Inconclusive   |
+| Transactions            |        0.954689 | 0.929760–0.979041 | Improvement    |
+| Binary GET              |        0.939386 | 0.921502–0.949902 | Improvement    |
+| Binary SET              |        0.956928 | 0.924463–0.973226 | Improvement    |
+
+This supports approximately 4.5% lower transaction elapsed time, 6.1% lower
+binary GET elapsed time, and 4.3% lower binary SET elapsed time for the combined
+retained source. Five workloads remain inconclusive; none is classified as a
+regression. `--fail-on-regression` exited 0. All 152 pairs (304 observations)
+verified replies and final state; source/harness remained stable, fixtures and
+worktrees were removed, and cleanup recorded no errors. The revised run does
+not establish attribution for the earlier reserved or Cluster regressions.
+All earlier reports remain intact. Results do not measure TLS, RESP3, remote
+networks, failover, Pub/Sub throughput, or Bun/Deno performance.
+
+| Artifact           | SHA-256                                                            |
+| ------------------ | ------------------------------------------------------------------ |
+| Native baseline    | `f7ddb6f6b9d4490d54c26e9723bb23cb773296423743c27a74998a6cd5653d57` |
+| Retained runtime   | `06477427404429668bc12ccc8a463dac7fe3f8d56c6a3fb0c0eeec3acc1f93e1` |
+| Native worker      | `ad4a0864cd71815bcf6bc68486727bf03aaa6217c361b8b8c0c557ae2b3b721c` |
+| Native coordinator | `6652b71e6437ba0062711f3685e8149bae11b7a55971876e582c8cbe35b6f529` |
+
+The retained changes avoid temporary arrays/strings for complete ordinary bulk
+headers and exact common acknowledgements. Adjacent commands reuse a vector
+only when their measured metadata and all owned binary snapshot identities
+match within one invocation. The original integer dispatch and connection
+writer are preserved. No public signatures or exports change.
+
+Correctness checks passed on the measured runtime source:
+
+- Root `pnpm lint-fix` and `pnpm check`, plus 101 focused tests in RedisClient,
+  RedisConnection, and RedisProtocol. Logs: `/tmp/native-redis-integer-layout-*`.
+- Redis 7.2.6 and 8.10.2: 11 mandatory suites and 282 tests each, no skips.
+  Logs: `/tmp/native-redis-integer-layout-redis7.log` and `-redis8.log`.
+- Actual Bun 1.4.0: five files and 111 tests, no skips.
+- Actual Deno 2.9.4: 28 integration tests and explicit affected source/test
+  static checking, no skips. Actual-runtime manifests and logs are under
+  `/tmp/effect-redis-integer-layout-*`; owned fixtures were cleaned up.
+- Independent read-only review found no substantive defects in retained
+  runtime source, normal test organization, or the native comparison harness.
+
+The previous six-package packed/strict/stripped checks remain evidence for the
+preceding published checkpoint, not new-source packed validation. This pass
+changes internal runtime implementations and tests without changing public
+types, entrypoints, dependencies, or transport contracts. Hosted CI for the
+new published commit is tracked in the draft PR.
+
+## Original acceptance protocol (complete)
 
 - Node 24.21.0, Intel Xeon Platinum 8272CL, Redis 7.2.6, loopback TCP,
   RESP2, identical fixture, credentials, keys, payloads, and command counts.
