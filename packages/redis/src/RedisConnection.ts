@@ -192,6 +192,19 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   let outgoing: Array<Pending> = []
   const terminal = yield* Deferred.make<never, RedisError>()
   const pending = new Set<Pending>()
+  // Sequential commands avoid Set churn; concurrent work stays in the Set until drained.
+  let pendingSingle: Pending | undefined
+  const addPending = (entry: Pending) => {
+    if (pendingSingle !== undefined) {
+      pending.add(pendingSingle)
+      pendingSingle = undefined
+      pending.add(entry)
+    } else if (pending.size === 0) {
+      pendingSingle = entry
+    } else {
+      pending.add(entry)
+    }
+  }
   const inflight: Array<Pending | undefined> = []
   let inflightHead = 0
   const firstInflight = () => inflight[inflightHead]
@@ -249,13 +262,14 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     if (entry.bytes !== undefined) queuedBytes -= entry.size
     entry.bytes = undefined
     entry.state = "Done"
-    pending.delete(entry)
+    if (pendingSingle === entry) pendingSingle = undefined
+    else pending.delete(entry)
     if (!entry.canceled) entry.resume(result)
   }
   const fatal = (error: RedisError) => {
     if (dead !== undefined) return
     dead = error
-    for (const entry of pending) {
+    const failPending = (entry: Pending) => {
       settle(
         entry,
         new RedisError({
@@ -267,6 +281,8 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         })
       )
     }
+    if (pendingSingle !== undefined) failPending(pendingSingle)
+    for (const entry of pending) failPending(entry)
     inflight.length = 0
     inflightHead = 0
     listeners.clear()
@@ -372,10 +388,13 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
     }
     const item = prepare(args, encodeOne(args), onResult)
-    if (pending.size >= limit || queuedBytes + item.size > byteLimit || outgoing.length >= limit) {
+    if (
+      (pendingSingle === undefined ? pending.size : 1) >= limit || queuedBytes + item.size > byteLimit ||
+      outgoing.length >= limit
+    ) {
       throw new RedisError({ reason: "Capacity", message: "Redis command queue capacity exceeded", outcome: "NotSent" })
     }
-    pending.add(item)
+    addPending(item)
     queuedBytes += item.size
     outgoing.push(item)
     wakeWriter()
@@ -396,7 +415,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     )
     const size = prepared.reduce((total, item) => total + item.size, 0)
     if (
-      pending.size + prepared.length > limit || queuedBytes + size > byteLimit ||
+      (pendingSingle === undefined ? pending.size : 1) + prepared.length > limit || queuedBytes + size > byteLimit ||
       outgoing.length + prepared.length > limit
     ) {
       throw new RedisError({
@@ -405,7 +424,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         outcome: "NotSent"
       })
     }
-    for (const item of prepared) pending.add(item)
+    for (const item of prepared) addPending(item)
     queuedBytes += size
     for (const item of prepared) outgoing.push(item)
     wakeWriter()
