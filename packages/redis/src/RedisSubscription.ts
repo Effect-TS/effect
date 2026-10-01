@@ -195,7 +195,13 @@ export const make = Effect.fnUntraced(
         if (overflowed) return
         generation = yield* reconnect
       }
-    })
+    }).pipe(Effect.onError((cause) =>
+      Cause.hasInterruptsOnly(cause)
+        ? Effect.void
+        : Queue.failCause(messages, cause).pipe(
+          Effect.andThen(Effect.suspend(() => Scope.close(generation.scope, Exit.void)))
+        )
+    ))
 
     const onClientClosed = client.closed.pipe(
       Effect.andThen(Queue.fail(messages, notSent("Closed", "Redis client scope closed"))),
