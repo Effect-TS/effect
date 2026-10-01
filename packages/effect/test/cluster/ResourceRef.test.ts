@@ -105,3 +105,71 @@ it.effect("does not leak teardown membership when a rebuild is interrupted", () 
     yield* Deferred.succeed(release, void 0)
     assert.isFalse(isActive(address))
   })))
+
+it.effect("does not publish a rebuild superseded by a newer rebuild", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const parentScope = yield* Effect.scope
+    const staleAcquiring = yield* Deferred.make<void>()
+    const staleAcquire = yield* Deferred.make<void>()
+    const newerAcquiring = yield* Deferred.make<void>()
+    const newerAcquire = yield* Deferred.make<void>()
+    let acquisitions = 0
+    const ref = yield* ResourceRef.from(parentScope, () =>
+      Effect.gen(function*() {
+        const acquisition = ++acquisitions
+        if (acquisition === 2) {
+          yield* Deferred.succeed(staleAcquiring, void 0)
+          yield* Deferred.await(staleAcquire)
+        } else if (acquisition === 3) {
+          yield* Deferred.succeed(newerAcquiring, void 0)
+          yield* Deferred.await(newerAcquire)
+        }
+        return acquisition
+      }))
+
+    const staleRebuild = yield* Effect.forkChild(ref.rebuildUnsafe())
+    yield* Deferred.await(staleAcquiring)
+    const newerRebuild = yield* Effect.forkChild(ref.rebuildUnsafe())
+    yield* Deferred.await(newerAcquiring)
+
+    // The superseded acquisition completes first. It must not become visible.
+    yield* Deferred.succeed(staleAcquire, void 0)
+    const staleExit = yield* Fiber.await(staleRebuild)
+    assert.isTrue(Exit.isFailure(staleExit), "a superseded rebuild must not succeed")
+    assert.strictEqual(ref.state.current._tag, "Acquiring")
+    assert.deepStrictEqual(ref.getUnsafe(), Option.none())
+    assert.isFalse(ref.latch.isOpen())
+
+    yield* Deferred.succeed(newerAcquire, void 0)
+    assert.strictEqual(yield* Fiber.join(newerRebuild), 3)
+    assert.strictEqual(yield* ref.await, 3)
+  })))
+
+it.effect("wakes waiters when closed during a rebuild", () =>
+  Effect.gen(function*() {
+    const parentScope = yield* Scope.make()
+    const acquiring = yield* Deferred.make<void>()
+    const acquire = yield* Deferred.make<void>()
+    let acquisitions = 0
+    const ref = yield* ResourceRef.from(parentScope, () =>
+      Effect.gen(function*() {
+        if (++acquisitions === 2) {
+          yield* Deferred.succeed(acquiring, void 0)
+          yield* Deferred.await(acquire)
+        }
+        return acquisitions
+      }))
+
+    yield* Effect.forkChild(ref.rebuildUnsafe())
+    yield* Deferred.await(acquiring)
+    const waiter = yield* Effect.forkChild(ref.await)
+    yield* Effect.yieldNow
+    assert.isUndefined(waiter.pollUnsafe())
+
+    yield* Scope.close(parentScope, Exit.void)
+    yield* Effect.yieldNow
+    const exit = waiter.pollUnsafe()
+    assert.isDefined(exit, "closing the ref must wake waiters")
+    assert.isTrue(Exit.hasInterrupts(exit))
+    yield* Deferred.succeed(acquire, void 0)
+  }))

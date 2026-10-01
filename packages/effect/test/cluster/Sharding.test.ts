@@ -1770,10 +1770,11 @@ const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
   const shardId = sharding.getShardId(id, "default")
   const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId: id })
   const send = Effect.gen(function*() {
-    return yield* manager.sendLocal(
+    const requestId = yield* sharding.getSnowflake
+    yield* manager.sendLocal(
       new Message.IncomingRequestLocal<typeof run>({
         envelope: Envelope.makeRequest<typeof run>({
-          requestId: yield* sharding.getSnowflake,
+          requestId,
           address,
           tag: "run",
           payload: undefined,
@@ -1784,12 +1785,20 @@ const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
         respond: () => Effect.void
       })
     )
+    return requestId
+  })
+  const interrupt = Effect.fnUntraced(function*(requestId: Snowflake.Snowflake) {
+    yield* manager.sendLocal(
+      new Message.IncomingEnvelope({
+        envelope: new Envelope.Interrupt({ id: yield* sharding.getSnowflake, address, requestId })
+      })
+    )
   })
   yield* TestClock.adjust(1)
-  yield* send
+  const requestId = yield* send
   yield* TestClock.adjust(10)
   yield* Deferred.await(generations.acquiring)
-  return { manager, shardId, send, attempts, acquired: generations.acquired } as const
+  return { manager, shardId, send, interrupt, requestId, attempts, acquired: generations.acquired } as const
 })
 
 describe.concurrent("Sharding defect recovery", () => {
@@ -1931,6 +1940,92 @@ describe.concurrent("Sharding defect recovery", () => {
       }))
   }
 
+  it.effect("ignores a defect from handlers retired by a rebuild", () =>
+    Effect.gen(function*() {
+      const entity = makeDefectRecoveryEntity(false)
+      const generations = yield* makeGenerations()
+      const bothStarted = yield* Deferred.make<void>()
+      const fail = yield* Deferred.make<void>()
+      const lateDefect = yield* Deferred.make<void>()
+      const started = yield* Ref.make(0)
+      const entityLayer = entity.toLayer(
+        Effect.map(generations.next, (generation) =>
+          entity.of({
+            run: Effect.fnUntraced(function*({ payload }) {
+              if (generation > 1) return payload.id
+              if ((yield* Ref.updateAndGet(started, (n) => n + 1)) === 2) {
+                yield* Deferred.succeed(bothStarted, undefined)
+              }
+              if (payload.id === "first") {
+                yield* Deferred.await(fail)
+                return yield* Effect.die("initial defect")
+              }
+              // Outlives the retirement of its handlers, then defects.
+              return yield* Effect.uninterruptible(
+                Effect.andThen(Deferred.await(lateDefect), Effect.die("late defect"))
+              )
+            })
+          })),
+        { concurrency: "unbounded" }
+      )
+
+      yield* Effect.gen(function*() {
+        const client = (yield* entity.client)("retired-defect")
+        const first = yield* client.run({ id: "first" }).pipe(Effect.forkChild)
+        const late = yield* client.run({ id: "late" }).pipe(Effect.forkChild)
+        yield* Deferred.await(bothStarted)
+        yield* Deferred.succeed(fail, undefined)
+        yield* TestClock.adjust("1 second")
+        yield* Deferred.succeed(lateDefect, undefined)
+        yield* TestClock.adjust("30 seconds")
+        assert.strictEqual(yield* Fiber.join(first), "first")
+        assert.strictEqual(yield* Fiber.join(late), "late")
+        assert.strictEqual(yield* Ref.get(generations.count), 2, "a retired generation must not rebuild its successor")
+      }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
+    }))
+
+  it.effect("admits arrivals during the restart backoff only after the replay", () =>
+    Effect.gen(function*() {
+      const entity = makeDefectRecoveryEntity(false)
+      const generations = yield* makeGenerations()
+      const bothStarted = yield* Deferred.make<void>()
+      const fail = yield* Deferred.make<void>()
+      const started = yield* Ref.make(0)
+      const calls = yield* Ref.make<Array<readonly [number, string]>>([])
+      const entityLayer = entity.toLayer(
+        Effect.map(generations.next, (generation) =>
+          entity.of({
+            run: Effect.fnUntraced(function*({ payload }) {
+              yield* Ref.update(calls, (calls) => [...calls, [generation, payload.id] as const])
+              if (generation > 1) return payload.id
+              if ((yield* Ref.updateAndGet(started, (n) => n + 1)) === 2) {
+                yield* Deferred.succeed(bothStarted, undefined)
+              }
+              yield* Deferred.await(fail)
+              return yield* Effect.die("initial defect")
+            })
+          })),
+        { concurrency: "unbounded" }
+      )
+
+      yield* Effect.gen(function*() {
+        const client = (yield* entity.client)("admission")
+        const first = yield* client.run({ id: "first" }).pipe(Effect.forkChild)
+        const second = yield* client.run({ id: "second" }).pipe(Effect.forkChild)
+        yield* Deferred.await(bothStarted)
+        yield* Deferred.succeed(fail, undefined)
+        yield* TestClock.adjust(1)
+        assert.strictEqual(yield* Ref.get(generations.count), 1, "the rebuild is still backing off")
+        const third = yield* client.run({ id: "third" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust("30 seconds")
+        assert.strictEqual(yield* Fiber.join(first), "first")
+        assert.strictEqual(yield* Fiber.join(second), "second")
+        assert.strictEqual(yield* Fiber.join(third), "third")
+        const replacement = Array.filter(yield* Ref.get(calls), ([generation]) => generation === 2)
+        assert.deepStrictEqual(Array.map(replacement, ([, id]) => id), ["first", "second", "third"])
+      }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
+    }))
+
   it.effect("finishes shutdown when replacement acquisition completes", () =>
     Effect.gen(function*() {
       const { acquired, attempts, manager, shardId } = yield* startBlockedRebuild("shutdown")
@@ -1962,6 +2057,22 @@ describe.concurrent("Sharding defect recovery", () => {
       const exit = queued.pollUnsafe()
       assert.isDefined(exit, "queued arrival must not wait for replacement acquisition")
       assert.isTrue(Exit.hasInterrupts(exit), "queued arrival must be interrupted")
+      yield* Deferred.succeed(acquired, undefined)
+    }).pipe(Effect.provide(BlockedRebuildSharding)))
+
+  it.effect("wakes a queued envelope when the entity closes during replacement acquisition", () =>
+    Effect.gen(function*() {
+      const { acquired, interrupt, manager, requestId, shardId } = yield* startBlockedRebuild("shutdown-envelope")
+      // Control messages queue behind the replay like requests, but are still
+      // allowed through once shutdown starts.
+      const queued = yield* interrupt(requestId).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(queued.pollUnsafe(), undefined)
+      const shutdown = yield* manager.interruptShard(shardId).pipe(Effect.forkChild)
+      // Acquisition never finishes, so shutdown ends at the termination timeout.
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(shutdown.pollUnsafe(), Exit.void)
+      assert.isDefined(queued.pollUnsafe(), "closing the entity must wake writers waiting for its handlers")
       yield* Deferred.succeed(acquired, undefined)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
 })
