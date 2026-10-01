@@ -126,6 +126,8 @@ interface Pending {
   canceled: boolean
 }
 
+type Outgoing = Pending | Array<Pending>
+
 const subscriptionAcks = new Map([
   ["SUBSCRIBE", "subscribe"],
   ["PSUBSCRIBE", "psubscribe"],
@@ -190,6 +192,27 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const transport = yield* connector(endpoint)
   const encodeOne = makeFrameEncoder()
   let outgoing: Array<Pending> = []
+  let outgoingSingle: Pending | undefined
+  const addOutgoing = (entry: Pending) => {
+    if (outgoingSingle !== undefined) {
+      outgoing.push(outgoingSingle, entry)
+      outgoingSingle = undefined
+    } else if (outgoing.length === 0) {
+      outgoingSingle = entry
+    } else {
+      outgoing.push(entry)
+    }
+  }
+  const drainOutgoing = (): Outgoing => {
+    if (outgoingSingle !== undefined) {
+      const entry = outgoingSingle
+      outgoingSingle = undefined
+      return entry
+    }
+    const entries = outgoing
+    outgoing = []
+    return entries
+  }
   const terminal = yield* Deferred.make<never, RedisError>()
   const pending = new Set<Pending>()
   // Sequential commands avoid Set churn; concurrent work stays in the Set until drained.
@@ -228,13 +251,11 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   let subscriptions = 0
   let shardSubscriptions = 0
   let protocol = config.protocol ?? 2
-  let writer: ((effect: Effect.Effect<Array<Pending>, RedisError>) => void) | undefined
-  const takeOutgoing = Effect.callback<Array<Pending>, RedisError>((resume) => {
+  let writer: ((effect: Effect.Effect<Outgoing, RedisError>) => void) | undefined
+  const takeOutgoing = Effect.callback<Outgoing, RedisError>((resume) => {
     if (dead !== undefined) return resume(Effect.fail(dead))
-    if (outgoing.length > 0) {
-      const entries = outgoing
-      outgoing = []
-      return resume(Effect.succeed(entries))
+    if (outgoingSingle !== undefined || outgoing.length > 0) {
+      return resume(Effect.succeed(drainOutgoing()))
     }
     writer = resume
     return Effect.sync(() => {
@@ -248,12 +269,10 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     // Coalesce this turn's complete submissions before resuming the scoped writer.
     queueMicrotask(() => {
       flushScheduled = false
-      if (writer === undefined || outgoing.length === 0) return
+      if (writer === undefined || (outgoingSingle === undefined && outgoing.length === 0)) return
       const resume = writer
-      const entries = outgoing
       writer = undefined
-      outgoing = []
-      resume(Effect.succeed(entries))
+      resume(Effect.succeed(drainOutgoing()))
     })
   }
 
@@ -286,6 +305,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     inflight.length = 0
     inflightHead = 0
     listeners.clear()
+    outgoingSingle = undefined
     outgoing = []
     const resume = writer
     writer = undefined
@@ -390,13 +410,13 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     const item = prepare(args, encodeOne(args), onResult)
     if (
       (pendingSingle === undefined ? pending.size : 1) >= limit || queuedBytes + item.size > byteLimit ||
-      outgoing.length >= limit
+      (outgoingSingle === undefined ? outgoing.length : 1) >= limit
     ) {
       throw new RedisError({ reason: "Capacity", message: "Redis command queue capacity exceeded", outcome: "NotSent" })
     }
     addPending(item)
     queuedBytes += item.size
-    outgoing.push(item)
+    addOutgoing(item)
     wakeWriter()
     return item
   }
@@ -416,7 +436,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     const size = prepared.reduce((total, item) => total + item.size, 0)
     if (
       (pendingSingle === undefined ? pending.size : 1) + prepared.length > limit || queuedBytes + size > byteLimit ||
-      outgoing.length + prepared.length > limit
+      (outgoingSingle === undefined ? outgoing.length : 1) + prepared.length > limit
     ) {
       throw new RedisError({
         reason: "Capacity",
@@ -426,7 +446,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     }
     for (const item of prepared) addPending(item)
     queuedBytes += size
-    for (const item of prepared) outgoing.push(item)
+    for (const item of prepared) addOutgoing(item)
     wakeWriter()
     return prepared
   }
@@ -535,8 +555,8 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   yield* Effect.forkScoped(
     Effect.forever(
       takeOutgoing.pipe(Effect.flatMap((entries) => {
-        if (entries.length === 1) {
-          const entry = entries[0]
+        if (!Array.isArray(entries) || entries.length === 1) {
+          const entry = Array.isArray(entries) ? entries[0] : entries
           if (entry.state === "Done") return Effect.void
           const bytes = entry.bytes!
           entry.bytes = undefined
