@@ -1,12 +1,11 @@
 // Internal implementation.
-import type * as Result from "effect/Result"
 import type { RedisConnection } from "../RedisConnection.ts"
 import type { RedisError } from "../RedisError.ts"
 import type { Argument, Reply } from "../RedisProtocol.ts"
 
 export type Submit = (
   args: ReadonlyArray<Argument>,
-  onResult: (result: Result.Result<Reply, RedisError>) => void
+  onResult: (result: Reply | RedisError) => void
 ) => () => void
 
 // Concrete sessions without deadlines can admit and encode a command in the

@@ -44,13 +44,13 @@ describe("Redis physical session", () => {
       const submit = ConnectionInternal.get(connection)
       assert.isDefined(submit)
       if (submit === undefined) return assert.fail("Expected concrete command submission")
-      const completed = yield* Deferred.make<Result.Result<Protocol.Reply, RedisError>>()
+      const completed = yield* Deferred.make<Protocol.Reply | RedisError>()
       const bytes = new Uint8Array([0, 128, 255])
       submit(["SET", "binary", bytes], (result) => {
         Deferred.doneUnsafe(completed, Effect.succeed(result))
       })
       bytes.fill(99)
-      assert.strictEqual((yield* Deferred.await(completed))._tag, "Success")
+      assert.strictEqual((yield* Deferred.await(completed))._tag, "SimpleString")
       assert.strictEqual(captured?._tag, "Array")
       if (captured?._tag === "Array") {
         assert.deepStrictEqual(captured.values[2], { _tag: "BlobString", value: new Uint8Array([0, 128, 255]) })
@@ -172,12 +172,12 @@ describe("Redis physical session", () => {
         if (submit === undefined) return assert.fail("Expected concrete command submission")
         // Submit from the reply callback so caller-side scheduling cannot hide
         // a transport that monopolizes the event loop.
-        const receive = (result: Result.Result<Protocol.Reply, RedisError>): void => {
-          if (result._tag === "Failure") {
-            Deferred.doneUnsafe(completed, Effect.fail(result.failure))
+        const receive = (result: Protocol.Reply | RedisError): void => {
+          if (result._tag === "RedisError") {
+            Deferred.doneUnsafe(completed, Effect.fail(result))
             return
           }
-          values.push(Protocol.toValue(result.success) as number)
+          values.push(Protocol.toValue(result) as number)
           if (values.length < 512) submit(["INCR", "counter"], receive)
           else Deferred.doneUnsafe(completed, Effect.succeed(values))
         }

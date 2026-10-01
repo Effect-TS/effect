@@ -268,12 +268,14 @@ describe("RedisClient", () => {
         assert.strictEqual(failure(results[3]).outcome, "NotSent")
       }))
 
-    it.live("propagates decoder defects to the caller while keeping the connection usable", () =>
+    it.live("isolates typed command failures while keeping the connection usable", () =>
       Effect.gen(function*() {
         const requests: Array<ReadonlyArray<string>> = []
         const fixture = yield* server((request) => {
           requests.push(args(request))
-          request.connection.send("+PONG\r\n")
+          request.connection.send(
+            args(request)[0] === "GET" ? "-WRONGTYPE Operation against wrong key type\r\n" : "+PONG\r\n"
+          )
         })
         const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
         const defect = new Error("Unexpected decoder failure")
@@ -285,8 +287,20 @@ describe("RedisClient", () => {
           assert.isTrue(Cause.hasDies(result.cause))
           assert.strictEqual(Cause.squash(result.cause), defect)
         }
+        let decodedFailedReply = false
+        const serverError = failure(
+          yield* Effect.result(client.run(Command.make(["GET", "key"], () => {
+            decodedFailedReply = true
+            return Result.succeed("unexpected")
+          })))
+        )
+        assert.strictEqual(serverError.reason, "Server")
+        assert.strictEqual(serverError.code, "WRONGTYPE")
+        assert.isFalse(decodedFailedReply)
+        const decodeError = failure(yield* Effect.result(client.run(Command.make(["PING"], Command.integer))))
+        assert.strictEqual(decodeError.reason, "Decode")
         assert.strictEqual(yield* client.run(Command.make(["PING"], Command.text)), "PONG")
-        assert.deepStrictEqual(requests, [["PING"], ["PING"], ["PING"]])
+        assert.deepStrictEqual(requests, [["PING"], ["PING"], ["GET", "key"], ["PING"], ["PING"]])
         assert.strictEqual(fixture.connections.length, 1)
       }))
 

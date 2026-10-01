@@ -420,9 +420,9 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
             // before any yield. Decode on completion without routing/raw Effect
             // wrappers; decoder defects belong to the caller, not the reader.
             const cancel = submit(command.arguments, (result) => {
-              if (result._tag === "Failure") return resume(Effect.fail(result.failure))
+              if (result._tag === "RedisError") return resume(Effect.fail(result))
               try {
-                resume(Effect.fromResult(decode(result.success)))
+                resume(Effect.fromResult(decode(result)))
               } catch (cause) {
                 resume(Effect.die(cause))
               }

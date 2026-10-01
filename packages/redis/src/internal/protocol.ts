@@ -107,6 +107,31 @@ export const makeParser = (options: ParserOptions, ownership: "copy" | "transfer
     for (const byte of line) text += String.fromCharCode(byte)
     return BigInt(text)
   }
+  // Complete short integer frames need neither retained header bytes nor a
+  // second digit pass. Larger integers keep the exact signed-64-bit path.
+  const completeInteger = (chunk: Uint8Array, offset: number, output: Array<Reply>): number => {
+    const end = Math.min(chunk.length, offset + 24)
+    let cursor = offset + 1
+    const negative = chunk[cursor] === 45
+    if (negative || chunk[cursor] === 43) cursor++
+    const start = cursor
+    let value = 0
+    for (; cursor < end; cursor++) {
+      const byte = chunk[cursor]
+      if (byte === 13) {
+        if (cursor === start || cursor + 1 >= end || chunk[cursor + 1] !== 10 || !Number.isSafeInteger(value)) break
+        const next = cursor + 2
+        if (frameSize + next - offset > maxFrameSize) fail("Frame size limit exceeded")
+        frameSize += next - offset
+        // Every safe integer is also inside Redis's signed 64-bit range.
+        accept({ _tag: "Integer", value: BigInt(negative ? -value : value) }, output)
+        return next
+      }
+      if (byte < 48 || byte > 57) break
+      value = value * 10 + (byte - 48)
+    }
+    return offset
+  }
   const length = (value: string): number => {
     if (!/^\d+$/.test(value)) fail("Invalid RESP length")
     const result = Number(value)
@@ -272,6 +297,13 @@ export const makeParser = (options: ParserOptions, ownership: "copy" | "transfer
       let ownedStart = 0
       let ownedEnd = 0
       for (let offset = 0; offset < chunk.length;) {
+        if (state === "marker" && streamed === undefined && chunk[offset] === 58) {
+          const next = completeInteger(chunk, offset, output)
+          if (next !== offset) {
+            offset = next
+            continue
+          }
+        }
         if (state === "body") {
           if (bodyOffset === 0) {
             if (bodySize <= chunk.length - offset) {

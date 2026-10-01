@@ -122,7 +122,7 @@ interface Pending {
   readonly ackChannel: Uint8Array | undefined
   readonly protocol: 2 | 3 | undefined
   readonly reset: boolean
-  readonly resume: (result: Result.Result<Protocol.Reply, RedisError>) => void
+  readonly resume: (result: Protocol.Reply | RedisError) => void
   canceled: boolean
 }
 
@@ -244,7 +244,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     })
   }
 
-  const settle = (entry: Pending, result: Result.Result<Protocol.Reply, RedisError>) => {
+  const settle = (entry: Pending, result: Protocol.Reply | RedisError) => {
     if (entry.state === "Done") return
     if (entry.bytes !== undefined) queuedBytes -= entry.size
     entry.bytes = undefined
@@ -258,15 +258,13 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     for (const entry of pending) {
       settle(
         entry,
-        Result.fail(
-          new RedisError({
-            reason: error.reason,
-            message: error.message,
-            cause: error.cause,
-            code: error.code,
-            outcome: entry.state === "Sent" ? "Unknown" : "NotSent"
-          })
-        )
+        new RedisError({
+          reason: error.reason,
+          message: error.message,
+          cause: error.cause,
+          code: error.code,
+          outcome: entry.state === "Sent" ? "Unknown" : "NotSent"
+        })
       )
     }
     inflight.length = 0
@@ -290,7 +288,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const prepare = (
     args: ReadonlyArray<Protocol.Argument>,
     frame: Frame,
-    onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
+    onResult?: (result: Protocol.Reply | RedisError) => void
   ) => {
     let ack: Pending["ack"]
     let ackChannel: Pending["ackChannel"]
@@ -355,7 +353,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       resume: onResult ?? ((value) => {
         Deferred.doneUnsafe(
           result!,
-          value._tag === "Success" ? Effect.succeed(value.success) : Effect.fail(value.failure)
+          value._tag === "RedisError" ? Effect.fail(value) : Effect.succeed(value)
         )
       }),
       canceled: false
@@ -368,7 +366,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       : new RedisError({ reason: "Protocol", message: "Cannot encode Redis command", cause, outcome: "NotSent" })
   const submitOneUnsafe = (
     args: ReadonlyArray<Protocol.Argument>,
-    onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
+    onResult?: (result: Protocol.Reply | RedisError) => void
   ) => {
     if (dead !== undefined) {
       throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
@@ -385,7 +383,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   }
   const submitUnsafe = (
     commands: ReadonlyArray<ReadonlyArray<Protocol.Argument>>,
-    onResult?: (result: Result.Result<Protocol.Reply, RedisError>, index: number) => void
+    onResult?: (result: Protocol.Reply | RedisError, index: number) => void
   ) => {
     if (dead !== undefined) {
       throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
@@ -415,7 +413,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   }
   const submit = (
     commands: ReadonlyArray<ReadonlyArray<Protocol.Argument>>,
-    onResult?: (result: Result.Result<Protocol.Reply, RedisError>, index: number) => void
+    onResult?: (result: Protocol.Reply | RedisError, index: number) => void
   ) =>
     Effect.try({
       try: () => submitUnsafe(commands, onResult),
@@ -426,7 +424,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     if (entry.state === "Queued") {
       settle(
         entry,
-        Result.fail(new RedisError({ reason: "Closed", message: "Redis command interrupted", outcome: "NotSent" }))
+        new RedisError({ reason: "Closed", message: "Redis command interrupted", outcome: "NotSent" })
       )
     }
   }
@@ -458,7 +456,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       Effect.callback((resume) => {
         try {
           const item = submitOneUnsafe(args, (result) => {
-            resume(result._tag === "Success" ? Effect.succeed(result.success) : Effect.fail(result.failure))
+            resume(result._tag === "RedisError" ? Effect.fail(result) : Effect.succeed(result))
           })
           return Effect.sync(() => cancel(item))
         } catch (cause) {
@@ -478,7 +476,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
           const results = new Array<Result.Result<Protocol.Reply, RedisError>>(commands.length)
           let remaining = commands.length
           const items = submitUnsafe(commands.map((command) => command.arguments), (result, index) => {
-            results[index] = result
+            results[index] = result._tag === "RedisError" ? Result.fail(result) : Replies.succeed(result)
             if (--remaining === 0) resume(Effect.succeed(results))
           })
           return Effect.sync(() => {
@@ -620,7 +618,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         else subscriptions = Number(count.value)
       }
       if (ack && firstInflight()?.ack === kind && matchesChannel(firstInflight()!.ackChannel, values?.[1])) {
-        settle(takeInflight()!, Result.succeed(reply))
+        settle(takeInflight()!, reply)
       }
       for (const listener of listeners) listener(reply)
       return
@@ -637,8 +635,8 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     settle(
       entry,
       value._tag === "Error"
-        ? Result.fail(new RedisError({ reason: "Server", message: value.message, code: value.code }))
-        : Replies.succeed(reply)
+        ? new RedisError({ reason: "Server", message: value.message, code: value.code })
+        : reply
     )
   }
   yield* Effect.forkScoped(

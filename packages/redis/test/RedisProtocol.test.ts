@@ -42,6 +42,10 @@ const goldens: ReadonlyArray<readonly [string, RedisProtocol.Reply]> = [
   [":9223372036854775807\r\n", integer(9223372036854775807n)],
   [":+9223372036854775807\r\n", integer(9223372036854775807n)],
   [":+0\r\n", integer(0n)],
+  [":-0\r\n", integer(0n)],
+  [":000000000000000000001\r\n", integer(1n)],
+  [":+000000000000000000001\r\n", integer(1n)],
+  [":+0000000000000000000001\r\n", integer(1n)],
   [":9007199254740989\r\n", integer(9007199254740989n)],
   [":9007199254740990\r\n", integer(9007199254740990n)],
   [":9007199254740991\r\n", integer(9007199254740991n)],
@@ -156,6 +160,11 @@ describe("RedisProtocol", () => {
     fc.assert(fc.property(fc.bigInt({ min: -9223372036854775808n, max: 9223372036854775807n }), (value) => {
       assert.deepStrictEqual(parse(`:${value}\r\n`), integer(value))
     }))
+    const parser = RedisProtocol.makeParser()
+    const first = parser.push(bytes(":1\r\n"))[0]
+    Reflect.set(first, "value", 99n)
+    assert.deepStrictEqual(parser.push(bytes(":1\r\n")), [integer(1n)])
+    parser.end()
   })
 
   it("keeps later acknowledgements unchanged after attempted mutation of an earlier reply", () => {
@@ -258,6 +267,12 @@ describe("RedisProtocol", () => {
         ":1.5\r\n",
         ":++1\r\n",
         ":+-1\r\n",
+        ":+\r\n",
+        ":-\r\n",
+        ": 1\r\n",
+        ":1\t\r\n",
+        ":1\n",
+        ":1\rx",
         ":\uFEFF1\r\n",
         ":\r\n",
         ":9223372036854775808\r\n",
@@ -292,6 +307,27 @@ describe("RedisProtocol", () => {
         "$?\r\n;-1\r\n"
       ]
     ) failure(() => RedisProtocol.makeParser().push(bytes(wire)))
+    for (
+      const wire of [
+        ":+\r\n",
+        ":-\r\n",
+        ":1x\r\n",
+        ":\u00FF\r\n",
+        ":9223372036854775808\r\n",
+        ":-9223372036854775809\r\n"
+      ]
+    ) {
+      const input = bytes(`:1\r\n${wire}:2\r\n`)
+      for (let split = 0; split <= input.length; split++) {
+        const parser = RedisProtocol.makeParser()
+        failure(() => {
+          parser.push(input.subarray(0, split))
+          parser.push(input.subarray(split))
+        })
+        failure(() => parser.push(bytes(":3\r\n")))
+        failure(() => parser.end())
+      }
+    }
     for (const marker of [":", "(", ",", "$", "!", "=", "*", "%", "~", ">", "|", "#", "_"]) {
       const parser = RedisProtocol.makeParser()
       failure(() => parser.push(new Uint8Array([marker.charCodeAt(0), 255, 13, 10])))
@@ -324,6 +360,24 @@ describe("RedisProtocol", () => {
     const nested = RedisProtocol.makeParser({ maxFrameSize: 10 })
     nested.push(bytes("*2\r\n:1\r\n"))
     failure(() => nested.push(bytes(":2\r\n")))
+    for (const wire of [":1\r\n", ":+0\r\n", "*2\r\n:1\r\n:2\r\n", "|0\r\n:1\r\n"]) {
+      const input = bytes(wire)
+      const expected = RedisProtocol.makeParser().push(input)
+      for (let split = 0; split <= input.length; split++) {
+        const exact = RedisProtocol.makeParser({ maxFrameSize: input.length })
+        assert.deepStrictEqual([
+          ...exact.push(input.subarray(0, split)),
+          ...exact.push(input.subarray(split))
+        ], expected)
+        exact.end()
+        const limited = RedisProtocol.makeParser({ maxFrameSize: input.length - 1 })
+        failure(() => {
+          limited.push(input.subarray(0, split))
+          limited.push(input.subarray(split))
+        })
+        failure(() => limited.push(bytes(":1\r\n")))
+      }
+    }
     const streamed = RedisProtocol.makeParser({ maxFrameSize: 20 })
     failure(() => streamed.push(bytes("$?\r\n;3\r\nfoo\r\n;3\r\nbar\r\n;0\r\n")))
   })
