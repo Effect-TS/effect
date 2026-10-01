@@ -327,13 +327,16 @@ export const makeParser = (options: ParserOptions, ownership: "copy" | "transfer
       let ownedStart = 0
       let ownedEnd = 0
       for (let offset = 0; offset < chunk.length;) {
-        if (state === "marker" && streamed === undefined) {
-          const byte = chunk[offset]
-          const next = byte === 58
-            ? completeInteger(chunk, offset, output)
-            : byte === 36
+        if (state === "marker" && streamed === undefined && chunk[offset] === 58) {
+          const next = completeInteger(chunk, offset, output)
+          if (next !== offset) {
+            offset = next
+            continue
+          }
+        } else if (state === "marker" && streamed === undefined) {
+          const next = chunk[offset] === 36
             ? completeBulkHeader(chunk, offset)
-            : byte === 43
+            : chunk[offset] === 43
             ? completeSimpleString(chunk, offset, output)
             : offset
           if (next !== offset) {
