@@ -235,6 +235,7 @@ const prepareVectorSnapshots = (commands: ReadonlyArray<Array<Argument>>, measur
   const large = commands.map(hasLargeBinary)
   const small = new Uint8Array(measured.reduce((total, command, index) => total + (large[index] ? 0 : command.size), 0))
   let offset = 0
+  let previousVector: Frame | undefined
   for (let index = 0; index < commands.length; index++) {
     const args = commands[index]
     for (let argument = 0; argument < args.length; argument++) {
@@ -242,8 +243,23 @@ const prepareVectorSnapshots = (commands: ReadonlyArray<Array<Argument>>, measur
       if (typeof value !== "string") args[argument] = snapshots.get(value)!.bytes!
     }
     const metadata = measured[index]
-    if (large[index]) preparedFrames.set(args, vectorFrame(args, metadata))
-    else {
+    if (large[index]) {
+      let same = previousVector !== undefined && metadata === measured[index - 1]
+      if (same) {
+        // Shared metadata guarantees identical fixed spans and binary lengths.
+        // Reuse a vector only for the exact owned snapshots of this invocation.
+        const previous = commands[index - 1]
+        for (const field of metadata.layout!.binary) {
+          if (args[field.index] !== previous[field.index]) {
+            same = false
+            break
+          }
+        }
+      }
+      if (!same) previousVector = vectorFrame(args, metadata)
+      preparedFrames.set(args, previousVector!)
+    } else {
+      previousVector = undefined
       write(args, metadata.lengths, small, offset, undefined, metadata.layout)
       preparedFrames.set(args, { bytes: small.subarray(offset, offset + metadata.size), size: metadata.size })
       offset += metadata.size

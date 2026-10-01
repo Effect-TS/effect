@@ -402,8 +402,12 @@ describe("RedisClient", () => {
           )
           const blocked = yield* client.execute(["ECHO", "hold"]).pipe(Effect.forkChild)
           yield* Deferred.await(written)
-          const bytes = Uint8Array.from({ length: 4096 }, (_, index) => [0, 128, 255][index % 3])
-          const second = Uint8Array.from({ length: 4096 }, (_, index) => [255, 128, 0][index % 3])
+          const backing = Uint8Array.from(
+            { length: 8192 },
+            (_, index) => index < 4096 ? [0, 128, 255][index % 3] : [255, 128, 0][(index - 4096) % 3]
+          )
+          const bytes = backing.subarray(0, 4096)
+          const second = backing.subarray(4096)
           const original = bytes.slice()
           const originalSecond = second.slice()
           const operation = mode === "run" ?
