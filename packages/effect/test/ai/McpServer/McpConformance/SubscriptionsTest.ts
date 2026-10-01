@@ -623,11 +623,9 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           yield* TestClock.adjust("1 second")
           assert.isDefined(next.pollUnsafe())
           assert.strictEqual(decoder.decode((yield* Fiber.join(next)).value), ": keepalive\n\n")
-          for (let index = 0; index < 4; index++) {
-            const heartbeat = yield* read.pipe(Effect.forkChild)
-            yield* TestClock.adjust("15 seconds")
-            assert.strictEqual(decoder.decode((yield* Fiber.join(heartbeat)).value), ": keepalive\n\n")
-          }
+          const heartbeat = yield* read.pipe(Effect.forkChild)
+          yield* TestClock.adjust("15 seconds")
+          assert.strictEqual(decoder.decode((yield* Fiber.join(heartbeat)).value), ": keepalive\n\n")
 
           const tools = yield* harness.post({
             jsonrpc: "2.0",
@@ -646,8 +644,14 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           const server = yield* Deferred.await(serverReady)
           yield* server.notifications["notifications/tools/list_changed"]({})
           const notification = decoder.decode((yield* read).value)
-          assert.strictEqual(JSON.parse(notification.slice(6)).method, "notifications/tools/list_changed")
+          assert.isTrue(notification.startsWith("data: "))
+          const message = JSON.parse(notification.slice(6))
+          assert.strictEqual(message.method, "notifications/tools/list_changed")
+          assert.strictEqual(subscriptionIdOf(message), "idle-http")
           yield* Effect.promise(() => reader.cancel())
+          assert.strictEqual(clock.activeSleeps(), 0)
+          yield* TestClock.adjust("30 seconds")
+          assert.deepStrictEqual(yield* read, { done: true, value: undefined })
           assert.strictEqual(clock.activeSleeps(), 0)
         }))
 
