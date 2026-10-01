@@ -285,6 +285,9 @@ const makeState = (endpoint: Endpoint, supplied?: (endpoint: Endpoint) => Duplex
         const writer: Writer = { bytes: snapshot, resume }
         writers.add(writer)
         pump()
+        // A synchronous completion leaves no writer to cancel. Backpressured
+        // and queued writes retain their interruptible cleanup below.
+        if (activeWriter !== writer && !writers.has(writer)) return
         return Effect.sync(() => {
           writers.delete(writer)
           writer.bytes = undefined

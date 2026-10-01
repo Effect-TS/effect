@@ -162,6 +162,31 @@ describe("RedisClient", () => {
         assert.strictEqual(fixture.connections.length, 2)
       }))
 
+    it.live("uses the current standalone address for reused typed and raw commands", () =>
+      Effect.gen(function*() {
+        const first = yield* server((request) =>
+          request.connection.send(args(request)[0] === "PING" ? "+PONG\r\n" : bulk("first"))
+        )
+        const second = yield* server((request) =>
+          request.connection.send(args(request)[0] === "PING" ? "+PONG\r\n" : bulk("second"))
+        )
+        const endpoint = { host: first.host, port: first.port }
+        const topology = { _tag: "Standalone" as const, endpoint }
+        const client = yield* Client.make(makeConnector(), { topology })
+        const typed = client.run(Command.get("key"))
+        const raw = client.execute(["GET", "key"])
+        assert.strictEqual(yield* typed, "first")
+        assert.strictEqual(Protocol.toValue(yield* raw), "first")
+        endpoint.port = second.port
+        assert.strictEqual(yield* typed, "second")
+        assert.strictEqual(Protocol.toValue(yield* raw), "second")
+        topology.endpoint = { host: first.host, port: first.port }
+        assert.strictEqual(yield* typed, "first")
+        assert.strictEqual(Protocol.toValue(yield* raw), "first")
+        assert.strictEqual(first.connections.length, 1)
+        assert.strictEqual(second.connections.length, 1)
+      }))
+
     it.live("keeps healthy nodes available while sharing a pending acquisition for another node", () =>
       Effect.gen(function*() {
         const healthy = yield* server((request) => request.connection.send("+PONG\r\n"))

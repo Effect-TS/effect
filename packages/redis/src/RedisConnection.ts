@@ -116,6 +116,7 @@ export interface RedisConnection {
 interface Pending {
   bytes: Frame["bytes"] | undefined
   readonly size: number
+  readonly result: Deferred.Deferred<Protocol.Reply, RedisError> | undefined
   state: "Queued" | "Sent" | "Done"
   readonly ack: string | undefined
   readonly ackChannel: Uint8Array | undefined
@@ -282,46 +283,75 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   )
   yield* Scope.addFinalizer(yield* Effect.scope, close)
 
+  // Only bounded immutable text frames can retain preparation metadata. Their
+  // identity is reused only after the encoder validates every current argument.
+  let metadataFrame: Frame | undefined
+  let cachedMetadata: Pick<Pending, "ack" | "ackChannel" | "protocol" | "reset"> | undefined
   const prepare = (
     args: ReadonlyArray<Protocol.Argument>,
     frame: Frame,
     onResult?: (result: Result.Result<Protocol.Reply, RedisError>) => void
   ) => {
-    const command = nameOf(args[0]).toUpperCase()
-    if (
-      args.length === 0 || command === "MONITOR" || command === "QUIT" ||
-      (command === "CLIENT" && nameOf(args[1]).toUpperCase() === "REPLY")
-    ) {
-      throw new RedisError({
-        reason: "Routing",
-        message: "Command requires a different Redis connection mode",
-        outcome: "NotSent"
-      })
-    }
-    if (subscriptionAcks.has(command) && args.length !== 2) {
-      throw new RedisError({
-        reason: "Routing",
-        message: "Submit one subscription channel per command",
-        outcome: "NotSent"
-      })
-    }
-    const result = onResult === undefined ? Deferred.makeUnsafe<Protocol.Reply, RedisError>() : undefined
-    const entry: Pending = {
-      bytes: frame.bytes,
-      size: frame.size,
-      state: "Queued",
-      ack: subscriptionAcks.get(command),
-      ackChannel: subscriptionAcks.has(command)
-        ? typeof args[1] === "string" ? encoder.encode(args[1]) : Uint8Array.from(args[1])
-        : undefined,
-      protocol: command === "RESET"
+    let ack: Pending["ack"]
+    let ackChannel: Pending["ackChannel"]
+    let protocol: Pending["protocol"]
+    let reset: Pending["reset"]
+    if (metadataFrame === frame) {
+      ack = cachedMetadata!.ack
+      ackChannel = cachedMetadata!.ackChannel
+      protocol = cachedMetadata!.protocol
+      reset = cachedMetadata!.reset
+    } else {
+      const command = nameOf(args[0]).toUpperCase()
+      if (
+        args.length === 0 || command === "MONITOR" || command === "QUIT" ||
+        (command === "CLIENT" && nameOf(args[1]).toUpperCase() === "REPLY")
+      ) {
+        throw new RedisError({
+          reason: "Routing",
+          message: "Command requires a different Redis connection mode",
+          outcome: "NotSent"
+        })
+      }
+      ack = subscriptionAcks.get(command)
+      if (ack !== undefined && args.length !== 2) {
+        throw new RedisError({
+          reason: "Routing",
+          message: "Submit one subscription channel per command",
+          outcome: "NotSent"
+        })
+      }
+      ackChannel = ack === undefined
+        ? undefined
+        : typeof args[1] === "string"
+        ? encoder.encode(args[1])
+        : Uint8Array.from(args[1])
+      protocol = command === "RESET"
         ? 2
         : command === "HELLO" && nameOf(args[1]) === "2"
         ? 2
         : command === "HELLO" && nameOf(args[1]) === "3"
         ? 3
-        : undefined,
-      reset: command === "RESET",
+        : undefined
+      reset = command === "RESET"
+      if (typeof frame.bytes === "string" && frame.size <= 4096) {
+        metadataFrame = frame
+        cachedMetadata = { ack, ackChannel, protocol, reset }
+      } else {
+        metadataFrame = undefined
+        cachedMetadata = undefined
+      }
+    }
+    const result = onResult === undefined ? Deferred.makeUnsafe<Protocol.Reply, RedisError>() : undefined
+    const entry: Pending = {
+      bytes: frame.bytes,
+      size: frame.size,
+      result,
+      state: "Queued",
+      ack,
+      ackChannel,
+      protocol,
+      reset,
       resume: onResult ?? ((value) => {
         Deferred.doneUnsafe(
           result!,
@@ -330,7 +360,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       }),
       canceled: false
     }
-    return { entry, result }
+    return entry
   }
   const encodingError = (cause: unknown) =>
     cause instanceof RedisError
@@ -344,12 +374,12 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       throw new RedisError({ reason: "Closed", message: "Redis connection is unavailable", outcome: "NotSent" })
     }
     const item = prepare(args, encodeOne(args), onResult)
-    if (pending.size >= limit || queuedBytes + item.entry.size > byteLimit || outgoing.length >= limit) {
+    if (pending.size >= limit || queuedBytes + item.size > byteLimit || outgoing.length >= limit) {
       throw new RedisError({ reason: "Capacity", message: "Redis command queue capacity exceeded", outcome: "NotSent" })
     }
-    pending.add(item.entry)
-    queuedBytes += item.entry.size
-    outgoing.push(item.entry)
+    pending.add(item)
+    queuedBytes += item.size
+    outgoing.push(item)
     wakeWriter()
     return item
   }
@@ -366,7 +396,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     const prepared = commands.map((args, index) =>
       prepare(args, frames[index], onResult === undefined ? undefined : (result) => onResult(result, index))
     )
-    const size = prepared.reduce((total, item) => total + item.entry.size, 0)
+    const size = prepared.reduce((total, item) => total + item.size, 0)
     if (
       pending.size + prepared.length > limit || queuedBytes + size > byteLimit ||
       outgoing.length + prepared.length > limit
@@ -377,9 +407,9 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
         outcome: "NotSent"
       })
     }
-    for (const item of prepared) pending.add(item.entry)
+    for (const item of prepared) pending.add(item)
     queuedBytes += size
-    for (const item of prepared) outgoing.push(item.entry)
+    for (const item of prepared) outgoing.push(item)
     wakeWriter()
     return prepared
   }
@@ -406,8 +436,8 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       const operation = Deferred.await(item.result!).pipe(
         Effect.onInterrupt(() =>
           Effect.sync(() => {
-            submitted = item.entry.state === "Sent"
-            cancel(item.entry)
+            submitted = item.state === "Sent"
+            cancel(item)
           })
         )
       )
@@ -430,7 +460,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
           const item = submitOneUnsafe(args, (result) => {
             resume(result._tag === "Success" ? Effect.succeed(result.success) : Effect.fail(result.failure))
           })
-          return Effect.sync(() => cancel(item.entry))
+          return Effect.sync(() => cancel(item))
         } catch (cause) {
           resume(Effect.fail(encodingError(cause)))
         }
@@ -452,7 +482,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
             if (--remaining === 0) resume(Effect.succeed(results))
           })
           return Effect.sync(() => {
-            for (const item of items) cancel(item.entry)
+            for (const item of items) cancel(item)
           })
         } catch (cause) {
           resume(Effect.fail(encodingError(cause)))
@@ -465,7 +495,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
               .pipe(
                 Effect.onInterrupt(() =>
                   Effect.sync(() => {
-                    for (const item of items) cancel(item.entry)
+                    for (const item of items) cancel(item)
                   })
                 )
               )
@@ -653,7 +683,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   }
   if (timeout === undefined) {
     ConnectionInternal.register(connection, (args, onResult) => {
-      const { entry } = submitOneUnsafe(args, onResult)
+      const entry = submitOneUnsafe(args, onResult)
       return () => cancel(entry)
     })
   }

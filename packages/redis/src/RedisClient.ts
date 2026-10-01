@@ -216,6 +216,27 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     string,
     { readonly scope: Scope.Closeable; readonly connection: Connection.RedisConnection }
   >()
+  let standaloneAddress: {
+    readonly host: string
+    readonly port: number
+    readonly path: string | undefined
+    readonly tls: boolean
+    readonly key: string
+  } | undefined
+  const standaloneConnection = () => {
+    if (topologyConfig._tag !== "Standalone") return undefined
+    const { host, port, path, tls } = topologyConfig.endpoint
+    const secure = Boolean(tls)
+    // Reuse only the address string. Read current fields on every invocation so
+    // replacing or changing the endpoint still selects the current session.
+    if (
+      standaloneAddress === undefined || standaloneAddress.host !== host || standaloneAddress.port !== port ||
+      standaloneAddress.path !== path || standaloneAddress.tls !== secure
+    ) {
+      standaloneAddress = { host, port, path, tls: secure, key: endpointKey({ host, port, path, tls: secure }) }
+    }
+    return connections.get(standaloneAddress.key)?.connection
+  }
   const reservations = new Set<{ readonly scope: Scope.Closeable; readonly endpoint: Connection.Endpoint }>()
   const connectionLocks = new Map<string, Semaphore.Semaphore>()
   const closedSignal = yield* Deferred.make<void>()
@@ -328,11 +349,11 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
         )
       }
       if (topologyConfig._tag === "Standalone" && inputRouting?.node === undefined) {
-        const cached = connections.get(endpointKey(topologyConfig.endpoint))
+        const cached = standaloneConnection()
         // Standalone has no discovery or redirects to refresh. Submit directly
         // on its live session; acquisition still replaces a failed session on
         // the next invocation without replaying uncertain commands.
-        if (cached?.connection.isOpen()) return cached.connection.execute(args)
+        if (cached?.isOpen()) return cached.execute(args)
       }
       const routing = snapshotRouting(inputRouting)
       const attempt = (
@@ -390,8 +411,8 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
   const run = <A>(command: Command.RedisCommand<A>): Effect.Effect<A, RedisError> =>
     Effect.callback((resume) => {
       if (!closed && topologyConfig._tag === "Standalone" && command.routing?.node === undefined) {
-        const cached = connections.get(endpointKey(topologyConfig.endpoint))
-        const submit = cached?.connection.isOpen() ? ConnectionInternal.get(cached.connection) : undefined
+        const cached = standaloneConnection()
+        const submit = cached?.isOpen() ? ConnectionInternal.get(cached) : undefined
         if (submit !== undefined && !requiresReservation(command.arguments)) {
           try {
             const decode = command.decode

@@ -80,6 +80,19 @@ describe("Redis physical session", () => {
       args.pop()
       yield* command
       assert.deepStrictEqual(Protocol.toValue(captured!), args)
+      args.splice(0, args.length, "CLIENT", "SETNAME", "name")
+      yield* command
+      const last = captured
+      args[1] = "REPLY"
+      args[2] = "OFF"
+      const invalid = failure(yield* Effect.result(command))
+      assert.strictEqual(invalid.reason, "Routing")
+      assert.strictEqual(invalid.outcome, "NotSent")
+      assert.strictEqual(captured, last)
+      args[1] = "SETNAME"
+      args[2] = "updated"
+      yield* command
+      assert.deepStrictEqual(Protocol.toValue(captured!), args)
     }))
 
   it.effect("keeps repeated command and pipeline effects independent with immediate replies", () =>
@@ -533,25 +546,38 @@ describe("Redis physical session", () => {
       assert.strictEqual(failure(yield* Fiber.join(queued)).outcome, "NotSent")
     }))
 
-  it.live("clears subscription state after RESET before reading ordinary RESP2 arrays", () =>
+  it.live("updates protocol and subscription state when repeated command arguments change", () =>
     Effect.gen(function*() {
       const fixture = yield* server
       const connection = yield* Connection.make(makeConnector(), fixture)
-      const subscribing = yield* connection.execute(["SUBSCRIBE", "channel"]).pipe(Effect.forkChild)
-      const subscription = yield* Effect.promise(fixture.nextRequest)
-      subscription.connection.send("*3\r\n+subscribe\r\n+channel\r\n:1\r\n")
-      yield* Fiber.join(subscribing)
-      const shardSubscribing = yield* connection.execute(["SSUBSCRIBE", "shard"]).pipe(Effect.forkChild)
-      const shardSubscription = yield* Effect.promise(fixture.nextRequest)
-      shardSubscription.connection.send("*3\r\n+ssubscribe\r\n+shard\r\n:1\r\n")
-      yield* Fiber.join(shardSubscribing)
-      const resetting = yield* connection.execute(["RESET"]).pipe(Effect.forkChild)
-      const reset = yield* Effect.promise(fixture.nextRequest)
-      reset.connection.send("+RESET\r\n")
-      yield* Fiber.join(resetting)
-      const pending = yield* connection.execute(["EVAL", "return {'message','channel','payload'}", "0"]).pipe(
-        Effect.forkChild
-      )
+      const args: Array<Protocol.Argument> = []
+      const operation = connection.execute(args)
+      for (
+        const [current, response] of [
+          [["HELLO", "3"], "%1\r\n+proto\r\n:3\r\n"],
+          [["HELLO", "2"], "*2\r\n+proto\r\n:2\r\n"],
+          [["SUBSCRIBE", "channel"], "*3\r\n+subscribe\r\n+channel\r\n:1\r\n"],
+          [["SUBSCRIBE", "channel"], "*3\r\n+subscribe\r\n+channel\r\n:1\r\n"],
+          [["SUBSCRIBE", "other"], "*3\r\n+subscribe\r\n+other\r\n:2\r\n"],
+          [["SSUBSCRIBE", "shard"], "*3\r\n+ssubscribe\r\n+shard\r\n:1\r\n"],
+          [["PING"], Buffer.concat([array("message", "other", "payload"), array("pong", "")])],
+          [["RESET"], "+RESET\r\n"],
+          [["HELLO", "3"], "%1\r\n+proto\r\n:3\r\n"],
+          [["SUBSCRIBE", "third"], ">3\r\n+subscribe\r\n+third\r\n:1\r\n"],
+          [["RESET"], "+RESET\r\n"]
+        ] as const
+      ) {
+        args.length = 0
+        for (const argument of current) args.push(argument)
+        const pending = yield* operation.pipe(Effect.forkChild)
+        const request = yield* Effect.promise(fixture.nextRequest)
+        assert.deepStrictEqual(request.args.map((argument) => argument.toString()), Array.from(current))
+        request.connection.send(response)
+        const reply = yield* Fiber.join(pending)
+        if (current[0] === "PING") assert.deepStrictEqual(Protocol.toValue(reply), ["pong", ""])
+      }
+      args.splice(0, args.length, "EVAL", "return {'message','channel','payload'}", "0")
+      const pending = yield* operation.pipe(Effect.forkChild)
       const request = yield* Effect.promise(fixture.nextRequest)
       request.connection.send(array("message", "channel", "payload"))
       assert.deepStrictEqual(Protocol.toValue(yield* Fiber.join(pending)), ["message", "channel", "payload"])
