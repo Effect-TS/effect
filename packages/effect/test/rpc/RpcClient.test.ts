@@ -16,6 +16,37 @@ const TestGroup = RpcGroup.make(
   Rpc.make("Events", { success: RpcSchema.Stream(Schema.String, Schema.Never) })
 )
 
+const ChunkGroup = RpcGroup.make(
+  Rpc.make("Bad", { success: RpcSchema.Stream(Schema.Number, Schema.Never) }),
+  Rpc.make("Good", { success: RpcSchema.Stream(Schema.String, Schema.Never) }),
+  Rpc.make("Unary", { success: Schema.String })
+)
+
+const makeChunkProtocol = (beforeInterrupt: Effect.Effect<void> = Effect.void) =>
+  Effect.gen(function*() {
+    const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+    const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+    const protocol = RpcClient.Protocol.of({
+      codecFor: RpcSerialization.json.codecFor,
+      supportsAck: false,
+      supportsTransferables: false,
+      run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+      send: (_clientId, message) =>
+        Effect.andThen(
+          message._tag === "Interrupt" ? beforeInterrupt : Effect.void,
+          Effect.asVoid(Queue.offer(sent, message))
+        )
+    })
+    const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+    const handle = yield* Deferred.await(received)
+    return { client, handle, sent }
+  })
+
+const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]>[1]) => {
+  assert(message._tag === "Request")
+  return message.id
+}
+
 const makeHttpClient = (body: string): HttpClient.HttpClient =>
   HttpClient.make((request) =>
     Effect.succeed(
@@ -62,6 +93,59 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const bad = yield* client.Bad().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+      const badRequestId = takeRequestId(yield* Queue.take(sent))
+
+      const good = yield* client.Good().pipe(Stream.runCollect, Effect.forkChild)
+      const goodRequestId = takeRequestId(yield* Queue.take(sent))
+
+      const unary = yield* client.Unary().pipe(Effect.forkChild)
+      const unaryRequestId = takeRequestId(yield* Queue.take(sent))
+
+      // A decode defect must not escape into the shared protocol receive loop.
+      yield* handle({ _tag: "Chunk", requestId: badRequestId, values: ["not a number"] })
+      const badExit = yield* Fiber.join(bad)
+      assert(Exit.isFailure(badExit))
+      assert.isFalse(Cause.hasInterruptsOnly(badExit.cause))
+      assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId: badRequestId })
+
+      yield* handle({ _tag: "Chunk", requestId: goodRequestId, values: ["alive"] })
+      yield* handle({ _tag: "Exit", requestId: goodRequestId, exit: { _tag: "Success", value: null } })
+      yield* handle({ _tag: "Exit", requestId: unaryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert.deepStrictEqual(Array.from(yield* Fiber.join(good)), ["alive"])
+      assert.strictEqual(yield* Fiber.join(unary), "ok")
+    }))
+
+  it.effect("preserves cancellation and the server Interrupt during chunk failure cleanup", () =>
+    Effect.gen(function*() {
+      const sendingInterrupt = yield* Deferred.make<void>()
+      const releaseInterrupt = yield* Deferred.make<void>()
+      const { client, handle, sent } = yield* makeChunkProtocol(
+        Deferred.succeed(sendingInterrupt, void 0).pipe(Effect.andThen(Deferred.await(releaseInterrupt)))
+      )
+      const reader = yield* client.Bad().pipe(Stream.runDrain, Effect.forkChild)
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      let observedInterrupt = false
+      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["not a number"] }).pipe(
+        Effect.onInterrupt(() => Effect.sync(() => void (observedInterrupt = true))),
+        Effect.forkChild
+      )
+      yield* Deferred.await(sendingInterrupt)
+      assert(Exit.isFailure(yield* Fiber.await(reader)))
+
+      // Request cancellation while the Interrupt send is suspended, without waiting for it.
+      yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+      yield* Deferred.succeed(releaseInterrupt, void 0)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert.deepStrictEqual(yield* Queue.clear(sent), [{ _tag: "Interrupt", requestId }])
+      // The cancelled handler must end interrupted, not with the decode defect it already handled.
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      assert.isTrue(observedInterrupt)
+    }))
+
   for (const consumer of ["queue", "stream"] as const) {
     it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
       Effect.gen(function*() {
