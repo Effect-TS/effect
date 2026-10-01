@@ -287,6 +287,62 @@ describe("SqlRunnerStorage", () => {
     )
   }, 60_000)
 
+  it.effect("replaces a pending reserved connection once when operations waiting on it fail", () => {
+    const partitioned = makePartitionState()
+    const layer = StorageLayer.pipe(
+      Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
+      Layer.provide(ShardingConfig.layer({
+        shardLockDisableAdvisory: true,
+        ...partitionConfig
+      }))
+    )
+
+    return Effect.gen(function*() {
+      const storage = yield* RunnerStorage.RunnerStorage
+      const runner = Runner.make({
+        address: runnerAddress1,
+        groups: ["default"],
+        weight: 1
+      })
+      const shards = [ShardId.make("default", 1)]
+
+      yield* storage.register(runner, true)
+      yield* storage.acquire(runnerAddress1, shards)
+
+      // the first rebuild stalls releasing the wedged connection, so its
+      // replacement stays pending
+      partitionConnection(partitioned)
+      partitioned.blockRelease = true
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+      restoreConnection(partitioned)
+      const reserved = partitioned.reservedConnections
+
+      // both operations wait on the pending connection and time out together,
+      // but only one of them may replace it
+      const exits = yield* Effect.all([
+        storage.refresh(runnerAddress1, shards).pipe(Effect.exit),
+        storage.refresh(runnerAddress1, shards).pipe(Effect.exit)
+      ], { concurrency: "unbounded" })
+      assert(exits.every(Exit.isFailure))
+      yield* waitUntil(() => partitioned.reservedConnections > reserved)
+      expect(
+        yield* storage.refresh(runnerAddress1, shards).pipe(
+          Effect.retry({ times: 20, schedule: Schedule.spaced(20) })
+        )
+      ).toEqual(shards)
+      yield* Effect.sleep(lockOperationInterval / 2)
+      expect(partitioned.reservedConnections, partitionDiagnostics(partitioned)).toEqual(reserved + 1)
+    }).pipe(
+      // let the stalled release finish so the layer can be torn down
+      Effect.ensuring(Effect.sync(() => {
+        restoreConnection(partitioned)
+        partitioned.blockRelease = false
+      })),
+      Effect.provide(layer),
+      TestClock.withLive
+    )
+  }, 60_000)
+
   it.effect("isolates advisory shard locks by prefix", () =>
     Effect.gen(function*() {
       const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })

@@ -173,3 +173,94 @@ it.effect("wakes waiters when closed during a rebuild", () =>
     assert.isTrue(Exit.hasInterrupts(exit))
     yield* Deferred.succeed(acquire, void 0)
   }))
+
+it.effect("only rebuilds the current generation", () =>
+  Effect.gen(function*() {
+    const parentScope = yield* Scope.make()
+    let acquisitions = 0
+    const ref = yield* ResourceRef.from(parentScope, () => Effect.sync(() => ++acquisitions))
+    const first = ref.scopeUnsafe()!
+
+    const rebuild = ref.rebuildUnsafe({ from: first })
+    assert.isDefined(rebuild)
+    // The generation is already being replaced.
+    assert.isUndefined(ref.rebuildUnsafe({ from: first }))
+    assert.strictEqual(yield* rebuild!, 2)
+    assert.isUndefined(ref.rebuildUnsafe({ from: first }))
+
+    const second = ref.scopeUnsafe()!
+    assert.notStrictEqual(second, first)
+    assert.strictEqual(yield* ref.rebuildUnsafe({ from: second })!, 3)
+
+    const third = ref.scopeUnsafe()!
+    yield* Scope.close(parentScope, Exit.void)
+    assert.isUndefined(ref.scopeUnsafe())
+    assert.isUndefined(ref.rebuildUnsafe({ from: third }))
+  }))
+
+it.effect("admits waiters after onAcquired completes", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const parentScope = yield* Effect.scope
+    const preparing = yield* Deferred.make<number>()
+    const prepared = yield* Deferred.make<void>()
+    let acquisitions = 0
+    const ref = yield* ResourceRef.from(parentScope, () => Effect.sync(() => ++acquisitions))
+
+    const rebuild = yield* Effect.forkChild(
+      ref.rebuildUnsafe({
+        from: ref.scopeUnsafe()!,
+        onAcquired: (value) => Deferred.succeed(preparing, value).pipe(Effect.andThen(Deferred.await(prepared)))
+      })!
+    )
+    assert.strictEqual(yield* Deferred.await(preparing), 2)
+    const waiter = yield* Effect.forkChild(ref.await)
+    yield* Effect.yieldNow
+
+    // Published, but not yet ready for use.
+    assert.strictEqual(ref.state.current._tag, "Acquired")
+    assert.deepStrictEqual(ref.getUnsafe(), Option.none())
+    assert.isUndefined(waiter.pollUnsafe())
+
+    yield* Deferred.succeed(prepared, void 0)
+    assert.strictEqual(yield* Fiber.join(rebuild), 2)
+    assert.strictEqual(yield* Fiber.join(waiter), 2)
+    assert.deepStrictEqual(ref.getUnsafe(), Option.some(2))
+  })))
+
+it.effect("leaves admission to a rebuild started from onAcquired", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const parentScope = yield* Effect.scope
+    const newerAcquiring = yield* Deferred.make<void>()
+    const newerAcquire = yield* Deferred.make<void>()
+    let acquisitions = 0
+    const ref = yield* ResourceRef.from(parentScope, () =>
+      Effect.gen(function*() {
+        const acquisition = ++acquisitions
+        if (acquisition === 3) {
+          yield* Deferred.succeed(newerAcquiring, void 0)
+          yield* Deferred.await(newerAcquire)
+        }
+        return acquisition
+      }))
+
+    let newerRebuild: Fiber.Fiber<number> | undefined
+    const rebuild = ref.rebuildUnsafe({
+      from: ref.scopeUnsafe()!,
+      // Replaces the generation being prepared, as a defect during replay does.
+      onAcquired: () =>
+        Effect.gen(function*() {
+          newerRebuild = yield* Effect.forkChild(ref.rebuildUnsafe({ from: ref.scopeUnsafe()! })!)
+          yield* Deferred.await(newerAcquiring)
+        })
+    })!
+    assert.strictEqual(yield* rebuild, 2)
+
+    const waiter = yield* Effect.forkChild(ref.await)
+    yield* Effect.yieldNow
+    assert.isFalse(ref.latch.isOpen(), "the superseded rebuild must not admit waiters")
+    assert.isUndefined(waiter.pollUnsafe())
+
+    yield* Deferred.succeed(newerAcquire, void 0)
+    assert.strictEqual(yield* Fiber.join(newerRebuild!), 3)
+    assert.strictEqual(yield* Fiber.join(waiter), 3)
+  })))

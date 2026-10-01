@@ -32,6 +32,7 @@ import {
   MachineId,
   Message,
   MessageStorage,
+  type Reply,
   Runner,
   RunnerAddress,
   RunnerHealth,
@@ -1801,6 +1802,66 @@ const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
   return { manager, shardId, send, interrupt, requestId, attempts, acquired: generations.acquired } as const
 })
 
+// Drives an EntityManager whose handlers defect while another request is still
+// running on them. The restart backoff outlasts the test, so the replacement
+// handlers are never acquired.
+const startDefectBackoff = Effect.fnUntraced(function*(entityId: string, persisted: boolean) {
+  const run = Rpc.make("run", { payload: { id: Schema.String } })
+  const entity = Entity.make("DefectRecoveryBackoff", [run])
+  const sharding = yield* Sharding.Sharding
+  const storage = yield* MessageStorage.MessageStorage
+  const started = yield* Queue.unbounded<string>()
+  const interrupted = yield* Deferred.make<void>()
+  const release = yield* Deferred.make<void>()
+  const replies: Array<readonly [string, Reply.Reply<any>]> = []
+  const manager = yield* EntityManager.make(
+    entity,
+    Effect.succeed(entity.of({
+      run: ({ payload }) =>
+        payload.id === "crash" ? Effect.die("crash") : Queue.offer(started, payload.id).pipe(
+          Effect.andThen(Deferred.await(release)),
+          Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+        )
+    })),
+    {
+      sharding,
+      storage: persisted ? storage : MessageStorage.noop,
+      runnerAddress: RunnerAddress.make("localhost", 1234),
+      residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+      maxIdleTime: Infinity,
+      concurrency: "unbounded",
+      defectRetryPolicy: Schedule.spaced("1 hour")
+    }
+  )
+  const id = EntityId.make(entityId)
+  const shardId = sharding.getShardId(id, "default")
+  const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId: id })
+  const send = Effect.fnUntraced(function*(payloadId: string, existingRequestId?: Snowflake.Snowflake) {
+    const requestId = existingRequestId ?? (yield* sharding.getSnowflake)
+    yield* manager.sendLocal(
+      new Message.IncomingRequestLocal<typeof run>({
+        envelope: Envelope.makeRequest<typeof run>({
+          requestId,
+          address,
+          tag: "run",
+          payload: { id: payloadId },
+          headers: Headers.empty
+        }),
+        lastSentReply: Option.none(),
+        annotations: persisted ? Context.make(ClusterSchema.Persisted, true) : Context.empty(),
+        respond: (reply) => Effect.sync(() => replies.push([payloadId, reply]))
+      })
+    )
+    return requestId
+  })
+  yield* TestClock.adjust(1)
+  const inflight = yield* send("inflight")
+  assert.strictEqual(yield* Queue.take(started), "inflight")
+  yield* send("crash")
+  yield* TestClock.adjust(1)
+  return { manager, shardId, send, started, interrupted, release, replies, inflight } as const
+})
+
 describe.concurrent("Sharding defect recovery", () => {
   it.effect("restarts again when a replayed request defects synchronously", () =>
     Effect.gen(function*() {
@@ -2074,6 +2135,39 @@ describe.concurrent("Sharding defect recovery", () => {
       assert.deepStrictEqual(shutdown.pollUnsafe(), Exit.void)
       assert.isDefined(queued.pollUnsafe(), "closing the entity must wake writers waiting for its handlers")
       yield* Deferred.succeed(acquired, undefined)
+    }).pipe(Effect.provide(BlockedRebuildSharding)))
+
+  it.effect("replies to in-flight volatile requests when the entity closes during the restart backoff", () =>
+    Effect.gen(function*() {
+      const { interrupted, manager, release, replies, shardId } = yield* startDefectBackoff("backoff-volatile", false)
+      const shutdown = yield* manager.interruptShard(shardId).pipe(Effect.forkChild)
+      // The replacement is never acquired, so shutdown ends at the termination timeout.
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(shutdown.pollUnsafe(), Exit.void)
+      assert.isTrue(yield* Deferred.isDone(interrupted), "the replaced handlers must be closed")
+      const reply = Array.findFirst(replies, ([id]) => id === "inflight")
+      assert(Option.isSome(reply), "the in-flight request must receive a reply")
+      const [, inflightReply] = reply.value
+      assert(inflightReply._tag === "WithExit" && Exit.hasInterrupts(inflightReply.exit))
+      yield* Deferred.succeed(release, undefined)
+    }).pipe(Effect.provide(BlockedRebuildSharding)))
+
+  it.effect("releases in-flight persisted requests for redelivery when the entity closes during the restart backoff", () =>
+    Effect.gen(function*() {
+      const { inflight, interrupted, manager, release, replies, send, shardId, started } = yield* startDefectBackoff(
+        "backoff-persisted",
+        true
+      )
+      const shutdown = yield* manager.interruptShard(shardId).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(shutdown.pollUnsafe(), Exit.void)
+      // The replaced handlers stop before the request can run anywhere else.
+      assert.isTrue(yield* Deferred.isDone(interrupted), "the replaced handlers must be closed")
+      // No terminal reply, so storage delivers the request to a new activation.
+      assert.isFalse(Array.some(replies, ([id]) => id === "inflight"))
+      yield* send("inflight", inflight)
+      assert.strictEqual(yield* Queue.take(started), "inflight")
+      yield* Deferred.succeed(release, undefined)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
 })
 
