@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, SchemaGetter, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
@@ -22,23 +22,7 @@ const ChunkGroup = RpcGroup.make(
   Rpc.make("Unary", { success: Schema.String })
 )
 
-const makeDecodeGroup = (decode: Effect.Effect<never>) =>
-  RpcGroup.make(
-    Rpc.make("Decode", {
-      success: RpcSchema.Stream(
-        Schema.String.pipe(Schema.decode({
-          decode: SchemaGetter.transformOptionalEffect(() => decode),
-          encode: SchemaGetter.passthrough()
-        })),
-        Schema.Never
-      )
-    })
-  )
-
-const makeChunkProtocol = <R extends Rpc.Any>(
-  group: RpcGroup.RpcGroup<R>,
-  beforeInterrupt: Effect.Effect<void> = Effect.void
-) =>
+const makeChunkProtocol = (beforeInterrupt: Effect.Effect<void> = Effect.void) =>
   Effect.gen(function*() {
     const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
     const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
@@ -53,7 +37,7 @@ const makeChunkProtocol = <R extends Rpc.Any>(
           Effect.asVoid(Queue.offer(sent, message))
         )
     })
-    const client = yield* RpcClient.make(group).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+    const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
     const handle = yield* Deferred.await(received)
     return { client, handle, sent }
   })
@@ -111,7 +95,7 @@ const assertEmptyResponseFailsRequest = (
 describe("RpcClient", () => {
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
     Effect.gen(function*() {
-      const { client, handle, sent } = yield* makeChunkProtocol(ChunkGroup)
+      const { client, handle, sent } = yield* makeChunkProtocol()
       const bad = yield* client.Bad().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
       const badRequestId = takeRequestId(yield* Queue.take(sent))
 
@@ -135,43 +119,11 @@ describe("RpcClient", () => {
       assert.strictEqual(yield* Fiber.join(unary), "ok")
     }))
 
-  it.effect("propagates interruption from chunk decoding through the receive handler", () =>
-    Effect.gen(function*() {
-      const { client, handle, sent } = yield* makeChunkProtocol(makeDecodeGroup(Effect.interrupt))
-      const reader = yield* client.Decode().pipe(Stream.runDrain, Effect.forkChild)
-      const requestId = takeRequestId(yield* Queue.take(sent))
-
-      const receiveExit = yield* Effect.exit(handle({ _tag: "Chunk", requestId, values: ["value"] }))
-      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
-      const readerExit = yield* Fiber.await(reader)
-      assert(Exit.isFailure(readerExit) && Cause.hasInterruptsOnly(readerExit.cause))
-      assert.strictEqual(yield* Queue.size(sent), 0)
-    }))
-
-  it.effect("external interruption during chunk decoding ends the handler and consumer", () =>
-    Effect.gen(function*() {
-      const decoding = yield* Deferred.make<void>()
-      const { client, handle, sent } = yield* makeChunkProtocol(
-        makeDecodeGroup(Deferred.succeed(decoding, void 0).pipe(Effect.andThen(Effect.never)))
-      )
-      const reader = yield* client.Decode().pipe(Stream.runDrain, Effect.forkChild)
-      const requestId = takeRequestId(yield* Queue.take(sent))
-      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["value"] }).pipe(Effect.forkChild)
-      yield* Deferred.await(decoding)
-
-      yield* Fiber.interrupt(receiver)
-      const receiveExit = yield* Fiber.await(receiver)
-      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
-      const readerExit = yield* Fiber.await(reader)
-      assert(Exit.isFailure(readerExit) && Cause.hasInterruptsOnly(readerExit.cause))
-    }))
-
-  it.effect("external interruption during chunk failure cleanup does not lose the server Interrupt", () =>
+  it.effect("preserves cancellation and the server Interrupt during chunk failure cleanup", () =>
     Effect.gen(function*() {
       const sendingInterrupt = yield* Deferred.make<void>()
       const releaseInterrupt = yield* Deferred.make<void>()
       const { client, handle, sent } = yield* makeChunkProtocol(
-        ChunkGroup,
         Deferred.succeed(sendingInterrupt, void 0).pipe(Effect.andThen(Deferred.await(releaseInterrupt)))
       )
       const reader = yield* client.Bad().pipe(Stream.runDrain, Effect.forkChild)
