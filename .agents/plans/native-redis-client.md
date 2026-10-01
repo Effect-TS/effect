@@ -7,15 +7,15 @@ node-redis dependency is removed. Persistence consumers provide compatibility
 coverage; they do not define the general client's capabilities.
 
 Status: NodeRedis, BunRedis, and DenoRedis all use the shared native engine.
-The Bun/Deno migration passed their actual runtime tests, both Redis 7/8
-mandatory manifests, and six-package strict/stripped consumer validation.
-Final-source hosted CI is pending at publication of this checkpoint.
-The retained performance baseline at `784071a66` establishes parity in seven
-of eight workloads; sequential requests remain inconclusive, so performance
-acceptance is incomplete. This migration relocates the transport without
-changing its bytes and adds runtime service bindings; it does not change Redis
-command execution. Exact evidence is recorded below and in
-`native-redis-throughput.md`. RESP2 is the default and RESP3 is opt-in.
+Frozen runtime HEAD `e0f359e27` establishes parity in all eight reference
+workloads under the unchanged 5% overhead margin. A separate matched comparison
+supports approximately 5.7% lower sequential elapsed time than `3d1f7569f`.
+Actual runtime tests and clean six-package strict/stripped consumer checks
+passed. Final-source hosted CI is pending at publication of this checkpoint.
+Exact settings, intervals, source hashes, and retained reports are recorded in
+`native-redis-throughput.md`. Earlier sections below record historical
+checkpoints; the final validation section supersedes their acceptance status.
+RESP2 is the default and RESP3 is opt-in.
 Persistence supports standalone, Cluster, and Sentinel; Cluster uses
 per-identity hash tags for atomic multi-key operations.
 
@@ -377,7 +377,7 @@ submit every accepted part before waiting for drain, preserving FIFO and never
 replaying an accepted prefix. Structural tests withhold responses until complete
 node batches, ASKING/command pairs, and MULTI/EXEC batches arrive.
 
-### Hosted CI and publication status
+### Historical hosted CI and publication status
 
 Hosted [run 36783609269](https://github.com/Effect-TS/effect/actions/runs/36783609269)
 passed all ten jobs at `9f03aae4df4e178cd3582e83e0fd8a3b19f8c1a4`, including
@@ -393,7 +393,7 @@ custom runner labels excluded. Docker is unavailable locally; server binaries
 provided the local matrix, while the older hosted run exercised Docker fixtures.
 Keep the PR draft until the performance target and final-source gates pass.
 
-### Performance acceptance and remaining work
+### Historical performance acceptance checkpoint
 
 The final full reference comparison completed on frozen `784071a66` against
 isolated `redis@5.0.1`: eight workloads, 19 paired fresh-process rounds,
@@ -434,7 +434,7 @@ final-source hosted CI before release. Any further runtime change requires
 focused correctness, both mandatory Redis manifests, fresh packed consumers,
 and stable measurements before updating acceptance claims.
 
-## Bun and Deno migration validation
+## Bun and Deno migration validation checkpoint
 
 All three runtime modules now expose `Options`, `make`, `layer`, and
 `layerConfig` through `@effect/platform-node-shared/NodeRedis`. Each runtime
@@ -478,3 +478,70 @@ Validation on the migrated source:
 Bun's known Ed25519 TLS fixture failure remains separate from the passing RSA
 TLS coverage. Benchmark results above describe the prior recorded baseline;
 this migration does not establish a new full performance acceptance result.
+
+## Final performance improvement and validation, October 1, 2026
+
+Frozen runtime HEAD `e0f359e27f23c6786f12127019ae93014cfbb47f` passes all
+eight reference workloads with the unchanged 5% margin; `--require-parity`
+exited 0. The final run uses 29 alternating fresh-process pairs, 3,000 ms
+targets, 500 ms warmups, and the existing deterministic 95% paired bootstrap.
+Sequential native/reference elapsed ratio is 0.982232 (0.946523–0.996101).
+Binary SET ratio is 1.030023 (1.007511–1.044111), within the margin.
+The measured environment is Node 24.21.0, Redis 7.2.6, Linux 6.18.54,
+Xeon Platinum 8272CL, loopback TCP, and RESP2. Other runtime/protocol/network
+performance remains unmeasured.
+
+The matched committed-source comparison from `3d1f7569f` to `e0f359e27`
+supports approximately 5.7% lower sequential elapsed time: ratio 0.942555,
+95% interval 0.895564–0.967508. This measures the combined changes, not
+individual optimizations. Singleton pending, outgoing, and inflight storage
+avoid collection churn; bounded command classification caching compares current
+values; idle string writes avoid asynchronous registration. Accepted writes
+reserve ownership before callback registration, retaining FIFO, interruption,
+backpressure, and uncertain-outcome behavior. Batch admission retains direct
+Set/array loops and microtask coalescing. New regression coverage lives in the
+normal RedisClient and NodeRedis test files. Independent review found no
+concrete remaining defects.
+
+Final-source validation:
+
+- `pnpm lint-fix`, `pnpm check`, focused 116 tests, and `git diff --check`
+  passed. Logs: `/tmp/native-redis-sequential-lint.log`,
+  `/tmp/native-redis-sequential-check.log`, and
+  `/tmp/native-redis-sequential-candidates-tests.log`.
+- Redis 7.2.6 and 8.10.2 each passed the mandatory 11-file manifest with
+  281 executed tests and no skips. Logs:
+  `/tmp/native-redis-e0f359e27-redis7.log` and
+  `/tmp/native-redis-e0f359e27-redis8.log`.
+- Actual Bun 1.4.0 passed 96 tests across both BunRedis files and the
+  RedisClient/RedisConnection files, including the runtime's RSA TLS coverage;
+  no failures or skips. Report: `/tmp/native-redis-bun-e0f359e27.json`.
+- Actual Deno 2.9.4 passed all 28 integration tests without skips and explicit
+  affected source/test `deno check`. Logs:
+  `/tmp/effect-redis-parity-e0f359e27-deno-check.log` and
+  `/tmp/effect-redis-parity-e0f359e27-deno-test.log`; manifest:
+  `/tmp/effect-redis-parity-e0f359e27-deno-report.json`.
+- All six package output directories were cleaned and rebuilt before fresh
+  packing. Exact source-to-tarball JS/declaration audits found no missing or
+  stale modules. All 12 public entrypoints and 107 stripped declarations
+  passed strict checks. Isolated compiled smokes passed on Node 18.20.5 and
+  24.21.0, Bun 1.4.0, and Deno 2.9.4, covering RESP2/3, binary vectors,
+  mutation safety, batching, transactions, Pub/Sub, tags/layers/configuration,
+  persistence SCAN, and Lua/NOSCRIPT recovery. No external Redis driver was
+  installed; internal exports stayed blocked; 609 source/manifest hashes
+  remained stable. Report:
+  `/tmp/effect-redis-e0f359-clean-packed-3SDCYL/report.json`.
+
+The complete final reference and matched reports, settings, fingerprints,
+and earlier inconclusive measurements are recorded in
+`native-redis-throughput.md`. Runtime source SHA-256 is
+`f7ddb6f6b9d4490d54c26e9723bb23cb773296423743c27a74998a6cd5653d57`.
+Benchmarks ran without concurrent local builds or tests; all fixtures and
+temporary worktrees were cleaned up before final validation.
+
+Hosted CI passed all ten jobs on the preceding migration commit `3d1f7569f`
+([run 36827400062](https://github.com/Effect-TS/effect/actions/runs/36827400062)).
+Final-source hosted CI is pending at publication; its result will be recorded
+in [draft PR 8638](https://github.com/Effect-TS/effect/pull/8638).
+Keep the PR draft as requested. Runtime changes require renewed evidence;
+documentation-only finalization leaves the frozen runtime unchanged.

@@ -14,7 +14,7 @@ https://github.com/Effect-TS/effect/pull/8638.
   multiple-slot Cluster pipelines, sequential requests, 128-command transactions,
   and 128-command binary GET/SET pipelines with 4 KiB payloads.
 - A fresh Node process per implementation and observation, 500 ms warmup,
-  common calibrated iterations targeting 3,000 ms, 19 paired rounds,
+  common calibrated iterations targeting 3,000 ms, 29 paired rounds,
   alternating execution order. All processes and workloads run serially.
 - Fixed chunks of 64 iterations bound retained binary replies to 32 MiB.
   Reply positions, every binary byte, acknowledgements, and final server counters
@@ -30,7 +30,87 @@ https://github.com/Effect-TS/effect/pull/8638.
 - Validate correctness before measuring; pause local tests/builds while measuring.
   Longer/more numerous pairs resolve borderline results; retain previous reports.
 
-## Latest completed paired comparison, September 30, 2026
+## Completed acceptance, October 1, 2026
+
+`tmp/runtimeperf/results/redis-parity-e0f359e27.json` records frozen HEAD
+`e0f359e27f23c6786f12127019ae93014cfbb47f`. All eight workloads establish
+parity against isolated `redis@5.0.1`, and `--require-parity` exited 0.
+The environment and acceptance margin above are unchanged: Node 24.21.0,
+Redis 7.2.6, Linux 6.18.54, Xeon Platinum 8272CL, loopback TCP, RESP2,
+29 alternating fresh-process pairs, 3,000 ms targets, and 500 ms warmups.
+All replies, counters, and binary bytes passed verification. Source and harness
+remained stable; fixtures, workers, and temporary worktrees were cleaned up.
+
+| Workload                | Native commands/s | Reference commands/s | Paired elapsed ratio | 95% interval      |
+| ----------------------- | ----------------: | -------------------: | -------------------: | ----------------- |
+| Standalone pipeline     |           443,930 |              276,771 |             0.627123 | 0.612434–0.637657 |
+| Reserved pipeline       |           518,084 |              271,067 |             0.521220 | 0.516366–0.528641 |
+| Cluster, same slot      |           280,220 |              177,394 |             0.640398 | 0.608581–0.657055 |
+| Cluster, multiple slots |           219,698 |              177,356 |             0.808817 | 0.797788–0.840554 |
+| Sequential              |            17,741 |               17,623 |             0.982232 | 0.946523–0.996101 |
+| Transactions            |           359,672 |              273,457 |             0.759247 | 0.749013–0.768642 |
+| Binary GET              |           193,907 |              152,937 |             0.781784 | 0.769617–0.793553 |
+| Binary SET              |           135,832 |              138,979 |             1.030023 | 1.007511–1.044111 |
+
+Binary SET has approximately 3% elapsed overhead, within the unchanged 5%
+margin. These results establish acceptance for this measured environment;
+they do not measure TLS, RESP3, other runtimes, remote networks, or failover.
+
+| Artifact         | SHA-256                                                            |
+| ---------------- | ------------------------------------------------------------------ |
+| Runtime source   | `f7ddb6f6b9d4490d54c26e9723bb23cb773296423743c27a74998a6cd5653d57` |
+| Clean worktree   | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| Benchmark worker | `9c137dc22a4cae226cef0ae077b2350f7224cc1ebe63c522bf6fb9674179230a` |
+| Coordinator      | `c89c6bfab03d554384ce7138900b8cc946ccc587d3f744f3d37e65f02703da06` |
+| Bootstrap stats  | `75cc295130ac4cf3115611492d2ed89360b5ee69105a4b294ec26eb794c5dce2` |
+
+### Matched sequential improvement
+
+`tmp/runtimeperf/results/redis-matched-3d1-e0f359e27.json` compares committed
+base `3d1f7569f421a1fece88812ceddfbc4fe7f2d3ba` with the final candidate in
+isolated worktrees. It uses the same environment, unchanged worker, 29 alternating
+fresh-process pairs, 3,000 ms targets, 500 ms warmups, and 48,211 common
+commands per observation. Seven module-resolution guards per checkout verify
+that each worker uses its own package sources. All contract checks passed;
+source stayed stable and both worktrees and the fixture were removed.
+
+The head/base elapsed ratio is **0.942555**, with a 95% interval of
+**0.895564–0.967508**: approximately **5.7% lower sequential elapsed time**
+for the combined changes. Median throughput is 16,436 commands/s for base
+and 17,447 for head. This does not isolate individual optimizations.
+The changes reduce singleton pending/outgoing/inflight allocations, bound
+command classification caching, and avoid asynchronous registration for idle
+string writes while preserving accepted-write ownership and backpressure FIFO.
+
+Base runtime SHA-256 is
+`ece2ff5d75e40ef2be852636e3d26f2b26df58dd082e8ae43aa16f7adbf6c33a`;
+candidate, worker, and stats hashes match the full reference run above.
+The matched coordinator SHA-256 is
+`c44c479ac99a154c401b625bf24d3afd4563a8702320218a226db8a2d70a76c4`.
+Its archived source is
+`tmp/runtimeperf/results/redis-matched-coordinator-e0f359e27.ts`.
+
+### Retained intermediate measurements
+
+Earlier matched reports remain in `tmp/runtimeperf/results/`:
+`redis-matched-3d1-5e46948b1.json` (0.983, 0.941–1.049),
+`redis-matched-5e46948b1-3babd6de1.json` (0.979, 0.969–1.007),
+`redis-matched-3d1-3babd6de1.json` (0.964, 0.936–1.007), and
+`redis-matched-3d1-72a1170b5.json` (0.980, 0.905–1.016).
+Each is inconclusive for improvement; only the final combined comparison above
+supports the current claim.
+
+The 19-pair full run `redis-parity-72a1170b5.json` established parity in six
+workloads, with sequential and binary SET inconclusive. Precision-only follow-ups
+used 41 pairs, 5,000 ms targets, and only the standalone fixture, whereas full
+runs also include a Cluster fixture. `redis-sequential-72a1170b5-41pairs.json`
+remained inconclusive: ratio 1.02886655, interval 1.00023177–1.05040266;
+its upper bound exceeds 1.05 and must not be rounded into a pass.
+`redis-binary-set-72a1170b5-41pairs.json` established parity with ratio
+1.01544074 and interval 1.01246521–1.03175353. The final full run supersedes
+these acceptance statuses without changing their recorded classifications.
+
+## Historical paired comparison, September 30, 2026
 
 `tmp/runtimeperf/results/redis-parity-784071a66.json` records source at HEAD
 `784071a66c11f0daaef1a5e4c6c6a6af2e7db71d` with the worktree fingerprint below.
