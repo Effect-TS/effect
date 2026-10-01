@@ -2245,7 +2245,6 @@ describe("Sharding shard lock failover", () => {
             refresh: Effect.fnUntraced(function*(address, shardIds) {
               const shards = globalThis.Array.from(shardIds)
               if ((yield* Deferred.isDone(acquireStarted)) && !(yield* Deferred.isDone(acquireDone))) {
-                // Complete acquisition between the refresh request and response.
                 assert.deepStrictEqual(shards, [])
                 yield* Deferred.succeed(refreshStarted, void 0)
                 yield* Deferred.await(acquireDone)

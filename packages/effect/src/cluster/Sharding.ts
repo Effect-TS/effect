@@ -552,8 +552,7 @@ const make = Effect.gen(function*() {
     const refreshShardLocks = Effect.gen(function*() {
       const refreshed = [...acquiredShards, ...releasingShards]
       const acquired = yield* runnerStorage.refresh(selfAddress, refreshed)
-      // A shard acquired while this refresh is in flight was not requested, so
-      // only the refreshed shards can be reported as lost.
+      // Shards acquired during the request are absent from its response.
       for (const shardId of refreshed) {
         if (MutableHashSet.has(acquiredShards, shardId) && !acquired.includes(shardId)) {
           MutableHashSet.remove(acquiredShards, shardId)
