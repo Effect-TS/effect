@@ -23,9 +23,9 @@ import {
   Scope,
   Stream
 } from "effect"
-import { ClusterCron, ClusterSchema, DeliverAt, Entity, EntityResource, Singleton } from "effect/unstable/cluster"
-import { Rpc, RpcSchema } from "effect/unstable/rpc"
-import { Activity, DurableClock, DurableDeferred, DurableQueue, Workflow } from "effect/unstable/workflow"
+import { ClusterCron, ClusterSchema, DeliverAt, Entity, EntityResource, Singleton } from "effect/cluster"
+import { Rpc, RpcSchema } from "effect/rpc"
+import { Activity, DurableClock, DurableDeferred, DurableQueue, Workflow } from "effect/workflow"
 
 // ---------------------------------------------------------------------------
 // Observable module state. It lives in the Worker isolate, is shared with the

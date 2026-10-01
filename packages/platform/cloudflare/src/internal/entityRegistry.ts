@@ -1,7 +1,7 @@
 /** @internal */
+import type * as Entity from "effect/cluster/Entity"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
-import type * as Entity from "effect/unstable/cluster/Entity"
 import { makeRegistry } from "./registry.ts"
 
 export interface EntityRegistration {

@@ -1,8 +1,8 @@
 import { makeEntityKeepAlive } from "@effect/platform-cloudflare/internal/entityKeepAlive"
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber } from "effect"
+import { Entity, EntityResource } from "effect/cluster"
 import { TestClock } from "effect/testing"
-import { Entity, EntityResource } from "effect/unstable/cluster"
 
 const makeFixture = Effect.gen(function*() {
   const started = yield* Deferred.make<void>()
