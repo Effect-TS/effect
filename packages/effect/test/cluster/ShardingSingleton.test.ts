@@ -180,6 +180,9 @@ describe("Sharding singleton cancellation", { concurrent: false }, () => {
         const driver = yield* MessageStorage.MemoryDriver
         const state = yield* TestEntityState
         const client = (yield* TestEntity.client)("finalizer-target")
+        // Both clients are acquired before singleton execution. Keep the survivor
+        // on a separate local entity so the preserved finalizer RPC cannot block it.
+        const survivorClient = (yield* TestEntity.client)("survivor-target")
         const outerScope = yield* Effect.scope
         const runLater = yield* Deferred.make<void>()
         const survivorReady = yield* Deferred.make<Fiber.Fiber<void, unknown>>()
@@ -192,7 +195,7 @@ describe("Sharding singleton cancellation", { concurrent: false }, () => {
           Effect.gen(function*() {
             // This fiber inherits singleton identity but outlives its local run.
             const survivor = yield* Deferred.await(runLater).pipe(
-              Effect.andThen(client.Never()),
+              Effect.andThen(survivorClient.Never()),
               Effect.forkIn(outerScope, { startImmediately: true })
             )
             yield* Deferred.succeed(survivorReady, survivor)
