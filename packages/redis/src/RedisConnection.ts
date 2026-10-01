@@ -515,16 +515,6 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       Effect.andThen(transport.close)
     )
   }
-  // Bound synchronous and microtask-only transports without scheduling a new
-  // event-loop turn after every individual command. Whole batches stay atomic.
-  let commandsBeforeYield = 64
-  const write = (bytes: Parameters<Transport["write"]>[0], count: number) => {
-    const writing = transport.write(bytes, transferredWrite)
-    commandsBeforeYield -= count
-    if (commandsBeforeYield > 0) return writing
-    commandsBeforeYield = 64
-    return writing.pipe(Effect.andThen(Effect.yieldNow))
-  }
   yield* Effect.forkScoped(
     Effect.forever(
       takeOutgoing.pipe(Effect.flatMap((entries) => {
@@ -536,7 +526,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
           queuedBytes -= entry.size
           entry.state = "Sent"
           inflight.push(entry)
-          return write(bytes, 1)
+          return transport.write(bytes, transferredWrite)
         }
         const active = entries.filter((entry) => entry.state !== "Done")
         if (active.length === 0) return Effect.void
@@ -554,7 +544,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
             entry.state = "Sent"
             inflight.push(entry)
           }
-          return write(parts, active.length)
+          return transport.write(parts, transferredWrite)
         }
         const first = active[0].bytes! as string | Uint8Array
         let size = 0
@@ -591,9 +581,8 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
           entry.state = "Sent"
           inflight.push(entry)
         }
-        return write(bytes, active.length)
-      })),
-      { disableYield: true }
+        return transport.write(bytes, transferredWrite)
+      }))
     ).pipe(Effect.catchCause(failCause))
   )
 
