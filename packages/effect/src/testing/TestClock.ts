@@ -363,6 +363,13 @@ export const make = Effect.fnUntraced(function*(
       const entry = sleeps.pop()!
       advanceTo(entry.timestamp)
       entry.latch.openUnsafe()
+      // Fibers woken from another stack resume in a promise reaction (a
+      // microtask), and only then schedule follow-up work such as a Queue
+      // taker release or a fork start on a dispatcher (a macrotask). The first
+      // yield is itself a dispatcher task, so it runs after every pending
+      // reaction, and the second yield is then scheduled behind the work those
+      // reactions scheduled. Time advances only after that work has run.
+      yield* Effect.yieldNow
       yield* Effect.yieldNow
     }
     advanceTo(endTimestamp)
