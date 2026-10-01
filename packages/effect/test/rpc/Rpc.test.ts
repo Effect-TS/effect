@@ -53,6 +53,18 @@ describe("Rpc", () => {
     assert.deepStrictEqual(defect, error)
   })
 
+  it("JSON-encoded interrupt exits use null for a missing fiberId", () => {
+    const codec = Schema.toCodecJson(Rpc.exitSchema(Rpc.make("probe")))
+    const encoded = Schema.encodeSync(codec)(Exit.interrupt())
+
+    assert.deepStrictEqual(encoded, {
+      _tag: "Failure",
+      cause: [{ _tag: "Interrupt", fiberId: null }]
+    })
+    assert.deepStrictEqual(Schema.decodeSync(codec)(encoded), Exit.interrupt())
+    assert.deepStrictEqual(Schema.encodeSync(codec)(Schema.decodeSync(codec)(encoded)), encoded)
+  })
+
   it("RpcSchema.getStreamSchemas returns Option", () => {
     const plain = Rpc.make("plainSchemas", { success: Schema.String })
     const stream = Rpc.make("streamSchemas", {

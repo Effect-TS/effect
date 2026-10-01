@@ -2220,6 +2220,215 @@ describe("Sharding shard lock failover", () => {
       }).pipe(Effect.provide(layer), Effect.withLogger(logger), Effect.scoped)
     }))
 
+  it.effect("keeps shards acquired while an earlier lock refresh is in flight", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const acquireStarted = yield* Deferred.make<void>()
+      const refreshStarted = yield* Deferred.make<void>()
+      const acquireDone = yield* Deferred.make<void>()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => {
+          const storage = makeFailoverStorage(storageState, clock)
+          return RunnerStorage.RunnerStorage.of({
+            ...storage,
+            acquire: Effect.fnUntraced(function*(address, shardIds) {
+              if (yield* Deferred.isDone(acquireDone)) {
+                return yield* storage.acquire(address, shardIds)
+              }
+              yield* Deferred.succeed(acquireStarted, void 0)
+              yield* Deferred.await(refreshStarted)
+              const acquired = yield* storage.acquire(address, shardIds)
+              yield* Deferred.succeed(acquireDone, void 0)
+              return acquired
+            }),
+            refresh: Effect.fnUntraced(function*(address, shardIds) {
+              const shards = globalThis.Array.from(shardIds)
+              if ((yield* Deferred.isDone(acquireStarted)) && !(yield* Deferred.isDone(acquireDone))) {
+                assert.deepStrictEqual(shards, [])
+                yield* Deferred.succeed(refreshStarted, void 0)
+                yield* Deferred.await(acquireDone)
+              }
+              return yield* storage.refresh(address, shards)
+            })
+          })
+        })
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 3000,
+        shardLockRefreshInterval: 100,
+        entityTerminationTimeout: 0,
+        refreshAssignmentsInterval: 10
+      })
+      const layer = Sharding.layer.pipe(
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = ShardId.make("default", 1)
+
+        yield* TestClock.adjust(100)
+        assert.isTrue(yield* Deferred.isDone(acquireDone))
+        assert.isTrue(sharding.hasShardId(shardId))
+
+        yield* TestClock.adjust(500)
+
+        assert.isTrue(sharding.hasShardId(shardId), "shard acquired during the refresh was dropped")
+        assert.deepStrictEqual(storageState.releaseCalls, [])
+        assert.strictEqual(storageState.acquireCalls.length, 1)
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("releases a lost requested shard without dropping a shard acquired during refresh", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const firstShard = ShardId.make("default", 1)
+      const secondShard = ShardId.make("default", 2)
+      const refreshStarted = yield* Deferred.make<void>()
+      const refreshResponse = yield* Deferred.make<void>()
+      let acquireCount = 0
+      let lostShard = false
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => {
+          const storage = makeFailoverStorage(storageState, clock)
+          return RunnerStorage.RunnerStorage.of({
+            ...storage,
+            acquire: Effect.fnUntraced(function*(address, shardIds) {
+              acquireCount++
+              if (acquireCount === 1) {
+                return yield* storage.acquire(address, [firstShard])
+              }
+              if (acquireCount === 2) {
+                yield* Deferred.await(refreshStarted)
+              }
+              return yield* storage.acquire(
+                address,
+                globalThis.Array.from(shardIds).filter((shard) => shard.id !== firstShard.id)
+              )
+            }),
+            refresh: Effect.fnUntraced(function*(address, shardIds) {
+              const shards = globalThis.Array.from(shardIds)
+              if (!lostShard && shards.length > 0) {
+                lostShard = true
+                assert.deepStrictEqual(shards, [firstShard])
+                yield* Deferred.succeed(refreshStarted, void 0)
+                yield* Deferred.await(refreshResponse)
+                return []
+              }
+              return yield* storage.refresh(address, shards)
+            })
+          })
+        })
+      )
+      const layer = Sharding.layer.pipe(
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 2,
+          shardLockExpiration: 30_000,
+          shardLockRefreshInterval: 2000,
+          entityTerminationTimeout: 0,
+          refreshAssignmentsInterval: 10
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+
+        yield* TestClock.adjust(2000)
+        assert.isTrue(yield* Deferred.isDone(refreshStarted))
+        assert.isTrue(sharding.hasShardId(firstShard))
+        assert.isTrue(sharding.hasShardId(secondShard))
+
+        yield* Deferred.succeed(refreshResponse, void 0)
+        yield* TestClock.adjust(1)
+
+        assert.isFalse(sharding.hasShardId(firstShard))
+        assert.isTrue(sharding.hasShardId(secondShard))
+
+        yield* TestClock.adjust(1000)
+
+        assert.isFalse(sharding.hasShardId(firstShard))
+        assert.isTrue(sharding.hasShardId(secondShard))
+        assert.deepStrictEqual(storageState.releaseCalls, [firstShard])
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("refreshes a newly acquired shard when retrying a failed lock refresh", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const acquireStarted = yield* Deferred.make<void>()
+      const refreshFailed = yield* Deferred.make<void>()
+      const retryShards = yield* Deferred.make<Array<ShardId.ShardId>>()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => {
+          const storage = makeFailoverStorage(storageState, clock)
+          return RunnerStorage.RunnerStorage.of({
+            ...storage,
+            acquire: Effect.fnUntraced(function*(address, shardIds) {
+              yield* Deferred.succeed(acquireStarted, void 0)
+              yield* Deferred.await(refreshFailed)
+              return yield* storage.acquire(address, shardIds)
+            }),
+            refresh: Effect.fnUntraced(function*(address, shardIds) {
+              const shards = globalThis.Array.from(shardIds)
+              if (yield* Deferred.isDone(refreshFailed)) {
+                yield* Deferred.succeed(retryShards, shards)
+              } else if (yield* Deferred.isDone(acquireStarted)) {
+                assert.deepStrictEqual(shards, [])
+                yield* Deferred.succeed(refreshFailed, void 0)
+                return yield* Effect.fail(new ClusterError.PersistenceError({ cause: "refresh failed" }))
+              }
+              return yield* storage.refresh(address, shards)
+            })
+          })
+        })
+      )
+      const layer = Sharding.layer.pipe(
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 1,
+          shardLockExpiration: 30_000,
+          shardLockRefreshInterval: 1000,
+          entityTerminationTimeout: 0,
+          refreshAssignmentsInterval: 10
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = ShardId.make("default", 1)
+
+        yield* TestClock.adjust(1000)
+        assert.isTrue(yield* Deferred.isDone(refreshFailed))
+        assert.isTrue(sharding.hasShardId(shardId))
+        assert.isFalse(yield* Deferred.isDone(retryShards))
+
+        yield* TestClock.adjust(50)
+
+        assert.isTrue(yield* Deferred.isDone(retryShards))
+        assert.deepStrictEqual(yield* Deferred.await(retryShards), [shardId])
+        assert.isTrue(sharding.hasShardId(shardId))
+        assert.deepStrictEqual(storageState.releaseCalls, [])
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("reacquires shards when the liveness probe succeeds while lock refresh is hung", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
@@ -2412,6 +2621,72 @@ describe("Sharding shard lock failover", () => {
           entityState.buildLatch.openUnsafe()
           yield* TestClock.adjust(1)
           yield* Fiber.interrupt(entityFiber)
+        }).pipe(Effect.ensuring(entityState.buildLatch.open))
+      }).pipe(
+        Effect.provide(layer),
+        Effect.scoped
+      )
+    }))
+
+  it.effect("does not register an entity built after shard release", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 3000,
+        shardLockRefreshInterval: 100,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10,
+        sendRetryInterval: 10
+      })
+      const layer = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.layer),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const entityState = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+
+        yield* Effect.gen(function*() {
+          entityState.buildLatch.closeUnsafe()
+          const entityFiber = yield* client.GetUserVolatile({ id: 1 }).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          while (entityState.layerBuilds.current === 0) {
+            yield* TestClock.adjust(1)
+          }
+
+          storageState.assignSelf = false
+          while (storageState.releaseCalls.length === 0) {
+            yield* TestClock.adjust(10)
+          }
+          assert.isFalse(sharding.hasShardId(shardId))
+
+          entityState.buildLatch.openUnsafe()
+          yield* TestClock.adjust(10)
+
+          assert.strictEqual(yield* sharding.activeEntityCount, 0)
+          assert.strictEqual(Queue.sizeUnsafe(entityState.envelopes), 0)
+          assert.isUndefined(entityFiber.pollUnsafe())
         }).pipe(Effect.ensuring(entityState.buildLatch.open))
       }).pipe(
         Effect.provide(layer),
@@ -2629,12 +2904,15 @@ const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
 
 const TestShardingConfig = ShardingConfig.layer(testConfigDefaults)
 
-const TestShardingWithoutState = TestEntityNoState.pipe(
+const TestShardingWithoutRunnerStorage = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
-  Layer.provide(RunnerStorage.layerMemory),
   Layer.provide(RunnerHealth.layerNoop)
   // Layer.provide(Logger.minimumLogLevel(LogLevel.All)),
   // Layer.provideMerge(Logger.pretty)
+)
+
+const TestShardingWithoutState = TestShardingWithoutRunnerStorage.pipe(
+  Layer.provide(RunnerStorage.layerMemory)
 )
 
 const TestShardingWithoutRunners = TestShardingWithoutState.pipe(
@@ -2740,4 +3018,199 @@ const saveGetUserRequest = Effect.fnUntraced(function*(entityId: string, id: num
       respond: () => Effect.void
     })
   )
+})
+
+interface SingletonStorageState {
+  assignSelf: boolean
+  runner: Runner.Runner | undefined
+}
+
+const makeSingletonStorageState = (): SingletonStorageState => ({ assignSelf: true, runner: undefined })
+
+const singletonOtherRunner = Runner.make({
+  address: RunnerAddress.make("localhost", 5678),
+  groups: ["singleton"],
+  // With these fixed addresses, the weighted ring moves singleton:1 to this
+  // runner. The ownership assertions below guard that fixture assumption.
+  weight: 1000
+})
+
+// Keep the destination shard local while only the singleton shard moves away.
+const SingletonReassignmentSharding = (state: SingletonStorageState) => {
+  const runnerStorage = Layer.effect(
+    RunnerStorage.RunnerStorage,
+    Effect.succeed(RunnerStorage.RunnerStorage.of({
+      getRunners: Effect.sync(() => {
+        if (!state.runner) return []
+        if (state.assignSelf) return [[state.runner, true]] as const
+        return [
+          [state.runner, true],
+          [singletonOtherRunner, true]
+        ] as const
+      }),
+      register: (runner) =>
+        Effect.sync(() => {
+          state.runner = runner
+          return MachineId.make(1)
+        }),
+      unregister: () => Effect.void,
+      setRunnerHealth: () => Effect.void,
+      acquire: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
+      refresh: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
+      release: () => Effect.void,
+      releaseAll: () => Effect.void
+    }))
+  )
+  return TestShardingWithoutRunnerStorage.pipe(
+    Layer.provide(runnerStorage),
+    Layer.provideMerge(TestEntityState.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(ShardingConfig.layer({
+      ...testConfigDefaults,
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      availableShardGroups: ["default", "singleton"],
+      assignedShardGroups: ["default", "singleton"],
+      shardsPerGroup: 1,
+      entityTerminationTimeout: 0,
+      entityMessagePollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
+}
+
+const singletonShard = ShardId.make("singleton", 1)
+const destinationShard = ShardId.make("default", 1)
+
+const waitForSingletonOwnership = Effect.fnUntraced(function*(
+  sharding: Sharding.Sharding["Service"],
+  owned: boolean
+) {
+  for (let i = 0; i < 100; i++) {
+    if (sharding.hasShardId(singletonShard) === owned) return
+    yield* TestClock.adjust(10)
+  }
+  assert.strictEqual(sharding.hasShardId(singletonShard), owned)
+})
+
+// These tests share the internal teardown registry, so do not run concurrently.
+describe("Sharding singleton cancellation", { concurrent: false }, () => {
+  it.effect("cancels explicitly but abandons a singleton child RPC on reassignment", () =>
+    Effect.gen(function*() {
+      const storageState = makeSingletonStorageState()
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const state = yield* TestEntityState
+        // Acquire clients outside the singleton context; children must use caller identity.
+        const makeClient = yield* TestEntity.client
+        const explicitClient = makeClient("explicit-singleton-target")
+        const reassignmentClient = makeClient("singleton-target")
+        const childReady = yield* Deferred.make<Fiber.Fiber<void, unknown>>()
+        const runReassignment = yield* Deferred.make<void>()
+        const stopped = yield* Deferred.make<void>()
+        yield* waitForSingletonOwnership(sharding, true)
+        yield* sharding.registerSingleton(
+          "rpc-caller",
+          Effect.gen(function*() {
+            const child = yield* explicitClient.Never().pipe(Effect.forkChild({ startImmediately: true }))
+            yield* Deferred.succeed(childReady, child)
+            yield* Deferred.await(runReassignment)
+            yield* reassignmentClient.Never().pipe(Effect.forkChild({ startImmediately: true }))
+            return yield* Effect.never
+          }).pipe(Effect.ensuring(Deferred.succeed(stopped, void 0))),
+          { shardGroup: "singleton" }
+        )
+        yield* Queue.take(state.envelopes)
+        yield* Fiber.interrupt(yield* Deferred.await(childReady))
+        yield* TestClock.adjust(1)
+        assert.isTrue(sharding.hasShardId(singletonShard))
+        assert.strictEqual(journalInterrupts(driver), 1, "explicit child cancellation must persist")
+        yield* Queue.take(state.interrupts)
+
+        yield* Deferred.succeed(runReassignment, void 0)
+        yield* Queue.take(state.envelopes)
+        storageState.assignSelf = false
+        yield* waitForSingletonOwnership(sharding, false)
+        yield* Deferred.await(stopped)
+        yield* TestClock.adjust(1)
+        assert.isTrue(sharding.hasShardId(destinationShard), "Sharding and the destination stay alive")
+        assert.strictEqual(journalInterrupts(driver), 1, "reassignment must not add a durable cancellation")
+        assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 0)
+      }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
+    }))
+
+  it.effect("bounds singleton teardown to interruption finalization, not inherited context", () =>
+    Effect.gen(function*() {
+      const storageState = makeSingletonStorageState()
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const state = yield* TestEntityState
+        const client = (yield* TestEntity.client)("finalizer-target")
+        // Both clients are acquired before singleton execution. Keep the survivor
+        // on a separate local entity so the preserved finalizer RPC cannot block it.
+        const survivorClient = (yield* TestEntity.client)("survivor-target")
+        const outerScope = yield* Effect.scope
+        const runLater = yield* Deferred.make<void>()
+        const survivorReady = yield* Deferred.make<Fiber.Fiber<void, unknown>>()
+        const finalizing = yield* Deferred.make<void>()
+        const finish = yield* Deferred.make<void>()
+        const stopped = yield* Deferred.make<void>()
+        yield* waitForSingletonOwnership(sharding, true)
+        yield* sharding.registerSingleton(
+          "finalizer-caller",
+          Effect.gen(function*() {
+            // This fiber inherits singleton identity but outlives its local run.
+            const survivor = yield* Deferred.await(runLater).pipe(
+              Effect.andThen(survivorClient.Never()),
+              Effect.forkIn(outerScope, { startImmediately: true })
+            )
+            yield* Deferred.succeed(survivorReady, survivor)
+            return yield* Effect.never
+          }).pipe(
+            Effect.ensuring(Effect.gen(function*() {
+              // Cancellation during finalization is still shard teardown.
+              const child = yield* client.Never().pipe(
+                Effect.interruptible,
+                Effect.forkChild({ startImmediately: true })
+              )
+              yield* Queue.take(state.envelopes)
+              yield* Fiber.interrupt(child)
+              yield* Deferred.succeed(finalizing, void 0)
+              yield* Deferred.await(finish)
+            })),
+            Effect.ensuring(Deferred.succeed(stopped, void 0))
+          ),
+          { shardGroup: "singleton" }
+        )
+        const survivor = yield* Deferred.await(survivorReady)
+        // Release the finalizer barrier even if a setup assertion fails.
+        yield* Effect.addFinalizer(() => Deferred.succeed(finish, void 0))
+        storageState.assignSelf = false
+        yield* waitForSingletonOwnership(sharding, false)
+        yield* Deferred.await(finalizing)
+        const duringFinalization = journalInterrupts(driver)
+        const probe = EntityAddress.make({
+          shardId: singletonShard,
+          entityType: EntityType.make("singleton-teardown-probe"),
+          entityId: EntityId.make("probe")
+        })
+        assert.isTrue(ActiveTeardown.isActive(probe), "tracking must remain active through finalization")
+        yield* Deferred.succeed(finish, void 0)
+        yield* Deferred.await(stopped)
+        yield* TestClock.adjust(10)
+        assert.isFalse(ActiveTeardown.isActive(probe), "teardown must release its shard tracking")
+
+        // Do not let inherited identity suppress a later explicit cancellation.
+        yield* Deferred.succeed(runLater, void 0)
+        yield* Queue.take(state.envelopes)
+        yield* Fiber.interrupt(survivor)
+        yield* TestClock.adjust(1)
+        assert.strictEqual(journalInterrupts(driver) - duringFinalization, 1)
+        assert.isTrue(sharding.hasShardId(destinationShard))
+        assert.strictEqual(duringFinalization, 0, "teardown must include singleton finalizers")
+      }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
+    }))
 })

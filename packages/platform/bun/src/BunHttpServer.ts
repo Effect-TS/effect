@@ -13,6 +13,7 @@
  */
 import type { Server as BunServer, ServerWebSocket } from "bun"
 import type * as Arr from "effect/Array"
+import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/Config"
 import * as Context from "effect/Context"
@@ -689,20 +690,21 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
 
           ws.data.run = push
           ws.data.onClose = fail
-          yield* Scope.addFinalizer(
+          yield* Scope.addFinalizerExit(
             scope,
-            Effect.suspend(() => {
-              // resume a pull blocked in another fiber before detaching
-              fail(
-                new Socket.SocketError({
-                  reason: new Socket.SocketCloseError({ code: 1006 })
-                })
-              )
-              ws.data.run = wsDefaultRun
-              ws.data.onClose = constVoid
-              ws.close(1000)
-              return Effect.void
-            })
+            (exit) =>
+              Effect.suspend(() => {
+                // resume a pull blocked in another fiber before detaching
+                fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketCloseError({ code: 1006 })
+                  })
+                )
+                ws.data.run = wsDefaultRun
+                ws.data.onClose = constVoid
+                ws.close(closeCode(exit))
+                return Effect.void
+              })
           )
 
           return {
@@ -726,6 +728,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     })
   }
 }
+
+const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
+  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
 const emptyReadbleStream = new ReadableStream({
   start(controller) {

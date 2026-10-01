@@ -4,6 +4,7 @@ output: src/Generated.ts
 name: OpenRouterClient
 header: |
   /**
+   * @stability unstable
    * @since 1.0.0
    */
 excludeAnnotations:

@@ -11,11 +11,15 @@ import type * as V from "vitest"
 import * as internal from "./internal/internal.ts"
 
 /**
+ * Re-exports the `vitest` API unchanged.
+ *
+ * @stability unstable
  * @since 4.0.0
  */
 export * from "vitest"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export type API = V.TestAPI<{}>

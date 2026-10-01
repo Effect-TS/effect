@@ -66,7 +66,9 @@ const bundledEffectModules = async (fixture: string): Promise<ReadonlyArray<stri
 }
 
 describe("http-router fixture bundled with esbuild", () => {
-  it("does not include any Schema module", async () => {
+  // esbuild transpiles and Babel annotates every reachable Effect source module.
+  // Under full-suite Bun CI load this can exceed Vitest's 5s default.
+  it("does not include any Schema module", { timeout: 20_000 }, async () => {
     const modules = await bundledEffectModules("http-router.ts")
     assert.include(modules, "http/HttpRouter.ts")
     assert.include(modules, "http/HttpServerRespondable.ts")

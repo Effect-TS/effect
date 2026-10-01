@@ -6,6 +6,7 @@
  * WebSocket response streams, and embeddings, and maps transport or decoding
  * failures into `AiError`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
@@ -48,6 +49,7 @@ import * as OpenAiSchema from "./OpenAiSchema.ts"
  *
  * Provides the configured HTTP client plus helpers for Responses API calls, streaming Responses events, and embeddings. Transport and schema decoding failures are mapped to `AiError`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -104,6 +106,7 @@ export interface Service {
  * @see {@link layer} for providing a client from explicit options
  * @see {@link layerConfig} for providing a client from `Config`
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -118,6 +121,7 @@ export class OpenAiClient extends Context.Service<OpenAiClient, Service>()(
 /**
  * Options for configuring the OpenAI client.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -186,6 +190,7 @@ const withRedactedHeaders = Effect.updateService(
  * @see {@link layer} for providing this client from explicit options
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -351,6 +356,7 @@ export const make = Effect.fnUntraced(
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layerConfig} for loading client settings from `Config`
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -374,6 +380,7 @@ export const layer = (options: Options): Layer.Layer<OpenAiClient, never, HttpCl
  * @see {@link make} for constructing the client service effectfully
  * @see {@link layer} for providing the client from already-resolved options
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -435,6 +442,7 @@ export const layerConfig = (options?: {
 /**
  * Response stream event emitted by the OpenAI Responses API.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -462,6 +470,7 @@ export type ResponseStreamEvent = typeof OpenAiSchema.ResponseStreamEvent.Type
  * @see {@link withWebSocketMode} for enabling WebSocket mode for one effect
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -746,6 +755,7 @@ const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  * @see {@link OpenAiSocket} for direct access to the WebSocket-backed streaming service
  *
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -783,6 +793,7 @@ export const withWebSocketMode = <A, E, R>(
  *
  * @see {@link withWebSocketMode} for enabling WebSocket mode around a single effect
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

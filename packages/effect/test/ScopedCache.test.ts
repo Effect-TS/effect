@@ -15,8 +15,36 @@ import {
   ScopedCache
 } from "effect"
 import { TestClock } from "effect/testing"
+import { collectGarbage } from "./utils/gc.ts"
 
 describe("ScopedCache", () => {
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "does not retain prior equal object keys on cache hits",
+    () =>
+      Effect.gen(function*() {
+        const references: Array<WeakRef<object>> = []
+        const control = new WeakRef({})
+        let lookups = 0
+        const cache = yield* ScopedCache.make({
+          capacity: 16,
+          lookup: (_key: { readonly region: string }) => Effect.sync(() => ++lookups)
+        })
+        for (let i = 0; i < 10; i++) {
+          const key = { region: "us-east-1" }
+          references.push(new WeakRef(key))
+          assert.strictEqual(yield* Effect.scoped(ScopedCache.get(cache, key)), 1)
+        }
+        assert.strictEqual(lookups, 1)
+        assert.strictEqual(yield* ScopedCache.size(cache), 1)
+        // The last key may still be held by the cache.
+        references.pop()
+        yield* collectGarbage
+        assert.isUndefined(control.deref())
+        for (const reference of references) assert.isUndefined(reference.deref())
+        assert.strictEqual(yield* ScopedCache.size(cache), 1)
+      })
+  )
+
   describe("constructors", () => {
     describe("make", () => {
       it.effect("creates cache with fixed capacity", () =>
@@ -1864,6 +1892,55 @@ describe("ScopedCache", () => {
 
   describe("error scenarios", () => {
     describe("Failed Lookups", () => {
+      it.effect("settles concurrent gets when TTL calculation throws after an asynchronous lookup", () =>
+        Effect.gen(function*() {
+          const started = yield* Latch.make()
+          const finish = yield* Latch.make()
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) => Effect.andThen(started.open, Effect.as(finish.await, 42)),
+            timeToLive: () => {
+              throw new Error("TTL defect")
+            }
+          })
+
+          const first = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* started.await
+          const second = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Effect.yieldNow
+          yield* finish.open
+          yield* TestClock.adjust("1 second")
+
+          assert.deepStrictEqual(yield* Fiber.join(first), Option.some(Exit.succeed(42)))
+          assert.deepStrictEqual(yield* Fiber.join(second), Option.some(Exit.succeed(42)))
+        }))
+
+      it.effect("does not cache an asynchronous failure with zero TTL", () =>
+        Effect.gen(function*() {
+          let lookupCount = 0
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) =>
+              Effect.promise(() => Promise.resolve()).pipe(
+                Effect.andThen(Effect.sync(() => ++lookupCount)),
+                Effect.flatMap((count) => count === 1 ? Effect.fail("error") : Effect.succeed(count))
+              ),
+            timeToLive: (exit) => Exit.isFailure(exit) ? Duration.zero : Duration.infinity
+          })
+
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "test")), Exit.fail("error"))
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "test")), Exit.succeed(2))
+          assert.strictEqual(lookupCount, 2)
+        }))
+
       it.effect("failed lookup caches the failure", () =>
         Effect.gen(function*() {
           let lookupCount = 0

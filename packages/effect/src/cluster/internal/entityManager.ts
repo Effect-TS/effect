@@ -441,6 +441,9 @@ export const make = Effect.fnUntraced(function*<
         )
       })
     )
+    if (!options.sharding.hasShardId(address.shardId)) {
+      return yield* new EntityNotAssignedToRunner({ address })
+    }
     // Do not make shard interruption wait for an entity that is still building.
     serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)

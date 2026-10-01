@@ -17,6 +17,7 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
 import { flow, type LazyArg } from "effect/Function"
@@ -77,6 +78,8 @@ export interface Options extends Net.ListenOptions {
    * wiring options the server manages itself. Use this to enable
    * `permessage-deflate` compression or tune payload limits, e.g.
    * `websocket: { perMessageDeflate: true }`.
+   *
+   * @stability unstable
    */
   readonly websocket?:
     | Omit<NodeWS.ServerOptions, "noServer" | "server" | "host" | "port" | "path">
@@ -222,6 +225,7 @@ export const makeHandler = <
  * exposing the upgraded WebSocket as the request's `upgrade` effect and
  * interrupting the request fiber when the socket closes early.
  *
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -278,7 +282,7 @@ export const makeUpgradeHandler = <
                 resume(Effect.succeed(ws))
               })
             ),
-            (ws) => Effect.sync(() => ws.close())
+            (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
       ))
       const context = Context.add(
@@ -514,6 +518,9 @@ export const layerTest: Layer.Layer<
 // -----------------------------------------------------------------------------
 // Internal
 // -----------------------------------------------------------------------------
+
+const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
+  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
 const handleResponse = (
   request: HttpServerRequest,

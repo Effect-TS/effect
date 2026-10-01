@@ -71,3 +71,8 @@ export const isActive = (address: EntityAddress): boolean =>
   counts.has(entityKey(address)) ||
   counts.has(shardKey(address.shardId)) ||
   counts.has(entityTypeKey(address.entityType))
+
+/**
+ * @internal
+ */
+export const isShardActive = (shardId: ShardId): boolean => counts.has(shardKey(shardId))

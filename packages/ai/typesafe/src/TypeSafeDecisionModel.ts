@@ -1,6 +1,7 @@
 /**
  * TypeSafe's System One implementation of DecisionModel.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as DecisionModel from "effect/ai/DecisionModel"
@@ -13,6 +14,7 @@ import type * as TypeSafeSchema from "./TypeSafeSchema.ts"
 /**
  * Known TypeSafe model identifiers. Constructors also accept custom identifiers.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -21,6 +23,7 @@ export type Model = "jev-latest" | "jev-preview" | "jev-1.13.0"
 /**
  * Creates a decision model with TypeSafe provider metadata.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -34,6 +37,7 @@ export const model = (
  * DecisionModel rescales small sum drift when it validates distributions and
  * derives rating labels.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -99,6 +103,7 @@ export const make = Effect.fnUntraced(
 /**
  * Provides DecisionModel using an existing TypeSafeClient.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
