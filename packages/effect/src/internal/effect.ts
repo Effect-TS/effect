@@ -463,6 +463,21 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
+interface AsyncContext {
+  runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
+}
+
+const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
+  try {
+    return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
+  } catch {
+    return undefined
+  }
+})()
+
+const captureAsyncContext = (): AsyncContext | undefined =>
+  AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
+
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
@@ -485,6 +500,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
+    this._asyncContext = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
@@ -504,6 +520,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
+  declare _asyncContext: AsyncContext | undefined
 
   // set in setContext
   declare context: Context.Context<never>
@@ -564,6 +581,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   evaluate(effect: Primitive): void {
     if (this._exit) {
       return
+    } else if (this._asyncContext !== undefined) {
+      const asyncContext = this._asyncContext
+      this._asyncContext = undefined
+      return asyncContext.runInAsyncScope(this.evaluate, this, effect)
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
@@ -571,6 +592,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect)
     if (exit === Yield) {
+      this._asyncContext = captureAsyncContext()
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -1081,20 +1103,22 @@ export const tryPromise = <A, E = Cause.UnknownError>(
     ? ((cause: unknown) => new UnknownError(cause, "An error occurred in Effect.tryPromise"))
     : options.catch
   return callbackOptions<A, E>(function(resume, signal) {
-    const failWithCatch = (cause: unknown) => {
-      try {
-        resume(fail(internalCall(() => catcher(cause)) as E))
-      } catch (err) {
-        resume(die(err))
-      }
-    }
+    // Defer the catcher until the fiber restores its async context.
+    const failWithCatch = (cause: unknown) =>
+      suspend(() => {
+        try {
+          return fail(internalCall(() => catcher(cause)) as E)
+        } catch (err) {
+          return die(err)
+        }
+      })
     try {
       f(signal!).then(
         (a) => resume(succeed(a)),
-        failWithCatch
+        (e) => resume(failWithCatch(e))
       )
     } catch (err) {
-      failWithCatch(err)
+      resume(failWithCatch(err))
     }
   }, f.length !== 0)
 }
@@ -5490,6 +5514,8 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   if (immediate) {
     child.evaluate(effect as any)
   } else {
+    // Preserve the fork context rather than the dispatcher's context.
+    child._asyncContext = captureAsyncContext()
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   if (!daemon && !child._exit) {
