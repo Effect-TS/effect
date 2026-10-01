@@ -1730,7 +1730,7 @@ const toServerSentEvents = (response: HttpServerResponse.HttpServerResponse, kee
     if (!keepAlive) {
       return HttpServerResponse.stream(events, options)
     }
-    // Idle subscriptions otherwise have no pending timer or I/O, which workerd treats as a hung request.
+    // Keep a native timer pending so workerd does not treat idle subscriptions as hung requests.
     const keepAliveComments = Stream.tick("15 seconds").pipe(
       Stream.drop(1),
       Stream.map(() => encoder.encode(": keepalive\n\n"))
