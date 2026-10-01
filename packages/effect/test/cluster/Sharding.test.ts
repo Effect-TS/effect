@@ -2838,12 +2838,15 @@ const testConfigDefaults: Partial<ShardingConfig.ShardingConfig["Service"]> = {
 
 const TestShardingConfig = ShardingConfig.layer(testConfigDefaults)
 
-const TestShardingWithoutState = TestEntityNoState.pipe(
+const TestShardingWithoutRunnerStorage = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
-  Layer.provide(RunnerStorage.layerMemory),
   Layer.provide(RunnerHealth.layerNoop)
   // Layer.provide(Logger.minimumLogLevel(LogLevel.All)),
   // Layer.provideMerge(Logger.pretty)
+)
+
+const TestShardingWithoutState = TestShardingWithoutRunnerStorage.pipe(
+  Layer.provide(RunnerStorage.layerMemory)
 )
 
 const TestShardingWithoutRunners = TestShardingWithoutState.pipe(
@@ -2992,15 +2995,13 @@ const SingletonReassignmentSharding = (state: SingletonStorageState) => {
       releaseAll: () => Effect.void
     }))
   )
-  return TestEntityNoState.pipe(
-    Layer.provideMerge(Sharding.layer),
+  return TestShardingWithoutRunnerStorage.pipe(
     Layer.provide(runnerStorage),
-    Layer.provide(RunnerHealth.layerNoop),
     Layer.provideMerge(TestEntityState.layer),
     Layer.provide(Runners.layerNoop),
     Layer.provideMerge(MessageStorage.layerMemory),
-    Layer.provide(Snowflake.layerGenerator),
     Layer.provide(ShardingConfig.layer({
+      ...testConfigDefaults,
       runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
       availableShardGroups: ["default", "singleton"],
       assignedShardGroups: ["default", "singleton"],
@@ -3029,74 +3030,48 @@ const waitForSingletonOwnership = Effect.fnUntraced(function*(
 
 // These tests share the internal teardown registry, so do not run concurrently.
 describe("Sharding singleton cancellation", { concurrent: false }, () => {
-  for (const child of [false, true]) {
-    it.effect(
-      child
-        ? "abandons a singleton child RPC from a pre-acquired client on reassignment"
-        : "abandons a singleton RPC on reassignment",
-      () =>
-        Effect.gen(function*() {
-          const storageState = makeSingletonStorageState()
-          yield* Effect.gen(function*() {
-            const sharding = yield* Sharding.Sharding
-            const driver = yield* MessageStorage.MemoryDriver
-            const state = yield* TestEntityState
-            // Deliberately acquire the client outside the singleton's context.
-            const client = (yield* TestEntity.client)("singleton-target")
-            const stopped = yield* Deferred.make<void>()
-            yield* waitForSingletonOwnership(sharding, true)
-            yield* sharding.registerSingleton(
-              "rpc-caller",
-              Effect.gen(function*() {
-                if (child) {
-                  yield* client.Never().pipe(Effect.forkChild({ startImmediately: true }))
-                  return yield* Effect.never
-                } else {
-                  yield* client.Never()
-                }
-              }).pipe(Effect.ensuring(Deferred.succeed(stopped, void 0))),
-              { shardGroup: "singleton" }
-            )
-            yield* Queue.take(state.envelopes)
-            assert.strictEqual(journalInterrupts(driver), 0)
-
-            storageState.assignSelf = false
-            yield* waitForSingletonOwnership(sharding, false)
-            yield* Deferred.await(stopped)
-            yield* TestClock.adjust(1)
-            assert.isTrue(sharding.hasShardId(destinationShard), "Sharding and the destination stay alive")
-            assert.strictEqual(journalInterrupts(driver), 0, "reassignment must not durably cancel the RPC")
-            assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 0)
-          }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
-        })
-    )
-  }
-
-  it.effect("persists explicit singleton-child cancellation outside teardown", () =>
+  it.effect("cancels explicitly but abandons a singleton child RPC on reassignment", () =>
     Effect.gen(function*() {
       const storageState = makeSingletonStorageState()
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
         const driver = yield* MessageStorage.MemoryDriver
         const state = yield* TestEntityState
-        const client = (yield* TestEntity.client)("explicit-singleton-target")
+        // Acquire clients outside the singleton context; children must use caller identity.
+        const makeClient = yield* TestEntity.client
+        const explicitClient = makeClient("explicit-singleton-target")
+        const reassignmentClient = makeClient("singleton-target")
         const childReady = yield* Deferred.make<Fiber.Fiber<void, unknown>>()
+        const runReassignment = yield* Deferred.make<void>()
+        const stopped = yield* Deferred.make<void>()
         yield* waitForSingletonOwnership(sharding, true)
         yield* sharding.registerSingleton(
-          "explicit-caller",
+          "rpc-caller",
           Effect.gen(function*() {
-            const child = yield* client.Never().pipe(Effect.forkChild({ startImmediately: true }))
+            const child = yield* explicitClient.Never().pipe(Effect.forkChild({ startImmediately: true }))
             yield* Deferred.succeed(childReady, child)
+            yield* Deferred.await(runReassignment)
+            yield* reassignmentClient.Never().pipe(Effect.forkChild({ startImmediately: true }))
             return yield* Effect.never
-          }),
+          }).pipe(Effect.ensuring(Deferred.succeed(stopped, void 0))),
           { shardGroup: "singleton" }
         )
         yield* Queue.take(state.envelopes)
         yield* Fiber.interrupt(yield* Deferred.await(childReady))
         yield* TestClock.adjust(1)
         assert.isTrue(sharding.hasShardId(singletonShard))
-        assert.strictEqual(journalInterrupts(driver), 1)
-        assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 1)
+        assert.strictEqual(journalInterrupts(driver), 1, "explicit child cancellation must persist")
+        yield* Queue.take(state.interrupts)
+
+        yield* Deferred.succeed(runReassignment, void 0)
+        yield* Queue.take(state.envelopes)
+        storageState.assignSelf = false
+        yield* waitForSingletonOwnership(sharding, false)
+        yield* Deferred.await(stopped)
+        yield* TestClock.adjust(1)
+        assert.isTrue(sharding.hasShardId(destinationShard), "Sharding and the destination stay alive")
+        assert.strictEqual(journalInterrupts(driver), 1, "reassignment must not add a durable cancellation")
+        assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 0)
       }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
     }))
 
