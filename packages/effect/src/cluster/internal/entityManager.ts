@@ -405,12 +405,12 @@ export const make = Effect.fnUntraced(function*<
           if (message._tag === "Request" && !isActive()) {
             return Effect.interrupt
           }
+          if (!replayReady.isOpen()) {
+            return Effect.andThen(replayReady.await, state.write(clientId, message, writeOptions))
+          }
           const current = writeRef.state.current
-          if (!replayReady.isOpen() || current._tag !== "Acquired") {
-            return replayReady.await.pipe(
-              Effect.andThen(writeRef.await),
-              Effect.andThen(state.write(clientId, message, writeOptions))
-            )
+          if (current._tag !== "Acquired") {
+            return Effect.andThen(writeRef.await, state.write(clientId, message, writeOptions))
           }
           if (message._tag === "Request") {
             const request = activeRequests.get(Snowflake.Snowflake(message.id))
