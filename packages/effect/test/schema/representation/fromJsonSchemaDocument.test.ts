@@ -3126,6 +3126,26 @@ describe("fromJsonSchemaDocument", () => {
         })
       })
 
+      it("applies patterns whose source is canonicalized by RegExp", () => {
+        for (const [pattern, matching, nonMatching] of [
+          ["a/b", "a/b", "ab"],
+          ["", "anything", undefined],
+          ["\n", "a\nb", "ab"],
+          ["\r", "a\rb", "ab"],
+          ["\u2028", "a\u2028b", "ab"],
+          ["\u2029", "a\u2029b", "ab"]
+        ] as const) {
+          const schema = toSchemaFromJsonSchemaDocument(
+            JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern })
+          )
+          assert.isTrue(Schema.is(schema)(matching))
+          if (nonMatching !== undefined) {
+            assert.isFalse(Schema.is(schema)(nonMatching))
+          }
+          assert.isFalse(Schema.is(schema)(123))
+        }
+      })
+
       it("ignores patterns explicitly", () => {
         assertFromJsonSchema({ schema: { type: "string", pattern: "^a+$" }, options: { patterns: "ignore" } }, {
           codes: makeCode(`Schema.String`, `string`)
