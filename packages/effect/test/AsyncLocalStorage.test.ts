@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, FiberSet, Latch, Pool, Queue, Scope, Semaphore } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, FiberSet, Latch, Pool, Queue, Scheduler, Scope, Semaphore } from "effect"
 import { AsyncLocalStorage } from "node:async_hooks"
+import { EventEmitter } from "node:events"
 
 // A fiber woken by another fiber must resume in its own async context, not
 // the waker's. See https://github.com/Effect-TS/effect/issues/8581
@@ -637,5 +638,131 @@ describe("AsyncLocalStorage", () => {
         assert.deepStrictEqual(await Effect.runPromise(Fiber.join(waiter)), expected("waiter"))
       })
     }
+  })
+
+  // A wake that reaches a fiber after it has already been interrupted, but
+  // before the interrupt has run, must not run the continuation, and must not
+  // run it on the waker's stack.
+  describe("interrupt before resume", () => {
+    it("a resume arriving after interruptUnsafe does not run the continuation", async () => {
+      let resume!: (effect: Effect.Effect<number>) => void
+      const seen: Record<string, string> = {}
+      const fiber = storage.run("waiter", () =>
+        Effect.runFork(
+          Effect.callback<number>((r) => {
+            resume = r
+          }).pipe(
+            Effect.tap(() =>
+              Effect.sync(() => {
+                seen.continuation = current()
+              })
+            ),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                seen.onInterrupt = current()
+              })
+            )
+          )
+        ))
+      storage.run("interrupter", () => fiber.interruptUnsafe())
+      storage.run("waker", () => resume(Effect.succeed(1)))
+      const exit = await Effect.runPromise(Fiber.await(fiber))
+      assert.isTrue(Exit.hasInterrupts(exit))
+      assert.deepStrictEqual(seen, { onInterrupt: "waiter" })
+    })
+
+    it("a queued yield task running after interruptUnsafe does not run the continuation", async () => {
+      // A scheduler whose tasks run only when the test runs them, so the
+      // yield task can be run from another context before any microtask.
+      const tasks: Array<() => void> = []
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        shouldYield: () => false,
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush: () => {
+            while (tasks.length > 0) tasks.shift()!()
+          }
+        })
+      }
+      const seen: Record<string, string> = {}
+      const fiber = storage.run("waiter", () =>
+        Effect.runFork(
+          Effect.yieldNow.pipe(
+            Effect.tap(() =>
+              Effect.sync(() => {
+                seen.continuation = current()
+              })
+            ),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                seen.onInterrupt = current()
+              })
+            )
+          ),
+          { scheduler }
+        ))
+      assert.strictEqual(tasks.length, 1)
+      storage.run("interrupter", () => fiber.interruptUnsafe())
+      storage.run("waker", () => {
+        while (tasks.length > 0) tasks.shift()!()
+      })
+      const exit = await Effect.runPromise(Fiber.await(fiber))
+      assert.isTrue(Exit.hasInterrupts(exit))
+      assert.deepStrictEqual(seen, { onInterrupt: "waiter" })
+    })
+  })
+
+  // Synchronous schedulers are not exempt: `storage.run` nests on a single
+  // stack, and the public sync scheduler can be used with `runFork`.
+  describe("sync scheduler", () => {
+    it("a child woken inside a nested storage.run during runSync keeps its own context", () => {
+      const seen = storage.run("waiter", () =>
+        Effect.runSync(Effect.gen(function*() {
+          const deferred = Deferred.makeUnsafe<void>()
+          const child = yield* Effect.forkChild(Effect.andThen(Deferred.await(deferred), Effect.sync(current)), {
+            startImmediately: true
+          })
+          yield* Effect.sync(() => storage.run("waker", () => Deferred.doneUnsafe(deferred, Exit.void)))
+          return yield* Fiber.join(child)
+        })))
+      assert.strictEqual(seen, "waiter")
+    })
+
+    it("MixedScheduler(\"sync\") with runFork resumes in the waiter's context", async () => {
+      const scheduler = new Scheduler.MixedScheduler("sync")
+      const deferred = Deferred.makeUnsafe<void>()
+      const waiter = storage.run("waiter", () =>
+        Effect.runFork(
+          Effect.andThen(
+            Deferred.await(deferred),
+            Effect.map(Effect.promise(async () => current()), (promise) => ({ resumed: current(), promise }))
+          ),
+          { scheduler }
+        ))
+      assert.isUndefined(waiter.pollUnsafe())
+      storage.run("waker", () => Deferred.doneUnsafe(deferred, Exit.void))
+      assert.deepStrictEqual(await Effect.runPromise(Fiber.join(waiter)), { resumed: "waiter", promise: "waiter" })
+    })
+  })
+
+  // A host listener registered by the fiber runs in whatever context fires
+  // it; that is the host's rule. The Effect continuation after `resume` is
+  // the fiber's own.
+  describe("host callbacks", () => {
+    it("an EventEmitter listener fired from another context resumes the fiber in its own context", async () => {
+      const emitter = new EventEmitter()
+      const fiber = storage.run("waiter", () =>
+        Effect.runFork(
+          Effect.callback<void>((resume) => {
+            emitter.once("wake", () => resume(Effect.void))
+          }).pipe(Effect.andThen(observe))
+        ))
+      assert.isUndefined(fiber.pollUnsafe())
+      storage.run("waker", () => emitter.emit("wake"))
+      assert.deepStrictEqual(await Effect.runPromise(Fiber.join(fiber)), expected("waiter"))
+    })
   })
 })

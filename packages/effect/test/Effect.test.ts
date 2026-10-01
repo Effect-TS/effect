@@ -2486,6 +2486,36 @@ describe("Effect", () => {
         assert(childExit !== undefined && Exit.isFailure(childExit) && Cause.hasInterruptsOnly(childExit.cause))
       }))
 
+    // Like the test above, but the child's teardown takes an asynchronous
+    // step, so the parent has to wait for it after being interrupted. The
+    // original failure must survive that wait.
+    it.live("keeps the original failure when interrupted during asynchronous child teardown", () =>
+      Effect.gen(function*() {
+        const childStarted = yield* Deferred.make<void>()
+        const releaseChild = yield* Deferred.make<void>()
+        const fiber = yield* Effect.gen(function*() {
+          yield* Effect.gen(function*() {
+            yield* Deferred.succeed(childStarted, void 0)
+            yield* Deferred.await(releaseChild)
+          }).pipe(
+            Effect.onInterrupt(() => Effect.sleep(1)),
+            Effect.forkChild({ startImmediately: true })
+          )
+          return yield* Effect.fail("boom")
+        }).pipe(
+          Effect.awaitAllChildren,
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* Deferred.await(childStarted)
+        fiber.interruptUnsafe()
+        const exit = yield* Fiber.await(fiber)
+
+        assert(Exit.isFailure(exit))
+        assert.isTrue(Cause.hasInterrupts(exit.cause))
+        assert.deepStrictEqual(Cause.findError(exit.cause), Result.succeed("boom"))
+      }))
+
     it.effect("can be interrupted while awaiting children after failure", () =>
       Effect.gen(function*() {
         const childStarted = yield* Deferred.make<void>()
