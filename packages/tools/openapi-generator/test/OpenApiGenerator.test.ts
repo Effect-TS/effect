@@ -733,11 +733,8 @@ export interface OperationConfig {
 export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse]
-  : Config extends OperationConfig
-    ? "includeResponse" extends keyof Config
-      ? true extends Config["includeResponse"] ? A | [A, HttpClientResponse.HttpClientResponse] : A
-      : A
-    : A
+  : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
+  : A | [A, HttpClientResponse.HttpClientResponse]
 
 export const make = (
   httpClient: HttpClient.HttpClient,
@@ -1220,11 +1217,8 @@ export interface OperationConfig {
 export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse]
-  : Config extends OperationConfig
-    ? "includeResponse" extends keyof Config
-      ? true extends Config["includeResponse"] ? A | [A, HttpClientResponse.HttpClientResponse] : A
-      : A
-    : A
+  : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
+  : A | [A, HttpClientResponse.HttpClientResponse]
 
 export const make = (
   httpClient: HttpClient.HttpClient,
