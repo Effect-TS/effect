@@ -1,8 +1,11 @@
+"@effect/sql-pg/PgClient":
+  replacement: "effect/postgres/PgClient"
+  note: "The native PostgreSQL client moved into Effect core. Provide platform SocketConnector and Crypto services for constructors and layers."
 "@effect/sql-pg/PgClient#fromPool":
   replacement: none
   note: "Wrapping an existing node-pg Pool was removed with the native protocol client. Use PgClient.make or PgClient.layer with connection settings."
 "@effect/sql-pg/PgClient#layerFromPool":
-  replacement: "PgClient.layer"
+  replacement: "effect/postgres/PgClient#layer"
   note: "Wrapping an existing node-pg Pool was removed. Provide connection settings to PgClient.layer instead."
 "@effect/sql-pg/PgClient#PgClient":
   replacement: "effect/postgres/PgClient#PgClient"
@@ -14,3 +17,21 @@
 "@effect/sql-pg/PgClient#PgClientFromPoolOptions":
   replacement: none
   note: "The node-pg Pool wrapper options were removed with fromPool. Use PgClient.PgPoolConfig with PgClient.make or PgClient.layer."
+"@effect/sql-pg/PgClient#PgCustom":
+  replacement: "effect/postgres/PgClient#PgCustom"
+  note: "Import the PostgreSQL custom SQL fragment type from effect/postgres/PgClient."
+"@effect/sql-pg/PgClient#TypeId":
+  replacement: "effect/postgres/PgClient#TypeId"
+  note: "Import the client marker from its new namespace; its identifier is now ~effect/postgres/PgClient."
+"@effect/sql-pg/PgClient#make":
+  replacement: "effect/postgres/PgClient#make"
+  note: "Construct the native client with connection settings and provide platform SocketConnector and Crypto services. Native connection and codec options replace node-pg driver options."
+"@effect/sql-pg/PgClient#layer":
+  replacement: "effect/postgres/PgClient#layer"
+  note: "Import from effect/postgres/PgClient and provide runtime SocketConnector and Crypto layers. The layer provides both PgClient and SqlClient."
+"@effect/sql-pg/PgClient#layerConfig":
+  replacement: "effect/postgres/PgClient#layerConfig"
+  note: "Import from effect/postgres/PgClient and compose runtime SocketConnector and Crypto layers with the configuration-backed client layer."
+"@effect/sql-pg/PgClient#makeCompiler":
+  replacement: "effect/postgres/PgClient#makeCompiler"
+  note: "Import the PostgreSQL statement compiler from effect/postgres/PgClient."

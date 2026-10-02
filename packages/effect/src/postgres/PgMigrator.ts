@@ -9,6 +9,7 @@
  *
  * @since 4.0.0
  */
+import * as Configuration from "../Config.ts"
 import * as Effect from "../Effect.ts"
 import * as FileSystem from "../FileSystem.ts"
 import * as Layer from "../Layer.ts"
@@ -49,9 +50,10 @@ export const run: <R2 = never>(
       Effect.gen(function*() {
         const sql = yield* PgClient
         const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+        const executablePath = yield* Configuration.String("PATH").pipe(Configuration.withDefault(undefined))
         const dump = yield* ChildProcess.make("pg_dump", [...args, "--no-owner", "--no-privileges"], {
           env: {
-            PATH: (globalThis as any).process?.env.PATH,
+            PATH: executablePath,
             PGHOST: sql.config.host,
             PGPORT: sql.config.port?.toString(),
             PGUSER: sql.config.username,

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem, Path, Redacted, Stream } from "effect"
+import { ConfigProvider, Effect, FileSystem, Path, Redacted, Stream } from "effect"
 import { PgClient, PgMigrator } from "effect/postgres"
 import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import { Reactivity } from "effect/reactivity"
@@ -83,5 +83,14 @@ describe("PgMigrator", () => {
 
       assert.deepStrictEqual(commands.map((command) => command.options.env?.PGPASSWORD), ["static", "static"])
       assert.deepStrictEqual(files, ["migrations/_schema.sql"])
+    }))
+
+  it.effect("uses ConfigProvider PATH when launching schema dumps", () =>
+    Effect.gen(function*() {
+      const { commands, run } = yield* makeMigrator(Redacted.make("static"))
+      yield* run.pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromUnknown({ PATH: "/portable/bin" }))
+      )
+      assert.deepStrictEqual(commands.map((command) => command.options.env?.PATH), ["/portable/bin", "/portable/bin"])
     }))
 })

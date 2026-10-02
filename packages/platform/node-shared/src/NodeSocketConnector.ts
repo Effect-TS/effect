@@ -85,7 +85,7 @@ export const make = (options: Options = {}): SocketConnector.SocketConnector["Se
           }),
           (stream) => Effect.sync(() => stream.destroy())
         ),
-        { openTimeout }
+        { openTimeout, tlsUpgradeOptions: options.tls }
       )
       : endpoint.tls
       ? yield* NodeSocketTcp.makeTls({
@@ -103,7 +103,8 @@ export const make = (options: Options = {}): SocketConnector.SocketConnector["Se
         ...(endpoint.path === undefined ? { host: endpoint.host, port: endpoint.port } : { path: endpoint.path }),
         noDelay: true,
         destroyOnClose: true,
-        openTimeout
+        openTimeout,
+        tlsUpgradeOptions: options.tls
       })
     const connection = yield* SocketConnector.fromSocket(socket)
     return {
@@ -111,7 +112,7 @@ export const make = (options: Options = {}): SocketConnector.SocketConnector["Se
       upgrade: (upgradeOptions?: Socket.TlsUpgradeOptions) =>
         connection.upgrade({
           ...upgradeOptions,
-          servername: upgradeOptions?.servername ??
+          servername: upgradeOptions?.servername ?? options.tls?.servername ??
             (endpoint.path === undefined && Net.isIP(endpoint.host) === 0 ? endpoint.host : undefined)
         })
     }

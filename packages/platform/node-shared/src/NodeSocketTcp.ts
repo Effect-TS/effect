@@ -85,6 +85,7 @@ export const makeNet = (
   options: Net.NetConnectOpts & {
     readonly destroyOnClose?: boolean | undefined
     readonly openTimeout?: Duration.Input | undefined
+    readonly tlsUpgradeOptions?: Tls.ConnectionOptions | undefined
   }
 ): Effect.Effect<Socket.Socket> =>
   fromDuplex(
@@ -143,7 +144,9 @@ export const makeNet = (
  *
  * Writes use `write()` return-value backpressure, awaiting one `drain` when
  * the internal buffer is full. `writeAll` corks the stream around the batch.
- * Releasing the writer scope half-closes the stream (`end()`).
+ * Releasing the writer scope half-closes the stream (`end()`). Native TLS
+ * upgrade defaults can be supplied through `tlsUpgradeOptions`; defined
+ * portable upgrade settings override them.
  *
  * @category constructors
  * @since 4.0.0
@@ -153,6 +156,7 @@ export const fromDuplex = <RO>(
   options?: {
     readonly openTimeout?: Duration.Input | undefined
     readonly tlsServer?: boolean | undefined
+    readonly tlsUpgradeOptions?: Tls.ConnectionOptions | undefined
   }
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
@@ -280,49 +284,47 @@ export const fromDuplex = <RO>(
               })
             )
           }
-          const hasKey = upgradeOptions.key !== undefined
-          const hasCert = upgradeOptions.cert !== undefined
-          if ((isServer && (!hasKey || !hasCert)) || hasKey !== hasCert) {
-            return Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketUpgradeError({
-                  cause: new Error(
-                    isServer
-                      ? "server TLS upgrade requires both key and cert"
-                      : "TLS upgrade credentials must include both key and cert"
-                  )
-                })
-              })
-            )
-          }
           return Effect.callback<void, Socket.SocketError>((resume) => {
             const raw = conn
             detachReadListeners(raw)
 
             let tls: Tls.TLSSocket
             try {
-              const secureContext = Tls.createSecureContext({
-                key: upgradeOptions.key === undefined
-                  ? undefined
-                  : Arr.map(
-                    Arr.ensure(upgradeOptions.key),
-                    (value) => Buffer.from(Redacted.value(value))
-                  ),
-                cert: upgradeOptions.cert === undefined ? undefined : toBuffers(upgradeOptions.cert),
-                ca: upgradeOptions.ca === undefined ? undefined : toBuffers(upgradeOptions.ca),
-                passphrase: upgradeOptions.passphrase === undefined
-                  ? undefined
-                  : Redacted.value(upgradeOptions.passphrase)
-              })
-              const tlsOptions = {
-                secureContext,
-                ALPNProtocols: upgradeOptions.alpnProtocols === undefined
-                  ? undefined
-                  : [...upgradeOptions.alpnProtocols],
-                requestCert: upgradeOptions.requestCert,
-                rejectUnauthorized: upgradeOptions.rejectUnauthorized,
-                servername: upgradeOptions.servername
+              const portableTlsOptions = Object.fromEntries(
+                Object.entries({
+                  key: upgradeOptions.key === undefined
+                    ? undefined
+                    : Arr.map(Arr.ensure(upgradeOptions.key), (value) => Buffer.from(Redacted.value(value))),
+                  cert: upgradeOptions.cert === undefined ? undefined : toBuffers(upgradeOptions.cert),
+                  ca: upgradeOptions.ca === undefined ? undefined : toBuffers(upgradeOptions.ca),
+                  passphrase: upgradeOptions.passphrase === undefined
+                    ? undefined
+                    : Redacted.value(upgradeOptions.passphrase),
+                  ALPNProtocols: upgradeOptions.alpnProtocols === undefined
+                    ? undefined
+                    : [...upgradeOptions.alpnProtocols],
+                  requestCert: upgradeOptions.requestCert,
+                  rejectUnauthorized: upgradeOptions.rejectUnauthorized,
+                  servername: upgradeOptions.servername
+                }).filter(([, value]) => value !== undefined)
+              ) as Tls.ConnectionOptions
+              const effectiveOptions: Tls.ConnectionOptions = { ...options?.tlsUpgradeOptions, ...portableTlsOptions }
+              const overridesContext = upgradeOptions.key !== undefined || upgradeOptions.cert !== undefined ||
+                upgradeOptions.ca !== undefined || upgradeOptions.passphrase !== undefined
+              const suppliedContext = !overridesContext && effectiveOptions.secureContext !== undefined
+              const hasKey = effectiveOptions.key !== undefined
+              const hasCert = effectiveOptions.cert !== undefined
+              if (!suppliedContext && ((isServer && (!hasKey || !hasCert)) || hasKey !== hasCert)) {
+                throw new Error(
+                  isServer
+                    ? "server TLS upgrade requires both key and cert"
+                    : "TLS upgrade credentials must include both key and cert"
+                )
               }
+              const secureContext = suppliedContext
+                ? effectiveOptions.secureContext
+                : Tls.createSecureContext(effectiveOptions)
+              const tlsOptions = { ...effectiveOptions, secureContext }
               tls = isServer
                 ? new Tls.TLSSocket(raw as Net.Socket, { ...tlsOptions, isServer: true })
                 : Tls.connect({ ...tlsOptions, socket: raw as Net.Socket })

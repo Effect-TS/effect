@@ -92,6 +92,47 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         assert.strictEqual((yield* connection.write("late").pipe(Effect.flip)).reason._tag, "SocketCloseError")
       }))
 
+    it.live("applies native TLS upgrade defaults and prebuilt trust contexts", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        let verified: string | undefined
+        const connection = yield* make({
+          tls: {
+            secureContext: Tls.createSecureContext({ ca: cert }),
+            servername: "localhost",
+            minVersion: "TLSv1.2",
+            checkServerIdentity(hostname, peer) {
+              verified = hostname
+              return Tls.checkServerIdentity(hostname, peer)
+            }
+          }
+        }).connect(address(server))
+        yield* connection.upgrade()
+        yield* connection.write("native-defaults")
+        assert.strictEqual(Buffer.from((yield* connection.pull)[0]).toString(), "native-defaults")
+        assert.strictEqual(verified, "localhost")
+      }))
+
+    it.live("overrides native TLS defaults with portable upgrade settings", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const connection = yield* make({ tls: { ca: cert, servername: "wrong.example" } }).connect(address(server))
+        yield* connection.upgrade({ servername: "localhost" })
+        yield* connection.write("portable-override")
+        assert.strictEqual(Buffer.from((yield* connection.pull)[0]).toString(), "portable-override")
+      }))
+
+    it.live("combines a native client key with a portable upgrade certificate", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(
+          Tls.createServer({ cert, key, ca: cert, requestCert: true, rejectUnauthorized: true }, echo)
+        )
+        const connection = yield* make({ tls: { key, ca: cert, servername: "localhost" } }).connect(address(server))
+        yield* connection.upgrade({ cert })
+        yield* connection.write("client-certificate")
+        assert.strictEqual(Buffer.from((yield* connection.pull)[0]).toString(), "client-certificate")
+      }))
+
     it.live("verifies TLS certificates against a custom CA and hostname", () =>
       Effect.gen(function*() {
         const server = yield* listen(Tls.createServer({ cert, key }, echo))

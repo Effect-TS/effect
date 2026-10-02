@@ -1,3 +1,6 @@
 "@effect/sql-pg/index":
   replacement: "effect/postgres"
   note: "The explicit /index entrypoint was removed; import the same namespaces from the effect/postgres package root or import specific modules directly."
+"@effect/sql-pg":
+  replacement: "effect/postgres"
+  note: "The native PostgreSQL client moved into Effect core. Import PgClient, PgConnection, PgPool, PgMigrator, PgProtocol, PgTypes, and PgAuth from effect/postgres; provide platform SocketConnector and Crypto layers to construct clients."
