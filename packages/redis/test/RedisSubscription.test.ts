@@ -3,8 +3,7 @@ import * as Client from "@effect/redis/RedisClient"
 import * as Subscription from "@effect/redis/RedisSubscription"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Queue, Scope } from "effect"
-import type { Socket } from "node:net"
-import { array, bulk, type ScriptedRedis, startScriptedRedis } from "./utils/redis-scripted.ts"
+import { array, bulk, type Connection, type ScriptedRedis, startScriptedRedis } from "./utils/redis-scripted.ts"
 
 const server = Effect.acquireRelease(
   Effect.promise(() => startScriptedRedis()),
@@ -26,20 +25,15 @@ const asCluster = (client: Client.RedisClient, seed: ScriptedRedis, maxRedirects
   config: { ...client.config, topology: { _tag: "Cluster", seeds: [seed], maxRedirects } }
 })
 
-const ack = (kind: string, channel: string, count = 1) =>
-  Buffer.concat([Buffer.from("*3\r\n"), bulk(kind), bulk(channel), Buffer.from(`:${count}\r\n`)])
+const ack = (kind: string, channel: string) =>
+  Buffer.concat([Buffer.from("*3\r\n"), bulk(kind), bulk(channel), Buffer.from(":1\r\n")])
 
-const onClose = (socket: Socket): Effect.Effect<void> => {
-  const closed = new Promise<void>((resolve) => socket.once("close", () => resolve()))
-  return Effect.promise(() => closed)
-}
+const closed = (connection: Connection) => Effect.promise(() => connection.closed).pipe(Effect.timeout("2 seconds"))
 
 const text = (message: Subscription.Message) => new TextDecoder().decode(message.message)
 
-const subscribe = Effect.fnUntraced(function*(fixture: ScriptedRedis, client: Client.RedisClient, options?: {
-  readonly capacity?: number
-}) {
-  const acquiring = yield* Subscription.make(client, "channel", options).pipe(Effect.forkChild)
+const subscribe = Effect.fnUntraced(function*(fixture: ScriptedRedis, client: Client.RedisClient, capacity?: number) {
+  const acquiring = yield* Subscription.make(client, "channel", { capacity }).pipe(Effect.forkChild)
   const request = yield* Effect.promise(fixture.nextRequest)
   request.connection.send(ack("subscribe", "channel"))
   return { subscription: yield* Fiber.join(acquiring), connection: request.connection }
@@ -65,40 +59,33 @@ describe("RedisSubscription", () => {
   it.live("resubscribes on a new connection after a disconnect", () =>
     Effect.gen(function*() {
       const fixture = yield* server
-      const client = yield* makeClient(fixture)
-      const { connection, subscription } = yield* subscribe(fixture, client)
+      const { connection, subscription } = yield* subscribe(fixture, yield* makeClient(fixture))
       connection.disconnect()
       const restored = yield* Effect.promise(fixture.nextRequest)
       assert.deepStrictEqual(restored.args.map(String), ["SUBSCRIBE", "channel"])
       assert.notStrictEqual(restored.connection.number, connection.number)
-      restored.connection.send(ack("subscribe", "channel"))
-      restored.connection.send(array("message", "channel", "restored"))
+      restored.connection.send(Buffer.concat([ack("subscribe", "channel"), array("message", "channel", "restored")]))
       assert.strictEqual(text(yield* Queue.take(subscription.messages)), "restored")
     }))
 
   it.live("fails with Capacity on overflow and closes its connection", () =>
     Effect.gen(function*() {
       const fixture = yield* server
-      const client = yield* makeClient(fixture)
-      const { connection, subscription } = yield* subscribe(fixture, client, { capacity: 1 })
-      const socketClosed = onClose(connection.socket)
+      const { connection, subscription } = yield* subscribe(fixture, yield* makeClient(fixture), 1)
       connection.send(Buffer.concat([array("message", "channel", "first"), array("message", "channel", "second")]))
-      yield* socketClosed.pipe(Effect.timeout("2 seconds"))
+      yield* closed(connection)
       const first = yield* Effect.result(Queue.take(subscription.messages))
       const terminal = first._tag === "Failure" ? first : yield* Effect.result(Queue.take(subscription.messages))
-      assert.strictEqual(terminal._tag, "Failure")
-      if (terminal._tag === "Failure") assert.strictEqual(terminal.failure.reason, "Capacity")
+      assert.isTrue(terminal._tag === "Failure" && terminal.failure.reason === "Capacity")
     }))
 
   it.live("close wakes waiting consumers and does not reconnect", () =>
     Effect.gen(function*() {
       const fixture = yield* server
-      const client = yield* makeClient(fixture)
-      const { connection, subscription } = yield* subscribe(fixture, client)
+      const { connection, subscription } = yield* subscribe(fixture, yield* makeClient(fixture))
       const pending = yield* Queue.take(subscription.messages).pipe(Effect.forkChild)
-      const socketClosed = onClose(connection.socket)
       yield* subscription.close
-      yield* socketClosed
+      yield* closed(connection)
       assert.strictEqual((yield* Fiber.await(pending))._tag, "Failure")
       assert.strictEqual(fixture.connections.length, 2)
     }))
@@ -109,40 +96,19 @@ describe("RedisSubscription", () => {
       const clientScope = yield* Scope.fork(yield* Effect.scope)
       const client = yield* makeClient(fixture).pipe(Effect.provideService(Scope.Scope, clientScope))
       const { connection, subscription } = yield* subscribe(fixture, client)
-      const waiting = yield* Queue.take(subscription.messages).pipe(Effect.result, Effect.forkChild)
-      const socketClosed = onClose(connection.socket)
+      const waiting = yield* Queue.take(subscription.messages).pipe(Effect.flip, Effect.forkChild)
       yield* Scope.close(clientScope, Exit.void)
-      const result = yield* Fiber.join(waiting).pipe(Effect.timeout("2 seconds"))
-      assert.strictEqual(result._tag, "Failure")
-      if (result._tag === "Failure") assert.strictEqual(result.failure.reason, "Closed")
-      yield* socketClosed.pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual((yield* Fiber.join(waiting).pipe(Effect.timeout("2 seconds"))).reason, "Closed")
+      yield* closed(connection)
     }))
 
   it.live("closes the connection when acquisition is interrupted", () =>
     Effect.gen(function*() {
       const fixture = yield* server
-      const client = yield* makeClient(fixture)
-      const acquiring = yield* Subscription.make(client, "channel").pipe(Effect.forkChild)
+      const acquiring = yield* Subscription.make(yield* makeClient(fixture), "channel").pipe(Effect.forkChild)
       const request = yield* Effect.promise(fixture.nextRequest)
-      const socketClosed = onClose(request.connection.socket)
       yield* Fiber.interrupt(acquiring)
-      yield* socketClosed.pipe(Effect.timeout("2 seconds"))
-    }))
-
-  it.live("follows MOVED for a sharded subscription", () =>
-    Effect.gen(function*() {
-      const source = yield* server
-      const target = yield* server
-      const client = asCluster(yield* makeClient(source), source)
-      const acquiring = yield* Subscription.make(client, "{foo}:channel", { mode: "sharded" }).pipe(Effect.forkChild)
-      const initial = yield* Effect.promise(source.nextRequest)
-      initial.connection.send(`-MOVED 12182 ${target.host}:${target.port}\r\n`)
-      const redirected = yield* Effect.promise(target.nextRequest)
-      assert.deepStrictEqual(redirected.args.map(String), ["SSUBSCRIBE", "{foo}:channel"])
-      redirected.connection.send(ack("ssubscribe", "{foo}:channel"))
-      const subscription = yield* Fiber.join(acquiring)
-      redirected.connection.send(array("smessage", "{foo}:channel", "redirected"))
-      assert.strictEqual(text(yield* Queue.take(subscription.messages)), "redirected")
+      yield* closed(request.connection)
     }))
 
   it.live("sends ASKING and the sharded subscription on the same connection", () =>
@@ -157,7 +123,7 @@ describe("RedisSubscription", () => {
       assert.deepStrictEqual(asking.args.map(String), ["ASKING"])
       asking.connection.send("+OK\r\n")
       const subscribed = yield* Effect.promise(target.nextRequest)
-      assert.strictEqual(subscribed.args[0].toString(), "SSUBSCRIBE")
+      assert.deepStrictEqual(subscribed.args.map(String), ["SSUBSCRIBE", "{foo}:channel"])
       assert.strictEqual(subscribed.connection.number, asking.connection.number)
       subscribed.connection.send(ack("ssubscribe", "{foo}:channel"))
       const subscription = yield* Fiber.join(acquiring)

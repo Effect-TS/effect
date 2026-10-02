@@ -6,13 +6,10 @@ import { Effect, Layer, Queue } from "effect"
 import { PersistedQueue, Persistence, Redis } from "effect/persistence"
 import * as PersistedCacheTest from "../../../effect/test/persistence/PersistedCacheTest.ts"
 import * as PersistedQueueTest from "../../../effect/test/persistence/PersistedQueueTest.ts"
-import { startRedis } from "../../../redis/test/utils/redis-server.ts"
-
-const redis = (options?: { readonly unixSocket?: boolean }) =>
-  Effect.acquireRelease(Effect.promise(() => startRedis(options)), (fixture) => Effect.promise(fixture.stop))
+import { acquire, startRedis } from "../../../redis/test/utils/redis-server.ts"
 
 const RedisLayer = Layer.unwrap(
-  redis().pipe(
+  acquire(() => startRedis()).pipe(
     Effect.map((fixture) => DenoRedis.layer({ socket: { host: fixture.host, port: fixture.port } })),
     Effect.catchCause(() => Effect.fail(new PersistedCacheTest.TransientError()))
   )
@@ -51,7 +48,7 @@ it.layer(RedisLayer, { timeout: "30 seconds" })("DenoRedis", (it) => {
 describe("DenoRedis", () => {
   it.live("connects through a Unix socket", () =>
     Effect.gen(function*() {
-      const fixture = yield* redis({ unixSocket: true })
+      const fixture = yield* acquire(() => startRedis({ unixSocket: true }))
       const client = yield* DenoRedis.make({ socket: { path: fixture.unixSocketPath } })
       yield* client.run(RedisCommand.set("deno:unix", "value"))
       assert.strictEqual(yield* client.run(RedisCommand.get("deno:unix")), "value")
@@ -67,7 +64,14 @@ describe("DenoRedis", () => {
         ),
         (listener) => Effect.sync(() => listener.close())
       )
-      yield* Effect.promise(() => servePong(listener).catch(() => {})).pipe(Effect.forkScoped)
+      const pong = new TextEncoder().encode("+PONG\r\n")
+      const serve = async (connection: Deno.TlsConn) => {
+        const buffer = new Uint8Array(1024)
+        while (await connection.read(buffer) !== null) await connection.write(pong)
+      }
+      yield* Effect.promise(async () => {
+        for await (const connection of listener) serve(connection).catch(() => connection.close())
+      }).pipe(Effect.forkScoped)
       const endpoint = { host: "127.0.0.1", port: listener.addr.port }
 
       for (const tls of [true, { ca, servername: "wrong.invalid" }]) {
@@ -78,14 +82,3 @@ describe("DenoRedis", () => {
       assert.strictEqual(yield* client.run(RedisCommand.make(["PING"], RedisCommand.text)), "PONG")
     }))
 })
-
-const pong = new TextEncoder().encode("+PONG\r\n")
-const servePong = async (listener: Deno.TlsListener) => {
-  for await (const connection of listener) {
-    void replyPong(connection).catch(() => connection.close())
-  }
-}
-const replyPong = async (connection: Deno.TlsConn) => {
-  const buffer = new Uint8Array(1024)
-  while (await connection.read(buffer) !== null) await connection.write(pong)
-}

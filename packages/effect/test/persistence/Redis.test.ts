@@ -150,6 +150,23 @@ describe("Redis", () => {
       })
     }))
 
+  it.effect("scans every page and rejects a malformed reply", () =>
+    Effect.gen(function*() {
+      const commands: Array<ReadonlyArray<string>> = []
+      const replies: Array<unknown> = [["9", ["a"]], ["0", ["b", "a"]], ["bad", []]]
+      const send = <A>(...command: ReadonlyArray<string>) => {
+        commands.push(command)
+        return Effect.succeed(replies.shift() as A)
+      }
+
+      assert.deepStrictEqual(yield* Redis.scan(send, "prefix:*"), ["a", "b"])
+      assert.deepStrictEqual(commands, [
+        ["SCAN", "0", "MATCH", "prefix:*", "COUNT", "100"],
+        ["SCAN", "9", "MATCH", "prefix:*", "COUNT", "100"]
+      ])
+      assert.instanceOf(yield* Redis.scan(send, "prefix:*").pipe(Effect.flip), Redis.RedisError)
+    }))
+
   it.effect("receives messages from a subscription", () =>
     Effect.gen(function*() {
       const redis = yield* Redis.make({

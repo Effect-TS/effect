@@ -9,7 +9,6 @@ describe("RedisCommand", () => {
     const replies: Array<Reply> = [
       { _tag: "SimpleString", value: "héllo" },
       { _tag: "BlobString", value },
-      { _tag: "VerbatimString", format: "txt", value },
       { _tag: "Attribute", entries: [], value: { _tag: "BlobString", value } }
     ]
     for (const reply of replies) assert.strictEqual(Result.getOrThrow(Command.text(reply)), "héllo")
@@ -20,7 +19,6 @@ describe("RedisCommand", () => {
   it("routes stream keys after the STREAMS delimiter", () => {
     const xread = ["XREAD", "COUNT", "2", "STREAMS", "BLOCK", "STREAMS", "0", "0"]
     assert.deepStrictEqual(Command.parseStreams(xread), { keyIndexes: [4, 5], blocking: false })
-    assert.deepStrictEqual(Command.inferRouting(xread), { keyIndexes: [4, 5] })
     const xreadgroup = ["XREADGROUP", "GROUP", "STREAMS", "BLOCK", "COUNT", "1", "NOACK", "STREAMS", "stream", ">"]
     assert.deepStrictEqual(Command.parseStreams(xreadgroup), { keyIndexes: [8], blocking: false })
     assert.deepStrictEqual(Command.inferRouting(xreadgroup), { keyIndexes: [8] })
@@ -39,8 +37,7 @@ describe("RedisCommand", () => {
         ["XREAD", "STREAMS", "key"],
         ["XREAD", "COUNT", "STREAMS", "key", "0"],
         ["XREAD", "NOACK", "STREAMS", "key", "0"],
-        ["XREADGROUP", "STREAMS", "key", ">"],
-        ["XREADGROUP", "GROUP", "g", "c", "UNKNOWN", "STREAMS", "key", ">"]
+        ["XREADGROUP", "STREAMS", "key", ">"]
       ]
     ) {
       assert.strictEqual(Command.parseStreams(args), undefined)

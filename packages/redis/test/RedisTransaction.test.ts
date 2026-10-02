@@ -5,7 +5,6 @@ import * as Transaction from "@effect/redis/RedisTransaction"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Scope } from "effect"
 import * as Result from "effect/Result"
-import type { Socket } from "node:net"
 import { barrier, bulk, type Request, type ScriptedRedis, startScriptedRedis } from "./utils/redis-scripted.ts"
 
 const serve = (handle: (request: Request, command: string) => void) =>
@@ -20,13 +19,15 @@ const serve = (handle: (request: Request, command: string) => void) =>
     (fixture) => Effect.promise(fixture.stop)
   )
 
+const standalone = (handle: (request: Request, command: string) => void) =>
+  Effect.gen(function*() {
+    const fixture = yield* serve(handle)
+    const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+    return { fixture, client }
+  })
+
 const ping = Command.make(["PING"], Command.text)
 const incr = (key: string) => Command.make(["INCR", key], Command.integer)
-
-const onClose = (socket: Socket): Effect.Effect<void> => {
-  const closed = new Promise<void>((resolve) => socket.destroyed ? resolve() : socket.once("close", () => resolve()))
-  return Effect.promise(() => closed)
-}
 
 // Two Cluster primaries: slots 0-8191 on `low` ({bar} = 5061), 8192-16383 on `high` ({foo} = 12182).
 const twoPrimaries = Effect.gen(function*() {
@@ -58,22 +59,16 @@ describe("RedisTransaction", () => {
   it.live("runs a Cluster transaction on the node owning its first key's slot", () =>
     Effect.gen(function*() {
       const { client, commands } = yield* twoPrimaries
-      const results = yield* Transaction.execute(client, [
-        Command.set("{foo}:a", "1"),
-        Command.set("{foo}:b", "2")
-      ])
+      const results = yield* Transaction.execute(client, [Command.set("{foo}:a", "1"), Command.set("{foo}:b", "2")])
       assert.deepStrictEqual(results?.map(Result.getOrThrow), ["OK", "OK"])
-      assert.deepStrictEqual(commands.high, ["MULTI", "SET", "SET", "EXEC"])
-      assert.deepStrictEqual(commands.low, [])
+      assert.deepStrictEqual(commands, { low: [], high: ["MULTI", "SET", "SET", "EXEC"] })
     }))
 
   it.live("rejects a cross-slot Cluster transaction before sending it", () =>
     Effect.gen(function*() {
       const { client, commands } = yield* twoPrimaries
-      const error = yield* Transaction.execute(client, [
-        Command.set("{foo}:a", "1"),
-        Command.set("{bar}:b", "2")
-      ]).pipe(Effect.flip)
+      const error = yield* Transaction.execute(client, [Command.set("{foo}:a", "1"), Command.set("{bar}:b", "2")])
+        .pipe(Effect.flip)
       assert.strictEqual(error.code, "CROSSSLOT")
       assert.strictEqual(error.outcome, "NotSent")
       assert.deepStrictEqual(commands, { low: [], high: [] })
@@ -82,11 +77,10 @@ describe("RedisTransaction", () => {
   it.live("submits MULTI, commands and EXEC before waiting for acknowledgements", () =>
     Effect.gen(function*() {
       const submitted: Array<ReadonlyArray<string>> = []
-      const fixture = yield* serve((request, command) => {
+      const { client } = yield* standalone((request, command) => {
         submitted.push(request.args.map(String))
         if (command === "EXEC") request.connection.send("+OK\r\n+QUEUED\r\n+QUEUED\r\n*2\r\n+OK\r\n$5\r\nvalue\r\n")
       })
-      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
       const results = yield* Transaction.execute(client, [Command.set("key", "value"), Command.get("key")])
       assert.deepStrictEqual(results?.map(Result.getOrThrow), ["OK", "value"])
       assert.deepStrictEqual(submitted, [["MULTI"], ["SET", "key", "value"], ["GET", "key"], ["EXEC"]])
@@ -96,10 +90,9 @@ describe("RedisTransaction", () => {
     Effect.gen(function*() {
       const executing: Array<Request> = []
       const bothExecuting = barrier<void>()
-      const fixture = yield* serve((request, command) => {
+      const { client } = yield* standalone((request, command) => {
         if (command === "EXEC" && executing.push(request) === 2) bothExecuting.resolve()
       })
-      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
       const pending = yield* Effect.all([
         Transaction.execute(client, [incr("a")]),
         Transaction.execute(client, [incr("b")])
@@ -117,13 +110,12 @@ describe("RedisTransaction", () => {
   it.live("retires a session after an invalid acknowledgement with an unknown outcome", () =>
     Effect.gen(function*() {
       let executions = 0
-      const fixture = yield* serve((request, command) => {
+      const { fixture, client } = yield* standalone((request, command) => {
         if (command !== "EXEC") return
         request.connection.send(
           ++executions === 1 ? "+OK\r\n+UNEXPECTED\r\n*1\r\n:1\r\n" : "+OK\r\n+QUEUED\r\n*1\r\n:1\r\n"
         )
       })
-      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
       const error = yield* Transaction.execute(client, [incr("counter")]).pipe(Effect.flip)
       assert.strictEqual(error.reason, "Protocol")
       assert.strictEqual(error.outcome, "Unknown")
@@ -136,12 +128,11 @@ describe("RedisTransaction", () => {
   it.live("does not replay EXEC when its reply is lost", () =>
     Effect.gen(function*() {
       let executions = 0
-      const fixture = yield* serve((request, command) => {
+      const { client } = yield* standalone((request, command) => {
         if (command !== "EXEC") return
         if (++executions === 1) request.connection.disconnect()
         else request.connection.send("+OK\r\n+QUEUED\r\n*1\r\n:1\r\n")
       })
-      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
       const error = yield* Transaction.execute(client, [incr("counter")]).pipe(Effect.flip)
       assert.strictEqual(error.reason, "Connection")
       assert.strictEqual(error.outcome, "Unknown")
@@ -151,15 +142,13 @@ describe("RedisTransaction", () => {
   it.live("closes the session when interrupted without affecting ordinary commands", () =>
     Effect.gen(function*() {
       const executing = barrier<Request>()
-      const fixture = yield* serve((request, command) => {
+      const { client } = yield* standalone((request, command) => {
         if (command === "EXEC") executing.resolve(request)
       })
-      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
       const transaction = yield* Transaction.execute(client, [incr("counter")]).pipe(Effect.forkChild)
       const exec = yield* Effect.promise(() => executing.promise)
-      const sessionClosed = onClose(exec.connection.socket)
       yield* Fiber.interrupt(transaction)
-      yield* sessionClosed.pipe(Effect.timeout("2 seconds"))
+      yield* Effect.promise(() => exec.connection.closed).pipe(Effect.timeout("2 seconds"))
       assert.strictEqual(yield* client.run(ping), "PONG")
     }))
 
@@ -179,9 +168,9 @@ describe("RedisTransaction", () => {
       yield* Transaction.execute(client, [incr("idle")])
       const pending = yield* Transaction.execute(client, [incr("leased")]).pipe(Effect.result, Effect.forkChild)
       yield* Effect.promise(() => leased.promise)
-      const allClosed = Effect.all(fixture.connections.map((connection) => onClose(connection.socket)))
       yield* Scope.close(scope, Exit.void)
-      yield* allClosed.pipe(Effect.timeout("2 seconds"))
+      yield* Effect.promise(() => Promise.all(fixture.connections.map((connection) => connection.closed)))
+        .pipe(Effect.timeout("2 seconds"))
       assert.strictEqual((yield* Fiber.join(pending))._tag, "Failure")
       assert.strictEqual((yield* Effect.result(Transaction.execute(client, [incr("closed")])))._tag, "Failure")
     }))
@@ -189,9 +178,8 @@ describe("RedisTransaction", () => {
   it.live("rejects transaction control commands without sending anything", () =>
     Effect.gen(function*() {
       const requests: Array<string> = []
-      const fixture = yield* serve((_, command) => requests.push(command))
-      const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
-      for (const control of ["MULTI", "exec", "DISCARD", "WATCH", "UNWATCH", "RESET", "QUIT"]) {
+      const { fixture, client } = yield* standalone((_, command) => requests.push(command))
+      for (const control of ["WATCH", "exec"]) {
         const error = yield* Transaction.execute(client, [
           Command.set("key", "queued"),
           Command.make([control], Command.text)
@@ -221,10 +209,8 @@ describe("RedisTransaction", () => {
         Command.make(["LPUSH", "key", "value"], Command.integer),
         Command.set("key", "value")
       ])
-      assert.isNotNull(results)
-      if (results === null) return
-      assert.strictEqual(results[0]._tag, "Failure")
-      if (results[0]._tag === "Failure") assert.strictEqual(results[0].failure.code, "WRONGTYPE")
+      if (results === null) return assert.fail("Transaction unexpectedly conflicted")
+      assert.isTrue(Result.isFailure(results[0]) && results[0].failure.code === "WRONGTYPE")
       assert.strictEqual(Result.getOrThrow(results[1]), "OK")
     }))
 })

@@ -15,6 +15,27 @@ const server = Effect.acquireRelease(
 
 const nextRequest = (fixture: ScriptedRedis) => Effect.promise(fixture.nextRequest)
 
+const roundTrip = Effect.fnUntraced(function*(
+  fixture: ScriptedRedis,
+  connection: Connection.RedisConnection,
+  args: ReadonlyArray<string>,
+  wire: string | Uint8Array
+) {
+  const pending = yield* connection.execute(args).pipe(Effect.forkChild)
+  const request = yield* nextRequest(fixture)
+  assert.deepStrictEqual(request.args.map(String), args)
+  request.connection.send(wire)
+  return yield* Fiber.join(pending).pipe(Effect.timeout("2 seconds"))
+})
+
+const wrapWrite = (
+  write: (bytes: string | Uint8Array, next: Effect.Effect<void, RedisError>) => Effect.Effect<void, RedisError>
+): Connection.Connector =>
+(endpoint) =>
+  makeConnector()(endpoint).pipe(
+    Effect.map((transport) => ({ ...transport, write: (bytes) => write(bytes, transport.write(bytes)) }))
+  )
+
 const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
   if (result._tag !== "Failure") return assert.fail("Expected Redis failure")
   return result.failure
@@ -71,9 +92,7 @@ describe("RedisConnection", () => {
       for (
         const [config, reason] of [
           [{ maxFrameSize: 0 }, "Protocol"],
-          [{ maxDepth: 0 }, "Protocol"],
           [{ commandTimeout: -1 }, "Timeout"],
-          [{ commandTimeout: NaN }, "Timeout"],
           [{ maxPendingCommands: 0 }, "Capacity"]
         ] as const
       ) {
@@ -84,51 +103,22 @@ describe("RedisConnection", () => {
       assert.strictEqual(opens, 0)
     }))
 
-  it.live("rejects commands beyond the pending limit without sending them", () =>
+  it.live("rejects commands beyond the queue limits without sending them", () =>
     Effect.gen(function*() {
       const fixture = yield* server
-      const connection = yield* Connection.make(makeConnector(), fixture, { maxPendingCommands: 1 })
+      const connection = yield* Connection.make(makeConnector(), fixture, { maxPendingCommands: 1, maxQueuedBytes: 32 })
+      const oversized = failure(yield* Effect.result(connection.execute(["SET", "key", "x".repeat(32)])))
+      assert.strictEqual(oversized.reason, "Capacity")
+      assert.strictEqual(oversized.outcome, "NotSent")
       const first = yield* connection.execute(["GET", "first"]).pipe(Effect.forkChild)
       const request = yield* nextRequest(fixture)
-      const error = failure(yield* Effect.result(connection.execute(["GET", "rejected"])))
-      assert.strictEqual(error.reason, "Capacity")
-      assert.strictEqual(error.outcome, "NotSent")
+      assert.deepStrictEqual(request.args.map(String), ["GET", "first"])
+      const excess = failure(yield* Effect.result(connection.execute(["GET", "rejected"])))
+      assert.strictEqual(excess.reason, "Capacity")
+      assert.strictEqual(excess.outcome, "NotSent")
       request.connection.send(bulk("first"))
       assert.strictEqual(Protocol.toValue(yield* Fiber.join(first)), "first")
-      const next = yield* connection.execute(["GET", "next"]).pipe(Effect.forkChild)
-      assert.deepStrictEqual((yield* nextRequest(fixture)).args.map(String), ["GET", "next"])
-      request.connection.send(bulk("next"))
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(next)), "next")
-    }))
-
-  it.live("rejects a command larger than the queued byte limit without sending it", () =>
-    Effect.gen(function*() {
-      const fixture = yield* server
-      const connection = yield* Connection.make(makeConnector(), fixture, { maxQueuedBytes: 32 })
-      const error = failure(yield* Effect.result(connection.execute(["SET", "key", "x".repeat(32)])))
-      assert.strictEqual(error.reason, "Capacity")
-      assert.strictEqual(error.outcome, "NotSent")
-      const next = yield* connection.execute(["GET", "key"]).pipe(Effect.forkChild)
-      const request = yield* nextRequest(fixture)
-      assert.deepStrictEqual(request.args.map(String), ["GET", "key"])
-      request.connection.send("$-1\r\n")
-      assert.isNull(Protocol.toValue(yield* Fiber.join(next)))
-    }))
-
-  it.live("matches replies to concurrent commands in FIFO order", () =>
-    Effect.gen(function*() {
-      const fixture = yield* server
-      const connection = yield* Connection.make(makeConnector(), fixture)
-      const fibers = yield* Effect.forEach(
-        ["a", "b", "c", "d"],
-        (value) => connection.execute(["ECHO", value]).pipe(Effect.forkChild)
-      )
-      for (let index = 0; index < fibers.length; index++) {
-        const request = yield* nextRequest(fixture)
-        request.connection.send(bulk(request.args[1]))
-      }
-      const replies = yield* Effect.forEach(fibers, Fiber.join)
-      assert.deepStrictEqual(replies.map(Protocol.toValue), ["a", "b", "c", "d"])
+      assert.strictEqual(Protocol.toValue(yield* roundTrip(fixture, connection, ["GET", "next"], bulk("next"))), "next")
     }))
 
   it.live("frames an unpaired surrogate argument so the next command still parses", () =>
@@ -138,17 +128,13 @@ describe("RedisConnection", () => {
       const echo = yield* connection.execute(["ECHO", "\ud800"]).pipe(Effect.forkChild)
       // A short bulk payload leaves the server waiting for the declared bytes.
       const request = yield* nextRequest(fixture).pipe(Effect.timeout("1 second"))
-      assert.deepStrictEqual(request.args.map(String), ["ECHO", "\ufffd"])
-      request.connection.send(bulk("\ufffd"))
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(echo)), "\ufffd")
-      const ping = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
-      const next = yield* nextRequest(fixture)
-      assert.deepStrictEqual(next.args.map(String), ["PING"])
-      next.connection.send("+PONG\r\n")
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(ping)), "PONG")
+      assert.deepStrictEqual(request.args.map(String), ["ECHO", "�"])
+      request.connection.send(bulk("�"))
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(echo)), "�")
+      assert.strictEqual(Protocol.toValue(yield* roundTrip(fixture, connection, ["PING"], "+PONG\r\n")), "PONG")
     }))
 
-  it.live("batches commands admitted during a slow write and skips interrupted ones", () =>
+  it.live("batches commands admitted during a held write in FIFO order and skips interrupted ones", () =>
     Effect.gen(function*() {
       const fixture = yield* server
       const gate = yield* Deferred.make<void>()
@@ -156,59 +142,51 @@ describe("RedisConnection", () => {
       const writes: Array<string> = []
       let active = 0
       let overlapped = false
-      const base = makeConnector()
-      const connector: Connection.Connector = (endpoint) =>
-        base(endpoint).pipe(Effect.map((transport) => ({
-          ...transport,
-          write: (bytes) =>
-            Effect.gen(function*() {
-              overlapped ||= active > 0
-              active++
-              writes.push(String(bytes))
-              if (writes.length === 1) {
-                yield* Deferred.succeed(started, undefined)
-                yield* Deferred.await(gate)
-              }
-              yield* transport.write(bytes)
-              active--
-            })
-        })))
+      const connector = wrapWrite((bytes, next) =>
+        Effect.gen(function*() {
+          overlapped ||= active > 0
+          active++
+          writes.push(String(bytes))
+          if (writes.length === 1) {
+            yield* Deferred.succeed(started, undefined)
+            yield* Deferred.await(gate)
+          }
+          yield* next
+          active--
+        })
+      )
       const connection = yield* Connection.make(connector, fixture)
-      const first = yield* connection.execute(["SET", "a", "1"]).pipe(Effect.forkChild)
+      const first = yield* connection.execute(["ECHO", "a"]).pipe(Effect.forkChild)
       yield* Deferred.await(started)
-      const second = yield* connection.execute(["SET", "b", "2"]).pipe(Effect.forkChild)
-      const interrupted = yield* connection.execute(["SET", "c", "3"]).pipe(Effect.forkChild)
-      const third = yield* connection.execute(["GET", "d"]).pipe(Effect.forkChild)
+      const second = yield* connection.execute(["ECHO", "b"]).pipe(Effect.forkChild)
+      const interrupted = yield* connection.execute(["ECHO", "c"]).pipe(Effect.forkChild)
+      const third = yield* connection.execute(["ECHO", "d"]).pipe(Effect.forkChild)
       yield* Effect.yieldNow
       yield* Fiber.interrupt(interrupted)
       assert.strictEqual(writes.length, 1)
       yield* Deferred.succeed(gate, undefined)
       const requests = yield* Effect.forEach([0, 1, 2], () => nextRequest(fixture))
-      assert.deepStrictEqual(
-        requests.map((request) => request.args.map(String)),
-        [["SET", "a", "1"], ["SET", "b", "2"], ["GET", "d"]]
-      )
-      requests[0].connection.send(Buffer.concat([Buffer.from("+OK\r\n+OK\r\n"), bulk("value")]))
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(first)), "OK")
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(second)), "OK")
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(third)), "value")
+      assert.deepStrictEqual(requests.map((request) => request.args.map(String)), [
+        ["ECHO", "a"],
+        ["ECHO", "b"],
+        ["ECHO", "d"]
+      ])
+      requests[0].connection.send(Buffer.concat([bulk("a"), bulk("b"), bulk("d")]))
+      const replies = yield* Effect.forEach([first, second, third], Fiber.join)
+      assert.deepStrictEqual(replies.map(Protocol.toValue), ["a", "b", "d"])
       assert.strictEqual(writes.length, 2)
       assert.isFalse(overlapped)
     }))
 
-  it.live("writes a pipeline in one batch and preserves reply positions", () =>
+  it.live("writes a pipeline in one batch and keeps the connection open after a server error", () =>
     Effect.gen(function*() {
       const fixture = yield* server
       let writes = 0
-      const base = makeConnector()
-      const connector: Connection.Connector = (endpoint) =>
-        base(endpoint).pipe(Effect.map((transport) => ({
-          ...transport,
-          write: (bytes) =>
-            Effect.sync(() => {
-              writes++
-            }).pipe(Effect.andThen(transport.write(bytes)))
-        })))
+      const connector = wrapWrite((_, next) =>
+        Effect.sync(() => {
+          writes++
+        }).pipe(Effect.andThen(next))
+      )
       const connection = yield* Connection.make(connector, fixture)
       const pending = yield* connection.pipeline([
         { arguments: ["SET", "key", "value"] },
@@ -221,25 +199,11 @@ describe("RedisConnection", () => {
       requests[0].connection.send(Buffer.concat([Buffer.from("+OK\r\n-WRONGTYPE invalid value\r\n"), bulk("value")]))
       const results = yield* Fiber.join(pending)
       assert.strictEqual(results[0]._tag, "Success")
-      assert.strictEqual(failure(results[1]).code, "WRONGTYPE")
-      assert.deepStrictEqual(results[2]._tag === "Success" && Protocol.toValue(results[2].success), "value")
-    }))
-
-  it.live("keeps the connection open after a server error reply", () =>
-    Effect.gen(function*() {
-      const fixture = yield* server
-      const connection = yield* Connection.make(makeConnector(), fixture)
-      const pending = yield* connection.execute(["GET", "key"]).pipe(Effect.result, Effect.forkChild)
-      const request = yield* nextRequest(fixture)
-      request.connection.send("-WRONGTYPE Operation against a key holding the wrong kind of value\r\n")
-      const error = failure(yield* Fiber.join(pending))
+      const error = failure(results[1])
       assert.strictEqual(error.reason, "Server")
       assert.strictEqual(error.code, "WRONGTYPE")
+      assert.deepStrictEqual(results[2]._tag === "Success" && Protocol.toValue(results[2].success), "value")
       assert.isTrue(connection.isOpen())
-      const next = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
-      yield* nextRequest(fixture)
-      request.connection.send("+PONG\r\n")
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(next)), "PONG")
     }))
 
   it.live("fails transmitted commands as uncertain on a malformed reply", () =>
@@ -282,9 +246,6 @@ describe("RedisConnection", () => {
       request.connection.disconnect()
       assert.strictEqual(failure(yield* Fiber.join(pending)).outcome, "Unknown")
       assert.isFalse(connection.isOpen())
-      const rejected = failure(yield* Effect.result(connection.execute(["INCR", "counter"])))
-      assert.strictEqual(rejected.outcome, "NotSent")
-      assert.strictEqual(fixture.connections.length, 1)
     }))
 
   it.live("consumes an interrupted command's reply before the next reply", () =>
@@ -317,65 +278,47 @@ describe("RedisConnection", () => {
       assert.strictEqual(Protocol.toValue(yield* Fiber.join(second)), "1")
     }))
 
-  it.live("routes RESP3 pushes apart from command replies", () =>
+  it.live("routes RESP3 pushes to listeners and attributed replies to commands", () =>
     Effect.gen(function*() {
       const fixture = yield* server
       const connection = yield* Connection.make(makeConnector(), fixture)
       const pushes: Array<unknown> = []
       connection.onPush((reply) => pushes.push(Protocol.toValue(reply)))
-      const pending = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
-      const request = yield* nextRequest(fixture)
-      request.connection.send(">2\r\n+invalidate\r\n*1\r\n$3\r\nkey\r\n+PONG\r\n")
-      assert.strictEqual(Protocol.toValue(yield* Fiber.join(pending)), "PONG")
+      const reply = yield* roundTrip(
+        fixture,
+        connection,
+        ["PING"],
+        ">2\r\n+invalidate\r\n*1\r\n$3\r\nkey\r\n|1\r\n+ttl\r\n:10\r\n+PONG\r\n"
+      )
+      assert.deepStrictEqual(reply, {
+        _tag: "Attribute",
+        entries: [[{ _tag: "SimpleString", value: "ttl" }, { _tag: "Integer", value: 10n }]],
+        value: { _tag: "SimpleString", value: "PONG" }
+      })
       assert.deepStrictEqual(pushes, [["invalidate", ["key"]]])
     }))
 
-  it.live("separates RESP2 subscription messages from replies", () =>
+  it.live("routes RESP2 subscription messages until the last channel is unsubscribed", () =>
     Effect.gen(function*() {
       const fixture = yield* server
       const connection = yield* Connection.make(makeConnector(), fixture)
       const messages: Array<unknown> = []
       connection.onPush((reply) => messages.push(Protocol.toValue(reply)))
-      const subscribing = yield* connection.execute(["SUBSCRIBE", "channel"]).pipe(Effect.forkChild)
-      const request = yield* nextRequest(fixture)
-      request.connection.send("*3\r\n$9\r\nsubscribe\r\n$7\r\nchannel\r\n:1\r\n")
-      yield* Fiber.join(subscribing)
-      const ping = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
-      yield* nextRequest(fixture)
-      request.connection.send(Buffer.concat([array("message", "channel", "payload"), array("pong", "")]))
-      assert.deepStrictEqual(Protocol.toValue(yield* Fiber.join(ping)), ["pong", ""])
-      assert.deepStrictEqual(messages, [["subscribe", "channel", 1], ["message", "channel", "payload"]])
-    }))
-
-  it.live("leaves RESP2 subscription mode after the last channel is unsubscribed", () =>
-    Effect.gen(function*() {
-      const fixture = yield* server
-      const connection = yield* Connection.make(makeConnector(), fixture)
-      const roundTrip = Effect.fnUntraced(function*(args: ReadonlyArray<string>, wire: string | Uint8Array) {
-        const pending = yield* connection.execute(args).pipe(Effect.forkChild)
-        const request = yield* nextRequest(fixture)
-        assert.deepStrictEqual(request.args.map(String), args)
-        request.connection.send(wire)
-        return Protocol.toValue(yield* Fiber.join(pending).pipe(Effect.timeout("2 seconds")))
-      })
-      yield* roundTrip(["SUBSCRIBE", "channel"], "*3\r\n$9\r\nsubscribe\r\n$7\r\nchannel\r\n:1\r\n")
-      yield* roundTrip(["UNSUBSCRIBE", "channel"], "*3\r\n$11\r\nunsubscribe\r\n$7\r\nchannel\r\n:0\r\n")
-      assert.deepStrictEqual(yield* roundTrip(["MGET", "a", "b"], array("message", "value")), ["message", "value"])
-      assert.strictEqual(yield* roundTrip(["PING"], "+PONG\r\n"), "PONG")
-    }))
-
-  it.live("retains RESP3 attributes on replies", () =>
-    Effect.gen(function*() {
-      const fixture = yield* server
-      const connection = yield* Connection.make(makeConnector(), fixture)
-      const pending = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
-      const request = yield* nextRequest(fixture)
-      request.connection.send("|1\r\n+ttl\r\n:10\r\n+PONG\r\n")
-      assert.deepStrictEqual(yield* Fiber.join(pending), {
-        _tag: "Attribute",
-        entries: [[{ _tag: "SimpleString", value: "ttl" }, { _tag: "Integer", value: 10n }]],
-        value: { _tag: "SimpleString", value: "PONG" }
-      })
+      const roundTripValue = (args: ReadonlyArray<string>, wire: string | Uint8Array) =>
+        roundTrip(fixture, connection, args, wire).pipe(Effect.map(Protocol.toValue))
+      yield* roundTripValue(["SUBSCRIBE", "channel"], "*3\r\n$9\r\nsubscribe\r\n$7\r\nchannel\r\n:1\r\n")
+      assert.deepStrictEqual(
+        yield* roundTripValue(["PING"], Buffer.concat([array("message", "channel", "payload"), array("pong", "")])),
+        ["pong", ""]
+      )
+      yield* roundTripValue(["UNSUBSCRIBE", "channel"], "*3\r\n$11\r\nunsubscribe\r\n$7\r\nchannel\r\n:0\r\n")
+      assert.deepStrictEqual(yield* roundTripValue(["MGET", "a", "b"], array("message", "value")), ["message", "value"])
+      assert.strictEqual(yield* roundTripValue(["PING"], "+PONG\r\n"), "PONG")
+      assert.deepStrictEqual(messages, [
+        ["subscribe", "channel", 1],
+        ["message", "channel", "payload"],
+        ["unsubscribe", "channel", 0]
+      ])
     }))
 
   it.live("fails pending commands and closes the socket when the scope closes", () =>

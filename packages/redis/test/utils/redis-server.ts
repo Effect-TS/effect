@@ -1,8 +1,7 @@
 import * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import { type ChildProcess, execFile, spawn } from "node:child_process"
-import { constants } from "node:fs"
-import { access, copyFile, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { copyFile, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { createConnection, createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -155,23 +154,7 @@ const quote = (value: string): string => JSON.stringify(value)
 const runFile = promisify(execFile)
 const redisImage = "redis:7.2.6@sha256:43c5c111b5b63afce26faea67198f8cf7e63b941460bcfe1525b68a6ad1eef92"
 
-const findBinary = async (): Promise<string | undefined> => {
-  for (const directory of (process.env.PATH ?? "").split(":")) {
-    const path = join(directory, "redis-server")
-    try {
-      await access(path, constants.X_OK)
-      return path
-    } catch {
-      continue
-    }
-  }
-  return undefined
-}
-
-/**
- * Starts `redis-server` from `REDIS_SERVER_BIN` or `PATH`, falling back to the
- * pinned Docker image (or `REDIS_TEST_IMAGE`) with host networking.
- */
+/** Starts `REDIS_SERVER_BIN`, falling back to the pinned Docker image with host networking. */
 export const startRedis = async (options: RedisOptions = {}): Promise<RedisFixture> => {
   for (let attempt = 0;; attempt++) {
     try {
@@ -184,7 +167,7 @@ export const startRedis = async (options: RedisOptions = {}): Promise<RedisFixtu
 }
 
 const startRedisOnce = async (options: RedisOptions): Promise<RedisFixture> => {
-  const binary = process.env.REDIS_SERVER_BIN ?? (process.env.REDIS_TEST_IMAGE ? undefined : await findBinary())
+  const binary = process.env.REDIS_SERVER_BIN
   if (!binary && process.platform !== "linux") {
     throw new Error("Redis Docker fixtures require Linux host networking; set REDIS_SERVER_BIN on other platforms")
   }
@@ -252,7 +235,7 @@ const startRedisOnce = async (options: RedisOptions): Promise<RedisFixture> => {
       `${directory}:${directory}`,
       "--workdir",
       directory,
-      process.env.REDIS_TEST_IMAGE ?? redisImage,
+      redisImage,
       "redis-server",
       ...serverArgs
     ], { stdio: ["ignore", "pipe", "pipe"] })
@@ -316,11 +299,10 @@ export interface ClusterFixture {
   readonly seeds: ReadonlyArray<Endpoint>
   readonly stop: () => Promise<void>
   readonly moveSlot: (slot: number, source: ClusterNode, target: ClusterNode) => Promise<void>
-  readonly failover: (replica: ClusterNode) => Promise<void>
 }
 
 /** Starts a six-node Cluster: three primaries, each with one replica. */
-export const startCluster = async (options: RedisOptions = {}): Promise<ClusterFixture> => {
+export const startCluster = async (): Promise<ClusterFixture> => {
   const fixtures: Array<RedisFixture> = []
   const stop = async () => {
     await Promise.all(fixtures.map((fixture) => fixture.stop()))
@@ -332,16 +314,12 @@ export const startCluster = async (options: RedisOptions = {}): Promise<ClusterF
     for (let i = 0; i < 6; i++) {
       fixtures.push(
         await startRedis({
-          ...options,
           cluster: true,
           config: [
-            ...options.config ?? [],
             "cluster-enabled yes",
             "cluster-config-file nodes.conf",
             "cluster-node-timeout 1000",
-            "cluster-announce-ip 127.0.0.1",
-            ...(options.password ? [`masterauth ${quote(options.password)}`] : []),
-            ...(options.username ? [`masteruser ${quote(options.username)}`] : [])
+            "cluster-announce-ip 127.0.0.1"
           ]
         })
       )
@@ -378,15 +356,6 @@ export const startCluster = async (options: RedisOptions = {}): Promise<ClusterF
     throw error
   }
 
-  const slotOwners = async (node: ClusterNode): Promise<Array<string>> => {
-    const slots = await node.command("CLUSTER", "SLOTS") as Array<Array<Reply>>
-    const owners = Array<string>(16_384).fill("")
-    for (const [start, end, primary] of slots) {
-      owners.fill((primary as Array<Reply>)[2] as string, start as number, (end as number) + 1)
-    }
-    return owners
-  }
-
   return {
     nodes,
     seeds: nodes.slice(0, 3).map(({ host, port }) => ({ host, port })),
@@ -397,42 +366,11 @@ export const startCluster = async (options: RedisOptions = {}): Promise<ClusterF
       while (true) {
         const keys = await source.command("CLUSTER", "GETKEYSINSLOT", String(slot), "100") as Array<string>
         if (keys.length === 0) break
-        await source.command(
-          "MIGRATE",
-          target.host,
-          String(target.port),
-          "",
-          "0",
-          "5000",
-          ...(options.password ? ["AUTH", options.password] : []),
-          "KEYS",
-          ...keys
-        )
+        await source.command("MIGRATE", target.host, String(target.port), "", "0", "5000", "KEYS", ...keys)
       }
       await Promise.all(
         nodes.slice(0, 3).map((node) => node.command("CLUSTER", "SETSLOT", String(slot), "NODE", target.id))
       )
-      // Replicas learn ownership through gossip; wait so a later promotion sees it.
-      await waitUntil(
-        allNodes(async (node) => (await slotOwners(node))[slot] === target.id),
-        "Redis Cluster slot migration did not converge"
-      )
-    },
-    failover: async (replica) => {
-      const previousRole = await replica.command("ROLE") as Array<Reply>
-      const primary = nodes.find((node) => node.port === previousRole[2])
-      if (previousRole[0] !== "slave" || !primary) throw new Error("Expected a Redis Cluster replica")
-      const expected = (await slotOwners(primary)).map((id) => id === primary.id ? replica.id : id)
-      await replica.command("CLUSTER", "FAILOVER")
-      // ROLE flips before every node applies the new epoch; until then commands may see CLUSTERDOWN.
-      await waitUntil(async () => {
-        const oldRole = await primary.command("ROLE") as Array<Reply>
-        if (oldRole[0] !== "slave" || oldRole[2] !== replica.port) return false
-        return allNodes(async (node) =>
-          String(await node.command("CLUSTER", "INFO")).includes("cluster_state:ok") &&
-          (await slotOwners(node)).every((id, slot) => id === expected[slot])
-        )()
-      }, "Redis Cluster promotion did not converge")
     }
   }
 }
@@ -445,8 +383,6 @@ export interface SentinelFixture {
   readonly primary: () => Promise<Endpoint>
   /** Triggers `SENTINEL FAILOVER` and resolves with the promoted primary. */
   readonly failover: () => Promise<Endpoint>
-  /** Stops the primary process and resolves with the promoted primary. */
-  readonly killPrimary: () => Promise<Endpoint>
 }
 
 export interface SentinelOptions extends RedisOptions {
@@ -515,20 +451,6 @@ export const startSentinel = async (options: SentinelOptions = {}): Promise<Sent
     const result = await sentinels[0].command("SENTINEL", "GET-MASTER-ADDR-BY-NAME", serviceName) as Array<string>
     return { host: result[0], port: Number(result[1]) }
   }
-  const waitForPromotion = async (old: Endpoint): Promise<Endpoint> => {
-    let current = old
-    await waitUntil(
-      async () => {
-        current = await primary()
-        if (current.port === old.port) return false
-        const role = await command(current, ["ROLE"], options) as Array<Reply>
-        return role[0] === "master"
-      },
-      "Sentinel did not promote and announce a new primary",
-      45_000
-    )
-    return current
-  }
   return {
     serviceName,
     dataNodes,
@@ -538,14 +460,18 @@ export const startSentinel = async (options: SentinelOptions = {}): Promise<Sent
     failover: async () => {
       const old = await primary()
       await sentinels[0].command("SENTINEL", "FAILOVER", serviceName)
-      return waitForPromotion(old)
-    },
-    killPrimary: async () => {
-      const old = await primary()
-      const node = dataNodes.find((node) => node.port === old.port)
-      if (!node) throw new Error("Sentinel selected an unknown primary")
-      await node.stop()
-      return waitForPromotion(old)
+      let current = old
+      await waitUntil(
+        async () => {
+          current = await primary()
+          if (current.port === old.port) return false
+          const role = await command(current, ["ROLE"], options) as Array<Reply>
+          return role[0] === "master"
+        },
+        "Sentinel did not promote and announce a new primary",
+        45_000
+      )
+      return current
     }
   }
 }

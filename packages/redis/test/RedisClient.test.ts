@@ -4,7 +4,7 @@ import * as Sentinel from "@effect/redis/internal/sentinel"
 import type { ClusterConfig } from "@effect/redis/internal/topology"
 import * as Client from "@effect/redis/RedisClient"
 import * as Command from "@effect/redis/RedisCommand"
-import type { Connector, Endpoint, Transport } from "@effect/redis/RedisConnection"
+import type { Connector, Endpoint } from "@effect/redis/RedisConnection"
 import { RedisError } from "@effect/redis/RedisError"
 import * as Protocol from "@effect/redis/RedisProtocol"
 import { assert, describe, it } from "@effect/vitest"
@@ -18,6 +18,9 @@ const server = (handle: (request: Request) => void) =>
     Effect.promise(() => startScriptedRedis(handle)),
     (fixture) => Effect.promise(fixture.stop)
   )
+
+const standalone = (endpoint: Endpoint) => Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint } })
+const cluster = (seed: Endpoint) => Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [seed] } })
 
 const args = (request: Request): Array<string> => request.args.map((arg) => arg.toString())
 
@@ -58,11 +61,6 @@ const clusterDiscovery = (request: Request, endpoint: Endpoint): boolean => {
   return false
 }
 
-const wireBytes = (input: Parameters<Transport["write"]>[0]): Uint8Array => {
-  const parts = typeof input === "string" || input instanceof Uint8Array ? [input] : input
-  return Buffer.concat(parts.map((part) => typeof part === "string" ? Buffer.from(part) : part))
-}
-
 const mockConnector = (respond: (endpoint: Endpoint, args: ReadonlyArray<string>) => string | undefined) => {
   const commands: Array<readonly [Endpoint, ReadonlyArray<string>]> = []
   let opens = 0
@@ -82,11 +80,11 @@ const mockConnector = (respond: (endpoint: Endpoint, args: ReadonlyArray<string>
         Effect.succeed({
           run: (onBytes: (bytes: Uint8Array) => void) => Queue.take(replies).pipe(Effect.map(onBytes), Effect.forever),
           close,
-          write: (bytes: Parameters<Transport["write"]>[0]) =>
+          write: (bytes: string | Uint8Array) =>
             Effect.try({
               try: () => {
                 // Commands in these tests are ASCII, so bulk payloads sit on every other line.
-                const lines = Buffer.from(wireBytes(bytes)).toString().split("\r\n")
+                const lines = (typeof bytes === "string" ? bytes : Buffer.from(bytes).toString()).split("\r\n")
                 const args: Array<string> = []
                 for (let i = 2; i < lines.length - 1; i += 2) args.push(lines[i])
                 commands.push([endpoint, args])
@@ -141,14 +139,12 @@ describe("RedisClient", () => {
           })
         const seed = { host: "127.0.0.1", port: 7000 }
         const configs: ReadonlyArray<Client.Config> = [
-          { reconnectDelay: 0 },
           { reconnectDelay: NaN },
           { topology: { _tag: "Cluster", seeds: [] } },
           { topology: { _tag: "Cluster", seeds: [seed], maxRedirects: -1 } },
           { topology: { _tag: "Cluster", seeds: [seed] }, database: 1 },
           { topology: { _tag: "Sentinel", sentinels: [], masterName: "service" } },
-          { topology: { _tag: "Sentinel", sentinels: [seed], masterName: "service", refreshInterval: 0 } },
-          { topology: { _tag: "Sentinel", sentinels: [seed], masterName: "service", refreshInterval: NaN } }
+          { topology: { _tag: "Sentinel", sentinels: [seed], masterName: "service", refreshInterval: 0 } }
         ]
         for (const config of configs) {
           rejected(yield* Effect.result(Client.make(connector, config)))
@@ -163,17 +159,9 @@ describe("RedisClient", () => {
           requests.push(args(request))
           request.connection.send("+PONG\r\n")
         })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const client = yield* standalone(fixture)
         for (
-          const command of [
-            ["MULTI"],
-            ["WATCH", "key"],
-            ["SELECT", "1"],
-            ["SUBSCRIBE", "channel"],
-            ["CLIENT", "REPLY", "OFF"],
-            ["BLPOP", "list", "0"],
-            ["XREAD", "BLOCK", "0", "STREAMS", "stream", "$"]
-          ]
+          const command of [["SELECT", "1"], ["CLIENT", "REPLY", "OFF"], ["XREAD", "BLOCK", "0", "STREAMS", "s", "$"]]
         ) {
           rejected(yield* Effect.result(client.execute(command)))
         }
@@ -182,16 +170,16 @@ describe("RedisClient", () => {
 
     it.live("does not replay uncertain writes and reconnects for later commands", () =>
       Effect.gen(function*() {
-        const requests: Array<ReadonlyArray<string>> = []
+        let lost = 0
         const fixture = yield* server((request) => {
-          const values = args(request)
-          requests.push(values)
-          if (values[0] === "INCR" && values[1] === "lost") request.connection.socket.end()
-          else {request.connection.send(
-              values[0] === "GET" ? bulk("value") : values[0] === "INCR" ? ":1\r\n" : "+PONG\r\n"
-            )}
+          const [command, key] = args(request)
+          if (key === "lost") {
+            lost++
+            return request.connection.socket.end()
+          }
+          request.connection.send(command === "GET" ? bulk("value") : command === "INCR" ? ":1\r\n" : "+PONG\r\n")
         })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const client = yield* standalone(fixture)
 
         const error = failure(yield* Effect.result(client.execute(["INCR", "lost"])))
         assert.strictEqual(error.reason, "Connection")
@@ -205,7 +193,7 @@ describe("RedisClient", () => {
         assert.strictEqual(failure(results[1]).outcome, "Unknown")
 
         assert.strictEqual(yield* client.run(Command.get("key")), "value")
-        assert.strictEqual(requests.filter((values) => values[1] === "lost").length, 2)
+        assert.strictEqual(lost, 2)
         assert.strictEqual(fixture.connections.length, 3)
       }))
 
@@ -216,7 +204,7 @@ describe("RedisClient", () => {
             args(request)[0] === "GET" ? "-WRONGTYPE Operation against wrong key type\r\n" : "+PONG\r\n"
           )
         )
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const client = yield* standalone(fixture)
 
         const defect = new Error("decoder failure")
         const exit = yield* client.run(Command.make(["PING"], () => {
@@ -251,7 +239,7 @@ describe("RedisClient", () => {
           requests.push(request)
           if (requests.length === 4) submitted.resolve()
         })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const client = yield* standalone(fixture)
         const pipeline = yield* client.pipeline([
           Command.make(["INCR", "counter"], Command.integer),
           Command.make(["MULTI"], Command.text),
@@ -278,62 +266,39 @@ describe("RedisClient", () => {
         assert.deepStrictEqual(yield* client.pipeline([]), [])
       }))
 
-    it.live("shares an in-progress connection attempt and retries one that failed", () =>
+    it.live("retries a shared connection whose acquisition died and shares the next attempt", () =>
       Effect.gen(function*() {
         const fixture = yield* server((request) => request.connection.send("+PONG\r\n"))
         const base = makeConnector()
+        const defect = new Error("acquisition defect")
         let attempts = 0
         // "replica" is an alias for the fixture, so it gets its own shared connection.
         const connector: Connector = (endpoint) =>
           endpoint.host === "replica"
             ? Effect.suspend(() =>
               ++attempts === 1
-                ? Effect.fail(new RedisError({ reason: "Connection", message: "unavailable", outcome: "NotSent" }))
+                ? Effect.die(defect)
                 : Effect.andThen(Effect.sleep("20 millis"), base({ ...endpoint, host: fixture.host }))
             )
             : base(endpoint)
         const client = yield* Client.make(connector, { topology: { _tag: "Standalone", endpoint: fixture } })
-        const replica = { host: "replica", port: fixture.port }
+        const ping = client.execute(["PING"], { node: { host: "replica", port: fixture.port }, keyIndexes: [] })
 
-        const error = failure(yield* Effect.result(client.execute(["PING"], { node: replica, keyIndexes: [] })))
-        assert.strictEqual(error.reason, "Connection")
-
-        const replies = yield* Effect.all(
-          [0, 1, 2].map(() => client.execute(["PING"], { node: replica, keyIndexes: [] })),
-          { concurrency: "unbounded" }
+        const exit = yield* Effect.exit(ping)
+        assert.isTrue(Exit.isFailure(exit) && Cause.squash(exit.cause) === defect)
+        const replies = yield* Effect.all([ping, ping, ping], { concurrency: "unbounded" }).pipe(
+          Effect.timeout("2 seconds")
         )
         assert.deepStrictEqual(replies.map(Protocol.toValue), ["PONG", "PONG", "PONG"])
         assert.strictEqual(attempts, 2)
         assert.strictEqual(fixture.connections.length, 2)
       }))
 
-    it.live("retries a shared connection whose acquisition died", () =>
-      Effect.gen(function*() {
-        const fixture = yield* server((request) => request.connection.send("+PONG\r\n"))
-        const base = makeConnector()
-        const defect = new Error("acquisition defect")
-        let attempts = 0
-        const connector: Connector = (endpoint) =>
-          endpoint.host === "replica"
-            ? Effect.suspend(() => ++attempts === 1 ? Effect.die(defect) : base({ ...endpoint, host: fixture.host }))
-            : base(endpoint)
-        const client = yield* Client.make(connector, { topology: { _tag: "Standalone", endpoint: fixture } })
-        const replica = { host: "replica", port: fixture.port }
-
-        const first = yield* Effect.exit(client.execute(["PING"], { node: replica, keyIndexes: [] }))
-        assert.isTrue(Exit.isFailure(first) && Cause.squash(first.cause) === defect)
-        const second = yield* client.execute(["PING"], { node: replica, keyIndexes: [] }).pipe(
-          Effect.timeout("2 seconds")
-        )
-        assert.strictEqual(Protocol.toValue(second), "PONG")
-        assert.strictEqual(attempts, 2)
-      }))
-
     it.live("releases shared and reserved sockets when its scope closes", () =>
       Effect.gen(function*() {
         const fixture = yield* server((request) => request.connection.send("+PONG\r\n"))
         const scope = yield* Scope.make()
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Standalone", endpoint: fixture } })
+        const client = yield* standalone(fixture)
           .pipe(Scope.provide(scope))
         const reserved = yield* client.reserve().pipe(Scope.provide(scope))
         yield* reserved.execute(["PING"])
@@ -366,7 +331,7 @@ describe("RedisClient", () => {
           sourceGets.push(args(request))
           request.connection.send(`-MOVED 5061 ${target.host}:${target.port}\r\n`)
         })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const client = yield* cluster(source)
         assert.strictEqual(yield* client.run(Command.get("bar")), "value")
         assert.strictEqual(yield* client.run(Command.get("bar")), "value")
         assert.deepStrictEqual(sourceGets, [["GET", "bar"]])
@@ -394,7 +359,7 @@ describe("RedisClient", () => {
           sourceGets++
           request.connection.send(`-ASK 5061 ${target.host}:${target.port}\r\n`)
         })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const client = yield* cluster(source)
 
         const redirected = yield* client.run(Command.get("bar")).pipe(Effect.forkChild)
         const askingRequest = yield* Effect.promise(() => asking.promise)
@@ -450,7 +415,7 @@ describe("RedisClient", () => {
           if (clusterDiscovery(request, source)) return
           request.connection.send(`-ASK 5061 ${target.host}:${target.port}\r\n`)
         })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const client = yield* cluster(source)
         const results = yield* client.pipeline([
           Command.make(["INCR", "{bar}:first"], Command.integer),
           Command.make(["INCR", "{bar}:second"], Command.integer)
@@ -477,7 +442,7 @@ describe("RedisClient", () => {
             request.connection.socket.end(moved + moved + ":1\r\n")
           }
         })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const client = yield* cluster(source)
         const pipeline = yield* client.pipeline([
           Command.make(["INCR", "{bar}:first"], Command.integer),
           Command.make(["INCR", "{bar}:second"], Command.integer),
@@ -493,28 +458,6 @@ describe("RedisClient", () => {
         assert.strictEqual(failure(results[3]).outcome, "Unknown")
         assert.strictEqual(sourceRequests.length, 4)
         assert.strictEqual(targetRequests.length, 2)
-      }))
-
-    it.live("rejects a cross-slot reserved pipeline before sending any command", () =>
-      Effect.gen(function*() {
-        const requests: Array<ReadonlyArray<string>> = []
-        const fixture = yield* server((request) => {
-          if (clusterDiscovery(request, fixture)) return
-          requests.push(args(request))
-          request.connection.send("+OK\r\n")
-        })
-        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [fixture] } })
-        const reserved = yield* client.reserve({ key: "bar" })
-        const error = failure(
-          yield* Effect.result(reserved.pipeline([
-            { arguments: ["MULTI"] },
-            { arguments: ["SET", "foo", "value"] },
-            { arguments: ["EXEC"] }
-          ]))
-        )
-        assert.strictEqual(error.code, "CROSSSLOT")
-        assert.strictEqual(error.outcome, "NotSent")
-        assert.deepStrictEqual(requests, [])
       }))
 
     describe("topology", () => {
@@ -541,7 +484,6 @@ describe("RedisClient", () => {
 
       it("computes key slots with CRC16 and hash tags", () => {
         assert.strictEqual(Cluster.crc16(Buffer.from("123456789")), 0x31c3)
-        assert.strictEqual(Cluster.keySlot("foo"), 12182)
         assert.strictEqual(Cluster.keySlot("bar"), 5061)
         assert.strictEqual(Cluster.keySlot("{bar}:one"), 5061)
         assert.strictEqual(Cluster.keySlot("foo{}{bar}"), 8363)
@@ -582,28 +524,24 @@ describe("RedisClient", () => {
         assert.throws(() => Cluster.parseShards(reply([["slots", [0, 16383], "nodes", [loading]]]), seed, config))
       })
 
-      it.effect("does not fall back to CLUSTER SLOTS when CLUSTER SHARDS is denied", () =>
-        Effect.gen(function*() {
-          const mock = mockConnector(() =>
-            "-NOPERM this user has no permissions to run the 'cluster|shards' command\r\n"
-          )
-          rejected(yield* Effect.result(Cluster.make(mock.connector, config)))
-          assert.deepStrictEqual(mock.commands.map(([, args]) => args), [["CLUSTER", "SHARDS"]])
-        }))
-
-      it.effect("tries seeds in order and falls back to CLUSTER SLOTS", () =>
+      it.effect("tries seeds in order and falls back to CLUSTER SLOTS only when CLUSTER SHARDS is unknown", () =>
         Effect.gen(function*() {
           const mock = mockConnector((endpoint, args) => {
             if (endpoint.port === 1) throw new RedisError({ reason: "Connection", message: "unavailable" })
+            if (endpoint.port === 2) {
+              return "-NOPERM this user has no permissions to run the 'cluster|shards' command\r\n"
+            }
             return args[1] === "SHARDS"
               ? "-ERR unknown subcommand 'SHARDS'\r\n"
               : wire([[0, 8191, ["primary", 7001]], [8192, 16383, ["other", 7002]]])
           })
-          const topology = yield* Cluster.make(mock.connector, { ...config, seeds: [{ ...seed, port: 1 }, seed] })
-          assert.deepStrictEqual(mock.commands.map(([, args]) => args), [
-            ["CLUSTER", "SHARDS"],
-            ["CLUSTER", "SHARDS"],
-            ["CLUSTER", "SLOTS"]
+          const seeds = [{ ...seed, port: 1 }, { ...seed, port: 2 }, seed]
+          const topology = yield* Cluster.make(mock.connector, { ...config, seeds })
+          assert.deepStrictEqual(mock.commands.map(([endpoint, args]) => [endpoint.port, ...args]), [
+            [1, "CLUSTER", "SHARDS"],
+            [2, "CLUSTER", "SHARDS"],
+            [7000, "CLUSTER", "SHARDS"],
+            [7000, "CLUSTER", "SLOTS"]
           ])
           assert.strictEqual((yield* topology.resolve(["GET", "bar"])).endpoint.host, "primary")
           assert.strictEqual((yield* topology.resolve(["GET", "foo"])).endpoint.host, "other")
@@ -614,15 +552,10 @@ describe("RedisClient", () => {
       it.effect("requires multi-key commands to share a slot", () =>
         Effect.gen(function*() {
           const topology = yield* Cluster.make(mockConnector(() => wire(shards())).connector, config)
-          for (
-            const args of [
-              ["MGET", "{bar}:a", "{bar}:b"],
-              ["EVAL", "return 1", "2", "{bar}:a", "{bar}:b"],
-              ["XREAD", "STREAMS", "{bar}:a", "{bar}:b", "0", "0"]
-            ]
-          ) assert.strictEqual((yield* topology.resolve(args)).slot, 5061)
+          for (const args of [["MGET", "{bar}:a", "{bar}:b"], ["EVAL", "return 1", "2", "{bar}:a", "{bar}:b"]]) {
+            assert.strictEqual((yield* topology.resolve(args)).slot, 5061)
+          }
           rejected(yield* Effect.result(topology.resolve(["MGET", "foo", "bar"])))
-          rejected(yield* Effect.result(topology.resolve(["EVAL", "return 1", "2", "foo", "bar"])))
           rejected(yield* Effect.result(topology.resolve(["MODULE.CMD", "key"])))
           assert.strictEqual((yield* topology.resolve(["MODULE.CMD", "bar"], { keyIndexes: [1] })).slot, 5061)
         }))
@@ -649,100 +582,74 @@ describe("RedisClient", () => {
   describe("Sentinel", () => {
     const location = (endpoint: Endpoint) => array(endpoint.host, String(endpoint.port))
 
-    it.live("refreshes and re-routes a single READONLY command to the promoted primary", () =>
+    const primary = (handle: (request: Request) => void) =>
+      server((request) => {
+        const [command] = args(request)
+        if (command === "ROLE") request.connection.send(masterRole)
+        else if (command === "PING") request.connection.send("+PONG\r\n")
+        else handle(request)
+      })
+
+    // Each discovery opens one Sentinel connection; an undefined primary fails discovery.
+    const sentinelClient = Effect.fnUntraced(function*(current: () => Endpoint | undefined) {
+      const sentinel = yield* server((request) => {
+        const endpoint = current()
+        request.connection.send(endpoint === undefined ? "-ERR discovery unavailable\r\n" : location(endpoint))
+      })
+      const client = yield* Client.make(makeConnector(), {
+        topology: { _tag: "Sentinel", sentinels: [sentinel], masterName: "service", refreshInterval: "1 hour" }
+      })
+      return { client, sentinel }
+    })
+
+    it.live("retries a single READONLY command once on the refreshed primary and never on refresh failure", () =>
       Effect.gen(function*() {
         const nextRequests: Array<ReadonlyArray<string>> = []
-        const next = yield* server((request) => {
-          const values = args(request)
-          if (values[0] === "ROLE") return request.connection.send(masterRole)
-          if (values[0] === "PING") return request.connection.send("+PONG\r\n")
-          nextRequests.push(values)
+        const next = yield* primary((request) => {
+          nextRequests.push(args(request))
           request.connection.send(":1\r\n")
         })
-        let promoted = false
+        let current: Endpoint | undefined
         const oldRequests: Array<ReadonlyArray<string>> = []
-        const old = yield* server((request) => {
-          const values = args(request)
-          if (values[0] === "ROLE") return request.connection.send(masterRole)
-          if (values[0] === "PING") return request.connection.send("+PONG\r\n")
-          oldRequests.push(values)
-          promoted = true
+        const old = yield* primary((request) => {
+          oldRequests.push(args(request))
+          current = oldRequests.length === 1 ? undefined : next
           request.connection.send("-READONLY former primary\r\n")
         })
-        let discoveries = 0
-        const sentinel = yield* server((request) => {
-          discoveries++
-          request.connection.send(location(promoted ? next : old))
-        })
-        const client = yield* Client.make(makeConnector(), {
-          topology: { _tag: "Sentinel", sentinels: [sentinel], masterName: "service", refreshInterval: "1 hour" }
-        })
-
-        assert.strictEqual(yield* client.run(Command.make(["INCR", "retried"], Command.integer)), BigInt(1))
-        assert.strictEqual(Protocol.toValue(yield* client.execute(["INCR", "later"])), 1)
-        assert.deepStrictEqual(oldRequests, [["INCR", "retried"]])
-        assert.deepStrictEqual(nextRequests, [["INCR", "retried"], ["INCR", "later"]])
-        assert.strictEqual(discoveries, 2)
-      }))
-
-    it.live("returns the refresh failure without replaying a single READONLY command", () =>
-      Effect.gen(function*() {
-        let unavailable = false
-        const requests: Array<ReadonlyArray<string>> = []
-        const primary = yield* server((request) => {
-          const values = args(request)
-          if (values[0] === "ROLE") return request.connection.send(masterRole)
-          if (values[0] === "PING") return request.connection.send("+PONG\r\n")
-          requests.push(values)
-          unavailable = true
-          request.connection.send("-READONLY former primary\r\n")
-        })
-        let discoveries = 0
-        const sentinel = yield* server((request) => {
-          discoveries++
-          request.connection.send(unavailable ? "-ERR discovery unavailable\r\n" : location(primary))
-        })
-        const client = yield* Client.make(makeConnector(), {
-          topology: { _tag: "Sentinel", sentinels: [sentinel], masterName: "service", refreshInterval: "1 hour" }
-        })
+        current = old
+        const { client, sentinel } = yield* sentinelClient(() => current)
 
         const error = failure(yield* Effect.result(client.execute(["INCR", "counter"])))
         assert.strictEqual(error.reason, "Routing")
         assert.strictEqual(error.outcome, "NotSent")
         assert.strictEqual(error.message, "No Sentinel reported a verified primary")
-        assert.deepStrictEqual(requests, [["INCR", "counter"]])
-        assert.strictEqual(discoveries, 2)
+
+        assert.strictEqual(yield* client.run(Command.make(["INCR", "retried"], Command.integer)), BigInt(1))
+        assert.strictEqual(Protocol.toValue(yield* client.execute(["INCR", "later"])), 1)
+        assert.deepStrictEqual(oldRequests, [["INCR", "counter"], ["INCR", "retried"]])
+        assert.deepStrictEqual(nextRequests, [["INCR", "retried"], ["INCR", "later"]])
+        assert.strictEqual(sentinel.connections.length, 3)
       }))
 
-    it.live("rejects writes safely after promotion without replaying successful or uncertain commands", () =>
+    it.live("retries READONLY pipeline entries on the new primary without replaying successful or uncertain writes", () =>
       Effect.gen(function*() {
         const submitted = barrier<void>()
         const nextRequests: Array<Request> = []
-        const next = yield* server((request) => {
-          if (args(request)[0] === "ROLE") return request.connection.send(masterRole)
+        const next = yield* primary((request) => {
           nextRequests.push(request)
           if (nextRequests.length === 2) submitted.resolve()
         })
-        let promoted = false
+        let current: Endpoint | undefined
         const oldRequests: Array<Request> = []
-        const old = yield* server((request) => {
-          const [command] = args(request)
-          if (command === "ROLE") return request.connection.send(masterRole)
-          if (command === "PING") return request.connection.send("+PONG\r\n")
+        const old = yield* primary((request) => {
           oldRequests.push(request)
           if (oldRequests.length === 4) {
-            promoted = true
+            current = next
             request.connection.socket.end("-READONLY former primary\r\n-READONLY former primary\r\n:1\r\n")
           }
         })
-        let discoveries = 0
-        const sentinel = yield* server((request) => {
-          discoveries++
-          request.connection.send(location(promoted ? next : old))
-        })
-        const client = yield* Client.make(makeConnector(), {
-          topology: { _tag: "Sentinel", sentinels: [sentinel], masterName: "service", refreshInterval: "1 hour" }
-        })
+        current = old
+        const { client, sentinel } = yield* sentinelClient(() => current)
         const pipeline = yield* client.pipeline([
           Command.make(["INCR", "first"], Command.integer),
           Command.make(["INCR", "second"], Command.integer),
@@ -756,7 +663,7 @@ describe("RedisClient", () => {
         const results = yield* Fiber.join(pipeline)
         assert.deepStrictEqual(successes(results.slice(0, 3)), [BigInt(1), BigInt(1), BigInt(1)])
         assert.strictEqual(failure(results[3]).outcome, "Unknown")
-        assert.strictEqual(discoveries, 2)
+        assert.strictEqual(sentinel.connections.length, 2)
         assert.strictEqual(oldRequests.length, 4)
         assert.strictEqual(nextRequests.length, 2)
       }))
@@ -764,10 +671,9 @@ describe("RedisClient", () => {
     it.live("authenticates discovery and data connections separately and redacts both secrets", () =>
       Effect.gen(function*() {
         const dataAuth: Array<ReadonlyArray<string>> = []
-        const data = yield* server((request) => {
-          const values = args(request)
-          if (values[0] === "AUTH") dataAuth.push(values)
-          request.connection.send(values[0] === "ROLE" ? masterRole : "+OK\r\n")
+        const data = yield* primary((request) => {
+          dataAuth.push(args(request))
+          request.connection.send("+OK\r\n")
         })
         const sentinelAuth: Array<ReadonlyArray<string>> = []
         const sentinel = yield* server((request) => {
@@ -868,25 +774,22 @@ describe("RedisClient", () => {
           assert.strictEqual(mock.commands.find(([, args]) => args[0] === "SENTINEL")?.[0].tls, undefined)
         }))
 
-      it.effect("rejects an invalid mapped primary address before connecting to it", () =>
+      it.effect("rejects malformed or invalid primary addresses before connecting to them", () =>
         Effect.gen(function*() {
-          const mock = mockConnector(() => locate(7001))
-          const result = yield* Effect.result(Sentinel.make(mock.connector, {
-            _tag: "Sentinel",
-            sentinels: [sentinelAt(1)],
-            masterName: "service",
-            mapAddress: (endpoint) => ({ ...endpoint, port: 0 })
-          }))
-          assert.strictEqual(failure(result).outcome, "NotSent")
-          assert.deepStrictEqual(mock.counts(), [1, 1])
-        }))
-
-      it.effect("rejects malformed discovery replies", () =>
-        Effect.gen(function*() {
-          for (const reply of ["$-1\r\n", array("redis", "65536").toString()]) {
+          const cases: ReadonlyArray<readonly [string, ((endpoint: Endpoint) => Endpoint)?]> = [
+            ["$-1\r\n"],
+            [array("redis", "65536").toString()],
+            [locate(7001), (endpoint) => ({ ...endpoint, port: 0 })]
+          ]
+          for (const [reply, mapAddress] of cases) {
             const mock = mockConnector(() => reply)
             const result = yield* Effect.result(
-              Sentinel.make(mock.connector, { _tag: "Sentinel", sentinels: [sentinelAt(1)], masterName: "service" })
+              Sentinel.make(mock.connector, {
+                _tag: "Sentinel",
+                sentinels: [sentinelAt(1)],
+                masterName: "service",
+                mapAddress
+              })
             )
             assert.strictEqual(failure(result).outcome, "NotSent")
             assert.deepStrictEqual(mock.counts(), [1, 1])

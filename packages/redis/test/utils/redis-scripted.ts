@@ -27,6 +27,8 @@ export interface Connection {
   readonly number: number
   readonly send: (wire: string | Uint8Array) => void
   readonly disconnect: () => void
+  /** Resolves once the socket has closed. */
+  readonly closed: Promise<void>
 }
 
 export interface ScriptedRedis extends Endpoint {
@@ -67,7 +69,7 @@ export const startScriptedRedis = async (
   const connections: Array<Connection> = []
   const queued: Array<Request> = []
   const waiting: Array<Barrier<Request>> = []
-  let closed = false
+  let stopped = false
   let failure: unknown
   const fail = (error: unknown) => {
     failure = error
@@ -78,7 +80,8 @@ export const startScriptedRedis = async (
       socket,
       number: connections.length,
       send: (wire) => socket.write(wire),
-      disconnect: () => socket.destroy()
+      disconnect: () => socket.destroy(),
+      closed: new Promise((resolve) => socket.once("close", () => resolve()))
     }
     connections.push(connection)
     let buffer = Buffer.alloc(0)
@@ -116,7 +119,7 @@ export const startScriptedRedis = async (
     connections,
     nextRequest: () => {
       if (failure) return Promise.reject(failure)
-      if (closed) return Promise.reject(new Error("Scripted Redis has stopped"))
+      if (stopped) return Promise.reject(new Error("Scripted Redis has stopped"))
       const value = queued.shift()
       if (value) return Promise.resolve(value)
       const waiter = barrier<Request>()
@@ -124,8 +127,8 @@ export const startScriptedRedis = async (
       return waiter.promise
     },
     stop: async () => {
-      if (closed) return
-      closed = true
+      if (stopped) return
+      stopped = true
       fail(new Error("Scripted Redis has stopped"))
       for (const connection of connections) connection.disconnect()
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
