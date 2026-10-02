@@ -15,7 +15,7 @@ const failure = () =>
     reason: new DatagramSocket.DatagramSocketReadError({ kind: "Unknown", cause: new Error("read") })
   })
 
-class TestHandle implements DatagramSocket.NativeHandle {
+class TestHandle implements DatagramSocket.BackingSocket {
   readonly address = { host: "127.0.0.1", port: 1234 }
   events!: DatagramSocket.NativeEvents
   sends: Array<{ payload: Uint8Array; destination?: DatagramSocket.NativeAddress | undefined }> = []
@@ -32,13 +32,13 @@ class TestHandle implements DatagramSocket.NativeHandle {
       reason: new DatagramSocket.DatagramSocketWriteError({ kind: "Unknown", cause: new Error("send") })
     })
   }
-  readonly send: DatagramSocket.NativeHandle["send"] = (payload, destination, done) => {
+  readonly send: DatagramSocket.BackingSocket["send"] = (payload, destination, done) => {
     const error = ++this.sendCount === this.failAt ? this.sendError() : undefined
     if (error === undefined) this.sends.push({ payload, destination })
     if (this.deferSends) this.pending.push((override) => done(override ?? error))
     else done(error)
   }
-  readonly sendMany: DatagramSocket.NativeHandle["sendMany"] = (payloads, destinations, done) => {
+  readonly sendMany: DatagramSocket.BackingSocket["sendMany"] = (payloads, destinations, done) => {
     let error: DatagramSocket.DatagramSocketError | undefined
     let index: number | undefined
     for (let i = 0; i < payloads.length; i++) {
@@ -52,7 +52,7 @@ class TestHandle implements DatagramSocket.NativeHandle {
     if (this.deferSends) this.pending.push((override) => done(override ?? error, override ? undefined : index))
     else done(error, index)
   }
-  readonly joinMulticast: DatagramSocket.NativeHandle["joinMulticast"] = () =>
+  readonly joinMulticast: DatagramSocket.BackingSocket["joinMulticast"] = () =>
     Effect.sync(() => {
       this.joins++
       return () =>
@@ -75,7 +75,7 @@ class TestHandle implements DatagramSocket.NativeHandle {
 class SyncHandle extends TestHandle {
   tried: Array<Uint8Array> = []
   refuse = false
-  readonly trySend: DatagramSocket.NativeHandle["trySend"] = (payload) => {
+  readonly trySend: DatagramSocket.BackingSocket["trySend"] = (payload) => {
     this.tried.push(payload)
     return !this.refuse
   }
@@ -88,7 +88,7 @@ const fixture = (
 ) => {
   const handles: Array<TestHandle> = []
   return Effect.map(
-    DatagramSocket.fromNativeHandle((events) =>
+    DatagramSocket.fromBackingSocket((events) =>
       Effect.sync(() => {
         const handle = new TestHandle()
         handle.events = events
@@ -106,7 +106,7 @@ const delayedOpen = Effect.gen(function*() {
   const firstStarted = yield* Deferred.make<void>()
   const secondStarted = yield* Deferred.make<void>()
   const pending: Array<{ resolve: (handle: TestHandle) => void; reject: (error: Error) => void }> = []
-  const socket = yield* DatagramSocket.fromNativeHandle((events) =>
+  const socket = yield* DatagramSocket.fromBackingSocket((events) =>
     Effect.promise(() =>
       new Promise<TestHandle>((resolve, reject) => {
         const count = pending.push({
@@ -538,7 +538,7 @@ describe("DatagramSocket native handle", () => {
   it.effect("completes a write through trySend, and falls back to send when it refuses", () =>
     Effect.scoped(Effect.gen(function*() {
       const handles: Array<SyncHandle> = []
-      const socket = yield* DatagramSocket.fromNativeHandle((events) =>
+      const socket = yield* DatagramSocket.fromBackingSocket((events) =>
         Effect.sync(() => {
           const handle = new SyncHandle()
           handle.events = events
@@ -774,7 +774,7 @@ describe("DatagramSocket native handle", () => {
       let finish!: (handle: TestHandle) => void
       const opened = yield* Deferred.make<void>()
       const handle = new TestHandle()
-      const socket = yield* DatagramSocket.fromNativeHandle((events) => {
+      const socket = yield* DatagramSocket.fromBackingSocket((events) => {
         handle.events = events
         return Effect.promise(() =>
           new Promise<TestHandle>((resolve) => {
