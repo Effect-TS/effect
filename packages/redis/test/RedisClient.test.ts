@@ -602,7 +602,7 @@ describe("RedisClient", () => {
       return { client, sentinel }
     })
 
-    it.live("retries a single READONLY command once on the refreshed primary and never on refresh failure", () =>
+    it.live("retries a single READONLY command once on the refreshed primary", () =>
       Effect.gen(function*() {
         const nextRequests: Array<ReadonlyArray<string>> = []
         const next = yield* primary((request) => {
@@ -613,7 +613,26 @@ describe("RedisClient", () => {
         const oldRequests: Array<ReadonlyArray<string>> = []
         const old = yield* primary((request) => {
           oldRequests.push(args(request))
-          current = oldRequests.length === 1 ? undefined : next
+          current = next
+          request.connection.send("-READONLY former primary\r\n")
+        })
+        current = old
+        const { client, sentinel } = yield* sentinelClient(() => current)
+
+        assert.strictEqual(yield* client.run(Command.make(["INCR", "retried"], Command.integer)), BigInt(1))
+        assert.strictEqual(Protocol.toValue(yield* client.execute(["INCR", "later"])), 1)
+        assert.deepStrictEqual(oldRequests, [["INCR", "retried"]])
+        assert.deepStrictEqual(nextRequests, [["INCR", "retried"], ["INCR", "later"]])
+        assert.strictEqual(sentinel.connections.length, 2)
+      }))
+
+    it.live("returns a failed refresh without replaying a READONLY command", () =>
+      Effect.gen(function*() {
+        let current: Endpoint | undefined
+        const oldRequests: Array<ReadonlyArray<string>> = []
+        const old = yield* primary((request) => {
+          oldRequests.push(args(request))
+          current = undefined
           request.connection.send("-READONLY former primary\r\n")
         })
         current = old
@@ -623,12 +642,8 @@ describe("RedisClient", () => {
         assert.strictEqual(error.reason, "Routing")
         assert.strictEqual(error.outcome, "NotSent")
         assert.strictEqual(error.message, "No Sentinel reported a verified primary")
-
-        assert.strictEqual(yield* client.run(Command.make(["INCR", "retried"], Command.integer)), BigInt(1))
-        assert.strictEqual(Protocol.toValue(yield* client.execute(["INCR", "later"])), 1)
-        assert.deepStrictEqual(oldRequests, [["INCR", "counter"], ["INCR", "retried"]])
-        assert.deepStrictEqual(nextRequests, [["INCR", "retried"], ["INCR", "later"]])
-        assert.strictEqual(sentinel.connections.length, 3)
+        assert.deepStrictEqual(oldRequests, [["INCR", "counter"]])
+        assert.strictEqual(sentinel.connections.length, 2)
       }))
 
     it.live("retries READONLY pipeline entries on the new primary without replaying successful or uncertain writes", () =>
