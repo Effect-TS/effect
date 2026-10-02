@@ -70,6 +70,54 @@ const paths = [
 ] as const
 
 describe("OpenApiTransformer", () => {
+  describe("includeResponse", () => {
+    for (const format of ["httpclient", "httpclient-type-only"] as const) {
+      it.effect(`${format} returns the response tuple when includeResponse is true`, () =>
+        Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          const source = yield* generator.generate({
+            openapi: "3.1.0",
+            info: { title: "Include response", version: "1.0.0" },
+            paths: {
+              "/value": {
+                get: {
+                  operationId: "getValue",
+                  parameters: [],
+                  responses: {
+                    "200": {
+                      description: "Value",
+                      content: { "application/json": { schema: { type: "string" } } }
+                    }
+                  },
+                  tags: ["Value"],
+                  security: []
+                }
+              }
+            }
+          }, { name: "TestClient", format })
+          const make = yield* Effect.promise(() =>
+            loadClient<{
+              getValue: (options: { config?: { includeResponse?: boolean } }) => Effect.Effect<unknown, unknown>
+            }>(source)
+          )
+          const httpClient = HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              new Response(JSON.stringify("hello"), {
+                headers: { "content-type": "application/json" }
+              })
+            ))
+          ).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+          const result = yield* make(httpClient).getValue({ config: { includeResponse: true } })
+          assert.isArray(result)
+          assert.strictEqual(result[0], "hello")
+          assert.strictEqual(result[1].status, 200)
+        }).pipe(Effect.provide(
+          format === "httpclient" ? OpenApiGenerator.layerTransformerSchema : OpenApiGenerator.layerTransformerTs
+        )))
+    }
+  })
+
   describe("path parameters", () => {
     const generate = Effect.gen(function*() {
       const generator = yield* OpenApiGenerator.OpenApiGenerator

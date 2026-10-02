@@ -569,6 +569,27 @@ const responseMatchingSpec: OpenAPISpec = {
   tags: [{ name: "ResponseMatching" }]
 }
 
+const includeResponseSpec: OpenAPISpec = {
+  openapi: "3.1.0",
+  info: { title: "Include response", version: "1.0.0" },
+  paths: {
+    "/value": {
+      get: {
+        operationId: "getValue",
+        parameters: [],
+        responses: {
+          "200": {
+            description: "Value",
+            content: { "application/json": { schema: { type: "string" } } }
+          }
+        },
+        tags: ["Value"],
+        security: []
+      }
+    }
+  }
+}
+
 const voidSuccessSpec: OpenAPISpec = {
   openapi: "3.1.0",
   info: {
@@ -1392,6 +1413,45 @@ export const TestClientError = <Tag extends string, E>(
     it.effect(
       "emits compilable clients for schema-backed and type-only formats",
       () => assertGeneratedClientsCompile(responseMatchingSpec),
+      compilationTimeout
+    )
+  })
+
+  describe("includeResponse", () => {
+    it.effect(
+      "preserves dynamic includeResponse for httpclient output",
+      () =>
+        assertGeneratedClientsCompile(includeResponseSpec, {
+          formats: ["httpclient"],
+          usage: `import type * as ConsumerEffect from "effect/Effect"
+import type * as ConsumerHttpClient from "effect/http/HttpClient"
+import type * as ConsumerHttpClientResponse from "effect/http/HttpClientResponse"
+
+declare const httpClient: ConsumerHttpClient.HttpClient
+declare const includeResponse: boolean
+const result = make(httpClient).getValue({ config: { includeResponse } })
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type Assert<T extends true> = T
+type DynamicResponse = Assert<Equal<ConsumerEffect.Success<typeof result>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>`
+        }),
+      compilationTimeout
+    )
+
+    it.effect(
+      "preserves dynamic includeResponse for httpclient-type-only output",
+      () =>
+        assertGeneratedClientsCompile(includeResponseSpec, {
+          formats: ["httpclient-type-only"],
+          usage: `import type * as ConsumerEffect from "effect/Effect"
+import type * as ConsumerHttpClientResponse from "effect/http/HttpClientResponse"
+
+declare const client: TestClient
+declare const includeResponse: boolean
+const result = client.getValue({ config: { includeResponse } })
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type Assert<T extends true> = T
+type DynamicResponse = Assert<Equal<ConsumerEffect.Success<typeof result>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>`
+        }),
       compilationTimeout
     )
   })
