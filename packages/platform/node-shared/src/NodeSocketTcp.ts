@@ -42,9 +42,9 @@ export class NetSocket extends Context.Service<NetSocket, Net.Socket>()(
 
 const readAvailable = (
   conn: Duplex
-): Arr.NonEmptyReadonlyArray<Uint8Array | string> | null => {
+): Arr.NonEmptyArray<Uint8Array | string> | undefined => {
   const first = conn.read() as Uint8Array | string | null
-  if (first === null) return null
+  if (first === null) return undefined
   const second = conn.read() as Uint8Array | string | null
   if (second === null) return [first]
   const out: [Uint8Array | string, ...Array<Uint8Array | string>] = [first, second]
@@ -189,35 +189,40 @@ export const fromDuplex = <RO>(
         effect: Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>
       ) => void
 
-      let error: Socket.SocketError | undefined
-      let waiter: ReadResume | undefined
-      let consumer: {
+      type Consumer = {
         readonly onChunk: (chunk: Uint8Array | string) => void | Effect.Effect<void, Socket.SocketError>
         readonly resume: (effect: Effect.Effect<void, Socket.SocketError>) => void
         readonly runFork: (effect: Effect.Effect<void, Socket.SocketError>) => Fiber.Fiber<void, Socket.SocketError>
         task: Fiber.Fiber<void, Socket.SocketError> | undefined
         readonly taskReady: Latch.Latch
         settled: boolean
-      } | undefined
+      }
+
+      let error: Socket.SocketError | undefined
+      let waiter: ReadResume | undefined
+      let consumer: Consumer | undefined
       let draining = false
+      let reading = false
+      let closed = false
+      let consumerWaitingForRead = false
       let pending: Array<Uint8Array | string> | undefined
       let pausedForConsumer = false
       let consuming = false
       let upgradeAvailable = true
 
       function fail(err: Socket.SocketError) {
-        if (error === undefined) error = err
-        if (waiter !== undefined) {
-          const resume = waiter
-          waiter = undefined
-          consuming = false
-          resume(Effect.fail(error!))
-        }
+        error ??= err
+        closed = true
+        pending = undefined
+        onReadable()
+        failConsumer()
+      }
+      function failConsumer() {
         if (consumer !== undefined) {
           pauseConsumer()
           consumer.settled = true
           consumer.task?.interruptUnsafe()
-          consumer.resume(Effect.fail(error))
+          consumer.resume(Effect.fail(error!))
         }
       }
       function pauseConsumer() {
@@ -226,14 +231,20 @@ export const fromDuplex = <RO>(
         conn.pause()
       }
       function continueConsumer() {
-        if (consumer === undefined || consumer.task !== undefined || consumer.settled || draining) return
+        if (consumer === undefined || consumer.task !== undefined || consumer.settled || draining || reading) return
         if (pending !== undefined && pending.length > 0) onData(pending.shift()!)
         if (consumer !== undefined && consumer.task === undefined && !consumer.settled && pausedForConsumer) {
           pausedForConsumer = false
           conn.resume()
         }
       }
+      function attachConsumer() {
+        conn.off("readable", onReadable)
+        conn.on("data", onData)
+        continueConsumer()
+      }
       function onData(chunk: Uint8Array | string) {
+        if (closed) return
         if (consumer === undefined || consumer.task !== undefined || consumer.settled || draining) {
           ;(pending ??= []).push(chunk)
           pauseConsumer()
@@ -243,12 +254,13 @@ export const fromDuplex = <RO>(
         try {
           let nextChunk: Uint8Array | string | undefined = chunk
           while (nextChunk !== undefined) {
-            const current = consumer
+            const current: Consumer | undefined = consumer
             if (current === undefined || current.task !== undefined || current.settled) {
               ;(pending ??= []).unshift(nextChunk)
               break
             }
             const next = current.onChunk(nextChunk)
+            if (consumer !== current || current.settled || closed) break
             if (next !== undefined) {
               pauseConsumer()
               current.taskReady.closeUnsafe()
@@ -277,16 +289,52 @@ export const fromDuplex = <RO>(
         continueConsumer()
       }
       function onReadable() {
-        if (waiter === undefined) return
-        const chunk = readAvailable(conn)
-        if (chunk === null) return
+        if (waiter === undefined || reading) return
+        let chunk = pending !== undefined && pending.length > 0
+          ? pending as Arr.NonEmptyArray<Uint8Array | string>
+          : undefined
+        pending = undefined
+        if (chunk === undefined && !closed) {
+          // Synchronous interruption may replace the pull during read(). Its
+          // replacement waits for this read to preserve byte order.
+          reading = true
+          try {
+            chunk = readAvailable(conn)
+          } finally {
+            reading = false
+          }
+        }
+        // Teardown or failure during read() discards consumed bytes.
+        if (closed) chunk = undefined
+        if (waiter === undefined) {
+          pending = chunk
+          if (consumerWaitingForRead) {
+            consumerWaitingForRead = false
+            if (consumer !== undefined && !consumer.settled) attachConsumer()
+          } else {
+            continueConsumer()
+          }
+          return
+        }
+        const result = chunk !== undefined
+          ? Effect.succeed(chunk)
+          : error !== undefined
+          ? Effect.fail(error)
+          : undefined
+        if (result === undefined) return
         const resume = waiter
         waiter = undefined
         consuming = false
-        resume(Effect.succeed(chunk))
+        resume(result)
+      }
+      function end(err: Socket.SocketError) {
+        // Normal EOF preserves consumed bytes before delivering the error.
+        error ??= err
+        onReadable()
+        failConsumer()
       }
       function onEnd() {
-        fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+        end(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
       }
       function onError(cause: Error) {
         fail(
@@ -296,11 +344,11 @@ export const fromDuplex = <RO>(
         )
       }
       function onClose(hadError: boolean) {
-        fail(
-          new Socket.SocketError({
-            reason: new Socket.SocketCloseError({ code: hadError ? 1006 : 1000 })
-          })
-        )
+        const err = new Socket.SocketError({
+          reason: new Socket.SocketCloseError({ code: hadError ? 1006 : 1000 })
+        })
+        if (hadError) fail(err)
+        else end(err)
       }
 
       function attachReadListeners(conn: Duplex) {
@@ -346,17 +394,11 @@ export const fromDuplex = <RO>(
         })
       const pull = Effect.suspend(() => {
         if (consuming) return Effect.fail(activeError())
-        if (pending !== undefined && pending.length > 0) {
-          const chunks = pending as Arr.NonEmptyArray<Uint8Array | string>
-          pending = undefined
-          return Effect.succeed(chunks)
-        }
-        const chunk = readAvailable(conn)
-        if (chunk !== null) return Effect.succeed(chunk)
-        if (error !== undefined) return Effect.fail(error)
         return Effect.callback<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
           consuming = true
           waiter = resume
+          onReadable()
+          if (waiter !== resume) return
           // Wake Deno's paused compatibility reader only when pulling. Resuming
           // while restoring the readable listener can suppress a later run.
           if (isDeno) conn.resume()
@@ -371,7 +413,7 @@ export const fromDuplex = <RO>(
 
       const run: Socket.Reader["run"] = (onChunk) =>
         Effect.withFiber((runFiber) => {
-          let current: typeof consumer
+          let current: Consumer | undefined
           return Effect.callback<void, Socket.SocketError>((resume) => {
             if (consuming) return resume(Effect.fail(activeError()))
             if (error !== undefined) return resume(Effect.fail(error))
@@ -386,17 +428,21 @@ export const fromDuplex = <RO>(
             }
             consumer = current
             pauseConsumer()
-            conn.off("readable", onReadable)
-            conn.on("data", onData)
-            continueConsumer()
+            // read() also emits data. Let the interrupted pull retain its batch
+            // before a replacement callback reader attaches its data listener.
+            if (reading) consumerWaitingForRead = true
+            else attachConsumer()
           }).pipe(Effect.ensuring(Effect.suspend(() => {
             if (current === undefined) return Effect.void
             conn.pause()
             conn.off("data", onData)
-            if (currentSocket === conn && error === undefined) {
+            if (currentSocket === conn && error === undefined && !consumerWaitingForRead) {
               conn.on("readable", onReadable)
             }
-            if (consumer === current) consumer = undefined
+            if (consumer === current) {
+              consumer = undefined
+              consumerWaitingForRead = false
+            }
             current.settled = true
             pausedForConsumer = false
             const owned = current
