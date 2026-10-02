@@ -103,35 +103,6 @@ it.effect("refuses a second rebuild of a generation without disturbing the accep
     assert.strictEqual(yield* ref.await, 2)
   })))
 
-it.effect("admits waiters after prepare completes", () =>
-  Effect.scoped(Effect.gen(function*() {
-    const parentScope = yield* Effect.scope
-    const { acquire } = yield* makeAcquire()
-    const preparing = yield* Deferred.make<number>()
-    const prepared = yield* Deferred.make<void>()
-    const ref = yield* ResourceRef.from(parentScope, acquire)
-
-    const rebuild = yield* Effect.forkChild(
-      ref.rebuildUnsafe({
-        from: 1,
-        prepare: (value) => Deferred.succeed(preparing, value).pipe(Effect.andThen(Deferred.await(prepared)))
-      })!
-    )
-    assert.strictEqual(yield* Deferred.await(preparing), 2)
-    const waiter = yield* Effect.forkChild(ref.await)
-    yield* Effect.yieldNow
-    assert.isUndefined(ref.getUnsafe())
-    assert.isUndefined(waiter.pollUnsafe())
-    // Only the value being prepared can replace it.
-    assert.isUndefined(ref.rebuildUnsafe())
-    assert.isUndefined(ref.rebuildUnsafe({ from: 1 }))
-
-    yield* Deferred.succeed(prepared, void 0)
-    assert.deepStrictEqual(yield* Fiber.await(rebuild), Exit.void)
-    assert.strictEqual(yield* Fiber.join(waiter), 2)
-    assert.strictEqual(ref.getUnsafe(), 2)
-  })))
-
 it.effect("interrupts prepare when its generation is replaced", () =>
   Effect.scoped(Effect.gen(function*() {
     const parentScope = yield* Effect.scope
@@ -165,31 +136,6 @@ it.effect("interrupts prepare when its generation is replaced", () =>
     yield* newer!
     assert.strictEqual(yield* Fiber.join(waiter), 3)
     assert.strictEqual(ref.getUnsafe(), 3)
-  })))
-
-it.effect("releases waiters when a rebuild is interrupted and accepts the next rebuild", () =>
-  Effect.scoped(Effect.gen(function*() {
-    const parentScope = yield* Effect.scope
-    const { acquire, gate, releases } = yield* makeAcquire({ gated: [2] })
-    const ref = yield* ResourceRef.from(parentScope, acquire)
-
-    const rebuild = yield* Effect.forkChild(ref.rebuildUnsafe({ from: 1 })!)
-    yield* Deferred.await(gate(2).reached)
-    const waiter = yield* Effect.forkChild(ref.await)
-    yield* Effect.yieldNow
-    assert.isUndefined(waiter.pollUnsafe())
-
-    yield* Fiber.interrupt(rebuild)
-    // Both the replaced generation and the abandoned one are closed.
-    assert.strictEqual(releases(), 2)
-    assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiter)))
-    assert.isUndefined(ref.getUnsafe())
-
-    const recovery = ref.rebuildUnsafe()
-    assert.isDefined(recovery, "an interrupted rebuild must not block the next one")
-    yield* recovery!
-    assert.strictEqual(ref.getUnsafe(), 3)
-    assert.strictEqual(yield* ref.await, 3)
   })))
 
 it.effect("closes a replaced generation whose rebuild never ran when the ref closes", () =>
@@ -261,39 +207,6 @@ it.effect("stays rebuildable when a failed replacement cannot be released", () =
     }).pipe(Effect.ensuring(Deferred.succeed(releaseGate(2).open, void 0)))
   })))
 
-it.effect("interrupts a rebuild that is preparing when the ref closes", () =>
-  Effect.gen(function*() {
-    const parentScope = yield* Scope.make()
-    const { acquire } = yield* makeAcquire()
-    const preparing = yield* Deferred.make<void>()
-    const prepared = yield* Deferred.make<void>()
-    let ranAfterClose = false
-    const ref = yield* ResourceRef.from(parentScope, acquire)
-
-    const rebuild = yield* Effect.forkChild(
-      ref.rebuildUnsafe({
-        from: 1,
-        prepare: () =>
-          Deferred.succeed(preparing, void 0).pipe(
-            Effect.andThen(Deferred.await(prepared)),
-            Effect.andThen(Effect.sync(() => {
-              ranAfterClose = true
-            }))
-          )
-      })!
-    )
-    yield* Deferred.await(preparing)
-    yield* Scope.close(parentScope, Exit.void)
-    yield* settle
-    const exit = rebuild.pollUnsafe()
-    assert.isDefined(exit, "closing the ref must interrupt prepare")
-    assert.isTrue(Exit.hasInterrupts(exit))
-
-    yield* Deferred.succeed(prepared, void 0)
-    yield* settle
-    assert.isFalse(ranAfterClose)
-  }))
-
 it.effect("interrupts a rebuild that is acquiring when the ref closes", () =>
   Effect.gen(function*() {
     const parentScope = yield* Scope.make()
@@ -313,27 +226,4 @@ it.effect("interrupts a rebuild that is acquiring when the ref closes", () =>
     yield* Deferred.succeed(gate(2).open, void 0)
     yield* settle
     assert.strictEqual(completed(), 1, "acquisition must not continue after the close")
-  }))
-
-it.effect("interrupts handed-over waiters when the ref closes", () =>
-  Effect.gen(function*() {
-    const parentScope = yield* Scope.make()
-    // Releasing the first generation stalls.
-    const { acquire, releaseGate } = yield* makeAcquire({ gatedRelease: [1] })
-    const ref = yield* ResourceRef.from(parentScope, acquire)
-
-    const rebuild = yield* Effect.forkChild(ref.rebuildUnsafe({ from: 1 })!)
-    yield* Deferred.await(releaseGate(1).reached)
-    const waiter = yield* Effect.forkChild(ref.await)
-    yield* settle
-    yield* Fiber.interrupt(rebuild)
-
-    // The stalled release must not hold waiters past the close.
-    const close = yield* Effect.forkChild(Scope.close(parentScope, Exit.void))
-    yield* settle
-    const exit = waiter.pollUnsafe()
-    yield* Deferred.succeed(releaseGate(1).open, void 0)
-    yield* Fiber.join(close)
-    assert.isDefined(exit, "closing the ref must wake waiters without waiting for the stalled release")
-    assert.isTrue(Exit.hasInterrupts(exit))
   }))

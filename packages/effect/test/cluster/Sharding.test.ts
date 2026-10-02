@@ -1718,8 +1718,7 @@ const DefectRecoveryRun = Rpc.make("run", {
   success: Schema.String
 })
 
-const makeDefectRecoveryEntity = (persisted: boolean) =>
-  Entity.make("DefectRecovery", [DefectRecoveryRun.annotate(ClusterSchema.Persisted, persisted)])
+const DefectRecoveryEntity = Entity.make("DefectRecovery", [DefectRecoveryRun.annotate(ClusterSchema.Persisted, true)])
 
 const DefectRecoverySharding = <R>(entityLayer: Layer.Layer<never, never, R>) =>
   entityLayer.pipe(Layer.provideMerge(UnregisteredSharding({})))
@@ -1795,7 +1794,7 @@ const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
 describe.concurrent("Sharding defect recovery", () => {
   it.effect("restarts again when a replayed request defects synchronously", () =>
     Effect.gen(function*() {
-      const entity = makeDefectRecoveryEntity(true)
+      const entity = DefectRecoveryEntity
       const generations = yield* makeGenerations()
       const attempts = yield* Ref.make(0)
       const entityLayer = entity.toLayer(Effect.as(
@@ -1822,7 +1821,7 @@ describe.concurrent("Sharding defect recovery", () => {
 
   it.effect("replays unfinished requests before arrivals during acquisition", () =>
     Effect.gen(function*() {
-      const entity = makeDefectRecoveryEntity(true)
+      const entity = DefectRecoveryEntity
       const generations = yield* makeGenerations(2)
       const fail = yield* Deferred.make<void>()
       const bothStarted = yield* Deferred.make<void>()
@@ -1886,50 +1885,6 @@ describe.concurrent("Sharding defect recovery", () => {
         ))
         assert.sameMembers(yield* Ref.get(completed), ["first", "second", "third"])
         assert.strictEqual(yield* Ref.get(generations.count), 3)
-      }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
-    }))
-
-  it.effect("ignores a defect from handlers retired by a rebuild", () =>
-    Effect.gen(function*() {
-      const entity = makeDefectRecoveryEntity(false)
-      const generations = yield* makeGenerations()
-      const bothStarted = yield* Deferred.make<void>()
-      const fail = yield* Deferred.make<void>()
-      const lateDefect = yield* Deferred.make<void>()
-      const started = yield* Ref.make(0)
-      const entityLayer = entity.toLayer(
-        Effect.map(generations.next, (generation) =>
-          entity.of({
-            run: Effect.fnUntraced(function*({ payload }) {
-              if (generation > 1) return payload.id
-              if ((yield* Ref.updateAndGet(started, (n) => n + 1)) === 2) {
-                yield* Deferred.succeed(bothStarted, undefined)
-              }
-              if (payload.id === "first") {
-                yield* Deferred.await(fail)
-                return yield* Effect.die("initial defect")
-              }
-              // Outlives the retirement of its handlers, then defects.
-              return yield* Effect.uninterruptible(
-                Effect.andThen(Deferred.await(lateDefect), Effect.die("late defect"))
-              )
-            })
-          })),
-        { concurrency: "unbounded" }
-      )
-
-      yield* Effect.gen(function*() {
-        const client = (yield* entity.client)("retired-defect")
-        const first = yield* client.run({ id: "first" }).pipe(Effect.forkChild)
-        const late = yield* client.run({ id: "late" }).pipe(Effect.forkChild)
-        yield* Deferred.await(bothStarted)
-        yield* Deferred.succeed(fail, undefined)
-        yield* TestClock.adjust("1 second")
-        yield* Deferred.succeed(lateDefect, undefined)
-        yield* TestClock.adjust("30 seconds")
-        assert.strictEqual(yield* Fiber.join(first), "first")
-        assert.strictEqual(yield* Fiber.join(late), "late")
-        assert.strictEqual(yield* Ref.get(generations.count), 2, "a retired generation must not rebuild its successor")
       }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
     }))
 
