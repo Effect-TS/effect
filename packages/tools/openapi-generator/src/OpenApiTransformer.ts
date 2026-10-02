@@ -153,7 +153,7 @@ ${clientErrorSource(name)}`
       const type = `typeof ${operation.payload}.Encoded`
       options.push(`${key}: ${type}`)
     }
-    options.push("readonly config?: Config | undefined")
+    options.push("readonly config?: Config")
 
     // If all options are optional, the argument itself should be optional
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
@@ -186,7 +186,7 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    const generic = `<Config extends OperationConfig>`
+    const generic = `<Config extends OperationConfig | undefined = undefined>`
     const parameters = args.join(", ")
     const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
     return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
@@ -312,9 +312,14 @@ ${clientErrorSource(name)}`
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
-} ? [A, HttpClientResponse.HttpClientResponse] : A
+} ? [A, HttpClientResponse.HttpClientResponse]
+  : Config extends OperationConfig
+    ? "includeResponse" extends keyof Config
+      ? true extends Config["includeResponse"] ? A | [A, HttpClientResponse.HttpClientResponse] : A
+      : A
+    : A
 
 export const make = (
   httpClient: HttpClient.HttpClient,
@@ -591,7 +596,7 @@ ${clientErrorSource(name)}`
     if (operation.payload) {
       options.push(`readonly payload: ${operation.payload}`)
     }
-    options.push("readonly config?: Config | undefined")
+    options.push("readonly config?: Config")
 
     // If all options are optional, the argument itself should be optional
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
@@ -622,7 +627,7 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    const generic = `<Config extends OperationConfig>`
+    const generic = `<Config extends OperationConfig | undefined = undefined>`
     const parameters = args.join(", ")
     const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
     return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
@@ -743,9 +748,14 @@ ${clientErrorSource(name)}`
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
-} ? [A, HttpClientResponse.HttpClientResponse] : A
+} ? [A, HttpClientResponse.HttpClientResponse]
+  : Config extends OperationConfig
+    ? "includeResponse" extends keyof Config
+      ? true extends Config["includeResponse"] ? A | [A, HttpClientResponse.HttpClientResponse] : A
+      : A
+    : A
 
 export const make = (
   httpClient: HttpClient.HttpClient,
