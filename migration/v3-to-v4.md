@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`0963a1c17f5be8e26676ed5ffc9c542bd26f97f0`)
+Base: `origin/v3` (`b57b7f6e3c0dd929d0069050ddb277a72646c576`)
 
-Head: `HEAD` (`072cdc42a84421694593035d65d0f3375d1a17fd`)
+Head: `HEAD` (`e02083675b587957831c3d41e979e28c166cae28`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14923,7 +14923,7 @@ Schema.toFormatter(schema)
 
 - `Schema.optionalWith` -> `Schema.optional / Schema.optionalKey / Schema.withDecodingDefaultType`: Choose `optional` or `optionalKey`; use the decoding-default helpers and an explicit nullable transformation as required by the old options.
 
-- `Schema.parseJson` -> `Schema.UnknownFromJsonString / Schema.fromJsonString(schema)`: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
+- `Schema.parseJson` -> `Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)`: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 
 - `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec.
 
@@ -15111,7 +15111,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ParseIssueTitleAnnotationId` -> `none`: The symbol annotation was removed; use message or expected annotations.
 
-- `SchemaAST.ParseJsonSchemaId` -> `Schema.UnknownFromJsonString`: Use the built-in JSON string codec instead of checking the old schema ID.
+- `SchemaAST.ParseJsonSchemaId` -> `Schema.fromJsonString(Schema.Unknown)`: Use the built-in JSON string codec instead of checking the old schema ID.
 
 - `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. propertyOrder was removed. concurrency follows Effect.forEach semantics for tuple, array, struct, record, and struct-with-rest children, applies independently at each nested product, and does not make Union candidates concurrent. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser.
 
