@@ -30,10 +30,12 @@ const TypeId = "~effect/Pool"
 
 const Acquire = Symbol()
 const AcquireContext = Symbol()
+const PoolClock = Symbol()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
   readonly [AcquireContext]: Context.Context<Scope.Scope>
+  readonly [PoolClock]: Clock
 }
 
 /**
@@ -376,6 +378,7 @@ export const makeWithStrategy = <A, E, R>(options: {
       [TypeId]: TypeId,
       [Acquire]: options.acquire as Effect.Effect<A, E, Scope.Scope>,
       [AcquireContext]: services as Context.Context<Scope.Scope>,
+      [PoolClock]: yield* Clock,
       config,
       state,
       pipe() {
@@ -628,7 +631,7 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     item.refCount--
     state.usage--
     if (item.refCount === 0) {
-      item.idleSince = fiber.getRef(Clock).currentTimeMillisUnsafe()
+      item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
     }
     if (state.invalidated.has(item)) {
       return invalidatePoolItem(self, item)
@@ -908,7 +911,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           exit,
           finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
           refCount: 0,
-          idleSince: fiber.getRef(Clock).currentTimeMillisUnsafe(),
+          idleSince: impl[PoolClock].currentTimeMillisUnsafe(),
           disableReclaim: false,
           isAvailable: false,
           availablePrevious: undefined,
