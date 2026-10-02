@@ -6,4 +6,4 @@
 "@effect/platform-deno": patch
 ---
 
-Add `DatagramSocket` for scoped UDP sockets on Node, Bun, and Deno, plus `NetAddress.inetAddressFromNativeUnsafe` for runtime-reported addresses.
+Add `DatagramSocket` UDP support for Node, Bun, and Deno, and `NetAddress.inetAddressFromNativeUnsafe` for native addresses.

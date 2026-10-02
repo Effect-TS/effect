@@ -18,7 +18,6 @@
  *
  * const server = NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", 5353)
  *
- * // Works with any platform layer that provides `DatagramSocket`
  * export const request = (payload: string) =>
  *   Effect.gen(function*() {
  *     const socket = yield* DatagramSocket.DatagramSocket
@@ -68,7 +67,7 @@ export const DatagramSocket: Context.Service<DatagramSocket, DatagramSocket> = C
 )
 
 /**
- * A UDP socket with a scoped, exclusive `reader` and a latch-gated `writer`.
+ * A UDP socket with a scoped, exclusive reader.
  *
  * **Details**
  *
@@ -144,20 +143,17 @@ export interface OutgoingDatagram {
  * scope discards the queue and fails every waiting `pull` with
  * `DatagramSocketClosedError`.
  *
- * Several fibers may pull at once. Waiting pulls are served in the order they
- * started waiting, each incoming packet going to the oldest one, and a
- * terminal error fails all of them.
+ * Concurrent pulls wait in FIFO order. Each incoming packet goes to the
+ * oldest waiter; a terminal error fails all waiters.
  *
  * `address` is the bound local address, parsed on first read and cached.
  *
- * `dropped` counts packets discarded by the receive buffer's overflow
- * strategy since this reader opened. Kernel and network loss is not counted,
- * and neither are packets discarded when the scope closes.
+ * `dropped` counts receive-buffer overflow since this reader opened, not
+ * kernel or network loss or packets discarded on scope close.
  *
- * `joinMulticast` joins a group until the returned effect's scope closes.
- * Its `interface` selects the receiving (ingress) interface, which is a
- * different socket option from a platform's sender-side (egress)
- * `multicast.interface` option. Failures while leaving are ignored.
+ * `joinMulticast` joins a group until its scope closes; leave failures are
+ * ignored. Its `interface` selects where packets arrive (ingress), not the
+ * platform's `multicast.interface` for sending (egress).
  *
  * @stability unstable
  * @category models
@@ -206,7 +202,7 @@ export interface Writer {
  * **Details**
  *
  * The queue is bounded in packets, with no byte cap. `capacity` defaults to
- * 1024 and must be a positive integer; `Infinity` is rejected. The worst-case
+ * 1024 and must be a positive safe integer. The worst-case
  * memory is capacity × 64 KiB, about 64 MiB at the default.
  *
  * When the queue is full, `"dropping"` (the default) discards the incoming
@@ -240,8 +236,7 @@ export const make = (options: {
   })
 
 /**
- * The raw host and port reported by a native transport. Core parses it on
- * demand.
+ * A native host and port, parsed on demand.
  *
  * @stability unstable
  * @category models
@@ -304,7 +299,7 @@ export interface BackingSocket {
 }
 
 /**
- * Callbacks installed before opening a native handle; packets can arrive
+ * Callbacks installed before opening the backing socket; packets may arrive
  * synchronously.
  *
  * **Details**
@@ -494,7 +489,7 @@ export class DatagramSocketError
 }
 
 /**
- * Builds a `DatagramSocket` over a native handle, opening a new handle for
+ * Builds a `DatagramSocket` over a backing socket, opening a new socket for
  * each reader acquisition.
  *
  * **Details**
@@ -519,8 +514,8 @@ export class DatagramSocketError
  * `onError` receives errors with no write left to fail. It runs
  * synchronously, and anything it throws is ignored.
  *
- * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` is a
- * defect.
+ * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
+ * safe integer.
  *
  * @stability unstable
  * @category constructors
@@ -581,9 +576,8 @@ const makeFromBackingSocketWithContext = <R>(
       while (!free.closeUnsafe()) yield* restore(free.await)
       const scope = yield* Effect.scope
       const state = new ReaderState(capacity, sliding, onError)
-      // `open` may not be cancellable (Node's `lookup`), so it runs in its own
-      // fiber and is never interrupted. Interruption only stops the wait, and
-      // `abandon` closes a handle that arrives later.
+      // Native opens may be uncancellable. Interrupt only the wait; `abandon`
+      // closes any socket returned later.
       const opened = open(state.events).pipe(
         Effect.updateContext((input: Context.Context<never>) =>
           Context.add(Context.merge(services, input), Scope.Scope, scope)
@@ -798,10 +792,8 @@ class ReaderState {
     )
   }
 
-  // A send the handle completes synchronously (Bun) returns its result without
-  // suspending. Otherwise the fiber parks, as in `pull`, and the completion
-  // resumes it inline. An interrupted write ignores its completion, as with
-  // `Effect.callback`.
+  // Synchronous sends avoid parking; async completions resume inline.
+  // Ignore completions after interruption.
   write(datagram: OutgoingDatagram, fiber: FiberImpl): Effect.Effect<void, DatagramSocketError> {
     if (this.failure !== undefined) return this.failure
     const target = targetOf(datagram)

@@ -48,7 +48,6 @@
  *   const writer = yield* socket.writer
  *   while (true) {
  *     for (const received of yield* reader.pull) {
- *       // the reply path reuses the sender's raw address without parsing it
  *       yield* writer.write({ payload: received.payload, address: received })
  *     }
  *   }
@@ -89,7 +88,6 @@
  *     reuseAddress: true
  *   })
  *   const reader = yield* socket.reader
- *   // the ingress interface: where the group's datagrams are received
  *   yield* reader.joinMulticast({ group, interface: NetAddress.ipv4Loopback })
  *   return yield* reader.pull
  * }).pipe(Effect.scoped)
@@ -228,8 +226,8 @@ export interface FromSocketOptions {
  * resolved once per acquisition, so the native socket only sees IP literals
  * and no send waits for DNS.
  *
- * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` is a
- * defect.
+ * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
+ * safe integer.
  *
  * @stability unstable
  * @category constructors
