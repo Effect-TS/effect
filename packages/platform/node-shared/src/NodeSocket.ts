@@ -181,10 +181,12 @@ export const fromDuplex = <RO>(
 
       let error: Socket.SocketError | undefined
       let waiter: ReadResume | undefined
+      let pending: Arr.NonEmptyReadonlyArray<Uint8Array | string> | undefined
       let upgradeAvailable = true
 
       function fail(err: Socket.SocketError) {
         if (error === undefined) error = err
+        pending = undefined
         if (waiter !== undefined) {
           const resume = waiter
           waiter = undefined
@@ -195,6 +197,13 @@ export const fromDuplex = <RO>(
         if (waiter === undefined) return
         const chunk = readAvailable(conn)
         if (chunk === null) return
+        // read() emits data synchronously, which can close the reader or
+        // interrupt its parked pull. Keep consumed bytes only for a live reader.
+        if (error !== undefined) return
+        if (waiter === undefined) {
+          pending = chunk
+          return
+        }
         const resume = waiter
         waiter = undefined
         resume(Effect.succeed(chunk))
@@ -255,6 +264,11 @@ export const fromDuplex = <RO>(
       latch.openUnsafe()
 
       const pull = Effect.suspend(() => {
+        if (pending !== undefined) {
+          const chunk = pending
+          pending = undefined
+          return Effect.succeed(chunk)
+        }
         const chunk = readAvailable(conn)
         if (chunk !== null) return Effect.succeed(chunk)
         if (error !== undefined) return Effect.fail(error)
