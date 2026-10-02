@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`b57b7f6e3c0dd929d0069050ddb277a72646c576`)
+Base: `origin/v3` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `HEAD` (`e02083675b587957831c3d41e979e28c166cae28`)
+Head: `HEAD` (`a84d4f65d978bf33aabc38227e477d187ff05c2c`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14435,7 +14435,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Number` -> `Schema.Number`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.NumberFromString` -> `Schema.NumberFromString`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.NumberFromString` -> `Schema.NumberFromString`: Decoding now uses JavaScript number coercion: unlike v3, `"abc"` decodes to `NaN`, while `""` and whitespace-only strings decode to `0`. `FiniteFromString` rejects non-finite results, so it rejects invalid strings but also the `"NaN"` and infinity spellings accepted by v3; it still decodes blank strings to `0`. Use a custom codec to preserve the v3 acceptance rules exactly.
 
 - `Schema.Object` -> `Schema.ObjectKeyword`: Rename the object keyword schema.
 
@@ -14925,7 +14925,7 @@ Schema.toFormatter(schema)
 
 - `Schema.parseJson` -> `Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)`: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 
-- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec.
+- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec. Unlike v3 `parseNumber`, invalid strings decode to `NaN`, while blank strings decode to `0`. `FiniteFromString` rejects non-finite results but also the `"NaN"` and infinity spellings accepted by v3; exact compatibility requires a custom codec.
 
 - `Schema.partial` -> `schema.mapFields(Struct.map(Schema.optional))`: Map struct fields with `Schema.optional`.
 
