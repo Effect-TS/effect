@@ -182,11 +182,19 @@ export const fromDuplex = <RO>(
       let error: Socket.SocketError | undefined
       let waiter: ReadResume | undefined
       let pending: Arr.NonEmptyReadonlyArray<Uint8Array | string> | undefined
+      let reading = false
+      let readClosed = false
       let upgradeAvailable = true
 
-      function fail(err: Socket.SocketError) {
+      function fail(err: Socket.SocketError, discardPending = true) {
         if (error === undefined) error = err
-        pending = undefined
+        if (discardPending) {
+          readClosed = true
+          pending = undefined
+        } else if (reading || pending !== undefined) {
+          // Normal EOF must not overtake bytes already consumed by read().
+          return
+        }
         if (waiter !== undefined) {
           const resume = waiter
           waiter = undefined
@@ -194,22 +202,32 @@ export const fromDuplex = <RO>(
         }
       }
       function onReadable() {
-        if (waiter === undefined) return
-        const chunk = readAvailable(conn)
-        if (chunk === null) return
-        // read() emits data synchronously, which can close the reader or
-        // interrupt its parked pull. Keep consumed bytes only for a live reader.
-        if (error !== undefined) return
+        if (waiter === undefined || reading) return
+        let chunk = pending
+        pending = undefined
+        if (chunk === undefined && !readClosed) {
+          // A data listener can interrupt and replace the pull synchronously.
+          // The replacement must wait for this read to preserve byte order.
+          reading = true
+          try {
+            chunk = readAvailable(conn) ?? undefined
+          } finally {
+            reading = false
+          }
+        }
+        // Scope teardown or a read error discards bytes; normal EOF does not.
+        if (readClosed) chunk = undefined
         if (waiter === undefined) {
           pending = chunk
           return
         }
+        if (chunk === undefined && error === undefined) return
         const resume = waiter
         waiter = undefined
-        resume(Effect.succeed(chunk))
+        resume(chunk === undefined ? Effect.fail(error!) : Effect.succeed(chunk))
       }
       function onEnd() {
-        fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+        fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }), false)
       }
       function onError(cause: Error) {
         fail(
@@ -222,7 +240,8 @@ export const fromDuplex = <RO>(
         fail(
           new Socket.SocketError({
             reason: new Socket.SocketCloseError({ code: hadError ? 1006 : 1000 })
-          })
+          }),
+          hadError === true
         )
       }
 
@@ -263,20 +282,11 @@ export const fromDuplex = <RO>(
       currentSocket = conn
       latch.openUnsafe()
 
-      const pull = Effect.suspend(() => {
-        if (pending !== undefined) {
-          const chunk = pending
-          pending = undefined
-          return Effect.succeed(chunk)
-        }
-        const chunk = readAvailable(conn)
-        if (chunk !== null) return Effect.succeed(chunk)
-        if (error !== undefined) return Effect.fail(error)
-        return Effect.callback<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
-          waiter = resume
-          return Effect.sync(() => {
-            if (waiter === resume) waiter = undefined
-          })
+      const pull = Effect.callback<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
+        waiter = resume
+        onReadable()
+        return Effect.sync(() => {
+          if (waiter === resume) waiter = undefined
         })
       })
 
