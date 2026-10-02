@@ -132,12 +132,12 @@ describe("PgPool connection spans", () => {
   const traced = <A, E, R>(effect: Effect.Effect<A, E, R>, tracer: Tracer.Tracer, propagate: boolean) =>
     effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
 
-  it.effect("reports the connect a statement waited for under its span, only with propagation", () => {
+  it.effect("reports the connect a borrowed statement waited for under its span, only with propagation", () => {
     const { named, tracer } = recording()
     const checkouts = Effect.scoped(Effect.gen(function*() {
       const server = yield* heldServer
       const pool = yield* PgPool.make({ username: "test", maxConnections: 1, stream: server.stream })
-      const first = yield* Effect.forkChild(Effect.scoped(pool.get).pipe(Effect.withSpan("first statement")))
+      const first = yield* Effect.forkChild(pool.use(() => Effect.void).pipe(Effect.withSpan("first statement")))
       const answer = yield* Queue.take(server.startups)
       yield* TestClock.adjust("40 millis")
       yield* answer

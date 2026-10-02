@@ -279,7 +279,8 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       connectionTTL === undefined && deadConnections.size === 0
         ? Pool.use(
           pool,
-          unreported === 0 ? f : (connection) => Effect.andThen(reportConnect(connection), f(connection))
+          // Checked at hand-off: a checkout that has to wait sees the open it waited for.
+          (connection) => unreported === 0 ? f(connection) : Effect.andThen(reportConnect(connection), f(connection))
         )
         : Effect.scoped(Effect.flatMap(get, f))
     )
