@@ -539,7 +539,7 @@ export const makeFromBackingSocket = <R = never>(
       throw new RangeError(`DatagramSocket receive buffer capacity must be a positive integer, received ${capacity}`)
     }
     return Effect.succeed(
-      makeFromHandle(
+      makeFromBackingSocketWithContext(
         open,
         fiber.context as Context.Context<R>,
         capacity,
@@ -549,7 +549,7 @@ export const makeFromBackingSocket = <R = never>(
     )
   })
 
-const makeFromHandle = <R>(
+const makeFromBackingSocketWithContext = <R>(
   open: (events: BackingEvents) => Effect.Effect<BackingSocket, DatagramSocketError, R>,
   services: Context.Context<R>,
   capacity: number,
