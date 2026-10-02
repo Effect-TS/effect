@@ -921,22 +921,6 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined):
   return inferredParameter(arrayOid, values)
 }
 
-const frameArenaSize = 8192
-let frameArena: ArrayBuffer | undefined
-let frameArenaOffset = 0
-
-/** Allocated views are disjoint and remain valid across all subsequent allocations. */
-const allocateFrame = (length: number): Uint8Array => {
-  if (length >= frameArenaSize / 2) return new Uint8Array(length)
-  if (frameArena === undefined || frameArenaOffset + length > frameArenaSize) {
-    frameArena = new ArrayBuffer(frameArenaSize)
-    frameArenaOffset = 0
-  }
-  const output = new Uint8Array(frameArena, frameArenaOffset, length)
-  frameArenaOffset += (length + 7) & ~7
-  return output
-}
-
 /**
  * Joins the parts of a frame into the buffer that goes on the wire.
  *
@@ -945,7 +929,7 @@ const allocateFrame = (length: number): Uint8Array => {
 const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   let length = 0
   for (let index = 0; index < chunks.length; index++) length += chunks[index].length
-  const output = allocateFrame(length)
+  const output = new Uint8Array(length)
   let offset = 0
   for (let index = 0; index < chunks.length; index++) {
     output.set(chunks[index], offset)
@@ -1880,7 +1864,7 @@ const listenChannel = (
     })
   )
 
-/** Admits protocol writes immediately and batches frames queued behind backpressure. */
+/** Bridges the protocol's synchronous admission to one scoped socket writer. */
 class Transport {
   onData: (bytes: Uint8Array) => void = () => {}
   onError: (error: unknown) => void = () => {}
@@ -1888,39 +1872,30 @@ class Transport {
   private readonly readable = Latch.makeUnsafe(true)
   readonly start: Effect.Effect<void, never, Scope.Scope>
   private writerFiber: Fiber.Fiber<void> | undefined
-  private pending: Array<Uint8Array> = []
-  private waitingWrite: ((effect: Effect.Effect<Arr.NonEmptyArray<Uint8Array>>) => void) | undefined
 
   readonly connection: SocketConnector.Connection
-  private readonly runFork: (effect: Effect.Effect<void>) => Fiber.Fiber<void>
+  private readonly outgoing: Queue.Queue<Uint8Array>
+  private readonly runFork: (effect: Effect.Effect<void>) => unknown
 
   constructor(
     connection: SocketConnector.Connection,
-    runFork: (effect: Effect.Effect<void>) => Fiber.Fiber<void>
+    outgoing: Queue.Queue<Uint8Array>,
+    runFork: (effect: Effect.Effect<void>) => unknown
   ) {
     this.connection = connection
+    this.outgoing = outgoing
     this.runFork = runFork
     const reader = connection.run((chunk) => {
       this.onData(typeof chunk === "string" ? textEncoder.encode(chunk) : chunk)
       if (!this.readable.isOpen()) return this.readable.await
     }).pipe(Effect.catch((error) => Effect.sync(() => this.onError(error))))
-    const waitForWrites = Effect.callback<Arr.NonEmptyArray<Uint8Array>>((resume) => {
-      if (this.closed) return resume(Effect.interrupt)
-      if (this.pending.length > 0) return resume(Effect.succeed(this.takeBatch()))
-      this.waitingWrite = resume
-      return Effect.sync(() => {
-        if (this.waitingWrite === resume) this.waitingWrite = undefined
-      })
-    })
-    const takePending = Effect.suspend(() => {
-      if (this.closed) return Effect.interrupt
-      return this.pending.length === 0 ? waitForWrites : Effect.succeed(this.takeBatch())
-    })
-    const writer = Effect.forever(Effect.flatMap(takePending, (chunks) => connection.writeAll(chunks)))
-      .pipe(Effect.catch((error) => Effect.sync(() => this.onError(error))))
+    const writer = Effect.forever(Effect.flatMap(Queue.takeAll(outgoing), (chunks) => connection.writeAll(chunks)))
+      .pipe(
+        Effect.catch((error) => Effect.sync(() => this.onError(error)))
+      )
     this.start = Effect.andThen(
       Effect.forkScoped(reader),
-      Effect.map(Effect.forkScoped(writer, { startImmediately: true }), (fiber) => {
+      Effect.map(Effect.forkScoped(writer), (fiber) => {
         this.writerFiber = fiber
       })
     )
@@ -1928,18 +1903,7 @@ class Transport {
 
   write(bytes: Uint8Array): void {
     if (this.closed) throw new Error("Connection is closed")
-    this.pending.push(bytes)
-    const resume = this.waitingWrite
-    if (resume === undefined) return
-    // A synchronous connector reply can admit the next query before this resume returns.
-    this.waitingWrite = undefined
-    resume(Effect.succeed(this.takeBatch()))
-  }
-
-  private takeBatch(): Arr.NonEmptyArray<Uint8Array> {
-    const chunks = this.pending as Arr.NonEmptyArray<Uint8Array>
-    this.pending = []
-    return chunks
+    Queue.offerUnsafe(this.outgoing, bytes)
   }
 
   pause(): void {
@@ -1953,21 +1917,22 @@ class Transport {
   shutdown(terminate: boolean): Effect.Effect<void> {
     return Effect.suspend(() => {
       this.closed = true
-      this.pending = []
-      this.waitingWrite = undefined
       this.readable.openUnsafe()
       const stopWriter = this.writerFiber === undefined ? Effect.void : Fiber.interrupt(this.writerFiber)
       return Effect.andThen(
-        stopWriter,
+        Queue.shutdown(this.outgoing),
         Effect.andThen(
-          terminate
-            ? this.connection.write(PgProtocol.encodeTerminate()).pipe(
-              Effect.interruptible,
-              Effect.timeout("1 second"),
-              Effect.ignore
-            )
-            : Effect.void,
-          this.connection.close
+          stopWriter,
+          Effect.andThen(
+            terminate
+              ? this.connection.write(PgProtocol.encodeTerminate()).pipe(
+                Effect.interruptible,
+                Effect.timeout("1 second"),
+                Effect.ignore
+              )
+              : Effect.void,
+            this.connection.close
+          )
         )
       )
     })
@@ -2153,8 +2118,9 @@ const connect = Effect.fnUntraced(function*(
                 "SCRAM exchange did not complete"
               )
             }
+            const outgoing = yield* Queue.unbounded<Uint8Array>()
             const runFork = Effect.runForkWith(yield* Effect.context<never>())
-            return { socket: new Transport(connection, runFork), encrypted, parser, processId, secretKey }
+            return { socket: new Transport(connection, outgoing, runFork), encrypted, parser, processId, secretKey }
           }
           default:
             return yield* configError(`Unexpected ${message._tag} message during startup`)

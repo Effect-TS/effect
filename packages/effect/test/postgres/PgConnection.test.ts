@@ -1131,55 +1131,6 @@ describe("PgConnection transport", () => {
       assert.strictEqual(maxActiveWrites, 1)
     }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 16)))
 
-  it.effect("retains exact prepared and unprepared frame bytes across later writes", () =>
-    Effect.gen(function*() {
-      const incoming = yield* Queue.unbounded<Uint8Array>()
-      const frames: Array<{ readonly view: Uint8Array; readonly snapshot: Uint8Array }> = []
-      const reusedQueryResult = Buffer.concat([
-        backendMessage("2", Buffer.alloc(0)),
-        backendMessage("C", Buffer.from("SELECT 0\0")),
-        readyForQuery
-      ])
-      const connection = yield* makeConnection({
-        username: "test",
-        connector: () =>
-          Effect.succeed({
-            pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
-            run: (onChunk) =>
-              Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => onChunk(chunk) ?? Effect.void)),
-            upgrade: () => Effect.void,
-            write: (chunk) =>
-              Effect.sync(() => {
-                if (chunk instanceof Uint8Array && chunk[0] !== 0x58) {
-                  Queue.offerUnsafe(incoming, Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
-                }
-              }),
-            writeAll: (chunks) =>
-              Effect.sync(() => {
-                for (const chunk of chunks) {
-                  assert.instanceOf(chunk, Uint8Array)
-                  const view = chunk as Uint8Array
-                  frames.push({ view, snapshot: Uint8Array.from(view) })
-                }
-                const parses = chunks.some((chunk) => frontendTags(Buffer.from(chunk)).includes("P"))
-                Queue.offerUnsafe(incoming, parses ? emptyQueryResult : reusedQueryResult)
-              }),
-            close: Effect.void
-          })
-      })
-      for (let i = 0; i < 200; i++) {
-        const size = i % 20 === 0 ? 10000 : i % 9 === 0 ? 4096 : i % 5 === 0 ? 3500 : 25 + (i % 11) * 17
-        const value = `${i}:${"x".repeat(size)}`
-        const prepared = i % 2 === 0
-        yield* connection.query(prepared ? "SELECT $1 AS value" : `SELECT $1 AS value /* ${i} */`, [value], prepared)
-        assert.include(Buffer.from(frames[i].view).toString(), value)
-      }
-      assert.strictEqual(frames.length, 200)
-      assert.isTrue(frames.some(({ view }) => view.length >= 4096))
-      assert.isTrue(frames.filter(({ view }) => view.length < 4096).reduce((n, { view }) => n + view.length, 0) > 32768)
-      for (const { snapshot, view } of frames) assert.deepStrictEqual(view, snapshot)
-    }))
-
   it.effect("batches queued queries in order after write backpressure clears", () =>
     Effect.gen(function*() {
       const incoming = yield* Queue.unbounded<Uint8Array>()
