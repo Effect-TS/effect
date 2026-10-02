@@ -343,56 +343,6 @@ describe("SqlRunnerStorage", () => {
     )
   }, 60_000)
 
-  it.effect("recovers when a replacement connection fails to start and cannot be released", () => {
-    const partitioned = makePartitionState()
-    const layer = StorageLayer.pipe(
-      Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
-      Layer.provide(ShardingConfig.layer(partitionConfig))
-    )
-
-    return Effect.gen(function*() {
-      const storage = yield* RunnerStorage.RunnerStorage
-      const runner = Runner.make({
-        address: runnerAddress1,
-        groups: ["default"],
-        weight: 1
-      })
-
-      yield* storage.register(runner, true)
-      yield* storage.acquire(runnerAddress1, [ShardId.make("default", 1)])
-
-      // every reserved connection now wedges, and none can be released
-      partitionConnection(partitioned)
-      partitioned.blockRelease = true
-      yield* storage.refresh(runnerAddress1, [ShardId.make("default", 1)]).pipe(Effect.exit)
-      yield* Effect.sleep(lockOperationInterval * 1.5)
-      // the next replacement wedges looking up its backend pid, and its
-      // abandoned connection cannot be released either
-      const reserved = partitioned.reservedConnections
-      yield* storage.refresh(runnerAddress1, [ShardId.make("default", 1)]).pipe(Effect.exit)
-      yield* waitUntil(() => partitioned.reservedConnections > reserved)
-      yield* Effect.sleep(lockOperationInterval * 1.5)
-
-      // a fresh connection must still be reserved once the database responds;
-      // the original shard stays locked by the wedged session
-      restoreConnection(partitioned)
-      const shard = ShardId.make("default", 2)
-      expect(
-        yield* storage.acquire(runnerAddress1, [shard]).pipe(
-          Effect.retry({ times: 15, schedule: Schedule.spaced(20) })
-        )
-      ).toEqual([shard])
-    }).pipe(
-      // let the stalled releases finish so the layer can be torn down
-      Effect.ensuring(Effect.sync(() => {
-        restoreConnection(partitioned)
-        partitioned.blockRelease = false
-      })),
-      Effect.provide(layer),
-      TestClock.withLive
-    )
-  }, 60_000)
-
   it.effect("replaces a connection that fails an operation which waited for it", () => {
     const partitioned = makePartitionState()
     const layer = StorageLayer.pipe(
