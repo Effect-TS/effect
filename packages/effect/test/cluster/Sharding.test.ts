@@ -14,6 +14,7 @@ import {
   MutableRef,
   Option,
   Queue,
+  Ref,
   Result,
   Schedule,
   Schema,
@@ -41,6 +42,8 @@ import {
   ShardingConfig,
   Snowflake
 } from "effect/cluster"
+import * as EntityManager from "effect/cluster/internal/entityManager"
+import { EntityReaper } from "effect/cluster/internal/entityReaper"
 import * as ActiveTeardown from "effect/cluster/internal/interruptors"
 import { Headers } from "effect/http"
 import { Rpc, type RpcGroup } from "effect/rpc"
@@ -1710,6 +1713,216 @@ describe.concurrent("Sharding", () => {
     }))
 })
 
+const DefectRecoveryRun = Rpc.make("run", {
+  payload: { id: Schema.String },
+  success: Schema.String
+})
+
+const DefectRecoveryEntity = Entity.make("DefectRecovery", [DefectRecoveryRun.annotate(ClusterSchema.Persisted, true)])
+
+const DefectRecoverySharding = <R>(entityLayer: Layer.Layer<never, never, R>) =>
+  entityLayer.pipe(Layer.provideMerge(UnregisteredSharding({})))
+
+// Counts handler builds. Building the `blocked` generation waits until
+// `acquired` completes, holding the entity in replacement acquisition.
+const makeGenerations = Effect.fnUntraced(function*(blocked?: number) {
+  const count = yield* Ref.make(0)
+  const acquiring = yield* Deferred.make<void>()
+  const acquired = yield* Deferred.make<void>()
+  const next = Effect.gen(function*() {
+    const generation = yield* Ref.updateAndGet(count, (n) => n + 1)
+    if (generation === blocked) {
+      yield* Deferred.succeed(acquiring, undefined)
+      yield* Deferred.await(acquired)
+    }
+    return generation
+  })
+  return { count, acquiring, acquired, next } as const
+})
+
+// Drives an EntityManager directly: its first request defects, and the
+// replacement handlers stay in acquisition until `generations.acquired`.
+const startBlockedRebuild = Effect.fnUntraced(function*(entityId: string) {
+  const generations = yield* makeGenerations(2)
+  const attempts = yield* Ref.make(0)
+  const run = Rpc.make("run")
+  const entity = Entity.make("DefectRecoveryShutdown", [run])
+  const sharding = yield* Sharding.Sharding
+  const manager = yield* EntityManager.make(
+    entity,
+    Effect.as(
+      generations.next,
+      entity.of({
+        run: () => Ref.update(attempts, (n) => n + 1).pipe(Effect.andThen(Effect.die("restart")))
+      })
+    ),
+    {
+      sharding,
+      storage: MessageStorage.noop,
+      runnerAddress: RunnerAddress.make("localhost", 1234),
+      residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+      maxIdleTime: Infinity,
+      defectRetryPolicy: Schedule.spaced(1)
+    }
+  )
+  const id = EntityId.make(entityId)
+  const shardId = sharding.getShardId(id, "default")
+  const address = EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId: id })
+  const send = Effect.gen(function*() {
+    return yield* manager.sendLocal(
+      new Message.IncomingRequestLocal<typeof run>({
+        envelope: Envelope.makeRequest<typeof run>({
+          requestId: yield* sharding.getSnowflake,
+          address,
+          tag: "run",
+          payload: undefined,
+          headers: Headers.empty
+        }),
+        lastSentReply: Option.none(),
+        annotations: Context.empty(),
+        respond: () => Effect.void
+      })
+    )
+  })
+  yield* TestClock.adjust(1)
+  yield* send
+  yield* TestClock.adjust(10)
+  yield* Deferred.await(generations.acquiring)
+  return { manager, shardId, send, attempts, acquired: generations.acquired } as const
+})
+
+describe.concurrent("Sharding defect recovery", () => {
+  it.effect("restarts again when a replayed request defects synchronously", () =>
+    Effect.gen(function*() {
+      const entity = DefectRecoveryEntity
+      const generations = yield* makeGenerations()
+      const attempts = yield* Ref.make(0)
+      const entityLayer = entity.toLayer(Effect.as(
+        generations.next,
+        entity.of({
+          run: Effect.fnUntraced(function*({ payload }) {
+            if ((yield* Ref.updateAndGet(attempts, (n) => n + 1)) <= 3) {
+              return yield* Effect.die("repeated defect")
+            }
+            return payload.id
+          })
+        })
+      ))
+
+      yield* Effect.gen(function*() {
+        const client = (yield* entity.client)("repeated")
+        const work = yield* client.run({ id: "request" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust("30 seconds")
+        assert.strictEqual(yield* Ref.get(attempts), 4)
+        assert.strictEqual(yield* Ref.get(generations.count), 4)
+        assert.strictEqual(yield* Fiber.join(work), "request")
+      }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
+    }))
+
+  it.effect("replays unfinished requests before arrivals during acquisition", () =>
+    Effect.gen(function*() {
+      const entity = DefectRecoveryEntity
+      const generations = yield* makeGenerations(2)
+      const fail = yield* Deferred.make<void>()
+      const bothStarted = yield* Deferred.make<void>()
+      const started = yield* Ref.make(0)
+      const calls = yield* Ref.make<Array<readonly [number, string]>>([])
+      const completed = yield* Ref.make<Array<string>>([])
+      const thirdRequestId = yield* Deferred.make<Snowflake.Snowflake>()
+      const entityLayer = entity.toLayer(
+        Effect.map(generations.next, (generation) =>
+          entity.of({
+            run: Effect.fnUntraced(function*({ payload, requestId }) {
+              if (payload.id === "third") {
+                yield* Deferred.succeed(thirdRequestId, requestId)
+              }
+              yield* Ref.update(calls, (calls) => [...calls, [generation, payload.id] as const])
+              if (generation === 1) {
+                if ((yield* Ref.updateAndGet(started, (n) => n + 1)) === 2) {
+                  yield* Deferred.succeed(bothStarted, undefined)
+                }
+                yield* Deferred.await(fail)
+                return yield* Effect.die("initial defect")
+              }
+              if (generation === 2 && payload.id === "first") {
+                return yield* Effect.die("replay defect")
+              }
+              yield* Ref.update(completed, (ids) => [...ids, payload.id])
+              return payload.id
+            })
+          })),
+        { concurrency: "unbounded" }
+      )
+
+      yield* Effect.gen(function*() {
+        const client = (yield* entity.client)("arrivals")
+        const first = yield* client.run({ id: "first" }).pipe(Effect.forkChild)
+        const second = yield* client.run({ id: "second" }).pipe(Effect.forkChild)
+        yield* Deferred.await(bothStarted)
+        yield* Deferred.succeed(fail, undefined)
+        yield* TestClock.adjust("10 seconds")
+        yield* Deferred.await(generations.acquiring)
+        const third = yield* client.run({ id: "third" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        yield* Deferred.succeed(generations.acquired, undefined)
+        yield* TestClock.adjust("30 seconds")
+        assert.strictEqual(yield* Fiber.join(first), "first")
+        assert.strictEqual(yield* Fiber.join(second), "second")
+        assert.strictEqual(yield* Fiber.join(third), "third")
+        const recorded = yield* Ref.get(calls)
+        assert.deepStrictEqual(
+          Array.findFirst(recorded, ([generation]) => generation === 2),
+          Option.some([2, "first"] as const)
+        )
+        // A request still waiting for its first dispatch is not replayed as well
+        assert.strictEqual(Array.filter(recorded, ([, id]) => id === "third").length, 1)
+        const requestId = yield* Deferred.await(thirdRequestId)
+        const driver = yield* MessageStorage.MemoryDriver
+        const replies = yield* driver.encoded.repliesFor([String(requestId)]).pipe(Effect.orDie)
+        assert.isTrue(Array.some(
+          replies,
+          (reply) => reply._tag === "WithExit" && reply.exit._tag === "Success" && reply.exit.value === "third"
+        ))
+        assert.sameMembers(yield* Ref.get(completed), ["first", "second", "third"])
+        assert.strictEqual(yield* Ref.get(generations.count), 3)
+      }).pipe(Effect.provide(DefectRecoverySharding(entityLayer)))
+    }))
+
+  it.effect("finishes shutdown when replacement acquisition completes", () =>
+    Effect.gen(function*() {
+      const { acquired, attempts, manager, shardId } = yield* startBlockedRebuild("shutdown")
+      const shutdown = yield* manager.interruptShard(shardId).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* manager.activeEntityCount, 0)
+      yield* Deferred.succeed(acquired, undefined)
+      yield* TestClock.adjust(1)
+      const completed = shutdown.pollUnsafe()
+      // Let a broken implementation's termination timeout finish before asserting.
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(completed, Exit.void)
+      assert.strictEqual(yield* Ref.get(attempts), 1, "shutdown must not replay application requests")
+    }).pipe(Effect.provide(BlockedRebuildSharding)))
+
+  it.effect("interrupts a queued arrival when shutdown starts during replacement acquisition", () =>
+    Effect.gen(function*() {
+      const { acquired, manager, send, shardId } = yield* startBlockedRebuild("shutdown-queued")
+      // Arrives while the replacement handlers are still being built, so it
+      // queues behind the replay of unfinished requests.
+      const queued = yield* send.pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(queued.pollUnsafe(), undefined)
+      yield* manager.interruptShard(shardId).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1)
+      assert.strictEqual(yield* manager.activeEntityCount, 0)
+      // The queued request must be refused as soon as the activation is retired,
+      // without waiting for the replacement handlers.
+      const exit = queued.pollUnsafe()
+      assert.isDefined(exit, "queued arrival must not wait for replacement acquisition")
+      assert.isTrue(Exit.hasInterrupts(exit), "queued arrival must be interrupted")
+      yield* Deferred.succeed(acquired, undefined)
+    }).pipe(Effect.provide(BlockedRebuildSharding)))
+})
+
 const ActiveTeardownCaller = Entity.make("ActiveTeardownCaller", [
   Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
 ])
@@ -2961,6 +3174,13 @@ const UnregisteredSharding = (
     Layer.provide(configLayer)
   )
 }
+
+// The directly driven EntityManager waits up to 1000ms for its entities to end.
+const BlockedRebuildSharding = Layer.mergeAll(
+  EntityReaper.layer,
+  Snowflake.layerGenerator,
+  ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 1000 })
+).pipe(Layer.provideMerge(UnregisteredSharding({})))
 
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
 
