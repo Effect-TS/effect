@@ -213,7 +213,7 @@ export type UdpSocket = Bun.udp.Socket<"buffer"> | Bun.udp.ConnectedSocket<"buff
  * @since 4.0.0
  */
 export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  DatagramSocket.fromNativeHandle((events) => open(options, events), options)
+  DatagramSocket.fromBackingSocket((events) => open(options, events), options)
 
 /**
  * Adopts a Bun UDP socket.
@@ -237,7 +237,7 @@ export const fromUdpSocket = <R>(
   acquire: Effect.Effect<UdpSocket, DatagramSocket.DatagramSocketError, R>,
   options: AdoptOptions = {}
 ): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  DatagramSocket.fromNativeHandle(
+  DatagramSocket.fromBackingSocket(
     (events) => Effect.flatMap(acquire, (socket) => adopt(socket, options, events)),
     options
   )
@@ -455,7 +455,7 @@ const isClosedError = (error: unknown): boolean => error instanceof Error && err
 const open = (
   options: Options,
   events: DatagramSocket.NativeEvents
-): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
+): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   // `lookup` can't be cancelled, and core never interrupts `open`, so this
   // registers no finalizer
   Effect.callback((resume) => {
@@ -471,7 +471,7 @@ const create = (
   options: Options,
   events: DatagramSocket.NativeEvents,
   { bindHost: host, remote, scopeIds }: OpenPlan,
-  resume: (effect: Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError>) => void
+  resume: (effect: Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError>) => void
 ) => {
   const native = new NativeSocket(events)
   const flags = (options.reusePort ? LIBUS_SOCKET_REUSE_PORT : 0) |
@@ -519,7 +519,7 @@ const adopt = (
   socket: UdpSocket,
   options: AdoptOptions,
   events: DatagramSocket.NativeEvents
-): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
+): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   Effect.callback((resume) => {
     const native = new NativeSocket(events)
     native.socket = socket
@@ -603,7 +603,7 @@ class NativeSocket {
     scopeIds: ReadonlyMap<string, number>,
     peer: DatagramSocket.NativeAddress | undefined,
     connected: boolean
-  ): DatagramSocket.NativeHandle {
+  ): DatagramSocket.BackingSocket {
     const socket = this.socket!
     const bound = socket.address
     const stride = this.stride = connected ? 1 : 3
