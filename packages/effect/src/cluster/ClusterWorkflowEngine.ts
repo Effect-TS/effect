@@ -141,6 +141,8 @@ export const make = Effect.gen(function*() {
     readonly workflowName: string
     readonly executionId: string
     readonly results: Map<string, Exit.Exit<unknown, unknown>>
+    readonly checkpoints: Set<string>
+    runInstance?: WorkflowEngine.WorkflowInstance["Service"]
   }>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
@@ -404,7 +406,7 @@ export const make = Effect.gen(function*() {
             const activation = yield* CurrentActivationScope
             let pending = pendingByActivation.get(activation)
             if (!pending) {
-              pending = { workflowName: workflow._tag, executionId, results: new Map() }
+              pending = { workflowName: workflow._tag, executionId, results: new Map(), checkpoints: new Set() }
               pendingByActivation.set(activation, pending)
             }
             // Retain awaited names through reply persistence, including suspension.
@@ -429,6 +431,7 @@ export const make = Effect.gen(function*() {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
                 currentRun = { request, awaitedDeferreds: instance.awaitedDeferreds }
+                pending.runInstance = instance
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
                   | undefined
@@ -518,13 +521,15 @@ export const make = Effect.gen(function*() {
               deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
-                // Await registers before reading the cache. If this run has not
-                // registered yet, a later await will see the result just stored.
-                // Check when the wake runs and skip preemption too: interrupting
-                // a later await would require waiting for its reply before reset.
+                // Self-completed checkpoints need no replay until awaited; a
+                // later await sees the cached result. Check when the wake runs
+                // and skip preemption too. External and activity completions,
+                // interrupts, and fresh owners retain their existing wake paths.
                 const wake = Effect.suspend(() =>
                   currentRun && !currentRun.awaitedDeferreds.has(payload.name)
-                    ? ensureSuccess(resume(workflow, executionId))
+                    ? pending.checkpoints.has(payload.name) && payload.name !== InterruptSignal.name
+                      ? Effect.void
+                      : ensureSuccess(resume(workflow, executionId))
                     : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
                 )
                 // An asynchronous reply releases the RPC concurrency permit while
@@ -703,6 +708,18 @@ export const make = Effect.gen(function*() {
 
     deferredDone: Effect.fnUntraced(
       function*({ deferredName, executionId, exit, workflowName }) {
+        const activation = yield* Effect.serviceOption(CurrentActivationScope)
+        const instance = yield* Effect.serviceOption(WorkflowEngine.WorkflowInstance)
+        const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
+        // A run completing its own checkpoint can read the cached result later.
+        // Activity and external completions still need the legacy wake path: a
+        // suspended run may not have reached their awaits yet.
+        if (
+          pending?.workflowName === workflowName && pending.executionId === executionId &&
+          Option.isSome(instance) && pending.runInstance === instance.value
+        ) {
+          pending.checkpoints.add(deferredName)
+        }
         const workflow = workflows.get(workflowName)
         if (workflow) {
           return yield* Effect.orDie(sendDiscard({
