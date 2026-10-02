@@ -1,5 +1,17 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ConfigProvider, Deferred, Effect, Exit, Fiber, Queue, Redacted, Result, Scope, Stream } from "effect"
+import {
+  ConfigProvider,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Queue,
+  Redacted,
+  Result,
+  Scheduler,
+  Scope,
+  Stream
+} from "effect"
 import type { PgConnection } from "effect/postgres"
 import type * as Socket from "effect/socket/Socket"
 import * as TestClock from "effect/testing/TestClock"
@@ -1117,7 +1129,7 @@ describe("PgConnection transport", () => {
       for (let i = 0; i < 1500; i++) assert.deepStrictEqual((yield* connection.query(`SELECT ${i}`)).rows, [])
       assert.strictEqual(writes, 1500)
       assert.strictEqual(maxActiveWrites, 1)
-    }))
+    }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 16)))
 
   it.effect("batches queued queries in order after write backpressure clears", () =>
     Effect.gen(function*() {
