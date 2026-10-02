@@ -195,7 +195,7 @@ export type AdoptOptions = Pick<Options, "peer" | "receiveBuffer" | "onError">
  * @since 4.0.0
  */
 export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  DatagramSocket.fromNativeHandle((events) => open(options, events), options)
+  DatagramSocket.fromBackingSocket((events) => open(options, events), options)
 
 /**
  * Adopts a `Deno.DatagramConn`.
@@ -215,7 +215,7 @@ export const fromDatagramConn = <R>(
   acquire: Effect.Effect<Deno.DatagramConn, DatagramSocket.DatagramSocketError, R>,
   options: AdoptOptions = {}
 ): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  DatagramSocket.fromNativeHandle((events) => Effect.flatMap(acquire, (conn) => adopt(conn, options, events)), options)
+  DatagramSocket.fromBackingSocket((events) => Effect.flatMap(acquire, (conn) => adopt(conn, options, events)), options)
 
 /**
  * Provides a `DatagramSocket` built with `make`.
@@ -419,7 +419,7 @@ const resolvePeer = (
 const open = (
   options: Options,
   events: DatagramSocket.NativeEvents
-): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
+): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   // checked per reader, not at module load, so the module imports without the flag
   typeof Deno.listenDatagram !== "function"
     ? Effect.fail(unsupportedError(
@@ -452,7 +452,7 @@ const adopt = (
   conn: Deno.DatagramConn,
   options: AdoptOptions,
   events: DatagramSocket.NativeEvents
-): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
+): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   Effect.callback((resume) => {
     const family: Family = (conn.addr as Deno.NetAddr).hostname.includes(":") ? "ipv6" : "ipv4"
     resolvePeer(
@@ -552,7 +552,7 @@ class NativeConn {
     done()
   }
 
-  open(peer: DatagramSocket.NativeAddress | undefined): DatagramSocket.NativeHandle {
+  open(peer: DatagramSocket.NativeAddress | undefined): DatagramSocket.BackingSocket {
     const conn = this.conn
     const bound = conn.addr as Deno.NetAddr
     this.receive()

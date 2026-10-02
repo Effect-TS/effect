@@ -237,7 +237,7 @@ export interface FromSocketOptions {
  * @since 4.0.0
  */
 export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  DatagramSocket.fromNativeHandle((events) => open(options, events), options)
+  DatagramSocket.fromBackingSocket((events) => open(options, events), options)
 
 /**
  * Adopts a `dgram.Socket`.
@@ -257,7 +257,7 @@ export const fromSocket = <R>(
   acquire: Effect.Effect<Dgram.Socket, DatagramSocket.DatagramSocketError, R>,
   options: FromSocketOptions = {}
 ): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  DatagramSocket.fromNativeHandle(
+  DatagramSocket.fromBackingSocket(
     (events) => Effect.flatMap(acquire, (socket) => adopt(socket, options, events)),
     options
   )
@@ -476,7 +476,7 @@ const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
 const open = (
   options: Options,
   events: DatagramSocket.NativeEvents
-): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
+): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   // `lookup` can't be cancelled, and core never interrupts `open`, so this
   // registers no finalizer
   Effect.callback((resume) => {
@@ -492,7 +492,7 @@ const bind = (
   options: Options,
   events: DatagramSocket.NativeEvents,
   { bindHost: host, family, remote, scopeIds }: OpenPlan,
-  resume: (effect: Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError>) => void
+  resume: (effect: Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError>) => void
 ) => {
   let socket: Dgram.Socket
   try {
@@ -549,7 +549,7 @@ const adopt = (
   socket: Dgram.Socket,
   options: FromSocketOptions,
   events: DatagramSocket.NativeEvents
-): Effect.Effect<DatagramSocket.NativeHandle, DatagramSocket.DatagramSocketError> =>
+): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   Effect.callback((resume) => {
     const native = new NativeSocket(socket, events)
     const fail = (error: DatagramSocket.DatagramSocketError) => {
@@ -604,7 +604,7 @@ class NativeSocket {
     scopeIds: ReadonlyMap<string, number>,
     peer: DatagramSocket.NativeAddress | undefined,
     connected: boolean
-  ): DatagramSocket.NativeHandle {
+  ): DatagramSocket.BackingSocket {
     this.onOpenError = undefined
     const socket = this.socket
     // `address()` throws after close, so it is read once here

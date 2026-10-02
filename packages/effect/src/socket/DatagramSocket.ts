@@ -288,7 +288,7 @@ export interface NativeAddress {
  * @category models
  * @since 4.0.0
  */
-export interface NativeHandle {
+export interface BackingSocket {
   readonly address: NativeAddress
   readonly scopeIds?: ReadonlyMap<string, number> | undefined
   readonly peer?: NativeAddress | undefined
@@ -535,8 +535,8 @@ export class DatagramSocketError
  * @category constructors
  * @since 4.0.0
  */
-export const fromNativeHandle = <R = never>(
-  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError, R>,
+export const fromBackingSocket = <R = never>(
+  open: (events: NativeEvents) => Effect.Effect<BackingSocket, DatagramSocketError, R>,
   options?: {
     readonly receiveBuffer?: ReceiveBufferOptions | undefined
     readonly onError?: ((error: DatagramSocketError) => void) | undefined
@@ -559,7 +559,7 @@ export const fromNativeHandle = <R = never>(
   })
 
 const makeFromHandle = <R>(
-  open: (events: NativeEvents) => Effect.Effect<NativeHandle, DatagramSocketError, R>,
+  open: (events: NativeEvents) => Effect.Effect<BackingSocket, DatagramSocketError, R>,
   services: Context.Context<R>,
   capacity: number,
   sliding: boolean,
@@ -569,7 +569,7 @@ const makeFromHandle = <R>(
   const latch = Latch.makeUnsafe(false)
   let current: ReaderState | undefined
 
-  const abandon = (state: ReaderState, opening: Fiber.Fiber<NativeHandle, DatagramSocketError>) => {
+  const abandon = (state: ReaderState, opening: Fiber.Fiber<BackingSocket, DatagramSocketError>) => {
     state.close()
     // keep ownership until the orphaned open settles, then close its handle
     opening.addObserver((exit) => {
@@ -597,7 +597,7 @@ const makeFromHandle = <R>(
         Effect.updateContext((input: Context.Context<never>) =>
           Context.add(Context.merge(services, input), Scope.Scope, scope)
         )
-      ) as Effect.Effect<NativeHandle, DatagramSocketError>
+      ) as Effect.Effect<BackingSocket, DatagramSocketError>
       const opening = yield* Effect.forkDetach(opened, { startImmediately: true })
       state.handle = yield* restore(Fiber.join(opening)).pipe(
         Effect.onError(() => Effect.sync(() => abandon(state, opening)))
@@ -682,7 +682,7 @@ class ReaderState {
   }
 
   // set when `open` completes; packets can arrive before that
-  handle: NativeHandle | undefined = undefined
+  handle: BackingSocket | undefined = undefined
   // the sticky error as a failed exit, shared by every pull and write after it
   failure: Effect.Effect<never, DatagramSocketError> | undefined = undefined
   // separate from `failure`: after a sticky read error the socket is still
