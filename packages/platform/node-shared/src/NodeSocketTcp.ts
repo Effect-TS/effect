@@ -483,7 +483,6 @@ export const fromDuplex = <RO>(
 
             conn = tls
             currentSocket = tls
-            if (!isDeno) tls.pause()
 
             function cleanup() {
               tls.off(secureEvent, succeed)
@@ -493,6 +492,8 @@ export const fromDuplex = <RO>(
             function succeed() {
               cleanup()
               upgradeAvailable = false
+              // Bun pauses handshake input too, so wait until TLS is established.
+              if (!isDeno) tls.pause()
               attachReadListeners(tls)
               resume(Effect.void)
             }
