@@ -1889,9 +1889,7 @@ class Transport {
       this.onData(typeof chunk === "string" ? textEncoder.encode(chunk) : chunk)
       if (!this.readable.isOpen()) return this.readable.await
     }).pipe(Effect.catch((error) => Effect.sync(() => this.onError(error))))
-    const writer = Effect.forever(Effect.flatMap(Queue.takeAll(outgoing), (chunks) => connection.writeAll(chunks)), {
-      disableYield: true
-    })
+    const writer = Effect.forever(Effect.flatMap(Queue.takeAll(outgoing), (chunks) => connection.writeAll(chunks)))
       .pipe(
         Effect.catch((error) => Effect.sync(() => this.onError(error)))
       )
