@@ -68,18 +68,16 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
     })
     : raw!
   raw?.setNoDelay(true)
-  // Hold incoming data until a consumer runs.
+  // Buffer incoming data inside the socket until a consumer runs.
   socket.pause()
 
   let connected = stream !== undefined
   let failure: RedisError | undefined
   let consumer: { readonly onBytes: (bytes: Uint8Array) => void; readonly resume: Writer["resume"] } | undefined
-  let unread: Array<Uint8Array> = []
+  let onConnect: Writer["resume"] | undefined
   const queued: Array<Writer> = []
   // The writer whose bytes the socket accepted but has not yet drained.
   let draining: Writer | undefined
-  const onConnect = new Set<Writer["resume"]>()
-  const onClose = new Set<() => void>()
 
   const fail = (error: RedisError) => {
     if (failure !== undefined) return
@@ -89,21 +87,9 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
     draining?.resume(Effect.fail(withOutcome(error, "Unknown")))
     draining = undefined
     for (const writer of queued.splice(0)) writer.resume(Effect.fail(withOutcome(error, "NotSent")))
-    for (const resume of onConnect) resume(Effect.fail(error))
-    onConnect.clear()
+    onConnect?.(Effect.fail(error))
+    onConnect = undefined
     socket.destroy()
-  }
-
-  const deliver = (bytes: Uint8Array) => {
-    try {
-      consumer!.onBytes(bytes)
-    } catch (cause) {
-      fail(
-        cause instanceof RedisError
-          ? cause
-          : new RedisError({ reason: "Connection", message: "Redis byte consumer failed", cause, outcome: "Unknown" })
-      )
-    }
   }
 
   const pump = () => {
@@ -122,10 +108,15 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
   }
 
   socket.on("data", (chunk: Uint8Array) => {
-    if (failure !== undefined) return
-    if (consumer !== undefined) return deliver(chunk)
-    unread.push(chunk)
-    socket.pause()
+    try {
+      consumer?.onBytes(chunk)
+    } catch (cause) {
+      fail(
+        cause instanceof RedisError
+          ? cause
+          : new RedisError({ reason: "Connection", message: "Redis byte consumer failed", cause, outcome: "Unknown" })
+      )
+    }
   })
   socket.on("drain", () => {
     const writer = draining
@@ -155,26 +146,26 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
         outcome: connected ? "Unknown" : "NotSent"
       })
     )
-    for (const resume of onClose) resume()
-    onClose.clear()
   })
   socket.once(endpoint.tls ? "secureConnect" : "connect", () => {
     connected = true
-    for (const resume of onConnect) resume(Effect.void)
-    onConnect.clear()
+    onConnect?.(Effect.void)
+    onConnect = undefined
   })
 
   const ready = Effect.callback<void, RedisError>((resume) => {
     if (failure !== undefined) return resume(Effect.fail(failure))
     if (connected) return resume(Effect.void)
-    onConnect.add(resume)
+    onConnect = resume
     try {
       if (endpoint.path !== undefined) raw!.connect(endpoint.path)
       else raw!.connect({ ...tlsOptions, host: endpoint.host, port: endpoint.port })
     } catch (cause) {
       fail(new RedisError({ reason: "Connection", message: "Redis connection failed", cause, outcome: "NotSent" }))
     }
-    return Effect.sync(() => onConnect.delete(resume))
+    return Effect.sync(() => {
+      onConnect = undefined
+    })
   })
 
   const transport: Transport = {
@@ -192,6 +183,7 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
       }),
     run: (onBytes) =>
       Effect.callback((resume) => {
+        if (failure !== undefined) return resume(Effect.fail(failure))
         if (consumer !== undefined) {
           return resume(Effect.fail(
             new RedisError({ reason: "Connection", message: "Redis transport already has a consumer" })
@@ -199,10 +191,6 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
         }
         const reading = { onBytes, resume }
         consumer = reading
-        const pending = unread
-        unread = []
-        for (const bytes of pending) deliver(bytes)
-        if (failure !== undefined) return resume(Effect.fail(failure))
         socket.resume()
         return Effect.sync(() => {
           if (consumer !== reading) return
@@ -211,12 +199,9 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
         })
       }),
     close: Effect.callback((resume) => {
-      unread = []
       if (socket.closed) return resume(Effect.void)
-      const done = () => resume(Effect.void)
-      onClose.add(done)
+      socket.once("close", () => resume(Effect.void))
       fail(new RedisError({ reason: "Closed", message: "Redis transport closed", outcome: "Unknown" }))
-      return Effect.sync(() => onClose.delete(done))
     })
   }
   return { transport, ready }

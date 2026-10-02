@@ -56,10 +56,10 @@ export class DenoRedis
  */
 export const make = Shared.make
 
-const makeContext = Effect.fnUntraced(function*(options?: Options) {
-  const context = yield* Shared.makeContext(options)
-  return Context.add(context, DenoRedis, Context.get(context, RedisClient.RedisClient))
-})
+const makeContext = (options?: Options) =>
+  Shared.makeContext(options).pipe(
+    Effect.map((context) => Context.add(context, DenoRedis, Context.get(context, RedisClient.RedisClient)))
+  )
 
 /**
  * Provides Deno Redis, general client, and persistence adapter services.

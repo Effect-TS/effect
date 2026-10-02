@@ -134,21 +134,7 @@ const subscriptionKinds = new Set([
 const messageKinds = new Set(["message", "pmessage", "smessage"])
 
 const encoder = new TextEncoder()
-
-const bytesOf = (reply: Reply | undefined): Uint8Array | undefined =>
-  reply?._tag === "BlobString"
-    ? reply.value
-    : reply?._tag === "SimpleString"
-    ? encoder.encode(reply.value)
-    : undefined
-
-const sameBytes = (left: Uint8Array, right: Uint8Array | undefined): boolean =>
-  right !== undefined && left.length === right.length && left.every((byte, index) => byte === right[index])
-
-const unwrap = (reply: Reply): Reply => {
-  while (reply._tag === "Attribute") reply = reply.value
-  return reply
-}
+const decoder = new TextDecoder()
 
 const toError = (cause: unknown, message: string): RedisError =>
   cause instanceof RedisError ? cause : new RedisError({ reason: "Protocol", message, cause, outcome: "NotSent" })
@@ -234,8 +220,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const terminal = Deferred.makeUnsafe<never, RedisError>()
   const unsettled = new Set<Entry>()
   // Entries written to the transport, in reply order.
-  let inflight: Array<Entry> = []
-  let inflightHead = 0
+  const inflight: Array<Entry> = []
   const listeners = new Set<(reply: Reply) => void>()
   let failure: RedisError | undefined
   let queuedBytes = 0
@@ -263,8 +248,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     for (const entry of unsettled) {
       settle(entry, Result.fail(Internal.withOutcome(error, entry.sent ? "Unknown" : "NotSent")))
     }
-    inflight = []
-    inflightHead = 0
+    inflight.length = 0
     listeners.clear()
     Queue.failCauseUnsafe(outgoing, Cause.fail(error))
     Deferred.doneUnsafe(terminal, Effect.fail(error))
@@ -363,53 +347,43 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     Effect.forkScoped
   )
 
-  const nextInflight = (): Entry | undefined => inflight[inflightHead]
-
-  const takeInflight = (): Entry | undefined => {
-    const entry = inflight[inflightHead++]
-    if (inflightHead === inflight.length) {
-      inflight = []
-      inflightHead = 0
+  const acknowledge = (kind: string, values: ReadonlyArray<Reply>, reply: Reply) => {
+    const count = values[2]
+    if (
+      values.length !== 3 || Protocol.bytesOf(values[1]) === undefined || count?._tag !== "Integer" ||
+      count.value < BigInt("0") || count.value > BigInt(Number.MAX_SAFE_INTEGER)
+    ) {
+      throw new RedisError({ reason: "Protocol", message: "Invalid Redis subscription acknowledgement" })
     }
-    return entry
-  }
-
-  const onPubSub = (kind: string | undefined, values: ReadonlyArray<Reply>, reply: Reply) => {
-    if (kind !== undefined && subscriptionKinds.has(kind)) {
-      const count = values[2]
-      if (
-        values.length !== 3 || bytesOf(values[1]) === undefined || count?._tag !== "Integer" ||
-        count.value < BigInt("0") || count.value > BigInt(Number.MAX_SAFE_INTEGER)
-      ) {
-        throw new RedisError({ reason: "Protocol", message: "Invalid Redis subscription acknowledgement" })
-      }
-      // Redis counts global and sharded subscriptions separately.
-      if (kind === "ssubscribe" || kind === "sunsubscribe") shardSubscriptions = Number(count.value)
-      else subscriptions = Number(count.value)
-      const head = nextInflight()
-      if (head?.subscription?.kind === kind && sameBytes(head.subscription.channel, bytesOf(values[1]))) {
-        settle(takeInflight()!, Result.succeed(reply))
-      }
+    // Redis counts global and sharded subscriptions separately.
+    if (kind === "ssubscribe" || kind === "sunsubscribe") shardSubscriptions = Number(count.value)
+    else subscriptions = Number(count.value)
+    const head = inflight[0]
+    if (
+      head?.subscription?.kind === kind && Protocol.sameBytes(head.subscription.channel, Protocol.bytesOf(values[1]))
+    ) {
+      inflight.shift()
+      settle(head, Result.succeed(reply))
     }
-    for (const listener of listeners) listener(reply)
   }
 
   const receive = (reply: Reply) => {
-    const value = unwrap(reply)
+    const value = Protocol.unwrap(reply)
     if (value._tag === "Push" || (value._tag === "Array" && protocol === 2)) {
-      const bytes = bytesOf(value.values[0])
-      const kind = bytes === undefined ? undefined : new TextDecoder().decode(bytes)
+      const bytes = Protocol.bytesOf(value.values[0])
+      const kind = bytes === undefined ? undefined : decoder.decode(bytes)
       const subscribed = subscriptions + shardSubscriptions > 0
-      if (
-        value._tag === "Push" ||
-        (kind !== undefined &&
-          ((subscribed && (subscriptionKinds.has(kind) || messageKinds.has(kind))) ||
-            nextInflight()?.subscription?.kind === kind))
-      ) {
-        return onPubSub(kind, value.values, reply)
+      const isPush = value._tag === "Push" || (kind !== undefined && (
+        (subscribed && (subscriptionKinds.has(kind) || messageKinds.has(kind))) ||
+        inflight[0]?.subscription?.kind === kind
+      ))
+      if (isPush) {
+        if (kind !== undefined && subscriptionKinds.has(kind)) acknowledge(kind, value.values, reply)
+        for (const listener of listeners) listener(reply)
+        return
       }
     }
-    const entry = takeInflight()
+    const entry = inflight.shift()
     if (entry === undefined) throw new RedisError({ reason: "Protocol", message: "Unexpected Redis reply" })
     if (value._tag === "Error") {
       return settle(entry, Result.fail(new RedisError({ reason: "Server", message: value.message, code: value.code })))

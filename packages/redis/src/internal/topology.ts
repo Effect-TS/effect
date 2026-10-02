@@ -29,10 +29,8 @@ export interface Resolved {
   readonly endpoint: Endpoint
   /** The Cluster hash slot of the command's keys, when it has any. */
   readonly slot?: number | undefined
-}
-
-export interface Redirect extends Resolved {
-  readonly asking: boolean
+  /** Whether an ASK redirect requires ASKING before the command. */
+  readonly asking?: boolean | undefined
 }
 
 export interface Topology {
@@ -42,7 +40,7 @@ export interface Topology {
   readonly refresh: Effect.Effect<void, RedisError>
   readonly endpoints: () => ReadonlyArray<Endpoint>
   /** Interprets a MOVED or ASK error, updating the slot map for MOVED. */
-  readonly redirect: (error: RedisError, from: Endpoint) => Redirect | undefined
+  readonly redirect: (error: RedisError, from: Endpoint) => Resolved | undefined
   /** Registers a listener for primary changes. */
   readonly onChange: (listener: () => void) => () => void
 }

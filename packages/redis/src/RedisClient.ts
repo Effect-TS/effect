@@ -170,10 +170,6 @@ export const make = Effect.fnUntraced(function*(connector: Connection.Connector,
   )
 })
 
-interface Destination extends Topology.Resolved {
-  readonly asking?: boolean | undefined
-}
-
 const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, options: Config) {
   const scope = yield* Effect.scope
   if (options.reconnectDelay !== undefined) {
@@ -249,21 +245,21 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     })
   )
 
+  // Closes connections to nodes that left the topology.
   const retire = Effect.suspend(() => {
     const current = new Set(topology.endpoints().map(endpointKey))
-    const stale = [
-      ...Array.from(shared, ([key, entry]) => current.has(key) ? undefined : dropShared(key, entry)),
-      ...Array.from(
-        reservations,
-        (entry) => current.has(endpointKey(entry.endpoint)) ? undefined : Scope.close(entry.scope, Exit.void)
-      )
-    ].filter((effect) => effect !== undefined)
+    const stale: Array<Effect.Effect<void>> = []
+    for (const [key, entry] of shared) {
+      if (!current.has(key)) stale.push(dropShared(key, entry))
+    }
+    for (const reservation of reservations) {
+      if (!current.has(endpointKey(reservation.endpoint))) stale.push(Scope.close(reservation.scope, Exit.void))
+    }
     return Effect.all(stale, { discard: true })
   })
   if (topology._tag === "Sentinel") {
     const changes = yield* Queue.unbounded<void>()
-    const remove = topology.onChange(() => Queue.offerUnsafe(changes, undefined))
-    yield* Scope.addFinalizer(scope, Effect.sync(remove))
+    yield* Scope.addFinalizer(scope, Effect.sync(topology.onChange(() => Queue.offerUnsafe(changes, undefined))))
     yield* Queue.take(changes).pipe(Effect.andThen(retire), Effect.forever, Effect.forkScoped)
   }
 
@@ -319,79 +315,35 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     }
   }
 
-  const send = (
-    args: ReadonlyArray<Protocol.Argument>,
-    routing: Command.Routing | undefined,
-    destination: Destination,
-    remaining: number
-  ): Effect.Effect<Protocol.Reply, RedisError> => {
-    // ASKING applies only to the next command on the same connection.
-    const attempt = destination.asking
-      ? Effect.scoped(
-        reserve({ node: destination.endpoint }).pipe(
-          Effect.flatMap((connection) => Effect.andThen(connection.execute(["ASKING"]), connection.execute(args)))
-        )
-      )
-      : Effect.flatMap(connect(destination.endpoint), (connection) => connection.execute(args))
-    return Effect.catch(attempt, (error): Effect.Effect<Protocol.Reply, RedisError> => {
-      if (closed) return Effect.fail(error)
-      const redirect = topology.redirect(error, destination.endpoint)
-      if (redirect !== undefined) {
-        return remaining > 0
-          ? send(args, routing, redirect, remaining - 1)
-          : Effect.fail(redirectLimit(error))
-      }
-      // A demoted Sentinel primary rejects the write without executing it.
-      if (topology._tag === "Sentinel" && error.code === "READONLY" && remaining > 0) {
-        return refresh.pipe(
-          Effect.andThen(topology.resolve(args, routing)),
-          Effect.flatMap((next) => send(args, routing, next, remaining - 1))
-        )
-      }
-      // Rediscover for later commands, but never replay this one.
-      if (isDisconnect(error)) return Effect.andThen(Effect.ignore(refresh), Effect.fail(error))
-      return Effect.fail(error)
-    })
+  interface Pending {
+    readonly index: number
+    readonly target: Topology.Resolved
+    readonly remaining: number
   }
-
-  const execute: RedisClient["execute"] = (args, routing) =>
-    Effect.suspend(() => {
-      if (closed) return Effect.fail(clientClosed())
-      if (requiresReservation(args)) return Effect.fail(reservationRequired())
-      const target = topology.route(args, routing)
-      return target._tag === "Failure" ? Effect.fail(target.failure) : send(args, routing, target.success, maxRedirects)
-    })
 
   const pipeline = (
     commands: ReadonlyArray<Command.RedisCommand<unknown>>
   ): Effect.Effect<Array<Result.Result<unknown, RedisError>>, RedisError> =>
-    Effect.gen(function*() {
+    Effect.suspend(() => {
+      if (closed) return Effect.fail(clientClosed())
       const results = new Array<Result.Result<unknown, RedisError>>(commands.length)
-      interface Pending {
-        readonly index: number
-        readonly destination: Destination
-        readonly remaining: number
-      }
+
       const route = (index: number, remaining: number): Pending | undefined => {
-        const command = commands[index]
-        const target = topology.route(command.arguments, command.routing)
-        if (target._tag === "Success") return { index, destination: target.success, remaining }
+        const target = topology.route(commands[index].arguments, commands[index].routing)
+        if (target._tag === "Success") return { index, target: target.success, remaining }
         results[index] = target
       }
 
       const submit = (group: ReadonlyArray<Pending>) => {
-        const { asking, endpoint } = group[0].destination
+        const { asking, endpoint } = group[0].target
         const batch = group.map(({ index }) => ({ arguments: commands[index].arguments }))
-        return asking
-          ? Effect.scoped(
-            reserve({ node: endpoint }).pipe(
-              Effect.flatMap((connection) =>
-                connection.pipeline(batch.flatMap((command) => [{ arguments: ["ASKING"] }, command]))
-              ),
-              Effect.map((replies) => replies.filter((_, index) => index % 2 === 1))
-            )
-          )
-          : Effect.flatMap(connect(endpoint), (connection) => connection.pipeline(batch))
+        if (!asking) return Effect.flatMap(connect(endpoint), (connection) => connection.pipeline(batch))
+        // ASKING applies only to the next command on the same connection.
+        return Effect.scoped(
+          Effect.flatMap(reserve({ node: endpoint }), (connection) =>
+            Effect.forEach(batch, (command) =>
+              Effect.andThen(connection.execute(["ASKING"]), Effect.result(connection.execute(command.arguments)))))
+        )
       }
 
       const process = (group: ReadonlyArray<Pending>): Effect.Effect<void> =>
@@ -407,12 +359,15 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
               return
             }
             const error = reply.failure
-            const redirect = closed ? undefined : topology.redirect(error, pending.destination.endpoint)
-            if (redirect !== undefined && pending.remaining > 0) {
-              retries.push({ ...pending, destination: redirect, remaining: pending.remaining - 1 })
-            } else if (redirect !== undefined) {
-              results[pending.index] = Result.fail(redirectLimit(error))
+            const redirect = closed ? undefined : topology.redirect(error, pending.target.endpoint)
+            if (redirect !== undefined) {
+              if (pending.remaining > 0) {
+                retries.push({ index: pending.index, target: redirect, remaining: pending.remaining - 1 })
+              } else {
+                results[pending.index] = Result.fail(Cluster.redirectLimit(error))
+              }
             } else if (topology._tag === "Sentinel" && error.code === "READONLY" && pending.remaining > 0) {
+              // A demoted Sentinel primary rejects the write without executing it.
               readOnly.push(pending)
             } else {
               disconnected ||= isDisconnect(error)
@@ -422,30 +377,34 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
           if (readOnly.length > 0) {
             const refreshed = yield* Effect.result(refresh)
             for (const pending of readOnly) {
-              if (refreshed._tag === "Failure") results[pending.index] = refreshed
-              else {
+              if (refreshed._tag === "Failure") {
+                results[pending.index] = refreshed
+              } else {
                 const next = route(pending.index, pending.remaining - 1)
-                if (next !== undefined) retries.push(next)
+                if (next !== undefined) {
+                  retries.push(next)
+                }
               }
             }
           } else if (disconnected) {
+            // Rediscover for later commands, but never replay these.
             yield* Effect.ignore(refresh)
           }
-          yield* processAll(retries)
+          yield* dispatch(retries)
         })
 
-      const processAll = (pending: ReadonlyArray<Pending>): Effect.Effect<void> => {
+      const dispatch = (pending: ReadonlyArray<Pending>): Effect.Effect<void> => {
         const groups = new Map<string, Array<Pending>>()
         for (const entry of pending) {
-          const key = `${endpointKey(entry.destination.endpoint)}${entry.destination.asking ? "#asking" : ""}`
+          const key = `${endpointKey(entry.target.endpoint)}${entry.target.asking ? "#asking" : ""}`
           const group = groups.get(key)
-          if (group === undefined) groups.set(key, [entry])
-          else group.push(entry)
+          if (group === undefined) {
+            groups.set(key, [entry])
+          } else group.push(entry)
         }
         return Effect.forEach(groups.values(), process, { concurrency: "unbounded", discard: true })
       }
 
-      if (closed) return yield* Effect.fail(clientClosed())
       const pending: Array<Pending> = []
       commands.forEach((command, index) => {
         if (requiresReservation(command.arguments)) {
@@ -453,18 +412,21 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
           return
         }
         const next = route(index, maxRedirects)
-        if (next !== undefined) pending.push(next)
+        if (next !== undefined) {
+          pending.push(next)
+        }
       })
-      yield* processAll(pending)
-      return results
+      return Effect.as(dispatch(pending), results)
     })
+
+  const run = <A>(command: Command.RedisCommand<A>): Effect.Effect<A, RedisError> =>
+    Effect.flatMap(pipeline([command]), (results) => Effect.fromResult(results[0] as Result.Result<A, RedisError>))
 
   const client: RedisClient = {
     config,
     closed: Deferred.await(closedSignal),
-    execute,
-    run: (command) =>
-      Effect.flatMap(execute(command.arguments, command.routing), (reply) => Effect.fromResult(command.decode(reply))),
+    execute: (args, routing) => run(Command.make(args, Result.succeed, routing)),
+    run,
     pipeline: pipeline as RedisClient["pipeline"],
     reserve,
     refresh,
@@ -482,14 +444,6 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
   )
   return client
 })
-
-const redirectLimit = (error: RedisError) =>
-  new RedisError({
-    reason: "Routing",
-    message: "Redis Cluster redirect limit exceeded",
-    cause: error,
-    code: error.code
-  })
 
 const standalone = (endpoint: Connection.Endpoint): Topology.Topology => ({
   _tag: "Standalone",

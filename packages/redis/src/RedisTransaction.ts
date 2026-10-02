@@ -6,6 +6,7 @@
  */
 import * as Effect from "effect/Effect"
 import * as Result from "effect/Result"
+import { unwrap } from "./internal/protocol.ts"
 import { argumentText, notSent, withOutcome } from "./internal/transport.ts"
 import type { Affinity, RedisClient } from "./RedisClient.ts"
 import * as Command from "./RedisCommand.ts"
@@ -14,11 +15,6 @@ import { RedisError } from "./RedisError.ts"
 import type { Reply } from "./RedisProtocol.ts"
 
 const controlCommands = new Set(["MULTI", "EXEC", "DISCARD", "WATCH", "UNWATCH", "RESET", "QUIT"])
-
-const unwrap = (reply: Reply): Reply => {
-  while (reply._tag === "Attribute") reply = reply.value
-  return reply
-}
 
 const uncertain = (message: string) => new RedisError({ reason: "Protocol", message, outcome: "Unknown" })
 

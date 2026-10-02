@@ -5,7 +5,7 @@ import * as Command from "../RedisCommand.ts"
 import * as Connection from "../RedisConnection.ts"
 import { RedisError } from "../RedisError.ts"
 import * as Protocol from "../RedisProtocol.ts"
-import { type ClusterConfig, type Redirect, type Topology, validEndpoint } from "./topology.ts"
+import { type ClusterConfig, type Resolved, type Topology, validEndpoint } from "./topology.ts"
 import { type Endpoint, endpointKey, notSent } from "./transport.ts"
 
 const slotCount = 16384
@@ -125,6 +125,32 @@ const asRedisError = (cause: unknown) =>
 
 const redirectPattern = /^(MOVED|ASK) (\d+) (\S*):(\d+)$/
 
+export interface Redirect extends Resolved {
+  readonly slot: number
+  readonly asking: boolean
+}
+
+/** Interprets a MOVED or ASK error returned by `from`. */
+export const parseRedirect = (error: RedisError, from: Endpoint, config: ClusterConfig): Redirect | undefined => {
+  const match = error.reason === "Server" ? redirectPattern.exec(error.message) : null
+  if (match === null) return undefined
+  const slot = Number(match[2])
+  if (slot >= slotCount) return undefined
+  try {
+    return { endpoint: address(match[3], Number(match[4]), from, config), slot, asking: match[1] === "ASK" }
+  } catch {
+    return undefined
+  }
+}
+
+export const redirectLimit = (error: RedisError): RedisError =>
+  new RedisError({
+    reason: "Routing",
+    message: "Redis Cluster redirect limit exceeded",
+    cause: error,
+    code: error.code
+  })
+
 /**
  * Discovers slot ownership from the seeds and routes commands by key slot.
  */
@@ -210,24 +236,17 @@ export const make = Effect.fnUntraced(function*(
   }
 
   const redirect = (error: RedisError, from: Endpoint): Redirect | undefined => {
-    const match = error.reason === "Server" ? redirectPattern.exec(error.message) : null
-    if (match === null) return undefined
-    const slot = Number(match[2])
-    if (slot >= slotCount) return undefined
-    let endpoint: Endpoint
-    try {
-      endpoint = address(match[3], Number(match[4]), from, config)
-    } catch {
-      return undefined
-    }
-    const asking = match[1] === "ASK"
-    if (!asking && endpointKey(owners[slot]) !== endpointKey(endpoint)) {
+    const redirect = parseRedirect(error, from, config)
+    if (
+      redirect !== undefined && !redirect.asking &&
+      endpointKey(owners[redirect.slot]) !== endpointKey(redirect.endpoint)
+    ) {
       const next = owners.slice()
-      next[slot] = endpoint
+      next[redirect.slot] = redirect.endpoint
       owners = next
       primaries = Array.from(new Map(owners.map((owner) => [endpointKey(owner), owner])).values())
     }
-    return { endpoint, slot, asking }
+    return redirect
   }
 
   return {

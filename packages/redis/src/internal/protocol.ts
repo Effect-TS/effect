@@ -53,6 +53,19 @@ interface Body {
 
 const errorReply = (message: string): Reply => ({ _tag: "Error", message, code: message.split(" ", 1)[0] })
 
+/** Strips RESP3 attributes from a reply. */
+export const unwrap = (reply: Reply): Reply => {
+  while (reply._tag === "Attribute") reply = reply.value
+  return reply
+}
+
+/** The bytes of a string reply, or undefined for any other reply. */
+export const bytesOf = (reply: Reply | undefined): Uint8Array | undefined =>
+  reply?._tag === "BlobString" ? reply.value : reply?._tag === "SimpleString" ? encoder.encode(reply.value) : undefined
+
+export const sameBytes = (left: Uint8Array, right: Uint8Array | undefined): boolean =>
+  right !== undefined && left.length === right.length && left.every((byte, index) => byte === right[index])
+
 const pairs = (values: ReadonlyArray<Reply>): Array<readonly [Reply, Reply]> => {
   const entries: Array<readonly [Reply, Reply]> = []
   for (let i = 0; i + 1 < values.length; i += 2) entries.push([values[i], values[i + 1]])

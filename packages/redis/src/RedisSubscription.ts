@@ -9,12 +9,15 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Queue from "effect/Queue"
+import type * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
+import * as Cluster from "./internal/cluster.ts"
+import * as Protocol from "./internal/protocol.ts"
 import { notSent } from "./internal/transport.ts"
 import type { RedisClient } from "./RedisClient.ts"
 import type { Endpoint, RedisConnection } from "./RedisConnection.ts"
 import { RedisError } from "./RedisError.ts"
-import type * as Protocol from "./RedisProtocol.ts"
+import type { Argument, Reply } from "./RedisProtocol.ts"
 
 /**
  * Binary Redis publication, optionally matched by a subscribed pattern.
@@ -61,13 +64,7 @@ export interface RedisSubscription {
   readonly close: Effect.Effect<void>
 }
 
-const encoder = new TextEncoder()
 const decoder = new TextDecoder()
-
-const bytesOf = (reply: Protocol.Reply | undefined): Uint8Array | undefined =>
-  reply?._tag === "BlobString" ? reply.value : reply?._tag === "SimpleString" ? encoder.encode(reply.value) : undefined
-
-const redirectPattern = /^(MOVED|ASK) \d+ (\S*):(\d+)$/
 
 interface Generation {
   readonly scope: Scope.Closeable
@@ -84,7 +81,7 @@ interface Generation {
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(
-  function*(client: RedisClient, channel: Protocol.Argument, options: Options = {}) {
+  function*(client: RedisClient, channel: Argument, options: Options = {}) {
     const capacity = options.capacity ?? 1024
     if (!Number.isSafeInteger(capacity) || capacity < 1) {
       return yield* Effect.fail(notSent("Capacity", "Subscription capacity must be a positive integer"))
@@ -100,10 +97,10 @@ export const make = Effect.fnUntraced(
     yield* Scope.addFinalizer(scope, Queue.shutdown(messages))
     let overflowed = false
 
-    const onPush = (restart: Deferred.Deferred<void>) => (reply: Protocol.Reply) => {
-      while (reply._tag === "Attribute") reply = reply.value
+    const onPush = (restart: Deferred.Deferred<void>) => (push: Reply) => {
+      const reply = Protocol.unwrap(push)
       if (reply._tag !== "Push" && reply._tag !== "Array") return
-      const kind = decoder.decode(bytesOf(reply.values[0]))
+      const kind = decoder.decode(Protocol.bytesOf(reply.values[0]))
       if (mode === "sharded" && kind === "sunsubscribe") {
         Deferred.doneUnsafe(restart, Effect.void)
         return
@@ -111,10 +108,10 @@ export const make = Effect.fnUntraced(
       const isPattern = kind === "pmessage"
       if (kind !== "message" && kind !== "smessage" && !isPattern) return
       const offset = isPattern ? 1 : 0
-      const destination = bytesOf(reply.values[offset + 1])
-      const message = bytesOf(reply.values[offset + 2])
+      const destination = Protocol.bytesOf(reply.values[offset + 1])
+      const message = Protocol.bytesOf(reply.values[offset + 2])
       if (destination === undefined || message === undefined) return
-      const pattern = isPattern ? bytesOf(reply.values[1]) : undefined
+      const pattern = isPattern ? Protocol.bytesOf(reply.values[1]) : undefined
       if (!Queue.offerUnsafe(messages, { channel: destination, message, pattern }) && !overflowed) {
         overflowed = true
         Queue.failCauseUnsafe(
@@ -145,34 +142,19 @@ export const make = Effect.fnUntraced(
 
     // Sharded channels live on the slot owner, so follow Cluster redirects.
     const subscribe = Effect.gen(function*() {
-      const maxRedirects = topology?._tag === "Cluster" ? topology.maxRedirects ?? 5 : 0
+      const cluster = mode === "sharded" && topology?._tag === "Cluster" ? topology : undefined
       let node: Endpoint | undefined
       let asking = false
-      for (let redirects = 0;; redirects++) {
-        const result = yield* Effect.result(subscribeAt(node, asking))
+      for (let remaining = cluster?.maxRedirects ?? 5;; remaining--) {
+        const result: Result.Result<Generation, RedisError> = yield* Effect.result(subscribeAt(node, asking))
         if (result._tag === "Success") return result.success
-        const error = result.failure
-        const match = redirectPattern.exec(error.message)
-        if (mode !== "sharded" || topology?._tag !== "Cluster" || error.reason !== "Server" || match === null) {
-          return yield* Effect.fail(error)
-        }
-        if (redirects >= maxRedirects) {
-          return yield* Effect.fail(
-            new RedisError({
-              reason: "Routing",
-              message: "Redis subscription redirect limit exceeded",
-              cause: error,
-              code: error.code
-            })
-          )
-        }
-        const redirected = {
-          host: match[2].replace(/^\[(.*)\]$/, "$1"),
-          port: Number(match[3]),
-          tls: topology.seeds[0]?.tls
-        }
-        node = topology.mapAddress === undefined ? redirected : topology.mapAddress(redirected)
-        asking = match[1] === "ASK"
+        const redirect: Cluster.Redirect | undefined = cluster === undefined
+          ? undefined
+          : Cluster.parseRedirect(result.failure, node ?? cluster.seeds[0], cluster)
+        if (redirect === undefined) return yield* Effect.fail(result.failure)
+        if (remaining <= 0) return yield* Effect.fail(Cluster.redirectLimit(result.failure))
+        node = redirect.endpoint
+        asking = redirect.asking
         yield* Effect.ignore(client.refresh)
       }
     })

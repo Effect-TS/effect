@@ -690,14 +690,11 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   )
   const prefix = options?.prefix ?? "effectq:"
   const escapedPrefix = prefix.replace(/[\\*?[\]]/g, "\\$&")
+  // Scans may match keys of other prefixes; keep only keys this store generates.
   const ownsCleanupKey = (key: string, suffix: string): boolean => {
     if (!key.endsWith(suffix)) return false
     const base = key.slice(0, -suffix.length)
-    if (!redis.cluster) return base.startsWith(prefix)
-    if (!base.startsWith("{")) return false
-    const tagEnd = base.indexOf("}:")
-    if (tagEnd === -1) return false
-    const logicalKey = base.slice(tagEnd + 2)
+    const logicalKey = redis.cluster ? base.slice(base.indexOf("}:") + 2) : base
     return logicalKey.startsWith(prefix) && Redis.key(redis, logicalKey) === base
   }
   const lockPrefixFor = (name: string) => redis.cluster ? `${Redis.key(redis, `${prefix}${name}`)}:` : prefix
