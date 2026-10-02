@@ -411,7 +411,7 @@ export const make = Effect.gen(function*() {
             // Replays reuse the request id but track a fresh set of awaits.
             let currentRun: {
               readonly request: Entity.Request<any>
-              readonly awaitedDeferreds: ReadonlySet<string>
+              readonly instance: WorkflowEngine.WorkflowInstance["Service"]
             } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
@@ -428,7 +428,7 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
-                currentRun = { request, awaitedDeferreds: instance.awaitedDeferreds }
+                currentRun = { request, instance }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
                   | undefined
@@ -522,9 +522,13 @@ export const make = Effect.gen(function*() {
                 // registered yet, a later await will see the result just stored.
                 // Check when the wake runs and skip preemption too: interrupting
                 // a later await would require waiting for its reply before reset.
+                // A run completing its own deferred also reads it from the cache
+                // when it awaits later, so that completion never wakes the run.
                 const wake = Effect.suspend(() =>
-                  currentRun && !currentRun.awaitedDeferreds.has(payload.name)
-                    ? ensureSuccess(resume(workflow, executionId))
+                  currentRun && !currentRun.instance.awaitedDeferreds.has(payload.name)
+                    ? currentRun.instance.completedDeferreds.has(payload.name)
+                      ? Effect.void
+                      : ensureSuccess(resume(workflow, executionId))
                     : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
                 )
                 // An asynchronous reply releases the RPC concurrency permit while
@@ -703,6 +707,16 @@ export const make = Effect.gen(function*() {
 
     deferredDone: Effect.fnUntraced(
       function*({ deferredName, executionId, exit, workflowName }) {
+        const instance = yield* Effect.serviceOption(WorkflowEngine.WorkflowInstance)
+        // Activities run with their own instance, so their completions still
+        // wake a run that suspended before reaching the await. An interrupt
+        // must wake the run even when it signals itself.
+        if (
+          Option.isSome(instance) && instance.value.executionId === executionId &&
+          deferredName !== InterruptSignal.name
+        ) {
+          instance.value.completedDeferreds.add(deferredName)
+        }
         const workflow = workflows.get(workflowName)
         if (workflow) {
           return yield* Effect.orDie(sendDiscard({

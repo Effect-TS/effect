@@ -40,6 +40,45 @@ import {
 } from "effect/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  it.effect("does not replay for an unawaited deferred checkpoint", () =>
+    Effect.gen(function*() {
+      const checkpoint = DurableDeferred.make("UnawaitedCheckpoint/Checkpoint")
+      const gate = DurableDeferred.make("UnawaitedCheckpoint/Gate", { success: Schema.String })
+      const workflow = Workflow.make("UnawaitedCheckpoint", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one"
+      })
+      let activations = 0
+      const context = yield* Layer.build(
+        workflow.toLayer(Effect.fnUntraced(function*(_payload, executionId) {
+          activations++
+          const engine = yield* WorkflowEngine
+          if (Option.isNone(yield* engine.deferredResult(checkpoint))) {
+            yield* DurableDeferred.succeed(checkpoint, {
+              token: DurableDeferred.tokenFromExecutionId(checkpoint, { workflow, executionId }),
+              value: undefined
+            })
+          }
+          return yield* DurableDeferred.await(gate)
+        })).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, executionId, "Suspended")
+        const beforeRelease = activations
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        })
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("done") })
+        )
+        assert.deepStrictEqual({ beforeRelease, afterRelease: activations }, { beforeRelease: 1, afterRelease: 2 })
+      }).pipe(Effect.provide(context))
+    }))
+
   it.effect("retries a deferred wake after a transient run reset failure", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("ResetRetry/Gate", { success: Schema.String })
