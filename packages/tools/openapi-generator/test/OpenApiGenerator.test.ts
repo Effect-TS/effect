@@ -640,9 +640,90 @@ function multipartSpec(schema: JsonSchema.JsonSchema, schemas: JsonSchema.Defini
   }
 }
 
+const nullableIncludeResponseSpec: OpenAPISpec = {
+  openapi: "3.1.0",
+  info: { title: "Nullable include response", version: "1.0.0" },
+  paths: {
+    "/value": {
+      get: {
+        operationId: "getValue",
+        parameters: [],
+        responses: {
+          "200": {
+            description: "Value",
+            content: { "application/json": { schema: { type: "string" } } }
+          }
+        },
+        tags: ["Value"],
+        security: []
+      }
+    }
+  },
+  components: { schemas: {}, securitySchemes: {} },
+  security: [],
+  tags: []
+}
+
+const nullableIncludeResponseUsage = `
+import type * as ConsumerEffect from "effect/Effect"
+import type * as ConsumerHttpClient from "effect/http/HttpClient"
+import type * as ConsumerHttpClientResponse from "effect/http/HttpClientResponse"
+declare const httpClient: ConsumerHttpClient.HttpClient
+declare const nullableConfig: { readonly includeResponse: true } | undefined
+const client = make(httpClient)
+const result = client.getValue({ config: nullableConfig })
+const conditionalConfig = Math.random() > 0.5 ? { includeResponse: true as const } : undefined
+const conditionalResult = client.getValue({ config: conditionalConfig })
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type Assert<T extends true> = T
+type NullableConfigResponse = Assert<Equal<ConsumerEffect.Success<typeof result>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
+type ConditionalConfigResponse = Assert<Equal<ConsumerEffect.Success<typeof conditionalResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
+`
+
 // spawnSync blocks this worker, so compilation must not consume another test's deadline.
 describe("OpenApiGenerator", { concurrent: false }, () => {
   describe("schema", () => {
+    it.effect(
+      "preserves body results for nullable response configuration in schema clients",
+      () =>
+        assertGeneratedClientsCompile(nullableIncludeResponseSpec, {
+          exactOptionalPropertyTypes: true,
+          formats: ["httpclient"],
+          usage: nullableIncludeResponseUsage
+        }),
+      compilationTimeout
+    )
+    it.effect(
+      "preserves body results for nullable response configuration in schema clients with non-exact optional properties",
+      () =>
+        assertGeneratedClientsCompile(nullableIncludeResponseSpec, {
+          exactOptionalPropertyTypes: false,
+          formats: ["httpclient"],
+          usage: nullableIncludeResponseUsage
+        }),
+      compilationTimeout
+    )
+    it.effect(
+      "preserves body results for nullable response configuration in type-only clients",
+      () =>
+        assertGeneratedClientsCompile(nullableIncludeResponseSpec, {
+          exactOptionalPropertyTypes: true,
+          formats: ["httpclient-type-only"],
+          usage: nullableIncludeResponseUsage
+        }),
+      compilationTimeout
+    )
+    it.effect(
+      "preserves body results for nullable response configuration in type-only clients with non-exact optional properties",
+      () =>
+        assertGeneratedClientsCompile(nullableIncludeResponseSpec, {
+          exactOptionalPropertyTypes: false,
+          formats: ["httpclient-type-only"],
+          usage: nullableIncludeResponseUsage
+        }),
+      compilationTimeout
+    )
+
     it.effect("get operation", () =>
       assertRuntime(
         {
