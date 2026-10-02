@@ -205,17 +205,17 @@ export const make = Effect.fnUntraced(function*<
     // Opened when shutdown starts, so requests waiting for replacement handlers
     // are refused without waiting for them
     const retired = Latch.makeUnsafe()
-    const isActive = () => activeServers.get(address.entityId) === state
+    const isActive = () => !retired.isOpen()
 
     // Replays the requests that replaced handlers were handed, before their
     // replacement admits anything else. Requests still waiting for their first
     // dispatch are left to their writer.
     const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
       if (!isActive()) return
-      for (const [id, request] of Array.from(activeRequests)) {
-        if (!request.delivered || !activeRequests.has(id)) continue
+      for (const request of activeRequests.values()) {
+        if (!request.delivered) continue
         request.sentExit = false
-        yield* write(0, replayEnvelope(request), requestWriteOptions(request))
+        yield* write(0, requestEnvelope(request), requestWriteOptions(request))
       }
     })
 
@@ -280,7 +280,7 @@ export const make = Effect.fnUntraced(function*<
                 ) {
                   if (!isShuttingDown) {
                     request.sentExit = false
-                    return server.write(0, replayEnvelope(request), requestWriteOptions(request)).pipe(
+                    return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
                       Effect.forkIn(handlerScope)
                     )
                   }
@@ -367,8 +367,8 @@ export const make = Effect.fnUntraced(function*<
     )
 
     // Runs a rebuild after the restart backoff, unless the entity was retired
-    // meanwhile. A failed rebuild is attempted again, while a superseded or
-    // closed one is not.
+    // meanwhile. A failed rebuild is attempted again; one that was interrupted,
+    // because it was superseded or the entity closed, is not.
     function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver(void 0))),
@@ -379,6 +379,7 @@ export const make = Effect.fnUntraced(function*<
           runner: options.runnerAddress
         }),
         Effect.catchCause((cause) => {
+          if (Cause.hasInterruptsOnly(cause)) return Effect.void
           const retry = isActive() ? writeRef.rebuildUnsafe({ prepare: replay }) : undefined
           return retry ? restart(cause, retry) : Effect.void
         })
@@ -389,22 +390,27 @@ export const make = Effect.fnUntraced(function*<
       scope,
       address,
       write(clientId, message, writeOptions) {
+        if (message._tag !== "Request") {
+          // Interrupts, acks and EOF reach the handlers even during shutdown.
+          const write = writeRef.getUnsafe()
+          return write
+            ? write(clientId, message, writeOptions)
+            : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
+        }
         return Effect.suspend(() => {
-          // Only new work is refused after shutdown. Interrupts and acks must
-          // still reach the handlers during graceful termination.
-          if (message._tag === "Request" && !isActive()) {
-            return Effect.interrupt
-          }
+          // New work is refused once the entity retires, including work that
+          // was waiting for replacement handlers.
+          if (!isActive()) return Effect.interrupt
           const write = writeRef.getUnsafe()
           if (write === undefined) {
-            const ready = message._tag === "Request" ? Effect.raceFirst(writeRef.await, retired.await) : writeRef.await
-            return Effect.andThen(ready, state.write(clientId, message, writeOptions))
+            return Effect.flatMap(
+              Effect.raceFirst(writeRef.await, retired.await),
+              () => state.write(clientId, message, writeOptions)
+            )
           }
-          if (message._tag === "Request") {
-            const request = activeRequests.get(Snowflake.Snowflake(message.id))
-            if (!request) return Effect.void
-            request.delivered = true
-          }
+          const request = activeRequests.get(Snowflake.Snowflake(message.id))
+          if (!request) return Effect.void
+          request.delivered = true
           return write(clientId, message, writeOptions)
         })
       },
@@ -562,21 +568,7 @@ export const make = Effect.fnUntraced(function*<
                     }
                   }))
               }
-              return server.write(
-                0,
-                {
-                  ...message.envelope,
-                  id: message.envelope.requestId as any,
-                  payload: new Request({
-                    ...message.envelope,
-                    lastSentChunk: Option.filter(
-                      message.lastSentReply,
-                      (reply): reply is Reply.Chunk<R> => reply._tag === "Chunk"
-                    )
-                  })
-                },
-                requestWriteOptions(entry)
-              )
+              return server.write(0, requestEnvelope(entry), requestWriteOptions(entry))
             }
             case "IncomingEnvelope": {
               const entry = server.activeRequests.get(message.envelope.requestId)
@@ -792,9 +784,9 @@ const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) 
   }
 }
 
-// Re-dispatches an unfinished request, resuming from the last chunk the
+// Dispatches a request to the handlers, resuming from the last chunk the
 // caller has already received.
-const replayEnvelope = (entry: {
+const requestEnvelope = (entry: {
   readonly message: Message.IncomingRequestLocal<any>
   readonly lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
 }): Parameters<EntityState["write"]>[1] => ({

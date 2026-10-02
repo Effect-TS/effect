@@ -4,33 +4,48 @@ import { EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import { isActive } from "effect/cluster/internal/interruptors"
 import { ResourceRef } from "effect/cluster/internal/resourceRef"
 
-// Acquires 1, 2, 3, ... An acquisition listed in `gated` waits until its gate
-// is released.
-const makeAcquire = Effect.fnUntraced(function*(...gated: Array<number>) {
+// A gate signals `reached` and then waits for `open`.
+const makeGate = Effect.fnUntraced(function*() {
+  const gate = { reached: yield* Deferred.make<void>(), open: yield* Deferred.make<void>() }
+  return gate
+})
+type Gate = Effect.Success<ReturnType<typeof makeGate>>
+const pass = (gate: Gate) => Effect.andThen(Deferred.succeed(gate.reached, void 0), Deferred.await(gate.open))
+
+// Acquires 1, 2, 3, ... An acquisition listed in `gated` waits at its gate
+// before completing; the release of one listed in `gatedRelease` waits at its
+// gate too.
+const makeAcquire = Effect.fnUntraced(function*(options?: {
+  readonly gated?: ReadonlyArray<number>
+  readonly gatedRelease?: ReadonlyArray<number>
+}) {
   let acquisitions = 0
+  let completed = 0
   let releases = 0
-  const gates = new Map<
-    number,
-    { readonly acquiring: Deferred.Deferred<void>; readonly release: Deferred.Deferred<void> }
-  >()
-  for (const acquisition of gated) {
-    gates.set(acquisition, { acquiring: yield* Deferred.make<void>(), release: yield* Deferred.make<void>() })
-  }
+  const gates = new Map<number, Gate>()
+  const releaseGates = new Map<number, Gate>()
+  for (const acquisition of options?.gated ?? []) gates.set(acquisition, yield* makeGate())
+  for (const acquisition of options?.gatedRelease ?? []) releaseGates.set(acquisition, yield* makeGate())
   const acquire = (scope: Scope.Scope) =>
     Effect.gen(function*() {
       const acquisition = ++acquisitions
-      yield* Scope.addFinalizer(scope, Effect.sync(() => releases++))
+      const releaseGate = releaseGates.get(acquisition)
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.andThen(releaseGate ? pass(releaseGate) : Effect.void, Effect.sync(() => releases++))
+      )
       const gate = gates.get(acquisition)
-      if (gate) {
-        yield* Deferred.succeed(gate.acquiring, void 0)
-        yield* Deferred.await(gate.release)
-      }
+      if (gate) yield* pass(gate)
+      completed++
       return acquisition
     })
   return {
     acquire,
     gate: (acquisition: number) => gates.get(acquisition)!,
+    releaseGate: (acquisition: number) => releaseGates.get(acquisition)!,
     acquisitions: () => acquisitions,
+    /** Acquisitions that made it past their gate. */
+    completed: () => completed,
     releases: () => releases
   } as const
 })
@@ -67,7 +82,7 @@ it.effect("rebuilds only the current generation", () =>
 it.effect("refuses a second rebuild of a generation without disturbing the accepted one", () =>
   Effect.scoped(Effect.gen(function*() {
     const parentScope = yield* Effect.scope
-    const { acquire, gate } = yield* makeAcquire(2)
+    const { acquire, gate } = yield* makeAcquire({ gated: [2] })
     const ref = yield* ResourceRef.from(parentScope, acquire)
 
     const accepted = ref.rebuildUnsafe({ from: 1 })
@@ -78,11 +93,11 @@ it.effect("refuses a second rebuild of a generation without disturbing the accep
     assert.isUndefined(ref.rebuildUnsafe())
 
     const rebuild = yield* Effect.forkChild(accepted!)
-    yield* Deferred.await(gate(2).acquiring)
+    yield* Deferred.await(gate(2).reached)
     assert.isUndefined(ref.rebuildUnsafe({ from: 1 }))
     assert.isUndefined(ref.rebuildUnsafe())
 
-    yield* Deferred.succeed(gate(2).release, void 0)
+    yield* Deferred.succeed(gate(2).open, void 0)
     assert.deepStrictEqual(yield* Fiber.await(rebuild), Exit.void)
     assert.strictEqual(ref.getUnsafe(), 2)
     assert.strictEqual(yield* ref.await, 2)
@@ -155,11 +170,11 @@ it.effect("interrupts prepare when its generation is replaced", () =>
 it.effect("releases waiters when a rebuild is interrupted and accepts the next rebuild", () =>
   Effect.scoped(Effect.gen(function*() {
     const parentScope = yield* Effect.scope
-    const { acquire, gate, releases } = yield* makeAcquire(2)
+    const { acquire, gate, releases } = yield* makeAcquire({ gated: [2] })
     const ref = yield* ResourceRef.from(parentScope, acquire)
 
     const rebuild = yield* Effect.forkChild(ref.rebuildUnsafe({ from: 1 })!)
-    yield* Deferred.await(gate(2).acquiring)
+    yield* Deferred.await(gate(2).reached)
     const waiter = yield* Effect.forkChild(ref.await)
     yield* Effect.yieldNow
     assert.isUndefined(waiter.pollUnsafe())
@@ -221,45 +236,29 @@ it.effect("does not leak teardown membership when a rebuild is interrupted", () 
       entityType: EntityType.make("ResourceRefInterrupt"),
       entityId: EntityId.make("1")
     })
-    const release = yield* Deferred.make<void>()
-    let acquisitions = 0
-    const ref = yield* ResourceRef.from(
-      parentScope,
-      (scope) =>
-        Scope.addFinalizer(scope, Deferred.await(release)).pipe(
-          Effect.andThen(Effect.sync(() => ++acquisitions))
-        ),
-      address
-    )
+    const { acquire, releaseGate } = yield* makeAcquire({ gatedRelease: [1] })
+    const ref = yield* ResourceRef.from(parentScope, acquire, address)
     const fiber = yield* Effect.forkChild(ref.rebuildUnsafe({ from: 1 })!)
     yield* Fiber.interrupt(fiber)
-    yield* Deferred.succeed(release, void 0)
+    yield* Deferred.succeed(releaseGate(1).open, void 0)
     assert.isFalse(isActive(address))
   })))
 
 it.effect("stays rebuildable when a failed replacement cannot be released", () =>
   Effect.scoped(Effect.gen(function*() {
     const parentScope = yield* Effect.scope
-    const acquiring = yield* Deferred.make<void>()
-    const released = yield* Deferred.make<void>()
-    let acquisitions = 0
-    const ref = yield* ResourceRef.from(parentScope, (scope) =>
-      Effect.gen(function*() {
-        if (++acquisitions !== 2) return acquisitions
-        // Holds something whose release hangs, then never finishes acquiring.
-        yield* Scope.addFinalizer(scope, Deferred.await(released))
-        yield* Deferred.succeed(acquiring, void 0)
-        return yield* Effect.never
-      }))
+    // Acquisition 2 holds something whose release hangs, then never completes.
+    const { acquire, gate, releaseGate } = yield* makeAcquire({ gated: [2], gatedRelease: [2] })
+    const ref = yield* ResourceRef.from(parentScope, acquire)
 
     yield* Effect.gen(function*() {
       const rebuild = yield* Effect.forkChild(ref.rebuildUnsafe({ from: 1 })!)
-      yield* Deferred.await(acquiring)
+      yield* Deferred.await(gate(2).reached)
       // A deadline abandons the rebuild, whose replacement then cannot be released.
       rebuild.interruptUnsafe()
       yield* settle
       assert.isDefined(ref.rebuildUnsafe(), "a hung release must not block the next rebuild")
-    }).pipe(Effect.ensuring(Deferred.succeed(released, void 0)))
+    }).pipe(Effect.ensuring(Deferred.succeed(releaseGate(2).open, void 0)))
   })))
 
 it.effect("interrupts a rebuild that is preparing when the ref closes", () =>
@@ -298,21 +297,11 @@ it.effect("interrupts a rebuild that is preparing when the ref closes", () =>
 it.effect("interrupts a rebuild that is acquiring when the ref closes", () =>
   Effect.gen(function*() {
     const parentScope = yield* Scope.make()
-    const acquiring = yield* Deferred.make<void>()
-    const acquired = yield* Deferred.make<void>()
-    let acquisitions = 0
-    let ranAfterClose = false
-    const ref = yield* ResourceRef.from(parentScope, () =>
-      Effect.gen(function*() {
-        if (++acquisitions !== 2) return acquisitions
-        yield* Deferred.succeed(acquiring, void 0)
-        yield* Deferred.await(acquired)
-        ranAfterClose = true
-        return acquisitions
-      }))
+    const { acquire, completed, gate } = yield* makeAcquire({ gated: [2] })
+    const ref = yield* ResourceRef.from(parentScope, acquire)
 
     const rebuild = yield* Effect.forkChild(ref.rebuildUnsafe({ from: 1 })!)
-    yield* Deferred.await(acquiring)
+    yield* Deferred.await(gate(2).reached)
     const waiter = yield* Effect.forkChild(ref.await)
     yield* Scope.close(parentScope, Exit.void)
     yield* settle
@@ -321,31 +310,20 @@ it.effect("interrupts a rebuild that is acquiring when the ref closes", () =>
     assert.isTrue(Exit.hasInterrupts(exit))
     assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiter)))
 
-    yield* Deferred.succeed(acquired, void 0)
+    yield* Deferred.succeed(gate(2).open, void 0)
     yield* settle
-    assert.isFalse(ranAfterClose)
+    assert.strictEqual(completed(), 1, "acquisition must not continue after the close")
   }))
 
 it.effect("interrupts handed-over waiters when the ref closes", () =>
   Effect.gen(function*() {
     const parentScope = yield* Scope.make()
-    const releasing = yield* Deferred.make<void>()
-    const released = yield* Deferred.make<void>()
-    let acquisitions = 0
-    const ref = yield* ResourceRef.from(parentScope, (scope) =>
-      Effect.gen(function*() {
-        // Releasing the first generation stalls.
-        if (++acquisitions === 1) {
-          yield* Scope.addFinalizer(
-            scope,
-            Deferred.succeed(releasing, void 0).pipe(Effect.andThen(Deferred.await(released)))
-          )
-        }
-        return acquisitions
-      }))
+    // Releasing the first generation stalls.
+    const { acquire, releaseGate } = yield* makeAcquire({ gatedRelease: [1] })
+    const ref = yield* ResourceRef.from(parentScope, acquire)
 
     const rebuild = yield* Effect.forkChild(ref.rebuildUnsafe({ from: 1 })!)
-    yield* Deferred.await(releasing)
+    yield* Deferred.await(releaseGate(1).reached)
     const waiter = yield* Effect.forkChild(ref.await)
     yield* settle
     yield* Fiber.interrupt(rebuild)
@@ -354,7 +332,7 @@ it.effect("interrupts handed-over waiters when the ref closes", () =>
     const close = yield* Effect.forkChild(Scope.close(parentScope, Exit.void))
     yield* settle
     const exit = waiter.pollUnsafe()
-    yield* Deferred.succeed(released, void 0)
+    yield* Deferred.succeed(releaseGate(1).open, void 0)
     yield* Fiber.join(close)
     assert.isDefined(exit, "closing the ref must wake waiters without waiting for the stalled release")
     assert.isTrue(Exit.hasInterrupts(exit))

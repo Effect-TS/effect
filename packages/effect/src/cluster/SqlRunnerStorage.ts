@@ -173,24 +173,20 @@ export const make = Effect.fnUntraced(function*(options: {
       Effect.asVoid
     )
   }
-  // Run `f` on the reserved connection, replacing it when the connection fails
-  // `f`. Only an operation that started on that connection blames it for an
-  // interruption: one that had to wait for it may have reached its deadline
-  // while waiting.
+  // Run `f` on the reserved connection, replacing it when it fails `f`. A
+  // deadline reached while waiting for the connection is left to
+  // `withLockOperationDeadline`, which knows which connection to blame.
   const useLockConn = <A, E, R>(
     f: (conn: Connection, pid: number) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> =>
-    Effect.suspend(() => {
-      const ready = lockConn!.getUnsafe()
-      return Effect.flatMap(
-        lockConn!.await,
-        (held) =>
-          Effect.onError(
-            f(held[0], held[1]),
-            (cause) => held === ready || !Cause.hasInterruptsOnly(cause) ? rebuildLockConn(held) : Effect.void
-          )
-      )
-    })
+    Effect.flatMap(
+      lockConn!.await,
+      (held) =>
+        Effect.onError(
+          f(held[0], held[1]),
+          (cause) => Cause.hasInterruptsOnly(cause) ? Effect.void : rebuildLockConn(held)
+        )
+    )
 
   const runnersTable = table("runners")
   const runnersTableSql = sql(runnersTable)
@@ -633,8 +629,9 @@ export const make = Effect.fnUntraced(function*(options: {
   })
 
   // An operation that times out is blamed on the connection that was ready
-  // when it started. If none was, the pending replacement is only restarted
-  // while no connection has become ready since.
+  // when it started. If none was, it was waiting for a replacement: that is
+  // restarted only if it has failed since, never while it is still in
+  // progress or once a connection has become ready.
   const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
     Effect.suspend(() => {
       const ready = lockConn?.getUnsafe()

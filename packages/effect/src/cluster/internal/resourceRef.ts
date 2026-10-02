@@ -4,7 +4,7 @@ import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Scope from "../../Scope.ts"
 import type { EntityAddress } from "../EntityAddress.ts"
-import { acquireEntity, releaseEntity } from "./interruptors.ts"
+import { aroundEntity } from "./interruptors.ts"
 
 type Pending<A> = {
   readonly _tag: "Pending"
@@ -19,10 +19,8 @@ type Pending<A> = {
   readonly ready: Deferred.Deferred<A>
   /** Set while the acquired value is prepared. */
   value: A | undefined
-  /** Runs the rebuild, interrupted when the ref closes. */
+  /** Runs the rebuild, interrupted when the generation is replaced or the ref closes. */
   work: Fiber.Fiber<void> | undefined
-  prepare: Fiber.Fiber<void> | undefined
-  superseded: boolean
 }
 
 type State<A> =
@@ -55,10 +53,7 @@ export class ResourceRef<A> {
     yield* Scope.addFinalizerExit(parentScope, (exit) => ref.close(exit))
     const pending = ref.pending(undefined, Deferred.makeUnsafe())
     const value = yield* acquire(pending.scope)
-    if (ref.state === pending) {
-      ref.state = { _tag: "Ready", scope: pending.scope, value }
-      Deferred.doneUnsafe(pending.ready, Exit.succeed(value))
-    }
+    if (ref.state === pending) ref.publish(pending, value)
     return ref
   })
 
@@ -113,8 +108,8 @@ export class ResourceRef<A> {
    * acquisition or `prepare` too. If it fails, waiters are released with the
    * same cause and the next rebuild without `from` is accepted; that rebuild
    * first waits for the failed generation to be released. A rebuild
-   * interrupted while still releasing instead leaves its waiters to the next
-   * rebuild.
+   * interrupted while still releasing its predecessor instead leaves its
+   * waiters to the next rebuild, which no longer waits for that release.
    */
   rebuildUnsafe(options?: {
     readonly from?: A | undefined
@@ -138,8 +133,7 @@ export class ResourceRef<A> {
       }
       case "Pending": {
         if (from === undefined || s.value !== from) return undefined
-        s.superseded = true
-        s.prepare?.interruptUnsafe()
+        s.work?.interruptUnsafe()
         pending = this.pending(s.scope, s.ready)
         break
       }
@@ -158,12 +152,15 @@ export class ResourceRef<A> {
       releasing: false,
       ready,
       value: undefined,
-      work: undefined,
-      prepare: undefined,
-      superseded: false
+      work: undefined
     }
     this.state = pending
     return pending
+  }
+
+  private publish(pending: Pending<A>, value: A): void {
+    this.state = { _tag: "Ready", scope: pending.scope, value }
+    Deferred.doneUnsafe(pending.ready, Exit.succeed(value))
   }
 
   private run(pending: Pending<A>, prepare: ((value: A) => Effect.Effect<void>) | undefined): Effect.Effect<void> {
@@ -183,39 +180,34 @@ export class ResourceRef<A> {
       Effect.tap((value) => {
         if (this.state !== pending) return Effect.interrupt
         pending.value = value
-        if (!prepare) return Effect.void
-        return Effect.flatMap(Effect.forkChild(prepare(value)), (fiber) => {
-          pending.prepare = fiber
-          if (pending.superseded) fiber.interruptUnsafe()
-          return Fiber.join(fiber)
-        })
+        return prepare ? prepare(value) : Effect.void
       }),
       Effect.flatMap((value) => {
         if (this.state !== pending) return Effect.interrupt
-        this.state = { _tag: "Ready", scope: pending.scope, value }
-        Deferred.doneUnsafe(pending.ready, Exit.succeed(value))
+        this.publish(pending, value)
         return Effect.void
       }),
       Effect.onExit((exit) => {
         if (Exit.isSuccess(exit) || this.state !== pending) {
           return Effect.void
         }
+        if (pending.releasing) {
+          // Abandoned before anything was acquired: there is nothing to
+          // release, and the waiters are left to the next rebuild.
+          this.state = { _tag: "Failed", ready: pending.ready, releasing: undefined }
+          return Effect.void
+        }
         return Effect.map(this.release(pending.scope), (releasing) => {
           if (this.state !== pending) return
-          if (pending.releasing) {
-            // Abandoned before anything was acquired, so waiters are left to
-            // the next rebuild.
-            this.state = { _tag: "Failed", ready: pending.ready, releasing }
-          } else {
-            this.state = { _tag: "Failed", ready: Deferred.makeUnsafe(), releasing }
-            Deferred.doneUnsafe(pending.ready, Exit.failCause(exit.cause))
-          }
+          this.state = { _tag: "Failed", ready: Deferred.makeUnsafe(), releasing }
+          Deferred.doneUnsafe(pending.ready, Exit.failCause(exit.cause))
         })
       })
     )
     return Effect.flatMap(Effect.forkChild(work, { startImmediately: true }), (fiber) => {
       pending.work = fiber
-      if (this.state._tag === "Closed") fiber.interruptUnsafe()
+      // Replaced or closed before the fiber handle existed.
+      if (this.state !== pending) fiber.interruptUnsafe()
       return Fiber.join(fiber)
     })
   }
@@ -223,14 +215,12 @@ export class ResourceRef<A> {
   // Released in its own fiber, so a release that never completes cannot keep
   // a rebuild from being interrupted.
   private release(scope: Scope.Closeable): Effect.Effect<Fiber.Fiber<void>> {
-    const teardownAddress = this.teardownAddress
-    const close = teardownAddress
-      ? Effect.suspend(() => {
-        acquireEntity(teardownAddress)
-        return Effect.ensuring(Scope.close(scope, Exit.void), Effect.sync(() => releaseEntity(teardownAddress)))
-      })
-      : Scope.close(scope, Exit.void)
-    return Effect.forkIn(close, this.releaseScope, { startImmediately: true })
+    const close = Scope.close(scope, Exit.void)
+    return Effect.forkIn(
+      this.teardownAddress ? aroundEntity(this.teardownAddress, close) : close,
+      this.releaseScope,
+      { startImmediately: true }
+    )
   }
 
   private close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> {
@@ -249,7 +239,6 @@ export class ResourceRef<A> {
         Deferred.doneUnsafe(s.ready, Effect.interrupt)
         // Stop the rebuild before tearing down what it was building.
         s.work?.interruptUnsafe()
-        s.prepare?.interruptUnsafe()
         const close = Scope.close(s.scope, exit)
         return s.releases && !Fiber.isFiber(s.releases) ? Effect.andThen(Scope.close(s.releases, exit), close) : close
       }

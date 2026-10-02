@@ -3224,7 +3224,7 @@ const UnregisteredSharding = (
 const BlockedRebuildSharding = Layer.mergeAll(
   EntityReaper.layer,
   Snowflake.layerGenerator,
-  ShardingConfig.layer({ entityTerminationTimeout: 1000 })
+  ShardingConfig.layer({ ...testConfigDefaults, entityTerminationTimeout: 1000 })
 ).pipe(Layer.provideMerge(UnregisteredSharding({})))
 
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
