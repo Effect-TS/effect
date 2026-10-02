@@ -1,3 +1,4 @@
+import { encodeText } from "@effect/redis/internal/protocol"
 import * as RedisProtocol from "@effect/redis/RedisProtocol"
 import { assert, describe, it } from "@effect/vitest"
 
@@ -75,6 +76,16 @@ describe("RedisProtocol", () => {
       new Uint8Array([...bytes("*3\r\n$3\r\nSET\r\n$2\r\né\r\n$4\r\n"), 0, 255, 13, 10, 13, 10])
     )
     assert.deepStrictEqual(RedisProtocol.encode([]), bytes("*0\r\n"))
+  })
+
+  it("frames text-only commands with the same byte lengths as the binary encoder", () => {
+    for (const argument of ["é", "\u20ac", "\ud83d\ude00", "\ud800", "\udc00", "\ud800é", "\ud800\ud800", "a\ud83d"]) {
+      const args = ["ECHO", argument]
+      const text = encodeText(args)
+      assert.isDefined(text)
+      assert.deepStrictEqual(bytes(text!), RedisProtocol.encode(args), JSON.stringify(argument))
+    }
+    assert.isUndefined(encodeText(["SET", new Uint8Array([1])]))
   })
 
   it("decodes RESP2 and RESP3 replies split at every boundary", () => {

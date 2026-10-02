@@ -3,7 +3,7 @@ import * as Connection from "@effect/redis/RedisConnection"
 import type { RedisError } from "@effect/redis/RedisError"
 import * as Protocol from "@effect/redis/RedisProtocol"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Scope } from "effect"
+import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
 import type * as Result from "effect/Result"
 import * as TestClock from "effect/testing/TestClock"
 import { array, bulk, type ScriptedRedis, startScriptedRedis } from "./utils/redis-scripted.ts"
@@ -129,6 +129,71 @@ describe("RedisConnection", () => {
       }
       const replies = yield* Effect.forEach(fibers, Fiber.join)
       assert.deepStrictEqual(replies.map(Protocol.toValue), ["a", "b", "c", "d"])
+    }))
+
+  it.live("frames an unpaired surrogate argument so the next command still parses", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const connection = yield* Connection.make(makeConnector(), fixture)
+      const echo = yield* connection.execute(["ECHO", "\ud800"]).pipe(Effect.forkChild)
+      // A short bulk payload leaves the server waiting for the declared bytes.
+      const request = yield* nextRequest(fixture).pipe(Effect.timeout("1 second"))
+      assert.deepStrictEqual(request.args.map(String), ["ECHO", "\ufffd"])
+      request.connection.send(bulk("\ufffd"))
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(echo)), "\ufffd")
+      const ping = yield* connection.execute(["PING"]).pipe(Effect.forkChild)
+      const next = yield* nextRequest(fixture)
+      assert.deepStrictEqual(next.args.map(String), ["PING"])
+      next.connection.send("+PONG\r\n")
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(ping)), "PONG")
+    }))
+
+  it.live("batches commands admitted during a slow write and skips interrupted ones", () =>
+    Effect.gen(function*() {
+      const fixture = yield* server
+      const gate = yield* Deferred.make<void>()
+      const started = yield* Deferred.make<void>()
+      const writes: Array<string> = []
+      let active = 0
+      let overlapped = false
+      const base = makeConnector()
+      const connector: Connection.Connector = (endpoint) =>
+        base(endpoint).pipe(Effect.map((transport) => ({
+          ...transport,
+          write: (bytes) =>
+            Effect.gen(function*() {
+              overlapped ||= active > 0
+              active++
+              writes.push(String(bytes))
+              if (writes.length === 1) {
+                yield* Deferred.succeed(started, undefined)
+                yield* Deferred.await(gate)
+              }
+              yield* transport.write(bytes)
+              active--
+            })
+        })))
+      const connection = yield* Connection.make(connector, fixture)
+      const first = yield* connection.execute(["SET", "a", "1"]).pipe(Effect.forkChild)
+      yield* Deferred.await(started)
+      const second = yield* connection.execute(["SET", "b", "2"]).pipe(Effect.forkChild)
+      const interrupted = yield* connection.execute(["SET", "c", "3"]).pipe(Effect.forkChild)
+      const third = yield* connection.execute(["GET", "d"]).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(interrupted)
+      assert.strictEqual(writes.length, 1)
+      yield* Deferred.succeed(gate, undefined)
+      const requests = yield* Effect.forEach([0, 1, 2], () => nextRequest(fixture))
+      assert.deepStrictEqual(
+        requests.map((request) => request.args.map(String)),
+        [["SET", "a", "1"], ["SET", "b", "2"], ["GET", "d"]]
+      )
+      requests[0].connection.send(Buffer.concat([Buffer.from("+OK\r\n+OK\r\n"), bulk("value")]))
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(first)), "OK")
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(second)), "OK")
+      assert.strictEqual(Protocol.toValue(yield* Fiber.join(third)), "value")
+      assert.strictEqual(writes.length, 2)
+      assert.isFalse(overlapped)
     }))
 
   it.live("writes a pipeline in one batch and preserves reply positions", () =>
