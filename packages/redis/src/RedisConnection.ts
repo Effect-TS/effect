@@ -270,12 +270,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     return transport.close
   }
 
-  const submit = (
-    commands: ReadonlyArray<ReadonlyArray<Argument>>,
-    onResult: (index: number, result: Result.Result<Reply, RedisError>) => void
-  ): ReadonlyArray<Entry> => {
-    if (failure !== undefined) throw Internal.notSent("Closed", "Redis connection is unavailable")
-    const entries = commands.map((args, index) => prepare(args, (result) => onResult(index, result)))
+  const admit = (entries: ReadonlyArray<Entry>) => {
     const size = entries.reduce((total, entry) => total + entry.bytes.length, 0)
     if (unsettled.size + entries.length > maxPending || queuedBytes + size > maxQueuedBytes) {
       throw Internal.notSent("Capacity", "Redis command queue capacity exceeded")
@@ -283,6 +278,16 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     queuedBytes += size
     for (const entry of entries) unsettled.add(entry)
     Queue.offerAllUnsafe(outgoing, entries)
+  }
+
+  const submit = (
+    commands: ReadonlyArray<ReadonlyArray<Argument>>,
+    onResult: (index: number, result: Result.Result<Reply, RedisError>) => void
+  ): ReadonlyArray<Entry> => {
+    if (failure !== undefined) throw Internal.notSent("Closed", "Redis connection is unavailable")
+    // Validate the whole batch before queueing any part of it.
+    const entries = commands.map((args, index) => prepare(args, (result) => onResult(index, result)))
+    admit(entries)
     return entries
   }
 
@@ -329,7 +334,19 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     })
 
   const execute = (args: ReadonlyArray<Argument>): Effect.Effect<Reply, RedisError> =>
-    Effect.flatMap(run([args]), (results) => Effect.fromResult(results[0]))
+    timeout !== undefined
+      ? Effect.flatMap(run([args]), (results) => Effect.fromResult(results[0]))
+      : Effect.callback((resume) => {
+        let entry: Entry
+        try {
+          if (failure !== undefined) throw Internal.notSent("Closed", "Redis connection is unavailable")
+          entry = prepare(args, (result) => resume(Effect.fromResult(result)))
+          admit([entry])
+        } catch (cause) {
+          return resume(Effect.fail(toError(cause, "Cannot encode Redis command")))
+        }
+        return Effect.sync(() => cancel(entry))
+      })
 
   yield* Queue.takeAll(outgoing).pipe(
     Effect.flatMap((batch) => {

@@ -200,6 +200,8 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
   interface Shared {
     readonly scope: Scope.Closeable
     readonly connection: Deferred.Deferred<Connection.RedisConnection, RedisError>
+    /** Set once acquired, so commands can skip awaiting the deferred. */
+    current?: Connection.RedisConnection
   }
   const shared = new Map<string, Shared>()
 
@@ -227,6 +229,7 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       shared.set(key, entry)
       return Connection.make(connector, endpoint, config).pipe(
         Scope.provide(entry.scope),
+        Effect.map((connection) => entry.current = connection),
         Effect.onError(() => dropShared(key, entry)),
         Deferred.into(entry.connection),
         Effect.forkIn(scope),
@@ -419,13 +422,59 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       return Effect.as(dispatch(pending), results)
     })
 
+  // Single commands avoid the pipeline's grouping, but follow the same
+  // redirect, READONLY and disconnect rules.
+  const attempt = (args: ReadonlyArray<Protocol.Argument>, target: Topology.Resolved) => {
+    if (target.asking) {
+      return Effect.scoped(
+        Effect.flatMap(
+          reserve({ node: target.endpoint }),
+          (connection) => Effect.andThen(connection.execute(["ASKING"]), connection.execute(args))
+        )
+      )
+    }
+    const current = shared.get(endpointKey(target.endpoint))?.current
+    return current?.isOpen()
+      ? current.execute(args)
+      : Effect.flatMap(connect(target.endpoint), (connection) => connection.execute(args))
+  }
+
+  const send = (
+    args: ReadonlyArray<Protocol.Argument>,
+    routing: Command.Routing | undefined,
+    target: Topology.Resolved,
+    remaining: number
+  ): Effect.Effect<Protocol.Reply, RedisError> =>
+    Effect.catch(attempt(args, target), (error): Effect.Effect<Protocol.Reply, RedisError> => {
+      if (closed) return Effect.fail(error)
+      const redirect = topology.redirect(error, target.endpoint)
+      if (redirect !== undefined) {
+        return remaining > 0 ? send(args, routing, redirect, remaining - 1) : Effect.fail(Cluster.redirectLimit(error))
+      }
+      if (topology._tag === "Sentinel" && error.code === "READONLY" && remaining > 0) {
+        return Effect.flatMap(refresh, () => {
+          const next = topology.route(args, routing)
+          return next._tag === "Failure" ? Effect.fail(next.failure) : send(args, routing, next.success, remaining - 1)
+        })
+      }
+      return isDisconnect(error) ? Effect.andThen(Effect.ignore(refresh), Effect.fail(error)) : Effect.fail(error)
+    })
+
+  const execute: RedisClient["execute"] = (args, routing) =>
+    Effect.suspend(() => {
+      if (closed) return Effect.fail(clientClosed())
+      if (requiresReservation(args)) return Effect.fail(reservationRequired())
+      const target = topology.route(args, routing)
+      return target._tag === "Failure" ? Effect.fail(target.failure) : send(args, routing, target.success, maxRedirects)
+    })
+
   const run = <A>(command: Command.RedisCommand<A>): Effect.Effect<A, RedisError> =>
-    Effect.flatMap(pipeline([command]), (results) => Effect.fromResult(results[0] as Result.Result<A, RedisError>))
+    Effect.flatMap(execute(command.arguments, command.routing), (reply) => Effect.fromResult(command.decode(reply)))
 
   const client: RedisClient = {
     config,
     closed: Deferred.await(closedSignal),
-    execute: (args, routing) => run(Command.make(args, Result.succeed, routing)),
+    execute,
     run,
     pipeline: pipeline as RedisClient["pipeline"],
     reserve,
