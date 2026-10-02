@@ -432,6 +432,34 @@ describe("RedisClient", () => {
         assert.deepStrictEqual(submitted, { moved: 3, ask: 3 })
       }))
 
+    it.live("keeps earlier ASK pipeline results when a later ASKING fails", () =>
+      Effect.gen(function*() {
+        const targetRequests: Array<Array<string>> = []
+        const target = yield* server((request) => {
+          targetRequests.push(args(request))
+          const [command] = args(request)
+          if (command === "INCR") return request.connection.send(":1\r\n")
+          // The first ASKING succeeds; the connection drops on the second one.
+          if (targetRequests.filter(([command]) => command === "ASKING").length === 1) {
+            request.connection.send("+OK\r\n")
+          } else {
+            request.connection.disconnect()
+          }
+        })
+        const source = yield* server((request) => {
+          if (clusterDiscovery(request, source)) return
+          request.connection.send(`-ASK 5061 ${target.host}:${target.port}\r\n`)
+        })
+        const client = yield* Client.make(makeConnector(), { topology: { _tag: "Cluster", seeds: [source] } })
+        const results = yield* client.pipeline([
+          Command.make(["INCR", "{bar}:first"], Command.integer),
+          Command.make(["INCR", "{bar}:second"], Command.integer)
+        ])
+        assert.deepStrictEqual(successes(results.slice(0, 1)), [BigInt(1)])
+        assert.strictEqual(failure(results[1]).reason, "Connection")
+        assert.deepStrictEqual(targetRequests, [["ASKING"], ["INCR", "{bar}:first"], ["ASKING"]])
+      }))
+
     it.live("retries MOVED pipeline entries without replaying successful or uncertain writes", () =>
       Effect.gen(function*() {
         const targetRequests: Array<Request> = []
