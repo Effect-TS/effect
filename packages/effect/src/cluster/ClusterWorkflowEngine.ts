@@ -141,8 +141,6 @@ export const make = Effect.gen(function*() {
     readonly workflowName: string
     readonly executionId: string
     readonly results: Map<string, Exit.Exit<unknown, unknown>>
-    readonly checkpoints: Set<string>
-    runInstance?: WorkflowEngine.WorkflowInstance["Service"]
   }>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
@@ -406,14 +404,14 @@ export const make = Effect.gen(function*() {
             const activation = yield* CurrentActivationScope
             let pending = pendingByActivation.get(activation)
             if (!pending) {
-              pending = { workflowName: workflow._tag, executionId, results: new Map(), checkpoints: new Set() }
+              pending = { workflowName: workflow._tag, executionId, results: new Map() }
               pendingByActivation.set(activation, pending)
             }
             // Retain awaited names through reply persistence, including suspension.
             // Replays reuse the request id but track a fresh set of awaits.
             let currentRun: {
               readonly request: Entity.Request<any>
-              readonly awaitedDeferreds: ReadonlySet<string>
+              readonly instance: WorkflowEngine.WorkflowInstance["Service"]
             } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
@@ -430,8 +428,7 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
-                currentRun = { request, awaitedDeferreds: instance.awaitedDeferreds }
-                pending.runInstance = instance
+                currentRun = { request, instance }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
                   | undefined
@@ -521,13 +518,15 @@ export const make = Effect.gen(function*() {
               deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
-                // Self-completed checkpoints need no replay until awaited; a
-                // later await sees the cached result. Check when the wake runs
-                // and skip preemption too. External and activity completions,
-                // interrupts, and fresh owners retain their existing wake paths.
+                // Await registers before reading the cache. If this run has not
+                // registered yet, a later await will see the result just stored.
+                // Check when the wake runs and skip preemption too: interrupting
+                // a later await would require waiting for its reply before reset.
+                // A run completing its own deferred also reads it from the cache
+                // when it awaits later, so that completion never wakes the run.
                 const wake = Effect.suspend(() =>
-                  currentRun && !currentRun.awaitedDeferreds.has(payload.name)
-                    ? pending.checkpoints.has(payload.name) && payload.name !== InterruptSignal.name
+                  currentRun && !currentRun.instance.awaitedDeferreds.has(payload.name)
+                    ? currentRun.instance.completedDeferreds.has(payload.name)
                       ? Effect.void
                       : ensureSuccess(resume(workflow, executionId))
                     : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
@@ -708,17 +707,15 @@ export const make = Effect.gen(function*() {
 
     deferredDone: Effect.fnUntraced(
       function*({ deferredName, executionId, exit, workflowName }) {
-        const activation = yield* Effect.serviceOption(CurrentActivationScope)
         const instance = yield* Effect.serviceOption(WorkflowEngine.WorkflowInstance)
-        const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
-        // A run completing its own checkpoint can read the cached result later.
-        // Activity and external completions still need the legacy wake path: a
-        // suspended run may not have reached their awaits yet.
+        // Activities run with their own instance, so their completions still
+        // wake a run that suspended before reaching the await. An interrupt
+        // must wake the run even when it signals itself.
         if (
-          pending?.workflowName === workflowName && pending.executionId === executionId &&
-          Option.isSome(instance) && pending.runInstance === instance.value
+          Option.isSome(instance) && instance.value.executionId === executionId &&
+          deferredName !== InterruptSignal.name
         ) {
-          pending.checkpoints.add(deferredName)
+          instance.value.completedDeferreds.add(deferredName)
         }
         const workflow = workflows.get(workflowName)
         if (workflow) {
