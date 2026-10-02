@@ -38,7 +38,6 @@
  *   const writer = yield* socket.writer
  *   while (true) {
  *     for (const received of yield* reader.pull) {
- *       // the reply path reuses the sender's raw address without parsing it
  *       yield* writer.write({ payload: received.payload, address: received })
  *     }
  *   }
@@ -201,12 +200,12 @@ export type UdpSocket = Bun.udp.Socket<"buffer"> | Bun.udp.ConnectedSocket<"buff
  * **Details**
  *
  * Creating the socket never fails. Binding, applying options and resolving
- * names happen when a reader is acquired, and fail that acquisition with a `DatagramSocketError`. Hostnames
- * in `bind`, `peer` and `connect` are resolved once per acquisition, so the
- * native socket only sees IP literals and no send waits for DNS.
+ * names happen on reader acquisition and fail it with a `DatagramSocketError`.
+ * Hostnames in `bind`, `peer` and `connect` are resolved once per acquisition;
+ * sends never wait for DNS.
  *
- * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` is a
- * defect.
+ * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
+ * safe integer.
  *
  * @stability unstable
  * @category constructors

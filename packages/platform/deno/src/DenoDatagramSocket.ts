@@ -20,11 +20,9 @@
  * a reader, or its writes wait forever. Every write waits for Deno's `send`
  * promise, so send errors fail the write that caused them.
  *
- * `writeAll` sends one datagram at a time, waiting for each send to complete
- * before starting the next. On failure it stops without sending the remaining
- * datagrams; earlier sends are not rolled back or resent, and the error carries
- * the failed datagram's `address`. Send order does not guarantee UDP arrival
- * order.
+ * `writeAll` sends sequentially and stops at the first failure. Earlier sends
+ * are not resent; the error carries the failed datagram's `address`. Send order
+ * does not guarantee arrival order.
  *
  * On Windows, ICMP connection resets or refusals reported by `receive` are
  * passed to `onError` and reading continues.
@@ -41,7 +39,6 @@
  *   const writer = yield* socket.writer
  *   while (true) {
  *     for (const received of yield* reader.pull) {
- *       // the reply path reuses the sender's raw address without parsing it
  *       yield* writer.write({ payload: received.payload, address: received })
  *     }
  *   }
@@ -82,7 +79,6 @@
  *     reuseAddress: true
  *   })
  *   const reader = yield* socket.reader
- *   // the ingress interface: where the group's datagrams are received
  *   yield* reader.joinMulticast({ group, interface: NetAddress.ipv4Loopback })
  *   return yield* reader.pull
  * }).pipe(Effect.scoped)
@@ -187,8 +183,8 @@ export type AdoptOptions = Pick<Options, "peer" | "receiveBuffer" | "onError">
  * acquisition with a `DatagramSocketError`. Hostnames in `bind` and `peer` are
  * resolved once per acquisition, so no send waits for DNS.
  *
- * A `receiveBuffer.capacity` below 1, a fractional one or `Infinity` is a
- * defect.
+ * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
+ * safe integer.
  *
  * @stability unstable
  * @category constructors
@@ -237,7 +233,6 @@ interface DenoError {
 
 const errorCode = (error: unknown): unknown => (error as DenoError)?.code
 
-// Node's errno codes, then Deno's error names
 const openError = (
   error: unknown,
   kind?: DatagramSocket.DatagramSocketOpenError["kind"]
@@ -270,7 +265,6 @@ const unsupportedError = (capability: string) =>
     reason: new DatagramSocket.DatagramSocketUnsupportedError({ capability, runtime: "Deno" })
   })
 
-// Node's errno kinds, then Deno's error names
 const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
   switch (errorCode(error)) {
     case "EMSGSIZE":
@@ -366,10 +360,6 @@ interface OpenPlan {
   readonly remote: DatagramSocket.BackingAddress | undefined
 }
 
-// Picks the socket's family and resolves `bind` and `peer` to IP literals.
-// The family is the explicit `family`, else an IP literal in `bind`, else the
-// peer's family, else a `bind` hostname's, else `"ipv4"`. IP literals answer
-// synchronously.
 const planOpen = (
   options: {
     readonly family?: Family | undefined
@@ -398,7 +388,6 @@ const planOpen = (
   })
 }
 
-// Resolves an adopted socket's `peer` in the family the socket is bound to
 const resolvePeer = (
   peer: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined,
   family: Family,
