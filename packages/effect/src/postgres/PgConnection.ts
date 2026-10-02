@@ -921,6 +921,22 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined):
   return inferredParameter(arrayOid, values)
 }
 
+const frameArenaSize = 8192
+let frameArena: ArrayBuffer | undefined
+let frameArenaOffset = 0
+
+/** Allocated views are disjoint and remain valid across all subsequent allocations. */
+const allocateFrame = (length: number): Uint8Array => {
+  if (length >= frameArenaSize / 2) return new Uint8Array(length)
+  if (frameArena === undefined || frameArenaOffset + length > frameArenaSize) {
+    frameArena = new ArrayBuffer(frameArenaSize)
+    frameArenaOffset = 0
+  }
+  const output = new Uint8Array(frameArena, frameArenaOffset, length)
+  frameArenaOffset += (length + 7) & ~7
+  return output
+}
+
 /**
  * Joins the parts of a frame into the buffer that goes on the wire.
  *
@@ -929,7 +945,7 @@ const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined):
 const concat = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
   let length = 0
   for (let index = 0; index < chunks.length; index++) length += chunks[index].length
-  const output = new Uint8Array(length)
+  const output = allocateFrame(length)
   let offset = 0
   for (let index = 0; index < chunks.length; index++) {
     output.set(chunks[index], offset)
