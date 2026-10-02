@@ -2124,7 +2124,7 @@ describe.concurrent("Sharding residency cap", () => {
     }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: "unbounded" }))))
 })
 
-describe("Sharding shard lock failover", () => {
+describe("Sharding shard lock failover", { concurrent: false }, () => {
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
       const warnings: Array<unknown> = []
