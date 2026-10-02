@@ -22,7 +22,6 @@ const unwrap = (reply: Reply): Reply => {
 
 const uncertain = (message: string) => new RedisError({ reason: "Protocol", message, outcome: "Unknown" })
 
-// Checks the MULTI and QUEUED acknowledgements and returns the EXEC replies.
 const execReplies = (
   replies: ReadonlyArray<Result.Result<Reply, RedisError>>,
   count: number

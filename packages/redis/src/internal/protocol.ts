@@ -250,7 +250,6 @@ export const makeParser = (options: ParserOptions = {}): Parser => {
     }
   }
 
-  // Decodes as much of `buffer` as possible and returns the consumed length.
   const decode = (): number => {
     let offset = 0
     while (true) {

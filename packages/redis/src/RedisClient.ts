@@ -112,7 +112,6 @@ export interface RedisClient {
  */
 export const RedisClient = Context.Service<RedisClient>("@effect/redis/RedisClient")
 
-// Commands that change connection state, block, or need their own reply mode.
 const reservedCommands = new Set(
   ("MULTI EXEC DISCARD WATCH UNWATCH AUTH SELECT HELLO RESET WAIT WAITAOF READONLY READWRITE ASKING MONITOR QUIT " +
     "SUBSCRIBE PSUBSCRIBE SSUBSCRIBE UNSUBSCRIBE PUNSUBSCRIBE SUNSUBSCRIBE " +
@@ -201,8 +200,7 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
   let closed = false
   const closedSignal = Deferred.makeUnsafe<void>()
 
-  // Shared connections, one per endpoint. Concurrent callers share an
-  // acquisition in progress, and a failed connection is replaced on next use.
+  // Concurrent callers share the in-progress acquisition for each endpoint.
   interface Shared {
     readonly scope: Scope.Closeable
     readonly connection: Deferred.Deferred<Connection.RedisConnection, RedisError>
@@ -240,7 +238,6 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       )
     })
 
-  // Dedicated sessions also close with the client.
   const reservations = new Set<{ readonly scope: Scope.Closeable; readonly endpoint: Connection.Endpoint }>()
 
   yield* Scope.addFinalizer(
@@ -252,7 +249,6 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     })
   )
 
-  // Sentinel failover: close every session to a node that is no longer primary.
   const retire = Effect.suspend(() => {
     const current = new Set(topology.endpoints().map(endpointKey))
     const stale = [
@@ -297,7 +293,6 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       return target.slot === undefined ? connection : pinToSlot(connection, target.slot)
     })
 
-  // A key-affine Cluster session only accepts commands for its own slot.
   const pinToSlot = (connection: Connection.RedisConnection, slot: number): Connection.RedisConnection => {
     const check = (args: ReadonlyArray<Protocol.Argument>, routing: Command.Routing | undefined) => {
       const target = topology.route(args, routing ?? Command.inferRouting(args))
@@ -439,7 +434,6 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
           yield* processAll(retries)
         })
 
-      // Commands for the same destination share one batch; destinations run concurrently.
       const processAll = (pending: ReadonlyArray<Pending>): Effect.Effect<void> => {
         const groups = new Map<string, Array<Pending>>()
         for (const entry of pending) {

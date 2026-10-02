@@ -107,7 +107,6 @@ const open = (endpoint: Endpoint, stream: Options["stream"]) => {
   }
 
   const pump = () => {
-    // A failure settles and clears the queue, which ends this loop.
     while (draining === undefined && queued.length > 0) {
       const writer = queued.shift()!
       let accepted: boolean

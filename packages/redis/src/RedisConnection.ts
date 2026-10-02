@@ -291,7 +291,6 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     onResult: (index: number, result: Result.Result<Reply, RedisError>) => void
   ): ReadonlyArray<Entry> => {
     if (failure !== undefined) throw Internal.notSent("Closed", "Redis connection is unavailable")
-    // Validate the whole batch before queueing any part of it.
     const entries = commands.map((args, index) => prepare(args, (result) => onResult(index, result)))
     const size = entries.reduce((total, entry) => total + entry.bytes.length, 0)
     if (unsettled.size + entries.length > maxPending || queuedBytes + size > maxQueuedBytes) {

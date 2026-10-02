@@ -95,8 +95,7 @@ export const encode: (args: ReadonlyArray<Argument>) => Uint8Array = internal.en
  *
  * Defaults allow 64 MiB per complete reply, 128 aggregate nesting levels, and
  * one million members per aggregate. Frame limits include metadata and nested
- * replies. Bodies split across chunks are filled in place rather than
- * re-buffered.
+ * replies.
  *
  * **Gotchas**
  *

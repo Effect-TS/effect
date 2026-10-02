@@ -7,10 +7,11 @@
 "@effect/platform-deno": minor
 ---
 
-Add `@effect/redis`, a native general-purpose client supporting standalone, Cluster, Sentinel, RESP2/3, transactions, and Pub/Sub. NodeRedis, BunRedis, and DenoRedis use the same client and shared socket transport, replacing the external `redis` and `@db/redis` integrations and Bun's built-in Redis client.
+Add `@effect/redis` with standalone, Cluster, Sentinel, RESP2/3, transactions, and Pub/Sub support. NodeRedis, BunRedis, and DenoRedis share its socket transport, replacing the `redis` and `@db/redis` drivers and Bun's built-in client.
 
 ### Breaking changes
 
-- Migrate each adapter's raw `client` and Promise-based `use` to native Effect operations (`run`, `execute`, and `reserve`) and its new `Options`. Deno's `hostname` and `db` become `socket.host` and `database`; Bun's `connectionTimeout` becomes `connectTimeout`. Configure Bun's URL explicitly or through `layerConfig` instead of relying on implicit environment defaults. URL query parameters and former driver-specific options no longer configure connections.
-- RESP2 is the default, layer acquisition validates the connection and can fail with `@effect/redis/RedisError` on all runtimes, and commands with uncertain outcomes are never automatically replayed. Bun subscriptions now reconnect and re-subscribe. Pipelines and transactions submit batches without waiting for individual replies.
-- Persistence supports all three topologies. Cluster uses slot-affine keys, so moving existing persisted data into Cluster requires key migration; standalone and Sentinel retain their current layouts. Custom `effect/persistence/Redis` services must provide `scan` and `cluster`, and `Redis.make` requires `scan` and `scriptHash` implementations. The platform adapters supply these capabilities.
+- Replace each adapter's raw `client` and Promise-based `use` with Effect operations (`run`, `execute`, and `reserve`) and the new `Options`.
+- Rename Deno's `hostname` and `db` to `socket.host` and `database`, and Bun's `connectionTimeout` to `connectTimeout`. Configure Bun's URL explicitly or through `layerConfig`; environment defaults are no longer implicit. URL query parameters and driver-specific options no longer configure connections.
+- RESP2 is the default. Layer acquisition validates the connection and can fail with `@effect/redis/RedisError` on every runtime. Commands with uncertain outcomes are never replayed automatically. Bun subscriptions reconnect and re-subscribe. Pipelines and transactions write batches without waiting for individual replies.
+- Persistence supports all three topologies. Cluster uses slot-affine keys, so moving existing data into Cluster requires key migration. Standalone and Sentinel keep their existing layouts. Custom `effect/persistence/Redis` services must provide `scan` and `cluster`; `Redis.make` requires `scan` and `scriptHash`. The platform adapters supply these capabilities.
