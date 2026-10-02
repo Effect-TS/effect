@@ -224,7 +224,7 @@ const concat = (entries: ReadonlyArray<Entry>): string | Uint8Array => {
  * **Details**
  *
  * Authenticates, selects RESP3, the database, and the client name before
- * returning. Commands submitted together are written in one batch.
+ * returning. Commands in a pipeline are written in one batch.
  *
  * @stability unstable
  * @category constructors
@@ -256,7 +256,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const inflight: Array<Entry> = []
   // Resumes the writer fiber once a batch is ready or the connection failed.
   let wake: ((exit: Effect.Effect<void, RedisError>) => void) | undefined
-  let flushScheduled = false
+  let receiving = false
   const listeners = new Set<(reply: Reply) => void>()
   let failure: RedisError | undefined
   let queuedBytes = 0
@@ -309,12 +309,11 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     return transport.close
   }
 
-  // Commands admitted in the same tick are written together in one batch;
-  // the writer fiber is woken synchronously from the microtask.
-  const flush = () => {
-    flushScheduled = false
+  // Wake an idle writer immediately. A busy writer drains admitted commands
+  // after its current transport write completes.
+  const wakeWriter = () => {
     const resume = wake
-    if (resume === undefined || failure !== undefined) return
+    if (resume === undefined || failure !== undefined || receiving || pending.length === 0) return
     wake = undefined
     resume(Effect.void)
   }
@@ -330,10 +329,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       unsettled.add(entry)
       pending.push(entry)
     }
-    if (!flushScheduled) {
-      flushScheduled = true
-      Promise.resolve().then(flush)
-    }
+    wakeWriter()
   }
 
   const submit = (
@@ -414,7 +410,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
 
   const awaitBatch = Effect.callback<void, RedisError>((resume) => {
     if (failure !== undefined) return resume(Effect.fail(failure))
-    if (pending.length > 0 && !flushScheduled) return resume(Effect.void)
+    if (pending.length > 0) return resume(Effect.void)
     wake = resume
   })
 
@@ -483,7 +479,16 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   }
 
   yield* transport.run((bytes) => {
-    for (const reply of parser.push(bytes)) receive(reply)
+    const wasReceiving = receiving
+    receiving = true
+    try {
+      for (const reply of parser.push(bytes)) receive(reply)
+    } finally {
+      receiving = wasReceiving
+    }
+    // Dispatch every older reply before a synchronous transport can respond
+    // to a command admitted by one of their result callbacks.
+    if (!receiving) wakeWriter()
   }).pipe(
     Effect.catchCause((cause) => {
       const error = Cause.squash(cause)

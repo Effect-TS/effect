@@ -42,6 +42,125 @@ const failure = <A>(result: Result.Result<A, RedisError>): RedisError => {
 }
 
 describe("RedisConnection", () => {
+  it.effect("writes idle commands immediately", () =>
+    Effect.gen(function*() {
+      const parser = Protocol.makeParser()
+      const requests: Array<Array<string>> = []
+      const nextReply = yield* Deferred.make<Protocol.Reply, RedisError>()
+      let receive: ((bytes: Uint8Array) => void) | undefined
+      const connection = yield* Connection.make(
+        () =>
+          Effect.succeed({
+            run: (onBytes) =>
+              Effect.callback<never>(() => {
+                receive = onBytes
+                return Effect.sync(() => {
+                  receive = undefined
+                })
+              }),
+            close: Effect.void,
+            write: (bytes) =>
+              Effect.sync(() => {
+                const responses = parser.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes).map((reply) => {
+                  const args = Protocol.toValue(reply) as Array<string>
+                  requests.push(args)
+                  return bulk(args[1])
+                })
+                receive!(Buffer.concat(responses))
+              })
+          }),
+        { host: "unused", port: 6379 }
+      )
+      yield* Effect.yieldNow
+      let returned = false
+      let completedBeforeReturn = false
+      const withdraw = connection.submitUnsafe(["ECHO", "first"], (result) => {
+        assert.strictEqual(result._tag, "Success")
+        if (result._tag !== "Success") return
+        assert.strictEqual(Protocol.toValue(result.success), "first")
+        completedBeforeReturn = !returned
+        connection.submitUnsafe(["ECHO", "reentrant"], (result) => {
+          Deferred.doneUnsafe(nextReply, Effect.fromResult(result))
+        })
+      })
+      returned = true
+      assert.isTrue(completedBeforeReturn)
+      assert.deepStrictEqual(requests, [["ECHO", "first"]])
+      withdraw()
+      assert.strictEqual(Protocol.toValue(yield* Deferred.await(nextReply)), "reentrant")
+      const pipeline = connection.pipeline([
+        { arguments: ["ECHO", "a"] },
+        { arguments: ["ECHO", "b"] }
+      ])
+      for (let iteration = 0; iteration < 2; iteration++) {
+        const results = yield* pipeline
+        assert.deepStrictEqual(
+          results.map((result) => {
+            assert.strictEqual(result._tag, "Success")
+            return result._tag === "Success" ? Protocol.toValue(result.success) : undefined
+          }),
+          ["a", "b"]
+        )
+      }
+      assert.deepStrictEqual(requests, [
+        ["ECHO", "first"],
+        ["ECHO", "reentrant"],
+        ["ECHO", "a"],
+        ["ECHO", "b"],
+        ["ECHO", "a"],
+        ["ECHO", "b"]
+      ])
+    }))
+
+  it.effect("keeps coalesced replies in order with synchronous transports", () =>
+    Effect.gen(function*() {
+      const parser = Protocol.makeParser()
+      const requests: Array<string> = []
+      const first = yield* Deferred.make<Protocol.Reply, RedisError>()
+      const second = yield* Deferred.make<Protocol.Reply, RedisError>()
+      const third = yield* Deferred.make<Protocol.Reply, RedisError>()
+      let receive: ((bytes: Uint8Array) => void) | undefined
+      const connection = yield* Connection.make(
+        () =>
+          Effect.succeed({
+            run: (onBytes) =>
+              Effect.callback<never>(() => {
+                receive = onBytes
+                return Effect.sync(() => {
+                  receive = undefined
+                })
+              }),
+            close: Effect.void,
+            write: (bytes) =>
+              Effect.sync(() => {
+                for (const reply of parser.push(typeof bytes === "string" ? Buffer.from(bytes) : bytes)) {
+                  const args = Protocol.toValue(reply) as Array<string>
+                  requests.push(args[1])
+                  if (args[1] === "third") receive!(bulk("third"))
+                }
+              })
+          }),
+        { host: "unused", port: 6379 }
+      )
+      yield* Effect.yieldNow
+      connection.submitUnsafe(["ECHO", "first"], (result) => {
+        Deferred.doneUnsafe(first, Effect.fromResult(result))
+        connection.submitUnsafe(["ECHO", "third"], (result) => {
+          Deferred.doneUnsafe(third, Effect.fromResult(result))
+        })
+      })
+      connection.submitUnsafe(["ECHO", "second"], (result) => {
+        Deferred.doneUnsafe(second, Effect.fromResult(result))
+      })
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(requests, ["first", "second"])
+      receive!(Buffer.concat([bulk("first"), bulk("second")]))
+      const replies = yield* Effect.forEach([first, second, third], Deferred.await)
+      assert.deepStrictEqual(replies.map(Protocol.toValue), ["first", "second", "third"])
+      assert.deepStrictEqual(requests, ["first", "second", "third"])
+    }))
+
   it.live("completes the handshake before returning", () =>
     Effect.gen(function*() {
       const fixture = yield* server
