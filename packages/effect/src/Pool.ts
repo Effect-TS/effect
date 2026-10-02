@@ -19,7 +19,6 @@ import * as Fiber from "./Fiber.ts"
 import { constant, dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
-import * as Iterable from "./Iterable.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
@@ -138,8 +137,8 @@ export interface State<A, E> {
  * **Details**
  *
  * Each item stores the acquisition `Exit`, its finalizer, the current
- * reference count, and whether automatic reclaiming has been disabled because
- * the item was invalidated.
+ * reference count, when it last became idle, and whether automatic reclaiming
+ * has been disabled because the item was invalidated.
  *
  * @see {@link Strategy} for the custom strategy callbacks that receive and return pool items
  * @see {@link State} for the runtime sets that store active, available, and invalidated pool items
@@ -151,6 +150,8 @@ export interface PoolItem<A, E> {
   readonly exit: Exit.Exit<A, E>
   finalizer: Effect.Effect<void>
   refCount: number
+  /** Clock time at which the item was acquired or its last borrower released it. */
+  idleSince: number
   disableReclaim: boolean
   isAvailable: boolean
   availablePrevious: PoolItem<A, E> | undefined
@@ -627,8 +628,7 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     item.refCount--
     state.usage--
     if (item.refCount === 0) {
-      const idle = usageIdleTimes.get(item)
-      if (idle !== undefined) idle.since = idle.clock.currentTimeMillisUnsafe()
+      item.idleSince = fiber.getRef(Clock).currentTimeMillisUnsafe()
     }
     if (state.invalidated.has(item)) {
       return invalidatePoolItem(self, item)
@@ -908,6 +908,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           exit,
           finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
           refCount: 0,
+          idleSince: fiber.getRef(Clock).currentTimeMillisUnsafe(),
           disableReclaim: false,
           isAvailable: false,
           availablePrevious: undefined,
@@ -1004,9 +1005,6 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
   })
 })
 
-// Use the strategy clock for releases too, without retaining retired items.
-const usageIdleTimes = new WeakMap<PoolItem<unknown, unknown>, { clock: Clock; since: number }>()
-
 const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
   const clock = yield* Clock
   const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
@@ -1014,16 +1012,12 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
     run: (pool) => {
       const process: Effect.Effect<void> = Effect.suspend(() => {
         if (activeSize(pool) <= targetSize(pool)) return Effect.void
-        const now = clock.currentTimeMillisUnsafe()
+        const expired = clock.currentTimeMillisUnsafe() - ttlMillis
         let oldest: PoolItem<A, E> | undefined
-        let oldestSince = Infinity
         for (const item of pool.state.items) {
-          if (item.refCount !== 0 || pool.state.invalidated.has(item) || reservations.has(item)) continue
-          const idle = usageIdleTimes.get(item)
-          if (idle !== undefined && now - idle.since >= ttlMillis && idle.since < oldestSince) {
-            oldest = item
-            oldestSince = idle.since
-          }
+          if (item.refCount > 0 || item.idleSince > expired) continue
+          if (pool.state.invalidated.has(item) || reservations.has(item)) continue
+          if (oldest === undefined || item.idleSince < oldest.idleSince) oldest = item
         }
         return oldest === undefined ? Effect.void : Effect.flatMap(invalidatePoolItem(pool, oldest), () => process)
       })
@@ -1032,30 +1026,8 @@ const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) 
         Effect.forever({ disableYield: true })
       )
     },
-    onAcquire: (item) =>
-      Effect.sync(() => {
-        usageIdleTimes.set(item, { clock, since: clock.currentTimeMillisUnsafe() })
-      }),
-    reclaim(pool) {
-      return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
-        if (pool.state.invalidated.size === 0) {
-          return Effect.undefined
-        }
-        const item = Iterable.head(
-          Iterable.filter(pool.state.invalidated, (item) => !item.disableReclaim && !reservations.has(item))
-        )
-        if (item._tag === "None") {
-          return Effect.undefined
-        }
-        pool.state.invalidated.delete(item.value)
-        pool.state.items.delete(item.value)
-        pool.state.items.add(item.value)
-        if (item.value.refCount < pool.config.concurrency) {
-          addAvailable(pool, item.value)
-        }
-        return Effect.succeed(item.value)
-      })
-    }
+    onAcquire: (_) => Effect.void,
+    reclaim: (_) => Effect.undefined
   })
 })
 

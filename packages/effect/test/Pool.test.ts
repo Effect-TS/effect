@@ -495,38 +495,6 @@ describe("Pool", () => {
       assert.strictEqual(pool.state.usage, 0)
     }))
 
-  it.effect("usage TTL reclaim skips reservations and explicit invalidations", () =>
-    Effect.gen(function*() {
-      const pool = yield* Pool.makeWithTTL({
-        acquire: Effect.succeed("resource"),
-        min: 0,
-        max: 1,
-        concurrency: 2,
-        timeToLive: 1000
-      })
-      const owner = yield* Scope.fork(yield* Effect.scope)
-      const reservation = yield* Scope.fork(yield* Effect.scope)
-      yield* Pool.get(pool).pipe(Scope.provide(owner))
-      yield* Pool.reserve(pool, "resource").pipe(Scope.provide(reservation))
-      const [item] = pool.state.items
-      // Seed a reclaimable item: idle sweeps skip borrowers, and public invalidate disables reclaim.
-      pool.state.invalidated.add(item)
-      assert.isUndefined(yield* pool.config.strategy.reclaim(pool))
-      assert.isTrue(pool.state.invalidated.has(item))
-
-      yield* Scope.close(reservation, Exit.void)
-      assert.strictEqual(yield* pool.config.strategy.reclaim(pool), item)
-      assert.isFalse(pool.state.invalidated.has(item))
-      assert.isTrue(pool.state.items.has(item))
-      assert.isTrue(item.isAvailable)
-
-      yield* Pool.invalidate(pool, "resource")
-      assert.isTrue(item.disableReclaim)
-      assert.isUndefined(yield* pool.config.strategy.reclaim(pool))
-      assert.isTrue(pool.state.invalidated.has(item))
-      yield* Scope.close(owner, Exit.void)
-    }))
-
   it.effect("reserve is a no-op with concurrency one", () =>
     Effect.gen(function*() {
       const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
