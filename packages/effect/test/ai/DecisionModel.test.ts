@@ -346,6 +346,74 @@ describe("DecisionModel", () => {
     )
   })
 
+  it.effect("images reach a provider that supports them beside the state", () => {
+    const calls: Array<DecisionModel.ProviderOptions> = []
+    const images: ReadonlyArray<DecisionModel.Image> = [
+      { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
+      { mediaType: "image/jpeg", data: "/9j/4AAQ" }
+    ]
+
+    return Effect.gen(function*() {
+      yield* DecisionModel.decide(TicketTriage, { input: ticket, images })
+
+      assert.strictEqual(calls.length, 1)
+      assert.deepStrictEqual(calls[0].state, { subject: "Card was charged twice", priority: "3" })
+      assert.strictEqual(calls[0].images, images)
+    }).pipe(
+      Effect.provide(Layer.effect(
+        DecisionModel.DecisionModel,
+        DecisionModel.make({
+          supportsImages: true,
+          decide: (options) => {
+            calls.push(options)
+            return Effect.succeed({
+              answers: triageAnswers,
+              usage: { inputTokens: undefined, outputTokens: undefined }
+            })
+          }
+        })
+      ))
+    )
+  })
+
+  it.effect("images fail with InvalidUserInputError before a text-only provider runs", () => {
+    let calls = 0
+
+    return Effect.gen(function*() {
+      const error = yield* failureOf(
+        DecisionModel.decide(TicketTriage, {
+          input: ticket,
+          images: [{ mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) }]
+        })
+      )
+
+      assert.strictEqual(calls, 0)
+      assert.isTrue(AiError.isAiError(error))
+      assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
+    }).pipe(Effect.provide(makeLayer(() => {
+      calls++
+      return Effect.succeed({ answers: triageAnswers, usage: { inputTokens: undefined, outputTokens: undefined } })
+    })))
+  })
+
+  it.effect("an empty image list reaches a text-only provider as no images", () => {
+    const calls: Array<DecisionModel.ProviderOptions> = []
+
+    return Effect.gen(function*() {
+      yield* DecisionModel.decide(TicketTriage, { input: ticket, images: [] })
+
+      assert.strictEqual(calls.length, 1)
+      assert.isFalse("images" in calls[0])
+    }).pipe(
+      Effect.provide(
+        makeLayer((options) => {
+          calls.push(options)
+          return Effect.succeed({ answers: triageAnswers, usage: { inputTokens: undefined, outputTokens: undefined } })
+        })
+      )
+    )
+  })
+
   it.effect("a string input is passed to the provider as a string state", () => {
     const states: Array<unknown> = []
     const Sentiment = Decision.make({

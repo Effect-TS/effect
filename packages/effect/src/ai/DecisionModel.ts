@@ -67,6 +67,30 @@ export class DecisionUsage extends Schema.Class<DecisionUsage>(
  */
 export interface DecideOptions<Input extends Schema.Constraint> {
   readonly input: Input["Type"]
+  /**
+   * Images the decisions are about. A model whose provider cannot read images
+   * fails with `AiError.InvalidUserInputError` rather than answer without them.
+   */
+  readonly images?: ReadonlyArray<Image> | undefined
+}
+
+/**
+ * An image the decisions are about, given to the provider beside the encoded
+ * input. `data` follows `Prompt.FilePart`: base64 data, a byte array, or a URL.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.1
+ */
+export interface Image {
+  /**
+   * MIME type of the image (e.g. "image/png").
+   */
+  readonly mediaType: string
+  /**
+   * Image data as a base64 string, a byte array, or a URL.
+   */
+  readonly data: string | Uint8Array | URL
 }
 
 /**
@@ -86,7 +110,8 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
 /**
  * Provider input options for a decision request.
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
- * All `decisions` must be answered in one call.
+ * All `decisions` must be answered in one call. `images` is present only when
+ * the caller passed some and the model was made with `supportsImages`.
  *
  * @stability unstable
  * @category options
@@ -95,6 +120,7 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
 export interface ProviderOptions {
   readonly state: Schema.Json
   readonly decisions: Record<string, Decision.Any>
+  readonly images?: ReadonlyArray<Image> | undefined
 }
 
 /**
@@ -325,6 +351,10 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  *
  * **Details**
  *
+ * Images reach the provider only when `supportsImages` is `true`; otherwise a
+ * call that passes images fails with `AiError.InvalidUserInputError`, so a
+ * text-only model never answers about an image it did not see.
+ *
  * Providers that round each probability to `probabilityPrecision` decimal
  * places may return distributions whose sum drifts from 1 by up to half a unit
  * of the last place per label. Setting `probabilityPrecision` accepts that
@@ -341,6 +371,7 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
 export const make = (params: {
   readonly decide: (options: ProviderOptions) => Effect.Effect<ProviderResponse, AiError.AiError>
   readonly probabilityPrecision?: number | undefined
+  readonly supportsImages?: boolean | undefined
 }): Effect.Effect<DecisionModel> =>
   Effect.sync(() => {
     const roundingError = params.probabilityPrecision === undefined ? 0 : 0.5 * 10 ** -params.probabilityPrecision
@@ -358,7 +389,23 @@ export const make = (params: {
               reason: new AiError.InvalidUserInputError({ description: error.message })
             })
           ),
-          Effect.flatMap((state) => params.decide({ state, decisions: definition.decisions })),
+          Effect.flatMap((state) => {
+            const images = options.images
+            if (images === undefined || images.length === 0) {
+              return params.decide({ state, decisions: definition.decisions })
+            }
+            return params.supportsImages
+              ? params.decide({ state, decisions: definition.decisions, images })
+              : Effect.fail(
+                AiError.make({
+                  module: "DecisionModel",
+                  method: "decide",
+                  reason: new AiError.InvalidUserInputError({
+                    description: "This decision model does not accept images"
+                  })
+                })
+              )
+          }),
           Effect.flatMap((response) =>
             Effect.map(
               validateAnswers(definition.decisions, response.answers, roundingError),
