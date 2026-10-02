@@ -210,6 +210,91 @@ describe("Pool", () => {
       strictEqual(result, 11)
     }))
 
+  describe("usage TTL idle timeout", () => {
+    it.effect("retains items used every 3 seconds across TTL sweeps", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.sync(() => ++acquired),
+          min: 0,
+          max: 10,
+          timeToLive: "10 seconds",
+          timeToLiveStrategy: "usage"
+        })
+        for (let i = 0; i < 20; i++) {
+          yield* Effect.scoped(Pool.get(pool))
+          yield* TestClock.adjust("3 seconds")
+        }
+        strictEqual(acquired, 1)
+      }))
+
+    it.effect("shrinks a released burst back to min after items become idle", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const finalized: Array<number> = []
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.acquireRelease(
+            Effect.sync(() => ++acquired),
+            (value) =>
+              Effect.sync(() => {
+                finalized.push(value)
+              })
+          ),
+          min: 1,
+          max: 3,
+          timeToLive: "10 seconds",
+          timeToLiveStrategy: "usage"
+        })
+        const burst = yield* Scope.fork(yield* Effect.scope)
+        for (let i = 0; i < 3; i++) yield* Scope.provide(Pool.get(pool), burst)
+        strictEqual(acquired, 3)
+        yield* TestClock.adjust("9 seconds")
+        deepStrictEqual(finalized, [])
+        yield* Scope.close(burst, Exit.void)
+        // Allow a full idle TTL plus one sweep interval after the release.
+        yield* TestClock.adjust("20 seconds")
+        strictEqual(finalized.length, 2)
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust("20 seconds")
+        strictEqual(finalized.length, 2)
+        yield* Effect.scoped(Pool.get(pool))
+        strictEqual(acquired, 3)
+      }))
+
+    it.effect("retires idle items rather than the oldest checked-out item", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const finalized: Array<number> = []
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.acquireRelease(
+            Effect.sync(() => ++acquired),
+            (value) =>
+              Effect.sync(() => {
+                finalized.push(value)
+              })
+          ),
+          min: 0,
+          max: 3,
+          timeToLive: "10 seconds",
+          timeToLiveStrategy: "usage"
+        })
+        const owner = yield* Scope.fork(yield* Effect.scope)
+        const held = yield* Scope.provide(Pool.get(pool), owner)
+        yield* Effect.scoped(Effect.gen(function*() {
+          yield* Pool.get(pool)
+          yield* Pool.get(pool)
+        }))
+        strictEqual(acquired, 3)
+        yield* TestClock.adjust("20 seconds")
+        // Invalidating a busy item delays its finalizer, so check retirement too.
+        strictEqual(pool.state.invalidated.size, 0)
+        deepStrictEqual(finalized, [2, 3])
+        yield* Scope.close(owner, Exit.void)
+        strictEqual(yield* Effect.scoped(Pool.get(pool)), held)
+        strictEqual(acquired, 3)
+      }))
+  })
+
   it.effect("max pool size", () =>
     Effect.gen(function*() {
       const deferred = yield* Deferred.make<void>()
