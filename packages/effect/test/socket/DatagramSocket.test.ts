@@ -17,6 +17,8 @@ const failure = () =>
 
 class TestHandle implements DatagramSocket.BackingSocket {
   readonly address = { host: "127.0.0.1", port: 1234 }
+  peer: DatagramSocket.BackingAddress | undefined = undefined
+  connected = false
   events!: DatagramSocket.BackingEvents
   sends: Array<{ payload: Uint8Array; destination?: DatagramSocket.BackingAddress | undefined }> = []
   closes = 0
@@ -26,6 +28,8 @@ class TestHandle implements DatagramSocket.BackingSocket {
   sendCount = 0
   deferSends = false
   omitIndex = false
+  // reported by the next `send` in place of its own error
+  failWith: DatagramSocket.DatagramSocketError | undefined = undefined
   pending: Array<(error?: DatagramSocket.DatagramSocketError) => void> = []
   private sendError() {
     return new DatagramSocket.DatagramSocketError({
@@ -33,7 +37,9 @@ class TestHandle implements DatagramSocket.BackingSocket {
     })
   }
   readonly send: DatagramSocket.BackingSocket["send"] = (payload, destination, done) => {
-    const error = ++this.sendCount === this.failAt ? this.sendError() : undefined
+    const failed = ++this.sendCount === this.failAt
+    const error = this.failWith ?? (failed ? this.sendError() : undefined)
+    this.failWith = undefined
     if (error === undefined) this.sends.push({ payload, destination })
     if (this.deferSends) this.pending.push((override) => done(override ?? error))
     else done(error)
@@ -101,6 +107,11 @@ const fixture = (
 
 const texts = (batch: ReadonlyArray<DatagramSocket.Datagram>) =>
   batch.map((packet) => new TextDecoder().decode(packet.payload))
+
+const writeReason = (error: DatagramSocket.DatagramSocketError): DatagramSocket.DatagramSocketWriteError => {
+  assert.strictEqual(error.reason._tag, "DatagramSocketWriteError")
+  return error.reason as DatagramSocket.DatagramSocketWriteError
+}
 
 const delayedOpen = Effect.gen(function*() {
   const firstStarted = yield* Deferred.make<void>()
@@ -576,6 +587,97 @@ describe("DatagramSocket native handle", () => {
       const batch = [{ payload: "a", address }, { payload: "b", address }, { payload: "c", address }] as const
       assert.isTrue(Exit.isFailure(yield* Effect.exit(writer.writeAll(batch))))
       assert.strictEqual(handle.sends.length, 1)
+    })))
+
+  it.effect("rejects a write with no destination and no peer before sending", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      const single = writeReason(yield* Effect.flip(writer.write({ payload: "one" })))
+      assert.isUndefined(single.address)
+      assert.include(String(single.cause), "no peer")
+      const batch = writeReason(yield* Effect.flip(writer.writeAll([{ payload: "a", address }, { payload: "b" }])))
+      assert.isUndefined(batch.address)
+      assert.strictEqual(handle.sends.length, 0)
+      // with a peer, the same writes go out
+      handle.peer = { host: "10.0.0.1", port: 53 }
+      yield* writer.write({ payload: "one" })
+      yield* writer.writeAll([{ payload: "a", address }, { payload: "b" }])
+      assert.deepStrictEqual(handle.sends.map((send) => send.destination?.port), [53, 1234, 53])
+    })))
+
+  it.effect("rejects an explicit address on a connected socket and sends the rest without one", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      const reader = yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      handle.connected = true
+      handle.peer = { host: "10.0.0.1", port: 53 }
+      const single = writeReason(yield* Effect.flip(writer.write({ payload: "one", address })))
+      assert.deepStrictEqual(single.address, address)
+      const batch = writeReason(yield* Effect.flip(writer.writeAll([{ payload: "a" }, { payload: "b", address }])))
+      assert.deepStrictEqual(batch.address, address)
+      assert.strictEqual(handle.sends.length, 0)
+      handle.packet("hello", "127.0.0.2", 3000)
+      const [packet] = yield* reader.pull
+      yield* writer.write({ payload: "one" })
+      yield* writer.write({ payload: packet.payload, address: packet })
+      yield* writer.writeAll([{ payload: "a" }, { payload: "b", address: packet }])
+      assert.strictEqual(handle.sends.length, 4)
+      assert.isTrue(handle.sends.every((send) => send.destination === undefined))
+    })))
+
+  it.effect("keeps each rejected write's error apart from the others on one reader", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const { socket, handles } = yield* fixture()
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      handle.connected = true
+      handle.deferSends = true
+      // a parked write keeps its own completion while later writes are rejected
+      const parked = yield* writer.write({ payload: "parked" }).pipe(
+        Effect.exit,
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Effect.yieldNow
+      assert.isUndefined(parked.pollUnsafe())
+      const other = NetAddress.inetAddressFromNativeUnsafe("127.0.0.3", 4321)
+      const first = writeReason(yield* Effect.flip(writer.write({ payload: "one", address })))
+      const second = writeReason(yield* Effect.flip(writer.write({ payload: "two", address: other })))
+      assert.deepStrictEqual(first.address, address)
+      assert.deepStrictEqual(second.address, other)
+      assert.strictEqual(handle.pending.length, 1)
+      handle.pending.shift()!()
+      assert.isTrue(Exit.isSuccess(yield* Fiber.join(parked)))
+    })))
+
+  it.effect("handles datagrams and errors from another copy of the module by shape", () =>
+    Effect.scoped(Effect.gen(function*() {
+      // the right fields on the wrong prototypes, as a duplicated module would make
+      const foreign = { payload: bytes("x"), host: "10.0.0.9", port: 7, address } as unknown as DatagramSocket.Datagram
+      const foreignError = {
+        reason: {
+          _tag: "DatagramSocketWriteError",
+          kind: "ConnectionRefused",
+          address: undefined,
+          cause: new Error("foreign")
+        }
+      } as unknown as DatagramSocket.DatagramSocketError
+      const { socket, handles } = yield* fixture()
+      yield* socket.reader
+      const writer = yield* socket.writer
+      const handle = handles[0]!
+      yield* writer.write({ payload: "reply", address: foreign })
+      assert.strictEqual(handle.sends[0]!.destination?.host, "10.0.0.9")
+      assert.strictEqual(handle.sends[0]!.destination?.port, 7)
+      handle.failWith = foreignError
+      const reason = writeReason(yield* Effect.flip(writer.write({ payload: "one", address })))
+      assert.strictEqual(reason.kind, "ConnectionRefused")
+      assert.deepStrictEqual(reason.address, address)
     })))
 
   it.effect("waits for the runtime to report a send and enriches a deferred failure", () =>
