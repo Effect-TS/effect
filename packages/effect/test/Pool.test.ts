@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scheduler, Scope } from "effect"
+import { Clock, Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scheduler, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { collectGarbage } from "./utils/gc.ts"
 
@@ -264,6 +264,25 @@ describe("Pool", () => {
           yield* TestClock.adjust("3 seconds")
         }
         strictEqual(acquired, 1)
+      }))
+
+    it.effect("measures idle time with the pool clock when a release runs under another clock", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.succeed("resource"),
+          min: 0,
+          max: 1,
+          timeToLive: 1000,
+          timeToLiveStrategy: "usage"
+        })
+        const clock = yield* Clock.Clock
+        yield* Pool.use(pool, Effect.succeed).pipe(
+          Effect.provideService(Clock.Clock, { ...clock, currentTimeMillisUnsafe: () => 1_000_000 })
+        )
+        yield* TestClock.adjust(999)
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust(1)
+        strictEqual(pool.state.items.size, 0)
       }))
   })
 
