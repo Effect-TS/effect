@@ -24,7 +24,6 @@
  *   const socket = yield* DatagramSocket.DatagramSocket
  *   const reader = yield* socket.reader
  *   while (true) {
- *     // every packet queued since the last pull, oldest first
  *     const datagrams = yield* reader.pull
  *     yield* Effect.log(`received ${datagrams.length}, dropped ${reader.dropped()}`)
  *   }
@@ -98,7 +97,7 @@
  * const announce = Effect.gen(function*() {
  *   const socket = yield* NodeDatagramSocket.make({
  *     peer: { address: group, port: 5000 },
- *     // the egress interface: a separate socket option from the join's
+ *     // Egress interface, independent of the join's ingress interface.
  *     multicast: { interface: NetAddress.ipv4Loopback, ttl: 1, loopback: true }
  *   })
  *   yield* socket.reader
@@ -272,10 +271,6 @@ export const fromSocket = <R>(
 export const layer = (options?: Options): Layer.Layer<DatagramSocket.DatagramSocket> =>
   Layer.effect(DatagramSocket.DatagramSocket, make(options))
 
-// -----------------------------------------------------------------------------
-// name resolution and error mapping
-// -----------------------------------------------------------------------------
-
 type Family = "ipv4" | "ipv6"
 
 const noScopeIds: ReadonlyMap<string, number> = new Map()
@@ -315,8 +310,7 @@ interface Resolved {
   readonly family: Family
 }
 
-// Resolves a hostname with one `lookup`, preferring IPv4 unless `family` is
-// fixed. Anything that isn't a hostname answers synchronously.
+// Prefer IPv4 unless the family is fixed; IP literals resolve synchronously.
 const resolve = (
   address: string | NetAddress.IpAddress | undefined,
   family: Family | undefined,
@@ -458,10 +452,6 @@ const readError = (
     reason: new DatagramSocket.DatagramSocketReadError({ kind, cause: error })
   })
 
-// -----------------------------------------------------------------------------
-// internal
-// -----------------------------------------------------------------------------
-
 // Every address reaching the socket is an IP literal, so answer at once. This
 // also skips the `process.nextTick` Node's default `lookup` adds to each send.
 const immediateLookup = (
@@ -477,8 +467,7 @@ const open = (
   options: Options,
   events: DatagramSocket.BackingEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
-  // `lookup` can't be cancelled, and core never interrupts `open`, so this
-  // registers no finalizer
+  // Core lets uncancellable lookups finish and closes abandoned sockets.
   Effect.callback((resume) => {
     planOpen(
       { family: options.family, bind: options.bind, remote: options.connect ?? options.peer },
@@ -631,7 +620,6 @@ class NativeSocket {
       send: (payload, destination, done) =>
         send(payload, destination, (error) => done(error == null ? undefined : writeError(error))),
       sendMany: (payloads, destinations, done) => {
-        // one report per datagram; resumes once the whole batch has reported
         let remaining = payloads.length
         let failure: DatagramSocket.DatagramSocketError | undefined
         let failedAt: number | undefined

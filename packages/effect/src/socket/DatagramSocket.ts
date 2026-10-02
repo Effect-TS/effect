@@ -1,12 +1,10 @@
 /**
  * Pull-based UDP sockets with scoped native handles.
  *
- * A `DatagramSocket` exposes a scoped `reader` and a scoped `writer`.
- * Acquiring the reader opens and binds a new native socket, and the reader's
- * scope owns it. Only one reader is open at a time: a second acquisition waits,
- * interruptibly, until the first reader's scope closes. Retrying is a plain
- * `Effect.retry` around the scoped consume loop, and every retry opens a new
- * socket.
+ * Acquiring a reader opens and binds a socket owned by its scope. Only one
+ * reader is open at a time; another acquisition waits interruptibly for it to
+ * close. Use `Effect.retry` around a scoped consume loop to open a new socket
+ * on each retry.
  *
  * Writes wait while no reader is open, so a send-only client must still
  * acquire a reader.
@@ -94,16 +92,13 @@ export interface DatagramSocket {
  *
  * **Details**
  *
- * The payload is safe to retain. The sender's `address` is parsed from the
- * runtime's raw host and port on first read and cached, so a consumer that
- * never reads it pays for no parsing.
+ * The payload is safe to retain. The sender's `address` is parsed on first
+ * read and cached.
  *
- * To reply, pass the datagram itself as the destination:
- * `writer.write({ payload, address: received })`. This reuses the raw host and
- * port without parsing or formatting anything. This shortcut only supports
- * datagrams produced by the platform adapters or `makeFromBackingSocket`.
- * For hand-built datagrams or custom readers, pass the explicit `InetAddress`
- * instead: `writer.write({ payload, address: received.address })`.
+ * Reply with `writer.write({ payload, address: received })` to reuse the raw
+ * sender address without parsing. This requires a datagram from a platform
+ * adapter or `makeFromBackingSocket`. For hand-built datagrams or custom
+ * readers, use `{ payload, address: received.address }`.
  *
  * @stability unstable
  * @category models
@@ -124,12 +119,10 @@ export interface Datagram {
  * `InetAddress` fails the write, while a received `Datagram` is allowed and
  * goes out on the connected path.
  *
- * A received `Datagram` used as the destination (the reply path) reuses the
- * sender's raw host and port. Passing a received `Datagram` as the whole
- * argument echoes it back to its sender. These shortcuts only support
- * datagrams produced by the platform adapters or `makeFromBackingSocket`.
- * Hand-built datagrams and datagrams from custom readers must use their
- * explicit `InetAddress` as the destination, not the datagram record.
+ * Pass a received `Datagram` as the destination to reply, or as the whole
+ * argument to echo it. Both reuse the raw sender address and require a
+ * datagram from a platform adapter or `makeFromBackingSocket`. Hand-built
+ * datagrams and custom readers must pass an explicit `InetAddress` instead.
  *
  * @stability unstable
  * @category models
@@ -196,11 +189,7 @@ export interface Reader {
  * out is unspecified, nothing is resent, and the error does not say which
  * datagram failed. Its `address` may be absent, depending on the runtime.
  *
- * **Gotchas**
- *
- * A send-only client must still acquire a reader. The reader owns the native
- * socket, so writes made while no reader is open wait for one, forever if none
- * is acquired. There is no built-in timeout; use `Effect.timeout`.
+ * There is no built-in write timeout; use `Effect.timeout`.
  *
  * @stability unstable
  * @category models
@@ -278,15 +267,11 @@ export interface BackingAddress {
  * not throw. `sendMany` passes the index of the failing datagram to `done`
  * when the runtime knows it, so core can attach its address.
  *
- * A runtime that can send synchronously also implements `trySend`, which core
- * calls first so a write that goes out at once allocates nothing. It returns
- * `true` when the datagram was sent, and `false` when it wasn't, for any
- * reason, and must not throw. Core then calls `send` at once with the same
- * datagram, so the runtime can act on what `trySend` found instead of trying
- * again. Adapters
- * normalize their native errors before passing them to core. A destination
- * may be a received datagram record, so read its `host` and `port` during the
- * call and don't keep a reference to it.
+ * Optional `trySend` provides an allocation-free synchronous send. It must
+ * not throw: return `true` if sent, otherwise `false`. On `false`, core calls
+ * `send` immediately with the same datagram; use the saved result rather than
+ * resending. Adapters normalize native errors before passing them to core.
+ * Read destination `host` and `port` during the call; do not retain the record.
  *
  * `close` must not throw.
  *
@@ -673,7 +658,6 @@ class ReaderState {
   readonly capacity: number
   readonly sliding: boolean
   readonly listener: ((error: DatagramSocketError) => void) | undefined
-  // arrow functions, so an adapter can pass one on its own as a callback
   readonly events: BackingEvents = {
     onPacket: (payload, host, port) => this.push(payload, host, port),
     onReadError: (error) => this.fail(error),
@@ -683,14 +667,13 @@ class ReaderState {
 
   // set when `open` completes; packets can arrive before that
   handle: BackingSocket | undefined = undefined
-  // the sticky error as a failed exit, shared by every pull and write after it
+  // Sticky failure shared by subsequent pulls and writes.
   failure: Effect.Effect<never, DatagramSocketError> | undefined = undefined
   // separate from `failure`: after a sticky read error the socket is still
   // open, so ICMP reports still reach `onError`
   closed = false
 
-  // queued packets, oldest first from `head`. `head` only moves under
-  // "sliding" once the buffer is full, when it becomes a ring
+  // Sliding overflow turns the full buffer into a ring, oldest at `head`.
   buffer: Array<DatagramImpl> = []
   head = 0
   dropped = 0
@@ -699,7 +682,6 @@ class ReaderState {
   // `waiters`, so a single consumer never touches the array
   waiter: FiberImpl | undefined = undefined
   waiters: Array<FiberImpl> = []
-  // pushed on a parked fiber's stack, shared by every park
   readonly unpark: Primitive = unpark(this)
 
   bound: NetAddress.InetAddress | undefined = undefined
@@ -750,8 +732,6 @@ class ReaderState {
     for (let i = 0; i < head; i++) batch[j++] = buffer[i]
     return batch as unknown as NonEmptyReadonlyArray<Datagram>
   }
-
-  // -- parked pulls ---------------------------------------------------------
 
   park(fiber: FiberImpl) {
     if (this.waiter === undefined) this.waiter = fiber
@@ -876,9 +856,6 @@ class ReaderState {
     }) as any
   }
 
-  // The native destination for a write, or the error that rejects it: no
-  // destination on a connected socket, the peer or a received datagram as is,
-  // and an explicit address formatted once and cached
   destination(
     target: NetAddress.InetAddress | DatagramImpl | undefined
   ): BackingAddress | undefined | DatagramSocketError {
@@ -923,10 +900,7 @@ class ReaderState {
   }
 }
 
-// `pull` without `Effect.callback`: a parked fiber is its own waiter, and a
-// packet resumes it inline with `fiber.evaluate`, like `Effect.yieldNow`. It
-// is built on the shared `withFiber` primitive rather than a new one, so the
-// run loop's dispatch sees no extra primitive shape
+// Park the fiber itself and resume it inline, avoiding `Effect.callback` allocations.
 const makePull = (state: ReaderState): Reader["pull"] =>
   withFiber((fiber): any => {
     if (state.buffer.length !== 0) {
@@ -940,9 +914,7 @@ const makePull = (state: ReaderState): Reader["pull"] =>
     return fiber.yieldWith(constVoid)
   })
 
-// Popped on every path out of a park, as `Effect.uninterruptible`'s frame is.
-// `contAll` runs even when an interruption skips `contE`, so an interrupted
-// fiber always leaves the waiters; after a wake it finds nothing to remove.
+// `contAll` removes interrupted waiters too; after a wake, removal is a no-op.
 const unpark: (state: ReaderState) => Primitive = makePrimitive({
   op: "DatagramSocketUnpark",
   [contAll](fiber) {

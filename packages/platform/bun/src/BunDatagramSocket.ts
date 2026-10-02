@@ -252,10 +252,6 @@ export const fromUdpSocket = <R>(
 export const layer = (options: Options = {}): Layer.Layer<DatagramSocket.DatagramSocket> =>
   Layer.effect(DatagramSocket.DatagramSocket, make(options))
 
-// -----------------------------------------------------------------------------
-// name resolution and error mapping, as in the Node adapter
-// -----------------------------------------------------------------------------
-
 type Family = "ipv4" | "ipv6"
 
 const noScopeIds: ReadonlyMap<string, number> = new Map()
@@ -295,8 +291,7 @@ interface Resolved {
   readonly family: Family
 }
 
-// Resolves a hostname with one `lookup`, preferring IPv4 unless `family` is
-// fixed. Anything that isn't a hostname answers synchronously.
+// Prefer IPv4 unless the family is fixed; IP literals resolve synchronously.
 const resolve = (
   address: string | NetAddress.IpAddress | undefined,
   family: Family | undefined,
@@ -438,10 +433,6 @@ const readError = (
     reason: new DatagramSocket.DatagramSocketReadError({ kind, cause: error })
   })
 
-// -----------------------------------------------------------------------------
-// internal
-// -----------------------------------------------------------------------------
-
 // uSockets `LIBUS_SOCKET_*` flags, not part of Bun's public API. Bun's own
 // `node:dgram` passes them the same way.
 // https://github.com/oven-sh/bun/blob/main/packages/bun-usockets/src/libusockets.h
@@ -456,8 +447,7 @@ const open = (
   options: Options,
   events: DatagramSocket.BackingEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
-  // `lookup` can't be cancelled, and core never interrupts `open`, so this
-  // registers no finalizer
+  // Core lets uncancellable lookups finish and closes abandoned sockets.
   Effect.callback((resume) => {
     planOpen(
       { family: options.family, bind: options.bind, remote: options.connect ?? options.peer },
@@ -625,8 +615,7 @@ class NativeSocket {
         }
         return false
       },
-      // Core calls this right after `trySend` refused the same datagram, so it
-      // queues it or reports the error without sending again
+      // Reuse the `trySend` result; do not send the datagram twice.
       send: (payload, destination, done) => {
         const refusal = this.refusal
         this.refusal = undefined
@@ -679,7 +668,6 @@ class NativeSocket {
     }
   }
 
-  // the retry list is only built when a send has to wait
   waitOne(
     payload: Uint8Array,
     destination: DatagramSocket.BackingAddress | undefined,
@@ -707,9 +695,7 @@ class NativeSocket {
     const socket = this.socket
     if (socket === undefined) return
     const stride = this.stride
-    // `this.pending` is re-read on every turn: a failed send or a `done` that
-    // closes the reader can close the socket, and `failPending` then replaces
-    // the queue after completing every entry in it
+    // Re-read the queue: a completion can close the socket and replace it.
     while (!this.closing && this.pending.length !== 0) {
       const pending = this.pending
       const next = pending[0]

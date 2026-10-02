@@ -230,10 +230,6 @@ export const fromDatagramConn = <R>(
 export const layer = (options: Options = {}): Layer.Layer<DatagramSocket.DatagramSocket> =>
   Layer.effect(DatagramSocket.DatagramSocket, make(options))
 
-// -----------------------------------------------------------------------------
-// internal
-// -----------------------------------------------------------------------------
-
 interface DenoError {
   readonly name?: unknown
   readonly code?: unknown
@@ -316,10 +312,6 @@ const readError = (error: unknown): DatagramSocket.DatagramSocketError =>
     reason: new DatagramSocket.DatagramSocketReadError({ kind: ioKind(error), cause: error })
   })
 
-// -----------------------------------------------------------------------------
-// name resolution, as in the Node adapter
-// -----------------------------------------------------------------------------
-
 type Family = "ipv4" | "ipv6"
 
 // Deno has no interface names to map, so IPv6 zones stay numeric
@@ -347,8 +339,7 @@ interface Resolved {
   readonly family: Family
 }
 
-// Resolves a hostname with one `lookup`, preferring IPv4 unless `family` is
-// fixed. Anything that isn't a hostname answers synchronously.
+// Prefer IPv4 unless the family is fixed; IP literals resolve synchronously.
 const resolve = (
   address: string | NetAddress.IpAddress | undefined,
   family: Family | undefined,
@@ -428,7 +419,6 @@ const open = (
     ? Effect.fail(unsupportedError(
       `UDP sockets without --unstable-net (pass --unstable-net or add "net" to "unstable" in deno.json)`
     ))
-    // `lookup` can't be cancelled, and core never interrupts `open`
     : Effect.callback((resume) => {
       planOpen(
         { family: options.family, bind: options.bind, remote: options.peer },
