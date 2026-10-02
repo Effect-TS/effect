@@ -1,17 +1,27 @@
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import { execFile } from "node:child_process"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
 const run = promisify(execFile)
 
 /** Uses Docker by default, or an isolated native server when POSTGRES_SERVER_BIN is set. */
-export const startPostgres = async () => {
+export const startPostgres = async (options?: { readonly tls?: boolean }) => {
+  const certPath = fileURLToPath(new URL("../../../../platform/bun/test/fixtures/tls/cert.pem", import.meta.url))
+  const keyPath = fileURLToPath(new URL("../../../../platform/bun/test/fixtures/tls/key.pem", import.meta.url))
+  const tlsOptions = options?.tls === true
+    ? { ca: await readFile(certPath, "utf8"), servername: "localhost", rejectUnauthorized: true }
+    : undefined
   const binary = process.env.POSTGRES_SERVER_BIN
-  if (binary === undefined) return new PostgreSqlContainer("postgres:alpine").start()
+  if (binary === undefined) {
+    const container = new PostgreSqlContainer("postgres:alpine")
+    if (tlsOptions !== undefined) container.withSSL(certPath, keyPath)
+    return Object.assign(await container.start(), { getTlsOptions: () => tlsOptions })
+  }
 
   const directory = await mkdtemp(join(tmpdir(), "effect-postgres-"))
   const data = join(directory, "data")
@@ -50,6 +60,12 @@ export const startPostgres = async () => {
       "--encoding=UTF8",
       "--no-locale"
     ], { timeout: 15_000 })
+    if (tlsOptions !== undefined) {
+      await Promise.all([
+        writeFile(join(data, "server.crt"), tlsOptions.ca, { mode: 0o600 }),
+        readFile(keyPath).then((key) => writeFile(join(data, "server.key"), key, { mode: 0o600 }))
+      ])
+    }
     started = true
     await run(pgctl, [
       "-D",
@@ -61,7 +77,8 @@ export const startPostgres = async () => {
       "15",
       "start",
       "-o",
-      `-h 127.0.0.1 -p ${port} -k ${directory} -c fsync=off -c max_connections=100`
+      `-h 127.0.0.1 -p ${port} -k ${directory} -c fsync=off -c max_connections=100` +
+      (tlsOptions === undefined ? "" : " -c ssl=on -c ssl_cert_file=server.crt -c ssl_key_file=server.key")
     ], { timeout: 20_000 })
     return {
       getConnectionUri: () => `postgres://effect:${password}@127.0.0.1:${port}/postgres`,
@@ -70,6 +87,7 @@ export const startPostgres = async () => {
       getUsername: () => "effect",
       getPassword: () => password,
       getDatabase: () => "postgres",
+      getTlsOptions: () => tlsOptions,
       stop
     }
   } catch (error) {

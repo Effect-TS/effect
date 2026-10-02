@@ -238,6 +238,16 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         assert.strictEqual((yield* connection.write("late").pipe(Effect.flip)).reason._tag, "SocketCloseError")
       }))
 
+    it.live("closes a TLS session with buffered vector writes", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const connection = yield* make().connect(address(server))
+        yield* connection.upgrade({ ca: cert, servername: "localhost" })
+        yield* connection.writeAll([new Uint8Array(4096), new Uint8Array(4096)])
+        yield* connection.close
+        assert.strictEqual((yield* connection.write("late").pipe(Effect.flip)).reason._tag, "SocketCloseError")
+      }))
+
     it.live("applies native TLS upgrade defaults and prebuilt trust contexts", () =>
       Effect.gen(function*() {
         const server = yield* listen(Tls.createServer({ cert, key }, echo))
@@ -337,20 +347,43 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         assert.deepStrictEqual(written(stream), [[1], [3]])
       }))
 
-    it.live("terminates pending reads and writes on close", () =>
+    it.live.each([false, true])("terminates pending reads and writes on close (already closed: %s)", (closedFirst) =>
       Effect.gen(function*() {
         const { stream, transport } = yield* held(make)
+        const closed = new Promise<void>((resolve) => stream.once("close", resolve))
         const reading = yield* transport.pull.pipe(Effect.flip, Effect.forkChild)
         const inFlight = yield* transport.write(new Uint8Array([1])).pipe(Effect.flip, Effect.forkChild)
         yield* Effect.yieldNow
         const queued = yield* transport.write(new Uint8Array([2])).pipe(Effect.flip, Effect.forkChild)
         yield* Effect.yieldNow
+        if (closedFirst) {
+          stream.destroy()
+          yield* Effect.promise(() => closed)
+        }
         yield* transport.close
         assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "SocketCloseError")
         assert.strictEqual((yield* Fiber.join(inFlight)).reason._tag, "SocketWriteError")
         assert.strictEqual((yield* Fiber.join(queued)).reason._tag, "SocketCloseError")
         assert.deepStrictEqual(written(stream), [[1]])
         assert.isTrue(stream.destroyed)
+        yield* Effect.promise(() => closed)
+        assert.strictEqual(stream.listenerCount("error"), 0)
+      }))
+
+    it.live("propagates stream errors and releases terminal listeners on close", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const closed = new Promise<void>((resolve) =>
+          stream.once("close", resolve)
+        )
+        const reading = yield* transport.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+        const cause = new Error("Active stream error")
+        stream.emit("error", cause)
+        const error = yield* Fiber.join(reading)
+        assert.strictEqual(error.reason._tag, "SocketReadError")
+        if (error.reason._tag === "SocketReadError") assert.strictEqual(error.reason.cause, cause)
+        yield* Effect.promise(() => closed)
+        assert.strictEqual(stream.listenerCount("error"), 0)
       }))
 
     it.live("closes the session after a synchronous write failure", () =>

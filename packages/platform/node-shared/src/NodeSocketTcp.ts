@@ -184,6 +184,7 @@ export const fromDuplex = <RO>(
           }) :
           identity
       )
+      const opened = conn
 
       type ReadResume = (
         effect: Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>
@@ -204,6 +205,7 @@ export const fromDuplex = <RO>(
       let draining = false
       let reading = false
       let closed = false
+      let closeObserved = false
       let consumerWaitingForRead = false
       let pending: Array<Uint8Array | string> | undefined
       let pausedForConsumer = false
@@ -344,6 +346,7 @@ export const fromDuplex = <RO>(
         )
       }
       function onClose(hadError: boolean) {
+        closeObserved = true
         const err = new Socket.SocketError({
           reason: new Socket.SocketCloseError({ code: hadError ? 1006 : 1000 })
         })
@@ -378,7 +381,16 @@ export const fromDuplex = <RO>(
               reason: new Socket.SocketCloseError({ code: 1006 })
             })
           )
-          detachReadListeners(conn)
+          const closing = conn
+          if (!closing.closed && !closeObserved) {
+            const onTerminalError = () => {}
+            closing.on("error", onTerminalError)
+            closing.once("close", () => closing.off("error", onTerminalError))
+          }
+          detachReadListeners(closing)
+          // A TLS wrapper is created by this reader, while open still owns the
+          // underlying duplex. Close the wrapper before its raw socket is released.
+          if (closing !== opened) closing.destroy()
           latch.closeUnsafe()
           currentSocket = undefined
           upgradeAvailable = false
@@ -528,6 +540,7 @@ export const fromDuplex = <RO>(
             }
 
             conn = tls
+            closeObserved = false
             currentSocket = tls
 
             function cleanup() {
