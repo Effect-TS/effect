@@ -97,7 +97,7 @@ export type EntityState = {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
     sentReply: boolean
-    /** Whether this request has reached a handler, rather than waiting for recovery. */
+    /** Excludes requests awaiting their first dispatch from replay. */
     delivered: boolean
     sentExit: boolean
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
@@ -202,14 +202,10 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
-    // Opened when shutdown starts, so requests waiting for replacement handlers
-    // are refused without waiting for them
     const retired = Latch.makeUnsafe()
     const isActive = () => !retired.isOpen()
 
-    // Replays the requests that replaced handlers were handed, before their
-    // replacement admits anything else. Requests still waiting for their first
-    // dispatch are left to their writer.
+    // Replay previously dispatched requests before admitting new work.
     const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
       if (!isActive()) return
       for (const request of activeRequests.values()) {
@@ -219,8 +215,6 @@ export const make = Effect.fnUntraced(function*<
       }
     })
 
-    // the server is stored in a ref, so if there is a defect, we can
-    // swap the server without losing the active requests
     const writeRef = yield* ResourceRef.from(
       scope,
       Effect.fnUntraced(function*(handlerScope) {
@@ -261,9 +255,7 @@ export const make = Effect.fnUntraced(function*<
                 request.sentReply = true
                 request.sentExit = true
 
-                // Handlers are only closed while the entity is still active
-                // when a rebuild replaces them. Their interrupts are not
-                // replies: the request is replayed on the replacement.
+                // Rebuild interrupts are not replies; replacement handlers replay the request.
                 if (isShuttingDown && Exit.hasInterrupts(response.exit) && isActive()) {
                   return Effect.void
                 }
@@ -339,7 +331,6 @@ export const make = Effect.fnUntraced(function*<
               }
               case "Defect": {
                 if (!isActive()) return endLatch.open
-                // Only the first defect of these handlers replaces them.
                 const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
                 if (!rebuild) return Effect.void
                 return Effect.forkIn(restart(Cause.die(response.defect), rebuild), managerScope)
@@ -366,9 +357,6 @@ export const make = Effect.fnUntraced(function*<
       address
     )
 
-    // Runs a rebuild after the restart backoff, unless the entity was retired
-    // meanwhile. A failed rebuild is attempted again; one that was interrupted,
-    // because it was superseded or the entity closed, is not.
     function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver(void 0))),
@@ -398,8 +386,6 @@ export const make = Effect.fnUntraced(function*<
               ? write(clientId, message, writeOptions)
               : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
           }
-          // New work is refused once the entity retires, including work that
-          // was waiting for replacement handlers.
           if (!isActive()) return Effect.interrupt
           const write = writeRef.getUnsafe()
           if (write === undefined) {
@@ -784,8 +770,6 @@ const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) 
   }
 }
 
-// Dispatches a request to the handlers, resuming from the last chunk the
-// caller has already received.
 const requestEnvelope = (entry: {
   readonly message: Message.IncomingRequestLocal<any>
   readonly lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>

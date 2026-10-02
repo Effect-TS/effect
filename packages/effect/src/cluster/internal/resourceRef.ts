@@ -9,17 +9,12 @@ import { aroundEntity } from "./interruptors.ts"
 type Pending<A> = {
   readonly _tag: "Pending"
   readonly scope: Scope.Closeable
-  /**
-   * What must be released before acquiring: the replaced generation, or the
-   * release of a failed one that is already under way.
-   */
+  /** Predecessor scope or ongoing release to await before acquisition. */
   readonly releases: Scope.Closeable | Fiber.Fiber<void> | undefined
   releasing: boolean
-  /** Completed once a generation is ready, or this one fails. */
+  /** Shared with waiters across superseded rebuilds. */
   readonly ready: Deferred.Deferred<A>
-  /** Set while the acquired value is prepared. */
   value: A | undefined
-  /** Runs the rebuild, interrupted when the generation is replaced or the ref closes. */
   work: Fiber.Fiber<void> | undefined
 }
 
@@ -30,13 +25,11 @@ type State<A> =
   | {
     readonly _tag: "Failed"
     readonly ready: Deferred.Deferred<A>
-    /** The release of the failed generation, awaited by the next rebuild. */
     readonly releasing: Fiber.Fiber<void> | undefined
   }
 
 /**
- * A resource that is replaced in place. Each acquisition is a generation,
- * identified by the value it produced.
+ * A replaceable resource whose acquired value identifies its generation.
  *
  * @internal
  */
@@ -46,8 +39,7 @@ export class ResourceRef<A> {
     acquire: (scope: Scope.Scope) => Effect.Effect<A>,
     teardownAddress?: EntityAddress
   ) {
-    // Releases run in a scope closed after the ref, so closing wakes waiters
-    // before waiting for any release that is still under way.
+    // Close the ref before joining releases, so waiters wake even if release stalls.
     const releaseScope = Scope.forkUnsafe(parentScope)
     const ref = new ResourceRef(releaseScope, acquire, teardownAddress)
     yield* Scope.addFinalizerExit(parentScope, (exit) => ref.close(exit))
@@ -71,17 +63,12 @@ export class ResourceRef<A> {
     this.teardownAddress = teardownAddress
   }
 
-  /**
-   * The ready value, or `undefined` while a generation is being built or
-   * prepared.
-   */
+  /** Returns the value only after acquisition and preparation complete. */
   getUnsafe(): A | undefined {
     return this.state._tag === "Ready" ? this.state.value : undefined
   }
 
-  /**
-   * Resolves with the ready value. Interrupts once the ref is closed.
-   */
+  /** Waits for a ready value; interrupts when the ref closes. */
   readonly await: Effect.Effect<A> = Effect.suspend(() => {
     const s = this.state
     switch (s._tag) {
@@ -96,20 +83,15 @@ export class ResourceRef<A> {
   })
 
   /**
-   * Replaces the current generation. Returns `undefined` when refused:
-   * - with `from`, unless the ready or preparing value is `from`, so each
-   *   generation is replaced at most once
-   * - without `from`, while a rebuild is already acquiring or preparing
+   * Replaces the generation, holding waiters until acquisition and `prepare` finish.
+   * Returns `undefined` if closed, if `from` differs from the ready or preparing
+   * value, or if `from` is omitted while a rebuild is pending.
    *
-   * Waiters are held from the moment the rebuild is accepted. The returned
-   * effect closes the replaced generation, acquires the new one and runs
-   * `prepare` with it before admitting them. It interrupts if the ref closes
-   * or another rebuild replaces this generation first, interrupting its
-   * acquisition or `prepare` too. If it fails, waiters are released with the
-   * same cause and the next rebuild without `from` is accepted; that rebuild
-   * first waits for the failed generation to be released. A rebuild
-   * interrupted while still releasing its predecessor instead leaves its
-   * waiters to the next rebuild, which no longer waits for that release.
+   * Acceptance immediately blocks waiters; run the returned effect to release
+   * the predecessor and build its replacement. Closing or superseding the ref
+   * interrupts the rebuild. Failure wakes waiters with its cause; the next
+   * rebuild must omit `from` and await cleanup. Interruption during predecessor
+   * release instead carries waiters forward without awaiting that release again.
    */
   rebuildUnsafe(options?: {
     readonly from?: A | undefined
@@ -192,8 +174,7 @@ export class ResourceRef<A> {
           return Effect.void
         }
         if (pending.releasing) {
-          // Abandoned before anything was acquired: there is nothing to
-          // release, and the waiters are left to the next rebuild.
+          // No resource was acquired. Carry waiters forward without rejoining the stalled release.
           this.state = { _tag: "Failed", ready: pending.ready, releasing: undefined }
           return Effect.void
         }
@@ -212,8 +193,7 @@ export class ResourceRef<A> {
     })
   }
 
-  // Released in its own fiber, so a release that never completes cannot keep
-  // a rebuild from being interrupted.
+  // A stalled release must not prevent rebuild interruption.
   private release(scope: Scope.Closeable): Effect.Effect<Fiber.Fiber<void>> {
     const close = Scope.close(scope, Exit.void)
     return Effect.forkIn(
@@ -237,7 +217,6 @@ export class ResourceRef<A> {
       }
       case "Pending": {
         Deferred.doneUnsafe(s.ready, Effect.interrupt)
-        // Stop the rebuild before tearing down what it was building.
         s.work?.interruptUnsafe()
         const close = Scope.close(s.scope, exit)
         return s.releases && !Fiber.isFiber(s.releases) ? Effect.andThen(Scope.close(s.releases, exit), close) : close

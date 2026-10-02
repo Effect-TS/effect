@@ -157,25 +157,17 @@ export const make = Effect.fnUntraced(function*(options: {
     )
   })
 
-  // Replace the reserved connection after an operation failed on `from`, or
-  // failed waiting for one. Each connection is replaced at most once, and a
-  // replacement in progress is not restarted.
   const rebuildLockConn = (from?: readonly [Connection, number]) => {
     const rebuild = lockConn?.rebuildUnsafe({ from })
     if (!rebuild) return Effect.void
-    // The rebuild starts by closing the previous scope, releasing the
-    // unresponsive connection back to the pool. Bound it with `withDeadline`:
-    // a release that never completes is left to finish detached, and the next
-    // failure replaces the pending connection.
+    // Bound release so a stalled connection cannot block subsequent rebuilds.
     return withDeadline(rebuild).pipe(
       Effect.exit,
       Effect.forkIn(layerScope, { startImmediately: true }),
       Effect.asVoid
     )
   }
-  // Run `f` on the reserved connection, replacing it when it fails `f`. A
-  // deadline reached while waiting for the connection is left to
-  // `withLockOperationDeadline`, which knows which connection to blame.
+  // SQL failures replace the held connection; deadlines are handled by withLockOperationDeadline.
   const useLockConn = <A, E, R>(
     f: (conn: Connection, pid: number) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> =>
@@ -628,10 +620,8 @@ export const make = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  // An operation that times out is blamed on the connection that was ready
-  // when it started. If none was, it was waiting for a replacement: that is
-  // restarted only if it has failed since, never while it is still in
-  // progress or once a connection has become ready.
+  // On failure, replace the connection ready at entry. If none was ready,
+  // retry only a failed rebuild, leaving pending or newly ready connections alone.
   const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
     Effect.suspend(() => {
       const ready = lockConn?.getUnsafe()
