@@ -1864,7 +1864,7 @@ const listenChannel = (
     })
   )
 
-/** Bridges the protocol's synchronous admission to one scoped socket writer. */
+/** Admits protocol writes immediately and batches frames queued behind backpressure. */
 class Transport {
   onData: (bytes: Uint8Array) => void = () => {}
   onError: (error: unknown) => void = () => {}
@@ -1872,38 +1872,73 @@ class Transport {
   private readonly readable = Latch.makeUnsafe(true)
   readonly start: Effect.Effect<void, never, Scope.Scope>
   private writerFiber: Fiber.Fiber<void> | undefined
+  private writing = false
+  private pending: Array<Uint8Array> = []
+  private readonly flushEffect: Effect.Effect<void>
 
   readonly connection: SocketConnector.Connection
-  private readonly outgoing: Queue.Queue<Uint8Array>
-  private readonly runFork: (effect: Effect.Effect<void>) => unknown
+  private readonly scope: Scope.Scope
+  private readonly runFork: (effect: Effect.Effect<void>) => Fiber.Fiber<void>
 
   constructor(
     connection: SocketConnector.Connection,
-    outgoing: Queue.Queue<Uint8Array>,
-    runFork: (effect: Effect.Effect<void>) => unknown
+    scope: Scope.Scope,
+    runFork: (effect: Effect.Effect<void>) => Fiber.Fiber<void>
   ) {
     this.connection = connection
-    this.outgoing = outgoing
+    this.scope = scope
     this.runFork = runFork
     const reader = connection.run((chunk) => {
       this.onData(typeof chunk === "string" ? textEncoder.encode(chunk) : chunk)
       if (!this.readable.isOpen()) return this.readable.await
     }).pipe(Effect.catch((error) => Effect.sync(() => this.onError(error))))
-    const writer = Effect.forever(Effect.flatMap(Queue.takeAll(outgoing), (chunks) => connection.writeAll(chunks)))
-      .pipe(
-        Effect.catch((error) => Effect.sync(() => this.onError(error)))
-      )
-    this.start = Effect.andThen(
-      Effect.forkScoped(reader),
-      Effect.map(Effect.forkScoped(writer), (fiber) => {
-        this.writerFiber = fiber
-      })
-    )
+    this.flushEffect = Effect.suspend(() => {
+      if (this.closed || this.pending.length === 0) return Effect.void
+      const chunks = this.pending as Arr.NonEmptyArray<Uint8Array>
+      this.pending = []
+      return connection.writeAll(chunks)
+    }).pipe(Effect.catch((error) => Effect.sync(() => this.onError(error))))
+    this.start = Effect.asVoid(Effect.forkScoped(reader))
   }
 
   write(bytes: Uint8Array): void {
     if (this.closed) throw new Error("Connection is closed")
-    Queue.offerUnsafe(this.outgoing, bytes)
+    this.pending.push(bytes)
+    this.flush()
+  }
+
+  private flush(): void {
+    if (this.closed || this.writing || this.pending.length === 0) return
+    this.writing = true
+    while (!this.closed && this.pending.length > 0) {
+      const fiber = this.runFork(this.flushEffect)
+      this.writerFiber = fiber
+      if (this.closed) fiber.interruptUnsafe()
+      const exit = fiber.pollUnsafe()
+      if (exit !== undefined) {
+        this.writerFiber = undefined
+        if (Exit.isFailure(exit)) {
+          this.writing = false
+          if (!this.closed && !Cause.hasInterruptsOnly(exit.cause)) this.onError(exit.cause)
+          return
+        }
+        continue
+      }
+      Fiber.runIn(fiber, this.scope)
+      fiber.addObserver((exit) => {
+        this.writerFiber = undefined
+        this.writing = false
+        if (this.closed) return
+        if (Exit.isFailure(exit)) {
+          if (!Cause.hasInterruptsOnly(exit.cause)) this.onError(exit.cause)
+          return
+        }
+        this.flush()
+      })
+      return
+    }
+    this.writerFiber = undefined
+    this.writing = false
   }
 
   pause(): void {
@@ -1917,22 +1952,20 @@ class Transport {
   shutdown(terminate: boolean): Effect.Effect<void> {
     return Effect.suspend(() => {
       this.closed = true
+      this.pending = []
       this.readable.openUnsafe()
       const stopWriter = this.writerFiber === undefined ? Effect.void : Fiber.interrupt(this.writerFiber)
       return Effect.andThen(
-        Queue.shutdown(this.outgoing),
+        stopWriter,
         Effect.andThen(
-          stopWriter,
-          Effect.andThen(
-            terminate
-              ? this.connection.write(PgProtocol.encodeTerminate()).pipe(
-                Effect.interruptible,
-                Effect.timeout("1 second"),
-                Effect.ignore
-              )
-              : Effect.void,
-            this.connection.close
-          )
+          terminate
+            ? this.connection.write(PgProtocol.encodeTerminate()).pipe(
+              Effect.interruptible,
+              Effect.timeout("1 second"),
+              Effect.ignore
+            )
+            : Effect.void,
+          this.connection.close
         )
       )
     })
@@ -2118,9 +2151,9 @@ const connect = Effect.fnUntraced(function*(
                 "SCRAM exchange did not complete"
               )
             }
-            const outgoing = yield* Queue.unbounded<Uint8Array>()
             const runFork = Effect.runForkWith(yield* Effect.context<never>())
-            return { socket: new Transport(connection, outgoing, runFork), encrypted, parser, processId, secretKey }
+            const scope = yield* Effect.scope
+            return { socket: new Transport(connection, scope, runFork), encrypted, parser, processId, secretKey }
           }
           default:
             return yield* configError(`Unexpected ${message._tag} message during startup`)

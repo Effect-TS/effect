@@ -49,6 +49,60 @@ const written = (stream: HeldStream) => stream.writes.map((bytes) => [...bytes])
 
 export const socketConnectorTests = (name: string, make: typeof NodeSocketConnector.make) =>
   describe(name, () => {
+    it.effect("delivers bytes buffered before receiving exactly once", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const delivered = yield* Deferred.make<void>()
+        const received: Array<number> = []
+        stream.push(Buffer.from([1, 2]))
+        const reading = yield* transport.run((bytes) => {
+          received.push(...bytes as Uint8Array)
+          return Deferred.succeed(delivered, void 0)
+        }).pipe(Effect.forkChild)
+        yield* Deferred.await(delivered)
+        yield* Fiber.interrupt(reading)
+        stream.push(Buffer.from([3]))
+        assert.deepStrictEqual(Array.from((yield* transport.pull)[0] as Uint8Array), [3])
+        assert.deepStrictEqual(received, [1, 2])
+      }))
+
+    it.effect("preserves queued and native buffered bytes when a backpressured receive loop is interrupted", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const reading = yield* transport.run(() => {
+          stream.emit("data", Buffer.from([2]))
+          return Effect.never
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+        stream.emit("data", Buffer.from([1]))
+        stream.push(Buffer.from([3]))
+        yield* Fiber.interrupt(reading)
+        assert.deepStrictEqual(Array.from((yield* transport.pull)[0] as Uint8Array), [2])
+        assert.deepStrictEqual(Array.from((yield* transport.pull)[0] as Uint8Array), [3])
+        const delivered = yield* Deferred.make<void>()
+        const next = yield* transport.run(() => Deferred.succeed(delivered, void 0)).pipe(Effect.forkChild)
+        stream.push(Buffer.from([4]))
+        yield* Deferred.await(delivered)
+        yield* Fiber.interrupt(next)
+      }))
+
+    it.live("switches a native connection from paused receiving back to pulling", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Net.createServer(echo))
+        const transport = yield* make().connect(address(server))
+        const entered = yield* Deferred.make<void>()
+        const received: Array<string> = []
+        const reading = yield* transport.run((bytes) => {
+          received.push(Buffer.from(bytes as Uint8Array).toString())
+          return Deferred.succeed(entered, void 0).pipe(Effect.andThen(Effect.never))
+        }).pipe(Effect.forkChild)
+        yield* transport.write("first")
+        yield* Deferred.await(entered)
+        yield* transport.write("second")
+        yield* Fiber.interrupt(reading)
+        assert.strictEqual(Buffer.from((yield* transport.pull)[0]).toString(), "second")
+        assert.deepStrictEqual(received, ["first"])
+      }))
+
     it.effect("delivers receive callbacks synchronously and releases interrupted consumers", () =>
       Effect.gen(function*() {
         const { stream, transport } = yield* held(make)
@@ -56,8 +110,7 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         const reading = yield* transport.run((bytes) => {
           received.push(Array.from(bytes as Uint8Array))
         }).pipe(Effect.forkChild({ startImmediately: true }))
-        stream.push(Buffer.from([1, 2]))
-        stream.emit("readable")
+        stream.emit("data", Buffer.from([1, 2]))
         assert.deepStrictEqual(received, [[1, 2]])
         yield* Fiber.interrupt(reading)
         stream.push(Buffer.from([3]))
@@ -74,10 +127,8 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
           received.push(Array.from(bytes as Uint8Array))
           return received.length === 1 ? Deferred.await(release) : Deferred.succeed(delivered, void 0)
         }).pipe(Effect.forkChild({ startImmediately: true }))
-        stream.push(Buffer.from([1]))
-        stream.emit("readable")
+        stream.emit("data", Buffer.from([1]))
         stream.push(Buffer.from([2]))
-        stream.emit("readable")
         assert.deepStrictEqual(received, [[1]])
         yield* Deferred.succeed(release, void 0)
         yield* Deferred.await(delivered)
@@ -91,13 +142,12 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         const { stream, transport } = yield* held(make)
         const received: Array<number> = []
         const reading = yield* transport.run((bytes) => {
-          if ((bytes as Uint8Array)[0] === 1) stream.push(Buffer.from([2]))
+          if ((bytes as Uint8Array)[0] === 1) stream.emit("data", Buffer.from([2]))
           return Effect.map(setting, (value) => {
             received.push((bytes as Uint8Array)[0] + value)
           })
         }).pipe(Effect.provideService(setting, 10), Effect.forkChild({ startImmediately: true }))
-        stream.push(Buffer.from([1]))
-        stream.emit("readable")
+        stream.emit("data", Buffer.from([1]))
         assert.deepStrictEqual(received, [11, 12])
         yield* Fiber.interrupt(reading)
       }))
@@ -109,9 +159,23 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         const reading = yield* transport.run(() =>
           Effect.never.pipe(Effect.ensuring(Deferred.succeed(stopped, void 0)))
         ).pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
-        stream.push(Buffer.from([1]))
-        stream.emit("readable")
+        stream.emit("data", Buffer.from([1]))
         yield* transport.close
+        assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "SocketCloseError")
+        yield* Deferred.await(stopped)
+      }))
+
+    it.effect("owns callbacks that close the connection during task startup", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const stopped = yield* Deferred.make<void>()
+        const reading = yield* transport.run(() =>
+          transport.close.pipe(
+            Effect.andThen(Effect.never),
+            Effect.ensuring(Deferred.succeed(stopped, void 0))
+          )
+        ).pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+        stream.emit("data", Buffer.from([1]))
         assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "SocketCloseError")
         yield* Deferred.await(stopped)
       }))
@@ -123,8 +187,7 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         const reading = yield* transport.run(() => {
           throw cause
         }).pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
-        stream.push(Buffer.from([1]))
-        stream.emit("readable")
+        stream.emit("data", Buffer.from([1]))
         const failure = yield* Fiber.join(reading)
         assert.strictEqual(failure.reason._tag, "SocketReadError")
         if (failure.reason._tag === "SocketReadError") assert.strictEqual(failure.reason.cause, cause)
@@ -166,6 +229,8 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
       Effect.gen(function*() {
         const server = yield* listen(Tls.createServer({ cert, key }, echo))
         const connection = yield* make().connect(address(server))
+        const receiving = yield* connection.run(() => {}).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(receiving)
         yield* connection.upgrade({ ca: cert, servername: "localhost" })
         yield* connection.writeAll(["hello", "world"])
         assert.strictEqual(Buffer.from((yield* connection.pull)[0]).toString(), "helloworld")
