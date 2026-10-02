@@ -369,7 +369,7 @@ const resolve = (
 
 interface OpenPlan {
   readonly bindHost: string
-  readonly remote: DatagramSocket.NativeAddress | undefined
+  readonly remote: DatagramSocket.BackingSocketAddress | undefined
 }
 
 // Picks the socket's family and resolves `bind` and `peer` to IP literals.
@@ -409,7 +409,7 @@ const resolvePeer = (
   peer: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined,
   family: Family,
   onLookupError: (error: unknown) => void,
-  next: (peer: DatagramSocket.NativeAddress | undefined) => void
+  next: (peer: DatagramSocket.BackingSocketAddress | undefined) => void
 ): void => {
   if (peer === undefined) return next(undefined)
   if (typeof peer.address !== "string") return next({ host: formatEndpoint(peer, noScopeIds)!, port: peer.port })
@@ -418,7 +418,7 @@ const resolvePeer = (
 
 const open = (
   options: Options,
-  events: DatagramSocket.NativeEvents
+  events: DatagramSocket.BackingSocketEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   // checked per reader, not at module load, so the module imports without the flag
   typeof Deno.listenDatagram !== "function"
@@ -451,7 +451,7 @@ const open = (
 const adopt = (
   conn: Deno.DatagramConn,
   options: AdoptOptions,
-  events: DatagramSocket.NativeEvents
+  events: DatagramSocket.BackingSocketEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   Effect.callback((resume) => {
     const family: Family = (conn.addr as Deno.NetAddr).hostname.includes(":") ? "ipv6" : "ipv4"
@@ -474,13 +474,13 @@ const receiveBufferSize = 65536
 
 class NativeConn {
   readonly conn: Deno.DatagramConn
-  readonly events: DatagramSocket.NativeEvents
+  readonly events: DatagramSocket.BackingSocketEvents
   readonly buffer = new Uint8Array(receiveBufferSize)
   closing = false
   // the last destination, reused while consecutive sends share it
   lastAddr: Deno.NetAddr | undefined = undefined
 
-  constructor(conn: Deno.DatagramConn, events: DatagramSocket.NativeEvents) {
+  constructor(conn: Deno.DatagramConn, events: DatagramSocket.BackingSocketEvents) {
     this.conn = conn
     this.events = events
   }
@@ -520,13 +520,13 @@ class NativeConn {
     }
   }
 
-  addrOf(destination: DatagramSocket.NativeAddress): Deno.NetAddr {
+  addrOf(destination: DatagramSocket.BackingSocketAddress): Deno.NetAddr {
     const last = this.lastAddr
     if (last !== undefined && last.hostname === destination.host && last.port === destination.port) return last
     return this.lastAddr = { transport: "udp", hostname: destination.host, port: destination.port }
   }
 
-  send(payload: Uint8Array, destination: DatagramSocket.NativeAddress | undefined): Promise<number> {
+  send(payload: Uint8Array, destination: DatagramSocket.BackingSocketAddress | undefined): Promise<number> {
     if (destination === undefined) return Promise.reject(new Error("DatagramSocket write has no destination"))
     try {
       return this.conn.send(payload, this.addrOf(destination))
@@ -538,7 +538,7 @@ class NativeConn {
   // Await each send before submitting the next, including on a warm socket.
   async sendAll(
     payloads: ReadonlyArray<Uint8Array>,
-    destinations: ReadonlyArray<DatagramSocket.NativeAddress | undefined>,
+    destinations: ReadonlyArray<DatagramSocket.BackingSocketAddress | undefined>,
     done: (error?: DatagramSocket.DatagramSocketError, index?: number) => void
   ) {
     for (let i = 0; i < payloads.length; i++) {
@@ -552,7 +552,7 @@ class NativeConn {
     done()
   }
 
-  open(peer: DatagramSocket.NativeAddress | undefined): DatagramSocket.BackingSocket {
+  open(peer: DatagramSocket.BackingSocketAddress | undefined): DatagramSocket.BackingSocket {
     const conn = this.conn
     const bound = conn.addr as Deno.NetAddr
     this.receive()

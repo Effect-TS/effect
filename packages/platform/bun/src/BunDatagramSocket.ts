@@ -322,7 +322,7 @@ interface OpenPlan {
   readonly family: Family
   readonly scopeIds: ReadonlyMap<string, number>
   readonly bindHost: string
-  readonly remote: DatagramSocket.NativeAddress | undefined
+  readonly remote: DatagramSocket.BackingSocketAddress | undefined
 }
 
 /**
@@ -371,7 +371,7 @@ const resolvePeer = (
   family: Family,
   scopeIds: ReadonlyMap<string, number>,
   onLookupError: (error: unknown) => void,
-  next: (peer: DatagramSocket.NativeAddress | undefined) => void
+  next: (peer: DatagramSocket.BackingSocketAddress | undefined) => void
 ): void => {
   if (peer === undefined) return next(undefined)
   if (typeof peer.address !== "string") return next({ host: formatEndpoint(peer, scopeIds)!, port: peer.port })
@@ -454,7 +454,7 @@ const isClosedError = (error: unknown): boolean => error instanceof Error && err
 
 const open = (
   options: Options,
-  events: DatagramSocket.NativeEvents
+  events: DatagramSocket.BackingSocketEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   // `lookup` can't be cancelled, and core never interrupts `open`, so this
   // registers no finalizer
@@ -469,7 +469,7 @@ const open = (
 
 const create = (
   options: Options,
-  events: DatagramSocket.NativeEvents,
+  events: DatagramSocket.BackingSocketEvents,
   { bindHost: host, remote, scopeIds }: OpenPlan,
   resume: (effect: Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError>) => void
 ) => {
@@ -518,7 +518,7 @@ const create = (
 const adopt = (
   socket: UdpSocket,
   options: AdoptOptions,
-  events: DatagramSocket.NativeEvents
+  events: DatagramSocket.BackingSocketEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   Effect.callback((resume) => {
     const native = new NativeSocket(events)
@@ -576,7 +576,7 @@ class PendingSend {
 
 class NativeSocket {
   socket: UdpSocket | undefined = undefined
-  readonly events: DatagramSocket.NativeEvents
+  readonly events: DatagramSocket.BackingSocketEvents
   readonly handlers: Bun.udp.SocketHandler<"buffer">
   // sends the kernel refused with a full buffer, oldest first. Later sends
   // queue behind them, so datagrams keep their order
@@ -587,7 +587,7 @@ class NativeSocket {
   refusal: unknown = undefined
   closing = false
 
-  constructor(events: DatagramSocket.NativeEvents) {
+  constructor(events: DatagramSocket.BackingSocketEvents) {
     this.events = events
     this.handlers = {
       data: (_socket, payload, port, host) => events.onPacket(payload, host, port),
@@ -601,7 +601,7 @@ class NativeSocket {
 
   open(
     scopeIds: ReadonlyMap<string, number>,
-    peer: DatagramSocket.NativeAddress | undefined,
+    peer: DatagramSocket.BackingSocketAddress | undefined,
     connected: boolean
   ): DatagramSocket.BackingSocket {
     const socket = this.socket!
@@ -682,7 +682,7 @@ class NativeSocket {
   // the retry list is only built when a send has to wait
   waitOne(
     payload: Uint8Array,
-    destination: DatagramSocket.NativeAddress | undefined,
+    destination: DatagramSocket.BackingSocketAddress | undefined,
     done: (error?: DatagramSocket.DatagramSocketError) => void
   ) {
     this.wait(destination === undefined ? [payload] : [payload, destination.port, destination.host], 1, 0, done)
