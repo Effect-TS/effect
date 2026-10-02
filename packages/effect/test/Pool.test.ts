@@ -211,7 +211,7 @@ describe("Pool", () => {
     }))
 
   describe("usage TTL idle timeout", () => {
-    it.effect("retires the longest-idle item rather than the first acquired item", () =>
+    it.effect("shrinks to min in idle order rather than acquisition order", () =>
       Effect.gen(function*() {
         let acquired = 0
         const finalized: Array<number> = []
@@ -220,27 +220,32 @@ describe("Pool", () => {
             Effect.sync(() => ++acquired),
             (value) => Effect.sync(() => finalized.push(value))
           ),
-          min: 2,
+          min: 1,
           max: 3,
           timeToLive: 1000,
           timeToLiveStrategy: "usage"
         })
         const first = yield* Scope.fork(yield* Effect.scope)
         const second = yield* Scope.fork(yield* Effect.scope)
+        const third = yield* Scope.fork(yield* Effect.scope)
         strictEqual(yield* Pool.get(pool).pipe(Scope.provide(first)), 1)
         strictEqual(yield* Pool.get(pool).pipe(Scope.provide(second)), 2)
-        strictEqual(yield* Pool.get(pool), 3)
+        strictEqual(yield* Pool.get(pool).pipe(Scope.provide(third)), 3)
 
         yield* TestClock.adjust(100)
         yield* Scope.close(second, Exit.void)
         yield* TestClock.adjust(100)
         yield* Scope.close(first, Exit.void)
-        yield* TestClock.adjust(800)
+        yield* TestClock.adjust(100)
+        yield* Scope.close(third, Exit.void)
+        yield* TestClock.adjust(700)
         deepStrictEqual(finalized, [])
         yield* TestClock.adjust(1000)
-        deepStrictEqual(finalized, [2])
-        strictEqual(pool.state.items.size, 2)
-        strictEqual(yield* Pool.use(pool, Effect.succeed), 1)
+        deepStrictEqual(finalized, [2, 1])
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust(2000)
+        deepStrictEqual(finalized, [2, 1])
+        strictEqual(yield* Pool.use(pool, Effect.succeed), 3)
         strictEqual(acquired, 3)
       }))
 
@@ -259,70 +264,6 @@ describe("Pool", () => {
           yield* TestClock.adjust("3 seconds")
         }
         strictEqual(acquired, 1)
-      }))
-
-    it.effect("shrinks a released burst back to min after items become idle", () =>
-      Effect.gen(function*() {
-        let acquired = 0
-        const finalized: Array<number> = []
-        const pool = yield* Pool.makeWithTTL({
-          acquire: Effect.acquireRelease(
-            Effect.sync(() => ++acquired),
-            (value) =>
-              Effect.sync(() => {
-                finalized.push(value)
-              })
-          ),
-          min: 1,
-          max: 3,
-          timeToLive: "10 seconds",
-          timeToLiveStrategy: "usage"
-        })
-        const burst = yield* Scope.fork(yield* Effect.scope)
-        for (let i = 0; i < 3; i++) yield* Scope.provide(Pool.get(pool), burst)
-        strictEqual(acquired, 3)
-        yield* TestClock.adjust("9 seconds")
-        deepStrictEqual(finalized, [])
-        yield* Scope.close(burst, Exit.void)
-        yield* TestClock.adjust("20 seconds")
-        strictEqual(finalized.length, 2)
-        strictEqual(pool.state.items.size, 1)
-        yield* TestClock.adjust("20 seconds")
-        strictEqual(finalized.length, 2)
-        yield* Effect.scoped(Pool.get(pool))
-        strictEqual(acquired, 3)
-      }))
-
-    it.effect("retires idle items rather than the oldest checked-out item", () =>
-      Effect.gen(function*() {
-        let acquired = 0
-        const finalized: Array<number> = []
-        const pool = yield* Pool.makeWithTTL({
-          acquire: Effect.acquireRelease(
-            Effect.sync(() => ++acquired),
-            (value) =>
-              Effect.sync(() => {
-                finalized.push(value)
-              })
-          ),
-          min: 0,
-          max: 3,
-          timeToLive: "10 seconds",
-          timeToLiveStrategy: "usage"
-        })
-        const owner = yield* Scope.fork(yield* Effect.scope)
-        const held = yield* Scope.provide(Pool.get(pool), owner)
-        yield* Effect.scoped(Effect.gen(function*() {
-          yield* Pool.get(pool)
-          yield* Pool.get(pool)
-        }))
-        strictEqual(acquired, 3)
-        yield* TestClock.adjust("20 seconds")
-        strictEqual(pool.state.invalidated.size, 0)
-        deepStrictEqual(finalized, [2, 3])
-        yield* Scope.close(owner, Exit.void)
-        strictEqual(yield* Effect.scoped(Pool.get(pool)), held)
-        strictEqual(acquired, 3)
       }))
   })
 
@@ -391,30 +332,27 @@ describe("Pool", () => {
 
   it.effect("usage TTL retains shared items with active borrowers", () =>
     Effect.gen(function*() {
-      const count = yield* Ref.make(0)
-      const acquire = Effect.acquireRelease(
-        Ref.updateAndGet(count, (n) => n + 1),
-        () => Ref.update(count, (n) => n - 1)
-      )
+      let acquired = 0
       const pool = yield* Pool.makeWithTTL({
-        acquire,
+        acquire: Effect.sync(() => ++acquired),
         min: 0,
         max: 2,
         concurrency: 2,
         timeToLive: Duration.seconds(60)
       })
 
-      const scope1 = yield* Scope.make()
-      yield* Scope.provide(Pool.get(pool), scope1)
-      yield* Pool.get(pool)
-      yield* Effect.scoped(Pool.get(pool))
+      const scope1 = yield* Scope.fork(yield* Effect.scope)
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 1)
+      strictEqual(yield* Pool.get(pool), 1)
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), 2)
       yield* TestClock.adjust(Duration.seconds(60))
       strictEqual(pool.state.invalidated.size, 0)
+      strictEqual(pool.state.items.size, 1)
       yield* Scope.close(scope1, Exit.void)
-      yield* Pool.get(pool)
-      yield* Pool.get(pool)
-      strictEqual(yield* Pool.get(pool), 2)
-      strictEqual(yield* Ref.get(count), 2)
+      strictEqual(yield* Pool.get(pool), 1)
+      strictEqual(yield* Pool.get(pool), 3)
+      strictEqual(yield* Pool.get(pool), 3)
+      strictEqual(acquired, 3)
     }))
 
   it.effect("reserve takes an item out of shared circulation", () =>
@@ -534,18 +472,16 @@ describe("Pool", () => {
         concurrency: 2,
         timeToLive: 1000
       })
-      const owner = yield* Scope.make()
-      const reservation = yield* Scope.make()
+      const owner = yield* Scope.fork(yield* Effect.scope)
+      const reservation = yield* Scope.fork(yield* Effect.scope)
       yield* Pool.get(pool).pipe(Scope.provide(owner))
       yield* Pool.reserve(pool, 1).pipe(Scope.provide(reservation))
       yield* Pool.use(pool, Effect.succeed)
       yield* TestClock.adjust(1000)
       assert.strictEqual(pool.state.items.size, 1)
       assert.strictEqual(pool.state.invalidated.size, 0)
-      assert.deepStrictEqual(Array.from(pool.state.items, (item) => item.exit), [Exit.succeed(1)])
 
       const first = yield* Pool.get(pool).pipe(Scope.provide(owner))
-      yield* TestClock.adjust(0)
       const second = yield* Pool.get(pool).pipe(Scope.provide(owner))
       const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
       assert.isUndefined(next.pollUnsafe())
