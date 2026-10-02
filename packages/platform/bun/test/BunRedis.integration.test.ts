@@ -1,13 +1,13 @@
 import * as BunRedis from "@effect/platform-bun/BunRedis"
-import * as RedisClient from "@effect/redis/RedisClient"
-import * as RedisCommand from "@effect/redis/RedisCommand"
 import { assert, describe, it } from "@effect/vitest"
 import { Config, Context, Effect, Layer, Queue } from "effect"
 import * as Redis from "effect/persistence/Redis"
+import * as RedisClient from "effect/redis/RedisClient"
+import * as RedisCommand from "effect/redis/RedisCommand"
 import { readFileSync } from "node:fs"
 import type { AddressInfo } from "node:net"
 import * as Tls from "node:tls"
-import { acquire, startRedis } from "../../../redis/test/utils/redis-server.ts"
+import { acquire, startRedis } from "../../../effect/test/redis/utils/redis-server.ts"
 
 describe("BunRedis", () => {
   it.live("runs commands, scripts and subscriptions against Redis", () =>

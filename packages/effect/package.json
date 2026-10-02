@@ -57,10 +57,15 @@
     "./cluster/internal/*": null,
     "./internal/*": null,
     "./index": null,
-    "./*/index": null
+    "./*/index": null,
+    "./redis": "./src/redis/index.ts",
+    "./redis/internal/*": null,
+    "./postgres": "./src/postgres/index.ts",
+    "./postgres/internal/*": null
   },
   "files": [
     "src/**/*.ts",
+    "src/**/README.md",
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
@@ -100,7 +105,11 @@
       "./cli/internal/*": null,
       "./cluster/internal/*": null,
       "./index": null,
-      "./*/index": null
+      "./*/index": null,
+      "./redis": "./dist/redis/index.js",
+      "./redis/internal/*": null,
+      "./postgres": "./dist/postgres/index.js",
+      "./postgres/internal/*": null
     }
   },
   "scripts": {
@@ -110,11 +119,13 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^12.1.0",
     "@types/node": "^26.6.3",
     "ajv": "^8.20.0",
     "ajv-draft-04": "^1.0.0",
     "ast-types": "^0.16.3",
     "immer": "^11.1.18",
+    "postgres": "^3.4.9",
     "protobufjs": "^8.8.0",
     "tinybench": "^6.2.0",
     "valibot": "^1.5.0"

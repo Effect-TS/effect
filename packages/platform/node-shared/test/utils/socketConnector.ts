@@ -1,0 +1,206 @@
+import type * as NodeSocketConnector from "@effect/platform-node-shared/NodeSocketConnector"
+import { assert, describe, it } from "@effect/vitest"
+import { Effect, Exit, Fiber } from "effect"
+import * as Fs from "node:fs"
+import * as Net from "node:net"
+import { Duplex } from "node:stream"
+import * as Tls from "node:tls"
+
+const endpoint = { host: "127.0.0.1", port: 0 }
+const cert = Fs.readFileSync(new URL("../../../bun/test/fixtures/tls/cert.pem", import.meta.url))
+const key = Fs.readFileSync(new URL("../../../bun/test/fixtures/tls/key.pem", import.meta.url))
+
+const listen = (server: Net.Server) =>
+  Effect.acquireRelease(
+    Effect.callback<Net.Server>((resume) => {
+      server.once("error", (cause) => resume(Effect.die(cause)))
+      server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+    }),
+    (server) =>
+      Effect.callback<void>((resume) => {
+        server.close(() => resume(Effect.void))
+      })
+  )
+const address = (server: Net.Server) => ({ ...endpoint, port: (server.address() as Net.AddressInfo).port })
+const echo = (socket: Net.Socket) => {
+  socket.on("error", () => {})
+  socket.pipe(socket)
+}
+
+class HeldStream extends Duplex {
+  readonly writes: Array<Buffer> = []
+  release: ((error?: Error | null) => void) | undefined
+  constructor() {
+    super({ writableHighWaterMark: 1 })
+  }
+  override _read() {}
+  override _write(bytes: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+    this.writes.push(bytes)
+    this.release = callback
+  }
+}
+const held = (connector: typeof NodeSocketConnector.make) =>
+  Effect.gen(function*() {
+    const stream = new HeldStream()
+    const transport = yield* connector({ stream: () => stream }).connect(endpoint)
+    return { stream, transport }
+  })
+const written = (stream: HeldStream) => stream.writes.map((bytes) => [...bytes])
+
+export const socketConnectorTests = (name: string, make: typeof NodeSocketConnector.make) =>
+  describe(name, () => {
+    it.live("closes a native connection while a write is backpressured", () =>
+      Effect.gen(function*() {
+        let peer: Net.Socket | undefined
+        const server = yield* listen(Net.createServer((socket) => {
+          peer = socket
+          socket.pause()
+        }))
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            peer?.destroy()
+          })
+        )
+        const connection = yield* make().connect(address(server))
+        const writing = yield* connection.write(new Uint8Array(16 * 1024 * 1024)).pipe(Effect.flip, Effect.forkChild)
+        yield* Effect.yieldNow
+        assert.isUndefined(writing.pollUnsafe())
+        yield* connection.close
+        const error = yield* Fiber.join(writing).pipe(Effect.timeout("1 second"))
+        assert.strictEqual(error.reason._tag, "SocketWriteError")
+      }))
+    it.live("reports synchronous socket creation failures as open errors", () =>
+      Effect.gen(function*() {
+        const invalid = yield* make().connect({ ...endpoint, port: -1 }).pipe(Effect.flip)
+        assert.strictEqual(invalid.reason._tag, "SocketOpenError")
+        const custom = yield* make({
+          stream: () => {
+            throw new Error("Custom stream failed")
+          }
+        }).connect(endpoint).pipe(Effect.flip)
+        assert.strictEqual(custom.reason._tag, "SocketOpenError")
+      }))
+
+    it.live("upgrades a connected TCP session to verified TLS", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const connection = yield* make().connect(address(server))
+        yield* connection.upgrade({ ca: cert, servername: "localhost" })
+        yield* connection.writeAll(["hello", "world"])
+        assert.strictEqual(Buffer.from((yield* connection.pull)[0]).toString(), "helloworld")
+        yield* connection.close
+        assert.strictEqual((yield* connection.write("late").pipe(Effect.flip)).reason._tag, "SocketCloseError")
+      }))
+
+    it.live("verifies TLS certificates against a custom CA and hostname", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        server.on("tlsClientError", () => {})
+        const connect = make().connect
+
+        assert.isTrue(Exit.isFailure(yield* Effect.exit(connect({ ...address(server), tls: true }))))
+        const wrongName = yield* connect({ ...address(server), tls: { ca: cert, servername: "wrong.example" } }).pipe(
+          Effect.flip
+        )
+        assert.strictEqual(
+          ("cause" in wrongName.reason ? wrongName.reason.cause as NodeJS.ErrnoException : undefined)!.code,
+          "ERR_TLS_CERT_ALTNAME_INVALID"
+        )
+
+        const transport = yield* connect({ ...address(server), tls: { ca: cert } })
+        yield* transport.write(new Uint8Array([0, 13, 10, 255]))
+        assert.deepStrictEqual((yield* transport.pull)[0], new Uint8Array([0, 13, 10, 255]))
+      }))
+
+    it.live("resolves TLS hosts with a custom lookup", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        let resolved: string | undefined
+        const lookup: Net.LookupFunction = (hostname, options, callback) => {
+          resolved = hostname
+          if (options.all) callback(null, [{ address: "127.0.0.1", family: 4 }])
+          else callback(null, "127.0.0.1", 4)
+        }
+        const transport = yield* make({ tls: { lookup } }).connect({
+          ...address(server),
+          host: "redis.invalid",
+          tls: { ca: cert, servername: "localhost" }
+        })
+        yield* transport.write(new Uint8Array([1]))
+        assert.deepStrictEqual((yield* transport.pull)[0], new Uint8Array([1]))
+        assert.strictEqual(resolved, "redis.invalid")
+      }))
+
+    it.live("sends queued writes after each drain and drops interrupted ones", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const first = yield* transport.write(new Uint8Array([1])).pipe(Effect.forkChild)
+        yield* Effect.yieldNow
+        const interrupted = yield* transport.write(new Uint8Array([2])).pipe(Effect.forkChild)
+        const third = yield* transport.write(new Uint8Array([3])).pipe(Effect.forkChild)
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(interrupted)
+        assert.isUndefined(first.pollUnsafe())
+        stream.release!()
+        yield* Fiber.join(first)
+        yield* Effect.yieldNow
+        assert.isUndefined(third.pollUnsafe())
+        stream.release!()
+        yield* Fiber.join(third)
+        assert.deepStrictEqual(written(stream), [[1], [3]])
+      }))
+
+    it.live("terminates pending reads and writes on close", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const reading = yield* transport.pull.pipe(Effect.flip, Effect.forkChild)
+        const inFlight = yield* transport.write(new Uint8Array([1])).pipe(Effect.flip, Effect.forkChild)
+        yield* Effect.yieldNow
+        const queued = yield* transport.write(new Uint8Array([2])).pipe(Effect.flip, Effect.forkChild)
+        yield* Effect.yieldNow
+        yield* transport.close
+        assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "SocketCloseError")
+        assert.strictEqual((yield* Fiber.join(inFlight)).reason._tag, "SocketWriteError")
+        assert.strictEqual((yield* Fiber.join(queued)).reason._tag, "SocketCloseError")
+        assert.deepStrictEqual(written(stream), [[1]])
+        assert.isTrue(stream.destroyed)
+      }))
+
+    it.live("closes the session after a synchronous write failure", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        stream.write = () => {
+          throw new Error("Write failed")
+        }
+        assert.strictEqual((yield* transport.write("first").pipe(Effect.flip)).reason._tag, "SocketWriteError")
+        assert.strictEqual((yield* transport.write("second").pipe(Effect.flip)).reason._tag, "SocketCloseError")
+        assert.isTrue(stream.destroyed)
+      }))
+
+    it.live("reports a refused connection as an open error", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Net.createServer())
+        const target = address(server)
+        yield* Effect.callback<void>((resume) => {
+          server.close(() => resume(Effect.void))
+        })
+        const error = yield* make().connect(target).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketOpenError")
+      }))
+
+    it.effect("rejects an invalid connect timeout before opening a socket", () =>
+      Effect.gen(function*() {
+        let opened = 0
+        for (const connectTimeout of [-1, NaN]) {
+          const error = yield* make({
+            connectTimeout,
+            stream: () => {
+              opened++
+              return new HeldStream()
+            }
+          }).connect(endpoint).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "SocketOpenError")
+        }
+        assert.strictEqual(opened, 0)
+      }))
+  })

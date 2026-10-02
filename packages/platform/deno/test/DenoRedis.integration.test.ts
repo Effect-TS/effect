@@ -1,12 +1,12 @@
 import * as DenoRedis from "@effect/platform-deno/DenoRedis"
-import * as RedisClient from "@effect/redis/RedisClient"
-import * as RedisCommand from "@effect/redis/RedisCommand"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Queue } from "effect"
 import { PersistedQueue, Persistence, Redis } from "effect/persistence"
+import * as RedisClient from "effect/redis/RedisClient"
+import * as RedisCommand from "effect/redis/RedisCommand"
 import * as PersistedCacheTest from "../../../effect/test/persistence/PersistedCacheTest.ts"
 import * as PersistedQueueTest from "../../../effect/test/persistence/PersistedQueueTest.ts"
-import { acquire, startRedis } from "../../../redis/test/utils/redis-server.ts"
+import { acquire, startRedis } from "../../../effect/test/redis/utils/redis-server.ts"
 
 const RedisLayer = Layer.unwrap(
   acquire(() => startRedis()).pipe(

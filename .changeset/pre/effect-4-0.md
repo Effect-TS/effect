@@ -22,7 +22,6 @@
 "@effect/sql-libsql": patch
 "@effect/sql-mssql": patch
 "@effect/sql-mysql2": patch
-"@effect/sql-pg": patch
 "@effect/sql-pglite": patch
 "@effect/sql-sqlite-bun": patch
 "@effect/sql-sqlite-do": patch
@@ -39,7 +38,7 @@ Effect 4.0 is the first stable release of Effect v4. It replaces the 4.0.0 beta 
 - All Effect packages share one version number and are released together. Use the same version of `effect` and every `@effect/*` package.
 - `@effect/platform`, `@effect/rpc`, `@effect/cluster`, `@effect/cli`, `@effect/ai`, `@effect/sql`, `@effect/workflow`, `@effect/experimental` and similar packages are merged into `effect`. Separate packages remain only for platforms (`@effect/platform-*`), SQL drivers (`@effect/sql-*`), AI providers (`@effect/ai-*`), framework bindings (`@effect/atom-*`), OpenTelemetry, Vitest and tooling.
 - Modules such as `effect/http`, `effect/http-api`, `effect/rpc`, `effect/cluster`, `effect/workflow`, `effect/ai`, `effect/cli`, `effect/sql` and `effect/schema` import from `effect/<area>`. APIs tagged `@stability unstable` may have breaking changes in minor releases. APIs without a stability tag follow semver.
-- APIs that expose a third-party dependency are tagged `@stability unstable`, because that dependency's releases can change them. This covers `NodeRedis`, `DenoRedis`, `BunRedis`, `@effect/platform-node/Undici` and the undici dispatcher APIs, the `ws` options and re-exports in the platform packages, driver-specific options and clients in `@effect/sql-clickhouse`, `@effect/sql-d1`, `@effect/sql-libsql`, `@effect/sql-mssql`, `@effect/sql-mysql2`, `@effect/sql-pglite` and `@effect/sql-sqlite-do`, the provider clients, models and generated schemas in the `@effect/ai-*` packages, `@effect/opentelemetry`, and the `vitest` re-export in `@effect/vitest`.
+- APIs that expose a third-party dependency are tagged `@stability unstable`, because that dependency's releases can change them. This covers `@effect/platform-node/Undici` and the undici dispatcher APIs, the `ws` options and re-exports in the platform packages, driver-specific options and clients in `@effect/sql-clickhouse`, `@effect/sql-d1`, `@effect/sql-libsql`, `@effect/sql-mssql`, `@effect/sql-mysql2`, `@effect/sql-pglite` and `@effect/sql-sqlite-do`, the provider clients, models and generated schemas in the `@effect/ai-*` packages, `@effect/opentelemetry`, and the `vitest` re-export in `@effect/vitest`.
 - `effect` has no runtime dependencies.
 - New packages in v4: `@effect/platform-deno`, `@effect/sql-pglite`, `@effect/ai-openai-compat`, `@effect/ai-typesafe`, `@effect/atom-react`, `@effect/atom-solid`, `@effect/atom-vue`, `@effect/openapi-generator` and `@effect/doctest`. `@effect/docgen` now lives in this repository.
 
@@ -73,7 +72,7 @@ Effect 4.0 is the first stable release of Effect v4. It replaces the 4.0.0 beta 
 
 **SQL**
 
-- `@effect/sql-pg` uses a built-in PostgreSQL client with pipelining, prepared statements and binary codecs, and no longer depends on `pg`.
+- `effect/postgres` provides a built-in PostgreSQL client with pipelining, prepared statements and binary codecs, and no longer depends on `pg`.
 - `@effect/sql-sqlite-node` uses Node's built-in `node:sqlite` and requires Node 22.16 or newer.
 - `SqlError` exposes structured reasons such as `UniqueViolation`.
 

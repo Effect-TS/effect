@@ -5,8 +5,9 @@
  * `Layer.provideMerge` based on what services you want to expose.
  */
 
-import { PgClient } from "@effect/sql-pg"
+import { NodeCrypto, NodeSocketConnector } from "@effect/platform-node"
 import { Array, Config, Context, Effect, Layer, type Option, Schema } from "effect"
+import { PgClient } from "effect/postgres"
 import { SqlClient, SqlError } from "effect/sql"
 
 // Define a layer for the SqlClient service
@@ -15,7 +16,7 @@ export const SqlClientLayer: Layer.Layer<
   Config.ConfigError | SqlError.SqlError
 > = PgClient.layerConfig({
   url: Config.Redacted("DATABASE_URL")
-})
+}).pipe(Layer.provide(Layer.merge(NodeSocketConnector.layer, NodeCrypto.layer)))
 
 export class UserRespositoryError extends Schema.TaggedError<UserRespositoryError>()("UserRespositoryError", {
   reason: SqlError.SqlError

@@ -74,7 +74,6 @@
     "tinybench": "^6.2.0"
   },
   "dependencies": {
-    "@effect/redis": "workspace:^",
     "@types/ws": "^8.18.1",
     "ws": "^8.22.0"
   }

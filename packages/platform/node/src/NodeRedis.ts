@@ -8,13 +8,13 @@
  * @since 4.0.0
  */
 import * as Shared from "@effect/platform-node-shared/NodeRedis"
-import * as RedisClient from "@effect/redis/RedisClient"
-import type { RedisError } from "@effect/redis/RedisError"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Redis from "effect/persistence/Redis"
+import * as RedisClient from "effect/redis/RedisClient"
+import type { RedisError } from "effect/redis/RedisError"
 
 /**
  * Native client configuration with Node socket and URL settings.

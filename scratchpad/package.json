@@ -17,7 +17,6 @@
     "@effect/sql-libsql": "workspace:*",
     "@effect/sql-mssql": "workspace:*",
     "@effect/sql-mysql2": "workspace:*",
-    "@effect/sql-pg": "workspace:*",
     "@effect/sql-sqlite-bun": "workspace:*",
     "@effect/sql-sqlite-do": "workspace:*",
     "@effect/sql-sqlite-node": "workspace:*",

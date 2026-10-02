@@ -170,6 +170,7 @@ export interface TlsUpgradeOptions {
   readonly passphrase?: Redacted.Redacted<string> | undefined
   readonly alpnProtocols?: ReadonlyArray<string> | undefined
   readonly requestCert?: boolean | undefined
+  readonly servername?: string | undefined
   readonly rejectUnauthorized?: boolean | undefined
 }
 

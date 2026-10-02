@@ -1,12 +1,17 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../../../tsconfig.base.json",
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "references": [
-    { "path": "../../effect" },
-    { "path": "../../redis" }
+    {
+      "path": "../../effect"
+    }
   ],
   "compilerOptions": {
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   }
 }

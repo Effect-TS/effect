@@ -5,7 +5,6 @@
   "references": [
     { "path": "ai-docs" },
     { "path": "packages/effect" },
-    { "path": "packages/redis" },
     { "path": "packages/ai/anthropic" },
     { "path": "packages/ai/openai-compat" },
     { "path": "packages/ai/openai" },
@@ -25,7 +24,6 @@
     { "path": "packages/sql/libsql" },
     { "path": "packages/sql/mysql2" },
     { "path": "packages/sql/mssql" },
-    { "path": "packages/sql/pg" },
     { "path": "packages/sql/pglite" },
     { "path": "packages/sql/sqlite-bun" },
     { "path": "packages/sql/sqlite-do" },

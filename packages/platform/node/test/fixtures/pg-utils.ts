@@ -1,6 +1,8 @@
-import { PgClient } from "@effect/sql-pg"
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
+import * as NodeSocketConnector from "@effect/platform-node/NodeSocketConnector"
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import { Context, Data, Effect, Layer, Redacted, String } from "effect"
+import { PgClient } from "effect/postgres"
 
 export class ContainerError extends Data.TaggedError("ContainerError")<{
   cause: unknown
@@ -24,7 +26,7 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
         url: Redacted.make(container.getConnectionUri())
       })
     })
-  ).pipe(Layer.provide(this.layer))
+  ).pipe(Layer.provide(this.layer), Layer.provide(Layer.merge(NodeSocketConnector.layer, NodeCrypto.layer)))
 
   static layerClientWithTransforms = Layer.unwrap(
     Effect.gen(function*() {
@@ -35,5 +37,5 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
         transformQueryNames: String.camelToSnake
       })
     })
-  ).pipe(Layer.provide(this.layer))
+  ).pipe(Layer.provide(this.layer), Layer.provide(Layer.merge(NodeSocketConnector.layer, NodeCrypto.layer)))
 }

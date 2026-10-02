@@ -6,7 +6,9 @@ import * as TestClock from "effect/testing/TestClock"
 const testCrypto = Crypto.make({
   randomBytes: (size) =>
     size === 7 ? Uint8Array.of(0x18, 0, 0, 0, 0, 0, 0) : Uint8Array.from({ length: size }, (_, i) => i),
-  digest: (algorithm, data) => Effect.succeed(Uint8Array.of(data.length, algorithm.length))
+  digest: (algorithm, data) => Effect.succeed(Uint8Array.of(data.length, algorithm.length)),
+  hmac: (_algorithm, _key, data) => Effect.succeed(data),
+  pbkdf2: (_algorithm, password) => Effect.succeed(password)
 })
 
 const makeCrypto = (value: bigint) =>
@@ -21,7 +23,9 @@ const makeCrypto = (value: bigint) =>
         Number((value >> 8n) & 0xffn),
         Number(value & 0xffn)
       ),
-    digest: (_algorithm, data) => Effect.succeed(data)
+    digest: (_algorithm, data) => Effect.succeed(data),
+    hmac: (_algorithm, _key, data) => Effect.succeed(data),
+    pbkdf2: (_algorithm, password) => Effect.succeed(password)
   })
 
 describe("Crypto", () => {
@@ -89,7 +93,9 @@ describe("Crypto", () => {
       Crypto.Crypto,
       Crypto.make({
         randomBytes: (size) => new Uint8Array(size).fill(0xff),
-        digest: (_algorithm, data) => Effect.succeed(data)
+        digest: (_algorithm, data) => Effect.succeed(data),
+        hmac: (_algorithm, _key, data) => Effect.succeed(data),
+        pbkdf2: (_algorithm, password) => Effect.succeed(password)
       })
     )))
 

@@ -200,9 +200,6 @@ importers:
       '@effect/sql-mysql2':
         specifier: workspace:*
         version: link:../packages/sql/mysql2
-      '@effect/sql-pg':
-        specifier: workspace:*
-        version: link:../packages/sql/pg
       '@effect/sql-sqlite-bun':
         specifier: workspace:*
         version: link:../packages/sql/sqlite-bun
@@ -336,6 +333,9 @@ importers:
 
   packages/effect:
     devDependencies:
+      '@testcontainers/postgresql':
+        specifier: ^12.1.0
+        version: 12.1.0(supports-color@10.2.2)
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
@@ -351,6 +351,9 @@ importers:
       immer:
         specifier: ^11.1.18
         version: 11.1.18
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
       protobufjs:
         specifier: ^8.8.0
         version: 8.8.0
@@ -427,9 +430,6 @@ importers:
       '@effect/platform-node-shared':
         specifier: workspace:^
         version: link:../node-shared
-      '@effect/redis':
-        specifier: workspace:^
-        version: link:../../redis
     devDependencies:
       '@types/bun':
         specifier: ^1.4.2
@@ -443,9 +443,6 @@ importers:
       '@effect/platform-node-shared':
         specifier: workspace:^
         version: link:../node-shared
-      '@effect/redis':
-        specifier: workspace:^
-        version: link:../../redis
       '@std/fs':
         specifier: jsr:^1.0.24
         version: '@jsr/std__fs@1.0.24'
@@ -474,9 +471,6 @@ importers:
       '@effect/platform-node-shared':
         specifier: workspace:^
         version: link:../node-shared
-      '@effect/redis':
-        specifier: workspace:^
-        version: link:../../redis
       undici:
         specifier: ^8.11.2
         version: 8.11.2
@@ -496,9 +490,6 @@ importers:
 
   packages/platform/node-shared:
     dependencies:
-      '@effect/redis':
-        specifier: workspace:^
-        version: link:../../redis
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
@@ -518,12 +509,6 @@ importers:
       tinybench:
         specifier: ^6.2.0
         version: 6.2.0
-
-  packages/redis:
-    devDependencies:
-      effect:
-        specifier: workspace:^
-        version: link:../effect
 
   packages/sql/clickhouse:
     dependencies:
@@ -589,24 +574,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
-
-  packages/sql/pg:
-    devDependencies:
-      '@testcontainers/postgresql':
-        specifier: ^12.1.0
-        version: 12.1.0(supports-color@10.2.2)
-      '@types/node':
-        specifier: ^26.6.3
-        version: 26.6.3
-      effect:
-        specifier: workspace:^
-        version: link:../../effect
-      postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
-      tinybench:
-        specifier: ^6.2.0
-        version: 6.2.0
 
   packages/sql/pglite:
     dependencies:
@@ -996,9 +963,6 @@ importers:
       '@effect/sql-mysql2':
         specifier: workspace:*
         version: link:../packages/sql/mysql2
-      '@effect/sql-pg':
-        specifier: workspace:*
-        version: link:../packages/sql/pg
       '@effect/sql-sqlite-bun':
         specifier: workspace:*
         version: link:../packages/sql/sqlite-bun
@@ -1041,9 +1005,6 @@ importers:
       '@effect/sql-mysql2':
         specifier: workspace:*
         version: link:../packages/sql/mysql2
-      '@effect/sql-pg':
-        specifier: workspace:*
-        version: link:../packages/sql/pg
       '@effect/sql-sqlite-bun':
         specifier: workspace:*
         version: link:../packages/sql/sqlite-bun

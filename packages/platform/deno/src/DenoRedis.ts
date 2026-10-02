@@ -7,14 +7,18 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Shared from "@effect/platform-node-shared/NodeRedis"
-import * as RedisClient from "@effect/redis/RedisClient"
-import type { RedisError } from "@effect/redis/RedisError"
+import type * as Shared from "@effect/platform-node-shared/NodeRedis"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Redis from "effect/persistence/Redis"
+import * as RedisClient from "effect/redis/RedisClient"
+import type { RedisError } from "effect/redis/RedisError"
+import * as RedisPersistence from "effect/redis/RedisPersistence"
+import * as SocketConnector from "effect/socket/SocketConnector"
+import * as DenoCrypto from "./DenoCrypto.ts"
+import * as DenoSocketConnector from "./DenoSocketConnector.ts"
 
 /**
  * Native client configuration with socket settings and Redis URLs.
@@ -54,10 +58,20 @@ export class DenoRedis
  * @category constructors
  * @since 4.0.0
  */
-export const make = Shared.make
+export const make = (options?: Options) =>
+  RedisClient.makeWithPlatform(clientOptions(options)).pipe(
+    Effect.provideService(SocketConnector.SocketConnector, DenoSocketConnector.make({ stream: options?.stream }))
+  )
+
+const clientOptions = (options?: Options): RedisClient.Options => {
+  const { stream: _stream, ...config } = options ?? {}
+  return config
+}
 
 const makeContext = (options?: Options) =>
-  Shared.makeContext(options).pipe(
+  RedisPersistence.makeContext(clientOptions(options)).pipe(
+    Effect.provideService(SocketConnector.SocketConnector, DenoSocketConnector.make({ stream: options?.stream })),
+    Effect.provide(DenoCrypto.layer),
     Effect.map((context) => Context.add(context, DenoRedis, Context.get(context, RedisClient.RedisClient)))
   )
 
