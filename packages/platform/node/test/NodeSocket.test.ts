@@ -9,7 +9,7 @@ import { Socket } from "effect/socket"
 import * as Stream from "effect/Stream"
 import * as Fs from "node:fs"
 import * as Net from "node:net"
-import { Duplex } from "node:stream"
+import { Duplex, PassThrough } from "node:stream"
 import * as Tls from "node:tls"
 import { fileURLToPath } from "node:url"
 import { vi } from "vitest"
@@ -194,6 +194,41 @@ describe("Socket", () => {
       if (batch.length === 2) {
         assert.strictEqual(batch[0], first)
         assert.strictEqual(batch[1], second)
+      }
+    }))
+
+  it.live("does not throw when a data listener closes the reader during a parked pull", () =>
+    Effect.gen(function*() {
+      const duplex = new PassThrough()
+      yield* Effect.addFinalizer(() => Effect.sync(() => duplex.destroy()))
+      const socket = yield* NodeSocket.fromDuplex(Effect.succeed(duplex))
+      const readScope = yield* Scope.fork(yield* Effect.scope)
+      const { pull } = yield* Scope.provide(socket.reader, readScope)
+      const uncaught: Array<unknown> = []
+      const onUncaught = (error: unknown) => uncaught.push(error)
+      process.on("uncaughtException", onUncaught)
+      yield* Effect.addFinalizer(() => Effect.sync(() => process.off("uncaughtException", onUncaught)))
+
+      let closeExit: Exit.Exit<void> | undefined
+      duplex.once("data", () => {
+        // runFork executes these synchronous finalizers inside conn.read().
+        closeExit = Effect.runFork(Scope.close(readScope, Exit.void)).pollUnsafe()
+      })
+      const reading = yield* Effect.forkChild(Effect.flip(pull), { startImmediately: true })
+      assert.isUndefined(reading.pollUnsafe())
+      duplex.write("hello\n")
+      // The readable event runs on nextTick. Wait until its entire handler has
+      // returned (or thrown), not merely until scope closure resumes the pull.
+      yield* Effect.callback<void>((resume) => {
+        setImmediate(() => resume(Effect.void))
+      })
+
+      assert.deepStrictEqual(closeExit, Exit.void)
+      assert.deepStrictEqual(uncaught, [])
+      const error = yield* Fiber.join(reading)
+      assert.strictEqual(error.reason._tag, "SocketCloseError")
+      if (error.reason._tag === "SocketCloseError") {
+        assert.strictEqual(error.reason.code, 1006)
       }
     }))
 
