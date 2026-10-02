@@ -175,13 +175,11 @@ function addNodesToRing<A extends PrimaryKey.PrimaryKey>(self: HashRing<A>, keys
       ])
     }
   }
-  // Break hash ties by node key, so the ring order does not depend on the
-  // order nodes were added
+  // Break hash ties by node key to avoid insertion-order dependence.
   self.ring.sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0))
 }
 
-// Sum the weights in key order, so fractional weights produce the same total
-// regardless of the order nodes were added or removed
+// Sum in key order to avoid history-dependent floating-point rounding.
 function updateTotalWeight<A extends PrimaryKey.PrimaryKey>(self: HashRing<A>) {
   const keys = Array.from(self.nodes.keys()).sort()
   let total = 0
