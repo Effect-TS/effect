@@ -342,7 +342,7 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
         return Effect.scoped(
           Effect.flatMap(reserve({ node: endpoint }), (connection) =>
             Effect.forEach(batch, (command) =>
-              Effect.andThen(connection.execute(["ASKING"]), Effect.result(connection.execute(command.arguments)))))
+              Effect.result(Effect.andThen(connection.execute(["ASKING"]), connection.execute(command.arguments)))))
         )
       }
 
