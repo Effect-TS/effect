@@ -119,20 +119,33 @@ const reservedCommands = new Set(
 )
 const reservedClientCommands = new Set(["REPLY", "TRACKING", "CACHING", "SETNAME", "SETINFO", "NO-EVICT", "NO-TOUCH"])
 
+// Command names repeat, so the outcome is cached unless it depends on the arguments.
+const reservationCache = new Map<string, boolean>()
 const requiresReservation = (args: ReadonlyArray<Protocol.Argument>): boolean => {
-  const command = argumentText(args[0]).toUpperCase()
-  if (reservedCommands.has(command)) return true
-  switch (command) {
-    case "XREAD":
-    case "XREADGROUP":
-      return Command.parseStreams(args)?.blocking === true
-    case "CLIENT":
-      return reservedClientCommands.has(argumentText(args[1]).toUpperCase())
-    case "SCRIPT":
-      return argumentText(args[1]).toUpperCase() === "DEBUG"
-    default:
-      return false
+  const first = args[0]
+  const cached = typeof first === "string" ? reservationCache.get(first) : undefined
+  if (cached !== undefined) return cached
+  const command = argumentText(first).toUpperCase()
+  let result: boolean
+  if (reservedCommands.has(command)) result = true
+  else {
+    switch (command) {
+      case "XREAD":
+      case "XREADGROUP":
+        return Command.parseStreams(args)?.blocking === true
+      case "CLIENT":
+        return reservedClientCommands.has(argumentText(args[1]).toUpperCase())
+      case "SCRIPT":
+        return argumentText(args[1]).toUpperCase() === "DEBUG"
+      default:
+        result = false
+    }
   }
+  if (typeof first === "string") {
+    if (reservationCache.size >= 1024) reservationCache.clear()
+    reservationCache.set(first, result)
+  }
+  return result
 }
 
 const reservationRequired = () => notSent("Routing", "This command requires a reserved Redis connection")
@@ -204,10 +217,24 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     current?: Connection.RedisConnection
   }
   const shared = new Map<string, Shared>()
+  // Topologies return stable endpoint objects, so the last lookup is cached
+  // until the map changes.
+  let lastEndpoint: Connection.Endpoint | undefined
+  let lastShared: Shared | undefined
+  const sharedFor = (endpoint: Connection.Endpoint): Shared | undefined => {
+    if (endpoint !== lastEndpoint) {
+      lastEndpoint = endpoint
+      lastShared = shared.get(endpointKey(endpoint))
+    }
+    return lastShared
+  }
 
   const dropShared = (key: string, entry: Shared) =>
     Effect.suspend(() => {
-      if (shared.get(key) === entry) shared.delete(key)
+      if (shared.get(key) === entry) {
+        shared.delete(key)
+        lastEndpoint = undefined
+      }
       return Scope.close(entry.scope, Exit.void)
     })
 
@@ -227,6 +254,7 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
       }
       const entry: Shared = { scope: Scope.forkUnsafe(scope), connection: Deferred.makeUnsafe() }
       shared.set(key, entry)
+      lastEndpoint = undefined
       return Connection.make(connector, endpoint, config).pipe(
         Scope.provide(entry.scope),
         Effect.map((connection) => entry.current = connection),
@@ -307,6 +335,12 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
           const error = check(args, routing)
           return error === undefined ? connection.execute(args) : Effect.fail(error)
         }),
+      submitUnsafe: (args, onResult) => {
+        const error = check(args, undefined)
+        if (error === undefined) return connection.submitUnsafe(args, onResult)
+        onResult(Result.fail(error))
+        return () => {}
+      },
       pipeline: (commands) =>
         Effect.suspend(() => {
           for (const command of commands) {
@@ -433,10 +467,31 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
         )
       )
     }
-    const current = shared.get(endpointKey(target.endpoint))?.current
+    const current = sharedFor(target.endpoint)?.current
     return current?.isOpen()
       ? current.execute(args)
       : Effect.flatMap(connect(target.endpoint), (connection) => connection.execute(args))
+  }
+
+  const recover = (
+    args: ReadonlyArray<Protocol.Argument>,
+    routing: Command.Routing | undefined,
+    target: Topology.Resolved,
+    remaining: number,
+    error: RedisError
+  ): Effect.Effect<Protocol.Reply, RedisError> => {
+    if (closed) return Effect.fail(error)
+    const redirect = topology.redirect(error, target.endpoint)
+    if (redirect !== undefined) {
+      return remaining > 0 ? send(args, routing, redirect, remaining - 1) : Effect.fail(Cluster.redirectLimit(error))
+    }
+    if (topology._tag === "Sentinel" && error.code === "READONLY" && remaining > 0) {
+      return Effect.flatMap(refresh, () => {
+        const next = topology.route(args, routing)
+        return next._tag === "Failure" ? Effect.fail(next.failure) : send(args, routing, next.success, remaining - 1)
+      })
+    }
+    return isDisconnect(error) ? Effect.andThen(Effect.ignore(refresh), Effect.fail(error)) : Effect.fail(error)
   }
 
   const send = (
@@ -445,27 +500,26 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
     target: Topology.Resolved,
     remaining: number
   ): Effect.Effect<Protocol.Reply, RedisError> =>
-    Effect.catch(attempt(args, target), (error): Effect.Effect<Protocol.Reply, RedisError> => {
-      if (closed) return Effect.fail(error)
-      const redirect = topology.redirect(error, target.endpoint)
-      if (redirect !== undefined) {
-        return remaining > 0 ? send(args, routing, redirect, remaining - 1) : Effect.fail(Cluster.redirectLimit(error))
-      }
-      if (topology._tag === "Sentinel" && error.code === "READONLY" && remaining > 0) {
-        return Effect.flatMap(refresh, () => {
-          const next = topology.route(args, routing)
-          return next._tag === "Failure" ? Effect.fail(next.failure) : send(args, routing, next.success, remaining - 1)
-        })
-      }
-      return isDisconnect(error) ? Effect.andThen(Effect.ignore(refresh), Effect.fail(error)) : Effect.fail(error)
-    })
+    Effect.catch(attempt(args, target), (error) => recover(args, routing, target, remaining, error))
+
+  // Per-connection timeouts need the Effect path; otherwise an open shared
+  // connection takes the command synchronously inside one callback.
+  const direct = config.commandTimeout === undefined
 
   const execute: RedisClient["execute"] = (args, routing) =>
-    Effect.suspend(() => {
-      if (closed) return Effect.fail(clientClosed())
-      if (requiresReservation(args)) return Effect.fail(reservationRequired())
+    Effect.callback((resume) => {
+      if (closed) return resume(Effect.fail(clientClosed()))
+      if (requiresReservation(args)) return resume(Effect.fail(reservationRequired()))
       const target = topology.route(args, routing)
-      return target._tag === "Failure" ? Effect.fail(target.failure) : send(args, routing, target.success, maxRedirects)
+      if (target._tag === "Failure") return resume(Effect.fail(target.failure))
+      const current = direct && !target.success.asking ? sharedFor(target.success.endpoint)?.current : undefined
+      if (current === undefined || !current.isOpen()) return resume(send(args, routing, target.success, maxRedirects))
+      return Effect.sync(current.submitUnsafe(args, (result) =>
+        resume(
+          result._tag === "Success"
+            ? Effect.succeed(result.success)
+            : recover(args, routing, target.success, maxRedirects, result.failure)
+        )))
     })
 
   const run = <A>(command: Command.RedisCommand<A>): Effect.Effect<A, RedisError> =>
@@ -494,12 +548,15 @@ const makeClient = Effect.fnUntraced(function*(connector: Connection.Connector, 
   return client
 })
 
-const standalone = (endpoint: Connection.Endpoint): Topology.Topology => ({
-  _tag: "Standalone",
-  route: (_args, routing) => Result.succeed({ endpoint: routing?.node ?? endpoint }),
-  resolve: (_args, routing) => Effect.succeed({ endpoint: routing?.node ?? endpoint }),
-  refresh: Effect.void,
-  endpoints: () => [endpoint],
-  redirect: () => undefined,
-  onChange: () => () => {}
-})
+const standalone = (endpoint: Connection.Endpoint): Topology.Topology => {
+  const resolved: Result.Result<Topology.Resolved, RedisError> = Result.succeed({ endpoint })
+  return {
+    _tag: "Standalone",
+    route: (_args, routing) => routing?.node === undefined ? resolved : Result.succeed({ endpoint: routing.node }),
+    resolve: (_args, routing) => Effect.succeed({ endpoint: routing?.node ?? endpoint }),
+    refresh: Effect.void,
+    endpoints: () => [endpoint],
+    redirect: () => undefined,
+    onChange: () => () => {}
+  }
+}

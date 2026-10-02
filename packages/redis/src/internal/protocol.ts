@@ -6,6 +6,7 @@ const decoder = new TextDecoder()
 
 const CR = 13
 const LF = 10
+const empty = new Uint8Array(0)
 
 export const encode = (args: ReadonlyArray<Argument>): Uint8Array => {
   const values = args.map((arg) => typeof arg === "string" ? encoder.encode(arg) : arg)
@@ -21,6 +22,34 @@ export const encode = (args: ReadonlyArray<Argument>): Uint8Array => {
     bytes[offset++] = LF
   }
   return bytes
+}
+
+const nonAscii = /[\u0080-\uffff]/
+
+/** UTF-8 byte length of a string. */
+export const utf8Length = (text: string): number => {
+  if (!nonAscii.test(text)) return text.length
+  let length = 0
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i)
+    if (code < 0x80) length += 1
+    else if (code < 0x800) length += 2
+    else if (code >= 0xd800 && code <= 0xdbff) {
+      length += 4
+      i++
+    } else length += 3
+  }
+  return length
+}
+
+/** Encodes text-only arguments as a RESP string, or undefined when an argument is binary. */
+export const encodeText = (args: ReadonlyArray<Argument>): string | undefined => {
+  let text = `*${args.length}\r\n`
+  for (const arg of args) {
+    if (typeof arg !== "string") return undefined
+    text += `$${utf8Length(arg)}\r\n${arg}\r\n`
+  }
+  return text
 }
 
 const writeHeader = (bytes: Uint8Array, offset: number, marker: string, length: number): number => {
@@ -102,7 +131,7 @@ export const makeParser = (options: ParserOptions = {}): Parser => {
   if (!Number.isSafeInteger(maxDepth) || maxDepth < 1) fail("Invalid maxDepth")
   if (!Number.isSafeInteger(maxAggregateLength) || maxAggregateLength < 0) fail("Invalid maxAggregateLength")
 
-  let buffer: Uint8Array = new Uint8Array(0)
+  let buffer: Uint8Array = empty
   // Bytes consumed by the top-level reply currently being decoded.
   let frameSize = 0
   let body: Body | undefined
@@ -140,6 +169,17 @@ export const makeParser = (options: ParserOptions = {}): Parser => {
   const length = (text: string): number => {
     const value = lengthPattern.test(text) ? Number(text) : NaN
     if (!Number.isSafeInteger(value)) fail("Invalid RESP length")
+    return value
+  }
+
+  // Decimal length headers are parsed without building a string.
+  const lengthOf = (content: Uint8Array): number => {
+    if (content.length === 0 || content.length > 15) return length(ascii(content))
+    let value = 0
+    for (const byte of content) {
+      if (byte < 48 || byte > 57) return length(ascii(content))
+      value = value * 10 + (byte - 48)
+    }
     return value
   }
 
@@ -220,17 +260,16 @@ export const makeParser = (options: ParserOptions = {}): Parser => {
         if (content.length !== 0) fail("Invalid RESP null")
         return emit({ _tag: "Null" })
       case "$": {
-        const header = ascii(content)
-        if (header === "-1") return emit({ _tag: "Null" })
-        if (header === "?") {
+        if (content.length === 2 && content[0] === 45 && content[1] === 49) return emit({ _tag: "Null" })
+        if (content.length === 1 && content[0] === 63) {
           streamed = []
           return
         }
-        return startBody("$", length(header))
+        return startBody("$", lengthOf(content))
       }
       case "!":
       case "=":
-        return startBody(marker, length(ascii(content)))
+        return startBody(marker, lengthOf(content))
       case "*":
       case "%":
       case "~":
@@ -311,7 +350,7 @@ export const makeParser = (options: ParserOptions = {}): Parser => {
       output = []
       const consumed = decode()
       // Retain a private copy of any incomplete header; callers may reuse chunks.
-      buffer = buffer.slice(consumed)
+      buffer = consumed === buffer.length ? empty : buffer.slice(consumed)
       const replies = output
       output = []
       return replies

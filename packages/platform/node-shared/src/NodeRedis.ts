@@ -109,18 +109,23 @@ export const make = Effect.fnUntraced(function*(options: Options = {}) {
 export const makeContext = Effect.fnUntraced(function*(options: Options = {}) {
   const client = yield* make(options)
   const cluster = options.topology?._tag === "Cluster"
+  const toValue = {
+    onFailure: (cause: RedisError) => Effect.fail(new Redis.RedisError({ cause })),
+    onSuccess: (reply: RedisProtocol.Reply) => {
+      try {
+        return Effect.succeed(RedisProtocol.toValue(reply))
+      } catch (cause) {
+        return Effect.fail(new Redis.RedisError({ cause }))
+      }
+    }
+  }
   const sendTo =
     (node?: Endpoint): Redis.Redis["Service"]["send"] =>
     <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-      client.execute([command, ...args], node === undefined ? undefined : { node, keyIndexes: [] }).pipe(
-        Effect.flatMap((reply) =>
-          Effect.try({
-            try: () => RedisProtocol.toValue(reply) as A,
-            catch: (cause) => new Redis.RedisError({ cause })
-          })
-        ),
-        Effect.mapError((cause) => cause instanceof Redis.RedisError ? cause : new Redis.RedisError({ cause }))
-      )
+      Effect.matchEffect(
+        client.execute([command, ...args], node === undefined ? undefined : { node, keyIndexes: [] }),
+        toValue
+      ) as Effect.Effect<A, Redis.RedisError>
   const adapter = yield* Redis.make({
     cluster,
     scriptHash: (lua) =>

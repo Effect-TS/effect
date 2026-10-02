@@ -8,7 +8,6 @@ import * as Cause from "effect/Cause"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import * as Scope from "effect/Scope"
@@ -89,6 +88,16 @@ export interface Config {
 export interface RedisConnection {
   readonly endpoint: Endpoint
   readonly execute: (args: ReadonlyArray<Argument>, routing?: Routing) => Effect.Effect<Reply, RedisError>
+  /**
+   * Submits one command without an Effect and delivers its result to
+   * `onResult`, ignoring `commandTimeout`. The returned function withdraws the
+   * command while it is still queued; written commands stay in flight so
+   * later replies remain aligned.
+   */
+  readonly submitUnsafe: (
+    args: ReadonlyArray<Argument>,
+    onResult: (result: Result.Result<Reply, RedisError>) => void
+  ) => () => void
   /** Writes the commands together and collects one result per command. */
   readonly pipeline: (
     commands: ReadonlyArray<{
@@ -105,7 +114,9 @@ export interface RedisConnection {
 }
 
 interface Entry {
-  readonly bytes: Uint8Array
+  /** RESP-encoded command, as text when every argument is text. */
+  readonly payload: string | Uint8Array
+  readonly size: number
   readonly subscription: { readonly kind: string; readonly channel: Uint8Array } | undefined
   readonly protocol: 2 | 3 | undefined
   readonly reset: boolean
@@ -139,12 +150,25 @@ const decoder = new TextDecoder()
 const toError = (cause: unknown, message: string): RedisError =>
   cause instanceof RedisError ? cause : new RedisError({ reason: "Protocol", message, cause, outcome: "NotSent" })
 
+// Command names repeat, so their normalised form is cached.
+const commandNames = new Map<string, string>()
+const commandName = (arg: Argument | undefined): string => {
+  if (typeof arg !== "string") return Internal.argumentText(arg).toUpperCase()
+  let name = commandNames.get(arg)
+  if (name === undefined) {
+    if (commandNames.size >= 1024) commandNames.clear()
+    name = arg.toUpperCase()
+    commandNames.set(arg, name)
+  }
+  return name
+}
+
 const prepare = (
   args: ReadonlyArray<Argument>,
   onResult: Entry["onResult"]
 ): Entry => {
-  const command = Internal.argumentText(args[0]).toUpperCase()
-  const subcommand = Internal.argumentText(args[1]).toUpperCase()
+  const command = commandName(args[0])
+  const subcommand = command === "CLIENT" || command === "HELLO" ? Internal.argumentText(args[1]).toUpperCase() : ""
   if (
     args.length === 0 || command === "MONITOR" || command === "QUIT" || (command === "CLIENT" && subcommand === "REPLY")
   ) {
@@ -159,8 +183,10 @@ const prepare = (
       channel: typeof channel === "string" ? encoder.encode(channel) : channel.slice()
     }
   }
+  const payload = Protocol.encodeText(args) ?? Protocol.encode(args)
   return {
-    bytes: Protocol.encode(args),
+    payload,
+    size: typeof payload === "string" ? Protocol.utf8Length(payload) : payload.length,
     subscription,
     protocol: command === "RESET" || (command === "HELLO" && subcommand === "2")
       ? 2
@@ -175,13 +201,19 @@ const prepare = (
   }
 }
 
-const concat = (entries: ReadonlyArray<Entry>): Uint8Array => {
-  if (entries.length === 1) return entries[0].bytes
-  const bytes = new Uint8Array(entries.reduce((size, entry) => size + entry.bytes.length, 0))
+const concat = (entries: ReadonlyArray<Entry>): string | Uint8Array => {
+  if (entries.length === 1) return entries[0].payload
+  if (entries.every((entry) => typeof entry.payload === "string")) {
+    let text = ""
+    for (const entry of entries) text += entry.payload as string
+    return text
+  }
+  const bytes = new Uint8Array(entries.reduce((size, entry) => size + entry.size, 0))
   let offset = 0
   for (const entry of entries) {
-    bytes.set(entry.bytes, offset)
-    offset += entry.bytes.length
+    const chunk = typeof entry.payload === "string" ? encoder.encode(entry.payload) : entry.payload
+    bytes.set(chunk, offset)
+    offset += chunk.length
   }
   return bytes
 }
@@ -216,11 +248,15 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   }
 
   const transport = yield* connector(endpoint)
-  const outgoing = yield* Queue.unbounded<Entry, RedisError>()
   const terminal = Deferred.makeUnsafe<never, RedisError>()
   const unsettled = new Set<Entry>()
+  // Admitted entries awaiting the next write.
+  let pending: Array<Entry> = []
   // Entries written to the transport, in reply order.
   const inflight: Array<Entry> = []
+  // Resumes the writer fiber once a batch is ready or the connection failed.
+  let wake: ((exit: Effect.Effect<void, RedisError>) => void) | undefined
+  let flushScheduled = false
   const listeners = new Set<(reply: Reply) => void>()
   let failure: RedisError | undefined
   let queuedBytes = 0
@@ -232,7 +268,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     if (entry.done) return
     entry.done = true
     unsettled.delete(entry)
-    if (!entry.sent) queuedBytes -= entry.bytes.length
+    if (!entry.sent) queuedBytes -= entry.size
     if (!entry.canceled) entry.onResult(result)
   }
 
@@ -249,8 +285,11 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       settle(entry, Result.fail(Internal.withOutcome(error, entry.sent ? "Unknown" : "NotSent")))
     }
     inflight.length = 0
+    pending = []
     listeners.clear()
-    Queue.failCauseUnsafe(outgoing, Cause.fail(error))
+    const resume = wake
+    wake = undefined
+    resume?.(Effect.fail(error))
     Deferred.doneUnsafe(terminal, Effect.fail(error))
   }
 
@@ -270,14 +309,31 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     return transport.close
   }
 
+  // Commands admitted in the same tick are written together in one batch;
+  // the writer fiber is woken synchronously from the microtask.
+  const flush = () => {
+    flushScheduled = false
+    const resume = wake
+    if (resume === undefined || failure !== undefined) return
+    wake = undefined
+    resume(Effect.void)
+  }
+
   const admit = (entries: ReadonlyArray<Entry>) => {
-    const size = entries.reduce((total, entry) => total + entry.bytes.length, 0)
+    let size = 0
+    for (const entry of entries) size += entry.size
     if (unsettled.size + entries.length > maxPending || queuedBytes + size > maxQueuedBytes) {
       throw Internal.notSent("Capacity", "Redis command queue capacity exceeded")
     }
     queuedBytes += size
-    for (const entry of entries) unsettled.add(entry)
-    Queue.offerAllUnsafe(outgoing, entries)
+    for (const entry of entries) {
+      unsettled.add(entry)
+      pending.push(entry)
+    }
+    if (!flushScheduled) {
+      flushScheduled = true
+      queueMicrotask(flush)
+    }
   }
 
   const submit = (
@@ -333,28 +389,44 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
       return Effect.as(timed, results)
     })
 
+  const noop = () => {}
+
+  const submitUnsafe: RedisConnection["submitUnsafe"] = (args, onResult) => {
+    let entry: Entry
+    try {
+      if (failure !== undefined) throw Internal.notSent("Closed", "Redis connection is unavailable")
+      entry = prepare(args, onResult)
+      admit([entry])
+    } catch (cause) {
+      onResult(Result.fail(toError(cause, "Cannot encode Redis command")))
+      return noop
+    }
+    return () => cancel(entry)
+  }
+
   const execute = (args: ReadonlyArray<Argument>): Effect.Effect<Reply, RedisError> =>
     timeout !== undefined
       ? Effect.flatMap(run([args]), (results) => Effect.fromResult(results[0]))
-      : Effect.callback((resume) => {
-        let entry: Entry
-        try {
-          if (failure !== undefined) throw Internal.notSent("Closed", "Redis connection is unavailable")
-          entry = prepare(args, (result) => resume(Effect.fromResult(result)))
-          admit([entry])
-        } catch (cause) {
-          return resume(Effect.fail(toError(cause, "Cannot encode Redis command")))
-        }
-        return Effect.sync(() => cancel(entry))
-      })
+      : Effect.callback((resume) =>
+        Effect.sync(submitUnsafe(args, (result) =>
+          resume(result._tag === "Success" ? Effect.succeed(result.success) : Effect.fail(result.failure))))
+      )
 
-  yield* Queue.takeAll(outgoing).pipe(
-    Effect.flatMap((batch) => {
+  const awaitBatch = Effect.callback<void, RedisError>((resume) => {
+    if (failure !== undefined) return resume(Effect.fail(failure))
+    if (pending.length > 0 && !flushScheduled) return resume(Effect.void)
+    wake = resume
+  })
+
+  yield* awaitBatch.pipe(
+    Effect.flatMap(() => {
+      const batch = pending
+      pending = []
       const entries = batch.filter((entry) => !entry.done)
       if (entries.length === 0) return Effect.void
       for (const entry of entries) {
         entry.sent = true
-        queuedBytes -= entry.bytes.length
+        queuedBytes -= entry.size
         inflight.push(entry)
       }
       return transport.write(concat(entries))
@@ -431,6 +503,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
   const connection: RedisConnection = {
     endpoint,
     execute,
+    submitUnsafe,
     pipeline: (commands) => run(commands.map((command) => command.arguments)),
     close,
     closed: Deferred.await(terminal),
