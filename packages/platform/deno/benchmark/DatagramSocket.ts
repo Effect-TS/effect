@@ -1162,7 +1162,7 @@ interface FakeSocket {
 }
 
 const openFake = async (receiveBuffer?: DatagramSocket.ReceiveBufferOptions): Promise<FakeSocket> => {
-  let events: DatagramSocket.NativeEvents | undefined
+  let events: DatagramSocket.BackingSocketEvents | undefined
   const handle: DatagramSocket.BackingSocket = {
     address: { host: ipv4Host, port: 9000 },
     // reads the destination during the call, as the contract asks
