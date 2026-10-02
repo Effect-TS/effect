@@ -119,7 +119,6 @@ export interface State<A, E> {
   isShuttingDown: boolean
   usage: number
   readonly resizeSemaphore: Semaphore.Semaphore
-  // Insertion order determines usage-TTL retirement order; reclaimed items move to the back.
   readonly items: Set<PoolItem<A, E>>
   availableHead: PoolItem<A, E> | undefined
   availableTail: PoolItem<A, E> | undefined
@@ -258,8 +257,11 @@ export const make = <A, E, R>(options: {
  * utilized before creating more items.
  *
  * `timeToLiveStrategy` controls when excess items expire: `"creation"` measures
- * from item creation, while `"usage"` measures from pool usage. The default is
- * `"usage"`.
+ * from item creation, while `"usage"` measures idle time since an item was last
+ * released by all borrowers (or acquired, if never borrowed). The default is
+ * `"usage"`. Usage-based expiration only retires idle, unreserved excess items,
+ * checking every `timeToLive`; retirement can take up to two TTL intervals
+ * after the last release.
  *
  * **Example** (Creating a connection pool)
  *
@@ -625,6 +627,10 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     const state = self.state
     item.refCount--
     state.usage--
+    if (item.refCount === 0) {
+      const idle = usageIdleTimes.get(item)
+      if (idle !== undefined) idle.since = idle.clock.currentTimeMillisUnsafe()
+    }
     if (state.invalidated.has(item)) {
       return invalidatePoolItem(self, item)
     }
@@ -999,26 +1005,39 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
   })
 })
 
-const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, E>> =>
-  Effect.succeed<Strategy<A, E>>({
+// Weak keys avoid retaining retired items. Release timestamps use the same
+// captured clock as the strategy sweeps.
+const usageIdleTimes = new WeakMap<PoolItem<unknown, unknown>, { clock: Clock; since: number }>()
+
+const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
+  const clock = yield* Clock
+  const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
+  return identity<Strategy<A, E>>({
     run: (pool) => {
-      // `state.items` iterates in insertion order, so its oldest live entry is
-      // the next to retire. Using it directly means an item stops being
-      // referenced by this strategy as soon as it leaves the pool.
       const process: Effect.Effect<void> = Effect.suspend(() => {
         if (activeSize(pool) <= targetSize(pool)) return Effect.void
+        const now = clock.currentTimeMillisUnsafe()
+        let oldest: PoolItem<A, E> | undefined
+        let oldestSince = Infinity
         for (const item of pool.state.items) {
-          if (pool.state.invalidated.has(item)) continue
-          return Effect.flatMap(invalidatePoolItem(pool, item), () => process)
+          if (item.refCount !== 0 || pool.state.invalidated.has(item) || reservations.has(item)) continue
+          const idle = usageIdleTimes.get(item)
+          if (idle !== undefined && now - idle.since >= ttlMillis && idle.since < oldestSince) {
+            oldest = item
+            oldestSince = idle.since
+          }
         }
-        return Effect.void
+        return oldest === undefined ? Effect.void : Effect.flatMap(invalidatePoolItem(pool, oldest), () => process)
       })
       return process.pipe(
         Effect.delay(ttl),
         Effect.forever({ disableYield: true })
       )
     },
-    onAcquire: (_) => Effect.void,
+    onAcquire: (item) =>
+      Effect.sync(() => {
+        usageIdleTimes.set(item, { clock, since: clock.currentTimeMillisUnsafe() })
+      }),
     reclaim(pool) {
       return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
         if (pool.state.invalidated.size === 0) {
@@ -1031,7 +1050,6 @@ const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, 
           return Effect.undefined
         }
         pool.state.invalidated.delete(item.value)
-        // Re-adding moves the reclaimed item to the back of the retirement order.
         pool.state.items.delete(item.value)
         pool.state.items.add(item.value)
         if (item.value.refCount < pool.config.concurrency) {
@@ -1041,6 +1059,7 @@ const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, 
       })
     }
   })
+})
 
 const reportUnhandledError = <E>(cause: Cause.Cause<E>) =>
   Effect.withFiber<void>((fiber) => {
