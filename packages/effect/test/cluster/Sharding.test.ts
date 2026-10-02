@@ -408,7 +408,7 @@ describe.concurrent("Sharding", () => {
           1,
           "reset request was claimed but not redelivered before claim expiry"
         )
-      }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
+      }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 1000 }, (storage) => ({
         ...storage,
         unprocessedMessages: (shardIds, options) =>
           Effect.gen(function*() {
