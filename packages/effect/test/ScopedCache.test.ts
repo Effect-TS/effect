@@ -1892,6 +1892,55 @@ describe("ScopedCache", () => {
 
   describe("error scenarios", () => {
     describe("Failed Lookups", () => {
+      it.effect("settles concurrent gets when TTL calculation throws after an asynchronous lookup", () =>
+        Effect.gen(function*() {
+          const started = yield* Latch.make()
+          const finish = yield* Latch.make()
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) => Effect.andThen(started.open, Effect.as(finish.await, 42)),
+            timeToLive: () => {
+              throw new Error("TTL defect")
+            }
+          })
+
+          const first = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* started.await
+          const second = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Effect.yieldNow
+          yield* finish.open
+          yield* TestClock.adjust("1 second")
+
+          assert.deepStrictEqual(yield* Fiber.join(first), Option.some(Exit.succeed(42)))
+          assert.deepStrictEqual(yield* Fiber.join(second), Option.some(Exit.succeed(42)))
+        }))
+
+      it.effect("does not cache an asynchronous failure with zero TTL", () =>
+        Effect.gen(function*() {
+          let lookupCount = 0
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) =>
+              Effect.promise(() => Promise.resolve()).pipe(
+                Effect.andThen(Effect.sync(() => ++lookupCount)),
+                Effect.flatMap((count) => count === 1 ? Effect.fail("error") : Effect.succeed(count))
+              ),
+            timeToLive: (exit) => Exit.isFailure(exit) ? Duration.zero : Duration.infinity
+          })
+
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "test")), Exit.fail("error"))
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "test")), Exit.succeed(2))
+          assert.strictEqual(lookupCount, 2)
+        }))
+
       it.effect("failed lookup caches the failure", () =>
         Effect.gen(function*() {
           let lookupCount = 0
