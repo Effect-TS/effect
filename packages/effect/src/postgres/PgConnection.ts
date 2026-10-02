@@ -1121,6 +1121,7 @@ class PreparedCache {
   private readonly namespace: string
   private closes: Array<Uint8Array> | undefined
   private counter = 0
+  private mostRecent: Prepared | undefined
 
   constructor(max: number, namespace: string) {
     this.namespace = namespace
@@ -1129,12 +1130,17 @@ class PreparedCache {
 
   get(sql: string, parameterTypes: ReadonlyArray<number>): Prepared {
     const key = parameterTypes.length === 0 ? sql : `${sql}\u0000${parameterTypes.join(",")}`
+    if (this.mostRecent?.key === key) {
+      this.trim(this.mostRecent)
+      return this.mostRecent
+    }
     const found = this.statements.get(key)
     if (found !== undefined) {
       // Re-insert to move it to the end: `Map` iterates in insertion order, so
       // the first key is the least recently used one.
       this.statements.delete(key)
       this.statements.set(key, found)
+      this.mostRecent = found
       this.trim(found)
       return found
     }
@@ -1146,6 +1152,7 @@ class PreparedCache {
       description: undefined
     }
     this.statements.set(key, prepared)
+    this.mostRecent = prepared
     this.trim(prepared)
     return prepared
   }
@@ -1165,7 +1172,7 @@ class PreparedCache {
         }
       }
       if (evicted === undefined) return
-      this.statements.delete(evicted.key)
+      this.remove(evicted)
       if (evicted.ready) this.close(evicted.name)
     }
   }
@@ -1179,7 +1186,7 @@ class PreparedCache {
    */
   evict(prepared: Prepared): void {
     if (prepared.parsing) return
-    if (this.statements.delete(prepared.key) && prepared.ready) this.close(prepared.name)
+    if (this.remove(prepared) && prepared.ready) this.close(prepared.name)
   }
 
   /**
@@ -1191,8 +1198,13 @@ class PreparedCache {
    * no-op.
    */
   evictFailed(prepared: Prepared): void {
-    this.statements.delete(prepared.key)
+    this.remove(prepared)
     this.close(prepared.name)
+  }
+
+  private remove(prepared: Prepared): boolean {
+    if (this.mostRecent?.key === prepared.key) this.mostRecent = undefined
+    return this.statements.delete(prepared.key)
   }
 
   private close(name: string): void {

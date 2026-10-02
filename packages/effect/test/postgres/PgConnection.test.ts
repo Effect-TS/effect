@@ -436,6 +436,54 @@ describe("PgConnection in-process server", () => {
       assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "D", "E", "S", "P", "B", "D", "E", "S"])
     }))
 
+  it.effect("closes excess prepared statements when immediately reusing the last pipelined query", () =>
+    Effect.gen(function*() {
+      const writes: Array<Buffer> = []
+      const reusedQueryResult = Buffer.concat([
+        backendMessage("2", Buffer.alloc(0)),
+        backendMessage("C", Buffer.from("SELECT 0\0")),
+        readyForQuery
+      ])
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          const message = Buffer.from(chunk)
+          writes.push(message)
+          const replies: Array<Buffer> = []
+          if (writes.length === 1) {
+            replies.push(authenticationOk, backendKeyData, readyForQuery)
+          } else {
+            let parses = false
+            for (const tag of frontendTags(message)) {
+              if (tag === "C") replies.push(backendMessage("3", Buffer.alloc(0)))
+              if (tag === "P") parses = true
+              if (tag === "S") {
+                replies.push(parses ? emptyQueryResult : reusedQueryResult)
+                parses = false
+              }
+            }
+          }
+          queueMicrotask(() => socket.push(Buffer.concat(replies)))
+          callback()
+        }
+      })
+      const connection = yield* makeConnection({
+        username: "test",
+        stream: () => socket,
+        multiplex: true,
+        preparedStatementCacheSize: 1
+      })
+      yield* Effect.all([connection.query("SELECT 1"), connection.query("SELECT 2")], {
+        concurrency: "unbounded"
+      })
+      yield* connection.query("SELECT 2")
+      assert.deepStrictEqual(frontendTags(writes[2]), ["C", "B", "E", "S"])
+      yield* connection.query("SELECT 2")
+      assert.deepStrictEqual(frontendTags(writes[3]), ["B", "E", "S"])
+      yield* connection.query("SELECT 1")
+      assert.deepStrictEqual(frontendTags(writes[4]), ["C", "P", "B", "D", "E", "S"])
+    }))
+
   it.effect("uses distinct prepared statement names across connections", () =>
     Effect.gen(function*() {
       const writes: Array<Array<Buffer>> = []
