@@ -138,7 +138,8 @@ export const protocol = McpProtocol.make({
                 completions: result.capabilities.completions ? {} : undefined,
                 prompts: result.capabilities.prompts,
                 resources: result.capabilities.resources,
-                tools: result.capabilities.tools
+                tools: result.capabilities.tools,
+                extensions: result.capabilities.extensions
               }),
               serverInfo: result.serverInfo,
               instructions: result.instructions

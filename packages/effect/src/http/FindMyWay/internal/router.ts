@@ -55,7 +55,7 @@ class RouterImpl<A> implements Router.Router<A> {
       ignoreTrailingSlash: true,
       ignoreDuplicateSlashes: true,
       caseSensitive: false,
-      maxParamLength: 100,
+      maxParamLength: Infinity,
       ...options
     }
   }

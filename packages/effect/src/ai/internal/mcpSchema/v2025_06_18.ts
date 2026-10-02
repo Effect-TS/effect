@@ -187,7 +187,8 @@ export const SamplingMessage = Schema.Struct({
  * @internal
  */
 export const ServerCapabilities = Schema.Struct({
-  ...Previous.ServerCapabilities.fields
+  ...Previous.ServerCapabilities.fields,
+  extensions: optional(Schema.Record(Schema.String, Schema.JsonObject))
 })
 
 /**

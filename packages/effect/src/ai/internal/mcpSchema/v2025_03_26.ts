@@ -26,7 +26,8 @@ const optional = Previous.optional
  */
 export const ServerCapabilities = Schema.Struct({
   ...Previous.ServerCapabilities.fields,
-  completions: optional(Schema.Struct({}))
+  completions: optional(Schema.Struct({})),
+  extensions: optional(Schema.Record(Schema.String, Schema.JsonObject))
 })
 
 /**
