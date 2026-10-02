@@ -179,7 +179,9 @@ interface TestState {
   capabilityInvocations: number
 }
 
-const makeFixture = Effect.fnUntraced(function*() {
+const makeFixture = Effect.fnUntraced(function*(
+  extensions?: NonNullable<McpSchema.ServerCapabilities["extensions"]>
+) {
   const state: TestState = {
     sharedInvocations: 0,
     structuredInvocations: 0,
@@ -250,6 +252,7 @@ const makeFixture = Effect.fnUntraced(function*() {
         sizes: ["any"]
       })],
       path: "/mcp",
+      extensions,
       protocols: [
         McpProtocol.v2026_07_28,
         McpProtocol.v2025_11_25,
@@ -1239,6 +1242,59 @@ describe("McpServer protocol adapters", () => {
         assert.isUndefined(yield* protocol.projectNotification(elicitationComplete))
       }
     }))
+  describe("Extension capabilities", () => {
+    describe("Stateful protocols", () => {
+      for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
+        it.effect(`should advertise configured extensions when a client initializes with ${protocolVersion}`, () =>
+          Effect.gen(function*() {
+            const extensions = { "io.modelcontextprotocol/skills": { directoryRead: true } }
+            const fixture = yield* makeFixture(extensions)
+            const client = yield* initialize(fixture.post, protocolVersion)
+            assert.deepStrictEqual(
+              Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown))(
+                client.initializeResult.capabilities
+              ).extensions,
+              extensions
+            )
+          }))
+
+        it.effect(`should expose client extension settings to handlers when a client initializes with ${protocolVersion}`, () =>
+          Effect.gen(function*() {
+            const extensions = { "io.modelcontextprotocol/ui": { mimeTypes: ["text/html;profile=mcp-app"] } }
+            const fixture = yield* makeFixture()
+            const client = yield* initialize(fixture.post, protocolVersion, { capabilities: { extensions } })
+            assert.deepStrictEqual(
+              Schema.decodeUnknownSync(Schema.fromJsonString(Schema.JsonObject))(
+                textResult(yield* client.request("tools/call", { name: "capability" }))
+              ),
+              { extensions }
+            )
+          }))
+      }
+    })
+
+    describe("Stateless protocols", () => {
+      it.effect("should expose only current client extension settings when handling stateless requests", () =>
+        Effect.gen(function*() {
+          const fixture = yield* makeFixture()
+          const extensions = { "io.modelcontextprotocol/ui": { mimeTypes: ["text/html;profile=mcp-app"] } }
+          for (const [id, capabilities] of [[1, { extensions }], [2, {}]] as const) {
+            const response = yield* fixture.post(
+              modernRequest(id, "tools/call", { name: "capability" }, modernMetadata(capabilities)),
+              { ...modernHeaders("tools/call"), "Mcp-Name": "capability" }
+            )
+            const result = yield* readJsonRpcResponse(response)
+            assert.deepStrictEqual(
+              Schema.decodeUnknownSync(Schema.fromJsonString(Schema.JsonObject))(
+                resultOf(result).structuredContent
+              ),
+              capabilities
+            )
+          }
+        }))
+    })
+  })
+
   it.effect("should omit elicitation when the negotiated protocol predates v2025-06-18", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
