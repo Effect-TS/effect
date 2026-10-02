@@ -153,14 +153,16 @@ ${clientErrorSource(name)}`
       const type = `typeof ${operation.payload}.Encoded`
       options.push(`${key}: ${type}`)
     }
-    options.push("readonly config?: Config | undefined")
-
-    // If all options are optional, the argument itself should be optional
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions) {
-      args.push(`options: { ${options.join("; ")} }`)
-    } else {
-      args.push(`options: { ${options.join("; ")} } | undefined`)
+    const parameters = (config: string) => {
+      const methodArgs = [...args]
+      const methodOptions = [...options, config]
+      methodArgs.push(
+        hasOptions
+          ? `options: { ${methodOptions.join("; ")} }`
+          : `options: { ${methodOptions.join("; ")} } | undefined`
+      )
+      return methodArgs.join(", ")
     }
 
     const successTypes = new Set(Array.from(responses.successSchemas.values(), (schema) => `typeof ${schema}.Type`))
@@ -186,10 +188,18 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    const generic = `<Config extends OperationConfig>`
-    const parameters = args.join(", ")
-    const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
-    return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
+    const result = (config: string, configType: string) =>
+      `<Config extends OperationConfig | undefined = undefined>(${
+        parameters(config)
+      }): Effect.Effect<WithOptionalResponse<${success}, ${configType}>, ${errors.join(" | ")}>;`
+    const signatures = [
+      result("readonly config: Config", "Config"),
+      result(
+        "readonly config?: Config | undefined",
+        "Config | undefined"
+      )
+    ].map((signature) => `    ${signature}`).join("\n")
+    return `${jsdoc}${methodKey}: {\n${signatures}\n  }`
   }
 
   const operationToSseMethod = (_name: string, operation: ParsedOperation) => {
@@ -265,7 +275,7 @@ ${clientErrorSource(name)}`
     const requirements = computeImportRequirements(operations)
     const implMethods: Array<string> = []
     for (const op of operations) {
-      implMethods.push(operationToImpl(op))
+      implMethods.push(operationToImpl(name, op))
       if (op.httpClientResponses.sseSchema) {
         implMethods.push(operationToSseImpl(importName, op))
       }
@@ -312,7 +322,7 @@ ${clientErrorSource(name)}`
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
@@ -341,10 +351,16 @@ export const make = (
 }`
   }
 
-  const operationToImpl = (operation: ParsedOperation) => {
+  const operationToImpl = (name: string, operation: ParsedOperation) => {
     const responses = operation.httpClientResponses
     const args: Array<string> = [...operation.pathIds, "options"]
-    const params = `${args.join(", ")}`
+    const params = `${
+      args.map((arg) =>
+        arg === "options"
+          ? `options: Parameters<${name}["${operation.id}"]>[${operation.pathIds.length}]`
+          : arg
+      ).join(", ")
+    }`
 
     const pipeline: Array<string> = []
 
@@ -591,14 +607,16 @@ ${clientErrorSource(name)}`
     if (operation.payload) {
       options.push(`readonly payload: ${operation.payload}`)
     }
-    options.push("readonly config?: Config | undefined")
-
-    // If all options are optional, the argument itself should be optional
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions) {
-      args.push(`options: { ${options.join("; ")} }`)
-    } else {
-      args.push(`options: { ${options.join("; ")} } | undefined`)
+    const parameters = (config: string) => {
+      const methodArgs = [...args]
+      const methodOptions = [...options, config]
+      methodArgs.push(
+        hasOptions
+          ? `options: { ${methodOptions.join("; ")} }`
+          : `options: { ${methodOptions.join("; ")} } | undefined`
+      )
+      return methodArgs.join(", ")
     }
 
     const successTypes = new Set(responses.successSchemas.values())
@@ -622,10 +640,18 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    const generic = `<Config extends OperationConfig>`
-    const parameters = args.join(", ")
-    const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
-    return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
+    const result = (config: string, configType: string) =>
+      `<Config extends OperationConfig | undefined = undefined>(${
+        parameters(config)
+      }): Effect.Effect<WithOptionalResponse<${success}, ${configType}>, ${errors.join(" | ")}>;`
+    const signatures = [
+      result("readonly config: Config", "Config"),
+      result(
+        "readonly config?: Config | undefined",
+        "Config | undefined"
+      )
+    ].map((signature) => `    ${signature}`).join("\n")
+    return `${jsdoc}${methodKey}: {\n${signatures}\n  }`
   }
 
   const operationToSseMethod = (operation: ParsedOperation) => {
@@ -697,7 +723,7 @@ ${clientErrorSource(name)}`
     const requirements = computeImportRequirements(operations)
     const implMethods: Array<string> = []
     for (const op of operations) {
-      implMethods.push(operationToImpl(op))
+      implMethods.push(operationToImpl(name, op))
       if (op.httpClientResponses.sseSchema) {
         implMethods.push(operationToSseImpl(op))
       }
@@ -743,7 +769,7 @@ ${clientErrorSource(name)}`
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
@@ -778,10 +804,16 @@ export const make = (
 }`
   }
 
-  const operationToImpl = (operation: ParsedOperation) => {
+  const operationToImpl = (name: string, operation: ParsedOperation) => {
     const responses = operation.httpClientResponses
     const args: Array<string> = [...operation.pathIds, "options"]
-    const params = `${args.join(", ")}`
+    const params = `${
+      args.map((arg) =>
+        arg === "options"
+          ? `options: Parameters<${name}["${operation.id}"]>[${operation.pathIds.length}]`
+          : arg
+      ).join(", ")
+    }`
 
     const pipeline: Array<string> = []
 

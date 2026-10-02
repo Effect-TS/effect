@@ -119,9 +119,9 @@ describe("OpenApiTransformer", () => {
         assert.strictEqual(body, "hello")
 
         const withResponse = yield* client.getValue({ config: { includeResponse: true } })
-        assert.isArray(withResponse)
+        if (!Array.isArray(withResponse)) throw new Error("Expected response tuple")
         assert.strictEqual(withResponse[0], "hello")
-        assert.strictEqual(withResponse[1].status, 200)
+        assert.strictEqual((withResponse[1] as HttpClientResponse.HttpClientResponse).status, 200)
       }
     }))
 
