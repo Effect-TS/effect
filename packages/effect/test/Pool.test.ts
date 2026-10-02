@@ -237,7 +237,6 @@ describe("Pool", () => {
         yield* Scope.close(first, Exit.void)
         yield* TestClock.adjust(800)
         deepStrictEqual(finalized, [])
-        // Both idle items qualify at the next sweep, but only one is excess.
         yield* TestClock.adjust(1000)
         deepStrictEqual(finalized, [2])
         strictEqual(pool.state.items.size, 2)
@@ -285,7 +284,6 @@ describe("Pool", () => {
         yield* TestClock.adjust("9 seconds")
         deepStrictEqual(finalized, [])
         yield* Scope.close(burst, Exit.void)
-        // Allow a full idle TTL plus one sweep interval after the release.
         yield* TestClock.adjust("20 seconds")
         strictEqual(finalized.length, 2)
         strictEqual(pool.state.items.size, 1)
@@ -320,7 +318,6 @@ describe("Pool", () => {
         }))
         strictEqual(acquired, 3)
         yield* TestClock.adjust("20 seconds")
-        // Invalidating a busy item delays its finalizer, so check retirement too.
         strictEqual(pool.state.invalidated.size, 0)
         deepStrictEqual(finalized, [2, 3])
         yield* Scope.close(owner, Exit.void)
@@ -550,7 +547,6 @@ describe("Pool", () => {
       const first = yield* Pool.get(pool).pipe(Scope.provide(owner))
       yield* TestClock.adjust(0)
       const second = yield* Pool.get(pool).pipe(Scope.provide(owner))
-      // Both live items are unavailable until the reservation releases a slot.
       const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
       assert.isUndefined(next.pollUnsafe())
       yield* Scope.close(reservation, Exit.void)
@@ -577,8 +573,7 @@ describe("Pool", () => {
       yield* Pool.get(pool).pipe(Scope.provide(owner))
       yield* Pool.reserve(pool, "resource").pipe(Scope.provide(reservation))
       const [item] = pool.state.items
-      // Idle sweeps no longer invalidate held items. Seed a strategy fixture;
-      // public invalidate would disable reclaim and test a different path.
+      // Seed a reclaimable item: idle sweeps skip borrowers, and public invalidate disables reclaim.
       pool.state.invalidated.add(item)
       assert.isUndefined(yield* pool.config.strategy.reclaim(pool))
       assert.isTrue(pool.state.invalidated.has(item))

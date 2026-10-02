@@ -256,12 +256,11 @@ export const make = <A, E, R>(options: {
  * pool implementation. A value of `1` waits until existing items are fully
  * utilized before creating more items.
  *
- * `timeToLiveStrategy` controls when excess items expire: `"creation"` measures
- * from item creation, while `"usage"` measures idle time since an item was last
- * released by all borrowers (or acquired, if never borrowed). The default is
- * `"usage"`. Usage-based expiration only retires idle, unreserved excess items,
- * checking every `timeToLive`; retirement can take up to two TTL intervals
- * after the last release.
+ * `timeToLiveStrategy` defaults to `"usage"`, which expires idle, unreserved
+ * excess items after `timeToLive` since their last borrower released them
+ * (or acquisition if never borrowed). It checks once per `timeToLive`, so
+ * retirement can take up to twice that duration. `"creation"` measures from
+ * item creation instead.
  *
  * **Example** (Creating a connection pool)
  *
@@ -1005,8 +1004,7 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
   })
 })
 
-// Weak keys avoid retaining retired items. Release timestamps use the same
-// captured clock as the strategy sweeps.
+// Use the strategy clock for releases too, without retaining retired items.
 const usageIdleTimes = new WeakMap<PoolItem<unknown, unknown>, { clock: Clock; since: number }>()
 
 const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {

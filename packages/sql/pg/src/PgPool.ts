@@ -37,8 +37,6 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  * **Details**
  *
  * The defaults are 0 to 10 connections and a 60-second idle timeout.
- * Idle connections retain PostgreSQL backends and `max_connections` slots
- * until they expire. Set `idleTimeout: "10 seconds"` for the previous timeout.
  * `connectionTTL` replaces connections that exceed the configured lifetime.
  * Every connection is used at least once, so a TTL of zero disables reuse.
  *
