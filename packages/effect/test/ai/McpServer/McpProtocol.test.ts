@@ -185,7 +185,7 @@ describe("MCP v2025-06-18 schema", () => {
     assert.strictEqual(message.content.type, "resource_link")
   })
 
-  it("should omit later core annotation fields when decoding v2025-06-18 annotations", () => {
+  it("omits later core annotation fields", () => {
     const annotations = Schema.decodeUnknownSync(McpSchema2025_06_18.Annotations)({
       audience: ["user"],
       lastModified: "2026-07-26"
