@@ -342,6 +342,8 @@ const abortDrainGraceMillis = 10
 const queryCanceledCode = "57014"
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
+/** Minimum encoded batch size for preserving frame views in a vectored write. */
+const pipelineVectorThreshold = 16 * 1024
 const streamPauseThreshold = 512
 
 class PgConnectionImpl implements PgConnection {
@@ -591,7 +593,8 @@ class PgConnectionImpl implements PgConnection {
     let capacity = maxPipelineDepth - this.pipelineDepth()
     if (capacity <= 0) return
     const wasEmpty = this.pipelineDepth() === 0
-    const batch: Array<PipelineEntry> = []
+    const frames: Array<Uint8Array> = []
+    let byteLength = 0
     let index = 0
     while (capacity > 0 && index < this.pipelinePending.length) {
       const entry = this.pipelinePending[index++]
@@ -601,21 +604,25 @@ class PgConnectionImpl implements PgConnection {
         }
         continue
       }
-      batch.push(entry)
+      frames.push(entry.plan.frame)
+      byteLength += entry.plan.frame.length
       this.pipelineInFlight.push(entry)
       capacity--
     }
     this.pipelinePending.splice(0, index)
-    if (batch.length === 0) {
+    if (frames.length === 0) {
       this.notifyPipelineIdle()
       return
     }
-    if (wasEmpty) this.session.parser.readField = batch[0].machine.readField
-    const frame = batch.length === 1
-      ? batch[0].plan.frame
-      : concat(batch.map((entry) => entry.plan.frame))
+    if (wasEmpty) this.session.parser.readField = this.pipelineInFlight[this.pipelineHead].machine.readField
     try {
-      this.session.socket.write(frame)
+      if (frames.length === 1) {
+        this.session.socket.write(frames[0])
+      } else if (byteLength >= pipelineVectorThreshold) {
+        this.session.socket.writeAll(frames)
+      } else {
+        this.session.socket.write(concat(frames))
+      }
     } catch (cause) {
       this.fatal(connectionQueryError(cause, "PgConnection: Failed to write query batch"))
     }
@@ -1932,6 +1939,11 @@ class Transport {
   write(bytes: Uint8Array): void {
     if (this.closed) throw new Error("Connection is closed")
     Queue.offerUnsafe(this.outgoing, bytes)
+  }
+
+  writeAll(bytes: ReadonlyArray<Uint8Array>): void {
+    if (this.closed) throw new Error("Connection is closed")
+    Queue.offerAllUnsafe(this.outgoing, bytes)
   }
 
   pause(): void {

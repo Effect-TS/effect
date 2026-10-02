@@ -387,21 +387,52 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(result.rows, [{ value: 1 }, { value: 2 }, { value: 3 }])
     }))
 
-  it.effect("reuses prepared statements across a pipeline", () =>
-    Effect.gen(function*() {
-      const connection = yield* makeContainerConnection({ multiplex: true })
-      for (let round = 0; round < 3; round++) {
-        const results = yield* Effect.all(
-          Array.from({ length: 8 }, (_, index) => connection.query("SELECT $1::int4 AS n", [index])),
-          { concurrency: "unbounded" }
+  it.effect.each([false, true])(
+    "reuses prepared statements across a pipeline (large parameters: %s)",
+    (large) =>
+      Effect.gen(function*() {
+        const connection = yield* makeContainerConnection({ multiplex: true })
+        const plainSql = "SELECT $1::int4 AS n"
+        const textSql = "SELECT $1::int4 AS n, $2::text AS text"
+        const bytesSql = "SELECT $1::int4 AS n, $2::bytea AS bytes"
+        for (let round = 0; round < 3; round++) {
+          const values = Array.from({ length: large ? 20 : 8 }, (_, index) => ({
+            n: round * 20 + index,
+            text: `${round}:${index}:${"雪".repeat(1500)}`,
+            bytes: new Uint8Array(16384).fill(round * 20 + index)
+          }))
+          const results = yield* Effect.all(
+            values.map(({ n, text, bytes }, index) =>
+              connection.query(
+                large ? index % 2 === 0 ? textSql : bytesSql : plainSql,
+                large ? index % 2 === 0 ? [n, text] : [n, bytes] : [n]
+              )
+            ),
+            { concurrency: "unbounded" }
+          )
+          results.forEach((result, index) => {
+            const { n, text, bytes } = values[index]
+            assert.deepStrictEqual(result.rows, [large ? index % 2 === 0 ? { n, text } : { n, bytes } : { n }])
+            assert.deepStrictEqual(
+              result.fields,
+              large
+                ? [
+                  { name: "n", dataTypeId: 23 },
+                  index % 2 === 0
+                    ? { name: "text", dataTypeId: 25 }
+                    : { name: "bytes", dataTypeId: 17 }
+                ]
+                : [{ name: "n", dataTypeId: 23 }]
+            )
+          })
+        }
+        const held = yield* connection.query(
+          "SELECT count(*)::int4 AS n FROM pg_prepared_statements WHERE statement = $1 OR statement = $2",
+          large ? [textSql, bytesSql] : [plainSql, plainSql]
         )
-        results.forEach((result, index) => assert.deepStrictEqual(result.rows, [{ n: index }]))
-      }
-      const held = yield* connection.query(
-        "SELECT count(*)::int4 AS n FROM pg_prepared_statements WHERE statement = 'SELECT $1::int4 AS n'"
-      )
-      assert.deepStrictEqual(held.rows[0], { n: 1 })
-    }))
+        assert.deepStrictEqual(held.rows[0], { n: large ? 2 : 1 })
+      })
+  )
   it.effect("orders ordinary statements against a stream on the same session", () =>
     Effect.gen(function*() {
       const connection = yield* makeContainerConnection()

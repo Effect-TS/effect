@@ -1228,55 +1228,101 @@ describe("PgConnection transport", () => {
       for (const { snapshot, view } of frames) assert.deepStrictEqual(view, snapshot)
     }))
 
-  it.effect("batches queued queries in order after write backpressure clears", () =>
-    Effect.gen(function*() {
-      const incoming = yield* Queue.unbounded<Uint8Array>()
-      const writing = yield* Deferred.make<void>()
-      const release = yield* Deferred.make<void>()
-      const batches: Array<ReadonlyArray<Uint8Array | string>> = []
-      const connection = yield* makeConnection({
-        username: "test",
-        multiplex: true,
-        connector: () =>
-          Effect.succeed({
-            pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
-            run: (onChunk) =>
-              Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => onChunk(chunk) ?? Effect.void)),
-            upgrade: () => Effect.void,
-            write: (chunk) =>
-              Effect.sync(() => {
-                if (chunk instanceof Uint8Array && chunk[0] !== 0x58) {
-                  Queue.offerUnsafe(incoming, Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
-                }
-              }),
-            writeAll: (chunks) =>
-              Effect.gen(function*() {
-                batches.push(chunks)
-                if (batches.length === 1) {
-                  yield* Deferred.succeed(writing, undefined)
-                  yield* Deferred.await(release)
-                }
-                const frames = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))
-                const queries = frontendTags(frames).filter((tag) => tag === "S").length
-                Queue.offerUnsafe(incoming, Buffer.concat(Array.from({ length: queries }, () => emptyQueryResult)))
-              }),
-            close: Effect.void
-          })
+  it.effect.each([
+    { padding: 0, vector: false },
+    { padding: 1024, vector: true }
+  ])(
+    "batches queued queries in order after backpressure clears (vector: $vector)",
+    ({ padding, vector }) =>
+      Effect.gen(function*() {
+        const incoming = yield* Queue.unbounded<Uint8Array>()
+        const writing = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const batches: Array<ReadonlyArray<Uint8Array | string>> = []
+        const retained: Array<{ readonly view: Uint8Array; readonly snapshot: Uint8Array }> = []
+        let receive: Parameters<Socket.Reader["run"]>[0] | undefined
+        let activeWrites = 0
+        let maxActiveWrites = 0
+        const connection = yield* makeConnection({
+          username: "test",
+          multiplex: true,
+          connector: () =>
+            Effect.succeed({
+              pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
+              run: (onChunk) =>
+                Effect.andThen(
+                  Effect.sync(() => {
+                    receive = onChunk
+                  }),
+                  Effect.never
+                ),
+              upgrade: () => Effect.void,
+              write: (chunk) =>
+                Effect.sync(() => {
+                  if (chunk instanceof Uint8Array && chunk[0] !== 0x58) {
+                    Queue.offerUnsafe(incoming, Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+                  }
+                }),
+              writeAll: (chunks) =>
+                Effect.gen(function*() {
+                  activeWrites++
+                  maxActiveWrites = Math.max(maxActiveWrites, activeWrites)
+                  batches.push(chunks)
+                  for (const chunk of chunks) {
+                    assert.instanceOf(chunk, Uint8Array)
+                    const view = chunk as Uint8Array
+                    retained.push({ view, snapshot: Uint8Array.from(view) })
+                  }
+                  if (batches.length === 1) {
+                    yield* Deferred.succeed(writing, undefined)
+                    yield* Deferred.await(release)
+                  }
+                  const frames = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))
+                  const queries = frontendTags(frames).filter((tag) => tag === "S").length
+                  // All query owners must be installed before a synchronous reply.
+                  receive!(Buffer.concat(Array.from({ length: queries }, () => emptyQueryResult)))
+                }).pipe(Effect.ensuring(Effect.sync(() => {
+                  activeWrites--
+                }))),
+              close: Effect.void
+            })
+        })
+        const first = yield* connection.query("SELECT 0").pipe(Effect.forkScoped)
+        yield* Deferred.await(writing)
+        const queries = Array.from({ length: 20 }, (_, index) => `SELECT ${index + 1} /*${"x".repeat(padding)}*/`)
+        const queued = yield* Effect.all(queries.map((query) => connection.query(query)), {
+          concurrency: "unbounded"
+        }).pipe(Effect.forkScoped({ startImmediately: true }))
+        yield* Effect.promise(() => new Promise<void>((resolve) => queueMicrotask(resolve)))
+        assert.strictEqual(batches.length, 1)
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(first)
+        const results = yield* Fiber.join(queued)
+        assert.deepStrictEqual(results.map((result) => result.rows), Array.from({ length: 20 }, () => []))
+        assert.strictEqual(batches.length, 2)
+        assert.strictEqual(batches[1].length, vector ? 20 : 1)
+        const batch = Buffer.concat(batches[1].map((chunk) => Buffer.from(chunk)))
+        assert.strictEqual(frontendTags(batch).filter((tag) => tag === "S").length, 20)
+        let offset = 0
+        for (const query of queries) {
+          const position = batch.indexOf(query, offset)
+          assert.isAtLeast(position, offset)
+          offset = position + Buffer.byteLength(query)
+        }
+        if (vector) {
+          for (const chunk of batches[1]) {
+            assert.strictEqual(frontendTags(Buffer.from(chunk)).filter((tag) => tag === "S").length, 1)
+          }
+        }
+        // Later allocations cross multiple arenas while the original views stay held.
+        for (let index = 0; index < 40; index++) {
+          yield* connection.query(`SELECT ${index + 100} /*${"y".repeat(1024)}*/`)
+        }
+        assert.strictEqual(maxActiveWrites, 1)
+        assert.isTrue(retained.reduce((sum, frame) => sum + frame.view.length, 0) > 32768)
+        for (const { view, snapshot } of retained) assert.deepStrictEqual(view, snapshot)
       })
-      const first = yield* connection.query("SELECT 1").pipe(Effect.forkScoped)
-      yield* Deferred.await(writing)
-      const second = yield* connection.query("SELECT 2").pipe(Effect.forkScoped({ startImmediately: true }))
-      yield* Effect.promise(() => new Promise<void>((resolve) => queueMicrotask(resolve)))
-      const third = yield* connection.query("SELECT 3").pipe(Effect.forkScoped({ startImmediately: true }))
-      yield* Effect.promise(() => new Promise<void>((resolve) => queueMicrotask(resolve)))
-      assert.strictEqual(batches.length, 1)
-      yield* Deferred.succeed(release, undefined)
-      yield* Effect.all([Fiber.join(first), Fiber.join(second), Fiber.join(third)])
-      assert.strictEqual(batches.length, 2)
-      assert.strictEqual(batches[1].length, 2)
-      assert.include(Buffer.from(batches[1][0]).toString(), "SELECT 2")
-      assert.include(Buffer.from(batches[1][1]).toString(), "SELECT 3")
-    }))
+  )
 
   it.effect("pauses incoming rows until a slow stream consumer resumes", () =>
     Effect.gen(function*() {
@@ -1356,64 +1402,79 @@ describe("PgConnection transport", () => {
       assert.deepStrictEqual(rows, Array.from({ length: 1800 }, (_, i) => i))
     }))
 
-  it.effect("stops queued writes before terminating a connection under backpressure", () =>
-    Effect.gen(function*() {
-      const incoming = yield* Queue.unbounded<Uint8Array>()
-      const writing = yield* Deferred.make<void>()
-      const scope = yield* Scope.fork(yield* Effect.scope)
-      const writes: Array<Uint8Array> = []
-      let interrupted = false
-      let closed = false
-      const connection = yield* Scope.provide(
-        makeConnection({
-          username: "test",
-          multiplex: true,
-          connector: () =>
-            Effect.succeed({
-              pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
-              run: (onChunk) =>
-                Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => onChunk(chunk) ?? Effect.void)),
-              upgrade: () => Effect.void,
-              write: (chunk) =>
-                Effect.sync(() => {
-                  assert.instanceOf(chunk, Uint8Array)
-                  writes.push(chunk as Uint8Array)
-                  if (writes.length === 1) {
-                    Queue.offerUnsafe(incoming, Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
-                  }
-                }),
-              writeAll: (chunks) =>
-                Effect.gen(function*() {
-                  for (const chunk of chunks) {
+  it.effect.each([
+    { count: 1, padding: 0 },
+    { count: 20, padding: 1024 }
+  ])(
+    "stops queued writes before terminating under backpressure (queries: $count)",
+    ({ count, padding }) =>
+      Effect.gen(function*() {
+        const incoming = yield* Queue.unbounded<Uint8Array>()
+        const writing = yield* Deferred.make<void>()
+        const scope = yield* Scope.fork(yield* Effect.scope)
+        const writes: Array<Uint8Array> = []
+        let interrupted = false
+        let closed = false
+        const connection = yield* Scope.provide(
+          makeConnection({
+            username: "test",
+            multiplex: true,
+            connector: () =>
+              Effect.succeed({
+                pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
+                run: (onChunk) =>
+                  Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => onChunk(chunk) ?? Effect.void)),
+                upgrade: () => Effect.void,
+                write: (chunk) =>
+                  Effect.sync(() => {
                     assert.instanceOf(chunk, Uint8Array)
                     writes.push(chunk as Uint8Array)
-                  }
-                  yield* Deferred.succeed(writing, undefined)
-                  return yield* Effect.never.pipe(Effect.onInterrupt(() =>
-                    Effect.sync(() => {
-                      interrupted = true
-                    })
-                  ))
-                }),
-              close: Effect.sync(() => {
-                closed = true
+                    if (writes.length === 1) {
+                      Queue.offerUnsafe(incoming, Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+                    }
+                  }),
+                writeAll: (chunks) =>
+                  Effect.gen(function*() {
+                    for (const chunk of chunks) {
+                      assert.instanceOf(chunk, Uint8Array)
+                      writes.push(chunk as Uint8Array)
+                    }
+                    yield* Deferred.succeed(writing, undefined)
+                    return yield* Effect.never.pipe(Effect.onInterrupt(() =>
+                      Effect.sync(() => {
+                        interrupted = true
+                      })
+                    ))
+                  }),
+                close: Effect.sync(() => {
+                  closed = true
+                })
               })
-            })
-        }),
-        scope
-      )
-      const first = yield* connection.query("SELECT 1").pipe(Effect.result, Effect.forkScoped)
-      yield* Deferred.await(writing)
-      const second = yield* connection.query("SELECT 2").pipe(Effect.result, Effect.forkScoped)
-      yield* Effect.promise(() => new Promise<void>((resolve) => queueMicrotask(resolve)))
-      yield* Scope.close(scope, Exit.void)
-      assert.isTrue(interrupted)
-      assert.isTrue(closed)
-      assert.strictEqual(writes.length, 3)
-      assert.deepStrictEqual(writes[2], new Uint8Array([0x58, 0, 0, 0, 4]))
-      assert.isTrue(Result.isFailure(yield* Fiber.join(first)))
-      assert.isTrue(Result.isFailure(yield* Fiber.join(second)))
-    }))
+          }),
+          scope
+        )
+        const first = yield* Effect.all(
+          Array.from(
+            { length: count },
+            (_, index) => connection.query(`SELECT ${index + 1} /*${"x".repeat(padding)}*/`).pipe(Effect.result)
+          ),
+          { concurrency: "unbounded" }
+        ).pipe(Effect.forkScoped({ startImmediately: true }))
+        yield* Deferred.await(writing)
+        const second = yield* connection.query("SELECT 2").pipe(Effect.result, Effect.forkScoped)
+        yield* Effect.promise(() => new Promise<void>((resolve) => queueMicrotask(resolve)))
+        yield* Scope.close(scope, Exit.void)
+        assert.isTrue(interrupted)
+        assert.isTrue(closed)
+        assert.strictEqual(writes.length, count + 2)
+        assert.deepStrictEqual(writes.at(-1), new Uint8Array([0x58, 0, 0, 0, 4]))
+        for (const frame of writes.slice(1, -1)) {
+          assert.strictEqual(frontendTags(Buffer.from(frame)).filter((tag) => tag === "S").length, 1)
+        }
+        assert.isTrue((yield* Fiber.join(first)).every(Result.isFailure))
+        assert.isTrue(Result.isFailure(yield* Fiber.join(second)))
+      })
+  )
 })
 
 it.effect("closes the socket when Terminate cannot drain", () =>
