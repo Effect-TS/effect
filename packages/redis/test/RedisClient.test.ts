@@ -649,6 +649,71 @@ describe("RedisClient", () => {
   describe("Sentinel", () => {
     const location = (endpoint: Endpoint) => array(endpoint.host, String(endpoint.port))
 
+    it.live("refreshes and re-routes a single READONLY command to the promoted primary", () =>
+      Effect.gen(function*() {
+        const nextRequests: Array<ReadonlyArray<string>> = []
+        const next = yield* server((request) => {
+          const values = args(request)
+          if (values[0] === "ROLE") return request.connection.send(masterRole)
+          if (values[0] === "PING") return request.connection.send("+PONG\r\n")
+          nextRequests.push(values)
+          request.connection.send(":1\r\n")
+        })
+        let promoted = false
+        const oldRequests: Array<ReadonlyArray<string>> = []
+        const old = yield* server((request) => {
+          const values = args(request)
+          if (values[0] === "ROLE") return request.connection.send(masterRole)
+          if (values[0] === "PING") return request.connection.send("+PONG\r\n")
+          oldRequests.push(values)
+          promoted = true
+          request.connection.send("-READONLY former primary\r\n")
+        })
+        let discoveries = 0
+        const sentinel = yield* server((request) => {
+          discoveries++
+          request.connection.send(location(promoted ? next : old))
+        })
+        const client = yield* Client.make(makeConnector(), {
+          topology: { _tag: "Sentinel", sentinels: [sentinel], masterName: "service", refreshInterval: "1 hour" }
+        })
+
+        assert.strictEqual(yield* client.run(Command.make(["INCR", "retried"], Command.integer)), BigInt(1))
+        assert.strictEqual(Protocol.toValue(yield* client.execute(["INCR", "later"])), 1)
+        assert.deepStrictEqual(oldRequests, [["INCR", "retried"]])
+        assert.deepStrictEqual(nextRequests, [["INCR", "retried"], ["INCR", "later"]])
+        assert.strictEqual(discoveries, 2)
+      }))
+
+    it.live("returns the refresh failure without replaying a single READONLY command", () =>
+      Effect.gen(function*() {
+        let unavailable = false
+        const requests: Array<ReadonlyArray<string>> = []
+        const primary = yield* server((request) => {
+          const values = args(request)
+          if (values[0] === "ROLE") return request.connection.send(masterRole)
+          if (values[0] === "PING") return request.connection.send("+PONG\r\n")
+          requests.push(values)
+          unavailable = true
+          request.connection.send("-READONLY former primary\r\n")
+        })
+        let discoveries = 0
+        const sentinel = yield* server((request) => {
+          discoveries++
+          request.connection.send(unavailable ? "-ERR discovery unavailable\r\n" : location(primary))
+        })
+        const client = yield* Client.make(makeConnector(), {
+          topology: { _tag: "Sentinel", sentinels: [sentinel], masterName: "service", refreshInterval: "1 hour" }
+        })
+
+        const error = failure(yield* Effect.result(client.execute(["INCR", "counter"])))
+        assert.strictEqual(error.reason, "Routing")
+        assert.strictEqual(error.outcome, "NotSent")
+        assert.strictEqual(error.message, "No Sentinel reported a verified primary")
+        assert.deepStrictEqual(requests, [["INCR", "counter"]])
+        assert.strictEqual(discoveries, 2)
+      }))
+
     it.live("rejects writes safely after promotion without replaying successful or uncertain commands", () =>
       Effect.gen(function*() {
         const submitted = barrier<void>()
