@@ -154,10 +154,6 @@ ${clientErrorSource(name)}`
       options.push(`${key}: ${type}`)
     }
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    const parameters = (config: string, required: boolean) => {
-      const methodOptions = [...options, config].join("; ")
-      return [...args, `options: { ${methodOptions} }${hasOptions || required ? "" : " | undefined"}`].join(", ")
-    }
 
     const successTypes = new Set(Array.from(responses.successSchemas.values(), (schema) => `typeof ${schema}.Type`))
     if (responses.binarySuccessStatuses.size > 0) {
@@ -182,16 +178,7 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    // Infer the whole config from a required property before allowing omitted config.
-    // An optional property would otherwise discard undefined during inference.
-    const signature = (config: string, resultConfig: string) =>
-      `    <Config extends OperationConfig | undefined = undefined>(${
-        parameters(config, resultConfig === "Config")
-      }): Effect.Effect<WithOptionalResponse<${success}, ${resultConfig}>, ${errors.join(" | ")}>;`
-    return `${jsdoc}${methodKey}: {
-${signature("readonly config: Config", "Config")}
-${signature("readonly config?: Config | undefined", "Config | undefined")}
-  }`
+    return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
   }
 
   const operationToSseMethod = (_name: string, operation: ParsedOperation) => {
@@ -598,10 +585,6 @@ ${clientErrorSource(name)}`
       options.push(`readonly payload: ${operation.payload}`)
     }
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    const parameters = (config: string, required: boolean) => {
-      const methodOptions = [...options, config].join("; ")
-      return [...args, `options: { ${methodOptions} }${hasOptions || required ? "" : " | undefined"}`].join(", ")
-    }
 
     const successTypes = new Set(responses.successSchemas.values())
     if (responses.binarySuccessStatuses.size > 0) {
@@ -624,16 +607,7 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    // Infer the whole config from a required property before allowing omitted config.
-    // An optional property would otherwise discard undefined during inference.
-    const signature = (config: string, resultConfig: string) =>
-      `    <Config extends OperationConfig | undefined = undefined>(${
-        parameters(config, resultConfig === "Config")
-      }): Effect.Effect<WithOptionalResponse<${success}, ${resultConfig}>, ${errors.join(" | ")}>;`
-    return `${jsdoc}${methodKey}: {
-${signature("readonly config: Config", "Config")}
-${signature("readonly config?: Config | undefined", "Config | undefined")}
-  }`
+    return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
   }
 
   const operationToSseMethod = (operation: ParsedOperation) => {
@@ -1191,6 +1165,29 @@ export const ${name}Error = <Tag extends string, E>(
     response,
     request: response.request,
   }) as any`
+
+const operationSignatures = (
+  args: ReadonlyArray<string>,
+  options: ReadonlyArray<string>,
+  optionsRequired: boolean,
+  success: string,
+  errors: ReadonlyArray<string>
+): string => {
+  const signature = (configOptional: boolean) => {
+    const config = configOptional ? "Config | undefined" : "Config"
+    const fields = [...options, `readonly config${configOptional ? "?" : ""}: ${config}`].join("; ")
+    const parameters = [...args, `options: { ${fields} }${configOptional && !optionsRequired ? " | undefined" : ""}`]
+    return `    <Config extends OperationConfig | undefined = undefined>(${
+      parameters.join(", ")
+    }): Effect.Effect<WithOptionalResponse<${success}, ${config}>, ${errors.join(" | ")}>;`
+  }
+  // Infer the whole config from a required property before allowing omitted config.
+  // An optional property would otherwise discard undefined during inference.
+  return `{
+${signature(false)}
+${signature(true)}
+  }`
+}
 
 const resolveConfigAccessor = (operation: ParsedOperation, rootKey: string, configKey: string): string => {
   // If an operation payload is defined, then the root object must exist
