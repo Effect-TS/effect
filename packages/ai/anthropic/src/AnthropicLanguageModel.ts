@@ -2717,13 +2717,22 @@ const makeStreamResponse = Effect.fnUntraced(
                     }
                   }
 
+                  const toolParams = yield* Effect.try({
+                    try: () => Tool.unsafeSecureJsonParse(finalParams),
+                    catch: (cause) =>
+                      AiError.make({
+                        module: "AnthropicLanguageModel",
+                        method: "makeStreamResponse",
+                        reason: new AiError.ToolParameterValidationError({
+                          toolName: contentBlock.name,
+                          description: `Failed securely JSON parse tool parameters: ${cause}`
+                        })
+                      })
+                  })
+
                   const params = contentBlock.providerExecuted === true
-                    ? Tool.unsafeSecureJsonParse(finalParams)
-                    : yield* transformToolCallParams(
-                      options.tools,
-                      contentBlock.name,
-                      Tool.unsafeSecureJsonParse(finalParams)
-                    )
+                    ? toolParams
+                    : yield* transformToolCallParams(options.tools, contentBlock.name, toolParams)
 
                   parts.push({
                     type: "tool-call",
