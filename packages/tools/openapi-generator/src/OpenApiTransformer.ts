@@ -186,7 +186,7 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    const generic = `<Config extends OperationConfig = {}>`
+    const generic = `<Config extends OperationConfig | undefined = undefined>`
     const parameters = args.join(", ")
     const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
     return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
@@ -312,7 +312,7 @@ ${clientErrorSource(name)}`
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse]
   : "includeResponse" extends keyof Config
@@ -625,7 +625,7 @@ ${clientErrorSource(name)}`
 
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}"`
-    const generic = `<Config extends OperationConfig = {}>`
+    const generic = `<Config extends OperationConfig | undefined = undefined>`
     const parameters = args.join(", ")
     const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
     return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
@@ -746,7 +746,7 @@ ${clientErrorSource(name)}`
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse]
   : "includeResponse" extends keyof Config

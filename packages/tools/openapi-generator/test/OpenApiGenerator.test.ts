@@ -754,7 +754,7 @@ export interface OperationConfig {
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse]
   : "includeResponse" extends keyof Config
@@ -852,7 +852,7 @@ export const make = (
 
 export interface TestClient {
   readonly httpClient: HttpClient.HttpClient
-  readonly "getUser": <Config extends OperationConfig = {}>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config>, HttpClientError.HttpClientError | SchemaError>
+  readonly "getUser": <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config>, HttpClientError.HttpClientError | SchemaError>
 }
 
 export interface TestClientError<Tag extends string, E> {
@@ -1126,7 +1126,7 @@ export const TestClientError = <Tag extends string, E>(
         `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
         `Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`,
         `"2xx": decodeBinary`,
-        `readonly "downloadArchive": <Config extends OperationConfig = {}>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadArchive": <Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `"downloadAvatar": (options) => HttpClientRequest.get("/avatar").pipe(
@@ -1134,7 +1134,7 @@ export const TestClientError = <Tag extends string, E>(
       "2xx": decodeBinary`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `"400": decodeError("DownloadMixedContent400", DownloadMixedContent400)`,
-        `readonly "downloadMixedContent": <Config extends OperationConfig = {}>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadMixedContent": <Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `"200": () => Effect.void`,
         `"404": decodeVoidError("404")`,
@@ -1239,7 +1239,7 @@ export interface OperationConfig {
  * of an operation based upon the value of the \`includeResponse\` configuration
  * option.
  */
-export type WithOptionalResponse<A, Config extends OperationConfig> = Config extends {
+export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse]
   : "includeResponse" extends keyof Config
@@ -1357,7 +1357,7 @@ export const make = (
 
 export interface TestClient {
   readonly httpClient: HttpClient.HttpClient
-  readonly "getUser": <Config extends OperationConfig = {}>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError>
+  readonly "getUser": <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError>
 }
 
 export interface TestClientError<Tag extends string, E> {
@@ -1395,14 +1395,14 @@ export const TestClientError = <Tag extends string, E>(
         `onRequest(options?.config)([], {"400":"PollDeviceToken400"})`,
         `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
         `onRequest(options?.config)([], {"404":"DownloadArchive404"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
-        `readonly "downloadArchive": <Config extends OperationConfig = {}>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadArchive": <Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadAvatarStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `"downloadAvatar": (options) => HttpClientRequest.get("/avatar").pipe(
       onRequest(options?.config)([], undefined, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
         `readonly "downloadCustomBinaryStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `import * as HttpClient from "effect/http/HttpClient"`,
         `onRequest(options?.config)([], {"400":"DownloadMixedContent400"}, {"binary":["2xx"],"voidSuccess":[],"voidError":[]})`,
-        `readonly "downloadMixedContent": <Config extends OperationConfig = {}>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
+        `readonly "downloadMixedContent": <Config extends OperationConfig | undefined = undefined>(options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<Uint8Array, Config>`,
         `readonly "downloadMixedContentStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`,
         `onRequest(options?.config)([], undefined, {"binary":[],"voidSuccess":["200"],"voidError":["404","500"]})`,
         `cases[code] = decodeVoidError(code)`,
@@ -1429,10 +1429,8 @@ export const TestClientError = <Tag extends string, E>(
   describe("includeResponse", () => {
     it.effect(
       "preserves dynamic includeResponse for httpclient output",
-      () =>
-        assertGeneratedClientsCompile(includeResponseSpec, {
-          formats: ["httpclient"],
-          usage: `import type * as ConsumerEffect from "effect/Effect"
+      () => {
+        const usage = `import type * as ConsumerEffect from "effect/Effect"
 import type * as ConsumerHttpClient from "effect/http/HttpClient"
 import type * as ConsumerHttpClientResponse from "effect/http/HttpClientResponse"
 
@@ -1441,6 +1439,9 @@ declare const includeResponse: boolean
 const client = make(httpClient)
 const result = client.getValue({ config: { includeResponse } })
 const omittedResult = client.getValue(undefined)
+const undefinedConfigResult = client.getValue({ config: undefined })
+declare const maybeIncludeResponse: boolean | undefined
+const maybeIncludeResponseResult = client.getValue({ config: { includeResponse: maybeIncludeResponse } })
 const trueResult = client.getValue({ config: { includeResponse: true } })
 const falseResult = client.getValue({ config: { includeResponse: false } })
 declare const optionalBoolean: { readonly includeResponse?: boolean }
@@ -1451,35 +1452,49 @@ declare const optionalFalse: { readonly includeResponse?: false }
 const optionalFalseResult = client.getValue({ config: optionalFalse })
 declare const operationConfig: OperationConfig
 const operationConfigResult = client.getValue({ config: operationConfig })
+const explicitOperationConfigUndefinedResult = client.getValue<OperationConfig>({ config: undefined })
 declare const configUnion: {} | { readonly includeResponse: true }
 const configUnionResult = client.getValue({ config: configUnion })
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
 type Assert<T extends true> = T
 type DynamicResponse = Assert<Equal<ConsumerEffect.Success<typeof result>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type OmittedResponse = Assert<Equal<ConsumerEffect.Success<typeof omittedResult>, string>>
+type UndefinedConfigResponse = Assert<Equal<ConsumerEffect.Success<typeof undefinedConfigResult>, string>>
+type OptionalBooleanPropertyResponse = Assert<Equal<ConsumerEffect.Success<typeof maybeIncludeResponseResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type LiteralTrueResponse = Assert<Equal<ConsumerEffect.Success<typeof trueResult>, [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type LiteralFalseResponse = Assert<Equal<ConsumerEffect.Success<typeof falseResult>, string>>
 type OptionalBooleanResponse = Assert<Equal<ConsumerEffect.Success<typeof optionalBooleanResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type OptionalTrueResponse = Assert<Equal<ConsumerEffect.Success<typeof optionalTrueResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type OptionalFalseResponse = Assert<Equal<ConsumerEffect.Success<typeof optionalFalseResult>, string>>
 type OperationConfigResponse = Assert<Equal<ConsumerEffect.Success<typeof operationConfigResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
-type UnionResponse = Assert<Equal<ConsumerEffect.Success<typeof configUnionResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>`
-        }),
+type ExplicitOperationConfigUndefinedResponse = Assert<Equal<ConsumerEffect.Success<typeof explicitOperationConfigUndefinedResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
+type UnionResponse = Assert<Equal<ConsumerEffect.Success<typeof configUnionResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
+`
+        return Effect.all([
+          assertGeneratedClientsCompile(includeResponseSpec, { formats: ["httpclient"], usage }),
+          assertGeneratedClientsCompile(includeResponseSpec, {
+            formats: ["httpclient"],
+            exactOptionalPropertyTypes: false,
+            usage
+          })
+        ])
+      },
       compilationTimeout
     )
 
     it.effect(
       "preserves dynamic includeResponse for httpclient-type-only output",
-      () =>
-        assertGeneratedClientsCompile(includeResponseSpec, {
-          formats: ["httpclient-type-only"],
-          usage: `import type * as ConsumerEffect from "effect/Effect"
+      () => {
+        const usage = `import type * as ConsumerEffect from "effect/Effect"
 import type * as ConsumerHttpClientResponse from "effect/http/HttpClientResponse"
 
 declare const client: TestClient
 declare const includeResponse: boolean
 const result = client.getValue({ config: { includeResponse } })
 const omittedResult = client.getValue(undefined)
+const undefinedConfigResult = client.getValue({ config: undefined })
+declare const maybeIncludeResponse: boolean | undefined
+const maybeIncludeResponseResult = client.getValue({ config: { includeResponse: maybeIncludeResponse } })
 const trueResult = client.getValue({ config: { includeResponse: true } })
 const falseResult = client.getValue({ config: { includeResponse: false } })
 declare const optionalBoolean: { readonly includeResponse?: boolean }
@@ -1490,20 +1505,33 @@ declare const optionalFalse: { readonly includeResponse?: false }
 const optionalFalseResult = client.getValue({ config: optionalFalse })
 declare const operationConfig: OperationConfig
 const operationConfigResult = client.getValue({ config: operationConfig })
+const explicitOperationConfigUndefinedResult = client.getValue<OperationConfig>({ config: undefined })
 declare const configUnion: {} | { readonly includeResponse: true }
 const configUnionResult = client.getValue({ config: configUnion })
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
 type Assert<T extends true> = T
 type DynamicResponse = Assert<Equal<ConsumerEffect.Success<typeof result>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type OmittedResponse = Assert<Equal<ConsumerEffect.Success<typeof omittedResult>, string>>
+type UndefinedConfigResponse = Assert<Equal<ConsumerEffect.Success<typeof undefinedConfigResult>, string>>
+type OptionalBooleanPropertyResponse = Assert<Equal<ConsumerEffect.Success<typeof maybeIncludeResponseResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type LiteralTrueResponse = Assert<Equal<ConsumerEffect.Success<typeof trueResult>, [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type LiteralFalseResponse = Assert<Equal<ConsumerEffect.Success<typeof falseResult>, string>>
 type OptionalBooleanResponse = Assert<Equal<ConsumerEffect.Success<typeof optionalBooleanResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type OptionalTrueResponse = Assert<Equal<ConsumerEffect.Success<typeof optionalTrueResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
 type OptionalFalseResponse = Assert<Equal<ConsumerEffect.Success<typeof optionalFalseResult>, string>>
 type OperationConfigResponse = Assert<Equal<ConsumerEffect.Success<typeof operationConfigResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
-type UnionResponse = Assert<Equal<ConsumerEffect.Success<typeof configUnionResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>`
-        }),
+type ExplicitOperationConfigUndefinedResponse = Assert<Equal<ConsumerEffect.Success<typeof explicitOperationConfigUndefinedResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
+type UnionResponse = Assert<Equal<ConsumerEffect.Success<typeof configUnionResult>, string | [string, ConsumerHttpClientResponse.HttpClientResponse]>>
+`
+        return Effect.all([
+          assertGeneratedClientsCompile(includeResponseSpec, { formats: ["httpclient-type-only"], usage }),
+          assertGeneratedClientsCompile(includeResponseSpec, {
+            formats: ["httpclient-type-only"],
+            exactOptionalPropertyTypes: false,
+            usage
+          })
+        ])
+      },
       compilationTimeout
     )
   })

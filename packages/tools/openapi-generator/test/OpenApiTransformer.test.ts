@@ -100,7 +100,9 @@ describe("OpenApiTransformer", () => {
           }, { name: "TestClient", format })
           const make = yield* Effect.promise(() =>
             loadClient<{
-              getValue: (options: { config?: { includeResponse?: boolean } }) => Effect.Effect<unknown, unknown>
+              getValue: (
+                options: { config?: { includeResponse?: boolean } | undefined } | undefined
+              ) => Effect.Effect<unknown, unknown>
             }>(source)
           )
           const httpClient = HttpClient.make((request) =>
@@ -111,7 +113,12 @@ describe("OpenApiTransformer", () => {
               })
             ))
           ).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
-          const result = yield* make(httpClient).getValue({ config: { includeResponse: true } })
+          const client = make(httpClient)
+          assert.strictEqual(yield* client.getValue(undefined), "hello")
+          assert.strictEqual(yield* client.getValue({ config: undefined }), "hello")
+          assert.strictEqual(yield* client.getValue({ config: { includeResponse: false } }), "hello")
+          assert.strictEqual(yield* client.getValue({ config: {} }), "hello")
+          const result = yield* client.getValue({ config: { includeResponse: true } })
           if (!Array.isArray(result)) {
             throw new Error("Expected includeResponse to return a tuple")
           }
