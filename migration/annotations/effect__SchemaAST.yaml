@@ -326,7 +326,7 @@
   replacement: "none"
   note: "The symbol annotation was removed; use message or expected annotations."
 "effect/SchemaAST#ParseJsonSchemaId":
-  replacement: "Schema.UnknownFromJsonString"
+  replacement: "Schema.fromJsonString(Schema.Unknown)"
   note: "Use the built-in JSON string codec instead of checking the old schema ID."
 "effect/SchemaAST#ParseOptions":
   replacement: "SchemaAST.ParseOptions"

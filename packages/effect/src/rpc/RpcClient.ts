@@ -454,9 +454,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     const id = generateRequestId()
 
     const scope = Context.getUnsafe(fiber.context, Scope.Scope)
+    const queue = yield* Queue.bounded<any, any>(streamBufferSize)
     yield* Scope.addFinalizerExit(
       scope,
       (exit) => {
+        Queue.shutdownUnsafe(queue)
         if (!entries.has(id)) return Effect.void
         entries.delete(id)
         return sendInterrupt(
@@ -469,7 +471,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
     )
 
-    const queue = yield* Queue.bounded<any, any>(streamBufferSize)
     entries.set(id, {
       _tag: "Queue",
       rpc,
@@ -771,7 +772,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
         return Effect.forEach(
-          entries.keys(),
+          Array.from(entries.keys()),
           (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
         )
       }
