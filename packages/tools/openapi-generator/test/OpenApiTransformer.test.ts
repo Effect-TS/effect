@@ -78,6 +78,9 @@ describe("OpenApiTransformer", () => {
           const source = yield* generator.generate({
             openapi: "3.1.0",
             info: { title: "Include response", version: "1.0.0" },
+            components: { schemas: {}, securitySchemes: {} },
+            security: [],
+            tags: [],
             paths: {
               "/value": {
                 get: {
@@ -109,7 +112,9 @@ describe("OpenApiTransformer", () => {
             ))
           ).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
           const result = yield* make(httpClient).getValue({ config: { includeResponse: true } })
-          assert.isArray(result)
+          if (!Array.isArray(result)) {
+            throw new Error("Expected includeResponse to return a tuple")
+          }
           assert.strictEqual(result[0], "hello")
           assert.strictEqual(result[1].status, 200)
         }).pipe(Effect.provide(

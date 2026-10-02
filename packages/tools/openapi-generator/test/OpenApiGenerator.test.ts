@@ -572,6 +572,9 @@ const responseMatchingSpec: OpenAPISpec = {
 const includeResponseSpec: OpenAPISpec = {
   openapi: "3.1.0",
   info: { title: "Include response", version: "1.0.0" },
+  components: { schemas: {}, securitySchemes: {} },
+  security: [],
+  tags: [],
   paths: {
     "/value": {
       get: {
