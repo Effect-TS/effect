@@ -1,6 +1,6 @@
 import type * as NodeSocketConnector from "@effect/platform-node-shared/NodeSocketConnector"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber } from "effect"
 import * as Fs from "node:fs"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
@@ -49,6 +49,87 @@ const written = (stream: HeldStream) => stream.writes.map((bytes) => [...bytes])
 
 export const socketConnectorTests = (name: string, make: typeof NodeSocketConnector.make) =>
   describe(name, () => {
+    it.effect("delivers receive callbacks synchronously and releases interrupted consumers", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const received: Array<Array<number>> = []
+        const reading = yield* transport.run((bytes) => {
+          received.push(Array.from(bytes as Uint8Array))
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+        stream.push(Buffer.from([1, 2]))
+        stream.emit("readable")
+        assert.deepStrictEqual(received, [[1, 2]])
+        yield* Fiber.interrupt(reading)
+        stream.push(Buffer.from([3]))
+        assert.deepStrictEqual(Array.from((yield* transport.pull)[0] as Uint8Array), [3])
+      }))
+
+    it.effect("suspends further reads while a receive callback is backpressured", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const release = yield* Deferred.make<void>()
+        const delivered = yield* Deferred.make<void>()
+        const received: Array<Array<number>> = []
+        const reading = yield* transport.run((bytes) => {
+          received.push(Array.from(bytes as Uint8Array))
+          return received.length === 1 ? Deferred.await(release) : Deferred.succeed(delivered, void 0)
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+        stream.push(Buffer.from([1]))
+        stream.emit("readable")
+        stream.push(Buffer.from([2]))
+        stream.emit("readable")
+        assert.deepStrictEqual(received, [[1]])
+        yield* Deferred.succeed(release, void 0)
+        yield* Deferred.await(delivered)
+        assert.deepStrictEqual(received, [[1], [2]])
+        yield* Fiber.interrupt(reading)
+      }))
+
+    it.effect("continues after completed callback effects and inherits the receive context", () =>
+      Effect.gen(function*() {
+        const setting = Context.Reference<number>("SocketConnector/ReceiveSetting", { defaultValue: () => 0 })
+        const { stream, transport } = yield* held(make)
+        const received: Array<number> = []
+        const reading = yield* transport.run((bytes) => {
+          if ((bytes as Uint8Array)[0] === 1) stream.push(Buffer.from([2]))
+          return Effect.map(setting, (value) => {
+            received.push((bytes as Uint8Array)[0] + value)
+          })
+        }).pipe(Effect.provideService(setting, 10), Effect.forkChild({ startImmediately: true }))
+        stream.push(Buffer.from([1]))
+        stream.emit("readable")
+        assert.deepStrictEqual(received, [11, 12])
+        yield* Fiber.interrupt(reading)
+      }))
+
+    it.effect("closing a receive loop interrupts its suspended callback", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const stopped = yield* Deferred.make<void>()
+        const reading = yield* transport.run(() =>
+          Effect.never.pipe(Effect.ensuring(Deferred.succeed(stopped, void 0)))
+        ).pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+        stream.push(Buffer.from([1]))
+        stream.emit("readable")
+        yield* transport.close
+        assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "SocketCloseError")
+        yield* Deferred.await(stopped)
+      }))
+
+    it.effect("retains receive callback exceptions as read error causes", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        const cause = new Error("Malformed frame")
+        const reading = yield* transport.run(() => {
+          throw cause
+        }).pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+        stream.push(Buffer.from([1]))
+        stream.emit("readable")
+        const failure = yield* Fiber.join(reading)
+        assert.strictEqual(failure.reason._tag, "SocketReadError")
+        if (failure.reason._tag === "SocketReadError") assert.strictEqual(failure.reason.cause, cause)
+      }))
+
     it.live("closes a native connection while a write is backpressured", () =>
       Effect.gen(function*() {
         let peer: Net.Socket | undefined

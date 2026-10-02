@@ -1,6 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Queue, Scope } from "effect"
-import type { NonEmptyReadonlyArray } from "effect/Array"
+import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
 import * as Connection from "effect/redis/RedisConnection"
 import type { RedisError } from "effect/redis/RedisError"
 import * as Protocol from "effect/redis/RedisProtocol"
@@ -47,7 +46,8 @@ describe("RedisConnection", () => {
   it.effect("adapts scoped platform sockets without crossing session boundaries", () =>
     Effect.gen(function*() {
       const failure = new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1006 }) })
-      const input = yield* Queue.unbounded<NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>()
+      let receive: ((chunk: Uint8Array | string) => void | Effect.Effect<void, Socket.SocketError>) | undefined
+      let failReading: ((effect: Effect.Effect<void, Socket.SocketError>) => void) | undefined
       const writes: Array<string | Uint8Array> = []
       const endpoints: Array<Connection.Endpoint> = []
       let closed = false
@@ -56,7 +56,16 @@ describe("RedisConnection", () => {
           Effect.sync(() => {
             endpoints.push(endpoint)
             return {
-              pull: Queue.take(input),
+              pull: Effect.die("Redis should use the callback receiver"),
+              run: (onChunk) =>
+                Effect.callback<void, Socket.SocketError>((resume) => {
+                  receive = onChunk
+                  failReading = resume
+                  return Effect.sync(() => {
+                    receive = undefined
+                    failReading = undefined
+                  })
+                }),
               upgrade: () => Effect.void,
               write: (chunk) =>
                 Effect.suspend(() => {
@@ -66,9 +75,12 @@ describe("RedisConnection", () => {
                   return Effect.void
                 }),
               writeAll: () => Effect.die("Unexpected writeAll"),
-              close: Effect.gen(function*() {
+              close: Effect.sync(() => {
                 closed = true
-                yield* Queue.fail(input, failure)
+                const reading = failReading
+                receive = undefined
+                failReading = undefined
+                reading?.(Effect.fail(failure))
               })
             }
           })
@@ -78,13 +90,18 @@ describe("RedisConnection", () => {
         Effect.flip,
         Effect.forkChild
       )
-      yield* Queue.offer(input, ["+OK\r\n", new Uint8Array([0, 255])])
       yield* Effect.yieldNow
+      yield* Effect.sync(() => {
+        receive!("+OK\r\n")
+        receive!(new Uint8Array([0, 255]))
+        assert.deepStrictEqual(received, [[43, 79, 75, 13, 10], [0, 255]])
+      })
       assert.deepStrictEqual(received, [[43, 79, 75, 13, 10], [0, 255]])
       assert.deepStrictEqual(endpoints, [{ host: "redis", port: 6379, connectTimeout: "3 seconds" }])
       yield* transport.write("PING")
       yield* transport.close
       assert.strictEqual((yield* Fiber.join(running)).reason, "Closed")
+      assert.isUndefined(receive)
       assert.strictEqual((yield* transport.write("later").pipe(Effect.flip)).outcome, "Unknown")
       assert.deepStrictEqual(writes, ["PING"])
     }))
@@ -109,7 +126,43 @@ describe("RedisConnection", () => {
       const transport = yield* Connection.fromSocketConnector({
         connect: () =>
           Effect.succeed({
-            pull: Effect.succeed([new Uint8Array([1])] as const),
+            ...Socket.makeReader({
+              pull: Effect.succeed([new Uint8Array([1])] as const),
+              upgrade: () => Effect.void
+            }),
+            write: () => Effect.void,
+            writeAll: () => Effect.void,
+            close: Effect.sync(() => {
+              closed = true
+            })
+          })
+      })({ host: "redis", port: 6379 })
+      const consumerFailure = new Error("consumer")
+      const error = yield* transport.run(() => {
+        throw consumerFailure
+      }).pipe(Effect.flip)
+      assert.strictEqual(error.reason, "Protocol")
+      assert.strictEqual(error.cause, consumerFailure)
+      assert.isTrue(closed)
+    }))
+
+  it.effect("closes platform sockets and detaches callback delivery when interrupted", () =>
+    Effect.gen(function*() {
+      const ready = yield* Deferred.make<void>()
+      let closed = false
+      let attached = false
+      const transport = yield* Connection.fromSocketConnector({
+        connect: () =>
+          Effect.succeed({
+            pull: Effect.die("Redis should use the callback receiver"),
+            run: () =>
+              Effect.callback<void, Socket.SocketError>(() => {
+                attached = true
+                Deferred.doneUnsafe(ready, Effect.void)
+                return Effect.sync(() => {
+                  attached = false
+                })
+              }),
             upgrade: () => Effect.void,
             write: () => Effect.void,
             writeAll: () => Effect.void,
@@ -118,10 +171,11 @@ describe("RedisConnection", () => {
             })
           })
       })({ host: "redis", port: 6379 })
-      const error = yield* transport.run(() => {
-        throw new Error("consumer")
-      }).pipe(Effect.flip)
-      assert.strictEqual(error.reason, "Protocol")
+      const running = yield* transport.run(() => {}).pipe(Effect.forkChild)
+      yield* Deferred.await(ready)
+      assert.isTrue(attached)
+      yield* Fiber.interrupt(running)
+      assert.isFalse(attached)
       assert.isTrue(closed)
     }))
 

@@ -707,7 +707,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
               })
           )
 
-          return {
+          return Socket.makeReader({
             pull: Effect.callback<
               Arr.NonEmptyReadonlyArray<Uint8Array | string>,
               Socket.SocketError
@@ -720,7 +720,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
               })
             }),
             upgrade: Socket.SocketUpgradeError.unsupported
-          }
+          })
         })
 
         return Socket.make({ reader, writer })

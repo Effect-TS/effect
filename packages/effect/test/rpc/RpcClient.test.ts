@@ -221,10 +221,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed({
+        reader: Effect.succeed(Socket.makeReader({
           pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
           upgrade: Socket.SocketUpgradeError.unsupported
-        }),
+        })),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -264,10 +264,10 @@ describe("RpcClient", () => {
       const write = () =>
         Effect.sync(() => writes++).pipe(Effect.andThen(Deferred.succeed(requestSent, void 0)), Effect.asVoid)
       const socket = Socket.make({
-        reader: Effect.succeed({
+        reader: Effect.succeed(Socket.makeReader({
           pull: Effect.never,
           upgrade: Socket.SocketUpgradeError.unsupported
-        }),
+        })),
         writer: Effect.succeed({
           write,
           writeAll: write
@@ -309,10 +309,10 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed({
+        reader: Effect.succeed(Socket.makeReader({
           pull: Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
           upgrade: Socket.SocketUpgradeError.unsupported
-        }),
+        })),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
@@ -353,13 +353,13 @@ describe("RpcClient", () => {
         })
       })
       const socket = Socket.make({
-        reader: Effect.succeed({
+        reader: Effect.succeed(Socket.makeReader({
           pull: Deferred.await(requestSent).pipe(
             Effect.tap(() => Effect.sync(() => attempts++)),
             Effect.andThen(Effect.fail(socketError))
           ),
           upgrade: Socket.SocketUpgradeError.unsupported
-        }),
+        })),
         writer: Effect.succeed({
           write: () => Effect.asVoid(Deferred.succeed(requestSent, void 0)),
           writeAll: () => Effect.asVoid(Deferred.succeed(requestSent, void 0))

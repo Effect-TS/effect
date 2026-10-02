@@ -61,6 +61,8 @@ it.effect("releases side sessions in the listener's scope", () =>
           const incoming = yield* Queue.unbounded<Uint8Array>()
           return {
             pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
+            run: (onChunk) =>
+              Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => onChunk(chunk) ?? Effect.void)),
             upgrade: () => Effect.void,
             write: (chunk) =>
               Effect.sync(() => {

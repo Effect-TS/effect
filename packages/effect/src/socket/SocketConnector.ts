@@ -8,6 +8,7 @@ import * as Context from "../Context.ts"
 import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import * as Latch from "../Latch.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Socket from "./Socket.ts"
@@ -87,8 +88,10 @@ export const fromSocket = Effect.fnUntraced(function*(socket: Socket.Socket): Ef
 > {
   const scope = yield* Scope.fork(yield* Effect.scope)
   let closed = false
+  const closedSignal = Latch.makeUnsafe(false)
   const close = Effect.suspend(() => {
     closed = true
+    closedSignal.openUnsafe()
     return Scope.close(scope, Exit.void)
   })
   const [reader, writer] = yield* Effect.uninterruptibleMask((restore) =>
@@ -99,6 +102,7 @@ export const fromSocket = Effect.fnUntraced(function*(socket: Socket.Socket): Ef
         scope,
         Effect.sync(() => {
           closed = true
+          closedSignal.openUnsafe()
         })
       )
       return [reader, writer] as const
@@ -110,6 +114,7 @@ export const fromSocket = Effect.fnUntraced(function*(socket: Socket.Socket): Ef
     Effect.suspend(() => closed ? Effect.fail(closedError) : effect).pipe(Effect.tapError(() => close))
   return {
     pull: guard(reader.pull),
+    run: (onChunk) => guard(Effect.raceFirst(reader.run(onChunk), closedSignal.whenOpen(Effect.fail(closedError)))),
     upgrade: (options) => semaphore.withPermit(guard(reader.upgrade(options))),
     write: (chunk) => semaphore.withPermit(guard(writer.write(chunk))),
     writeAll: (chunks) => semaphore.withPermit(guard(writer.writeAll(chunks))),

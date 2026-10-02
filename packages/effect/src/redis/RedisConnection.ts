@@ -584,23 +584,25 @@ export const fromSocketConnector = (
     return {
       write: (bytes) => connection.write(bytes).pipe(Effect.mapError(failure)),
       run: (onBytes) =>
-        Effect.forever(connection.pull.pipe(
-          Effect.mapError(failure),
-          Effect.flatMap((chunks) =>
-            Effect.try({
-              try: () => {
-                for (const chunk of chunks) onBytes(typeof chunk === "string" ? socketEncoder.encode(chunk) : chunk)
-              },
-              catch: (cause) =>
-                new RedisError({
-                  reason: "Protocol",
-                  message: "Redis input consumer failed",
-                  cause,
-                  outcome: "Unknown"
-                })
+        connection.run((chunk) => {
+          try {
+            onBytes(typeof chunk === "string" ? socketEncoder.encode(chunk) : chunk)
+          } catch (cause) {
+            throw new RedisError({
+              reason: "Protocol",
+              message: "Redis input consumer failed",
+              cause,
+              outcome: "Unknown"
             })
-          )
-        )).pipe(Effect.onError(() => close)),
+          }
+        }).pipe(
+          Effect.mapError((cause) =>
+            cause.reason._tag === "SocketReadError" && cause.reason.cause instanceof RedisError
+              ? cause.reason.cause
+              : failure(cause)
+          ),
+          Effect.onError(() => close)
+        ),
       close
     } satisfies Transport
   })

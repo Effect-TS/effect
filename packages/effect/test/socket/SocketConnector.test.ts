@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Scope } from "effect"
+import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
 import * as Socket from "effect/socket/Socket"
 import * as SocketConnector from "effect/socket/SocketConnector"
 
@@ -15,7 +15,7 @@ const makeSocket = () => {
           resume?.(Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1006 }) })))
         })
       )
-      return {
+      return Socket.makeReader({
         pull: Effect.callback<[Uint8Array], Socket.SocketError>((next) => {
           resume = next
           return Effect.sync(() => {
@@ -23,7 +23,7 @@ const makeSocket = () => {
           })
         }),
         upgrade: Socket.SocketUpgradeError.unsupported
-      }
+      })
     }),
     writer: Effect.succeed({
       write: (chunk) =>
@@ -40,6 +40,30 @@ const makeSocket = () => {
 }
 
 describe("SocketConnector", () => {
+  it.effect("closes a pull-derived receive loop while its callback is suspended", () =>
+    Effect.gen(function*() {
+      const entered = yield* Deferred.make<void>()
+      const stopped = yield* Deferred.make<void>()
+      const socket = Socket.make({
+        reader: Effect.succeed(Socket.makeReader({
+          pull: Effect.succeed([new Uint8Array([1])] as const),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        })),
+        writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
+      })
+      const connection = yield* SocketConnector.fromSocket(socket)
+      const reading = yield* connection.run(() =>
+        Deferred.succeed(entered, void 0).pipe(
+          Effect.andThen(Effect.never),
+          Effect.ensuring(Deferred.succeed(stopped, void 0))
+        )
+      ).pipe(Effect.flip, Effect.forkChild)
+      yield* Deferred.await(entered)
+      yield* connection.close
+      assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "SocketCloseError")
+      yield* Deferred.await(stopped)
+    }))
+
   it.effect("acquires one session and prevents writes after closing it", () =>
     Effect.gen(function*() {
       const fixture = makeSocket()

@@ -1885,12 +1885,10 @@ class Transport {
     this.connection = connection
     this.outgoing = outgoing
     this.runFork = runFork
-    const reader = Effect.forever(Effect.andThen(
-      this.readable.await,
-      Effect.map(connection.pull, (chunks) => {
-        for (const chunk of chunks) this.onData(typeof chunk === "string" ? textEncoder.encode(chunk) : chunk)
-      })
-    )).pipe(Effect.catch((error) => Effect.sync(() => this.onError(error))))
+    const reader = connection.run((chunk) => {
+      this.onData(typeof chunk === "string" ? textEncoder.encode(chunk) : chunk)
+      if (!this.readable.isOpen()) return this.readable.await
+    }).pipe(Effect.catch((error) => Effect.sync(() => this.onError(error))))
     const writer = Effect.forever(Effect.flatMap(Queue.takeAll(outgoing), (chunks) => connection.writeAll(chunks)))
       .pipe(
         Effect.catch((error) => Effect.sync(() => this.onError(error)))

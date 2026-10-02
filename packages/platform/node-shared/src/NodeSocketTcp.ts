@@ -13,6 +13,8 @@ import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Function from "effect/Function"
 import { identity } from "effect/Function"
 import * as Latch from "effect/Latch"
@@ -188,6 +190,15 @@ export const fromDuplex = <RO>(
 
       let error: Socket.SocketError | undefined
       let waiter: ReadResume | undefined
+      let consumer: {
+        readonly onChunk: (chunk: Uint8Array | string) => void | Effect.Effect<void, Socket.SocketError>
+        readonly resume: (effect: Effect.Effect<void, Socket.SocketError>) => void
+        readonly runFork: (effect: Effect.Effect<void, Socket.SocketError>) => Fiber.Fiber<void, Socket.SocketError>
+        task: Fiber.Fiber<void, Socket.SocketError> | undefined
+        settled: boolean
+      } | undefined
+      let draining = false
+      let consuming = false
       let upgradeAvailable = true
 
       function fail(err: Socket.SocketError) {
@@ -195,15 +206,54 @@ export const fromDuplex = <RO>(
         if (waiter !== undefined) {
           const resume = waiter
           waiter = undefined
+          consuming = false
           resume(Effect.fail(error!))
+        }
+        if (consumer !== undefined) {
+          consumer.settled = true
+          consumer.task?.interruptUnsafe()
+          consumer.resume(Effect.fail(error))
         }
       }
       function onReadable() {
+        if (consumer !== undefined) {
+          if (draining || consumer.task !== undefined || consumer.settled) return
+          draining = true
+          try {
+            while (true) {
+              if (consumer === undefined || consumer.task !== undefined || consumer.settled) break
+              const chunk = conn.read() as Uint8Array | string | null
+              if (chunk === null) break
+              const current = consumer
+              const next = current.onChunk(chunk)
+              if (next === undefined) continue
+              const task = current.runFork(next)
+              current.task = task
+              task.addObserver((exit) => {
+                if (consumer !== current || current.settled) return
+                if (Exit.isFailure(exit)) {
+                  current.settled = true
+                  current.resume(exit)
+                  return
+                }
+                current.task = undefined
+                if (error !== undefined) current.resume(Effect.fail(error))
+                else onReadable()
+              })
+            }
+          } catch (cause) {
+            fail(new Socket.SocketError({ reason: new Socket.SocketReadError({ cause }) }))
+          } finally {
+            draining = false
+          }
+          return
+        }
         if (waiter === undefined) return
         const chunk = readAvailable(conn)
         if (chunk === null) return
         const resume = waiter
         waiter = undefined
+        consuming = false
         resume(Effect.succeed(chunk))
       }
       function onEnd() {
@@ -261,20 +311,61 @@ export const fromDuplex = <RO>(
       currentSocket = conn
       latch.openUnsafe()
 
+      const activeError = () =>
+        new Socket.SocketError({
+          reason: new Socket.SocketReadError({ cause: new Error("socket reader already has an active consumer") })
+        })
       const pull = Effect.suspend(() => {
+        if (consuming) return Effect.fail(activeError())
         const chunk = readAvailable(conn)
         if (chunk !== null) return Effect.succeed(chunk)
         if (error !== undefined) return Effect.fail(error)
         return Effect.callback<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>((resume) => {
+          consuming = true
           waiter = resume
           return Effect.sync(() => {
-            if (waiter === resume) waiter = undefined
+            if (waiter === resume) {
+              waiter = undefined
+              consuming = false
+            }
           })
         })
       })
 
+      const run: Socket.Reader["run"] = (onChunk) =>
+        Effect.withFiber((runFiber) => {
+          let current: typeof consumer
+          return Effect.callback<void, Socket.SocketError>((resume) => {
+            if (consuming) return resume(Effect.fail(activeError()))
+            if (error !== undefined) return resume(Effect.fail(error))
+            consuming = true
+            current = {
+              onChunk,
+              resume,
+              runFork: Effect.runForkWith(runFiber.context),
+              task: undefined as Fiber.Fiber<void, Socket.SocketError> | undefined,
+              settled: false
+            }
+            consumer = current
+            onReadable()
+          }).pipe(Effect.ensuring(Effect.suspend(() => {
+            if (current === undefined) return Effect.void
+            if (consumer === current) consumer = undefined
+            current.settled = true
+            consuming = false
+            return current.task === undefined ? Effect.void : Fiber.interrupt(current.task).pipe(Effect.asVoid)
+          })))
+        })
+
       const upgrade: Socket.Reader["upgrade"] = (upgradeOptions = {}) =>
         Effect.suspend(() => {
+          if (consuming) {
+            return Effect.fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({ cause: new Error("socket reader has an active consumer") })
+              })
+            )
+          }
           if (!upgradeAvailable) {
             return Effect.fail(
               new Socket.SocketError({
@@ -284,6 +375,7 @@ export const fromDuplex = <RO>(
               })
             )
           }
+          consuming = true
           return Effect.callback<void, Socket.SocketError>((resume) => {
             const raw = conn
             detachReadListeners(raw)
@@ -378,10 +470,12 @@ export const fromDuplex = <RO>(
               )
               tls.destroy()
             })
-          })
+          }).pipe(Effect.ensuring(Effect.sync(() => {
+            consuming = false
+          })))
         })
 
-      return { pull, upgrade }
+      return { pull, run, upgrade }
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
     ) as Socket.Socket["reader"]

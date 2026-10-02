@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ConfigProvider, Deferred, Effect, Exit, Fiber, Queue, Redacted, Result, Scope } from "effect"
+import { ConfigProvider, Deferred, Effect, Exit, Fiber, Queue, Redacted, Result, Scope, Stream } from "effect"
 import type { PgConnection } from "effect/postgres"
 import * as TestClock from "effect/testing/TestClock"
 import { mkdtemp, rm } from "node:fs/promises"
@@ -1062,6 +1062,84 @@ describe("PgConnection in-process server", () => {
 })
 
 describe("PgConnection transport", () => {
+  it.effect("pauses incoming rows until a slow stream consumer resumes", () =>
+    Effect.gen(function*() {
+      const incoming = yield* Queue.unbounded<Uint8Array>()
+      const paused = yield* Deferred.make<void>()
+      const resume = yield* Deferred.make<void>()
+      const rows: Array<number> = []
+      let received = 0
+      const description = backendMessage(
+        "T",
+        Buffer.concat([
+          int16(1),
+          Buffer.from("value\0"),
+          int32(0),
+          int16(0),
+          int32(23),
+          int16(4),
+          int32(-1),
+          int16(1)
+        ])
+      )
+      const batches = Array.from({ length: 3 }, (_, batch) => {
+        const messages = Array.from({ length: 600 }, (_, i) => {
+          const value = int32(batch * 600 + i)
+          return backendMessage("D", Buffer.concat([int16(1), int32(value.length), value]))
+        })
+        if (batch === 0) {
+          messages.unshift(backendMessage("1", Buffer.alloc(0)), backendMessage("2", Buffer.alloc(0)), description)
+        }
+        if (batch === 2) messages.push(backendMessage("C", Buffer.from("SELECT 1800\0")), readyForQuery)
+        return Buffer.concat(messages)
+      })
+      const connection = yield* makeConnection({
+        username: "test",
+        connector: () =>
+          Effect.succeed({
+            pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
+            run: (onChunk) =>
+              Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => {
+                received++
+                const pending = onChunk(chunk)
+                return pending === undefined
+                  ? Effect.void
+                  : Effect.andThen(Deferred.succeed(paused, undefined), pending)
+              })),
+            upgrade: () => Effect.void,
+            write: (chunk) =>
+              Effect.sync(() => {
+                if (chunk instanceof Uint8Array && chunk[0] !== 0x58) {
+                  Queue.offerUnsafe(incoming, Buffer.concat([authenticationOk, backendKeyData, readyForQuery]))
+                }
+              }),
+            writeAll: () =>
+              Effect.sync(() => {
+                for (const batch of batches) Queue.offerUnsafe(incoming, batch)
+              }),
+            close: Effect.void
+          })
+      })
+      const streaming = yield* connection.stream("SELECT value").pipe(
+        Stream.runForEach((row) =>
+          Effect.andThen(
+            rows.length === 0 ? Deferred.await(resume) : Effect.void,
+            Effect.sync(() => {
+              rows.push(row.value as number)
+            })
+          )
+        ),
+        Effect.forkScoped
+      )
+      yield* Deferred.await(paused)
+      assert.strictEqual(received, 2)
+      assert.deepStrictEqual(rows, [])
+      yield* Deferred.succeed(resume, undefined)
+      yield* Fiber.join(streaming)
+      assert.strictEqual(received, 3)
+      assert.deepStrictEqual(rows, Array.from({ length: 1800 }, (_, i) => i))
+    }))
+
   it.effect("stops queued writes before terminating a connection under backpressure", () =>
     Effect.gen(function*() {
       const incoming = yield* Queue.unbounded<Uint8Array>()
@@ -1077,6 +1155,8 @@ describe("PgConnection transport", () => {
           connector: () =>
             Effect.succeed({
               pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
+              run: (onChunk) =>
+                Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => onChunk(chunk) ?? Effect.void)),
               upgrade: () => Effect.void,
               write: (chunk) =>
                 Effect.sync(() => {
@@ -1132,6 +1212,8 @@ it.effect("closes the socket when Terminate cannot drain", () =>
         connector: () =>
           Effect.succeed({
             pull: Effect.map(Queue.take(incoming), (chunk) => [chunk] as const),
+            run: (onChunk) =>
+              Effect.forever(Effect.flatMap(Queue.take(incoming), (chunk) => onChunk(chunk) ?? Effect.void)),
             upgrade: () => Effect.void,
             write: (chunk) => {
               if (chunk instanceof Uint8Array && chunk[0] === 0x58) {
