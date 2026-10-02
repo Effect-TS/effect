@@ -13,6 +13,7 @@ import * as Pool from "effect/Pool"
 import type * as Scope from "effect/Scope"
 import type { SqlError } from "effect/sql/SqlError"
 import { SpanPropagationEnabled } from "effect/sql/Statement"
+import * as Tracer from "effect/Tracer"
 import { connectionInternals } from "./internal/connection.ts"
 import * as PgConnection from "./PgConnection.ts"
 
@@ -121,10 +122,8 @@ export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
  * `minConnections` after `idleTimeout` without use. Closing the scope shuts
  * the pool down and releases every session.
  *
- * With `SpanPropagationEnabled`, each checkout records how long it waited for a
- * session as `db.client.connection.wait_time_ms` on the statement's span. A
- * checkout that waited for a new session gets a `db.connect` child span,
- * covering the part of the connect it waited for.
+ * With `SpanPropagationEnabled`, a statement that waited for a new session gets
+ * a `db.connect` child span covering the part of the connect it waited for.
  *
  * @category constructors
  * @since 4.0.0
@@ -143,42 +142,46 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
 
   // The pool opens sessions on its own fiber, so a connect span made there has
   // no parent. Record when each session opened, and on its first checkout report
-  // the part of the connect that checkout waited for, under its statement. A
-  // session that was ready before the checkout began cost it nothing.
+  // the part of the connect that statement waited for, under its span. A session
+  // that was ready before the statement began cost it nothing. `unreported`
+  // keeps checkouts on their plain path once every open has been reported.
   const openedDuring = new WeakMap<
     PgConnection.PgConnection,
     { readonly startTime: bigint; readonly endTime: bigint }
   >()
+  let unreported = 0
   const connect = Effect.suspend(() => {
     const startTime = clock.currentTimeNanosUnsafe()
     return Effect.tap(PgConnection.make(options), (connection) =>
       Effect.sync(() => {
         openedDuring.set(connection, { startTime, endTime: clock.currentTimeNanosUnsafe() })
+        unreported++
       }))
   })
+  const forgetOpen = (connection: PgConnection.PgConnection) => {
+    if (openedDuring.delete(connection)) unreported--
+  }
 
-  const reportCheckout = (connection: PgConnection.PgConnection, startedAt: bigint): Effect.Effect<void> =>
-    Effect.gen(function*() {
+  const reportConnect = (connection: PgConnection.PgConnection): Effect.Effect<void> =>
+    Effect.withFiber((fiber) => {
       const opened = openedDuring.get(connection)
-      openedDuring.delete(connection)
-      if (!(yield* SpanPropagationEnabled)) return
-      const parent = yield* Effect.option(Effect.currentSpan)
-      if (Option.isNone(parent)) return
-      parent.value.attribute(
-        "db.client.connection.wait_time_ms",
-        Number(clock.currentTimeNanosUnsafe() - startedAt) / 1e6
-      )
-      if (opened === undefined || opened.endTime < startedAt) return
-      const tracer = yield* Effect.tracer
-      const span = tracer.span({
+      if (opened === undefined) return Effect.void
+      forgetOpen(connection)
+      const statement = fiber.cache.span
+      if (!fiber.cache.tracerEnabled || !fiber.getRef(SpanPropagationEnabled) || statement?._tag !== "Span") {
+        return Effect.void
+      }
+      const waitedFrom = statement.status.startTime
+      if (opened.endTime < waitedFrom) return Effect.void
+      const span = fiber.getRef(Tracer.Tracer).span({
         name: "db.connect",
-        parent: parent,
+        parent: Option.some(statement),
         annotations: Context.empty(),
         links: [],
-        startTime: opened.startTime > startedAt ? opened.startTime : startedAt,
+        startTime: opened.startTime > waitedFrom ? opened.startTime : waitedFrom,
         kind: "client",
         root: false,
-        sampled: parent.value.sampled
+        sampled: statement.sampled
       })
       span.attribute("db.system.name", "postgresql")
       if (options.applicationName !== undefined) {
@@ -186,15 +189,11 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       }
       span.attribute("db.client.connection.connect_time_ms", Number(opened.endTime - opened.startTime) / 1e6)
       span.end(opened.endTime, Exit.void)
+      return Effect.void
     })
 
-  const timed = <A extends PgConnection.PgConnection, E, R>(
-    checkout: Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E, R> =>
-    Effect.suspend(() => {
-      const startedAt = clock.currentTimeNanosUnsafe()
-      return Effect.tap(checkout, (connection) => reportCheckout(connection, startedAt))
-    })
+  const handOut = (connection: PgConnection.PgConnection) =>
+    unreported === 0 ? Effect.succeed(connection) : Effect.as(reportConnect(connection), connection)
 
   // Assigned below, once the pool exists. `acquire` only runs when the pool
   // opens a connection, which is always after that.
@@ -204,6 +203,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       createdAt.set(connection, clock.currentTimeMillisUnsafe())
       const internals = connectionInternals(connection)
       internals.retireHooks.add(() => {
+        forgetOpen(connection)
         deadConnections.add(connection)
         // `deadConnections` is only read by the next checkout, and a checkout
         // already waiting for this connection would never get that far. Tell
@@ -257,13 +257,13 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     }
   })
 
-  const get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = timed(
-    Effect.suspend(() =>
-      deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
+  const get: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
+    deadConnections.size > 0 ?
+      Effect.flatMap(retry, handOut) :
+      Effect.flatMap(Pool.get(pool), (connection) =>
         expired(connection)
-          ? Effect.andThen(Pool.invalidate(pool, connection), retry)
-          : Effect.succeed(connection))
-    )
+          ? Effect.andThen(Pool.invalidate(pool, connection), Effect.flatMap(retry, handOut))
+          : handOut(connection))
   )
 
   // `pin` reserves the pool item itself, so this needs no help.
@@ -275,11 +275,14 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | SqlError, R> =>
-    Effect.suspend(() => {
-      if (connectionTTL !== undefined || deadConnections.size > 0) return Effect.scoped(Effect.flatMap(get, f))
-      const startedAt = clock.currentTimeNanosUnsafe()
-      return Pool.use(pool, (connection) => Effect.andThen(reportCheckout(connection, startedAt), f(connection)))
-    })
+    Effect.suspend(() =>
+      connectionTTL === undefined && deadConnections.size === 0
+        ? Pool.use(
+          pool,
+          unreported === 0 ? f : (connection) => Effect.andThen(reportConnect(connection), f(connection))
+        )
+        : Effect.scoped(Effect.flatMap(get, f))
+    )
 
   const pgPool: PgPool = {
     [TypeId]: TypeId,

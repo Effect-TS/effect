@@ -16,7 +16,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import type * as Fiber from "../Fiber.ts"
-import { constUndefined } from "../Function.ts"
+import { constUndefined, constVoid } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import * as InternalRecord from "../internal/record.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -115,7 +115,9 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
 
 /**
  * Parents driver spans under `sql.execute` for every client in the current scope,
- * including acquisition and stream pulls. Defaults to `false`; ignored when tracing is disabled.
+ * including acquisition and stream pulls, and records how long each statement
+ * waited for a connection as `db.client.connection.wait_time_ms`. Defaults to
+ * `false`; ignored when tracing is disabled.
  *
  * @stability unstable
  * @category services
@@ -1273,6 +1275,7 @@ export const defaultTransforms = (
 
 const ATTR_DB_OPERATION_NAME = "db.operation.name"
 const ATTR_DB_QUERY_TEXT = "db.query.text"
+const ATTR_DB_CLIENT_CONNECTION_WAIT_TIME = "db.client.connection.wait_time_ms"
 
 interface StatementImpl<A> extends Statement<A> {
   readonly segments: ReadonlyArray<Segment>
@@ -1367,12 +1370,19 @@ const StatementProto: Omit<
       }
       span.attribute(ATTR_DB_OPERATION_NAME, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
+      const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+      const recordWait = propagate ? connectionWaitRecorder(span, fiber) : undefined
+      const run = recordWait === undefined
+        ? (connection: Connection) => f(connection, sql, params)
+        : (connection: Connection) =>
+          Effect.suspend(() => {
+            recordWait()
+            return f(connection, sql, params)
+          })
       const execute = this.borrower === undefined
-        ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
-        : this.borrower((connection: Connection) => f(connection, sql, params))
-      return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
-        ? Effect.provideService(execute, Tracer.ParentSpan, span)
-        : execute
+        ? Effect.scoped(Effect.flatMap(this.acquirer, run))
+        : this.borrower(run)
+      return propagate ? Effect.provideService(execute, Tracer.ParentSpan, span) : execute
     })
   },
 
@@ -1404,8 +1414,13 @@ const StatementProto: Omit<
           }
           span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
-          const acquire = Effect.map(self.acquirer, (_) => _.executeStream(sql, params, self.transformRows))
-          return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+          const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+          const recordWait = propagate ? connectionWaitRecorder(span, fiber) : constVoid
+          const acquire = Effect.map(self.acquirer, (connection) => {
+            recordWait()
+            return connection.executeStream(sql, params, self.transformRows)
+          })
+          return propagate
             ? Effect.succeed(Stream.provideService(Stream.unwrap(acquire), Tracer.ParentSpan, span))
             : acquire
         })
@@ -1470,6 +1485,18 @@ const StatementProto: Omit<
       params
     }
   }
+}
+
+// The statement's span starts just before it asks for a connection, so the time
+// from that start to the hand-off is how long it waited for one.
+const connectionWaitRecorder = (span: Tracer.Span, fiber: Fiber.Fiber<unknown, unknown>): () => void => {
+  if (!fiber.getRef(TracerTimingEnabled)) return constVoid
+  const clock = fiber.getRef(Clock)
+  return () =>
+    span.attribute(
+      ATTR_DB_CLIENT_CONNECTION_WAIT_TIME,
+      Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
+    )
 }
 
 const withStatement = <A, X, E, R>(

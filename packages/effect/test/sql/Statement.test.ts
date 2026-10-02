@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option, References, Stream } from "effect"
+import { Effect, Option, References, Stream, Tracer } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
@@ -93,6 +93,28 @@ describe("Statement", () => {
         yield* borrowed`select 1`
         yield* Stream.runDrain(borrowed`select 1`.stream)
       }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.live("records how long a statement waited for a connection", () =>
+    Effect.gen(function*() {
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      const acquired = yield* makeClient(Effect.sleep("30 millis"))
+      const borrowed = yield* makeClient(Effect.sleep("30 millis"), true)
+      const run = Effect.andThen(acquired`select 1`, borrowed`select 1`).pipe(Effect.withTracer(tracer))
+
+      yield* Effect.provideService(run, Statement.SpanPropagationEnabled, true)
+      yield* run
+      const waits = spans.map((span) => span.attributes.get("db.client.connection.wait_time_ms"))
+      assert.strictEqual(waits.length, 4)
+      assert.ok(waits.slice(0, 2).every((wait) => Number(wait) >= 25))
+      assert.deepStrictEqual(waits.slice(2), [undefined, undefined])
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("skips propagation when tracing is disabled", () =>

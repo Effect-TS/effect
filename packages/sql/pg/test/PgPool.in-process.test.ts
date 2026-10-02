@@ -97,8 +97,7 @@ describe("PgPool failed startup", () => {
 describe("PgPool connection spans", () => {
   // A server that answers startup after `delayMs`, standing in for the TLS, auth
   // and startup round trips a real connect takes.
-  const slowServer = (delayMs: number, onConnect: () => void = () => {}) => () => {
-    onConnect()
+  const slowServer = (delayMs: number) => () => {
     let startup = true
     const socket = new Duplex({
       read() {},
@@ -122,77 +121,54 @@ describe("PgPool connection spans", () => {
         return span
       }
     })
-    const named = (name: string) => spans.filter((span) => span.name === name)
-    const parentOf = (span: Tracer.NativeSpan) =>
-      span.parent._tag === "Some"
-        ? spans.find((candidate) => candidate.spanId === span.parent.pipe(Option.getOrThrow).spanId)
-        : undefined
-    return { tracer, named, parentOf }
+    return { tracer, named: (name: string) => spans.filter((span) => span.name === name) }
   }
 
   const traced = <A, E, R>(effect: Effect.Effect<A, E, R>, tracer: Tracer.Tracer, propagate = true) =>
-    effect.pipe(
-      Effect.provideService(Tracer.Tracer, tracer),
-      Effect.provideService(Statement.SpanPropagationEnabled, propagate)
-    )
+    effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
 
-  it.live("reports the connect a checkout waited for under its span", () => {
-    const { named, parentOf, tracer } = recording()
-    return traced(
-      Effect.scoped(Effect.gen(function*() {
-        const pool = yield* PgPool.make({ username: "test", maxConnections: 1, stream: slowServer(40) })
-        yield* Effect.scoped(pool.get).pipe(Effect.withSpan("first statement"))
-        yield* Effect.scoped(pool.get).pipe(Effect.withSpan("second statement"))
+  it.live("reports the connect a statement waited for under its span, only with propagation", () => {
+    const { named, tracer } = recording()
+    const checkouts = Effect.scoped(Effect.gen(function*() {
+      const pool = yield* PgPool.make({ username: "test", maxConnections: 1, stream: slowServer(40) })
+      yield* Effect.scoped(pool.get).pipe(Effect.withSpan("first statement"))
+      yield* Effect.scoped(pool.get).pipe(Effect.withSpan("second statement"))
+    }))
+    return Effect.gen(function*() {
+      yield* traced(checkouts, tracer)
+      yield* traced(checkouts, tracer, false)
 
-        const [connect] = named("db.connect")
-        const [first] = named("first statement")
-        const [second] = named("second statement")
-        assert.strictEqual(named("db.connect").length, 1)
-        assert.strictEqual(parentOf(connect), first)
-        assert.ok(connect.status._tag === "Ended" && first.status._tag === "Ended")
-        assert.ok(connect.status.startTime >= first.status.startTime)
-        assert.ok(Number(connect.attributes.get("db.client.connection.connect_time_ms")) >= 30)
-        assert.ok(Number(first.attributes.get("db.client.connection.wait_time_ms")) >= 30)
-        assert.ok(Number(second.attributes.get("db.client.connection.wait_time_ms")) < 30)
-      })),
-      tracer
-    )
+      const connects = named("db.connect")
+      const [first] = named("first statement")
+      assert.strictEqual(connects.length, 1)
+      const [connect] = connects
+      assert.strictEqual(Option.getOrThrow(connect.parent).spanId, first.spanId)
+      assert.ok(connect.status.startTime >= first.status.startTime)
+      assert.ok(Number(connect.attributes.get("db.client.connection.connect_time_ms")) >= 30)
+    })
   })
 
-  it.live("reports no connect for a session that was ready before the checkout", () => {
+  it.live("reports no connect for a session that was ready before the statement", () => {
     const { named, tracer } = recording()
-    let opened = 0
     return traced(
       Effect.scoped(Effect.gen(function*() {
         const pool = yield* PgPool.make({
           username: "test",
           minConnections: 1,
-          maxConnections: 1,
-          stream: slowServer(10, () => opened++)
+          maxConnections: 2,
+          stream: slowServer(20)
         })
-        yield* waitFor(() => opened === 1)
-        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 50)))
-        yield* Effect.scoped(pool.get).pipe(Effect.withSpan("statement"))
+        yield* Effect.sleep("100 millis")
+        yield* Effect.all([
+          Effect.scoped(Effect.andThen(pool.get, Effect.sleep("100 millis"))).pipe(Effect.withSpan("ready statement")),
+          Effect.scoped(pool.get).pipe(Effect.delay("10 millis"), Effect.withSpan("waiting statement"))
+        ], { concurrency: 2 })
 
-        assert.strictEqual(named("db.connect").length, 0)
-        assert.ok(named("statement")[0].attributes.has("db.client.connection.wait_time_ms"))
+        const connects = named("db.connect")
+        assert.strictEqual(connects.length, 1)
+        assert.strictEqual(Option.getOrThrow(connects[0].parent).spanId, named("waiting statement")[0].spanId)
       })),
       tracer
-    )
-  })
-
-  it.live("records nothing unless SpanPropagationEnabled is on", () => {
-    const { named, tracer } = recording()
-    return traced(
-      Effect.scoped(Effect.gen(function*() {
-        const pool = yield* PgPool.make({ username: "test", maxConnections: 1, stream: slowServer(10) })
-        yield* Effect.scoped(pool.get).pipe(Effect.withSpan("statement"))
-
-        assert.strictEqual(named("db.connect").length, 0)
-        assert.isFalse(named("statement")[0].attributes.has("db.client.connection.wait_time_ms"))
-      })),
-      tracer,
-      false
     )
   })
 })
