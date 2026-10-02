@@ -1162,7 +1162,7 @@ interface FakeSocket {
 }
 
 const openFake = async (receiveBuffer?: DatagramSocket.ReceiveBufferOptions): Promise<FakeSocket> => {
-  let events: DatagramSocket.BackingSocketEvents | undefined
+  let events: DatagramSocket.BackingEvents | undefined
   const handle: DatagramSocket.BackingSocket = {
     address: { host: ipv4Host, port: 9000 },
     // reads the destination during the call, as the contract asks
@@ -1181,7 +1181,7 @@ const openFake = async (receiveBuffer?: DatagramSocket.ReceiveBufferOptions): Pr
     joinMulticast: () => Effect.succeed(() => Effect.void),
     close: () => {}
   }
-  const socket = await Effect.runPromise(DatagramSocket.fromBackingSocket((installed) => {
+  const socket = await Effect.runPromise(DatagramSocket.makeFromBackingSocket((installed) => {
     events = installed
     return Effect.succeed(handle)
   }, { receiveBuffer }))

@@ -237,7 +237,7 @@ export interface FromSocketOptions {
  * @since 4.0.0
  */
 export const make = (options: Options = {}): Effect.Effect<DatagramSocket.DatagramSocket> =>
-  DatagramSocket.fromBackingSocket((events) => open(options, events), options)
+  DatagramSocket.makeFromBackingSocket((events) => open(options, events), options)
 
 /**
  * Adopts a `dgram.Socket`.
@@ -257,7 +257,7 @@ export const fromSocket = <R>(
   acquire: Effect.Effect<Dgram.Socket, DatagramSocket.DatagramSocketError, R>,
   options: FromSocketOptions = {}
 ): Effect.Effect<DatagramSocket.DatagramSocket, never, Exclude<R, Scope.Scope>> =>
-  DatagramSocket.fromBackingSocket(
+  DatagramSocket.makeFromBackingSocket(
     (events) => Effect.flatMap(acquire, (socket) => adopt(socket, options, events)),
     options
   )
@@ -342,7 +342,7 @@ interface OpenPlan {
   readonly family: Family
   readonly scopeIds: ReadonlyMap<string, number>
   readonly bindHost: string
-  readonly remote: DatagramSocket.BackingSocketAddress | undefined
+  readonly remote: DatagramSocket.BackingAddress | undefined
 }
 
 /**
@@ -391,7 +391,7 @@ const resolvePeer = (
   family: Family,
   scopeIds: ReadonlyMap<string, number>,
   onLookupError: (error: unknown) => void,
-  next: (peer: DatagramSocket.BackingSocketAddress | undefined) => void
+  next: (peer: DatagramSocket.BackingAddress | undefined) => void
 ): void => {
   if (peer === undefined) return next(undefined)
   if (typeof peer.address !== "string") return next({ host: formatEndpoint(peer, scopeIds)!, port: peer.port })
@@ -475,7 +475,7 @@ const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
 
 const open = (
   options: Options,
-  events: DatagramSocket.BackingSocketEvents
+  events: DatagramSocket.BackingEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   // `lookup` can't be cancelled, and core never interrupts `open`, so this
   // registers no finalizer
@@ -490,7 +490,7 @@ const open = (
 
 const bind = (
   options: Options,
-  events: DatagramSocket.BackingSocketEvents,
+  events: DatagramSocket.BackingEvents,
   { bindHost: host, family, remote, scopeIds }: OpenPlan,
   resume: (effect: Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError>) => void
 ) => {
@@ -548,7 +548,7 @@ const bind = (
 const adopt = (
   socket: Dgram.Socket,
   options: FromSocketOptions,
-  events: DatagramSocket.BackingSocketEvents
+  events: DatagramSocket.BackingEvents
 ): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
   Effect.callback((resume) => {
     const native = new NativeSocket(socket, events)
@@ -585,7 +585,7 @@ class NativeSocket {
   onOpenError: ((error: unknown) => void) | undefined = undefined
   closing = false
 
-  constructor(socket: Dgram.Socket, events: DatagramSocket.BackingSocketEvents) {
+  constructor(socket: Dgram.Socket, events: DatagramSocket.BackingEvents) {
     this.socket = socket
     socket.on("message", (payload, info) => events.onPacket(payload, info.address, info.port))
     // Node throws without an `'error'` listener, so one is always attached.
@@ -602,7 +602,7 @@ class NativeSocket {
 
   open(
     scopeIds: ReadonlyMap<string, number>,
-    peer: DatagramSocket.BackingSocketAddress | undefined,
+    peer: DatagramSocket.BackingAddress | undefined,
     connected: boolean
   ): DatagramSocket.BackingSocket {
     this.onOpenError = undefined
@@ -611,7 +611,7 @@ class NativeSocket {
     const bound = socket.address()
     const send = (
       payload: Uint8Array,
-      destination: DatagramSocket.BackingSocketAddress | undefined,
+      destination: DatagramSocket.BackingAddress | undefined,
       done: (error: unknown) => void
     ) => {
       try {
