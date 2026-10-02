@@ -615,10 +615,10 @@ const emptyScopeIds: ReadonlyMap<string, number> = new Map()
 
 const closedError = () => new DatagramSocketError({ reason: new DatagramSocketClosedError() })
 
-const writeError = (message: string, address?: NetAddress.InetAddress) =>
-  new DatagramSocketError({
-    reason: new DatagramSocketWriteError({ kind: "Unknown", address, cause: new Error(message) })
-  })
+// What `destination` returns for a write it rejects. A reference comparison
+// keeps `instanceof` off the write path; a duplicated copy of this module
+// would break it, and a type-ID check costs per datagram
+const rejected: BackingAddress = { host: "", port: 0 }
 
 class DatagramImpl implements Datagram, BackingAddress {
   payload: Uint8Array
@@ -682,6 +682,8 @@ class ReaderState {
   // one-entry cache for `write` to the same explicit address
   lastTarget: NetAddress.InetAddress | undefined = undefined
   lastDestination: BackingAddress | undefined = undefined
+  // the error behind the last `rejected` destination
+  rejection: DatagramSocketError | undefined = undefined
 
   constructor(capacity: number, sliding: boolean, listener: ((error: DatagramSocketError) => void) | undefined) {
     this.capacity = capacity
@@ -798,9 +800,7 @@ class ReaderState {
     if (this.failure !== undefined) return this.failure
     const target = targetOf(datagram)
     const destination = this.destination(target)
-    // `destination` only returns errors this module made, and `instanceof` is
-    // measurably cheaper than `isDatagramSocketError` per datagram
-    if (destination instanceof DatagramSocketError) return Effect.fail(destination)
+    if (destination === rejected) return Effect.fail(this.rejection!)
     const handle = this.handle!
     const payload = encode(datagram.payload)
     if (handle.trySend !== undefined && handle.trySend(payload, destination)) return Effect.void
@@ -828,7 +828,7 @@ class ReaderState {
     for (let i = 0; i < datagrams.length; i++) {
       const datagram = datagrams[i]
       const destination = this.destination(targetOf(datagram))
-      if (destination instanceof DatagramSocketError) return Effect.fail(destination)
+      if (destination === rejected) return Effect.fail(this.rejection!)
       payloads[i] = encode(datagram.payload)
       destinations[i] = destination
     }
@@ -848,21 +848,28 @@ class ReaderState {
     }) as any
   }
 
-  destination(
-    target: NetAddress.InetAddress | DatagramImpl | undefined
-  ): BackingAddress | undefined | DatagramSocketError {
+  // The backing address for a write, or `rejected` with the error in
+  // `rejection`, so the write path compares one reference per datagram
+  destination(target: NetAddress.InetAddress | DatagramImpl | undefined): BackingAddress | undefined {
     const handle = this.handle!
     if (target === undefined) {
       if (handle.connected) return undefined
-      return handle.peer ?? writeError("DatagramSocket write has no destination and the socket has no peer")
+      return handle.peer ?? this.reject("DatagramSocket write has no destination and the socket has no peer")
     }
     if (!("_tag" in target)) return handle.connected ? undefined : target as DatagramImpl
-    if (handle.connected) return writeError("an explicit address cannot be used on a connected DatagramSocket", target)
+    if (handle.connected) return this.reject("an explicit address cannot be used on a connected DatagramSocket", target)
     if (target === this.lastTarget) return this.lastDestination
     const destination = { host: NetAddress.formatNativeHost(target, this.scopeIds), port: target.port }
     this.lastTarget = target
     this.lastDestination = destination
     return destination
+  }
+
+  reject(message: string, address?: NetAddress.InetAddress): BackingAddress {
+    this.rejection = new DatagramSocketError({
+      reason: new DatagramSocketWriteError({ kind: "Unknown", address, cause: new Error(message) })
+    })
+    return rejected
   }
 
   withAddress(
