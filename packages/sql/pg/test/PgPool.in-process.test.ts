@@ -1,7 +1,8 @@
 import { PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option, Tracer } from "effect"
+import { Effect, Fiber, Option, Queue, Tracer } from "effect"
 import * as Statement from "effect/sql/Statement"
+import * as TestClock from "effect/testing/TestClock"
 import { Duplex } from "node:stream"
 
 const backendMessage = (tag: string, payload: Buffer): Buffer => {
@@ -95,22 +96,26 @@ describe("PgPool failed startup", () => {
 })
 
 describe("PgPool connection spans", () => {
-  // A server that answers startup after `delayMs`, standing in for the TLS, auth
-  // and startup round trips a real connect takes.
-  const slowServer = (delayMs: number) => () => {
-    let startup = true
-    const socket = new Duplex({
-      read() {},
-      write(_chunk: Buffer, _encoding, callback) {
-        if (startup) {
-          startup = false
-          setTimeout(() => socket.push(ready), delayMs)
+  // A server that holds each connection's startup until the test answers it, so
+  // the test decides when a connect finishes and the TestClock decides how long
+  // it took.
+  const heldServer = Effect.map(Queue.unbounded<Effect.Effect<void>>(), (startups) => ({
+    startups,
+    stream: () => {
+      let startup = true
+      const socket = new Duplex({
+        read() {},
+        write(_chunk: Buffer, _encoding, callback) {
+          if (startup) {
+            startup = false
+            Queue.offerUnsafe(startups, Effect.sync(() => socket.push(ready)))
+          }
+          callback()
         }
-        callback()
-      }
-    })
-    return socket
-  }
+      })
+      return socket
+    }
+  }))
 
   const recording = () => {
     const spans: Array<Tracer.NativeSpan> = []
@@ -124,18 +129,23 @@ describe("PgPool connection spans", () => {
     return { tracer, named: (name: string) => spans.filter((span) => span.name === name) }
   }
 
-  const traced = <A, E, R>(effect: Effect.Effect<A, E, R>, tracer: Tracer.Tracer, propagate = true) =>
+  const traced = <A, E, R>(effect: Effect.Effect<A, E, R>, tracer: Tracer.Tracer, propagate: boolean) =>
     effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
 
-  it.live("reports the connect a statement waited for under its span, only with propagation", () => {
+  it.effect("reports the connect a statement waited for under its span, only with propagation", () => {
     const { named, tracer } = recording()
     const checkouts = Effect.scoped(Effect.gen(function*() {
-      const pool = yield* PgPool.make({ username: "test", maxConnections: 1, stream: slowServer(40) })
-      yield* Effect.scoped(pool.get).pipe(Effect.withSpan("first statement"))
+      const server = yield* heldServer
+      const pool = yield* PgPool.make({ username: "test", maxConnections: 1, stream: server.stream })
+      const first = yield* Effect.forkChild(Effect.scoped(pool.get).pipe(Effect.withSpan("first statement")))
+      const answer = yield* Queue.take(server.startups)
+      yield* TestClock.adjust("40 millis")
+      yield* answer
+      yield* Fiber.join(first)
       yield* Effect.scoped(pool.get).pipe(Effect.withSpan("second statement"))
     }))
     return Effect.gen(function*() {
-      yield* traced(checkouts, tracer)
+      yield* traced(checkouts, tracer, true)
       yield* traced(checkouts, tracer, false)
 
       const connects = named("db.connect")
@@ -143,8 +153,8 @@ describe("PgPool connection spans", () => {
       assert.strictEqual(connects.length, 1)
       const [connect] = connects
       assert.strictEqual(Option.getOrThrow(connect.parent).spanId, first.spanId)
-      assert.ok(connect.status.startTime >= first.status.startTime)
-      assert.ok(Number(connect.attributes.get("db.client.connection.connect_time_ms")) >= 30)
+      assert.strictEqual(connect.status.startTime, first.status.startTime)
+      assert.strictEqual(connect.attributes.get("db.client.connection.connect_time_ms"), 40)
     })
   })
 
@@ -152,23 +162,30 @@ describe("PgPool connection spans", () => {
     const { named, tracer } = recording()
     return traced(
       Effect.scoped(Effect.gen(function*() {
+        const server = yield* heldServer
         const pool = yield* PgPool.make({
           username: "test",
           minConnections: 1,
           maxConnections: 2,
-          stream: slowServer(20)
+          stream: server.stream
         })
-        yield* Effect.sleep("100 millis")
-        yield* Effect.all([
-          Effect.scoped(Effect.andThen(pool.get, Effect.sleep("100 millis"))).pipe(Effect.withSpan("ready statement")),
-          Effect.scoped(pool.get).pipe(Effect.delay("10 millis"), Effect.withSpan("waiting statement"))
-        ], { concurrency: 2 })
+        yield* Effect.flatten(Queue.take(server.startups))
+        // A background session gives no signal when its handshake lands, so this
+        // waits for it the way the failed-startup tests above do.
+        yield* Effect.sleep("50 millis")
+        yield* Effect.scoped(Effect.gen(function*() {
+          yield* pool.get.pipe(Effect.withSpan("ready statement"))
+          const waiting = yield* Effect.forkChild(Effect.scoped(pool.get).pipe(Effect.withSpan("waiting statement")))
+          yield* Effect.flatten(Queue.take(server.startups))
+          yield* Fiber.join(waiting)
+        }))
 
         const connects = named("db.connect")
         assert.strictEqual(connects.length, 1)
         assert.strictEqual(Option.getOrThrow(connects[0].parent).spanId, named("waiting statement")[0].spanId)
       })),
-      tracer
+      tracer,
+      true
     )
   })
 })
