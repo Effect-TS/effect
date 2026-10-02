@@ -332,7 +332,7 @@ export const make = Effect.fnUntraced(function*(connector: Connector, endpoint: 
     }
     if (!flushScheduled) {
       flushScheduled = true
-      queueMicrotask(flush)
+      Promise.resolve().then(flush)
     }
   }
 
