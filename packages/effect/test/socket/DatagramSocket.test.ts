@@ -17,8 +17,8 @@ const failure = () =>
 
 class TestHandle implements DatagramSocket.BackingSocket {
   readonly address = { host: "127.0.0.1", port: 1234 }
-  events!: DatagramSocket.BackingSocketEvents
-  sends: Array<{ payload: Uint8Array; destination?: DatagramSocket.BackingSocketAddress | undefined }> = []
+  events!: DatagramSocket.BackingEvents
+  sends: Array<{ payload: Uint8Array; destination?: DatagramSocket.BackingAddress | undefined }> = []
   closes = 0
   leaves = 0
   joins = 0
