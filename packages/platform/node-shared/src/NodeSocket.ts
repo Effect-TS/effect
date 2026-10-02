@@ -196,6 +196,7 @@ export const fromDuplex = <RO>(
         const chunk = readAvailable(conn)
         if (chunk === null) return
         const resume = waiter
+        if (resume === undefined) return
         waiter = undefined
         resume(Effect.succeed(chunk))
       }
