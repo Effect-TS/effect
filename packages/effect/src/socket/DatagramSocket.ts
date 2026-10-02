@@ -100,7 +100,10 @@ export interface DatagramSocket {
  *
  * To reply, pass the datagram itself as the destination:
  * `writer.write({ payload, address: received })`. This reuses the raw host and
- * port without parsing or formatting anything.
+ * port without parsing or formatting anything. This shortcut only supports
+ * datagrams produced by the platform adapters or `makeFromBackingSocket`.
+ * For hand-built datagrams or custom readers, pass the explicit `InetAddress`
+ * instead: `writer.write({ payload, address: received.address })`.
  *
  * @stability unstable
  * @category models
@@ -123,7 +126,10 @@ export interface Datagram {
  *
  * A received `Datagram` used as the destination (the reply path) reuses the
  * sender's raw host and port. Passing a received `Datagram` as the whole
- * argument echoes it back to its sender.
+ * argument echoes it back to its sender. These shortcuts only support
+ * datagrams produced by the platform adapters or `makeFromBackingSocket`.
+ * Hand-built datagrams and datagrams from custom readers must use their
+ * explicit `InetAddress` as the destination, not the datagram record.
  *
  * @stability unstable
  * @category models
@@ -252,7 +258,7 @@ export const make = (options: {
  * @category models
  * @since 4.0.0
  */
-export interface BackingSocketAddress {
+export interface BackingAddress {
   readonly host: string
   readonly port: number
 }
@@ -289,19 +295,19 @@ export interface BackingSocketAddress {
  * @since 4.0.0
  */
 export interface BackingSocket {
-  readonly address: BackingSocketAddress
+  readonly address: BackingAddress
   readonly scopeIds?: ReadonlyMap<string, number> | undefined
-  readonly peer?: BackingSocketAddress | undefined
+  readonly peer?: BackingAddress | undefined
   readonly connected?: boolean | undefined
-  readonly trySend?: ((payload: Uint8Array, destination: BackingSocketAddress | undefined) => boolean) | undefined
+  readonly trySend?: ((payload: Uint8Array, destination: BackingAddress | undefined) => boolean) | undefined
   readonly send: (
     payload: Uint8Array,
-    destination: BackingSocketAddress | undefined,
+    destination: BackingAddress | undefined,
     done: (error?: DatagramSocketError) => void
   ) => void
   readonly sendMany: (
     payloads: ReadonlyArray<Uint8Array>,
-    destinations: ReadonlyArray<BackingSocketAddress | undefined>,
+    destinations: ReadonlyArray<BackingAddress | undefined>,
     done: (error?: DatagramSocketError, index?: number) => void
   ) => void
   readonly joinMulticast: <A extends NetAddress.IpAddress>(options: {
@@ -330,7 +336,7 @@ export interface BackingSocket {
  * @category models
  * @since 4.0.0
  */
-export interface BackingSocketEvents {
+export interface BackingEvents {
   readonly onPacket: (payload: Uint8Array, host: string, port: number) => void
   readonly onReadError: (error: DatagramSocketError) => void
   readonly onError: (error: DatagramSocketError) => void
@@ -535,8 +541,8 @@ export class DatagramSocketError
  * @category constructors
  * @since 4.0.0
  */
-export const fromBackingSocket = <R = never>(
-  open: (events: BackingSocketEvents) => Effect.Effect<BackingSocket, DatagramSocketError, R>,
+export const makeFromBackingSocket = <R = never>(
+  open: (events: BackingEvents) => Effect.Effect<BackingSocket, DatagramSocketError, R>,
   options?: {
     readonly receiveBuffer?: ReceiveBufferOptions | undefined
     readonly onError?: ((error: DatagramSocketError) => void) | undefined
@@ -559,7 +565,7 @@ export const fromBackingSocket = <R = never>(
   })
 
 const makeFromHandle = <R>(
-  open: (events: BackingSocketEvents) => Effect.Effect<BackingSocket, DatagramSocketError, R>,
+  open: (events: BackingEvents) => Effect.Effect<BackingSocket, DatagramSocketError, R>,
   services: Context.Context<R>,
   capacity: number,
   sliding: boolean,
@@ -635,10 +641,7 @@ const writeError = (message: string, address?: NetAddress.InetAddress) =>
     reason: new DatagramSocketWriteError({ kind: "Unknown", address, cause: new Error(message) })
   })
 
-const datagramTypeId = Symbol.for("effect/socket/DatagramSocket/Datagram")
-
-class DatagramImpl implements Datagram, BackingSocketAddress {
-  readonly [datagramTypeId] = datagramTypeId
+class DatagramImpl implements Datagram, BackingAddress {
   payload: Uint8Array
   host: string
   port: number
@@ -662,11 +665,8 @@ class DatagramImpl implements Datagram, BackingSocketAddress {
   }
 }
 
-const isDatagramImpl = (value: NetAddress.InetAddress | OutgoingDatagram | undefined): value is DatagramImpl =>
-  value !== undefined && datagramTypeId in value
-
 const targetOf = (datagram: OutgoingDatagram): NetAddress.InetAddress | DatagramImpl | undefined =>
-  isDatagramImpl(datagram) ? datagram : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
+  "host" in datagram ? datagram as DatagramImpl : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
 
 // One reader acquisition owns the receive queue, parked pulls and write path.
 class ReaderState {
@@ -674,7 +674,7 @@ class ReaderState {
   readonly sliding: boolean
   readonly listener: ((error: DatagramSocketError) => void) | undefined
   // arrow functions, so an adapter can pass one on its own as a callback
-  readonly events: BackingSocketEvents = {
+  readonly events: BackingEvents = {
     onPacket: (payload, host, port) => this.push(payload, host, port),
     onReadError: (error) => this.fail(error),
     onError: (error) => this.report(error),
@@ -705,7 +705,7 @@ class ReaderState {
   bound: NetAddress.InetAddress | undefined = undefined
   // one-entry cache for `write` to the same explicit address
   lastTarget: NetAddress.InetAddress | undefined = undefined
-  lastDestination: BackingSocketAddress | undefined = undefined
+  lastDestination: BackingAddress | undefined = undefined
 
   constructor(capacity: number, sliding: boolean, listener: ((error: DatagramSocketError) => void) | undefined) {
     this.capacity = capacity
@@ -852,7 +852,7 @@ class ReaderState {
   ): Effect.Effect<void, DatagramSocketError> {
     if (this.failure !== undefined) return this.failure
     const payloads = new Array<Uint8Array>(datagrams.length)
-    const destinations = new Array<BackingSocketAddress | undefined>(datagrams.length)
+    const destinations = new Array<BackingAddress | undefined>(datagrams.length)
     for (let i = 0; i < datagrams.length; i++) {
       const datagram = datagrams[i]
       const destination = this.destination(targetOf(datagram))
@@ -881,13 +881,13 @@ class ReaderState {
   // and an explicit address formatted once and cached
   destination(
     target: NetAddress.InetAddress | DatagramImpl | undefined
-  ): BackingSocketAddress | undefined | DatagramSocketError {
+  ): BackingAddress | undefined | DatagramSocketError {
     const handle = this.handle!
     if (target === undefined) {
       if (handle.connected) return undefined
       return handle.peer ?? writeError("DatagramSocket write has no destination and the socket has no peer")
     }
-    if (isDatagramImpl(target)) return handle.connected ? undefined : target
+    if (!("_tag" in target)) return handle.connected ? undefined : target as DatagramImpl
     if (handle.connected) return writeError("an explicit address cannot be used on a connected DatagramSocket", target)
     if (target === this.lastTarget) return this.lastDestination
     const destination = { host: NetAddress.formatNativeHost(target, this.scopeIds), port: target.port }
@@ -911,8 +911,7 @@ class ReaderState {
 
   addressOf(target: NetAddress.InetAddress | DatagramImpl | undefined): NetAddress.InetAddress | undefined {
     try {
-      if (isDatagramImpl(target)) return target.address
-      if (target !== undefined) return target
+      if (target !== undefined) return "_tag" in target ? target : (target as DatagramImpl).address
       const peer = this.handle!.peer
       return peer === undefined
         ? undefined
