@@ -17,6 +17,7 @@
  *   the login.
  * - No Kerberos.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
@@ -28,6 +29,7 @@ import { encodeUtf16 } from "./internal/utf16.ts"
 /**
  * Error produced by an invalid or unsupported NTLM exchange.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -114,6 +116,7 @@ const concat = (...parts: ReadonlyArray<Uint8Array>): Uint8Array => {
 /**
  * Windows credentials for NTLM.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -127,6 +130,7 @@ export interface NtlmCredentials {
  * Computes the NTLMv2 response key, `HMAC-MD5(MD4(password), UPPER(user) + domain)`
  * (MS-NLMP 3.3.2).
  *
+ * @stability unstable
  * @category NTLM
  * @since 4.0.0
  */
@@ -136,6 +140,7 @@ export const ntlmResponseKey = (username: string, domain: string, password: stri
 /**
  * Builds an NTLM `NEGOTIATE` message without signing or key exchange.
  *
+ * @stability unstable
  * @category NTLM
  * @since 4.0.0
  */
@@ -165,6 +170,7 @@ const securityBuffer = (message: Uint8Array, offset: number): Uint8Array => {
 /**
  * Inputs for an NTLM `AUTHENTICATE` message.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -189,6 +195,7 @@ export interface NtlmAuthenticate {
  * When the server sends a timestamp, the response uses it, omits the LMv2
  * response, and adds a MIC over all three messages, as MS-NLMP requires.
  *
+ * @stability unstable
  * @category NTLM
  * @since 4.0.0
  */

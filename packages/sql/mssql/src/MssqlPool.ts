@@ -1,6 +1,7 @@
 /**
  * Pools of native `MssqlConnection` sessions.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -15,6 +16,7 @@ import * as MssqlConnection from "./MssqlConnection.ts"
 /**
  * The runtime type identifier for `MssqlPool`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -23,6 +25,7 @@ export const TypeId: TypeId = "~@effect/sql-mssql/MssqlPool"
 /**
  * The type-level identifier for `MssqlPool`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -36,6 +39,7 @@ export type TypeId = "~@effect/sql-mssql/MssqlPool"
  * The defaults are 1 to 10 connections, each replaced 45 minutes after it
  * was opened.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -48,6 +52,7 @@ export interface Config extends MssqlConnection.Config {
 /**
  * A SQL Server session pool.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -66,6 +71,7 @@ export interface MssqlPool {
 /**
  * The service tag for `MssqlPool`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -80,6 +86,7 @@ export const MssqlPool = Context.Service<MssqlPool>("@effect/sql-mssql/MssqlPool
  * `maxConnections`. Closing the scope shuts the pool down and releases every
  * session.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

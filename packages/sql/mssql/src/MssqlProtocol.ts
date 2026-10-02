@@ -18,6 +18,7 @@
  * holding one keeps its whole pool buffer alive. Decoded tokens never refer to
  * parser memory: binary values and other byte fields are copies.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
@@ -36,6 +37,7 @@ import * as MssqlTypes from "./MssqlTypes.ts"
 /**
  * TDS packet types (MS-TDS 2.2.3.1.1).
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -52,6 +54,7 @@ export const PacketType = {
 /**
  * `DONE`, `DONEPROC`, and `DONEINPROC` status flags (MS-TDS 2.2.7.6).
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -67,6 +70,7 @@ export const DoneStatus = {
 /**
  * `PRELOGIN` encryption values (MS-TDS 2.2.6.5).
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -81,6 +85,7 @@ export const Encryption = {
  * The TDS version this codec speaks, as sent in `LOGIN7` and expected back in
  * `LOGINACK`.
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -89,6 +94,7 @@ export const tdsVersion = 0x74000004
 /**
  * The packet size used until the server negotiates another one.
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -98,6 +104,7 @@ export const defaultPacketSize = 4096
  * Default `maxTokenSize` for `makeTokenParser` and `maxMessageSize` for
  * `makeMessageParser`: 16 MiB.
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -211,6 +218,7 @@ const plpUnknown = BigInt("18446744073709551614")
 /**
  * Error produced when bytes cannot be interpreted as a TDS packet or token.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -221,6 +229,7 @@ export class ParseError extends Data.TaggedError("MssqlProtocolParseError")<{
 /**
  * Error returned when a request or parameter value cannot be encoded.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -582,6 +591,7 @@ const readUIntN = (bytes: Uint8Array, offset: number, size: number): number => {
 /**
  * One TDS packet. `data` is the payload without the header.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -594,6 +604,7 @@ export interface Packet {
 /**
  * An incremental packet decoder.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -612,6 +623,7 @@ export interface PacketParser {
 /**
  * Creates a `PacketParser`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -673,6 +685,7 @@ export const makePacketParser = (): PacketParser => {
  * allocation. An empty payload still produces one packet, which is how
  * `ATTENTION` is sent.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -707,6 +720,7 @@ export const encodePacket = (
 /**
  * Whether `size` is a packet size SQL Server accepts.
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -717,6 +731,7 @@ export const isPacketSize = (size: number): boolean => Number.isInteger(size) &&
  * small and handled as a unit. Query responses stream through
  * `makeTokenParser` instead.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -734,6 +749,7 @@ export interface MessageParser {
 /**
  * Creates a `MessageParser`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -780,6 +796,7 @@ const concat = (parts: ReadonlyArray<Uint8Array>, size: number): Uint8Array => {
 /**
  * The server's `PRELOGIN` reply.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -793,6 +810,7 @@ export interface Prelogin {
  * Encodes a `PRELOGIN` payload with the VERSION, ENCRYPTION, INSTOPT,
  * THREADID, and MARS options, plus FEDAUTHREQUIRED when `fedAuth` is set.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -828,6 +846,7 @@ export const encodePrelogin = (options: {
 /**
  * Decodes the server's `PRELOGIN` reply.
  *
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -868,6 +887,7 @@ export const decodePrelogin = (data: Uint8Array): Result.Result<Prelogin, ParseE
 /**
  * Settings carried by `LOGIN7`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -900,6 +920,7 @@ const login7Fields = [36, 40, 44, 48, 52, 56, 60, 64, 68, 78, 82, 86] as const
  * The payload contains the obfuscated password or the access token. Zero it
  * with `fill(0)` once it has been written to the socket.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -989,6 +1010,7 @@ export const encodeLogin7 = (options: Login7): Result.Result<Uint8Array, EncodeE
 /**
  * An RPC parameter.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1006,6 +1028,7 @@ export interface Parameter {
  * (eight zero bytes outside a transaction) and the collation used to encode
  * non-Unicode text.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1028,6 +1051,7 @@ const writeAllHeaders = (w: Writer, transaction: Uint8Array): void => {
 /**
  * Encodes a `SQL_BATCH` payload.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1043,6 +1067,7 @@ export const encodeSqlBatch = (sql: string, transaction: Uint8Array): Result.Res
  * Encodes an RPC payload calling a stored procedure by name, or by well-known
  * identifier when `procedure` is a number.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1056,6 +1081,7 @@ export const encodeRpc = (
  * Encodes an RPC payload running `sql` through `sp_executesql`, declaring and
  * binding each parameter.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1102,6 +1128,7 @@ const encodeRpcUnsafe = (
 /**
  * Encodes one RPC parameter: its name, status, TYPE_INFO, and value.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1675,6 +1702,7 @@ const scaledInteger = (value: unknown, scale: number): bigint => {
 /**
  * Metadata for one result column or return value.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1690,6 +1718,7 @@ export interface Column {
 /**
  * The fields of an `ERROR` or `INFO` token.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1706,6 +1735,7 @@ export interface ServerMessage {
 /**
  * A decoded `ENVCHANGE` token.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1726,6 +1756,7 @@ export type EnvChange =
  * Its `rowCount` is exact up to 2^53. `Ignored` covers tokens a client
  * does not act on, such as `ORDER` and `TABNAME`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1745,6 +1776,7 @@ export type Token =
 /**
  * An incremental decoder for the token stream of a response.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1773,6 +1805,7 @@ export interface TokenParser {
  * `maxTokenSize` bounds the bytes held for one incomplete token, and so the
  * size of any single value, including PLP values. It defaults to 16 MiB.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2326,6 +2359,7 @@ const instanceNamePattern = /^[\x20-\x7e]{1,128}$/
  * Encodes an SSRP `CLNT_UCAST_INST` request asking the SQL Server Browser
  * for one named instance (MC-SQLR 2.2.4).
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -2342,6 +2376,7 @@ export const encodeInstanceRequest = (instance: string): Result.Result<Uint8Arra
  * Decodes an SSRP `SVR_RESP` and returns the TCP port of `instance`
  * (MC-SQLR 2.2.5).
  *
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */

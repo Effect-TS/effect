@@ -10,6 +10,7 @@
  * Interrupting a request sends `ATTENTION` and waits for the server to
  * acknowledge it before the session runs anything else.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -34,6 +35,7 @@ import * as MssqlProtocol from "./MssqlProtocol.ts"
 /**
  * The runtime type identifier for `MssqlConnection`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -42,6 +44,7 @@ export const TypeId: TypeId = "~@effect/sql-mssql/MssqlConnection"
 /**
  * The type-level identifier for `MssqlConnection`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -60,6 +63,7 @@ export type TypeId = "~@effect/sql-mssql/MssqlConnection"
  * With `initializeSession` (the default) every new session runs the `SET`
  * statements tedious uses, so session defaults match between the drivers.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -112,6 +116,7 @@ export interface Config {
 /**
  * An object result row keyed by column name.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -122,6 +127,7 @@ export interface Row {
 /**
  * The result of a request.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -137,6 +143,7 @@ export interface Result<A = Row> {
 /**
  * A connected and authenticated SQL Server session.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -179,6 +186,7 @@ export interface MssqlConnection {
 /**
  * The service tag for `MssqlConnection`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -192,6 +200,7 @@ export const MssqlConnection = Context.Service<MssqlConnection>("@effect/sql-mss
  * Closing the scope closes the socket. A session that fails fatally closes
  * itself and fails every later request.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
