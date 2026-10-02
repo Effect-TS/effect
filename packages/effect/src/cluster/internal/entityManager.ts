@@ -390,14 +390,14 @@ export const make = Effect.fnUntraced(function*<
       scope,
       address,
       write(clientId, message, writeOptions) {
-        if (message._tag !== "Request") {
-          // Interrupts, acks and EOF reach the handlers even during shutdown.
-          const write = writeRef.getUnsafe()
-          return write
-            ? write(clientId, message, writeOptions)
-            : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
-        }
         return Effect.suspend(() => {
+          if (message._tag !== "Request") {
+            // Interrupts, acks and EOF reach the handlers even during shutdown.
+            const write = writeRef.getUnsafe()
+            return write
+              ? write(clientId, message, writeOptions)
+              : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
+          }
           // New work is refused once the entity retires, including work that
           // was waiting for replacement handlers.
           if (!isActive()) return Effect.interrupt
