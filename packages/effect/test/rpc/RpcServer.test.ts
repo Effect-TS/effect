@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
 import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
@@ -48,6 +48,40 @@ const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
 })
 
 describe("RpcServer", () => {
+  it.effect("runs onDisconnect for every passive disconnect even when the callback defects", () =>
+    Effect.gen(function*() {
+      const disconnects = yield* Queue.unbounded<number>()
+      const observed = yield* Queue.unbounded<number>()
+      const protocol = yield* RpcServer.Protocol.make(() =>
+        Effect.succeed({
+          disconnects,
+          send: () => Effect.void,
+          end: () => Effect.void,
+          clientIds: Effect.succeed(new Set<number>()),
+          initialMessage: Effect.succeed(Option.none()),
+          supportsAck: false,
+          supportsTransferables: false,
+          supportsSpanPropagation: false,
+          supportsNotifications: false,
+          codecFor: RpcSerialization.json.codecFor
+        }))
+
+      yield* RpcServer.make(RpcGroup.make(), {
+        onDisconnect: (clientId) =>
+          Queue.offer(observed, clientId).pipe(
+            Effect.andThen(clientId === 1 ? Effect.die("expected callback defect") : Effect.void)
+          )
+      }).pipe(
+        Effect.provideService(RpcServer.Protocol, protocol),
+        Effect.forkScoped
+      )
+
+      yield* Queue.offer(disconnects, 1)
+      assert.strictEqual(yield* Queue.take(observed), 1)
+      yield* Queue.offer(disconnects, 2)
+      assert.strictEqual(yield* Queue.take(observed), 2)
+    }))
+
   it.effect("should accept only cancellation of an active request when client input has ended", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()
