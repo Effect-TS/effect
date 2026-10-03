@@ -6,7 +6,11 @@ import * as Statement from "effect/sql/Statement"
 import type * as Tedious from "tedious"
 import { vi } from "vitest"
 
-const state = vi.hoisted(() => ({ cancelCalls: 0, completeRequests: true, type: {} }))
+const state = vi.hoisted(() => ({
+  cancelCalls: 0,
+  connections: [] as Array<any>,
+  type: {}
+}))
 
 vi.mock("tedious", async (importOriginal) => {
   const original = await importOriginal<typeof Tedious>()
@@ -27,16 +31,28 @@ vi.mock("tedious", async (importOriginal) => {
   }
 
   class MockConnection {
+    completeRequests = true
+    readonly listeners: Record<string, (...args: Array<any>) => void> = {}
+
+    constructor() {
+      state.connections.push(this)
+    }
+
     connect(callback: (cause: unknown) => void) {
       callback(null)
     }
     close() {}
-    on() {}
+    on(event: string, listener: (...args: Array<any>) => void) {
+      this.listeners[event] = listener
+    }
+    emit(event: string) {
+      this.listeners[event]?.()
+    }
     cancel() {
       state.cancelCalls++
     }
     execSql(request: MockRequest) {
-      if (state.completeRequests) {
+      if (this.completeRequests) {
         request.callback(null, 0, [])
       }
     }
@@ -215,15 +231,31 @@ describe("mssql", () => {
   it.effect("cancels an in-flight Tedious request when interrupted", () =>
     Effect.gen(function*() {
       state.cancelCalls = 0
-      state.completeRequests = true
       const client = yield* MssqlClient.make({ server: "localhost" })
-      state.completeRequests = false
+      state.connections[state.connections.length - 1].completeRequests = false
       const fiber = yield* Effect.forkChild(client`WAITFOR DELAY '00:01:00'`)
       yield* Effect.yieldNow
       const callsBeforeInterrupt = state.cancelCalls
       yield* Fiber.interrupt(fiber)
 
       assert.strictEqual(state.cancelCalls, callsBeforeInterrupt + 1)
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
+  it.effect("invalidates a connection when Tedious closes it", () =>
+    Effect.gen(function*() {
+      state.connections.length = 0
+      const client = yield* MssqlClient.make({ server: "localhost", maxConnections: 1 })
+      const connection = state.connections[0]
+
+      yield* Effect.yieldNow
+      connection.emit("end")
+      yield* Effect.yieldNow
+      yield* client`SELECT 1`
+
+      assert.strictEqual(state.connections.length, 2)
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)

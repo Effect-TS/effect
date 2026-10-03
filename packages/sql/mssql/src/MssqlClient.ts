@@ -524,7 +524,14 @@ export const make = (
       })
 
       yield* Effect.callback<never, unknown>((resume) => {
-        conn.on("error", (_) => resume(Effect.fail(_)))
+        let resumed = false
+        const fail = (cause: unknown) => {
+          if (resumed) return
+          resumed = true
+          resume(Effect.fail(cause))
+        }
+        conn.on("error", fail)
+        conn.on("end", () => fail(new Error("Connection closed")))
       }).pipe(
         Effect.catch(() => Pool.invalidate(pool, connection)),
         Effect.interruptible,
