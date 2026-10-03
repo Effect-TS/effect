@@ -8214,37 +8214,36 @@ const throttleShapeEffect = <A, E, R, E2, R2>(
       const durationMs = Duration.toMillis(Duration.fromInputUnsafe(duration))
       const max = units + burst < 0 ? Number.POSITIVE_INFINITY : units + burst
       let tokens = units
-      let timestampMs = clock.currentTimeMillisUnsafe()
+      let timestampNanos = clock.monotonicTimeNanosUnsafe()
 
       return Effect.succeed(Effect.flatMap(pull, (arr) =>
         Effect.flatMap(cost(arr), (weight) => {
-          const currentMs = clock.currentTimeMillisUnsafe()
-          const elapsed = currentMs - timestampMs
+          const currentNanos = clock.monotonicTimeNanosUnsafe()
+          const elapsed = Number(currentNanos - timestampNanos) / 1_000_000
           const cycles = elapsed / durationMs
           const sum = tokens + (cycles * units)
-          const available = sum < 0 ? max : Math.min(sum, max)
+          const available = Math.min(sum, max)
           const remaining = available - weight
 
           if (remaining >= 0) {
             tokens = remaining
-            timestampMs = currentMs
+            timestampNanos = currentNanos
             return Effect.succeed(arr)
           }
 
-          // Calculate delay needed
           const waitCycles = -remaining / units
           const delayMs = Math.max(0, waitCycles * durationMs)
 
           if (delayMs > 0) {
             return Effect.flatMap(Effect.sleep(delayMs), () => {
               tokens = remaining
-              timestampMs = currentMs
+              timestampNanos = currentNanos
               return Effect.succeed(arr)
             })
           }
 
           tokens = remaining
-          timestampMs = currentMs
+          timestampNanos = currentNanos
           return Effect.succeed(arr)
         })))
     }))
