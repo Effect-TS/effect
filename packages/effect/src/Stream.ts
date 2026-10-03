@@ -8215,15 +8215,15 @@ const throttleShapeEffect = <A, E, R, E2, R2>(
       const durationMs = Duration.toMillis(Duration.fromInputUnsafe(duration))
       const max = units + burst < 0 ? Number.POSITIVE_INFINITY : units + burst
       let tokens = units
-      let timestampMs = clock.currentTimeMillisUnsafe()
+      let timestampMs = Number(clock.monotonicTimeNanosUnsafe()) / 1_000_000
 
       return Effect.succeed(Effect.flatMap(pull, (arr) =>
         Effect.flatMap(cost(arr), (weight) => {
-          const currentMs = clock.currentTimeMillisUnsafe()
+          const currentMs = Number(clock.monotonicTimeNanosUnsafe()) / 1_000_000
           const elapsed = currentMs - timestampMs
           const cycles = elapsed / durationMs
           const sum = tokens + (cycles * units)
-          const available = sum < 0 ? max : Math.min(sum, max)
+          const available = Math.min(sum, max)
           const remaining = available - weight
 
           if (remaining >= 0) {

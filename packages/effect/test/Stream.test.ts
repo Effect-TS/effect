@@ -3136,6 +3136,69 @@ describe("Stream", () => {
         )
         deepStrictEqual(result, [1, 2, 3, 4])
       }))
+
+    it.effect("throttleShape - keeps the rate when sleeps end early", () =>
+      Effect.gen(function*() {
+        const clock = yield* Clock.Clock
+        // Timers can fire slightly before the requested delay
+        const earlyClock: Clock.Clock = {
+          ...clock,
+          sleep: (duration) => clock.sleep(Duration.millis(Duration.toMillis(duration) - 1))
+        }
+        const fiber = yield* pipe(
+          Stream.range(1, 9),
+          Stream.rechunk(1),
+          Stream.throttle({
+            strategy: "shape",
+            cost: (arr) => arr.length,
+            units: 3,
+            duration: Duration.seconds(1)
+          }),
+          Stream.mapEffect(() => clock.currentTimeMillis),
+          Stream.runCollect,
+          Effect.provideService(Clock.Clock, earlyClock),
+          Effect.forkChild
+        )
+        yield* TestClock.adjust(Duration.seconds(3))
+        const timestamps = yield* Fiber.join(fiber)
+        // The first 3 elements use the initial tokens and the other 6 take 2 seconds.
+        // Each wait makes up for the previous early wake-up, so only the last 1ms is lost.
+        strictEqual(Math.round(timestamps[8]), 1999)
+      }))
+
+    it.effect("throttleShape - is not affected by wall clock changes", () =>
+      Effect.gen(function*() {
+        const clock = yield* Clock.Clock
+        let offset = 0
+        const shiftedClock: Clock.Clock = {
+          ...clock,
+          currentTimeMillisUnsafe: () => clock.currentTimeMillisUnsafe() + offset
+        }
+        const fiber = yield* pipe(
+          Stream.range(1, 6),
+          Stream.rechunk(1),
+          Stream.throttle({
+            strategy: "shape",
+            cost: (arr) => arr.length,
+            units: 3,
+            duration: Duration.seconds(1)
+          }),
+          // Move the wall clock back 5 seconds after the initial tokens are used
+          Stream.tap((n) =>
+            Effect.sync(() => {
+              if (n === 3) offset = -5000
+            })
+          ),
+          Stream.mapEffect(() => clock.currentTimeMillis),
+          Stream.runCollect,
+          Effect.provideService(Clock.Clock, shiftedClock),
+          Effect.forkChild
+        )
+        yield* TestClock.adjust(Duration.seconds(10))
+        const timestamps = yield* Fiber.join(fiber)
+        // The first 3 elements use the initial tokens and the other 3 take 1 second.
+        strictEqual(Math.round(timestamps[5]), 1000)
+      }))
   })
 
   describe("zipping", () => {
