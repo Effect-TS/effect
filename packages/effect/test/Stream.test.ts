@@ -1372,24 +1372,6 @@ describe("Stream", () => {
         assert.deepStrictEqual(result, [0])
       }))
 
-    it.effect("scan emits the initial state for an empty iterable", () =>
-      Effect.gen(function*() {
-        const result = yield* Stream.fromIterable<number>([]).pipe(
-          Stream.scan(() => 0, (acc, curr) => acc + curr),
-          Stream.runCollect
-        )
-        assert.deepStrictEqual(result, [0])
-      }))
-
-    it.effect("scan emits the initial state before a nonempty stream", () =>
-      Effect.gen(function*() {
-        const result = yield* Stream.make(1).pipe(
-          Stream.scan(() => 0, (acc, curr) => acc + curr),
-          Stream.runCollect
-        )
-        assert.deepStrictEqual(result, [0, 1])
-      }))
-
     it.effect("scan", () =>
       Effect.gen(function*() {
         const stream = Stream.make(1, 2, 3, 4, 5)
