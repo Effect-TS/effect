@@ -99,7 +99,8 @@ export const b3: FromHeaders = (headers) => {
   return Option.some(Tracer.externalSpan({
     traceId: parts[0],
     spanId: parts[1],
-    sampled: parts[2] ? parts[2] === "1" : true
+    // "d" is the debug sampling state, which implies an accept decision
+    sampled: parts[2] ? parts[2] === "1" || parts[2] === "d" : true
   }))
 }
 
@@ -109,7 +110,9 @@ export const b3: FromHeaders = (headers) => {
  * **Details**
  *
  * The decoder reads `x-b3-traceid`, `x-b3-spanid`, and optional `x-b3-sampled`
- * headers.
+ * and `x-b3-flags` headers. The legacy `true` / `false` values of
+ * `x-b3-sampled` are accepted, and the debug flag (`x-b3-flags: 1`) is
+ * treated as sampled.
  *
  * @stability unstable
  * @category decoding
@@ -122,12 +125,14 @@ export const xb3: FromHeaders = (headers) => {
   return Option.some(Tracer.externalSpan({
     traceId: headers["x-b3-traceid"],
     spanId: headers["x-b3-spanid"],
-    sampled: headers["x-b3-sampled"] ? headers["x-b3-sampled"] === "1" : true
+    sampled: headers["x-b3-flags"] === "1" ||
+      (headers["x-b3-sampled"] ? headers["x-b3-sampled"] === "1" || headers["x-b3-sampled"] === "true" : true)
   }))
 }
 
 const w3cTraceId = /^[0-9a-f]{32}$/i
 const w3cSpanId = /^[0-9a-f]{16}$/i
+const w3cInvalidId = /^0+$/
 
 /**
  * Decodes an external span safely from the W3C `traceparent` header.
@@ -135,6 +140,7 @@ const w3cSpanId = /^[0-9a-f]{16}$/i
  * **Details**
  *
  * Only version `00` headers with valid trace and span identifiers are accepted.
+ * All-zero identifiers are invalid.
  *
  * @stability unstable
  * @category decoding
@@ -151,7 +157,10 @@ export const w3c: FromHeaders = (headers) => {
   const [version, traceId, spanId, flags] = parts
   switch (version) {
     case "00": {
-      if (w3cTraceId.test(traceId) === false || w3cSpanId.test(spanId) === false) {
+      if (
+        w3cTraceId.test(traceId) === false || w3cSpanId.test(spanId) === false ||
+        w3cInvalidId.test(traceId) || w3cInvalidId.test(spanId)
+      ) {
         return Option.none()
       }
       return Option.some(Tracer.externalSpan({
