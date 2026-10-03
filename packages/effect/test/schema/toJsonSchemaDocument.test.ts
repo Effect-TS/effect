@@ -1479,6 +1479,19 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
+      it("isAscii", () => {
+        assertJsonSchemaDocument(
+          Schema.String.annotate({ description: "description" }).check(Schema.isAscii()),
+          {
+            schema: {
+              "type": "string",
+              "description": "description",
+              "pattern": "^[\\x00-\\x7F]*$"
+            }
+          }
+        )
+      })
+
       it("isBase64", () => {
         assertJsonSchemaDocument(
           Schema.String.annotate({ description: "description" }).check(Schema.isBase64()),
