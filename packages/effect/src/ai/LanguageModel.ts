@@ -847,6 +847,62 @@ export const make: (params: {
     Effect.map(Option.getOrElse(() => defaultIdGenerator))
   )
 
+  const makeStreamDecoder = (toolkit: Toolkit.Any) =>
+    Schema.decodeEffect(Schema.NonEmptyArray(Response.StreamPart(toolkit)))
+
+  let lastStreamDecoder: {
+    readonly encodedParameters: boolean
+    readonly declarations: ReadonlyArray<{
+      readonly name: string
+      readonly parametersSchema: Schema.Top
+      readonly successSchema: Schema.Top
+      readonly failureSchema: Schema.Top
+    }>
+    readonly decode: ReturnType<typeof makeStreamDecoder>
+  } | undefined
+
+  // Declarations may be wrapped in a fresh Toolkit for each request. Reuse only
+  // their response codec; handler services and request state remain live below.
+  const streamDecoderFor = <Tools extends Record<string, Tool.Any>>(
+    toolkit: Toolkit.WithHandler<Tools>,
+    encodedParameters: boolean
+  ) => {
+    const declarations = Object.values(toolkit.tools)
+    const cached = lastStreamDecoder
+    if (
+      cached !== undefined &&
+      cached.encodedParameters === encodedParameters &&
+      cached.declarations.length === declarations.length &&
+      declarations.every((tool, index) => {
+        const prior = cached.declarations[index]
+        return prior !== undefined &&
+          prior.name === tool.name &&
+          prior.parametersSchema === tool.parametersSchema &&
+          prior.successSchema === tool.successSchema &&
+          prior.failureSchema === tool.failureSchema
+      })
+    ) {
+      return cached.decode
+    }
+
+    const decode = makeStreamDecoder(
+      encodedParameters
+        ? makeToolkitWithEncodedParameters(toolkit)
+        : makeToolkitWithOpaqueParameters(toolkit)
+    )
+    lastStreamDecoder = {
+      encodedParameters,
+      declarations: declarations.map((tool) => ({
+        name: tool.name,
+        parametersSchema: tool.parametersSchema,
+        successSchema: tool.successSchema,
+        failureSchema: tool.failureSchema
+      })),
+      decode
+    }
+    return decode
+  }
+
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
     Tools extends Record<string, Tool.Any> = {}
@@ -1538,12 +1594,7 @@ export const make: (params: {
       }
     }
 
-    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
-      options.disableToolCallResolution === true
-        ? makeToolkitWithEncodedParameters(toolkit)
-        : makeToolkitWithOpaqueParameters(toolkit)
-    ))
-    const decodeParts = Schema.decodeEffect(ResponseSchema)
+    const decodeParts = streamDecoderFor(toolkit, options.disableToolCallResolution === true)
 
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
