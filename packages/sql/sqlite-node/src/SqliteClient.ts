@@ -3,8 +3,8 @@
  *
  * This module opens a SQLite database and exposes it as both `SqliteClient` and
  * the generic Effect SQL client. It serializes access through one connection,
- * caches prepared statements, enables WAL mode unless disabled, and waits up
- * to five seconds for busy databases by default. Explicit transactions on
+ * caches prepared statements, enables WAL mode unless disabled or read-only, and
+ * waits up to five seconds for busy databases by default. Explicit transactions on
  * writable connections use `BEGIN IMMEDIATE` to avoid read-to-write lock
  * upgrades, which serializes them behind other writers even when they only
  * read. Clients opened with `readonly: true` are unaffected. Busy waits block
@@ -22,6 +22,7 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
@@ -117,14 +118,14 @@ interface SqliteConnection extends Connection {
 }
 
 /**
- * Creates a scoped node SQLite client from the supplied configuration, using a single serialized connection with WAL and a 5-second busy timeout enabled by default. Explicit transactions on writable connections take the write lock for their duration, even when they only read; clients opened with `readonly: true` are unaffected.
+ * Creates a scoped node SQLite client from the supplied configuration, using a single serialized connection with WAL and a 5-second busy timeout enabled by default. WAL is not enabled for clients opened with `readonly: true`. Opening or configuring the database fails with a `SqlError`. Explicit transactions on writable connections take the write lock for their duration, even when they only read; clients opened with `readonly: true` are unaffected.
  *
  * @category constructors
  * @since 4.0.0
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -135,9 +136,13 @@ export const make = (
 
     const makeConnection = Effect.gen(function*() {
       const scope = yield* Effect.scope
-      const db = new DatabaseSync(options.filename, {
-        readOnly: options.readonly ?? false,
-        allowExtension: true
+      const db = yield* Effect.try({
+        try: () =>
+          new DatabaseSync(options.filename, {
+            readOnly: options.readonly ?? false,
+            allowExtension: true
+          }),
+        catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to open database", "openDatabase") })
       })
       yield* Scope.addFinalizer(scope, Effect.sync(() => db.close()))
       db.enableLoadExtension(false)
@@ -145,10 +150,24 @@ export const make = (
         MAX_BUSY_TIMEOUT,
         Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
       )
-      db.exec(`PRAGMA busy_timeout = ${busyTimeout}`)
+      const exec = (sql: string) =>
+        Effect.try({
+          try: () => db.exec(sql),
+          catch: (cause) =>
+            new SqlError({ reason: classifyError(cause, "Failed to configure database", "configureDatabase") })
+        })
+      yield* exec(`PRAGMA busy_timeout = ${busyTimeout}`)
 
-      if (options.disableWAL !== true) {
-        db.exec("PRAGMA journal_mode = WAL")
+      if (options.disableWAL !== true && options.readonly !== true) {
+        // Switching a rollback-journal database to WAL upgrades a read lock to a
+        // write lock, which SQLite reports as busy immediately instead of waiting
+        // for `busy_timeout`, so retry it ourselves within the same budget.
+        yield* exec("PRAGMA journal_mode = WAL").pipe(
+          Effect.retry({
+            while: (error) => error.reason._tag === "LockTimeoutError",
+            schedule: walRetrySchedule(busyTimeout)
+          })
+        )
       }
 
       const prepare = (sql: string) =>
@@ -340,7 +359,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -360,7 +379,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: SqliteClientConfig
-): Layer.Layer<SqliteClient | Client.SqlClient> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(SqliteClient, client).pipe(
@@ -369,6 +388,12 @@ export const layer = (
   ).pipe(Layer.provide(Reactivity.layer))
 
 // internal
+
+const walRetrySchedule = (busyTimeout: number) =>
+  Schedule.min([Schedule.exponential("5 millis"), Schedule.spaced("100 millis")]).pipe(
+    Schedule.jittered,
+    Schedule.upTo({ duration: Duration.millis(busyTimeout) })
+  )
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(sqliteCauseWithErrno(cause), { message, operation })
