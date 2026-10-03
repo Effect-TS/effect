@@ -850,56 +850,35 @@ export const make: (params: {
   const makeStreamDecoder = (toolkit: Toolkit.Any) =>
     Schema.decodeEffect(Schema.NonEmptyArray(Response.StreamPart(toolkit)))
 
-  let lastStreamDecoder: {
-    readonly encodedParameters: boolean
-    readonly declarations: ReadonlyArray<{
-      readonly name: string
-      readonly parametersSchema: Schema.Top
-      readonly successSchema: Schema.Top
-      readonly failureSchema: Schema.Top
-    }>
+  // Building the stream part decoder is costly for large toolkits, so reuse the
+  // decoder of the previous request while the schemas it was built from match.
+  let cachedStreamDecoder: {
+    readonly key: ReadonlyArray<unknown>
     readonly decode: ReturnType<typeof makeStreamDecoder>
   } | undefined
 
-  // Declarations may be wrapped in a fresh Toolkit for each request. Reuse only
-  // their response codec; handler services and request state remain live below.
-  const streamDecoderFor = <Tools extends Record<string, Tool.Any>>(
+  const getStreamDecoder = <Tools extends Record<string, Tool.Any>>(
     toolkit: Toolkit.WithHandler<Tools>,
     encodedParameters: boolean
   ) => {
-    const declarations = Object.values(toolkit.tools)
-    const cached = lastStreamDecoder
+    const key: Array<unknown> = [encodedParameters]
+    for (const tool of Object.values(toolkit.tools)) {
+      key.push(tool.name, tool.parametersSchema, tool.successSchema, tool.failureSchema)
+    }
+    const cached = cachedStreamDecoder
     if (
       cached !== undefined &&
-      cached.encodedParameters === encodedParameters &&
-      cached.declarations.length === declarations.length &&
-      declarations.every((tool, index) => {
-        const prior = cached.declarations[index]
-        return prior !== undefined &&
-          prior.name === tool.name &&
-          prior.parametersSchema === tool.parametersSchema &&
-          prior.successSchema === tool.successSchema &&
-          prior.failureSchema === tool.failureSchema
-      })
+      cached.key.length === key.length &&
+      cached.key.every((value, index) => value === key[index])
     ) {
       return cached.decode
     }
-
     const decode = makeStreamDecoder(
       encodedParameters
         ? makeToolkitWithEncodedParameters(toolkit)
         : makeToolkitWithOpaqueParameters(toolkit)
     )
-    lastStreamDecoder = {
-      encodedParameters,
-      declarations: declarations.map((tool) => ({
-        name: tool.name,
-        parametersSchema: tool.parametersSchema,
-        successSchema: tool.successSchema,
-        failureSchema: tool.failureSchema
-      })),
-      decode
-    }
+    cachedStreamDecoder = { key, decode }
     return decode
   }
 
@@ -1594,7 +1573,7 @@ export const make: (params: {
       }
     }
 
-    const decodeParts = streamDecoderFor(toolkit, options.disableToolCallResolution === true)
+    const decodeParts = getStreamDecoder(toolkit, options.disableToolCallResolution === true)
 
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
