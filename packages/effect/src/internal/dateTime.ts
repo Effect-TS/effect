@@ -564,18 +564,23 @@ export const toDate = (self: DateTime.DateTime): Date => {
   } else if (self.adjustedEpochMilliseconds !== undefined) {
     return new Date(self.adjustedEpochMilliseconds)
   }
-  const parts = self.zone.format.formatToParts(self.epochMilliseconds).filter((_) => _.type !== "literal")
+  const parts: Partial<Record<Intl.DateTimeFormatPartTypes, string>> = {}
+  for (const part of self.zone.format.formatToParts(self.epochMilliseconds)) {
+    parts[part.type] = part.value
+  }
   const date = new Date(0)
   date.setUTCFullYear(
-    Number(parts[2].value),
-    Number(parts[0].value) - 1,
-    Number(parts[1].value)
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day)
   )
   date.setUTCHours(
-    Number(parts[3].value),
-    Number(parts[4].value),
-    Number(parts[5].value),
-    Number(parts[6].value)
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+    parts.fractionalSecond === undefined
+      ? new Date(self.epochMilliseconds).getUTCMilliseconds()
+      : Number(parts.fractionalSecond)
   )
   self.adjustedEpochMilliseconds = date.getTime()
   return date
