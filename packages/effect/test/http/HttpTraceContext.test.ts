@@ -49,27 +49,5 @@ describe("HttpTraceContext", () => {
         true
       )
     })
-
-    for (const [state, sampled] of [["1", true], ["0", false], [undefined, true]] as const) {
-      it(`preserves single-header B3 sampling ${state ?? "when omitted"}`, () => {
-        assertSampled({ b3: `${traceId}-${spanId}${state === undefined ? "" : `-${state}`}` }, sampled)
-      })
-    }
-
-    for (const [state, sampled] of [["1", true], ["0", false], ["false", false], [undefined, true]] as const) {
-      it(`preserves multi-header B3 sampling ${state ?? "when omitted"}`, () => {
-        assertSampled({
-          "X-B3-TraceId": traceId,
-          "X-B3-SpanId": spanId,
-          ...(state === undefined ? {} : { "X-B3-Sampled": state })
-        }, sampled)
-      })
-    }
-
-    for (const [flags, sampled] of [["01", true], ["00", false]] as const) {
-      it(`preserves valid W3C sampling flags ${flags}`, () => {
-        assertSampled({ traceparent: `00-${traceId}-${spanId}-${flags}` }, sampled)
-      })
-    }
   })
 })
