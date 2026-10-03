@@ -179,19 +179,19 @@ export const make = (
       if (options.disableWAL !== true && options.readonly !== true) {
         // WAL lock upgrades can return SQLITE_BUSY without invoking SQLite's
         // busy handler. Budget both native busy waits and retry sleeps together.
-        const deadline = (yield* Clock.currentTimeNanos) + BigInt(busyTimeout) * BigInt("1000000")
+        const deadline = (yield* Clock.monotonicTimeNanos) + BigInt(busyTimeout) * BigInt("1000000")
         while (true) {
-          const remaining = Math.max(0, Number((deadline - (yield* Clock.currentTimeNanos)) / BigInt("1000000")))
+          const remaining = Math.max(0, Number((deadline - (yield* Clock.monotonicTimeNanos)) / BigInt("1000000")))
           yield* configure(`PRAGMA busy_timeout = ${remaining}`)
           const error = yield* configure("PRAGMA journal_mode = WAL").pipe(
             Effect.as(undefined),
             Effect.catch((error) => Effect.succeed(error))
           )
           if (error === undefined) break
-          const delay = Math.min(10, Number((deadline - (yield* Clock.currentTimeNanos)) / BigInt("1000000")))
+          const delay = Math.min(10, Number((deadline - (yield* Clock.monotonicTimeNanos)) / BigInt("1000000")))
           if (!isBusy(error.reason.cause) || delay <= 0) return yield* Effect.fail(error)
           yield* Effect.sleep(delay)
-          if ((yield* Clock.currentTimeNanos) >= deadline) return yield* Effect.fail(error)
+          if ((yield* Clock.monotonicTimeNanos) >= deadline) return yield* Effect.fail(error)
         }
         yield* configure(`PRAGMA busy_timeout = ${busyTimeout}`)
       }
