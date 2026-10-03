@@ -193,7 +193,7 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         if (failure.reason._tag === "SocketReadError") assert.strictEqual(failure.reason.cause, cause)
       }))
 
-    it.live("closes a native connection while a write is backpressured", () =>
+    it.live.each([false, true])("closes a native connection while a write is backpressured (vector: %s)", (vector) =>
       Effect.gen(function*() {
         let peer: Net.Socket | undefined
         const server = yield* listen(Net.createServer((socket) => {
@@ -206,12 +206,43 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
           })
         )
         const connection = yield* make().connect(address(server))
-        const writing = yield* connection.write(new Uint8Array(16 * 1024 * 1024)).pipe(Effect.flip, Effect.forkChild)
+        const bytes = new Uint8Array(16 * 1024 * 1024 + 2)
+        bytes[0] = 1
+        bytes[bytes.length - 1] = 2
+        const writing = yield* (vector
+          ? connection.writeAll([bytes.subarray(1, 8 * 1024 * 1024), bytes.subarray(8 * 1024 * 1024, -1)])
+          : connection.write(bytes.subarray(1, -1))).pipe(Effect.flip, Effect.forkChild)
         yield* Effect.yieldNow
         assert.isUndefined(writing.pollUnsafe())
         yield* connection.close
         const error = yield* Fiber.join(writing).pipe(Effect.timeout("1 second"))
         assert.strictEqual(error.reason._tag, "SocketWriteError")
+      }))
+
+    it.live.each([false, true])("writes sliced byte views in order over a native connection (TLS: %s)", (tls) =>
+      Effect.gen(function*() {
+        const server = yield* listen(tls ? Tls.createServer({ cert, key }, echo) : Net.createServer(echo))
+        const connection = yield* make().connect({ ...address(server), tls: tls ? { ca: cert } : undefined })
+        const bytes = new Uint8Array([9, 0, 13, 10, 255, 1, 2, 3, 4, 5, 6, 9])
+        const snapshot = bytes.slice()
+        const views = [bytes.subarray(1, 5), bytes.subarray(5, 7), bytes.subarray(7, 9)]
+        const buffer = Buffer.from(bytes.buffer, 9, 2)
+        const expected = [0, 13, 10, 255, 1, 2, 3, 4, 65, 5, 6]
+        const received: Array<number> = []
+        const complete = yield* Deferred.make<void>()
+        const reading = yield* connection.run((chunk) => {
+          received.push(...chunk as Uint8Array)
+          if (received.length >= expected.length) {
+            return Deferred.succeed(complete, void 0)
+          }
+        }).pipe(Effect.forkChild)
+        yield* connection.write(views[0])
+        yield* connection.writeAll([views[1]])
+        yield* connection.writeAll([views[2], "A", buffer])
+        yield* Deferred.await(complete)
+        assert.deepStrictEqual(received, expected)
+        assert.deepStrictEqual(bytes, snapshot)
+        yield* Fiber.interrupt(reading)
       }))
     it.live("reports synchronous socket creation failures as open errors", () =>
       Effect.gen(function*() {
@@ -315,8 +346,9 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         let resolved: string | undefined
         const lookup: Net.LookupFunction = (hostname, options, callback) => {
           resolved = hostname
-          if (options.all) callback(null, [{ address: "127.0.0.1", family: 4 }])
-          else callback(null, "127.0.0.1", 4)
+          if (options.all) {
+            callback(null, [{ address: "127.0.0.1", family: 4 }])
+          } else callback(null, "127.0.0.1", 4)
         }
         const transport = yield* make({ tls: { lookup } }).connect({
           ...address(server),
@@ -350,7 +382,9 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
     it.live.each([false, true])("terminates pending reads and writes on close (already closed: %s)", (closedFirst) =>
       Effect.gen(function*() {
         const { stream, transport } = yield* held(make)
-        const closed = new Promise<void>((resolve) => stream.once("close", resolve))
+        const closed = new Promise<void>((resolve) =>
+          stream.once("close", resolve)
+        )
         const reading = yield* transport.pull.pipe(Effect.flip, Effect.forkChild)
         const inFlight = yield* transport.write(new Uint8Array([1])).pipe(Effect.flip, Effect.forkChild)
         yield* Effect.yieldNow
@@ -358,7 +392,9 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         yield* Effect.yieldNow
         if (closedFirst) {
           stream.destroy()
-          yield* Effect.promise(() => closed)
+          yield* Effect.promise(() =>
+            closed
+          )
         }
         yield* transport.close
         assert.strictEqual((yield* Fiber.join(reading)).reason._tag, "SocketCloseError")
@@ -366,7 +402,9 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         assert.strictEqual((yield* Fiber.join(queued)).reason._tag, "SocketCloseError")
         assert.deepStrictEqual(written(stream), [[1]])
         assert.isTrue(stream.destroyed)
-        yield* Effect.promise(() => closed)
+        yield* Effect.promise(() =>
+          closed
+        )
         assert.strictEqual(stream.listenerCount("error"), 0)
       }))
 

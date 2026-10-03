@@ -58,6 +58,11 @@ const readAvailable = (
 const toBuffers = (input: string | Uint8Array | ReadonlyArray<string | Uint8Array>): Array<Buffer> =>
   Arr.map(Arr.ensure(input), (value) => Buffer.from(value))
 
+const toWriteChunk = (chunk: Uint8Array | string): Buffer | string =>
+  typeof chunk === "string" || Buffer.isBuffer(chunk)
+    ? chunk
+    : Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+
 const closeSocket = (conn: Net.Socket, isOpen: boolean, destroyOnClose: boolean) => {
   if (conn.destroyed) return
   if (destroyOnClose || !isOpen || !("destroySoon" in conn)) {
@@ -642,7 +647,7 @@ export const fromDuplex = <RO>(
           return Effect.void
         }
         try {
-          return conn.write(chunk) ? Effect.void : awaitDrain(conn)
+          return conn.write(toWriteChunk(chunk)) ? Effect.void : awaitDrain(conn)
         } catch (cause) {
           return Effect.fail(
             new Socket.SocketError({
@@ -668,12 +673,12 @@ export const fromDuplex = <RO>(
         let needsDrain = false
         try {
           if (chunks.length === 1) {
-            needsDrain = !conn.write(chunks[0])
+            needsDrain = !conn.write(toWriteChunk(chunks[0]))
           } else {
             conn.cork()
             try {
               for (let i = 0; i < chunks.length; i++) {
-                needsDrain = !conn.write(chunks[i]) || needsDrain
+                needsDrain = !conn.write(toWriteChunk(chunks[i])) || needsDrain
               }
             } finally {
               conn.uncork()
