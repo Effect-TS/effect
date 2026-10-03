@@ -733,6 +733,80 @@ describe("LanguageModel", () => {
         })
       ))
 
+    it.effect("decodes tool results with the success schema of each request", () =>
+      Effect.gen(function*() {
+        const StringToolkit = Toolkit.make(Tool.make("ResultTool", { success: Schema.String }))
+        const NumberToolkit = Toolkit.make(Tool.make("ResultTool", { success: Schema.FiniteFromString }))
+
+        const first = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: StringToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(StringToolkit.toLayer({ ResultTool: () => Effect.die("unused") }))
+        )
+        const second = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: NumberToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(NumberToolkit.toLayer({ ResultTool: () => Effect.die("unused") }))
+        )
+
+        strictEqual(first.find((part) => part.type === "tool-result")?.result, "21")
+        strictEqual(second.find((part) => part.type === "tool-result")?.result, 21)
+      }).pipe(
+        TestUtils.withLanguageModel({
+          streamText: [{
+            type: "tool-result",
+            id: "tool-result",
+            name: "ResultTool",
+            isFailure: false,
+            providerExecuted: true,
+            result: "21"
+          }]
+        })
+      ))
+
+    it.effect("decodes tool results with the failure schema of each request", () =>
+      Effect.gen(function*() {
+        const StringToolkit = Toolkit.make(Tool.make("ResultTool", { failure: Schema.String }))
+        const NumberToolkit = Toolkit.make(Tool.make("ResultTool", { failure: Schema.FiniteFromString }))
+
+        const first = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: StringToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(StringToolkit.toLayer({ ResultTool: () => Effect.die("unused") }))
+        )
+        const second = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: NumberToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(NumberToolkit.toLayer({ ResultTool: () => Effect.die("unused") }))
+        )
+
+        strictEqual(first.find((part) => part.type === "tool-result")?.result, "21")
+        strictEqual(second.find((part) => part.type === "tool-result")?.result, 21)
+      }).pipe(
+        TestUtils.withLanguageModel({
+          streamText: [{
+            type: "tool-result",
+            id: "tool-result",
+            name: "ResultTool",
+            isFailure: true,
+            providerExecuted: true,
+            result: "21"
+          }]
+        })
+      ))
+
     it.effect("validates encoded tool parameters after a request with tool call resolution enabled", () => {
       const responses: Array<Array<Response.StreamPartEncoded>> = [
         [{ type: "tool-call", id: "tool-valid", name: "TransformTool", params: "21" }, finishPart],
