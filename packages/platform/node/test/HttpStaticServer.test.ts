@@ -2,7 +2,7 @@ import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeHttpPlatform from "@effect/platform-node/NodeHttpPlatform"
 import * as NodePathLayer from "@effect/platform-node/NodePath"
 import { assert, describe, it } from "@effect/vitest"
-import { HttpRouter, HttpStaticServer } from "effect/http"
+import { Etag, HttpPlatform, HttpRouter, HttpStaticServer } from "effect/http"
 import * as Layer from "effect/Layer"
 import { copyFile, cp, mkdtemp, rm, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -20,13 +20,25 @@ const staticFilesLayer = Layer.mergeAll(
 
 const makeHandler = (
   root: string,
-  options: Omit<Parameters<typeof HttpStaticServer.make>[0], "root"> = {}
+  options: Omit<Parameters<typeof HttpStaticServer.make>[0], "root"> = {},
+  weakEtag = false
 ) =>
   HttpRouter.toWebHandler(
     HttpStaticServer.layer({
       root,
       ...options
-    }).pipe(Layer.provideMerge(staticFilesLayer)),
+    }).pipe(Layer.provideMerge(
+      weakEtag
+        ? Layer.mergeAll(
+          NodePathLayer.layer,
+          NodeFileSystem.layer,
+          Layer.effect(HttpPlatform.HttpPlatform)(NodeHttpPlatform.make).pipe(
+            Layer.provide(NodeFileSystem.layer),
+            Layer.provide(Etag.layerWeak)
+          )
+        )
+        : staticFilesLayer
+    )),
     { disableLogger: true }
   )
 
@@ -36,7 +48,8 @@ const withStaticFiles = async (
     readonly root: string
     readonly outsideFile: string
   }) => Promise<void>,
-  options: Omit<Parameters<typeof HttpStaticServer.make>[0], "root"> = {}
+  options: Omit<Parameters<typeof HttpStaticServer.make>[0], "root"> = {},
+  weakEtag = false
 ) => {
   const temporaryRoot = await mkdtemp(NodePath.join(tmpdir(), "effect-http-static-server-"))
   const root = NodePath.join(temporaryRoot, "root")
@@ -47,7 +60,7 @@ const withStaticFiles = async (
     copyFile(fixturesOutsideFile, outsideFile)
   ])
 
-  const { handler, dispose } = makeHandler(root, options)
+  const { handler, dispose } = makeHandler(root, options, weakEtag)
   try {
     await run({ handler, root, outsideFile })
   } finally {
@@ -150,41 +163,94 @@ describe("HttpStaticServer", () => {
   })
 
   for (const validator of ["etag", "last-modified"] as const) {
-    it(`returns the full changed file when If-Range contains a stale ${validator}`, async () => {
-      await withStaticFiles(async ({ handler, root }) => {
-        const file = NodePath.join(root, "range.txt")
-        const initialTime = new Date("2026-01-01T00:00:00Z")
-        await writeFile(file, "old-old-old-old-old-")
-        await utimes(file, initialTime, initialTime)
-
-        const first = await handler(new Request("http://localhost/range.txt", { headers: { Range: "bytes=0-9" } }))
-        assert.strictEqual(first.status, 206)
-        assert.strictEqual(await first.text(), "old-old-ol")
-        const originalValidator = first.headers.get(validator)
-        if (originalValidator === null) {
+    it(`honors Range when If-Range contains a matching ${validator}`, async () => {
+      await withStaticFiles(async ({ handler }) => {
+        const first = await handler(new Request("http://localhost/range.txt"))
+        const currentValidator = first.headers.get(validator)
+        if (currentValidator === null) {
           throw new Error(`missing ${validator}`)
         }
-
-        const updatedBody = "NEW-NEW-NEW-NEW-NEW-NEW-"
-        const updatedTime = new Date("2026-02-01T00:00:00Z")
-        await writeFile(file, updatedBody)
-        await utimes(file, updatedTime, updatedTime)
-
+        if (validator === "etag") {
+          assert.strictEqual(currentValidator.startsWith("W/"), false)
+        }
+        const fullBody = await first.text()
         const resumed = await handler(
           new Request("http://localhost/range.txt", {
-            headers: { Range: "bytes=10-", "If-Range": originalValidator }
+            headers: { Range: "bytes=0-10", "If-Range": currentValidator }
           })
         )
 
-        assert.strictEqual(resumed.status, 200)
-        assert.strictEqual(resumed.headers.get("content-range"), null)
-        assert.strictEqual(resumed.headers.get("content-length"), String(updatedBody.length))
-        assert.strictEqual(await resumed.text(), updatedBody)
-        assert.notStrictEqual(resumed.headers.get("etag"), first.headers.get("etag"))
-        assert.strictEqual(resumed.headers.get("last-modified"), "Sun, 01 Feb 2026 00:00:00 GMT")
+        assert.strictEqual(resumed.status, 206)
+        assert.strictEqual(resumed.headers.get("content-range"), `bytes 0-10/${fullBody.length}`)
+        assert.strictEqual(resumed.headers.get("content-length"), "11")
+        assert.strictEqual(await resumed.text(), "0123456789a")
       })
     })
+
+    it.each(["bytes=10-", "bytes=100-200"])(
+      `returns the full changed file when If-Range contains a stale ${validator} with Range %s`,
+      async (range) => {
+        await withStaticFiles(async ({ handler, root }) => {
+          const file = NodePath.join(root, "range.txt")
+          const initialTime = new Date("2026-01-01T00:00:00Z")
+          await writeFile(file, "old-old-old-old-old-")
+          await utimes(file, initialTime, initialTime)
+
+          const first = await handler(new Request("http://localhost/range.txt", { headers: { Range: "bytes=0-9" } }))
+          assert.strictEqual(first.status, 206)
+          assert.strictEqual(await first.text(), "old-old-ol")
+          const originalValidator = first.headers.get(validator)
+          if (originalValidator === null) {
+            throw new Error(`missing ${validator}`)
+          }
+
+          const updatedBody = "NEW-NEW-NEW-NEW-NEW-NEW-"
+          const updatedTime = new Date("2026-02-01T00:00:00Z")
+          await writeFile(file, updatedBody)
+          await utimes(file, updatedTime, updatedTime)
+
+          const resumed = await handler(
+            new Request("http://localhost/range.txt", {
+              headers: { Range: range, "If-Range": originalValidator }
+            })
+          )
+
+          assert.strictEqual(resumed.status, 200)
+          assert.strictEqual(resumed.headers.get("content-range"), null)
+          assert.strictEqual(resumed.headers.get("content-length"), String(updatedBody.length))
+          assert.strictEqual(await resumed.text(), updatedBody)
+          assert.notStrictEqual(resumed.headers.get("etag"), first.headers.get("etag"))
+          assert.strictEqual(resumed.headers.get("last-modified"), "Sun, 01 Feb 2026 00:00:00 GMT")
+        })
+      }
+    )
   }
+
+  it.each([false, true])("rejects weak If-Range comparison with a weak response ETag: %s", async (weakEtag) => {
+    await withStaticFiles(
+      async ({ handler }) => {
+        const first = await handler(new Request("http://localhost/range.txt"))
+        const etag = first.headers.get("etag")
+        if (etag === null) {
+          throw new Error("missing etag")
+        }
+        assert.strictEqual(etag.startsWith("W/"), weakEtag)
+        const fullBody = await first.text()
+        const response = await handler(
+          new Request("http://localhost/range.txt", {
+            headers: { Range: "bytes=0-10", "If-Range": weakEtag ? etag.slice(2) : `W/${etag}` }
+          })
+        )
+
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(response.headers.get("content-range"), null)
+        assert.strictEqual(response.headers.get("content-length"), String(fullBody.length))
+        assert.strictEqual(await response.text(), fullBody)
+      },
+      {},
+      weakEtag
+    )
+  })
 
   it("handles range requests for valid, invalid, and malformed headers", async () => {
     await withStaticFiles(async ({ handler }) => {
