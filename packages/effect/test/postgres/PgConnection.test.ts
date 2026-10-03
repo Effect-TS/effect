@@ -1229,11 +1229,12 @@ describe("PgConnection transport", () => {
     }))
 
   it.effect.each([
-    { padding: 0, vector: false },
-    { padding: 1024, vector: true }
+    { padding: 0, vector: false, mixed: false },
+    { padding: 16384, vector: true, mixed: false },
+    { padding: 16384, vector: false, mixed: true }
   ])(
-    "batches queued queries in order after backpressure clears (vector: $vector)",
-    ({ padding, vector }) =>
+    "batches queued queries in order after backpressure clears (vector: $vector, mixed: $mixed)",
+    ({ padding, vector, mixed }) =>
       Effect.gen(function*() {
         const incoming = yield* Queue.unbounded<Uint8Array>()
         const writing = yield* Deferred.make<void>()
@@ -1289,7 +1290,10 @@ describe("PgConnection transport", () => {
         })
         const first = yield* connection.query("SELECT 0").pipe(Effect.forkScoped)
         yield* Deferred.await(writing)
-        const queries = Array.from({ length: 20 }, (_, index) => `SELECT ${index + 1} /*${"x".repeat(padding)}*/`)
+        const queries = Array.from(
+          { length: 20 },
+          (_, index) => `SELECT ${index + 1} /*${"x".repeat(mixed && index === 19 ? 0 : padding)}*/`
+        )
         const queued = yield* Effect.all(queries.map((query) => connection.query(query)), {
           concurrency: "unbounded"
         }).pipe(Effect.forkScoped({ startImmediately: true }))
@@ -1311,6 +1315,7 @@ describe("PgConnection transport", () => {
         }
         if (vector) {
           for (const chunk of batches[1]) {
+            assert.isAtLeast(chunk.length, 16384)
             assert.strictEqual(frontendTags(Buffer.from(chunk)).filter((tag) => tag === "S").length, 1)
           }
         }
@@ -1319,7 +1324,9 @@ describe("PgConnection transport", () => {
           yield* connection.query(`SELECT ${index + 100} /*${"y".repeat(1024)}*/`)
         }
         assert.strictEqual(maxActiveWrites, 1)
-        assert.isTrue(retained.reduce((sum, frame) => sum + frame.view.length, 0) > 32768)
+        assert.isTrue(
+          retained.filter(({ view }) => view.length < 4096).reduce((sum, frame) => sum + frame.view.length, 0) > 32768
+        )
         for (const { view, snapshot } of retained) assert.deepStrictEqual(view, snapshot)
       })
   )
@@ -1404,7 +1411,7 @@ describe("PgConnection transport", () => {
 
   it.effect.each([
     { count: 1, padding: 0 },
-    { count: 20, padding: 1024 }
+    { count: 20, padding: 16384 }
   ])(
     "stops queued writes before terminating under backpressure (queries: $count)",
     ({ count, padding }) =>

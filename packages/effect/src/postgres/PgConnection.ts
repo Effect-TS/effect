@@ -342,7 +342,7 @@ const abortDrainGraceMillis = 10
 const queryCanceledCode = "57014"
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
-/** Minimum encoded batch size for preserving frame views in a vectored write. */
+/** Minimum size of every command frame in a vectored pipeline batch. */
 const pipelineVectorThreshold = 16 * 1024
 const streamPauseThreshold = 512
 
@@ -594,7 +594,7 @@ class PgConnectionImpl implements PgConnection {
     if (capacity <= 0) return
     const wasEmpty = this.pipelineDepth() === 0
     const frames: Array<Uint8Array> = []
-    let byteLength = 0
+    let vector = true
     let index = 0
     while (capacity > 0 && index < this.pipelinePending.length) {
       const entry = this.pipelinePending[index++]
@@ -605,7 +605,7 @@ class PgConnectionImpl implements PgConnection {
         continue
       }
       frames.push(entry.plan.frame)
-      byteLength += entry.plan.frame.length
+      vector &&= entry.plan.frame.length >= pipelineVectorThreshold
       this.pipelineInFlight.push(entry)
       capacity--
     }
@@ -618,7 +618,7 @@ class PgConnectionImpl implements PgConnection {
     try {
       if (frames.length === 1) {
         this.session.socket.write(frames[0])
-      } else if (byteLength >= pipelineVectorThreshold) {
+      } else if (vector) {
         this.session.socket.writeAll(frames)
       } else {
         this.session.socket.write(concat(frames))

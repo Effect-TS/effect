@@ -23,7 +23,7 @@ const assertPreparedPipeline = (connection: PgConnection.PgConnection, large: bo
     for (let round = 0; round < 3; round++) {
       const values = Array.from({ length: large ? 20 : 8 }, (_, index) => ({
         n: round * 20 + index,
-        text: `${round}:${index}:${"雪".repeat(1500)}`,
+        text: `${round}:${index}:${"雪".repeat(6000)}`,
         bytes: new Uint8Array(16384).fill(round * 20 + index)
       }))
       const results = yield* Effect.all(
