@@ -688,6 +688,20 @@ export function getReferenceKey($ref: string): string | undefined {
     : undefined
 }
 
+/**
+ * The unescaped tokens of a local reference that points below a top-level
+ * definition, e.g. `#/$defs/update/properties/schedule`, or `undefined` for any
+ * other reference.
+ *
+ * @internal
+ */
+export function getReferencePath($ref: string): ReadonlyArray<string> | undefined {
+  const path = $ref.startsWith("#") ? parseUriFragment($ref) : undefined
+  return path !== undefined && path.length > 2 && path[0] === "$defs"
+    ? path
+    : undefined
+}
+
 function transformSchema(
   node: unknown,
   transform: (schema: Record<string, unknown>, inEmbeddedResource: boolean) => void
