@@ -14,6 +14,7 @@
  * @since 4.0.0
  */
 import { constants, Database } from "bun:sqlite"
+import * as Clock from "effect/Clock"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -31,6 +32,14 @@ import * as Stream from "effect/Stream"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const MAX_BUSY_TIMEOUT = 2_147_483_647
+
+const isBusy = (cause: unknown): boolean => {
+  if (typeof cause !== "object" || cause === null) return false
+  const { code, errno, errcode } = cause as { code?: unknown; errno?: unknown; errcode?: unknown }
+  const numericCode = typeof errcode === "number" ? errcode : errno
+  return (typeof numericCode === "number" && (numericCode & 0xff) === 5) ||
+    (typeof code === "string" && (code === "SQLITE_BUSY" || code.startsWith("SQLITE_BUSY_")))
+}
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
@@ -118,7 +127,7 @@ interface SqliteConnection extends Connection {
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -134,24 +143,58 @@ export const make = (
         readwrite: readonly ? false : options.readwrite ?? true,
         create: readonly ? false : options.create ?? true
       }
-      const db = new Database(
-        options.filename,
-        options.filename.startsWith("file:")
-          ? constants.SQLITE_OPEN_URI |
-            (openOptions.readonly ? constants.SQLITE_OPEN_READONLY : 0) |
-            (openOptions.readwrite || openOptions.create ? constants.SQLITE_OPEN_READWRITE : 0) |
-            (openOptions.create ? constants.SQLITE_OPEN_CREATE : 0)
-          : openOptions
+      const db = yield* Effect.acquireRelease(
+        Effect.try({
+          try: () =>
+            new Database(
+              options.filename,
+              options.filename.startsWith("file:")
+                ? constants.SQLITE_OPEN_URI |
+                  (openOptions.readonly ? constants.SQLITE_OPEN_READONLY : 0) |
+                  (openOptions.readwrite || openOptions.create ? constants.SQLITE_OPEN_READWRITE : 0) |
+                  (openOptions.create ? constants.SQLITE_OPEN_CREATE : 0)
+                : openOptions
+            ),
+          catch: (cause) =>
+            new SqlError({
+              reason: classifyError(
+                cause,
+                `Failed to open database: ${cause instanceof Error ? cause.message : String(cause)}`,
+                "connect"
+              )
+            })
+        }),
+        (db) => Effect.sync(() => db.close())
       )
-      yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
       const busyTimeout = Math.min(
         MAX_BUSY_TIMEOUT,
         Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
       )
-      db.run(`PRAGMA busy_timeout = ${busyTimeout};`)
+      const configure = (sql: string) =>
+        Effect.try({
+          try: () => db.run(sql),
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to configure database", "connect") })
+        })
+      yield* configure(`PRAGMA busy_timeout = ${busyTimeout}`)
 
-      if (options.disableWAL !== true && !readonly) {
-        db.run("PRAGMA journal_mode = WAL;")
+      if (options.disableWAL !== true && options.readonly !== true) {
+        // WAL lock upgrades can return SQLITE_BUSY without invoking SQLite's
+        // busy handler. Budget both native busy waits and retry sleeps together.
+        const deadline = (yield* Clock.currentTimeNanos) + BigInt(busyTimeout) * BigInt("1000000")
+        while (true) {
+          const remaining = Math.max(0, Number((deadline - (yield* Clock.currentTimeNanos)) / BigInt("1000000")))
+          yield* configure(`PRAGMA busy_timeout = ${remaining}`)
+          const error = yield* configure("PRAGMA journal_mode = WAL").pipe(
+            Effect.as(undefined),
+            Effect.catch((error) => Effect.succeed(error))
+          )
+          if (error === undefined) break
+          const delay = Math.min(10, Number((deadline - (yield* Clock.currentTimeNanos)) / BigInt("1000000")))
+          if (!isBusy(error.reason.cause) || delay <= 0) return yield* Effect.fail(error)
+          yield* Effect.sleep(delay)
+          if ((yield* Clock.currentTimeNanos) >= deadline) return yield* Effect.fail(error)
+        }
+        yield* configure(`PRAGMA busy_timeout = ${busyTimeout}`)
       }
 
       const prepare = (sql: string, useSafeIntegers: boolean) => {
@@ -267,7 +310,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -287,7 +330,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: SqliteClientConfig
-): Layer.Layer<SqliteClient | Client.SqlClient> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(SqliteClient, client).pipe(
