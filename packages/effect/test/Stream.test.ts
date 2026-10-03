@@ -3142,6 +3142,7 @@ describe("Stream", () => {
         const clock = yield* Clock.Clock
         const earlyClock: Clock.Clock = {
           ...clock,
+          monotonicTimeNanosUnsafe: () => (1n << 80n) + clock.monotonicTimeNanosUnsafe(),
           sleep: (duration) => clock.sleep(Duration.millis(Duration.toMillis(duration) - 1))
         }
         const fiber = yield* pipe(
