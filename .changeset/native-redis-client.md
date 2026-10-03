@@ -10,6 +10,8 @@
 
 Add the native Redis client under `effect/redis` and move the native PostgreSQL client from `@effect/sql-pg` to `effect/postgres`. Both use platform socket and cryptography services without external runtime dependencies. Redis supports standalone, Cluster, Sentinel, RESP2/3, transactions, and Pub/Sub; the Node, Bun, and Deno convenience layers replace their external or built-in Redis drivers.
 
+Improve repeated prepared-query throughput and handle buffered TLS write errors during connection shutdown.
+
 ### Breaking changes
 
 - Import Redis modules from `effect/redis` and PostgreSQL modules from `effect/postgres`. Provide a runtime `SocketConnector` layer to core Redis layers, and both `SocketConnector` and `Crypto` layers to PostgreSQL and Redis persistence layers. PostgreSQL custom `stream` factories become portable `connector` functions, with Node-compatible streams supported through the platform connector.
