@@ -526,6 +526,9 @@ const bufferedWebSocket = (ws: WebSocket): Socket.WebSocketLike => {
     get readyState() {
       return ws.readyState
     },
+    get bufferedAmount() {
+      return ws.bufferedAmount
+    },
     addEventListener(type, listener, options) {
       if (type === "open") {
         ws.addEventListener(type, listener as EventListener, options as AddEventListenerOptions)

@@ -26,6 +26,7 @@ import * as Pull from "../Pull.ts"
 import type * as Redacted from "../Redacted.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
 
 /**
@@ -754,6 +755,11 @@ export interface WebSocketEvent {
  */
 export interface WebSocketLike {
   readonly readyState: number
+  /**
+   * Number of outgoing bytes queued by the implementation. Adapters that omit
+   * this property cannot apply write backpressure.
+   */
+  readonly bufferedAmount?: number | undefined
   addEventListener(
     type: "open" | "message" | "error" | "close",
     listener: (event: WebSocketEvent) => void,
@@ -827,6 +833,24 @@ export class WebSocketConstructor extends Context.Service<
 >()("@effect/platform/Socket/WebSocketConstructor") {}
 
 /**
+ * Context reference for the WebSocket write high-water mark, in bytes.
+ *
+ * **Details**
+ *
+ * Defaults to 64 KiB. Provide this when constructing a socket, including via
+ * an HTTP request's `upgrade` effect. An explicit `writeHighWaterMark` option
+ * takes precedence. Use `Infinity` to disable write backpressure or zero to
+ * wait for each frame to drain completely.
+ *
+ * @stability unstable
+ * @category references
+ * @since 4.0.0
+ */
+export const WriteHighWaterMark = Context.Reference<number>("effect/socket/Socket/WriteHighWaterMark", {
+  defaultValue: () => defaultHighWaterMark
+})
+
+/**
  * Layer that provides `WebSocketConstructor` using `globalThis.WebSocket`.
  *
  * @stability unstable
@@ -854,6 +878,7 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly openTimeout?: Duration.Input | undefined
   readonly protocols?: string | Array<string> | undefined
   readonly highWaterMark?: number | undefined
+  readonly writeHighWaterMark?: number | undefined
 }): Effect.Effect<Socket, never, WebSocketConstructor> =>
   WebSocketConstructor.use((makeWs) =>
     fromWebSocket(
@@ -890,6 +915,17 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  * bytes are exceeded (default unbounded). Message boundaries survive: each
  * pulled batch contains one element per frame.
  *
+ * Writes wait while `bufferedAmount` exceeds `writeHighWaterMark`, defaulting
+ * to `WriteHighWaterMark` (64 KiB). Concurrent writes and batches are serialized
+ * so the outgoing buffer can exceed the mark by at most one frame. Draining
+ * is rechecked after 1 millisecond, then every 10 milliseconds
+ * while still backpressured. Closing or failing
+ * the connection interrupts the wait; interrupting a write does not retract
+ * frames already sent. A batch interrupted or failed partway is not replayed
+ * on a later connection. Adapters without `bufferedAmount` retain unbounded
+ * writes. The mark must be non-negative; invalid marks die with a `RangeError`.
+ * `Infinity` disables backpressure.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -899,10 +935,18 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
   options?: {
     readonly openTimeout?: Duration.Input | undefined
     readonly highWaterMark?: number | undefined
+    readonly writeHighWaterMark?: number | undefined
   } | undefined
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
-    let currentWS: WebSocketLike | undefined
+    let currentWS: {
+      readonly ws: WebSocketLike
+      readonly writeAll: Writer["writeAll"]
+    } | undefined
+    const writeHighWaterMark = options?.writeHighWaterMark ?? Context.get(fiber.context, WriteHighWaterMark)
+    if (!(writeHighWaterMark >= 0)) {
+      return Effect.die(new RangeError("writeHighWaterMark must be non-negative"))
+    }
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
 
@@ -924,6 +968,9 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       let buffer: Array<Uint8Array | string> = []
       let bufferSize = 0
       let error: SocketError | undefined
+      const closed = Latch.makeUnsafe(false)
+      const writeLock = Semaphore.makeUnsafe(1)
+      let writers = 0
       let waiter: ReadResume | undefined
       let openWaiter:
         | {
@@ -980,6 +1027,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
       function fail(err: SocketError) {
         if (error === undefined) error = err
+        closed.openUnsafe()
         if (openWaiter !== undefined) {
           const { cleanup, resume } = openWaiter
           openWaiter = undefined
@@ -1035,8 +1083,10 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
               // the underlying stream may already be gone
             }
           }
-          latch.closeUnsafe()
-          currentWS = undefined
+          if (currentWS?.ws === ws) {
+            latch.closeUnsafe()
+            currentWS = undefined
+          }
         })
       )
 
@@ -1078,7 +1128,52 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       }
 
       if (error === undefined && bufferSize < highWaterMark!) resumeWebSocket()
-      currentWS = ws
+      const pollDrain: Effect.Effect<void, SocketError> = Effect.suspend(() => {
+        if (error !== undefined) return Effect.fail(error)
+        if (ws.readyState !== 1) return Effect.fail(closeError(1006))
+        if ((ws.bufferedAmount ?? 0) <= writeHighWaterMark) return Effect.void
+        return Effect.andThen(Effect.sleep(10), pollDrain)
+      })
+      const awaitDrain = Effect.raceFirst(
+        // Let writes accepted in this event-loop turn flush before polling a
+        // persistently congested transport at the slower interval.
+        Effect.andThen(Effect.sleep(1), pollDrain),
+        closed.whenOpen(Effect.suspend(() => Effect.fail(error!)))
+      )
+      const writeAll: Writer["writeAll"] = (chunks) =>
+        Effect.uninterruptibleMask((restore) => {
+          writers++
+          return Effect.ensuring(
+            restore(writeLock.withPermit(Effect.suspend(() => {
+              let index = 0
+              const send: Effect.Effect<void, SocketError> = Effect.suspend(() => {
+                try {
+                  while (true) {
+                    if (error !== undefined) return Effect.fail(error)
+                    if (ws.readyState !== 1) return Effect.fail(closeError(1006))
+                    // Check before sending, too: an interrupted writer may have
+                    // left an above-mark frame in the transport's queue.
+                    if ((ws.bufferedAmount ?? 0) > writeHighWaterMark) {
+                      return Effect.andThen(awaitDrain, send)
+                    }
+                    if (index === chunks.length) return Effect.void
+                    ws.send(chunks[index++] as string | Uint8Array<ArrayBuffer>)
+                  }
+                } catch (cause) {
+                  return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
+                }
+              })
+              return send
+            }))),
+            Effect.suspend(() => {
+              writers--
+              // Permit release schedules waiters asynchronously. Give them a
+              // turn before a producer can immediately acquire the lock again.
+              return writers > 0 ? Effect.yieldNow : Effect.void
+            })
+          )
+        })
+      currentWS = { ws, writeAll }
       latch.openUnsafe()
 
       return {
@@ -1098,33 +1193,21 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
-        const ws = currentWS
-        if (ws === undefined) return latch.whenOpen(write(chunk))
+        const current = currentWS
+        if (current === undefined) return latch.whenOpen(write(chunk))
+        if (!isCloseEvent(chunk)) return current.writeAll([chunk])
         try {
-          if (isCloseEvent(chunk)) {
-            ws.close(chunk.code, chunk.reason)
-          } else {
-            ws.send(chunk as string | Uint8Array<ArrayBuffer>)
-          }
+          // Closing must not queue behind a backpressured data write.
+          current.ws.close(chunk.code, chunk.reason)
           return Effect.void
         } catch (cause) {
           return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
         }
       })
-    const writeAll = (
-      chunks: NonEmptyReadonlyArray<Uint8Array | string>
-    ): Effect.Effect<void, SocketError> =>
+    const writeAll: Writer["writeAll"] = (chunks) =>
       Effect.suspend(() => {
-        const ws = currentWS
-        if (ws === undefined) return latch.whenOpen(writeAll(chunks))
-        try {
-          for (let i = 0; i < chunks.length; i++) {
-            ws.send(chunks[i] as string | Uint8Array<ArrayBuffer>)
-          }
-          return Effect.void
-        } catch (cause) {
-          return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
-        }
+        const current = currentWS
+        return current === undefined ? latch.whenOpen(writeAll(chunks)) : current.writeAll(chunks)
       })
     const writer: Socket["writer"] = Effect.succeed({ write, writeAll })
 
@@ -1147,6 +1230,7 @@ export const makeWebSocketChannel = <IE = never>(
     readonly openTimeout?: Duration.Input | undefined
     readonly protocols?: string | Array<string> | undefined
     readonly highWaterMark?: number | undefined
+    readonly writeHighWaterMark?: number | undefined
   }
 ): Channel.Channel<
   NonEmptyReadonlyArray<Uint8Array>,
@@ -1175,6 +1259,7 @@ export const layerWebSocket: (
     readonly openTimeout?: Duration.Input | undefined
     readonly protocols?: string | Array<string> | undefined
     readonly highWaterMark?: number | undefined
+    readonly writeHighWaterMark?: number | undefined
   } | undefined
 ) => Layer.Layer<Socket, never, WebSocketConstructor> = flow(makeWebSocket, Layer.effect(Socket))
 
