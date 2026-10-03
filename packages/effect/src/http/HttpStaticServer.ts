@@ -469,16 +469,10 @@ const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | unde
 
 const matchesIfRange = (ifRange: string, response: HttpServerResponse.HttpServerResponse): boolean => {
   const value = ifRange.trim()
-  if (value.startsWith("\"") || /^w\//i.test(value)) {
-    // Only a single strong entity-tag can match; weak tags never match.
-    return /^"[\x21\x23-\x7e\x80-\xff]*"$/.test(value) && value === response.headers["etag"]
-  }
-  const lastModified = response.headers["last-modified"]
-  if (lastModified === undefined) {
-    return false
-  }
-  const ifRangeMs = Date.parse(value)
-  return !Number.isNaN(ifRangeMs) && ifRangeMs === Date.parse(lastModified)
+  // Filesystem metadata cannot establish that Last-Modified is a strong
+  // validator: the file might have changed twice within the same second.
+  // Only a single strong entity-tag can match; weak tags and dates never match.
+  return /^"[\x21\x23-\x7e\x80-\xff]*"$/.test(value) && value === response.headers["etag"]
 }
 
 const notModifiedResponse = (

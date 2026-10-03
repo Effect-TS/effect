@@ -83,10 +83,13 @@ export const make = Platform.make({
   platform: "node",
   compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
-    const stream = contentLength === BigInt(0)
-      ? Readable.from([])
-      : Fs.createReadStream(path, { start, end: end === undefined ? undefined : end - 1 })
-    return ServerResponse.raw(stream, {
+    const stream = NodeStream.fromReadable({
+      evaluate: () =>
+        contentLength === BigInt(0)
+          ? Readable.from([])
+          : Fs.createReadStream(path, { start, end: end === undefined ? undefined : end - 1 })
+    })
+    return ServerResponse.stream(stream, {
       headers: {
         ...headers,
         "content-type": headers["content-type"] ??
@@ -98,20 +101,25 @@ export const make = Platform.make({
     })
   },
   fileWebResponse(file, status, statusText, headers, _options) {
-    return ServerResponse.raw(Readable.fromWeb(file.stream() as any), {
-      headers: Headers.merge(
-        headers,
-        Headers.fromRecordUnsafe({
-          "content-type": headers["content-type"] ??
-            (file.type === ""
-              ? Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream")
-              : file.type),
-          "content-length": file.size.toString()
-        })
-      ),
-      status,
-      statusText
-    })
+    return ServerResponse.stream(
+      NodeStream.fromReadable({
+        evaluate: () => Readable.fromWeb(file.stream() as any)
+      }),
+      {
+        headers: Headers.merge(
+          headers,
+          Headers.fromRecordUnsafe({
+            "content-type": headers["content-type"] ??
+              (file.type === ""
+                ? Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream")
+                : file.type),
+            "content-length": file.size.toString()
+          })
+        ),
+        status,
+        statusText
+      }
+    )
   }
 })
 
