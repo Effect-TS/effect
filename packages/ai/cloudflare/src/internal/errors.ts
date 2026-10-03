@@ -17,7 +17,7 @@ const requestDetails = (request: HttpClientRequest.HttpClientRequest) => ({
   headers: Redactable.redact(request.headers) as Record<string, string>
 })
 
-export const ErrorBody = Schema.Struct({
+const ErrorBody = Schema.Struct({
   errors: Schema.Array(Schema.Struct({ code: Schema.Number, message: Schema.String }))
 })
 

@@ -59,7 +59,7 @@ export interface Options {
 
 const decodeResponse = HttpClientResponse.schemaBodyJson(Schema.Union([
   Schema.Struct({ success: Schema.Literal(true), result: CloudflareSchema.DecisionsResponse }),
-  Schema.Struct({ success: Schema.Literal(false), ...Errors.ErrorBody.fields })
+  Schema.Struct({ success: Schema.Literal(false) })
 ]))
 
 /**
