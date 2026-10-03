@@ -173,7 +173,7 @@ export const make = (
           return Effect.try({
             try: () => {
               statement.setReadBigInts(useSafeIntegers)
-              if (statement.columns().length > 0) {
+              if (!raw || statement.columns().length > 0) {
                 return statement.all(...(params as Array<any>)) as ReadonlyArray<any>
               }
               const result = statement.run(...(params as Array<any>))
@@ -192,11 +192,7 @@ export const make = (
           return Effect.try({
             try: () => {
               statement.setReadBigInts(useSafeIntegers)
-              if (statement.columns().length > 0) {
-                return statement.all(...(params as Array<any>)) as unknown as ReadonlyArray<ReadonlyArray<unknown>>
-              }
-              statement.run(...(params as Array<any>))
-              return []
+              return statement.all(...(params as Array<any>)) as unknown as ReadonlyArray<ReadonlyArray<unknown>>
             },
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
           })
@@ -212,11 +208,7 @@ export const make = (
             try: () => {
               statement.setReadBigInts(useSafeIntegers)
               statement.setReturnArrays(true)
-              if (statement.columns().length > 0) {
-                return statement.all(...(params as Array<any>)) as unknown as ReadonlyArray<ReadonlyArray<unknown>>
-              }
-              statement.run(...(params as Array<any>))
-              return []
+              return statement.all(...(params as Array<any>)) as unknown as ReadonlyArray<ReadonlyArray<unknown>>
             },
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
           })
