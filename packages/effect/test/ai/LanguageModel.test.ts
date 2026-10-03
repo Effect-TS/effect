@@ -698,6 +698,97 @@ describe("LanguageModel", () => {
         strictEqual(yield* Ref.get(calls), 0)
       }))
 
+    it.effect("validates tool parameters against the schemas of each request", () =>
+      Effect.gen(function*() {
+        const StructTransformToolkit = Toolkit.make(Tool.make("TransformTool", {
+          parameters: Schema.Struct({ value: Schema.Finite }),
+          success: Schema.Finite
+        }))
+
+        yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(Stream.runDrain, Effect.provide(TransformToolkitLayer))
+
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: StructTransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runDrain,
+          Effect.provide(StructTransformToolkit.toLayer({ TransformTool: ({ value }) => Effect.succeed(value) })),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }).pipe(
+        TestUtils.withLanguageModel({
+          streamText: [{
+            type: "tool-call",
+            id: "tool-transform",
+            name: "TransformTool",
+            params: "21"
+          }]
+        })
+      ))
+
+    it.effect("validates encoded tool parameters after a request with tool call resolution enabled", () => {
+      const responses: Array<Array<Response.StreamPartEncoded>> = [
+        [{ type: "tool-call", id: "tool-valid", name: "TransformTool", params: "21" }, finishPart],
+        [{ type: "tool-call", id: "tool-invalid", name: "TransformTool", params: { invalid: true } }]
+      ]
+      return Effect.gen(function*() {
+        yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit
+        }).pipe(Stream.runDrain)
+
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(Stream.runDrain, Effect.flip)
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }).pipe(
+        TestUtils.withLanguageModel({
+          streamText: () => responses.shift()!
+        }),
+        Effect.provide(TransformToolkitLayer)
+      )
+    })
+
+    it.effect("runs the tool handlers provided to each request", () =>
+      Effect.gen(function*() {
+        const resultWith = (multiplier: number) =>
+          LanguageModel.streamText({
+            prompt: [],
+            toolkit: TransformToolkit
+          }).pipe(
+            Stream.runCollect,
+            Effect.map((parts) => parts.find((part) => part.type === "tool-result")?.result),
+            Effect.provide(TransformToolkit.toLayer({
+              TransformTool: (value) => Effect.succeed(value * multiplier)
+            }))
+          )
+
+        strictEqual(yield* resultWith(2), 42)
+        strictEqual(yield* resultWith(3), 63)
+      }).pipe(
+        TestUtils.withLanguageModel({
+          streamText: [
+            {
+              type: "tool-call",
+              id: "tool-transform",
+              name: "TransformTool",
+              params: "21"
+            },
+            finishPart
+          ]
+        })
+      ))
+
     it.effect("executes tool handlers once the stream moves past the tool call", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof MyToolkit>, "opaque">> = []
