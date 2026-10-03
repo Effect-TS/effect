@@ -149,6 +149,43 @@ describe("HttpStaticServer", () => {
     })
   })
 
+  for (const validator of ["etag", "last-modified"] as const) {
+    it(`returns the full changed file when If-Range contains a stale ${validator}`, async () => {
+      await withStaticFiles(async ({ handler, root }) => {
+        const file = NodePath.join(root, "range.txt")
+        const initialTime = new Date("2026-01-01T00:00:00Z")
+        await writeFile(file, "old-old-old-old-old-")
+        await utimes(file, initialTime, initialTime)
+
+        const first = await handler(new Request("http://localhost/range.txt", { headers: { Range: "bytes=0-9" } }))
+        assert.strictEqual(first.status, 206)
+        assert.strictEqual(await first.text(), "old-old-ol")
+        const originalValidator = first.headers.get(validator)
+        if (originalValidator === null) {
+          throw new Error(`missing ${validator}`)
+        }
+
+        const updatedBody = "NEW-NEW-NEW-NEW-NEW-NEW-"
+        const updatedTime = new Date("2026-02-01T00:00:00Z")
+        await writeFile(file, updatedBody)
+        await utimes(file, updatedTime, updatedTime)
+
+        const resumed = await handler(
+          new Request("http://localhost/range.txt", {
+            headers: { Range: "bytes=10-", "If-Range": originalValidator }
+          })
+        )
+
+        assert.strictEqual(resumed.status, 200)
+        assert.strictEqual(resumed.headers.get("content-range"), null)
+        assert.strictEqual(resumed.headers.get("content-length"), String(updatedBody.length))
+        assert.strictEqual(await resumed.text(), updatedBody)
+        assert.notStrictEqual(resumed.headers.get("etag"), first.headers.get("etag"))
+        assert.strictEqual(resumed.headers.get("last-modified"), "Sun, 01 Feb 2026 00:00:00 GMT")
+      })
+    })
+  }
+
   it("handles range requests for valid, invalid, and malformed headers", async () => {
     await withStaticFiles(async ({ handler }) => {
       const fullBody = await handler(new Request("http://localhost/range.txt")).then((response) => response.text())
