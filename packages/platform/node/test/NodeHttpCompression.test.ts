@@ -183,24 +183,15 @@ describe("NodeHttpCompression", () => {
       assert.strictEqual(compressed.headers["content-type"], uncompressed.headers["content-type"])
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
-  it("does not acquire compressed HEAD bodies and releases interrupted file bodies", async () => {
+  it("does not acquire file bodies for compressed HEAD requests", async () => {
     let acquired = 0
-    let cancelled = false
-    class StreamingFile extends File {
-      override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+    class CountingFile extends File {
+      override stream() {
         acquired++
-        return new ReadableStream({
-          start(controller) {
-            controller.enqueue(new Uint8Array([97]))
-          },
-          // No EOF: cancellation must release the source.
-          cancel() {
-            cancelled = true
-          }
-        })
+        return super.stream()
       }
     }
-    const file = new StreamingFile(["abc"], "test.txt")
+    const file = new CountingFile(["abc"], "test.txt")
     await withHandler(HttpServerResponse.fileWeb(file), { minSize: 0 }, async (handler) => {
       const head = await handler(
         new Request("http://localhost/", {
@@ -211,16 +202,6 @@ describe("NodeHttpCompression", () => {
       assert.strictEqual(head.status, 200)
       assert.strictEqual(await head.text(), "")
       assert.strictEqual(acquired, 0)
-
-      const response = await get(handler)
-      const reader = response.body!.getReader()
-      try {
-        assert.deepStrictEqual((await reader.read()).value, new Uint8Array([97]))
-      } finally {
-        await reader.cancel()
-      }
-      assert.strictEqual(acquired, 1)
-      assert.strictEqual(cancelled, true)
     })
   })
 

@@ -143,7 +143,7 @@ export const make: (options: {
       const ifRange = request.headers["if-range"]
       if (ifRange !== undefined) {
         fullResponse = yield* getFullResponse()
-        if (!matchesIfRange(ifRange, fullResponse)) {
+        if (!matchesIfRange(ifRange, fullResponse.headers["etag"])) {
           return fullResponse
         }
       }
@@ -467,12 +467,12 @@ const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | unde
   return lastModifiedMs <= ifModifiedSinceMs
 }
 
-const matchesIfRange = (ifRange: string, response: HttpServerResponse.HttpServerResponse): boolean => {
+// Only a strong entity-tag can match (RFC 9110 §13.1.5). Weak tags start
+// with `W/`, and Last-Modified dates never match: filesystem metadata cannot
+// prove the file did not change twice within the same second.
+const matchesIfRange = (ifRange: string, etag: string | undefined): boolean => {
   const value = ifRange.trim()
-  // Filesystem metadata cannot establish that Last-Modified is a strong
-  // validator: the file might have changed twice within the same second.
-  // Only a single strong entity-tag can match; weak tags and dates never match.
-  return /^"[\x21\x23-\x7e\x80-\xff]*"$/.test(value) && value === response.headers["etag"]
+  return value.startsWith("\"") && value === etag
 }
 
 const notModifiedResponse = (

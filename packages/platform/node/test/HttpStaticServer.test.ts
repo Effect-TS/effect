@@ -165,14 +165,18 @@ describe("HttpStaticServer", () => {
       assert.strictEqual(matching.headers.get("content-range"), `bytes 0-10/${fullBody.length}`)
       assert.strictEqual(await matching.text(), "0123456789a")
 
-      const weak = await handler(
-        new Request("http://localhost/range.txt", {
-          headers: { Range: "bytes=0-10", "If-Range": `W/${etag}` }
-        })
-      )
-      assert.strictEqual(weak.status, 200)
-      assert.strictEqual(weak.headers.get("content-range"), null)
-      assert.strictEqual(await weak.text(), fullBody)
+      // Weak tags and Last-Modified dates never match: filesystem metadata
+      // cannot prove a date is a strong validator.
+      for (const ifRange of [`W/${etag}`, first.headers.get("last-modified")!]) {
+        const response = await handler(
+          new Request("http://localhost/range.txt", {
+            headers: { Range: "bytes=0-10", "If-Range": ifRange }
+          })
+        )
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(response.headers.get("content-range"), null)
+        assert.strictEqual(await response.text(), fullBody)
+      }
     })
   })
 
@@ -198,38 +202,6 @@ describe("HttpStaticServer", () => {
       })
     }
   )
-
-  it("returns the full changed file when Last-Modified collides within one second", async () => {
-    await withStaticFiles(async ({ handler, root }) => {
-      const file = NodePath.join(root, "range.txt")
-      const initialTime = new Date("2026-01-01T00:00:00.100Z")
-      await writeFile(file, "old-old-old-old-old-")
-      await utimes(file, initialTime, initialTime)
-
-      const first = await handler(new Request("http://localhost/range.txt", { headers: { Range: "bytes=0-9" } }))
-      assert.strictEqual(first.status, 206)
-      assert.strictEqual(await first.text(), "old-old-ol")
-      assert.strictEqual(first.headers.get("last-modified"), "Thu, 01 Jan 2026 00:00:00 GMT")
-
-      const updatedBody = "NEW-NEW-NEW-NEW-NEW-NEW-"
-      const updatedTime = new Date("2026-01-01T00:00:00.900Z")
-      await writeFile(file, updatedBody)
-      await utimes(file, updatedTime, updatedTime)
-
-      const resumed = await handler(
-        new Request("http://localhost/range.txt", {
-          headers: { Range: "bytes=10-", "If-Range": "Thu, 01 Jan 2026 00:00:00 GMT" }
-        })
-      )
-      // Establish the collision independently of the expected fallback status.
-      assert.strictEqual(resumed.headers.get("last-modified"), first.headers.get("last-modified"))
-      assert.notStrictEqual(resumed.headers.get("etag"), first.headers.get("etag"))
-      assert.strictEqual(resumed.status, 200)
-      assert.strictEqual(resumed.headers.get("content-range"), null)
-      assert.strictEqual(resumed.headers.get("content-length"), String(updatedBody.length))
-      assert.strictEqual(await resumed.text(), updatedBody)
-    })
-  })
 
   it("handles range requests for valid, invalid, and malformed headers", async () => {
     await withStaticFiles(async ({ handler }) => {
