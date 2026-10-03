@@ -18,8 +18,6 @@ import * as Path from "node:path"
 import { fileURLToPath } from "node:url"
 import * as Zlib from "node:zlib"
 
-import { resourceTestsSupported, testFileResources } from "./file-resource-test-utils.ts"
-
 const bigJson = JSON.stringify({ text: "All work and no play makes Jack a dull boy. ".repeat(100) })
 const bigJsonApp = Effect.succeed(HttpServerResponse.text(bigJson, { contentType: "application/json" }))
 
@@ -185,11 +183,46 @@ describe("NodeHttpCompression", () => {
       assert.strictEqual(compressed.headers["content-type"], uncompressed.headers["content-type"])
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
-  it.skipIf(!resourceTestsSupported)(
-    "keeps serving files after repeated compressed HEAD requests",
-    (context) => testFileResources("head", context),
-    30_000
-  )
+  it("does not acquire compressed HEAD bodies and releases interrupted file bodies", async () => {
+    let acquired = 0
+    let cancelled = false
+    class StreamingFile extends File {
+      override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+        acquired++
+        return new ReadableStream({
+          start(controller) {
+            controller.enqueue(new Uint8Array([97]))
+          },
+          // No EOF: cancellation must release the source.
+          cancel() {
+            cancelled = true
+          }
+        })
+      }
+    }
+    const file = new StreamingFile(["abc"], "test.txt")
+    await withHandler(HttpServerResponse.fileWeb(file), { minSize: 0 }, async (handler) => {
+      const head = await handler(
+        new Request("http://localhost/", {
+          method: "HEAD",
+          headers: { "accept-encoding": "gzip" }
+        })
+      )
+      assert.strictEqual(head.status, 200)
+      assert.strictEqual(await head.text(), "")
+      assert.strictEqual(acquired, 0)
+
+      const response = await get(handler)
+      const reader = response.body!.getReader()
+      try {
+        assert.deepStrictEqual((await reader.read()).value, new Uint8Array([97]))
+      } finally {
+        await reader.cancel()
+      }
+      assert.strictEqual(acquired, 1)
+      assert.strictEqual(cancelled, true)
+    })
+  })
 
   it.effect("flushes compressed chunks incrementally over the wire", () =>
     Effect.gen(function*() {
