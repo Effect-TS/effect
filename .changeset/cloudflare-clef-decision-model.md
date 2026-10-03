@@ -2,4 +2,4 @@
 "@effect/ai-cloudflare": minor
 ---
 
-Add a Cloudflare Workers AI provider for classification, ratings, and probabilities with Clef and Clef-flash.
+Add a Cloudflare Workers AI decision provider for Clef and Clef-flash.

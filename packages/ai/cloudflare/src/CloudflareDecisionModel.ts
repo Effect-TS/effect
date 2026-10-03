@@ -33,9 +33,7 @@ export const model = (
   AiModel.make("cloudflare", model, layer({ model }))
 
 /**
- * Builds a decision service. Probabilities arrive rounded to four decimals, so
- * DecisionModel rescales small sum drift when it validates distributions and
- * derives rating labels.
+ * Builds a decision service with tolerance for four-decimal probability rounding.
  *
  * @stability unstable
  * @category constructors

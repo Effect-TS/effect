@@ -46,7 +46,7 @@ export const NoulQuestion = Schema.Struct({
 })
 
 /**
- * A System One question.
+ * A Clef classification, rating, or probability question.
  *
  * @stability unstable
  * @category schemas
@@ -55,7 +55,7 @@ export const NoulQuestion = Schema.Struct({
 export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestion])
 
 /**
- * A batch of questions against encoded state.
+ * A batch of questions about text or JSON state.
  *
  * @stability unstable
  * @category schemas
@@ -106,7 +106,7 @@ export const ScoreAnswer = Schema.Struct({
 export const NoulAnswer = Schema.Struct({ type: Schema.Literal("noul"), noul: Schema.Number })
 
 /**
- * A System One answer.
+ * A Clef classification, rating, or probability answer.
  *
  * @stability unstable
  * @category schemas
