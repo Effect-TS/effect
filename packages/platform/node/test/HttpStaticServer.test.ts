@@ -163,7 +163,7 @@ describe("HttpStaticServer", () => {
   })
 
   for (const validator of ["etag", "last-modified"] as const) {
-    it(`honors Range when If-Range contains a matching ${validator}`, async () => {
+    it(`${validator === "etag" ? "honors" : "ignores"} Range when If-Range contains a matching ${validator}`, async () => {
       await withStaticFiles(async ({ handler }) => {
         const first = await handler(new Request("http://localhost/range.txt"))
         const currentValidator = first.headers.get(validator)
@@ -180,10 +180,18 @@ describe("HttpStaticServer", () => {
           })
         )
 
-        assert.strictEqual(resumed.status, 206)
-        assert.strictEqual(resumed.headers.get("content-range"), `bytes 0-10/${fullBody.length}`)
-        assert.strictEqual(resumed.headers.get("content-length"), "11")
-        assert.strictEqual(await resumed.text(), "0123456789a")
+        // Filesystem metadata alone does not establish that Last-Modified is strong.
+        if (validator === "last-modified") {
+          assert.strictEqual(resumed.status, 200)
+          assert.strictEqual(resumed.headers.get("content-range"), null)
+          assert.strictEqual(resumed.headers.get("content-length"), String(fullBody.length))
+          assert.strictEqual(await resumed.text(), fullBody)
+        } else {
+          assert.strictEqual(resumed.status, 206)
+          assert.strictEqual(resumed.headers.get("content-range"), `bytes 0-10/${fullBody.length}`)
+          assert.strictEqual(resumed.headers.get("content-length"), "11")
+          assert.strictEqual(await resumed.text(), "0123456789a")
+        }
       })
     })
 
@@ -225,6 +233,59 @@ describe("HttpStaticServer", () => {
       }
     )
   }
+
+  it("returns the full changed file when Last-Modified collides within one second", async () => {
+    await withStaticFiles(async ({ handler, root }) => {
+      const file = NodePath.join(root, "range.txt")
+      const initialTime = new Date("2026-01-01T00:00:00.100Z")
+      await writeFile(file, "old-old-old-old-old-")
+      await utimes(file, initialTime, initialTime)
+
+      const first = await handler(new Request("http://localhost/range.txt", { headers: { Range: "bytes=0-9" } }))
+      assert.strictEqual(first.status, 206)
+      assert.strictEqual(await first.text(), "old-old-ol")
+      assert.strictEqual(first.headers.get("last-modified"), "Thu, 01 Jan 2026 00:00:00 GMT")
+
+      const updatedBody = "NEW-NEW-NEW-NEW-NEW-NEW-"
+      const updatedTime = new Date("2026-01-01T00:00:00.900Z")
+      await writeFile(file, updatedBody)
+      await utimes(file, updatedTime, updatedTime)
+
+      const resumed = await handler(
+        new Request("http://localhost/range.txt", {
+          headers: { Range: "bytes=10-", "If-Range": "Thu, 01 Jan 2026 00:00:00 GMT" }
+        })
+      )
+      // Establish the collision independently of the expected fallback status.
+      assert.strictEqual(resumed.headers.get("last-modified"), first.headers.get("last-modified"))
+      assert.notStrictEqual(resumed.headers.get("etag"), first.headers.get("etag"))
+      assert.strictEqual(resumed.status, 200)
+      assert.strictEqual(resumed.headers.get("content-range"), null)
+      assert.strictEqual(resumed.headers.get("content-length"), String(updatedBody.length))
+      assert.strictEqual(await resumed.text(), updatedBody)
+    })
+  })
+
+  it("ignores Range for a parseable non-HTTP If-Range date", async () => {
+    await withStaticFiles(async ({ handler, root }) => {
+      const file = NodePath.join(root, "range.txt")
+      const modifiedTime = new Date("2026-01-01T00:00:00Z")
+      await utimes(file, modifiedTime, modifiedTime)
+      const first = await handler(new Request("http://localhost/range.txt"))
+      const fullBody = await first.text()
+      assert.strictEqual(first.headers.get("last-modified"), "Thu, 01 Jan 2026 00:00:00 GMT")
+
+      const response = await handler(
+        new Request("http://localhost/range.txt", {
+          headers: { Range: "bytes=0-10", "If-Range": "2026-01-01T00:00:00Z" }
+        })
+      )
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers.get("content-range"), null)
+      assert.strictEqual(response.headers.get("content-length"), String(fullBody.length))
+      assert.strictEqual(await response.text(), fullBody)
+    })
+  })
 
   it.each([false, true])("rejects weak If-Range comparison with a weak response ETag: %s", async (weakEtag) => {
     await withStaticFiles(
