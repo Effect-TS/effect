@@ -2,10 +2,10 @@
  * Typed SQL Server stored procedure parameter metadata.
  *
  * This module builds {@link Parameter} values that pair a stored procedure
- * parameter name with a Tedious `DataType`, Tedious `ParameterOptions`, and a
+ * parameter name with an `MssqlTypes.DataType`, `MssqlTypes.ParameterOptions`, and a
  * phantom TypeScript value type. `Procedure.param` and
  * `Procedure.outputParam` use this metadata, and `MssqlClient.call` forwards it
- * to Tedious when registering input and output parameters.
+ * to the native TDS encoder for input and output parameters.
  *
  * @see {@link make} for constructing parameter metadata directly.
  *
@@ -13,8 +13,7 @@
  * @since 4.0.0
  */
 import { identity } from "effect/Function"
-import type { DataType } from "tedious/lib/data-type.ts"
-import type { ParameterOptions } from "tedious/lib/request.ts"
+import type { DataType, ParameterOptions } from "./MssqlTypes.ts"
 
 /**
  * Runtime type identifier used to mark SQL Server stored procedure parameter metadata.
@@ -35,7 +34,7 @@ export const TypeId: TypeId = "~@effect/sql-mssql/Parameter"
 export type TypeId = "~@effect/sql-mssql/Parameter"
 
 /**
- * Metadata for a SQL Server stored procedure parameter, including its name, Tedious data type, options, and phantom value type.
+ * Metadata for a SQL Server stored procedure parameter, including its name, SQL data type, options, and phantom value type.
  *
  * @stability unstable
  * @category models

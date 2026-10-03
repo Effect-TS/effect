@@ -2,32 +2,19 @@ import { MssqlClient } from "@effect/sql-mssql"
 import { assert, it } from "@effect/vitest"
 import { Effect } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
-import type * as Tedious from "tedious"
 import { vi } from "vitest"
 
-vi.mock("tedious", async (importOriginal) => {
-  const original = await importOriginal<typeof Tedious>()
-
-  class MockConnection extends original.Connection {
-    override connect(callback?: (error?: Error) => void) {
-      callback?.()
-    }
-    override close() {}
-    override cancel() {
-      return false
-    }
-    override makeRequest(request: Tedious.Request | Tedious.BulkLoad) {
-      if (!(request instanceof original.Request)) {
-        throw new Error("Unexpected bulk load")
-      }
-      const rows = request.parameters.map((parameter) => [
-        { metadata: { colName: "value" }, value: parameter.value }
-      ])
-      request.callback(null, rows.length, rows)
-    }
+vi.mock("@effect/sql-mssql/MssqlConnection", async () => {
+  const { internalsKey } = await import("@effect/sql-mssql/internal/connection")
+  return {
+    make: () =>
+      Effect.succeed({
+        query: (_sql: string, parameters: ReadonlyArray<{ value: unknown }>) =>
+          Effect.succeed({ rows: parameters.map((parameter) => ({ value: parameter.value })), output: {} }),
+        batch: () => Effect.succeed({ rows: [], output: {} }),
+        [internalsKey]: { deadError: () => undefined, retireHooks: new Set() }
+      })
   }
-
-  return { ...original, Connection: MockConnection }
 })
 
 it.effect("binds an interpolated Uint8Array as VarBinary", () =>
