@@ -1229,12 +1229,12 @@ describe("PgConnection transport", () => {
     }))
 
   it.effect.each([
-    { padding: 0, vector: false, mixed: false },
-    { padding: 16384, vector: true, mixed: false },
-    { padding: 16384, vector: false, mixed: true }
+    { size: "small", padding: 0, mixed: false },
+    { size: "large", padding: 16384, mixed: false },
+    { size: "mixed", padding: 16384, mixed: true }
   ])(
-    "batches queued queries in order after backpressure clears (vector: $vector, mixed: $mixed)",
-    ({ padding, vector, mixed }) =>
+    "batches queued queries in order after backpressure clears (size: $size)",
+    ({ padding, mixed }) =>
       Effect.gen(function*() {
         const incoming = yield* Queue.unbounded<Uint8Array>()
         const writing = yield* Deferred.make<void>()
@@ -1304,7 +1304,7 @@ describe("PgConnection transport", () => {
         const results = yield* Fiber.join(queued)
         assert.deepStrictEqual(results.map((result) => result.rows), Array.from({ length: 20 }, () => []))
         assert.strictEqual(batches.length, 2)
-        assert.strictEqual(batches[1].length, vector ? 20 : 1)
+        assert.strictEqual(batches[1].length, 1)
         const batch = Buffer.concat(batches[1].map((chunk) => Buffer.from(chunk)))
         assert.strictEqual(frontendTags(batch).filter((tag) => tag === "S").length, 20)
         let offset = 0
@@ -1312,12 +1312,6 @@ describe("PgConnection transport", () => {
           const position = batch.indexOf(query, offset)
           assert.isAtLeast(position, offset)
           offset = position + Buffer.byteLength(query)
-        }
-        if (vector) {
-          for (const chunk of batches[1]) {
-            assert.isAtLeast(chunk.length, 16384)
-            assert.strictEqual(frontendTags(Buffer.from(chunk)).filter((tag) => tag === "S").length, 1)
-          }
         }
         // Later allocations cross multiple arenas while the original views stay held.
         for (let index = 0; index < 40; index++) {
@@ -1473,11 +1467,9 @@ describe("PgConnection transport", () => {
         yield* Scope.close(scope, Exit.void)
         assert.isTrue(interrupted)
         assert.isTrue(closed)
-        assert.strictEqual(writes.length, count + 2)
+        assert.strictEqual(writes.length, 3)
         assert.deepStrictEqual(writes.at(-1), new Uint8Array([0x58, 0, 0, 0, 4]))
-        for (const frame of writes.slice(1, -1)) {
-          assert.strictEqual(frontendTags(Buffer.from(frame)).filter((tag) => tag === "S").length, 1)
-        }
+        assert.strictEqual(frontendTags(Buffer.from(writes[1])).filter((tag) => tag === "S").length, count)
         assert.isTrue((yield* Fiber.join(first)).every(Result.isFailure))
         assert.isTrue(Result.isFailure(yield* Fiber.join(second)))
       })

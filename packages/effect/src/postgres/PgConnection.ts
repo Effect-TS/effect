@@ -342,8 +342,6 @@ const abortDrainGraceMillis = 10
 const queryCanceledCode = "57014"
 /** How many statements a multiplexed session keeps on the wire at once. */
 const maxPipelineDepth = 128
-/** Minimum size of every command frame in a vectored pipeline batch. */
-const pipelineVectorThreshold = 16 * 1024
 const streamPauseThreshold = 512
 
 class PgConnectionImpl implements PgConnection {
@@ -594,7 +592,6 @@ class PgConnectionImpl implements PgConnection {
     if (capacity <= 0) return
     const wasEmpty = this.pipelineDepth() === 0
     const frames: Array<Uint8Array> = []
-    let vector = true
     let index = 0
     while (capacity > 0 && index < this.pipelinePending.length) {
       const entry = this.pipelinePending[index++]
@@ -605,7 +602,6 @@ class PgConnectionImpl implements PgConnection {
         continue
       }
       frames.push(entry.plan.frame)
-      vector &&= entry.plan.frame.length >= pipelineVectorThreshold
       this.pipelineInFlight.push(entry)
       capacity--
     }
@@ -616,13 +612,7 @@ class PgConnectionImpl implements PgConnection {
     }
     if (wasEmpty) this.session.parser.readField = this.pipelineInFlight[this.pipelineHead].machine.readField
     try {
-      if (frames.length === 1) {
-        this.session.socket.write(frames[0])
-      } else if (vector) {
-        this.session.socket.writeAll(frames)
-      } else {
-        this.session.socket.write(concat(frames))
-      }
+      this.session.socket.write(frames.length === 1 ? frames[0] : concat(frames))
     } catch (cause) {
       this.fatal(connectionQueryError(cause, "PgConnection: Failed to write query batch"))
     }
@@ -1939,11 +1929,6 @@ class Transport {
   write(bytes: Uint8Array): void {
     if (this.closed) throw new Error("Connection is closed")
     Queue.offerUnsafe(this.outgoing, bytes)
-  }
-
-  writeAll(bytes: ReadonlyArray<Uint8Array>): void {
-    if (this.closed) throw new Error("Connection is closed")
-    Queue.offerAllUnsafe(this.outgoing, bytes)
   }
 
   pause(): void {
