@@ -59,7 +59,7 @@ vi.mock("tedious", async (importOriginal) => {
     connect(callback: (cause: unknown) => void) {
       // Resume acquisition, then emit in the same driver turn, before a forked
       // pool listener can run. Do not install a test-only error listener.
-      queueMicrotask(() => {
+      Fiber.getCurrent()!.currentDispatcher.scheduleTask(() => {
         callback(null)
         if (state.errorAfterConnect) {
           state.errorAfterConnect = false
@@ -70,7 +70,7 @@ vi.mock("tedious", async (importOriginal) => {
             state.emissionError = error
           }
         }
-      })
+      }, 0)
     }
 
     close() {
