@@ -1363,6 +1363,15 @@ describe("Stream", () => {
   })
 
   describe("scanning", () => {
+    it.effect("scan emits the initial state for Stream.empty", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.empty.pipe(
+          Stream.scan(() => 0, (acc, curr: number) => acc + curr),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [0])
+      }))
+
     it.effect("scan", () =>
       Effect.gen(function*() {
         const stream = Stream.make(1, 2, 3, 4, 5)
