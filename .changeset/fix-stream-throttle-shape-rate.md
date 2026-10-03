@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Stream.throttle` with the `"shape"` strategy letting elements through faster than the configured rate. It now measures time with the monotonic clock, so wall clock changes no longer affect it.
+Fix accumulated rate drift in `Stream.throttle` with the `"shape"` strategy by retaining token debt after early wake-ups. Use monotonic time so wall clock changes do not affect throttling.

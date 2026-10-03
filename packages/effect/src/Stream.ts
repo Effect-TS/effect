@@ -8232,7 +8232,6 @@ const throttleShapeEffect = <A, E, R, E2, R2>(
             return Effect.succeed(arr)
           }
 
-          // Calculate delay needed
           const waitCycles = -remaining / units
           const delayMs = Math.max(0, waitCycles * durationMs)
 
