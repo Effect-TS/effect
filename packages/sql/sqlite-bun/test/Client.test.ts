@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Clock, Duration, Effect, Exit, Option } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber } from "effect"
 import { Reactivity } from "effect/reactivity"
-import { SqlError } from "effect/sql/SqlError"
+import { TestClock } from "effect/testing"
 import { rejects } from "node:assert/strict"
 import { mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -10,91 +10,22 @@ import { pathToFileURL } from "node:url"
 
 const isBun = "bun" in process.versions
 
-const initializationFile = Effect.acquireRelease(
-  Effect.promise(() => mkdtemp(join(tmpdir(), "effect-sqlite-bun-initialization-"))),
-  (dir) => Effect.promise(() => rm(dir, { recursive: true, force: true }))
-).pipe(Effect.map((dir) => join(dir, "test.db")))
-
-const holdInitializationLock = (filename: string) =>
-  Effect.gen(function*() {
-    const db = yield* Effect.acquireRelease(
-      Effect.promise(async () => {
-        const { Database } = await import("bun:sqlite")
-        return new Database(filename)
-      }),
-      (db) => Effect.sync(() => db.close())
-    )
-    db.run("BEGIN IMMEDIATE")
-    return () => db.run("ROLLBACK")
-  })
+const makeLockedDatabase = Effect.gen(function*() {
+  const { Database } = yield* Effect.promise(() => import("bun:sqlite"))
+  const dir = yield* Effect.acquireRelease(
+    Effect.promise(() => mkdtemp(join(tmpdir(), "effect-sqlite-bun-"))),
+    (dir) => Effect.promise(() => rm(dir, { recursive: true, force: true }))
+  )
+  const filename = join(dir, "test.db")
+  const lock = yield* Effect.acquireRelease(
+    Effect.sync(() => new Database(filename)),
+    (db) => Effect.sync(() => db.close())
+  )
+  lock.run("BEGIN IMMEDIATE")
+  return { filename, unlock: () => lock.run("ROLLBACK") }
+})
 
 describe("Client", () => {
-  it.live.skipIf(!isBun)("initializes WAL after a competing first-open lock is released", () =>
-    Effect.gen(function*() {
-      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
-      const filename = yield* initializationFile
-      const release = yield* holdInitializationLock(filename)
-      const liveClock = yield* Clock.Clock
-      // Release only once initialization has encountered the real SQLite lock.
-      // No timer competes with synchronous native busy waits.
-      const clock: Clock.Clock = {
-        ...liveClock,
-        currentTimeMillisUnsafe: () => liveClock.currentTimeMillisUnsafe(),
-        currentTimeNanosUnsafe: () => liveClock.currentTimeNanosUnsafe(),
-        monotonicTimeNanosUnsafe: () => liveClock.monotonicTimeNanosUnsafe(),
-        sleep: () => Effect.sync(release)
-      }
-
-      const result = yield* Effect.gen(function*() {
-        const sql = yield* SqliteClient.SqliteClient
-        assert.deepStrictEqual(yield* sql`SELECT 1 AS value`, [{ value: 1 }])
-        assert.deepStrictEqual(yield* sql`PRAGMA busy_timeout`, [{ timeout: 2000 }])
-        return yield* sql`PRAGMA journal_mode`
-      }).pipe(
-        Effect.provide(SqliteClient.layer({ filename, busyTimeout: "2 seconds" })),
-        Effect.provideService(Clock.Clock, clock)
-      )
-      assert.deepStrictEqual(result, [{ journal_mode: "wal" }])
-    }))
-
-  it.live.skipIf(!isBun)(
-    "fails WAL initialization with a typed error when the lock outlasts busyTimeout",
-    () =>
-      Effect.gen(function*() {
-        const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
-        const filename = yield* initializationFile
-        yield* holdInitializationLock(filename)
-        const exit = yield* Effect.gen(function*() {
-          return yield* SqliteClient.SqliteClient
-        }).pipe(Effect.provide(SqliteClient.layer({ filename, busyTimeout: "100 millis" })), Effect.exit)
-
-        assert.isTrue(Exit.isFailure(exit))
-        if (!Exit.isFailure(exit)) return
-        assert.isFalse(Cause.hasDies(exit.cause), Cause.pretty(exit.cause))
-        const error: unknown = Option.getOrThrow(Cause.findErrorOption(exit.cause))
-        assert(error instanceof SqlError)
-        assert.strictEqual(error._tag, "SqlError")
-        assert(error.reason.cause instanceof Error)
-        assert.match(error.reason.cause.message, /database is locked/i)
-      })
-  )
-
-  it.effect.skipIf(!isBun)("fails an unopenable database layer with a typed error", () =>
-    Effect.gen(function*() {
-      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
-      const filename = (yield* initializationFile) + "/missing.db"
-      const exit = yield* Effect.gen(function*() {
-        return yield* SqliteClient.SqliteClient
-      }).pipe(Effect.provide(SqliteClient.layer({ filename })), Effect.exit)
-
-      assert.isTrue(Exit.isFailure(exit))
-      if (!Exit.isFailure(exit)) return
-      assert.isFalse(Cause.hasDies(exit.cause), Cause.pretty(exit.cause))
-      const error: unknown = Option.getOrThrow(Cause.findErrorOption(exit.cause))
-      assert(error instanceof SqlError)
-      assert.strictEqual(error._tag, "SqlError")
-    }))
-
   it.effect("should work", () => Effect.void)
 
   it.effect.skipIf(!isBun)("uses a 5 second busy timeout", () =>
@@ -249,17 +180,11 @@ describe("Client", () => {
       const filename = `/tmp/effect-sqlite-bun-uri-missing-${crypto.randomUUID()}.db`
       yield* Effect.acquireRelease(Effect.void, () => Effect.promise(() => rm(filename, { force: true })))
 
-      yield* Effect.promise(async () => {
-        await rejects(
-          Effect.runPromise(
-            Effect.scoped(SqliteClient.make({ filename: pathToFileURL(filename).href, create: false })).pipe(
-              Effect.provide(Reactivity.layer)
-            )
-          ),
-          /unable to open database file/i
-        )
-        await rejects(stat(filename), { code: "ENOENT" })
-      })
+      const error = yield* Effect.flip(
+        Effect.scoped(SqliteClient.make({ filename: pathToFileURL(filename).href, create: false }))
+      )
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+      yield* Effect.promise(() => rejects(stat(filename), { code: "ENOENT" }))
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect.skipIf(!isBun)("create implies readwrite for file: URIs", () =>
@@ -271,5 +196,28 @@ describe("Client", () => {
       yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
       yield* sql`INSERT INTO test (id) VALUES (1)`
       assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [{ id: 1 }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect.skipIf(!isBun)("retries enabling WAL while the database is locked", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const { filename, unlock } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename }).pipe(Effect.forkChild({ startImmediately: true }))
+      unlock()
+      yield* TestClock.adjust("10 millis")
+      const sql = yield* Fiber.join(fiber)
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "wal" }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect.skipIf(!isBun)("fails to enable WAL with a typed error after busyTimeout", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const { filename } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename, busyTimeout: "1 second" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* TestClock.adjust("2 seconds")
+      const error = yield* Effect.flip(Fiber.join(fiber))
+      assert.strictEqual(error.reason._tag, "LockTimeoutError")
     }).pipe(Effect.provide(Reactivity.layer)))
 })

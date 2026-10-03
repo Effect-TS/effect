@@ -14,7 +14,6 @@
  * @since 4.0.0
  */
 import { constants, Database } from "bun:sqlite"
-import * as Clock from "effect/Clock"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -22,6 +21,7 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
@@ -32,7 +32,6 @@ import * as Stream from "effect/Stream"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const MAX_BUSY_TIMEOUT = 2_147_483_647
-const NANOS_PER_MILLI = BigInt(1_000_000)
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
@@ -148,14 +147,7 @@ export const make = (
                   (openOptions.create ? constants.SQLITE_OPEN_CREATE : 0)
                 : openOptions
             ),
-          catch: (cause) =>
-            new SqlError({
-              reason: classifyError(
-                cause,
-                `Failed to open database: ${cause instanceof Error ? cause.message : String(cause)}`,
-                "connect"
-              )
-            })
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to open database", "connect") })
         }),
         (db) => Effect.sync(() => db.close())
       )
@@ -163,36 +155,22 @@ export const make = (
         MAX_BUSY_TIMEOUT,
         Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
       )
-      const configure = (sql: string) =>
+      const exec = (sql: string) =>
         Effect.try({
           try: () => db.run(sql),
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to configure database", "connect") })
         })
-      yield* configure(`PRAGMA busy_timeout = ${busyTimeout}`)
+      yield* exec(`PRAGMA busy_timeout = ${busyTimeout};`)
 
       if (options.disableWAL !== true && !readonly) {
-        // WAL lock upgrades can return SQLITE_BUSY without invoking SQLite's
-        // busy handler, so retry within the busyTimeout budget.
-        const deadline = (yield* Clock.monotonicTimeNanos) + BigInt(busyTimeout) * NANOS_PER_MILLI
-        const remainingMillis = Effect.map(
-          Clock.monotonicTimeNanos,
-          (now) => Math.max(0, Number((deadline - now) / NANOS_PER_MILLI))
+        // Switching to WAL can fail with SQLITE_BUSY without invoking the busy
+        // handler, so retry it for up to busyTimeout.
+        yield* exec("PRAGMA journal_mode = WAL;").pipe(
+          Effect.retry({
+            while: (error) => error.reason._tag === "LockTimeoutError",
+            schedule: Schedule.max([Schedule.spaced("10 millis"), Schedule.during(busyTimeout)])
+          })
         )
-        const enableWAL: Effect.Effect<void, SqlError> = Effect.gen(function*() {
-          yield* configure(`PRAGMA busy_timeout = ${yield* remainingMillis}`)
-          yield* configure("PRAGMA journal_mode = WAL").pipe(
-            Effect.catchIf(
-              (error) => error.reason._tag === "LockTimeoutError",
-              (error) =>
-                Effect.flatMap(remainingMillis, (remaining) =>
-                  remaining === 0
-                    ? Effect.fail(error)
-                    : Effect.andThen(Effect.sleep(Math.min(10, remaining)), enableWAL))
-            )
-          )
-        })
-        yield* enableWAL
-        yield* configure(`PRAGMA busy_timeout = ${busyTimeout}`)
       }
 
       const prepare = (sql: string, useSafeIntegers: boolean) => {

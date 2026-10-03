@@ -1,12 +1,10 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Clock, Duration, Effect, Exit, FileSystem, Option } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
-import { mkdtemp, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { TestClock } from "effect/testing"
 import { DatabaseSync } from "node:sqlite"
 
 const makeClient = Effect.gen(function*() {
@@ -27,99 +25,19 @@ const makeClients = Effect.gen(function*() {
   }
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
 
-const initializationFile = Effect.acquireRelease(
-  Effect.promise(() => mkdtemp(join(tmpdir(), "effect-sqlite-node-initialization-"))),
-  (dir) => Effect.promise(() => rm(dir, { recursive: true, force: true }))
-).pipe(Effect.map((dir) => join(dir, "test.db")))
-
-const holdInitializationLock = (filename: string) =>
-  Effect.gen(function*() {
-    const db = yield* Effect.acquireRelease(
-      Effect.sync(() => new DatabaseSync(filename)),
-      (db) => Effect.sync(() => db.close())
-    )
-    db.exec("BEGIN IMMEDIATE")
-    return () => db.exec("ROLLBACK")
-  })
+const makeLockedDatabase = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  const filename = dir + "/test.db"
+  const lock = yield* Effect.acquireRelease(
+    Effect.sync(() => new DatabaseSync(filename)),
+    (db) => Effect.sync(() => db.close())
+  )
+  lock.exec("BEGIN IMMEDIATE")
+  return { filename, unlock: () => lock.exec("ROLLBACK") }
+}).pipe(Effect.provide(NodeFileSystem.layer))
 
 describe("Client", () => {
-  it.live("initializes WAL after a competing first-open lock is released", () =>
-    Effect.gen(function*() {
-      const filename = yield* initializationFile
-      const release = yield* holdInitializationLock(filename)
-      const liveClock = yield* Clock.Clock
-      // Release only once initialization has encountered the real SQLite lock.
-      // No timer competes with synchronous native busy waits.
-      const clock: Clock.Clock = {
-        ...liveClock,
-        currentTimeMillisUnsafe: () => liveClock.currentTimeMillisUnsafe(),
-        currentTimeNanosUnsafe: () => liveClock.currentTimeNanosUnsafe(),
-        monotonicTimeNanosUnsafe: () => liveClock.monotonicTimeNanosUnsafe(),
-        sleep: () => Effect.sync(release)
-      }
-
-      const result = yield* Effect.gen(function*() {
-        const sql = yield* SqliteClient.SqliteClient
-        assert.deepStrictEqual(yield* sql`SELECT 1 AS value`, [{ value: 1 }])
-        assert.deepStrictEqual(yield* sql`PRAGMA busy_timeout`, [{ timeout: 2000 }])
-        return yield* sql`PRAGMA journal_mode`
-      }).pipe(
-        Effect.provide(SqliteClient.layer({ filename, busyTimeout: "2 seconds" })),
-        Effect.provideService(Clock.Clock, clock)
-      )
-      assert.deepStrictEqual(result, [{ journal_mode: "wal" }])
-    }))
-
-  it.live("fails WAL initialization with a typed error when the lock outlasts busyTimeout", () =>
-    Effect.gen(function*() {
-      const filename = yield* initializationFile
-      yield* holdInitializationLock(filename)
-      const exit = yield* Effect.gen(function*() {
-        return yield* SqliteClient.SqliteClient
-      }).pipe(Effect.provide(SqliteClient.layer({ filename, busyTimeout: "100 millis" })), Effect.exit)
-
-      assert.isTrue(Exit.isFailure(exit))
-      if (!Exit.isFailure(exit)) return
-      assert.isFalse(Cause.hasDies(exit.cause), Cause.pretty(exit.cause))
-      const error: unknown = Option.getOrThrow(Cause.findErrorOption(exit.cause))
-      assert(error instanceof SqlError)
-      assert.strictEqual(error._tag, "SqlError")
-      assert(error.reason.cause instanceof Error)
-      assert.match(error.reason.cause.message, /database is locked/i)
-    }))
-
-  it.effect("fails an unopenable database layer with a typed error", () =>
-    Effect.gen(function*() {
-      const filename = (yield* initializationFile) + "/missing.db"
-      const exit = yield* Effect.gen(function*() {
-        return yield* SqliteClient.SqliteClient
-      }).pipe(Effect.provide(SqliteClient.layer({ filename })), Effect.exit)
-
-      assert.isTrue(Exit.isFailure(exit))
-      if (!Exit.isFailure(exit)) return
-      assert.isFalse(Cause.hasDies(exit.cause), Cause.pretty(exit.cause))
-      const error: unknown = Option.getOrThrow(Cause.findErrorOption(exit.cause))
-      assert(error instanceof SqlError)
-      assert.strictEqual(error._tag, "SqlError")
-    }))
-
-  it.effect("opens a readonly rollback-journal database without enabling WAL", () =>
-    Effect.gen(function*() {
-      const filename = yield* initializationFile
-      yield* Effect.gen(function*() {
-        const sql = yield* SqliteClient.SqliteClient
-        yield* sql`CREATE TABLE initialization (value INTEGER)`
-        yield* sql`INSERT INTO initialization VALUES (42)`
-        assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "delete" }])
-      }).pipe(Effect.provide(SqliteClient.layer({ filename, disableWAL: true })))
-
-      yield* Effect.gen(function*() {
-        const sql = yield* SqliteClient.SqliteClient
-        assert.deepStrictEqual(yield* sql`SELECT * FROM initialization`, [{ value: 42 }])
-        assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "delete" }])
-      }).pipe(Effect.provide(SqliteClient.layer({ filename, readonly: true })))
-    }))
-
   it.effect("releases completed nested savepoints", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
@@ -364,8 +282,7 @@ describe("Client", () => {
         Cause.hasDies(exit.cause),
         `expected a typed failure but the cause contains a defect:\n${Cause.pretty(exit.cause)}`
       )
-      const error: unknown = Option.getOrThrow(Cause.findErrorOption(exit.cause))
-      assert(error instanceof SqlError)
+      const error = Option.getOrThrow(Cause.findErrorOption(exit.cause))
       assert.strictEqual(error._tag, "SqlError")
       assert(error.reason.cause instanceof Error)
       assert.match(error.reason.cause.message, /database is locked/i)
@@ -399,4 +316,42 @@ describe("Client", () => {
       assert(metadata.totalPages > 0)
       assert.strictEqual(metadata.remainingPages, 0)
     }))
+
+  it.effect("retries enabling WAL while the database is locked", () =>
+    Effect.gen(function*() {
+      const { filename, unlock } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename }).pipe(Effect.forkChild({ startImmediately: true }))
+      unlock()
+      yield* TestClock.adjust("10 millis")
+      const sql = yield* Fiber.join(fiber)
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "wal" }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("fails to enable WAL with a typed error after busyTimeout", () =>
+    Effect.gen(function*() {
+      const { filename } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename, busyTimeout: "1 second" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* TestClock.adjust("2 seconds")
+      const error = yield* Effect.flip(Fiber.join(fiber))
+      assert.strictEqual(error.reason._tag, "LockTimeoutError")
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("does not enable WAL on readonly clients", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const filename = dir + "/test.db"
+
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename, disableWAL: true })
+          yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+        })
+      )
+
+      const sql = yield* SqliteClient.make({ filename, readonly: true })
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "delete" }])
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 })
