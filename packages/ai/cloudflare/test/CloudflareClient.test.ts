@@ -116,6 +116,12 @@ describe("CloudflareClient", () => {
         ))))
     }
 
+    it.effect("maps a failure envelope without errors with HTTP 200 to InternalProviderError", () =>
+      Effect.gen(function*() {
+        const error = yield* Effect.flip(createDecisions)
+        assert.strictEqual(error.reason._tag, "InternalProviderError")
+      }).pipe(Effect.provide(clientLayer(() => Response.json({ success: false, result: null })))))
+
     it.effect("maps 429 to RateLimitError with Retry-After and Cloudflare metadata", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(createDecisions)
