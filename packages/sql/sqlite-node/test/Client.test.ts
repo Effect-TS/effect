@@ -70,6 +70,24 @@ describe("Client", () => {
       ])
     }))
 
+  for (const mode of ["rows", "values"] as const) {
+    it.effect(`returns ${mode} from cached statements after count_changes changes`, () =>
+      Effect.gen(function*() {
+        const sql = yield* makeClient
+        yield* sql`CREATE TABLE count_changes (value INTEGER)`
+        yield* sql`PRAGMA count_changes = OFF`
+        const insert = sql`INSERT INTO count_changes VALUES (1)`
+        const execute = mode === "values" ? insert.values : insert
+
+        assert.deepStrictEqual(yield* execute, [])
+        yield* sql`PRAGMA count_changes = ON`
+        assert.deepStrictEqual(yield* execute, mode === "values" ? [[1]] : [{ "rows inserted": 1 }])
+        yield* sql`PRAGMA count_changes = OFF`
+        assert.deepStrictEqual(yield* execute, [])
+        assert.deepStrictEqual(yield* sql`SELECT COUNT(*) AS count FROM count_changes`, [{ count: 3 }])
+      }))
+  }
+
   it.effect("should work with raw", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
