@@ -46,6 +46,35 @@ describe("Client", () => {
       )
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.live.skipIf(!isBun)("waits for a contended WAL switch on a new database", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const { Database } = yield* Effect.promise(() => import("bun:sqlite"))
+      const filename = `/tmp/effect-sqlite-bun-wal-${crypto.randomUUID()}.db`
+      yield* Effect.acquireRelease(
+        Effect.void,
+        () => Effect.promise(() => rm(filename, { force: true }))
+      )
+      const holder = yield* Effect.acquireRelease(
+        Effect.sync(() => new Database(filename)),
+        (db) => Effect.sync(() => db.close())
+      )
+      // A write lock held while the client opens makes SQLite refuse the WAL
+      // switch immediately, without consulting `busy_timeout`.
+      holder.run("BEGIN IMMEDIATE")
+      yield* Effect.sleep("50 millis").pipe(
+        Effect.andThen(Effect.sync(() => holder.run("COMMIT"))),
+        Effect.forkScoped
+      )
+
+      const sql = yield* SqliteClient.make({ filename })
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "wal" }])
+
+      const error = yield* Effect.flip(SqliteClient.make({ filename: "/tmp/effect-sqlite-bun-missing/test.db" }))
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+      assert.strictEqual(error.reason.operation, "openDatabase")
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect.skipIf(!isBun)("exports inside transactions", () =>
     Effect.gen(function*() {
       const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
@@ -162,17 +191,13 @@ describe("Client", () => {
       const filename = `/tmp/effect-sqlite-bun-uri-missing-${crypto.randomUUID()}.db`
       yield* Effect.acquireRelease(Effect.void, () => Effect.promise(() => rm(filename, { force: true })))
 
-      yield* Effect.promise(async () => {
-        await rejects(
-          Effect.runPromise(
-            Effect.scoped(SqliteClient.make({ filename: pathToFileURL(filename).href, create: false })).pipe(
-              Effect.provide(Reactivity.layer)
-            )
-          ),
-          /unable to open database file/i
-        )
-        await rejects(stat(filename), { code: "ENOENT" })
-      })
+      const error = yield* Effect.flip(
+        Effect.scoped(SqliteClient.make({ filename: pathToFileURL(filename).href, create: false }))
+      )
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+      assert(error.reason.cause instanceof Error)
+      assert.match(error.reason.cause.message, /unable to open database file/i)
+      yield* Effect.promise(() => rejects(stat(filename), { code: "ENOENT" }))
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect.skipIf(!isBun)("create implies readwrite for file: URIs", () =>

@@ -3,7 +3,8 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Duration, Effect, Exit, FileSystem, Option } from "effect"
 import { Reactivity } from "effect/reactivity"
-import { ConnectionError, SqlError } from "effect/sql/SqlError"
+import { ConnectionError, LockTimeoutError, SqlError } from "effect/sql/SqlError"
+import { DatabaseSync } from "node:sqlite"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -290,6 +291,72 @@ describe("Client", () => {
       const sql = yield* SqliteClient.make({ filename, readonly: true })
       yield* sql`PRAGMA query_only = ON`
       assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT * FROM test`), [])
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it.effect("does not switch readonly clients to WAL", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const filename = dir + "/test.db"
+
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename, disableWAL: true })
+          yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+        })
+      )
+
+      const sql = yield* SqliteClient.make({ filename, readonly: true })
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "delete" }])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [])
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it.live("waits for a contended WAL switch on a new database", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const filename = dir + "/test.db"
+      const holder = yield* Effect.acquireRelease(
+        Effect.sync(() => new DatabaseSync(filename)),
+        (db) => Effect.sync(() => db.close())
+      )
+      // A write lock held while the client opens makes SQLite refuse the WAL
+      // switch immediately, without consulting `busy_timeout`.
+      holder.exec("BEGIN IMMEDIATE")
+      yield* Effect.sleep("50 millis").pipe(
+        Effect.andThen(Effect.sync(() => holder.exec("COMMIT"))),
+        Effect.forkScoped
+      )
+
+      const sql = yield* SqliteClient.make({ filename })
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "wal" }])
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it.live("fails a WAL switch that outlasts the busy timeout with a typed error", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const filename = dir + "/test.db"
+      const holder = yield* Effect.acquireRelease(
+        Effect.sync(() => new DatabaseSync(filename)),
+        (db) => Effect.sync(() => db.close())
+      )
+      holder.exec("BEGIN IMMEDIATE")
+
+      const error = yield* Effect.flip(SqliteClient.make({ filename, busyTimeout: "50 millis" }))
+      assert.instanceOf(error.reason, LockTimeoutError)
+      assert.strictEqual(error.reason.operation, "configureDatabase")
+      holder.exec("COMMIT")
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it.effect("fails to open a missing directory with a typed error", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+
+      const error = yield* Effect.flip(SqliteClient.make({ filename: dir + "/missing/test.db" }))
+      assert.instanceOf(error.reason, ConnectionError)
+      assert.strictEqual(error.reason.operation, "openDatabase")
     }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 
   it.effect("supports backup and export", () =>
