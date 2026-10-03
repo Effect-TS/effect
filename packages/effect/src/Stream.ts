@@ -7934,19 +7934,18 @@ export const scan: {
   f: (s: S, a: A) => S
 ): Stream<S, E, R> =>
   suspend(() => {
-    let isFirst = true
-    return fromChannel(Channel.mapAccum(self.channel, initial, (state, arr) => {
-      const states = Arr.empty<S>() as Arr.NonEmptyArray<S>
-      if (isFirst) {
-        isFirst = false
-        states.push(state)
-      }
-      for (let index = 0; index < arr.length; index++) {
-        state = f(state, arr[index])
-        states.push(state)
-      }
-      return [state, Arr.of(states)]
-    }))
+    const seed = initial()
+    return concat(
+      succeed(seed),
+      fromChannel(Channel.mapAccum(self.channel, () => seed, (state, arr) => {
+        const states = Arr.empty<S>() as Arr.NonEmptyArray<S>
+        for (let index = 0; index < arr.length; index++) {
+          state = f(state, arr[index])
+          states.push(state)
+        }
+        return [state, Arr.of(states)]
+      }))
+    )
   }))
 
 /**
