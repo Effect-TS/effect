@@ -14,6 +14,7 @@
  */
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
@@ -295,6 +296,15 @@ export const make = (
 
     // oxlint-disable-next-line prefer-const
     let pool: Pool.Pool<MssqlConnection, SqlError>
+    const connectionEnded = new WeakMap<MssqlConnection, Deferred.Deferred<void>>()
+    // Invalidation can run before acquisition publishes the pool item. Check
+    // the latch on every lease so an early event cannot leave it reusable.
+    const acquireConnection: Effect.Effect<MssqlConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
+      Effect.flatMap(Pool.get(pool), (connection) =>
+        Deferred.isDoneUnsafe(connectionEnded.get(connection)!)
+          ? Effect.andThen(Pool.invalidate(pool, connection), acquireConnection)
+          : Effect.succeed(connection))
+    )
 
     const makeConnection = Effect.gen(function*() {
       const conn = new Tedious.Connection({
@@ -331,7 +341,33 @@ export const make = (
         }
       })
 
-      yield* Effect.addFinalizer(() => Effect.sync(() => conn.close()))
+      const ended = Deferred.makeUnsafe<void>()
+      let closing = false
+      let endEmitted = false
+      const onError = () => {
+        Deferred.doneUnsafe(ended, Effect.void)
+      }
+      const removeListeners = () => {
+        conn.removeListener("error", onError)
+        conn.removeListener("end", onEnd)
+      }
+      const onEnd = () => {
+        endEmitted = true
+        Deferred.doneUnsafe(ended, Effect.void)
+        if (closing) removeListeners()
+      }
+
+      // Install before connect and keep the error handler through asynchronous
+      // close. The latch also records events before the pool item exists.
+      conn.on("error", onError)
+      conn.on("end", onEnd)
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          closing = true
+          conn.close()
+          if (endEmitted) removeListeners()
+        })
+      )
 
       yield* Effect.callback<void, SqlError>((resume) => {
         conn.connect((cause) => {
@@ -523,10 +559,9 @@ export const make = (
           })
       })
 
-      yield* Effect.callback<never, unknown>((resume) => {
-        conn.on("error", (_) => resume(Effect.fail(_)))
-      }).pipe(
-        Effect.catch(() => Pool.invalidate(pool, connection)),
+      connectionEnded.set(connection, ended)
+      yield* Deferred.await(ended).pipe(
+        Effect.andThen(Effect.suspend(() => pool ? Pool.invalidate(pool, connection) : Effect.void)),
         Effect.interruptible,
         Effect.forkScoped
       )
@@ -542,7 +577,7 @@ export const make = (
       timeToLiveStrategy: "creation"
     })
 
-    yield* Pool.get(pool).pipe(
+    yield* acquireConnection.pipe(
       Effect.tap((connection) => connection.executeUnprepared("SELECT 1", [], undefined)),
       Effect.mapError((cause) =>
         new SqlError({ reason: classifyError(cause, "MssqlClient: Failed to connect", "connect", "connection") })
@@ -570,7 +605,7 @@ export const make = (
       spanAttributes,
       acquireConnection: Effect.gen(function*() {
         const scope = Scope.makeUnsafe()
-        const conn = yield* Scope.provide(Pool.get(pool), scope)
+        const conn = yield* Scope.provide(acquireConnection, scope)
         return [scope, conn] as const
       }),
       begin: (conn) => conn.begin,
@@ -582,7 +617,7 @@ export const make = (
 
     return identity<MssqlClient>(Object.assign(
       yield* Client.make({
-        acquirer: Pool.get(pool),
+        acquirer: acquireConnection,
         compiler,
         transactionService: transactionService as any,
         spanAttributes,
@@ -603,9 +638,9 @@ export const make = (
           A
         >(
           procedure: Procedure.ProcedureWithValues<I, O, A>
-        ) => Effect.scoped(Effect.flatMap(Pool.get(pool), (_) => _.call(procedure, transformRows))),
+        ) => Effect.scoped(Effect.flatMap(acquireConnection, (_) => _.call(procedure, transformRows))),
         withoutTransforms() {
-          const statement = Statement.make(Pool.get(pool), compiler.withoutTransform, spanAttributes, undefined)
+          const statement = Statement.make(acquireConnection, compiler.withoutTransform, spanAttributes, undefined)
           const client = Object.assign(
             statement,
             this,
@@ -617,7 +652,7 @@ export const make = (
                 A
               >(
                 procedure: Procedure.ProcedureWithValues<I, O, A>
-              ) => Effect.scoped(Effect.flatMap(Pool.get(pool), (_) => _.call(procedure, undefined)))
+              ) => Effect.scoped(Effect.flatMap(acquireConnection, (_) => _.call(procedure, undefined)))
             }
           )
           ;(client as any).safe = client
