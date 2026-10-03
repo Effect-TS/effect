@@ -850,8 +850,7 @@ export const make: (params: {
   const makeStreamDecoder = (toolkit: Toolkit.Any) =>
     Schema.decodeEffect(Schema.NonEmptyArray(Response.StreamPart(toolkit)))
 
-  // Building the stream part decoder is costly for large toolkits, so reuse the
-  // decoder of the previous request while the schemas it was built from match.
+  // Reuse the last decoder to avoid rebuilding it for unchanged tool schemas.
   let cachedStreamDecoder: {
     readonly key: ReadonlyArray<unknown>
     readonly decode: ReturnType<typeof makeStreamDecoder>

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce repeated streaming request overhead by reusing the response decoder when tool schemas and parameter resolution mode are unchanged.
+Reuse the response decoder in `LanguageModel.streamText` when tool names, schemas and parameter resolution mode are unchanged.
