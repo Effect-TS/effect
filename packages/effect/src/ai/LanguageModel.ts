@@ -2417,8 +2417,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
-// Reuse each tool's parameter-mode copies across requests, so that response
-// schemas built from them can reuse their cached part schemas.
+// Stable parameter-mode copies let Response reuse each tool's part schemas.
 const parameterModeTools = new WeakMap<Tool.Any, { encoded?: Tool.Any; opaque?: Tool.Any }>()
 
 const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any => {

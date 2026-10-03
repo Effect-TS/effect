@@ -152,8 +152,7 @@ export type AllPartsEncoded =
   | FinishPartEncoded
   | ErrorPartEncoded
 
-// Tools are immutable, so the part schemas built for a tool can be shared by
-// every response schema that includes it.
+// Tools are immutable, so response schemas can share their per-tool parts.
 const toolPartSchemaCache = new WeakMap<Tool.Any, {
   readonly toolCall: Schema.Top
   readonly toolResult: Schema.Top
