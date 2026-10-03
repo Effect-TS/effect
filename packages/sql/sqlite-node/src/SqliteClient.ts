@@ -15,6 +15,7 @@
  * @since 4.0.0
  */
 import * as Cache from "effect/Cache"
+import * as Clock from "effect/Clock"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -35,6 +36,7 @@ import type { StatementSync } from "node:sqlite"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const MAX_BUSY_TIMEOUT = 2_147_483_647
+const NANOS_PER_MILLI = BigInt(1_000_000)
 
 /**
  * Runtime type identifier used to mark Node `SqliteClient` values.
@@ -160,13 +162,23 @@ export const make = (
 
       if (options.disableWAL !== true && !options.readonly) {
         // Switching to WAL can fail with SQLITE_BUSY without invoking the busy
-        // handler, so retry it for up to busyTimeout.
-        yield* exec("PRAGMA journal_mode = WAL").pipe(
+        // handler, so retry it until busyTimeout has elapsed. Each attempt's
+        // native busy wait is limited to the remaining time.
+        const deadline = (yield* Clock.monotonicTimeNanos) + BigInt(busyTimeout) * NANOS_PER_MILLI
+        const remainingMillis = Effect.map(
+          Clock.monotonicTimeNanos,
+          (now) => Math.max(0, Number((deadline - now) / NANOS_PER_MILLI))
+        )
+        yield* remainingMillis.pipe(
+          Effect.flatMap((remaining) => exec(`PRAGMA busy_timeout = ${remaining}`)),
+          Effect.andThen(exec("PRAGMA journal_mode = WAL")),
           Effect.retry({
-            while: (error) => error.reason._tag === "LockTimeoutError",
-            schedule: Schedule.max([Schedule.spaced("10 millis"), Schedule.during(busyTimeout)])
+            while: (error) =>
+              error.reason._tag === "LockTimeoutError" && Effect.map(remainingMillis, (remaining) => remaining > 0),
+            schedule: Schedule.spaced("10 millis")
           })
         )
+        yield* exec(`PRAGMA busy_timeout = ${busyTimeout}`)
       }
 
       const prepare = (sql: string) =>
