@@ -12,12 +12,13 @@ import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import * as Crypto from "node:crypto"
 import * as Fs from "node:fs"
 import * as Os from "node:os"
 import * as Path from "node:path"
 import { fileURLToPath } from "node:url"
 import * as Zlib from "node:zlib"
+
+import { resourceTestsSupported, testFileResources } from "./file-resource-test-utils.ts"
 
 const bigJson = JSON.stringify({ text: "All work and no play makes Jack a dull boy. ".repeat(100) })
 const bigJsonApp = Effect.succeed(HttpServerResponse.text(bigJson, { contentType: "application/json" }))
@@ -184,36 +185,11 @@ describe("NodeHttpCompression", () => {
       assert.strictEqual(compressed.headers["content-type"], uncompressed.headers["content-type"])
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
-  it.effect("closes compressed file bodies for HEAD requests", () =>
-    Effect.gen(function*() {
-      const directory = Fs.mkdtempSync(Path.join(Os.tmpdir(), "effect-http-compression-"))
-      yield* Effect.addFinalizer(() => Effect.sync(() => Fs.rmSync(directory, { recursive: true })))
-      const path = Path.join(directory, "random.bin")
-      Fs.writeFileSync(path, Crypto.randomBytes(1024 * 1024))
-
-      const closed = yield* Latch.make(false)
-      const response = yield* HttpServerResponse.file(path, { headers: { "content-type": "text/plain" } })
-        .pipe(
-          Effect.tap((response) =>
-            Effect.sync(() => {
-              if (response.body._tag !== "Raw") {
-                throw new Error(`Expected a Raw body, received ${response.body._tag}`)
-              }
-              const readable = response.body.body as Fs.ReadStream
-              readable.once("close", () => closed.openUnsafe())
-            })
-          )
-        )
-
-      yield* HttpRouter.add("GET", "/file", Effect.succeed(response)).pipe(
-        (self) => HttpRouter.serve(self, { middleware: HttpMiddleware.compression({ minSize: 0 }) }),
-        Layer.build
-      )
-      const head = yield* HttpClient.head("/file", { headers: { "accept-encoding": "gzip" } })
-      assert.strictEqual(head.status, 200)
-      const result = yield* closed.await.pipe(Effect.timeoutOption("1 second"))
-      assert.strictEqual(result._tag, "Some")
-    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+  it.skipIf(!resourceTestsSupported)(
+    "keeps serving files after repeated compressed HEAD requests",
+    (context) => testFileResources("head", context),
+    30_000
+  )
 
   it.effect("flushes compressed chunks incrementally over the wire", () =>
     Effect.gen(function*() {

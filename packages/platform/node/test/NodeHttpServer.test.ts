@@ -38,6 +38,8 @@ import { EventEmitter } from "node:events"
 import * as Http from "node:http"
 import * as Net from "node:net"
 
+import { resourceTestsSupported, testFileResources } from "./file-resource-test-utils.ts"
+
 const Todo = Schema.Struct({
   id: Schema.Number,
   title: Schema.String
@@ -48,6 +50,12 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.skipIf(!resourceTestsSupported)(
+    "keeps serving files after repeated client disconnects",
+    (context) => testFileResources("disconnect", context),
+    30_000
+  )
+
   it.effect("keeps routes isolated between independent servers", () =>
     Effect.gen(function*() {
       const publicServer = Http.createServer()
@@ -308,6 +316,65 @@ describe("HttpServer", () => {
       const text = yield* res.text
       expect(text.trim()).toEqual("lorem ipsum dolar sit amet")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("does not acquire Web File bodies for HEAD and cancels them on disconnect", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const cancelled = yield* Latch.make(false)
+      let acquired = 0
+      class StreamingFile extends File {
+        override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+          acquired++
+          return new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array(64 * 1024).fill(97))
+            },
+            // Stay open after the first chunk so interruption, not EOF, must
+            // release the supplied source.
+            cancel() {
+              cancelled.openUnsafe()
+            }
+          })
+        }
+      }
+      const file = new StreamingFile([new Uint8Array(1024 * 1024)], "large.bin")
+      yield* HttpRouter.add("GET", "/file", HttpServerResponse.fileWeb(file)).pipe(
+        (routes) => HttpRouter.serve(routes, { disableLogger: true, disableListenLog: true }),
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0, host: "127.0.0.1" })),
+        Layer.build
+      )
+      const url = "http://127.0.0.1:" + tcpPort(server) + "/file"
+      yield* Effect.promise(async () => {
+        const head = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(2_000) })
+        assert.strictEqual(head.status, 200)
+        assert.strictEqual(head.headers.get("content-length"), "1048576")
+        assert.strictEqual(await head.text(), "")
+        assert.strictEqual(acquired, 0)
+
+        await new Promise<void>((resolve, reject) => {
+          const request = Http.get(url, { agent: false }, (response) => {
+            response.once("data", (chunk) => {
+              try {
+                assert.strictEqual(response.statusCode, 200)
+                assert.isAbove(chunk.length, 0)
+                assert.isTrue(chunk.every((byte: number) => byte === 97))
+                resolve()
+              } catch (error) {
+                reject(error)
+              } finally {
+                response.destroy()
+              }
+            })
+            response.on("error", reject)
+          })
+          const timer = setTimeout(() => request.destroy(new Error("first chunk timed out")), 2_000)
+          request.on("error", reject)
+          request.on("close", () => clearTimeout(timer))
+        })
+      })
+      yield* cancelled.await.pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual(acquired, 1)
+    }))
 
   it.effect("fileWeb", () =>
     Effect.gen(function*() {
