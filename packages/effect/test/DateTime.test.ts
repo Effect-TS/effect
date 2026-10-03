@@ -485,7 +485,7 @@ describe("DateTime", () => {
 
     const withFormatToParts = <A>(transform: PartsTransform, f: () => A): A => {
       const spy = vi.spyOn(Intl.DateTimeFormat.prototype, "formatToParts").mockImplementation(
-        function(this: Intl.DateTimeFormat, date?: Date | number) {
+        function(this: Intl.DateTimeFormat, date?: Parameters<typeof formatToParts>[0]) {
           return transform(formatToParts.call(this, date))
         }
       )
