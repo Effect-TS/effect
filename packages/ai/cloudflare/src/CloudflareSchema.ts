@@ -62,7 +62,7 @@ export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestio
  * @since 4.0.0
  */
 export const DecisionsRequest = Schema.Struct({
-  model: Schema.Literals(["clef", "clef-flash"]),
+  model: Schema.Union([Schema.Literals(["clef", "clef-flash"]), Schema.StringForLiteralAutocomplete]),
   state: Schema.Json,
   questions: Schema.Record(Schema.String, Question)
 })
