@@ -32,14 +32,7 @@ import * as Stream from "effect/Stream"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const MAX_BUSY_TIMEOUT = 2_147_483_647
-
-const isBusy = (cause: unknown): boolean => {
-  if (typeof cause !== "object" || cause === null) return false
-  const { code, errno, errcode } = cause as { code?: unknown; errno?: unknown; errcode?: unknown }
-  const numericCode = typeof errcode === "number" ? errcode : errno
-  return (typeof numericCode === "number" && (numericCode & 0xff) === 5) ||
-    (typeof code === "string" && (code === "SQLITE_BUSY" || code.startsWith("SQLITE_BUSY_")))
-}
+const NANOS_PER_MILLI = BigInt(1_000_000)
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
@@ -177,23 +170,28 @@ export const make = (
         })
       yield* configure(`PRAGMA busy_timeout = ${busyTimeout}`)
 
-      if (options.disableWAL !== true && options.readonly !== true) {
+      if (options.disableWAL !== true && !readonly) {
         // WAL lock upgrades can return SQLITE_BUSY without invoking SQLite's
-        // busy handler. Budget both native busy waits and retry sleeps together.
-        const deadline = (yield* Clock.monotonicTimeNanos) + BigInt(busyTimeout) * BigInt("1000000")
-        while (true) {
-          const remaining = Math.max(0, Number((deadline - (yield* Clock.monotonicTimeNanos)) / BigInt("1000000")))
-          yield* configure(`PRAGMA busy_timeout = ${remaining}`)
-          const error = yield* configure("PRAGMA journal_mode = WAL").pipe(
-            Effect.as(undefined),
-            Effect.catch((error) => Effect.succeed(error))
+        // busy handler, so retry within the busyTimeout budget.
+        const deadline = (yield* Clock.monotonicTimeNanos) + BigInt(busyTimeout) * NANOS_PER_MILLI
+        const remainingMillis = Effect.map(
+          Clock.monotonicTimeNanos,
+          (now) => Math.max(0, Number((deadline - now) / NANOS_PER_MILLI))
+        )
+        const enableWAL: Effect.Effect<void, SqlError> = Effect.gen(function*() {
+          yield* configure(`PRAGMA busy_timeout = ${yield* remainingMillis}`)
+          yield* configure("PRAGMA journal_mode = WAL").pipe(
+            Effect.catchIf(
+              (error) => error.reason._tag === "LockTimeoutError",
+              (error) =>
+                Effect.flatMap(remainingMillis, (remaining) =>
+                  remaining === 0
+                    ? Effect.fail(error)
+                    : Effect.andThen(Effect.sleep(Math.min(10, remaining)), enableWAL))
+            )
           )
-          if (error === undefined) break
-          const delay = Math.min(10, Number((deadline - (yield* Clock.monotonicTimeNanos)) / BigInt("1000000")))
-          if (!isBusy(error.reason.cause) || delay <= 0) return yield* Effect.fail(error)
-          yield* Effect.sleep(delay)
-          if ((yield* Clock.monotonicTimeNanos) >= deadline) return yield* Effect.fail(error)
-        }
+        })
+        yield* enableWAL
         yield* configure(`PRAGMA busy_timeout = ${busyTimeout}`)
       }
 
