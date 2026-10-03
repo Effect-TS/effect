@@ -61,7 +61,7 @@ const stubCompression: HttpPlatform.Compression = {
   compressResponse: Effect.succeed
 }
 
-const makeHandler = async () => {
+const makeHandler = async (etag = "\"etag-value\"") => {
   const fileSystem = FileSystem.makeNoop({
     stat: (path) => path === filePath ? Effect.succeed(fileInfo) : Effect.fail(notFoundError(path))
   })
@@ -73,7 +73,7 @@ const makeHandler = async () => {
       Effect.succeed(HttpServerResponse.text(fileBody, {
         status: options?.status,
         headers: {
-          ETag: "\"etag-value\"",
+          ETag: etag,
           "Last-Modified": lastModified
         }
       })),
@@ -258,6 +258,60 @@ describe("HttpStaticServer", () => {
     assert.strictEqual(response.headers.get("accept-ranges"), null)
     assert.strictEqual(response.headers.get("content-type"), null)
     assert.strictEqual(response.headers.get("content-length"), null)
+  })
+
+  describe("If-Range", () => {
+    const rangeRequest = (ifRange: string, range = "bytes=6-") =>
+      new Request("http://localhost/file.txt", { headers: { Range: range, "If-Range": ifRange } })
+
+    it("serves the range when If-Range matches the ETag", async () => {
+      const handler = await makeHandler()
+      const response = await handler(rangeRequest("\"etag-value\""))
+
+      assert.strictEqual(response.status, 206)
+      assert.strictEqual(response.headers.get("content-range"), `bytes 6-11/${fileBody.length}`)
+    })
+
+    it("serves the range when If-Range matches Last-Modified", async () => {
+      const handler = await makeHandler()
+      const response = await handler(rangeRequest(lastModified))
+
+      assert.strictEqual(response.status, 206)
+      assert.strictEqual(response.headers.get("content-range"), `bytes 6-11/${fileBody.length}`)
+    })
+
+    it("serves the full file when If-Range does not match the ETag", async () => {
+      const handler = await makeHandler()
+      const response = await handler(rangeRequest("\"other\""))
+
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers.get("content-range"), null)
+      assert.strictEqual(await response.text(), fileBody)
+    })
+
+    it("serves the full file when If-Range does not match Last-Modified", async () => {
+      const handler = await makeHandler()
+      const response = await handler(rangeRequest("Tue, 31 Dec 2024 23:59:59 GMT"))
+
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers.get("content-range"), null)
+    })
+
+    it("uses strong comparison for entity tags", async () => {
+      const weakIfRange = await (await makeHandler())(rangeRequest("W/\"etag-value\""))
+      const weakEtag = await (await makeHandler("W/\"etag-value\""))(rangeRequest("W/\"etag-value\""))
+
+      assert.strictEqual(weakIfRange.status, 200)
+      assert.strictEqual(weakEtag.status, 200)
+    })
+
+    it("ignores an unsatisfiable Range when If-Range does not match", async () => {
+      const handler = await makeHandler()
+      const response = await handler(rangeRequest("\"other\"", "bytes=1000-1001"))
+
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers.get("content-range"), null)
+    })
   })
 
   it("wraps missing routes as HttpServerError RouteNotFound", async () => {

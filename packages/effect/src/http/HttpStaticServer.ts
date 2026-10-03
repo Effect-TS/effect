@@ -4,8 +4,8 @@
  * `HttpStaticServer` turns request paths into file responses under a configured
  * root directory. It can be used as an application value or mounted onto an
  * `HttpRouter`, and it handles index files, optional single-page application
- * fallback, MIME type headers, cache-control headers, byte ranges, and
- * conditional `304 Not Modified` responses.
+ * fallback, MIME type headers, cache-control headers, byte ranges (honoring
+ * `If-Range`), and conditional `304 Not Modified` responses.
  *
  * @stability unstable
  * @since 4.0.0
@@ -138,6 +138,14 @@ export const make: (options: {
 
       if (rangeHeader === undefined) {
         return yield* getFullResponse()
+      }
+
+      const ifRange = request.headers["if-range"]
+      if (ifRange !== undefined) {
+        fullResponse = yield* getFullResponse()
+        if (!matchesIfRange(ifRange, fullResponse)) {
+          return fullResponse
+        }
       }
 
       const resolvedFileSize = fileSize ?? (yield* handlePlatformError(request, fileSystem.stat(filePath))).size
@@ -457,6 +465,23 @@ const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | unde
     return false
   }
   return lastModifiedMs <= ifModifiedSinceMs
+}
+
+const matchesIfRange = (ifRange: string, response: HttpServerResponse.HttpServerResponse): boolean => {
+  const value = ifRange.trim()
+  // Entity tags use strong comparison, so a weak tag on either side never matches
+  if (value.startsWith("\"")) {
+    return value === response.headers["etag"]
+  }
+  if (/^w\//i.test(value)) {
+    return false
+  }
+  const lastModified = response.headers["last-modified"]
+  if (lastModified === undefined) {
+    return false
+  }
+  const ifRangeMs = Date.parse(value)
+  return !Number.isNaN(ifRangeMs) && ifRangeMs === Date.parse(lastModified)
 }
 
 const notModifiedResponse = (
