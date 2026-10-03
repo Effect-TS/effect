@@ -847,40 +847,6 @@ export const make: (params: {
     Effect.map(Option.getOrElse(() => defaultIdGenerator))
   )
 
-  const makeStreamDecoder = (toolkit: Toolkit.Any) =>
-    Schema.decodeEffect(Schema.NonEmptyArray(Response.StreamPart(toolkit)))
-
-  // Reuse the last decoder to avoid rebuilding it for unchanged tool schemas.
-  let cachedStreamDecoder: {
-    readonly key: ReadonlyArray<unknown>
-    readonly decode: ReturnType<typeof makeStreamDecoder>
-  } | undefined
-
-  const getStreamDecoder = <Tools extends Record<string, Tool.Any>>(
-    toolkit: Toolkit.WithHandler<Tools>,
-    encodedParameters: boolean
-  ) => {
-    const key: Array<unknown> = [encodedParameters]
-    for (const tool of Object.values(toolkit.tools)) {
-      key.push(tool.name, tool.parametersSchema, tool.successSchema, tool.failureSchema)
-    }
-    const cached = cachedStreamDecoder
-    if (
-      cached !== undefined &&
-      cached.key.length === key.length &&
-      cached.key.every((value, index) => value === key[index])
-    ) {
-      return cached.decode
-    }
-    const decode = makeStreamDecoder(
-      encodedParameters
-        ? makeToolkitWithEncodedParameters(toolkit)
-        : makeToolkitWithOpaqueParameters(toolkit)
-    )
-    cachedStreamDecoder = { key, decode }
-    return decode
-  }
-
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
     Tools extends Record<string, Tool.Any> = {}
@@ -1572,7 +1538,12 @@ export const make: (params: {
       }
     }
 
-    const decodeParts = getStreamDecoder(toolkit, options.disableToolCallResolution === true)
+    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(
+      options.disableToolCallResolution === true
+        ? makeToolkitWithEncodedParameters(toolkit)
+        : makeToolkitWithOpaqueParameters(toolkit)
+    ))
+    const decodeParts = Schema.decodeEffect(ResponseSchema)
 
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
@@ -2446,18 +2417,33 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
+// Reuse each tool's parameter-mode copies across requests, so that response
+// schemas built from them can reuse their cached part schemas.
+const parameterModeTools = new WeakMap<Tool.Any, { encoded?: Tool.Any; opaque?: Tool.Any }>()
+
+const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any => {
+  let tools = parameterModeTools.get(tool)
+  if (tools === undefined) {
+    tools = {}
+    parameterModeTools.set(tool, tools)
+  }
+  return tools[mode] ??= tool.setParameters(
+    mode === "encoded" ? Schema.toEncoded(tool.parametersSchema) : Schema.Unknown
+  )
+}
+
 const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.toEncoded(tool.parametersSchema)))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "encoded"))
   )
 
 const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "opaque"))
   )
 
 // Provider-executed tools bypass Toolkit, so validate their parameters here.
