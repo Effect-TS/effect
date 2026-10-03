@@ -47,7 +47,8 @@ const answers = {
 
 const clientLayer = (
   answers: unknown,
-  onRequest: (request: HttpClientRequest.HttpClientRequest) => void = () => {}
+  onRequest: (request: HttpClientRequest.HttpClientRequest) => void = () => {},
+  model = "clef"
 ) =>
   CloudflareClient.layer({ accountId: "test-account", apiKey: Redacted.make("test-token") }).pipe(
     Layer.provide(Layer.succeed(
@@ -59,7 +60,7 @@ const clientLayer = (
             request,
             Response.json({
               success: true,
-              result: { model: "clef", answers, usage: { input_tokens: 120, output_tokens: 0 } }
+              result: { model, answers, usage: { input_tokens: 120, output_tokens: 0 } }
             })
           )
         }),
@@ -115,6 +116,27 @@ describe("CloudflareDecisionModel", () => {
         }
       }))
     ))
+
+  it.effect("sends an arbitrary model identifier through the decision request", () => {
+    const model = "clef-next"
+    return Effect.gen(function*() {
+      const result = yield* DecisionModel.decide(Triage, { input })
+      assert.strictEqual(yield* Model.ModelName, model)
+      assert.strictEqual(result.answers.urgent.probability, 0.99)
+    }).pipe(
+      Effect.provide(CloudflareDecisionModel.model(model)),
+      Effect.provide(clientLayer(answers, (request) => {
+        assert.strictEqual(
+          request.url,
+          `https://api.cloudflare.com/client/v4/accounts/test-account/ai/run/@cf/cloudflare/${model}`
+        )
+        assert.strictEqual(request.body._tag, "Uint8Array")
+        if (request.body._tag === "Uint8Array") {
+          assert.strictEqual(JSON.parse(new TextDecoder().decode(request.body.body)).model, model)
+        }
+      }, model))
+    )
+  })
 
   it.effect("accepts probabilities with four-decimal rounding drift", () =>
     Effect.gen(function*() {
