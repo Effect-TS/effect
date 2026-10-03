@@ -140,6 +140,14 @@ export const make: (options: {
         return yield* getFullResponse()
       }
 
+      const ifRange = request.headers["if-range"]
+      if (ifRange !== undefined) {
+        fullResponse = yield* getFullResponse()
+        if (!matchesIfRange(ifRange, fullResponse)) {
+          return fullResponse
+        }
+      }
+
       const resolvedFileSize = fileSize ?? (yield* handlePlatformError(request, fileSystem.stat(filePath))).size
       const parsedRange = parseRange(rangeHeader, resolvedFileSize)
 
@@ -457,6 +465,20 @@ const isNotModifiedSince = (ifModifiedSince: string, lastModified: string | unde
     return false
   }
   return lastModifiedMs <= ifModifiedSinceMs
+}
+
+const matchesIfRange = (ifRange: string, response: HttpServerResponse.HttpServerResponse): boolean => {
+  const value = ifRange.trim()
+  if (value.startsWith("\"") || /^w\//i.test(value)) {
+    // Only a single strong entity-tag can match; weak tags never match.
+    return /^"[\x21\x23-\x7e\x80-\xff]*"$/.test(value) && value === response.headers["etag"]
+  }
+  const lastModified = response.headers["last-modified"]
+  if (lastModified === undefined) {
+    return false
+  }
+  const ifRangeMs = Date.parse(value)
+  return !Number.isNaN(ifRangeMs) && ifRangeMs === Date.parse(lastModified)
 }
 
 const notModifiedResponse = (
