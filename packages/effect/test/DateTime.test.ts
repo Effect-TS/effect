@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { describe, it, vi } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { DateTime, Duration, Effect, Option } from "effect"
 import { TestClock } from "effect/testing"
@@ -476,6 +476,98 @@ describe("DateTime", () => {
         })
         strictEqual(dt.toJSON(), "2023-12-31T12:00:00.000Z")
       }))
+  })
+
+  describe("toDate", () => {
+    type PartsTransform = (parts: Array<Intl.DateTimeFormatPart>) => Array<Intl.DateTimeFormatPart>
+
+    const formatToParts = Intl.DateTimeFormat.prototype.formatToParts
+
+    const withFormatToParts = <A>(transform: PartsTransform, f: () => A): A => {
+      const spy = vi.spyOn(Intl.DateTimeFormat.prototype, "formatToParts").mockImplementation(
+        function(this: Intl.DateTimeFormat, date?: Parameters<typeof formatToParts>[0]) {
+          return transform(formatToParts.call(this, date))
+        }
+      )
+      try {
+        return f()
+      } finally {
+        spy.mockRestore()
+      }
+    }
+
+    const withoutFractionalSecond: PartsTransform = (parts) => parts.filter((part) => part.type !== "fractionalSecond")
+
+    const reorder = (types: ReadonlyArray<Intl.DateTimeFormatPartTypes>): PartsTransform => (parts) =>
+      types.flatMap((type) => {
+        const part = parts.find((part) => part.type === type)
+        return part === undefined ? [] : [part, { type: "literal", value: " | " }]
+      })
+
+    const cases: ReadonlyArray<{
+      readonly description: string
+      readonly make: () => DateTime.Zoned
+      readonly expected: string
+    }> = [
+      {
+        description: "positive epoch",
+        make: () => DateTime.makeZonedUnsafe(1705322096789, { timeZone: "Asia/Tokyo" }),
+        expected: "2024-01-15T21:34:56.789Z"
+      },
+      {
+        description: "positive epoch on a whole second",
+        make: () => DateTime.makeZonedUnsafe(1705322096000, { timeZone: "America/New_York" }),
+        expected: "2024-01-15T07:34:56.000Z"
+      },
+      {
+        description: "negative epoch",
+        make: () => DateTime.makeZonedUnsafe(-1500, { timeZone: "Asia/Kolkata" }),
+        expected: "1970-01-01T05:29:58.500Z"
+      },
+      {
+        description: "fractional negative epoch",
+        make: () =>
+          DateTime.makeZonedUnsafe(-1000, { timeZone: "Asia/Tokyo" }).pipe(
+            DateTime.mapEpochMillis((millis) => millis - 0.5)
+          ),
+        expected: "1970-01-01T08:59:59.000Z"
+      }
+    ]
+
+    it.each<{
+      readonly description: string
+      readonly transform: PartsTransform
+    }>([
+      {
+        description: "parts in the default order",
+        transform: (parts) => parts
+      },
+      {
+        description: "a missing fractionalSecond part",
+        transform: withoutFractionalSecond
+      },
+      {
+        description: "parts in a different order",
+        transform: reorder(["year", "month", "day", "hour", "minute", "second", "fractionalSecond", "timeZoneName"])
+      },
+      {
+        description: "timeZoneName before the numeric parts",
+        transform: reorder(["timeZoneName", "month", "day", "year", "hour", "minute", "second", "fractionalSecond"])
+      }
+    ])("handles $description", ({ transform }) => {
+      withFormatToParts(transform, () => {
+        for (const { description, expected, make } of cases) {
+          strictEqual(DateTime.toDate(make()).toISOString(), expected, description)
+        }
+      })
+    })
+
+    it("formatIsoDate handles a missing fractionalSecond part", () => {
+      withFormatToParts(withoutFractionalSecond, () => {
+        const dt = DateTime.makeZonedUnsafe("2024-01-15T20:00:00.000Z", { timeZone: "Asia/Tokyo" })
+        strictEqual(DateTime.formatIsoDate(dt), "2024-01-16")
+      })
+    })
   })
 
   describe("nowAsDate", () => {
