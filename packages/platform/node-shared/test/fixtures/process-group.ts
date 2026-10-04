@@ -4,13 +4,13 @@ import { appendFileSync, writeFileSync } from "node:fs"
 // The leader and descendant share a process group and inherited stdio. The
 // leader keeps the default SIGTERM behavior. The descendant either exits 200ms
 // after SIGTERM or ignores it while writing heartbeats to the marker file.
-const [role, mode, marker] = process.argv.slice(2)
+const [role, mode, marker, exitCode = "0"] = process.argv.slice(2)
 
 if (role === "leader") {
   spawn(process.execPath, [process.argv[1], "descendant", mode, marker], {
     stdio: ["ignore", "inherit", "inherit"]
   })
-  process.stdin.once("data", () => process.exit(0))
+  process.stdin.once("data", () => process.exit(Number(exitCode)))
   setInterval(() => {}, 1_000)
 } else {
   if (mode === "exit-on-signal") {

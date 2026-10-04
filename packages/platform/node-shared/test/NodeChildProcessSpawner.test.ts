@@ -125,7 +125,11 @@ const liveSleep = (millis: number) =>
 const liveTimeout = (millis: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.raceFirst(effect, liveSleep(millis).pipe(Effect.andThen(Effect.die(new Error("timed out")))))
 
-const startProcessGroup = (mode: "exit-on-signal" | "ignore-signal", options?: ChildProcess.CommandOptions) =>
+const startProcessGroup = (
+  mode: "exit-on-signal" | "ignore-signal",
+  options?: ChildProcess.CommandOptions,
+  exitCode = 0
+) =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const directory = yield* fs.makeTempDirectoryScoped()
@@ -133,7 +137,7 @@ const startProcessGroup = (mode: "exit-on-signal" | "ignore-signal", options?: C
     const scope = yield* Scope.fork(yield* Effect.scope)
     const handle = yield* Scope.provide(scope)(ChildProcess.make(
       process.execPath,
-      [processGroupFixture, "leader", mode, marker],
+      [processGroupFixture, "leader", mode, marker, String(exitCode)],
       { stdin: "ignore", ...options }
     ))
     const ready = yield* Deferred.make<number>()
@@ -173,6 +177,25 @@ const timed = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   })
 
 describe.skipIf(process.platform === "win32")("process group cleanup", () => {
+  for (const exitCode of [0, 1]) {
+    it.live(`scope release escalates after the leader exits with code ${exitCode}`, () =>
+      Effect.gen(function*() {
+        const { descendantPid, handle, marker, scope } = yield* startProcessGroup("ignore-signal", {
+          stdin: "pipe",
+          forceKillAfter: "200 millis"
+        }, exitCode)
+        yield* Effect.addFinalizer(() => killDescendant(descendantPid))
+
+        yield* Stream.run(Stream.make(new TextEncoder().encode("exit\n")), handle.stdin)
+        assert.strictEqual(yield* handle.exitCode, exitCode)
+        assert.doesNotThrow(() => process.kill(descendantPid, 0), "descendant must outlive the leader")
+
+        yield* Scope.close(scope, Exit.void)
+
+        yield* assertHeartbeatStopped(marker)
+      }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+  }
+
   it.live("scope release cleans descendants after the leader exits successfully", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
