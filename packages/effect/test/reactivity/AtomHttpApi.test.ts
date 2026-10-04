@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Exit, Layer, Ref, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
-import { HttpClient, HttpClientResponse } from "effect/http"
+import { HttpClient, HttpClientResponse, type UrlParams } from "effect/http"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 import type * as HttpClientError from "effect/http/HttpClientError"
 import { Atom, AtomHttpApi, AtomRegistry, Hydration } from "effect/reactivity"
@@ -109,7 +109,7 @@ describe("AtomHttpApi", () => {
       const requestRef = yield* Ref.make<
         {
           readonly url: string
-          readonly urlParams: ReadonlyArray<readonly [string, string]>
+          readonly urlParams: UrlParams.UrlParams["params"]
         } | undefined
       >(undefined)
 

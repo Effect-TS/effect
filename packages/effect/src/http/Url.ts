@@ -12,6 +12,7 @@
 import * as Cause from "../Cause.ts"
 import * as Data from "../Data.ts"
 import { dual } from "../Function.ts"
+import { stringOrRedacted } from "../internal/redacted.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Result from "../Result.ts"
 import * as UrlParams from "./UrlParams.ts"
@@ -46,11 +47,8 @@ export const make = (
   Result.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
-      for (let i = 0; i < params.params.length; i++) {
-        const [key, value] = params.params[i]
-        if (value !== undefined) {
-          urlInstance.searchParams.append(key, value)
-        }
+      for (const [key, value] of params) {
+        urlInstance.searchParams.append(key, stringOrRedacted(value))
       }
       if (hash !== undefined) {
         urlInstance.hash = hash
