@@ -1043,19 +1043,19 @@ describe("HttpServer", () => {
       expect(response.status).toEqual(200)
     }).pipe(Effect.provide(layerTestWebsocket)))
 
-  it.effect("a refused websocket handshake fails the upgrade instead of hanging (#8721)", () =>
+  it.effect("fails the socket reader when the websocket handshake is refused", () =>
     Effect.gen(function*() {
-      const outcome = yield* Deferred.make<string>()
+      const outcome = yield* Deferred.make<Socket.SocketError | undefined>()
       yield* HttpRouter.add(
         "GET",
         "/ws",
         Effect.gen(function*() {
           const request = yield* HttpServerRequest.HttpServerRequest
-          // The reader runs the upgrade acquisition: with a refused
-          // handshake this used to hang past server shutdown.
           const socket = yield* request.upgrade
-          const exit = yield* Effect.exit(Effect.scoped(socket.reader))
-          yield* Deferred.succeed(outcome, exit._tag)
+          const error = yield* Effect.scoped(socket.reader).pipe(
+            Effect.match({ onFailure: (error) => error, onSuccess: () => undefined })
+          )
+          yield* Deferred.succeed(outcome, error)
           return HttpServerResponse.empty()
         })
       ).pipe(
@@ -1065,34 +1065,30 @@ describe("HttpServer", () => {
       const server = yield* HttpServer.HttpServer
       const port = (server.address as NetAddress.InetAddress).port
 
-      // ws refuses Sec-WebSocket-Version 12 and never calls handleUpgrade —
-      // without the close guard the request fiber hangs past server shutdown.
-      yield* Effect.callback<void>((resume) => {
+      const status = yield* Effect.callback<number | undefined, Error>((resume) => {
         const req = Http.request({
+          hostname: "127.0.0.1",
           port,
+          agent: false,
           path: "/ws",
           method: "GET",
           headers: {
             Connection: "Upgrade",
             Upgrade: "websocket",
             "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
-            "Sec-WebSocket-Version": "12"
+            "Sec-WebSocket-Version": "12" // Unsupported version forces handshake rejection.
           }
         })
         req.on("response", (res) => {
           res.resume()
-          req.destroy()
-          resume(Effect.void)
+          res.on("end", () => resume(Effect.succeed(res.statusCode)))
         })
-        req.on("error", () => resume(Effect.void))
+        req.on("error", (error) => resume(Effect.fail(error)))
         req.end()
+        return Effect.sync(() => req.destroy())
       })
-
-      const tag = yield* Deferred.await(outcome).pipe(
-        Effect.timeout("5 seconds"),
-        Effect.orElseSucceed(() => "Timeout" as const)
-      )
-      assert.strictEqual(tag, "Failure")
+      assert.strictEqual(status, 400)
+      assert.isTrue(Socket.SocketError.is(yield* Deferred.await(outcome)))
     }).pipe(Effect.provide(layerTestWebsocket)), 10000)
 
   it.effect("does not write the HTTP response to an upgraded connection", () =>
