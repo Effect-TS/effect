@@ -642,5 +642,31 @@ describe("RcMap", () => {
         assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "key")), 2)
         assert.strictEqual(lookups, 2)
       }))
+
+    it.effect("an interrupted lookup with no borrowers closes its scope", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const interrupt = yield* Deferred.make<void>()
+        const finalized = yield* Deferred.make<void>()
+        const map = yield* RcMap.make({
+          lookup: (_key: string) =>
+            Effect.gen(function*() {
+              yield* Effect.addFinalizer(() => Deferred.succeed(finalized, void 0))
+              yield* Deferred.succeed(started, void 0)
+              yield* Deferred.await(interrupt)
+              return yield* Effect.interrupt
+            }),
+          idleTimeToLive: "1 minute"
+        })
+
+        const borrower = yield* Effect.forkChild(Effect.scoped(RcMap.get(map, "key")), { startImmediately: true })
+        yield* Deferred.await(started)
+        yield* Fiber.interrupt(borrower)
+        assert.isFalse(yield* Deferred.isDone(finalized))
+
+        yield* Deferred.succeed(interrupt, void 0)
+        yield* Deferred.await(finalized)
+        assert.isFalse(yield* RcMap.has(map, "key"))
+      }))
   })
 })

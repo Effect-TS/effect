@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber } from "effect"
+import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
 import { ResourceMap } from "effect/cluster/internal/resourceMap"
 
 describe("ResourceMap", () => {
@@ -129,5 +129,31 @@ describe("ResourceMap", () => {
         assert.deepStrictEqual(yield* Fiber.await(joiner), Exit.succeed(2))
         assert.strictEqual(lookups, 2)
       })))
+
+    it.effect("closing the map interrupts a pending lookup and closes its scope", () =>
+      Effect.gen(function*() {
+        let finalized = 0
+        const started = yield* Deferred.make<void>()
+        const mapScope = yield* Scope.make()
+        const map = yield* ResourceMap.make((_key: string) =>
+          Effect.gen(function*() {
+            yield* Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                finalized++
+              })
+            )
+            yield* Deferred.succeed(started, void 0)
+            return yield* Effect.never
+          })
+        ).pipe(Scope.provide(mapScope))
+
+        const getter = yield* Effect.forkChild(map.get("key"), { startImmediately: true })
+        yield* Deferred.await(started)
+        yield* Scope.close(mapScope, Exit.void)
+
+        assert.strictEqual(finalized, 1)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(getter)))
+        assert.isFalse(map.hasUnsafe("key"))
+      }))
   })
 })
