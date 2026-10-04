@@ -85,7 +85,7 @@ describe("Client", () => {
 
         assert.deepStrictEqual(yield* execute, [])
         yield* sql`PRAGMA count_changes = ON`
-        // Node may omit recompiled fields; the result row must still be returned.
+        // Node may omit fields after recompilation; check only the row count.
         assert.lengthOf(yield* execute, 1)
         yield* sql`PRAGMA count_changes = OFF`
         assert.deepStrictEqual(yield* execute, [])
