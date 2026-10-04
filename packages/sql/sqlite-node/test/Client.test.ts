@@ -68,6 +68,9 @@ describe("Client", () => {
         { id: 1, name: "hello" },
         { id: 2, name: "world" }
       ])
+      response = yield* sql`INSERT INTO test (name) VALUES ('unprepared')`.valuesUnprepared
+      assert.deepStrictEqual(response, [])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM test WHERE id = 3`, [{ id: 3, name: "unprepared" }])
     }))
 
   it.effect.each(["rows", "values"] as const)(
