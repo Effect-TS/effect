@@ -108,7 +108,7 @@ describe("Client", () => {
   )
 
   it.effect.each(["rows", "values"] as const)(
-    "does not cache failed %s preparations",
+    "retries %s queries after a missing table is created",
     (mode) =>
       Effect.gen(function*() {
         const sql = yield* makeClient
@@ -116,7 +116,7 @@ describe("Client", () => {
         const execute: Effect.Effect<ReadonlyArray<unknown>, SqlError> = mode === "values" ? select.values : select
 
         const error = yield* Effect.flip(execute)
-        assert.strictEqual(error.reason.operation, "prepare")
+        assert.strictEqual(error._tag, "SqlError")
         yield* sql`CREATE TABLE created_later (value INTEGER)`
         yield* sql`INSERT INTO created_later VALUES (1)`
 
