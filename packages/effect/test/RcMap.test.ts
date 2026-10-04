@@ -569,4 +569,78 @@ describe("RcMap", () => {
       yield* Fiber.join(close)
       assert.strictEqual(released, 2)
     }))
+
+  describe("interruption", () => {
+    it.effect("does not retain an interrupted lookup", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        const map = yield* RcMap.make({
+          lookup: (_key: string) => Effect.suspend(() => ++lookups === 1 ? Effect.interrupt : Effect.succeed(lookups)),
+          idleTimeToLive: "1 minute"
+        })
+
+        assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(Effect.scoped(RcMap.get(map, "key")))))
+        assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "key")), 2)
+        assert.strictEqual(lookups, 2)
+      }))
+
+    it.effect("interrupting the first get keeps the lookup alive for the remaining get", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        let interrupted = false
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const map = yield* RcMap.make({
+          lookup: (_key: string) =>
+            Effect.gen(function*() {
+              lookups++
+              yield* Deferred.succeed(started, void 0)
+              yield* Deferred.await(release)
+              return lookups
+            }).pipe(Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted = true
+              })
+            ))
+        })
+
+        const first = yield* Effect.forkChild(Effect.scoped(RcMap.get(map, "key")), { startImmediately: true })
+        yield* Deferred.await(started)
+        const second = yield* Effect.forkChild(Effect.scoped(RcMap.get(map, "key")), { startImmediately: true })
+        yield* Fiber.interrupt(first)
+        assert.isFalse(interrupted)
+
+        yield* Deferred.succeed(release, void 0)
+        assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(1))
+        assert.strictEqual(lookups, 1)
+      }))
+
+    it.effect("interrupting every get interrupts the lookup and the next get starts fresh", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        const started = yield* Deferred.make<void>()
+        const interrupted = yield* Deferred.make<void>()
+        const map = yield* RcMap.make({
+          lookup: (_key: string) =>
+            Effect.suspend(() => {
+              if (++lookups > 1) return Effect.succeed(lookups)
+              return Deferred.succeed(started, void 0).pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
+              )
+            })
+        })
+
+        const first = yield* Effect.forkChild(Effect.scoped(RcMap.get(map, "key")), { startImmediately: true })
+        yield* Deferred.await(started)
+        const second = yield* Effect.forkChild(Effect.scoped(RcMap.get(map, "key")), { startImmediately: true })
+        yield* Fiber.interrupt(first)
+        assert.isFalse(yield* Deferred.isDone(interrupted))
+        yield* Fiber.interrupt(second)
+        yield* Deferred.await(interrupted)
+
+        assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "key")), 2)
+        assert.strictEqual(lookups, 2)
+      }))
+  })
 })
