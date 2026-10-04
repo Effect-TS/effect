@@ -879,47 +879,33 @@ const prepareMessages = Effect.fnUntraced(
   }, AiError.AiError> {
     const groups = groupMessages(options.prompt)
 
-    let system: Array<typeof Generated.BetaRequestTextBlock.Encoded> | undefined = undefined
-    const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
-    const allSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
-    let pendingSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
-    let inlineSystem = capabilities.supportsMidConversationSystemMessages
+    // A system message in history must directly follow a user turn and directly
+    // precede an assistant turn or the end of the prompt, so later instructions
+    // are held until the next assistant turn. If any of them cannot be placed
+    // that way, every instruction goes in the top-level `system` field instead:
+    // inline instructions override top-level ones, so mixing would reorder them.
+    const inlineSystem = capabilities.supportsMidConversationSystemMessages &&
+      groups.every((group, i) =>
+        i === 0 || group.type !== "system" || groups[i - 1].type === "user" || groups[i + 1]?.type === "user"
+      )
 
-    // Defer inline instructions until after a user turn and before an assistant
-    // turn or the end of the prompt. If placement fails, fall back for the whole
-    // request: inline instructions would override newer top-level instructions.
-    const flushPendingSystem = () => {
-      if (pendingSystem.length === 0) {
-        return
-      }
-      if (messages.at(-1)?.role === "user") {
-        messages.push({ role: "system", content: pendingSystem })
-      } else {
-        inlineSystem = false
-      }
-      pendingSystem = []
-    }
+    const system: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
+    const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
+    let pendingSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
 
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i]
       const isLastGroup = i === groups.length - 1
 
-      if (group.type === "assistant") {
-        flushPendingSystem()
-      }
-
       switch (group.type) {
         case "system": {
-          const content = group.messages.map((message): typeof Generated.BetaRequestTextBlock.Encoded => ({
-            type: "text",
-            text: message.content,
-            cache_control: getCacheControl(message)
-          }))
-          allSystem.push(...content)
-          if (i === 0) {
-            system = content
-          } else {
-            pendingSystem.push(...content)
+          const target = i === 0 || !inlineSystem ? system : pendingSystem
+          for (const message of group.messages) {
+            target.push({
+              type: "text",
+              text: message.content,
+              cache_control: getCacheControl(message)
+            })
           }
           break
         }
@@ -1053,6 +1039,11 @@ const prepareMessages = Effect.fnUntraced(
         }
 
         case "assistant": {
+          if (pendingSystem.length > 0) {
+            messages.push({ role: "system", content: pendingSystem })
+            pendingSystem = []
+          }
+
           const content: Array<typeof Generated.BetaContentBlock.Encoded> = []
           const mcpToolIds = new Set<string>()
 
@@ -1291,12 +1282,14 @@ const prepareMessages = Effect.fnUntraced(
       }
     }
 
-    flushPendingSystem()
-
-    if (!inlineSystem && allSystem.length > 0) {
-      return { system: allSystem, messages: messages.filter((message) => message.role !== "system") }
+    if (pendingSystem.length > 0) {
+      messages.push({ role: "system", content: pendingSystem })
     }
-    return { system, messages }
+
+    return {
+      system: system.length > 0 ? system : undefined,
+      messages
+    }
   }
 )
 
