@@ -8801,11 +8801,18 @@ export const aggregate: {
  * **Details**
  *
  * The schedule can flush the current aggregation even if the sink has not finished.
- * It is stepped once per aggregation, when the aggregation receives its first
- * element, with the previous aggregation's output as input. Time spent waiting
- * for that element is hidden from the schedule, so an idle stream does not run
- * it. When the schedule ends, the current aggregation is emitted and the stream
- * ends.
+ * It is stepped at most once per aggregation, when the aggregation receives its
+ * first element, with the previous aggregation's output as input. An aggregation
+ * the sink completes immediately, such as one built from leftovers, may finish
+ * without stepping the schedule.
+ *
+ * Time between aggregations is hidden from the schedule, so an idle stream does
+ * not run it. Time-based schedules such as `Schedule.fixed` and
+ * `Schedule.upTo({ duration })` only count time spent aggregating; use
+ * `Schedule.spaced` for a flush timer.
+ *
+ * When the schedule ends, the stream emits the current aggregation and any sink
+ * leftovers, then ends without pulling more from upstream.
  *
  * **Example** (Aggregating with a sink and schedule)
  *
@@ -8866,8 +8873,8 @@ export const aggregateWithin: {
 
     // schedule -> buffer
     //
-    // The schedule is stepped once per aggregation, when it receives its first
-    // element. Time spent waiting for that element is hidden from the schedule.
+    // The schedule is stepped at most once per aggregation, when it receives its
+    // first element. Time between aggregations is hidden from the schedule.
     const clock = yield* Clock
     const step = yield* Schedule.toStep(schedule)
     const hasInput = Latch.makeUnsafe(false)
@@ -8914,6 +8921,8 @@ export const aggregateWithin: {
         leftover = undefined
         onInput()
         return Effect.succeed(chunk)
+      } else if (scheduleDone) {
+        return Cause.done()
       }
       pullLatch.openUnsafe()
       return pullFromBuffer
@@ -8927,19 +8936,19 @@ export const aggregateWithin: {
       return Effect.succeed(Arr.of(value))
     })
 
-    return Effect.suspend(() => {
-      // the stream ends with the schedule, or when the buffer has exited and
-      // there is no more data to process
-      if (scheduleDone) {
-        return Cause.done()
-      } else if (buffer.state._tag === "Done" && leftover === undefined) {
-        return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
+    return Effect.suspend((): Pull.Pull<Arr.NonEmptyReadonlyArray<B>, E | E2 | E3, void, R2 | R3> => {
+      // the stream ends when there is no more data to process
+      if (leftover === undefined) {
+        if (scheduleDone) return Cause.done()
+        if (buffer.state._tag === "Done") {
+          return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
+        }
       }
       hasInput.closeUnsafe()
-      return Effect.succeed(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
-    }).pipe(
-      Effect.flatMap((pull) => Effect.raceFirst(catchSinkHalt(pull), stepToBuffer))
-    )
+      const pull = catchSinkHalt(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
+      // after the schedule ends, only the leftovers are drained
+      return scheduleDone ? pull : Effect.raceFirst(pull, stepToBuffer)
+    })
   }))))
 
 /**
