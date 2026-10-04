@@ -2603,6 +2603,82 @@ describe("Stream", () => {
         yield* Fiber.interrupt(fiber)
       }))
 
+    it.effect("fixed schedules exclude idle time between aggregations", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        const batches: Array<[number, ReadonlyArray<number>]> = []
+        yield* Stream.fromQueue(queue).pipe(
+          Stream.aggregateWithin(Sink.take(100), Schedule.fixed("100 millis")),
+          Stream.runForEach((batch) =>
+            Effect.flatMap(Clock.currentTimeMillis, (now) => Effect.sync(() => batches.push([now, batch])))
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* TestClock.adjust("1030 millis")
+        yield* Queue.offer(queue, 1)
+        yield* TestClock.adjust("20 millis")
+        yield* Queue.offer(queue, 2)
+        yield* TestClock.adjust("200 millis")
+        yield* Queue.offer(queue, 3)
+        yield* TestClock.adjust("20 millis")
+        yield* Queue.offer(queue, 4)
+        yield* TestClock.adjust("80 millis")
+
+        assert.deepStrictEqual(batches, [[1130, [1, 2]], [1350, [3, 4]]])
+      }))
+
+    it.effect("finite schedules emit the current aggregation before completing", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        const batches: Array<[number, ReadonlyArray<number>]> = []
+        const fiber = yield* Stream.fromQueue(queue).pipe(
+          Stream.aggregateWithin(Sink.take(100), Schedule.spaced("100 millis").pipe(Schedule.upTo({ times: 1 }))),
+          Stream.runForEach((batch) =>
+            Effect.flatMap(Clock.currentTimeMillis, (now) => Effect.sync(() => batches.push([now, batch])))
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* TestClock.adjust("1030 millis")
+        yield* Queue.offer(queue, 1)
+        yield* TestClock.adjust("20 millis")
+        yield* Queue.offer(queue, 2)
+        yield* TestClock.adjust("200 millis")
+        yield* Queue.offer(queue, 3)
+        yield* TestClock.adjust("20 millis")
+        yield* Queue.offer(queue, 4)
+
+        assert.deepStrictEqual(batches, [[1130, [1, 2]], [1250, [3]]])
+        assert.isDefined(fiber.pollUnsafe())
+        yield* Fiber.join(fiber)
+      }))
+
+    it.effect("exponential schedules retain state between aggregations", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        const batches: Array<[number, ReadonlyArray<number>]> = []
+        yield* Stream.fromQueue(queue).pipe(
+          Stream.aggregateWithin(Sink.take(100), Schedule.exponential("100 millis")),
+          Stream.runForEach((batch) =>
+            Effect.flatMap(Clock.currentTimeMillis, (now) => Effect.sync(() => batches.push([now, batch])))
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* TestClock.adjust("1030 millis")
+        yield* Queue.offer(queue, 1)
+        yield* TestClock.adjust("20 millis")
+        yield* Queue.offer(queue, 2)
+        yield* TestClock.adjust("200 millis")
+        yield* Queue.offer(queue, 3)
+        yield* TestClock.adjust("20 millis")
+        yield* Queue.offer(queue, 4)
+        yield* TestClock.adjust("180 millis")
+
+        assert.deepStrictEqual(batches, [[1130, [1, 2]], [1450, [3, 4]]])
+      }))
+
     it.effect("groupedWithin starts each window at its first element", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.unbounded<number>()
