@@ -6013,7 +6013,7 @@ export const makeSpanUnsafe = <XA, XE>(
       links,
       startTime: timingEnabled ? clock.currentTimeNanosUnsafe() : bigint0,
       kind: options?.kind ?? "internal",
-      root: options?.root ?? Option.isNone(parent),
+      root: options?.root ?? false,
       sampled: options?.sampled ??
         (Option.isSome(parent) && parent.value.sampled === false
           ? false
