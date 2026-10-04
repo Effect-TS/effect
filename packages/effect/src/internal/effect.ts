@@ -4448,6 +4448,8 @@ export const cachedInvalidateWithTTL: {
     )
   ))
 
+const infiniteTTL = constant(Infinity)
+
 interface CachedRun<A, E> {
   fiber: FiberImpl<A, E> | undefined
   awaiters: number
@@ -4464,11 +4466,11 @@ const makeCachedUnsafe = <A, E, R>(
   const join = (fiber: Fiber.Fiber<unknown, unknown>, run: CachedRun<A, E>): Effect.Effect<A, E> => {
     run.awaiters++
     onExitUnsafe(fiber, () => {
-      run.awaiters--
-      if (run.awaiters > 0 || run.fiber!._exit) return
-      // Every caller left, so abandon the run. Detach it first so new callers
-      // start a fresh run instead of joining one that is being interrupted.
-      if (current === run) current = undefined
+      // Abandon the run once every caller has left, unless it already finished.
+      if (--run.awaiters > 0 || current !== run) return
+      // Detach it first so new callers start a fresh run instead of joining
+      // one that is being interrupted.
+      current = undefined
       return fiberInterrupt(run.fiber!)
     })
     return fiberJoin(run.fiber!)
@@ -4477,11 +4479,14 @@ const makeCachedUnsafe = <A, E, R>(
   return [
     withFiber((fiber) => {
       if (current !== undefined) return join(fiber, current)
-      const clock = fiber.getRef(ClockRef)
-      if (exit !== undefined && (expiresAt === Infinity || clock.currentTimeMillisUnsafe() < expiresAt)) {
+      if (
+        exit !== undefined &&
+        (expiresAt === Infinity || fiber.getRef(ClockRef).currentTimeMillisUnsafe() < expiresAt)
+      ) {
         return exit
       }
       exit = undefined
+      const clock = fiber.getRef(ClockRef)
       const run: CachedRun<A, E> = { fiber: undefined, awaiters: 0 }
       current = run
       run.fiber = forkUnsafe(
@@ -4493,7 +4498,7 @@ const makeCachedUnsafe = <A, E, R>(
           // Interruption is abandonment, so it is never cached.
           if (exitHasInterrupts(exit_)) return
           const duration = ttlMillis(exit_)
-          expiresAt = clock.currentTimeMillisUnsafe() + duration
+          expiresAt = duration === Infinity ? Infinity : clock.currentTimeMillisUnsafe() + duration
           exit = exit_
         }),
         true,
@@ -4502,7 +4507,6 @@ const makeCachedUnsafe = <A, E, R>(
       return run.fiber._exit ?? join(fiber, run)
     }),
     sync(() => {
-      expiresAt = 0
       exit = undefined
     })
   ]
@@ -4533,7 +4537,7 @@ export const cachedWithTTL: {
 
 /** @internal */
 export const cached = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Effect.Effect<A, E, R>> =>
-  sync(() => makeCachedUnsafe(self, constant(Infinity))[0])
+  sync(() => makeCachedUnsafe(self, infiniteTTL)[0])
 
 // ----------------------------------------------------------------------------
 // interruption

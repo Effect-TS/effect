@@ -47,8 +47,7 @@ export class ResourceMap<K, A, E> {
         MutableRef.set(isClosed, true)
         return Effect.forEach(entries.map, ([key, { fiber, scope }]) => {
           backingDelete(entries, key)
-          const close = Scope.close(scope, exit)
-          return Effect.exit(fiber ? Effect.andThen(Fiber.interrupt(fiber), close) : close)
+          return Effect.exit(Effect.andThen(Fiber.interrupt(fiber), Scope.close(scope, exit)))
         }, { concurrency: "unbounded", discard: true })
       }
     )
@@ -75,35 +74,30 @@ export class ResourceMap<K, A, E> {
       }
       const existing = backingGet(this.entries, key)
       if (existing) {
-        if (Deferred.isDoneUnsafe(existing.deferred)) return Deferred.await(existing.deferred)
-        existing.awaiters++
         return this.awaitEntry(key, existing, restore)
       }
-      // The caller that starts the lookup counts as its first awaiter.
       const entry: Entry<A, E> = {
         scope: Scope.makeUnsafe(),
         deferred: Deferred.makeUnsafe<A, E>(),
-        fiber: undefined,
-        awaiters: 1
+        fiber: undefined as any,
+        awaiters: 0
       }
       backingSet(this.entries, key, entry)
       // Run the lookup on a detached fiber so it is shared by every caller and
       // only interrupted once all of them have been interrupted.
-      const lookup = Effect.onExit(this.lookup(key, entry.scope), (exit) => {
-        entry.fiber = undefined
-        if (exit._tag === "Success") {
-          return Deferred.done(entry.deferred, exit)
-        }
-        this.deleteEntry(key, entry)
-        return Effect.andThen(
-          Deferred.done(entry.deferred, exit),
-          Scope.close(entry.scope, exit)
-        )
-      })
-      return Effect.flatMap(Effect.forkDetach(lookup, { startImmediately: true }), (fiber) => {
-        if (fiber.pollUnsafe() === undefined) entry.fiber = fiber
-        return this.awaitEntry(key, entry, restore)
-      })
+      entry.fiber = Effect.runForkWith(Fiber.getCurrent()!.context)(
+        Effect.onExit(this.lookup(key, entry.scope), (exit) => {
+          if (exit._tag === "Success") {
+            return Deferred.done(entry.deferred, exit)
+          }
+          this.deleteEntry(key, entry)
+          return Effect.andThen(
+            Deferred.done(entry.deferred, exit),
+            Scope.close(entry.scope, exit)
+          )
+        })
+      )
+      return this.awaitEntry(key, entry, restore)
     })
   }
 
@@ -112,6 +106,8 @@ export class ResourceMap<K, A, E> {
     entry: Entry<A, E>,
     restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
   ): Effect.Effect<A, E> {
+    if (Deferred.isDoneUnsafe(entry.deferred)) return Deferred.await(entry.deferred)
+    entry.awaiters++
     return Effect.onExit(restore(Deferred.await(entry.deferred)), () => {
       if (--entry.awaiters > 0 || Deferred.isDoneUnsafe(entry.deferred)) {
         return Effect.void
@@ -119,7 +115,7 @@ export class ResourceMap<K, A, E> {
       // Detach the abandoned entry first so new callers start a fresh lookup
       // instead of joining one that is being interrupted.
       this.deleteEntry(key, entry)
-      return entry.fiber ? Fiber.interrupt(entry.fiber) : Effect.void
+      return Fiber.interrupt(entry.fiber)
     })
   }
 
@@ -162,7 +158,8 @@ type BackingMap<K, A, E> = {
 type Entry<A, E> = {
   readonly scope: Scope.Closeable
   readonly deferred: Deferred.Deferred<A, E>
-  fiber: Fiber.Fiber<unknown, unknown> | undefined
+  // Assigned as soon as the lookup is forked.
+  fiber: Fiber.Fiber<unknown, unknown>
   awaiters: number
 }
 

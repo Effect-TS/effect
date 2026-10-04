@@ -19,7 +19,8 @@ declare namespace State {
 
   interface Acquiring<A> {
     readonly _tag: "Acquiring"
-    fiber: Fiber.Fiber<Acquired<A>, unknown> | undefined
+    // Assigned as soon as the acquisition is forked.
+    fiber: Fiber.Fiber<Acquired<A>, unknown>
     awaiters: number
     // Set once references are allocated to the waiters, which can happen
     // before the acquisition fiber exits.
@@ -95,7 +96,7 @@ export const make = <A, E, R>(options: {
         const state = ref.state
         ref.state = stateClosed
         if (state._tag === "Acquired") return Scope.close(state.scope, Exit.void)
-        if (state._tag === "Acquiring" && state.fiber) return Fiber.interrupt(state.fiber)
+        if (state._tag === "Acquiring") return Fiber.interrupt(state.fiber)
         return Effect.void
       }),
       ref
@@ -126,7 +127,7 @@ const getState = <A, E>(
       // The caller that starts the acquisition counts as its first awaiter.
       const acquiring: State.Acquiring<A> = {
         _tag: "Acquiring",
-        fiber: undefined,
+        fiber: undefined as any,
         awaiters: 1,
         acquired: undefined
       }
@@ -157,17 +158,13 @@ const getState = <A, E>(
           return Effect.succeed(state)
         }),
         Effect.onExit((exit) => {
-          acquiring.fiber = undefined
           if (Exit.isSuccess(exit)) return Effect.void
           if (self.state === acquiring) self.state = stateEmpty
           return Scope.close(scope, exit)
         })
       )
-      // Fork synchronously so a concurrent get never sees an acquisition
-      // without its fiber.
-      const fiber = Effect.runForkWith(Fiber.getCurrent()!.context)(acquire)
-      if (fiber.pollUnsafe() === undefined) acquiring.fiber = fiber
-      return awaitAcquiring(self, acquiring, restore, fiber)
+      acquiring.fiber = Effect.runForkWith(Fiber.getCurrent()!.context)(acquire)
+      return awaitAcquiring(self, acquiring, restore)
     }
   }
 }
@@ -175,11 +172,10 @@ const getState = <A, E>(
 const awaitAcquiring = <A, E>(
   self: RcRefImpl<A, E>,
   acquiring: State.Acquiring<A>,
-  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>,
-  fiber = acquiring.fiber!
+  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<State.Acquired<A>, E> =>
   Effect.onExit(
-    restore(Fiber.join(fiber)) as Effect.Effect<State.Acquired<A>, E>,
+    restore(Fiber.join(acquiring.fiber)) as Effect.Effect<State.Acquired<A>, E>,
     (exit) => {
       const acquired = acquiring.acquired
       if (acquired !== undefined) {
@@ -188,12 +184,13 @@ const awaitAcquiring = <A, E>(
         // could register its finalizer.
         return Exit.isFailure(exit) ? release(self, acquired) : Effect.void
       }
-      // A failed acquisition allocated no references.
-      if (fiber.pollUnsafe() !== undefined || --acquiring.awaiters > 0) return Effect.void
-      // Detach the abandoned acquisition first so new callers start a fresh
-      // one instead of joining one that is being interrupted.
-      if (self.state === acquiring) self.state = stateEmpty
-      return Fiber.interrupt(fiber)
+      // Abandon the acquisition once every caller has left, unless it already
+      // failed (a failed acquisition allocated no references).
+      if (--acquiring.awaiters > 0 || self.state !== acquiring) return Effect.void
+      // Detach it first so new callers start a fresh acquisition instead of
+      // joining one that is being interrupted.
+      self.state = stateEmpty
+      return Fiber.interrupt(acquiring.fiber)
     }
   )
 

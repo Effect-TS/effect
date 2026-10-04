@@ -370,13 +370,14 @@ export const get: {
           context.set(key, value)
         })
         context.set(Scope.Scope.key, entry.scope)
+        const lookupContext: Context.Context<Scope.Scope> = Context.makeUnsafe(context)
         Effect.suspend(() => self.lookup(key)).pipe(
-          Effect.runForkWith(Context.makeUnsafe(context)),
+          Effect.runForkWith(lookupContext),
           Fiber.runIn(entry.scope)
         ).addObserver((exit) => {
           // Interruption is abandonment, so the entry is dropped and the next
           // get starts a fresh lookup.
-          if (Exit.hasInterrupts(exit)) removeInterrupted(self, key, entry, parent)
+          if (Exit.hasInterrupts(exit)) removeInterrupted(self, key, entry, lookupContext)
           Deferred.doneUnsafe(entry.deferred, exit)
         })
       }
@@ -458,7 +459,7 @@ const removeInterrupted = <K, A, E>(
   self: RcMap<K, A, E>,
   key: K,
   entry: State.Entry<A, E>,
-  parent: Fiber.Fiber<unknown, unknown>
+  context: Context.Context<Scope.Scope>
 ) => {
   if (self.state._tag === "Closed") return
   const o = MutableHashMap.get(self.state.map, key)
@@ -467,7 +468,7 @@ const removeInterrupted = <K, A, E>(
   // Borrowers close the entry on release; an idle entry has none left.
   if (entry.refCount > 0) return
   closeEntry(entry).pipe(
-    Effect.runForkWith(parent.context),
+    Effect.runForkWith(context),
     Fiber.runIn(self.scope)
   )
 }
