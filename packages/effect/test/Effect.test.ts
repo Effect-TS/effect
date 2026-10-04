@@ -4409,6 +4409,25 @@ describe("Effect", () => {
   })
 
   describe("cachedWithTTL", () => {
+    it.effect("skips the ttl callback on interruption and invokes it once on the next successful run", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const exits: Array<Exit.Exit<number>> = []
+        const cached = yield* Effect.cachedWithTTL(
+          Effect.suspend(() => ++runs === 1 ? Effect.interrupt : Effect.succeed(runs)),
+          (exit: Exit.Exit<number>) => {
+            exits.push(exit)
+            return "1 minute"
+          }
+        )
+
+        assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(cached)))
+        assert.deepStrictEqual(exits, [])
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.succeed(2)])
+      }))
+
     it.effect("selects ttl from each fresh exit without evaluating on cache hits", () =>
       Effect.gen(function*() {
         let count = 0
