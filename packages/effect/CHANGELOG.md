@@ -1,5 +1,57 @@
 # effect
 
+## 4.1.0
+
+### Patch Changes
+
+- [#8603](https://github.com/Effect-TS/effect/pull/8603) [`ed2cc2f`](https://github.com/Effect-TS/effect/commit/ed2cc2f322dfd24da550c8d0ac811c3130b79d74) Thanks @danieljvdm! - Preserve all Anthropic system instructions and support configurable mid-conversation system messages. Add optional `LanguageModel.supportsSystemMessagesInHistory` to query support with scoped overrides.
+
+- [#8680](https://github.com/Effect-TS/effect/pull/8680) [`58a2ee8`](https://github.com/Effect-TS/effect/commit/58a2ee8e0db8e0a90bae83c6cceeff6916772fee) Thanks @danieljvdm! - Cache per-tool response schemas and parameter-mode copies to reduce schema construction in `LanguageModel.generateText` and `LanguageModel.streamText`. The schema cache also applies to direct calls to `Response.Part`, `Response.StreamPart` and `Response.AllParts`.
+
+- [#8659](https://github.com/Effect-TS/effect/pull/8659) [`2ec021e`](https://github.com/Effect-TS/effect/commit/2ec021eff7fbd2206adc3e8bf4e803ed4bf07d6a) Thanks @samueleguino97! - Prevent entity registration when shard ownership is lost during construction. Pending requests retry on the new owner.
+
+- [#8662](https://github.com/Effect-TS/effect/pull/8662) [`cad1118`](https://github.com/Effect-TS/effect/commit/cad111867a666cebe8ff9bf2237a997fa6e4cb14) Thanks @tim-smart! - Avoid replaying suspended cluster workflows for unawaited deferred checkpoints while preserving interrupt wakes.
+
+- [#8637](https://github.com/Effect-TS/effect/pull/8637) [`1672d9c`](https://github.com/Effect-TS/effect/commit/1672d9ca8da3e5b536bf7afb73365cccc6c01f53) Thanks @tim-smart! - Fix cluster defect recovery to replay unfinished requests without duplicating requests awaiting their first dispatch. Stop replay and interrupt waiting requests on shutdown, and prevent superseded rebuilds from publishing stale handlers or SQL lock connections.
+
+- [#8707](https://github.com/Effect-TS/effect/pull/8707) [`f5c2a91`](https://github.com/Effect-TS/effect/commit/f5c2a91621401a018b770446d35ef99806c5561f) Thanks @tim-smart! - Fix zoned DateTime conversion on runtimes that omit Intl fractional seconds, preserving milliseconds for pre-epoch timestamps.
+
+- [#8629](https://github.com/Effect-TS/effect/pull/8629) [`498e72b`](https://github.com/Effect-TS/effect/commit/498e72ba14d0191d6bf66cc0e931c229a1ff442f) Thanks @tim-smart! - Preserve a fiber's `AsyncLocalStorage` context when another fiber wakes or interrupts it. Run `Effect.tryPromise` error handlers in the resumed fiber's context.
+
+- [#8675](https://github.com/Effect-TS/effect/pull/8675) [`cabf123`](https://github.com/Effect-TS/effect/commit/cabf1230723e92684a4b0b836ccfde25c657f9f1) Thanks @IMax153! - Fix `HashRing.getShards` returning different shard assignments for the same nodes and weights after different add/remove histories. Sum weights in node-key order and break hash ties by node key. Assignments may change for fractional weights or hash ties.
+
+- [#8706](https://github.com/Effect-TS/effect/pull/8706) [`a5b1d4e`](https://github.com/Effect-TS/effect/commit/a5b1d4e4cae01dbe30890d3796f846bda00ad2ae) Thanks @tim-smart! - Prevent HttpApiSchemaError from being reported as a server failure for invalid requests.
+
+- [#8685](https://github.com/Effect-TS/effect/pull/8685) [`5e6f756`](https://github.com/Effect-TS/effect/commit/5e6f7568a4c895eab3087249b191c5dcba5e73ef) Thanks @tim-smart! - Fix HttpTraceContext decoding of B3 debug and legacy sampling values, and reject all-zero W3C trace and parent IDs.
+
+- [#8652](https://github.com/Effect-TS/effect/pull/8652) [`18dfb98`](https://github.com/Effect-TS/effect/commit/18dfb98cf6d2aeedbab8ef5734f9bc273a82d56e) Thanks @mikearnaldi! - Preserve pending interruptions when an uninterruptible effect fails. Drop typed failures when interruption skips recovery handlers, but keep defects.
+
+- [#8657](https://github.com/Effect-TS/effect/pull/8657) [`04706ef`](https://github.com/Effect-TS/effect/commit/04706eff5da94b4d475b99eab8b0256bed97b080) Thanks @schickling-assistant! - Fix JSON Schema pattern importing for valid expressions whose RegExp source is canonicalized, including slashes, empty patterns, and literal line terminators.
+
+- [#8644](https://github.com/Effect-TS/effect/pull/8644) [`b5a2d4c`](https://github.com/Effect-TS/effect/commit/b5a2d4c1d62c9620a68d72b7f20248c69ef7663b) Thanks @sbking! - Prevent shard lock refreshes from releasing shards acquired while the refresh is in flight.
+
+- [#8660](https://github.com/Effect-TS/effect/pull/8660) [`1c18c68`](https://github.com/Effect-TS/effect/commit/1c18c688df10b697c10283160dba143e049f3d50) Thanks @tim-smart! - Prevent singleton shard reassignment from durably cancelling outstanding RPC requests.
+
+- [#8705](https://github.com/Effect-TS/effect/pull/8705) [`43416c4`](https://github.com/Effect-TS/effect/commit/43416c4142f973f4988440716eb54a498659cd3a) Thanks @tim-smart! - Honor If-Range in HttpStaticServer, returning the full file when the entity-tag is stale or weak instead of serving a partial response. Reject date validators because filesystem metadata cannot establish their strength.
+
+- [#8704](https://github.com/Effect-TS/effect/pull/8704) [`d6ac8f9`](https://github.com/Effect-TS/effect/commit/d6ac8f923a33ff298a87f31230735e71d2d082e9) Thanks @tim-smart! - Fix `Stream.scan` to emit its initial state for empty streams.
+
+- [#8698](https://github.com/Effect-TS/effect/pull/8698) [`1d9fb8c`](https://github.com/Effect-TS/effect/commit/1d9fb8c540a11326650baa0866a17951665189e7) Thanks @bishil06! - Fix accumulated rate drift in `Stream.throttle` with the `"shape"` strategy by retaining token debt after early wake-ups. Use monotonic time so wall clock changes do not affect throttling.
+
+- [#8664](https://github.com/Effect-TS/effect/pull/8664) [`20dcd50`](https://github.com/Effect-TS/effect/commit/20dcd5060581077b46325a433f787ba10a56963d) Thanks @lloydrichards! - Preserve server and client extension capabilities in stateful MCP protocols.
+
+- [#8653](https://github.com/Effect-TS/effect/pull/8653) [`42e5750`](https://github.com/Effect-TS/effect/commit/42e5750f7e2fbf349cfe45452d7cc9dce98d6fe9) Thanks @lloydrichards! - Keep idle MCP HTTP subscriptions open on Cloudflare Workers with SSE keepalives.
+
+- [#8679](https://github.com/Effect-TS/effect/pull/8679) [`888e326`](https://github.com/Effect-TS/effect/commit/888e326a3180aea9b117fe7c97aace5dd527596e) Thanks @tim-smart! - Fix `Pool` usage TTL to expire only idle, unreserved excess items, oldest idle first. Measure idle time from the last release to avoid retiring recently used items.
+
+- [#8648](https://github.com/Effect-TS/effect/pull/8648) [`0b52bb4`](https://github.com/Effect-TS/effect/commit/0b52bb42fac5aecb8bcb8d899293c641b62c3f66) Thanks @dv-waynehaffenden! - Fix `RpcClient` stream interruption leaving chunk delivery blocked on a full buffer and stalling the shared protocol receive loop.
+
+- [#8627](https://github.com/Effect-TS/effect/pull/8627) [`e823e69`](https://github.com/Effect-TS/effect/commit/e823e693773aa163c0081af00a5236118446c6ae) Thanks @tim-smart! - Keep streaming RPC chunk decode failures local to the affected request and interrupt it on the server, without disconnecting unrelated requests.
+
+- [#8658](https://github.com/Effect-TS/effect/pull/8658) [`962647b`](https://github.com/Effect-TS/effect/commit/962647b6a16000f882e6999f001c513a8cccc711) Thanks @tim-smart! - Fix `RpcClient` protocol errors incorrectly failing requests started synchronously by error handlers. Only requests pending when the error broadcast begins now receive that error; new requests remain pending for their own responses.
+
+- [#8618](https://github.com/Effect-TS/effect/pull/8618) [`1f89b8e`](https://github.com/Effect-TS/effect/commit/1f89b8ec64e6362da3eaaff8cbb235df88d3441c) Thanks @serhii-indyrct! - Set `ScopedCache` entry expiry before waking lookup waiters, so a zero-TTL result cannot be reused.
+
 ## 4.0.0
 
 ### Patch Changes
