@@ -8,8 +8,6 @@ import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 
-// Offline fixture: the provider patch must change only the transcription operation,
-// not the generator's multipart-first default for mixed-content operations.
 const operation = (operationId: string) => ({
   operationId,
   requestBody: {
