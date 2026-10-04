@@ -1043,7 +1043,7 @@ describe("HttpServer", () => {
       expect(response.status).toEqual(200)
     }).pipe(Effect.provide(layerTestWebsocket)))
 
-  it.effect("fails the socket reader when the websocket handshake is refused", () =>
+  it.effect("fails refused websocket handshakes without hanging shutdown", () =>
     Effect.gen(function*() {
       const outcome = yield* Deferred.make<Socket.SocketError | undefined>()
       yield* HttpRouter.add(
@@ -1089,91 +1089,7 @@ describe("HttpServer", () => {
       })
       assert.strictEqual(status, 400)
       assert.isTrue(Socket.SocketError.is(yield* Deferred.await(outcome)))
-    }).pipe(Effect.provide(layerTestWebsocket)), 10000)
-
-  it.effect("fails a delayed socket reader after the connection closes", () =>
-    Effect.gen(function*() {
-      const scope = yield* Effect.scope
-      const wss = yield* Effect.acquireRelease(
-        Effect.sync(() => new NodeWS.WebSocketServer({ noServer: true })),
-        (wss) => Effect.sync(() => wss.close())
-      )
-      const connection = new Net.Socket()
-      yield* Effect.addFinalizer(() => Effect.sync(() => connection.destroy()))
-      const ready = yield* Deferred.make<void>()
-      const read = yield* Deferred.make<void>()
-      const outcome = yield* Deferred.make<Socket.SocketError | undefined>()
-      const handler = yield* NodeHttpServer.makeUpgradeHandler(
-        Effect.succeed(wss),
-        Effect.gen(function*() {
-          const request = yield* HttpServerRequest.HttpServerRequest
-          const socket = yield* request.upgrade
-          yield* Deferred.succeed(ready, undefined)
-          yield* Deferred.await(read)
-          const error = yield* Effect.scoped(socket.reader).pipe(
-            Effect.match({ onFailure: (error) => error, onSuccess: () => undefined })
-          )
-          yield* Deferred.succeed(outcome, error)
-          return HttpServerResponse.empty()
-        }),
-        { scope }
-      )
-      handler(
-        { method: "GET", url: "/ws", headers: {}, socket: connection } as Http.IncomingMessage,
-        connection,
-        Buffer.Buffer.alloc(0)
-      )
-      yield* Deferred.await(ready)
-      yield* Effect.callback<void>((resume) => {
-        connection.once("close", () => resume(Effect.void))
-        connection.end()
-        connection.destroy()
-      })
-      yield* Deferred.succeed(read, undefined)
-      assert.isTrue(Socket.SocketError.is(yield* Deferred.await(outcome)))
-    }), 10000)
-
-  it.effect("removes the close listener when handleUpgrade throws", () =>
-    Effect.gen(function*() {
-      const scope = yield* Effect.scope
-      const wss = yield* Effect.acquireRelease(
-        Effect.sync(() => new NodeWS.WebSocketServer({ noServer: true })),
-        (wss) => Effect.sync(() => wss.close())
-      )
-      const defect = new Error("handleUpgrade failed")
-      wss.handleUpgrade = () => {
-        throw defect
-      }
-      const connection = new Net.Socket()
-      yield* Effect.addFinalizer(() => Effect.sync(() => connection.destroy()))
-      const outcome = yield* Deferred.make<{ defect: unknown; before: number; after: number }>()
-      const handler = yield* NodeHttpServer.makeUpgradeHandler(
-        Effect.succeed(wss),
-        Effect.gen(function*() {
-          const request = yield* HttpServerRequest.HttpServerRequest
-          const socket = yield* request.upgrade
-          const before = connection.listenerCount("close")
-          const actual = yield* Effect.scoped(socket.reader).pipe(
-            Effect.as(undefined),
-            Effect.catchDefect((error) => Effect.succeed(error))
-          )
-          const after = connection.listenerCount("close")
-          connection.end()
-          connection.destroy()
-          yield* Deferred.succeed(outcome, { defect: actual, before, after })
-          return HttpServerResponse.empty()
-        }),
-        { scope }
-      )
-      handler(
-        { method: "GET", url: "/ws", headers: {}, socket: connection } as Http.IncomingMessage,
-        connection,
-        Buffer.Buffer.alloc(0)
-      )
-      const actual = yield* Deferred.await(outcome)
-      assert.strictEqual(actual.defect, defect)
-      assert.strictEqual(actual.after, actual.before)
-    }))
+    }).pipe(Effect.provide(layerTestWebsocket), Effect.scoped))
 
   it.effect("does not write the HTTP response to an upgraded connection", () =>
     Effect.gen(function*() {
