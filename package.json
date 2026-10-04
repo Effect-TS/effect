@@ -55,8 +55,8 @@
     "@rollup/plugin-terser": "^1.0.0",
     "@types/jscodeshift": "^17.3.0",
     "@types/node": "^26.6.4",
-    "@vitest/coverage-v8": "^5.0.2",
-    "@vitest/web-worker": "^5.0.2",
+    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/web-worker": "^5.0.3",
     "ast-types": "^0.16.3",
     "babel-plugin-annotate-pure-calls": "^0.5.0",
     "dprint": "^0.59.0",
@@ -77,7 +77,7 @@
     "tstyche": "^7.2.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
-    "vitest": "^5.0.2",
+    "vitest": "^5.0.3",
     "vitest-websocket-mock": "^0.8.0",
     "zod": "^4.6.5"
   }
