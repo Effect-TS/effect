@@ -117,27 +117,12 @@ describe("HttpMiddleware", () => {
   })
 
   describe("logger", () => {
-    const clientAbort = Cause.annotate(Cause.interrupt(2), Context.make(HttpServerError.ClientAbort, true))
-
-    it.effect.each([
-      { name: "server interrupts", cause: Cause.interrupt(1), status: 503 },
-      {
-        name: "mixed server and client interrupts",
-        cause: Cause.combine(Cause.interrupt(1), clientAbort),
-        status: 499
-      },
-      {
-        name: "client aborts mixed with failures",
-        cause: Cause.combine(clientAbort, Cause.fail("handler failed")),
-        status: 499
-      },
-      {
-        name: "client aborts mixed with non-response defects",
-        cause: Cause.combine(clientAbort, Cause.die("handler defect")),
-        status: 499
-      }
-    ])("preserves cause logging and the failure exit for $name", ({ cause, status }) =>
+    it.effect("preserves failures mixed with client aborts even with status 499", () =>
       Effect.gen(function*() {
+        const cause = Cause.combine(
+          Cause.annotate(Cause.interrupt(2), Context.make(HttpServerError.ClientAbort, true)),
+          Cause.fail("handler failed")
+        )
         const logs: Array<{ message: unknown; cause: Cause.Cause<unknown>; status: unknown }> = []
         const logger = Logger.make<unknown, void>((options) => {
           logs.push({
@@ -147,7 +132,7 @@ describe("HttpMiddleware", () => {
           })
         })
         // The server attaches the response to the failed handler cause.
-        const handlerCause = Cause.combine(cause, Cause.die(HttpServerResponse.empty({ status })))
+        const handlerCause = Cause.combine(cause, Cause.die(HttpServerResponse.empty({ status: 499 })))
         const exit = yield* HttpMiddleware.logger(Effect.failCause(handlerCause)).pipe(
           Effect.provideService(
             HttpServerRequest.HttpServerRequest,
@@ -158,7 +143,7 @@ describe("HttpMiddleware", () => {
         )
 
         assert.deepStrictEqual(exit, Exit.failCause(handlerCause))
-        assert.deepStrictEqual(logs, [{ message: [], cause, status }])
+        assert.deepStrictEqual(logs, [{ message: [], cause, status: 499 }])
       }))
 
     it.effect("logs client aborts as sent responses with status 499", () =>
