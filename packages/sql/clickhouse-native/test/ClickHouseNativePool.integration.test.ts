@@ -1,0 +1,85 @@
+import { NodeCrypto } from "@effect/platform-node"
+import { it } from "@effect/vitest"
+import { Effect, Result } from "effect"
+import { isSqlError, UnknownError } from "effect/sql/SqlError"
+import { describe, expect } from "vitest"
+
+import { clickHouseConfig } from "@effect/sql-clickhouse-native/ClickHouseNativeConfig"
+import { makeClickHouseNativePool, withClickHouseNativePool } from "@effect/sql-clickhouse-native/ClickHouseNativePool"
+
+const whenNativeIntegration = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  clickHouseConfig.pipe(Effect.flatMap((config) => config.nativeIntegration ? effect : Effect.void))
+
+describe("ClickHouse native TCP pool", () => {
+  it.effect("rejects a non-positive pool size", () =>
+    Effect.gen(function*() {
+      return yield* makeClickHouseNativePool(yield* clickHouseConfig, { size: 0 })
+    }).pipe(
+      Effect.result,
+      Effect.tap((result) =>
+        Effect.sync(() => {
+          expect(Result.isFailure(result)).toBe(true)
+          if (Result.isFailure(result)) {
+            expect(isSqlError(result.failure)).toBe(true)
+            if (isSqlError(result.failure)) {
+              expect(result.failure.reason).toBeInstanceOf(UnknownError)
+            }
+          }
+        })
+      )
+    ))
+})
+
+describe("ClickHouse native TCP pool integration", () => {
+  it.effect("leases distinct connections for concurrent Effect.all queries", () =>
+    whenNativeIntegration(
+      Effect.gen(function*() {
+        const config = yield* clickHouseConfig
+        return yield* withClickHouseNativePool(config, { size: 2 }, (pool) =>
+          Effect.all(
+            [
+              pool.execute("SELECT sleep(0.05) AS waited, 'first' AS value"),
+              pool.execute("SELECT sleep(0.05) AS waited, 'second' AS value")
+            ],
+            { concurrency: "unbounded", discard: false }
+          ).pipe(
+            Effect.tap((rows) =>
+              Effect.sync(() => {
+                expect(rows).toEqual([
+                  [{ value: "first", waited: 0 }],
+                  [{ value: "second", waited: 0 }]
+                ])
+              })
+            )
+          ))
+      }).pipe(
+        Effect.provide(NodeCrypto.layer)
+      )
+    ))
+
+  it.effect("leases connections for concurrent Effect.forEach queries", () =>
+    whenNativeIntegration(
+      Effect.gen(function*() {
+        const config = yield* clickHouseConfig
+        return yield* withClickHouseNativePool(config, { size: 2 }, (pool) =>
+          Effect.forEach(
+            ["one", "two", "three", "four"],
+            (value) => pool.execute(`SELECT '${value}' AS value`),
+            { concurrency: "unbounded", discard: false }
+          ).pipe(
+            Effect.tap((rows) =>
+              Effect.sync(() => {
+                expect(rows).toEqual([
+                  [{ value: "one" }],
+                  [{ value: "two" }],
+                  [{ value: "three" }],
+                  [{ value: "four" }]
+                ])
+              })
+            )
+          ))
+      }).pipe(
+        Effect.provide(NodeCrypto.layer)
+      )
+    ))
+})
