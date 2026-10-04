@@ -111,6 +111,7 @@ export const Implementation = Schema.Struct({
  * @internal
  */
 export const ClientCapabilities = Schema.Struct({
+  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Json)),
   experimental: optional(Schema.Record(Schema.String, JsonObject)),
   roots: optional(Schema.Struct({
     listChanged: optional(Schema.Boolean)
@@ -122,6 +123,7 @@ export const ClientCapabilities = Schema.Struct({
  * @internal
  */
 export const ServerCapabilities = Schema.Struct({
+  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Json)),
   experimental: optional(Schema.Record(Schema.String, JsonObject)),
   logging: optional(JsonObject),
   prompts: optional(Schema.Struct({

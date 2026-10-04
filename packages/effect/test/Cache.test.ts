@@ -2,8 +2,36 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cache, Context, Data, Deferred, Duration, Effect, Exit, Fiber, Latch, MutableHashMap, Option } from "effect"
 import { Persistable, PersistedCache, Persistence } from "effect/persistence"
 import { TestClock } from "effect/testing"
+import { collectGarbage } from "./utils/gc.ts"
 
 describe("Cache", () => {
+  it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "does not retain prior equal object keys on cache hits",
+    () =>
+      Effect.gen(function*() {
+        const references: Array<WeakRef<object>> = []
+        const control = new WeakRef({})
+        let lookups = 0
+        const cache = yield* Cache.make({
+          capacity: 16,
+          lookup: (_key: { readonly region: string }) => Effect.sync(() => ++lookups)
+        })
+        for (let i = 0; i < 10; i++) {
+          const key = { region: "us-east-1" }
+          references.push(new WeakRef(key))
+          assert.strictEqual(yield* Cache.get(cache, key), 1)
+        }
+        assert.strictEqual(lookups, 1)
+        assert.strictEqual(yield* Cache.size(cache), 1)
+        // The last key may still be held by the cache.
+        references.pop()
+        yield* collectGarbage
+        assert.isUndefined(control.deref())
+        for (const reference of references) assert.isUndefined(reference.deref())
+        assert.strictEqual(yield* Cache.size(cache), 1)
+      })
+  )
+
   describe("constructors", () => {
     it.effect("make - creates cache with fixed capacity", () =>
       Effect.gen(function*() {

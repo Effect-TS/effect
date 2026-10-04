@@ -2429,18 +2429,32 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
+// Stable parameter-mode copies let Response reuse each tool's part schemas.
+const parameterModeTools = new WeakMap<Tool.Any, { encoded?: Tool.Any; opaque?: Tool.Any }>()
+
+const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any => {
+  let tools = parameterModeTools.get(tool)
+  if (tools === undefined) {
+    tools = {}
+    parameterModeTools.set(tool, tools)
+  }
+  return tools[mode] ??= tool.setParameters(
+    mode === "encoded" ? Schema.toEncoded(tool.parametersSchema) : Schema.Unknown
+  )
+}
+
 const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.toEncoded(tool.parametersSchema)))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "encoded"))
   )
 
 const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "opaque"))
   )
 
 // Provider-executed tools bypass Toolkit, so validate their parameters here.

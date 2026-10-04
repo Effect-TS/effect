@@ -11,36 +11,42 @@ import * as AtomRegistry from "effect/reactivity/AtomRegistry"
 import { computed, type ComputedRef, inject, type InjectionKey, type Ref, shallowRef, watchEffect } from "vue"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category re-exports
  */
 export * as AtomRegistry from "effect/reactivity/AtomRegistry"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category re-exports
  */
 export * as AsyncResult from "effect/reactivity/AsyncResult"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category re-exports
  */
 export * as Atom from "effect/reactivity/Atom"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category re-exports
  */
 export * as AtomRef from "effect/reactivity/AtomRef"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category re-exports
  */
 export * as AtomHttpApi from "effect/reactivity/AtomHttpApi"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category re-exports
  */

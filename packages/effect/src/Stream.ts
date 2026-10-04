@@ -7934,19 +7934,18 @@ export const scan: {
   f: (s: S, a: A) => S
 ): Stream<S, E, R> =>
   suspend(() => {
-    let isFirst = true
-    return fromChannel(Channel.mapAccum(self.channel, initial, (state, arr) => {
-      const states = Arr.empty<S>() as Arr.NonEmptyArray<S>
-      if (isFirst) {
-        isFirst = false
-        states.push(state)
-      }
-      for (let index = 0; index < arr.length; index++) {
-        state = f(state, arr[index])
-        states.push(state)
-      }
-      return [state, Arr.of(states)]
-    }))
+    const seed = initial()
+    return concat(
+      succeed(seed),
+      fromChannel(Channel.mapAccum(self.channel, () => seed, (state, arr) => {
+        const states = Arr.empty<S>() as Arr.NonEmptyArray<S>
+        for (let index = 0; index < arr.length; index++) {
+          state = f(state, arr[index])
+          states.push(state)
+        }
+        return [state, Arr.of(states)]
+      }))
+    )
   }))
 
 /**
@@ -8215,37 +8214,36 @@ const throttleShapeEffect = <A, E, R, E2, R2>(
       const durationMs = Duration.toMillis(Duration.fromInputUnsafe(duration))
       const max = units + burst < 0 ? Number.POSITIVE_INFINITY : units + burst
       let tokens = units
-      let timestampMs = clock.currentTimeMillisUnsafe()
+      let timestampNanos = clock.monotonicTimeNanosUnsafe()
 
       return Effect.succeed(Effect.flatMap(pull, (arr) =>
         Effect.flatMap(cost(arr), (weight) => {
-          const currentMs = clock.currentTimeMillisUnsafe()
-          const elapsed = currentMs - timestampMs
+          const currentNanos = clock.monotonicTimeNanosUnsafe()
+          const elapsed = Number(currentNanos - timestampNanos) / 1_000_000
           const cycles = elapsed / durationMs
           const sum = tokens + (cycles * units)
-          const available = sum < 0 ? max : Math.min(sum, max)
+          const available = Math.min(sum, max)
           const remaining = available - weight
 
           if (remaining >= 0) {
             tokens = remaining
-            timestampMs = currentMs
+            timestampNanos = currentNanos
             return Effect.succeed(arr)
           }
 
-          // Calculate delay needed
           const waitCycles = -remaining / units
           const delayMs = Math.max(0, waitCycles * durationMs)
 
           if (delayMs > 0) {
             return Effect.flatMap(Effect.sleep(delayMs), () => {
               tokens = remaining
-              timestampMs = currentMs
+              timestampNanos = currentNanos
               return Effect.succeed(arr)
             })
           }
 
           tokens = remaining
-          timestampMs = currentMs
+          timestampNanos = currentNanos
           return Effect.succeed(arr)
         })))
     }))

@@ -194,6 +194,11 @@ export interface MysqlClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
 
+  /**
+   * Options passed directly to the `mysql2` connection pool.
+   *
+   * @stability unstable
+   */
   readonly poolConfig?: Mysql.PoolOptions | undefined
 
   /**

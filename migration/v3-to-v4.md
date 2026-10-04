@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `97d80c91fef755966ffd0adbfb00b3eb4ae7eace` (`97d80c91fef755966ffd0adbfb00b3eb4ae7eace`)
+Base: `origin/v3` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `origin/main` (`cbfc7b422046111c439a69ecbce7fc4f4899789d`)
+Head: `HEAD` (`a84d4f65d978bf33aabc38227e477d187ff05c2c`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -8814,11 +8814,15 @@ Arbitrary.schema(schema)
 
 - `Array.modifyOption` -> `Array.modify`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
 
-- `Array.partitionMap` -> `Array.partition`: Pass a Result-returning mapper instead of Either; the output remains [failures, successes], corresponding to v3 [lefts, rights].
+- `Array.partition` -> `Array.partition`: Return Result.succeed(value) for a match and Result.fail(value) otherwise; Filter.fromPredicate adapts predicates that only inspect the value. The tuple is now [passes, fails], the reverse of v3 [excluded, satisfying].
+
+- `Array.partitionMap` -> `Array.partition`: Pass a Result-returning mapper instead of Either. The tuple is [passes, fails], the reverse of v3 [lefts, rights].
 
 - `Array.removeOption` -> `Array.remove`: The closest API now returns an unchanged copy out of bounds; use Array.get before Array.remove to preserve the old Option result.
 
 - `Array.replaceOption` -> `Array.replace`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
+
+- `Array.separate` -> `Array.separate`: The tuple is now [successes, failures], the reverse of v3 [lefts, rights].
 
 - `Array.setNonEmptyHead` -> `Array.setHeadNonEmpty`: Direct word-order rename with the same non-empty-preserving result.
 
@@ -9222,11 +9226,15 @@ Arbitrary.schema(schema)
 
 - `Chunk.modifyOption` -> `Chunk.modify`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
 
-- `Chunk.partitionMap` -> `Chunk.partition`: Pass a Result-returning mapper instead of Either; the output remains [failures, successes].
+- `Chunk.partition` -> `Chunk.partition`: Return Result.succeed(value) for a match and Result.fail(value) otherwise; Filter.fromPredicate adapts predicates that only inspect the value. The tuple is now [passes, fails], the reverse of v3 [excluded, satisfying].
+
+- `Chunk.partitionMap` -> `Chunk.partition`: Pass a Result-returning mapper instead of Either. The tuple is [passes, fails], the reverse of v3 [failures, successes].
 
 - `Chunk.removeOption` -> `Chunk.remove`: The closest API now returns the unchanged Chunk out of bounds; use Chunk.get before Chunk.remove to preserve the old Option result.
 
 - `Chunk.replaceOption` -> `Chunk.replace`: The Option suffix was dropped; an out-of-bounds index still returns Option.none.
+
+- `Chunk.separate` -> `Chunk.separate`: The tuple is now [successes, failures], the reverse of v3 [failures, successes].
 
 - `Chunk.unsafeFromArray` -> `Chunk.fromArrayUnsafe`: Direct word-order rename; it still wraps without copying and is unsafe if the source array is mutated.
 
@@ -10015,6 +10023,8 @@ Arbitrary.schema(schema)
 - `Effect.parallelErrors` -> `Effect.all`: Use `{ mode: "result", concurrency: "unbounded" }` and collect failures explicitly. Adapt arguments and imports to the v4 API.
 
 - `Effect.parallelFinalizers` -> `none`: Parallel finalizer strategy mutation was removed; fork independent cleanup explicitly when ordering is irrelevant. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
+
+- `Effect.partition` -> `Effect.partition`: The tuple is now [passes, fails], the reverse of v3 [failures, successes]. Every effect still runs, and the outer effect does not fail.
 
 - `Effect.patchFiberRefs` -> `none`: Bulk FiberRefs patching was removed; update individual context references with `Effect.updateService`. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive.
 
@@ -11739,9 +11749,9 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `List.of` -> `Array.of`: List was removed; use Array.of. It preserves ordering but returns arrays rather than persistent linked lists.
 
-- `List.partition` -> `Array.partition`: Use a Result-returning callback: failure values form the first array and success values the second.
+- `List.partition` -> `Array.partition`: Use a Result-returning callback: success values form the first array and failure values the second.
 
-- `List.partitionMap` -> `Array.partition`: Migrate the Either-returning mapper to Result; failures form the first array and successes the second.
+- `List.partitionMap` -> `Array.partition`: Migrate the Either-returning mapper to Result; successes form the first array and failures the second.
 
 - `List.prependAll` -> `Array.prependAll`: List was removed; use Array.prependAll. It preserves ordering but returns arrays rather than persistent linked lists.
 
@@ -12805,6 +12815,8 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `Option.orElseEither` -> `Option.orElseResult`: Either was replaced by Result; source tracking now uses Failure and Success.
 
+- `Option.partitionMap` -> `Option.partitionMap`: The tuple is now [passes, fails], the reverse of v3 [left, right].
+
 ### `effect/Order`
 
 - `Order.Order` -> `Order.Order`: The callable type is retained; its return type remains the -1 | 0 | 1 Ordering union.
@@ -13267,9 +13279,13 @@ Schema.toFormatter(schema)
 
 - `Record.modifyOption` -> `Record.modify`: The Option suffix was dropped; missing keys still return Option.none.
 
-- `Record.partitionMap` -> `Record.partition`: Pass a mapper returning Result; failures and successes form the two output records.
+- `Record.partition` -> `Record.partition`: Return Result.succeed(value) for a match and Result.fail(value) otherwise; Filter.fromPredicate adapts predicates that only inspect the value. The tuple is now [passes, fails], the reverse of v3 [excluded, satisfying].
+
+- `Record.partitionMap` -> `Record.partition`: Pass a mapper returning Result. The tuple is [passes, fails], the reverse of v3 [failures, successes].
 
 - `Record.replaceOption` -> `Record.replace`: The Option suffix was dropped; missing keys still return Option.none.
+
+- `Record.separate` -> `Record.separate`: The tuple is now [successes, failures], the reverse of v3 [failures, successes].
 
 ### `effect/RedBlackTree`
 
@@ -13791,7 +13807,7 @@ Schema.toFormatter(schema)
 
 - `STM.orTry` -> `none`: V4 exposes no recoverable retry signal or public transactional savepoint; restructure branch selection before Effect.txRetry.
 
-- `STM.partition` -> `Effect.partition`: The combinator keeps its name, but STM values are now ordinary Effects. Run the complete transaction with Effect.tx. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+- `STM.partition` -> `Effect.partition`: STM values are now ordinary Effects. Run the complete transaction with Effect.tx. The tuple is [passes, fails], the reverse of v3 [failures, successes].
 
 - `STM.provideServiceSTM` -> `Effect.provideServiceEffect`: The effectful service provider was renamed on Effect.
 
@@ -14145,7 +14161,7 @@ Schema.toFormatter(schema)
 
 - `Schema.BooleanFromUnknown` -> `Schema.Boolean`: Use the boolean schema and perform any coercion explicitly before decoding.
 
-- `Schema.BrandSchema` -> `Schema.brand`: Use the schema returned by the v4 `brand` combinator and infer its concrete type.
+- `Schema.BrandSchema` -> `Schema.brand`: Use the schema returned by the v4 `brand` combinator and infer its concrete type. The brand exists only in the TypeScript type and cannot be inspected through the runtime AST.
 
 - `Schema.BrandSchemaId` -> `none`: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
 
@@ -14419,7 +14435,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Number` -> `Schema.Number`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.NumberFromString` -> `Schema.NumberFromString`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.NumberFromString` -> `Schema.NumberFromString`: Decoding now uses JavaScript number coercion: unlike v3, `"abc"` decodes to `NaN`, while `""` and whitespace-only strings decode to `0`. `FiniteFromString` rejects non-finite results, so it rejects invalid strings but also the `"NaN"` and infinity spellings accepted by v3; it still decodes blank strings to `0`. Use a custom codec to preserve the v3 acceptance rules exactly.
 
 - `Schema.Object` -> `Schema.ObjectKeyword`: Rename the object keyword schema.
 
@@ -14721,7 +14737,7 @@ Schema.toFormatter(schema)
 
 - `Schema.betweenDuration` -> `Schema.isBetween`: Rename the predicate to `isBetween` and apply it with `Schema.check` or a schema's `check` method.
 
-- `Schema.brand` -> `Schema.brand`: Pass one concrete string literal as the brand identifier. Widened strings, unions, open template literals, and symbol identifiers are rejected; apply brand repeatedly to compose brands.
+- `Schema.brand` -> `Schema.brand`: Pass one concrete string literal as the brand identifier. Widened strings, unions, open template literals, and symbol identifiers are rejected; apply brand repeatedly to compose brands. V4 branding is type-only and does not add runtime AST metadata.
 
 - `Schema.capitalized` -> `Schema.isCapitalized`: Rename the string predicate to `isCapitalized` and apply it with `Schema.check` or a schema's `check` method.
 
@@ -14787,7 +14803,7 @@ Schema.toFormatter(schema)
 
 - `Schema.format` -> `SchemaRepresentation.toCodeDocument`: Build a representation with `SchemaRepresentation.toRepresentation`, `toMultiDocument`, then `toCodeDocument`.
 
-- `Schema.fromBrand` -> `Schema.fromBrand`: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives.
+- `Schema.fromBrand` -> `Schema.fromBrand`: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives. Constructor checks remain at runtime, while the brand is type-only and does not add AST metadata.
 
 - `Schema.fromKey` -> `Schema.encodeKeys`: Use `encodeKeys` to map decoded property names to encoded keys.
 
@@ -14907,9 +14923,9 @@ Schema.toFormatter(schema)
 
 - `Schema.optionalWith` -> `Schema.optional / Schema.optionalKey / Schema.withDecodingDefaultType`: Choose `optional` or `optionalKey`; use the decoding-default helpers and an explicit nullable transformation as required by the old options.
 
-- `Schema.parseJson` -> `Schema.UnknownFromJsonString / Schema.fromJsonString(schema)`: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
+- `Schema.parseJson` -> `Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)`: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 
-- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec.
+- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec. Unlike v3 `parseNumber`, invalid strings decode to `NaN`, while blank strings decode to `0`. `FiniteFromString` rejects non-finite results but also the `"NaN"` and infinity spellings accepted by v3; exact compatibility requires a custom codec.
 
 - `Schema.partial` -> `schema.mapFields(Struct.map(Schema.optional))`: Map struct fields with `Schema.optional`.
 
@@ -15011,9 +15027,9 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.BooleanKeyword` -> `SchemaAST.Boolean`: The v4 SchemaAST redesign renamed this primitive, collection, or guard while preserving its role.
 
-- `SchemaAST.BrandAnnotation` -> `Schema.Annotations.Bottom["brands"]`: Brands are stored under the string-keyed brands annotation and normally added with Schema.brand.
+- `SchemaAST.BrandAnnotation` -> `none`: Runtime brand annotations were removed. Schema.brand adds a TypeScript-only nominal distinction and does not store brand metadata in the AST.
 
-- `SchemaAST.BrandAnnotationId` -> `Schema.brand`: Symbol annotation IDs were removed; add brands through Schema.brand.
+- `SchemaAST.BrandAnnotationId` -> `Schema.brand`: Use Schema.brand for a TypeScript-only nominal distinction. V4 does not store brand metadata in the AST.
 
 - `SchemaAST.Compiler` -> `none`: The generic AST compiler abstraction was removed; traverse the discriminated SchemaAST.AST union directly or use a higher-level Schema derivation API.
 
@@ -15095,7 +15111,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ParseIssueTitleAnnotationId` -> `none`: The symbol annotation was removed; use message or expected annotations.
 
-- `SchemaAST.ParseJsonSchemaId` -> `Schema.UnknownFromJsonString`: Use the built-in JSON string codec instead of checking the old schema ID.
+- `SchemaAST.ParseJsonSchemaId` -> `Schema.fromJsonString(Schema.Unknown)`: Use the built-in JSON string codec instead of checking the old schema ID.
 
 - `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. propertyOrder was removed. concurrency follows Effect.forEach semantics for tuple, array, struct, record, and struct-with-rest children, applies independently at each nested product, and does not make Union candidates concurrent. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser.
 
@@ -15177,7 +15193,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.getBatchingAnnotation` -> `none`: Batching annotations were removed. ParseOptions.concurrency controls product child parsing only; configure request batching separately.
 
-- `SchemaAST.getBrandAnnotation` -> `SchemaAST.resolveAt("brands")`: Resolve the string-keyed brands annotation.
+- `SchemaAST.getBrandAnnotation` -> `none`: Runtime brand inspection was removed because Schema.brand is type-only and does not store brand metadata in the AST.
 
 - `SchemaAST.getCompiler` -> `none`: The Match-based compiler was removed; traverse SchemaAST.AST directly or use the relevant Schema derivation API.
 

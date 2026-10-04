@@ -1363,6 +1363,15 @@ describe("Stream", () => {
   })
 
   describe("scanning", () => {
+    it.effect("scan emits the initial state for Stream.empty", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.empty.pipe(
+          Stream.scan(() => 0, (acc, curr: number) => acc + curr),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [0])
+      }))
+
     it.effect("scan", () =>
       Effect.gen(function*() {
         const stream = Stream.make(1, 2, 3, 4, 5)
@@ -3136,6 +3145,65 @@ describe("Stream", () => {
         )
         deepStrictEqual(result, [1, 2, 3, 4])
       }))
+
+    it.effect("throttleShape - keeps the rate when sleeps end early", () =>
+      Effect.gen(function*() {
+        const clock = yield* Clock.Clock
+        const earlyClock: Clock.Clock = {
+          ...clock,
+          monotonicTimeNanosUnsafe: () => (1n << 80n) + clock.monotonicTimeNanosUnsafe(),
+          sleep: (duration) => clock.sleep(Duration.millis(Duration.toMillis(duration) - 1))
+        }
+        const fiber = yield* pipe(
+          Stream.range(1, 3),
+          Stream.rechunk(1),
+          Stream.throttle({
+            strategy: "shape",
+            cost: (arr) => arr.length,
+            units: 1,
+            duration: Duration.seconds(1)
+          }),
+          Stream.mapEffect(() => clock.currentTimeMillis),
+          Stream.runCollect,
+          Effect.provideService(Clock.Clock, earlyClock),
+          Effect.forkScoped
+        )
+        yield* TestClock.adjust(Duration.seconds(3))
+        const timestamps = yield* Fiber.join(fiber)
+        deepStrictEqual(timestamps, [0, 999, 1999], "Early wake-ups must not accumulate rate drift")
+      }))
+
+    it.effect("throttleShape - is not affected by wall clock changes", () =>
+      Effect.gen(function*() {
+        const clock = yield* Clock.Clock
+        let offset = 0
+        const shiftedClock: Clock.Clock = {
+          ...clock,
+          currentTimeMillisUnsafe: () => clock.currentTimeMillisUnsafe() + offset
+        }
+        const fiber = yield* pipe(
+          Stream.range(1, 2),
+          Stream.rechunk(1),
+          Stream.throttle({
+            strategy: "shape",
+            cost: (arr) => arr.length,
+            units: 1,
+            duration: Duration.seconds(1)
+          }),
+          Stream.tap((n) =>
+            Effect.sync(() => {
+              if (n === 1) offset = -5000
+            })
+          ),
+          Stream.mapEffect(() => clock.currentTimeMillis),
+          Stream.runCollect,
+          Effect.provideService(Clock.Clock, shiftedClock),
+          Effect.forkScoped
+        )
+        yield* TestClock.adjust(Duration.seconds(6))
+        const timestamps = yield* Fiber.join(fiber)
+        deepStrictEqual(timestamps, [0, 1000], "Wall clock changes must not affect the refill rate")
+      }))
   })
 
   describe("zipping", () => {
@@ -4548,7 +4616,7 @@ describe("Stream", () => {
         const stream = pipe(
           Stream.fromIterable(Array.empty<number>()),
           Stream.partitionEffect((n) => Effect.succeed(n % 2 === 0 ? Result.succeed(n) : Result.fail(n))),
-          Effect.map(([odds, evens]) => pipe(evens, Stream.mergeResult(odds))),
+          Effect.map(([passes, fails]) => pipe(fails, Stream.mergeResult(passes))),
           Effect.flatMap(Stream.runCollect),
           Effect.scoped
         )

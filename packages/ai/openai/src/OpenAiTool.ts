@@ -5,6 +5,7 @@
  * shell-like local tools, including their provider names, configuration
  * arguments, call parameters, success schemas, and handler requirements.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Tool from "effect/ai/Tool"
@@ -14,6 +15,7 @@ import * as Generated from "./Generated.ts"
 /**
  * Union of all OpenAI provider-defined tools.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -39,6 +41,7 @@ export type OpenAiTool =
  * delete, or update operations that your application executes through a local
  * handler.
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -72,6 +75,7 @@ export const ApplyPatch = Tool.providerDefined({
  * status indicates success; omitted statuses default to it. Other statuses
  * produce failure results that preserve any outputs.
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -115,6 +119,7 @@ export const CodeInterpreter = Tool.providerDefined({
  * successful; all other statuses produce failure results, preserving partial
  * matches.
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -160,6 +165,7 @@ export const FileSearch = Tool.providerDefined({
  * with a status other than `completed` are failures that include `status`.
  * Omitted statuses default to `completed`.
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -206,6 +212,7 @@ export const ImageGeneration = Tool.providerDefined({
  * handler-required, so applications must provide the command execution policy
  * and implementation.
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -251,6 +258,7 @@ const McpResultFields = {
  * This schema leaves both `server_url` and `connector_id` optional, but OpenAI
  * may require a server URL or connector id for a usable MCP tool configuration.
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -289,6 +297,7 @@ export const Mcp = Tool.providerDefined({
  * handler-required, so applications must provide the command execution policy
  * and implementation.
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -333,6 +342,7 @@ const WebSearchFailure = Schema.Struct({
  *
  * @see {@link WebSearchPreview} for the preview web search provider tool
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */
@@ -369,6 +379,7 @@ export const WebSearch = Tool.providerDefined({
  *
  * @see {@link WebSearch} for the stable web search provider tool
  *
+ * @stability unstable
  * @category tools
  * @since 4.0.0
  */

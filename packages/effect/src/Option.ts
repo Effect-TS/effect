@@ -1774,14 +1774,14 @@ export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [se
  *
  * **When to use**
  *
- * Use when you need to split an optional value into "left" and "right"
+ * Use when you need to split an optional value into success and failure
  * channels using a `Result`-returning function.
  *
  * **Details**
  *
  * - `None` → `[None, None]`
- * - `Some` where `f` returns `Err` → `[Some(error), None]`
- * - `Some` where `f` returns `Ok` → `[None, Some(value)]`
+ * - `Some` where `f` returns `Ok` → `[Some(value), None]`
+ * - `Some` where `f` returns `Err` → `[None, Some(error)]`
  *
  * **Example** (Partitioning by Result)
  *
@@ -1793,8 +1793,8 @@ export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [se
  *   return isNaN(n) ? Result.fail("Not a number") : Result.succeed(n)
  * }
  *
- * Option.partitionMap(Option.some("42"), parseNumber) // => [Option.none(), Option.some(42)]
- * Option.partitionMap(Option.some("abc"), parseNumber) // => [Option.some("Not a number"), Option.none()]
+ * Option.partitionMap(Option.some("42"), parseNumber) // => [Option.some(42), Option.none()]
+ * Option.partitionMap(Option.some("abc"), parseNumber) // => [Option.none(), Option.some("Not a number")]
  * Option.partitionMap(Option.none(), parseNumber) // => [Option.none(), Option.none()]
  * ```
  *
@@ -1804,17 +1804,17 @@ export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [se
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Result<C, B>): (self: Option<A>) => [left: Option<B>, right: Option<C>]
-  <A, B, C>(self: Option<A>, f: (a: A) => Result<C, B>): [left: Option<B>, right: Option<C>]
+  <A, B, C>(f: (a: A) => Result<C, B>): (self: Option<A>) => [passes: Option<C>, fails: Option<B>]
+  <A, B, C>(self: Option<A>, f: (a: A) => Result<C, B>): [passes: Option<C>, fails: Option<B>]
 } = dual(2, <A, B, C>(
   self: Option<A>,
   f: (a: A) => Result<C, B>
-): [excluded: Option<B>, satisfying: Option<C>] => {
+): [passes: Option<C>, fails: Option<B>] => {
   if (isNone(self)) {
     return [none(), none()]
   }
   const e = f(self.value)
-  return result.isFailure(e) ? [some(e.failure), none()] : [none(), some(e.success)]
+  return result.isFailure(e) ? [none(), some(e.failure)] : [some(e.success), none()]
 })
 
 /**

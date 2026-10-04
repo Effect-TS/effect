@@ -15,6 +15,7 @@
  * @since 4.0.0
  */
 import * as Cache from "effect/Cache"
+import * as Clock from "effect/Clock"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -22,7 +23,8 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
-import * as Scope from "effect/Scope"
+import * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
@@ -34,6 +36,7 @@ import type { StatementSync } from "node:sqlite"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const MAX_BUSY_TIMEOUT = 2_147_483_647
+const NANOS_PER_MILLI = BigInt(1_000_000)
 
 /**
  * Runtime type identifier used to mark Node `SqliteClient` values.
@@ -124,7 +127,7 @@ interface SqliteConnection extends Connection {
  */
 export const make = (
   options: SqliteClientConfig
-): Effect.Effect<SqliteClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<SqliteClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -134,21 +137,48 @@ export const make = (
       undefined
 
     const makeConnection = Effect.gen(function*() {
-      const scope = yield* Effect.scope
-      const db = new DatabaseSync(options.filename, {
-        readOnly: options.readonly ?? false,
-        allowExtension: true
-      })
-      yield* Scope.addFinalizer(scope, Effect.sync(() => db.close()))
+      const db = yield* Effect.acquireRelease(
+        Effect.try({
+          try: () =>
+            new DatabaseSync(options.filename, {
+              readOnly: options.readonly ?? false,
+              allowExtension: true
+            }),
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to open database", "connect") })
+        }),
+        (db) => Effect.sync(() => db.close())
+      )
       db.enableLoadExtension(false)
       const busyTimeout = Math.min(
         MAX_BUSY_TIMEOUT,
         Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
       )
-      db.exec(`PRAGMA busy_timeout = ${busyTimeout}`)
+      const exec = (sql: string) =>
+        Effect.try({
+          try: () => db.exec(sql),
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to configure database", "connect") })
+        })
+      yield* exec(`PRAGMA busy_timeout = ${busyTimeout}`)
 
-      if (options.disableWAL !== true) {
-        db.exec("PRAGMA journal_mode = WAL")
+      if (options.disableWAL !== true && !options.readonly) {
+        // Switching to WAL can fail with SQLITE_BUSY without invoking the busy
+        // handler, so retry it until busyTimeout has elapsed. Each attempt's
+        // native busy wait is limited to the remaining time.
+        const deadline = (yield* Clock.monotonicTimeNanos) + BigInt(busyTimeout) * NANOS_PER_MILLI
+        const remainingMillis = Effect.map(
+          Clock.monotonicTimeNanos,
+          (now) => Math.max(0, Number((deadline - now) / NANOS_PER_MILLI))
+        )
+        yield* remainingMillis.pipe(
+          Effect.flatMap((remaining) => exec(`PRAGMA busy_timeout = ${remaining}`)),
+          Effect.andThen(exec("PRAGMA journal_mode = WAL")),
+          Effect.retry({
+            while: (error) =>
+              error.reason._tag === "LockTimeoutError" && Effect.map(remainingMillis, (remaining) => remaining > 0),
+            schedule: Schedule.spaced("10 millis")
+          })
+        )
+        yield* exec(`PRAGMA busy_timeout = ${busyTimeout}`)
       }
 
       const prepare = (sql: string) =>
@@ -340,7 +370,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -360,7 +390,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: SqliteClientConfig
-): Layer.Layer<SqliteClient | Client.SqlClient> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(SqliteClient, client).pipe(

@@ -503,13 +503,13 @@ export const all: <
 ) => All.Return<Arg, O> = internal.all
 
 /**
- * Applies an effectful function to each element and partitions failures and
- * successes.
+ * Applies an effectful function to each element and partitions successes and
+ * failures.
  *
  * **Details**
  *
- * The returned tuple is `[excluded, satisfying]`, where `excluded` contains
- * all failures and `satisfying` contains all successes.
+ * The returned tuple is `[passes, fails]`, where `passes` contains all
+ * successes and `fails` contains all failures.
  *
  * This function runs every effect and never fails. Use `concurrency` to control
  * parallelism.
@@ -523,7 +523,7 @@ export const all: <
  *   n % 2 === 0 ? Effect.fail(`${n} is even`) : Effect.succeed(n)
  * )
  *
- * await Effect.runPromise(program) // => [['0 is even', '2 is even'], [1, 3]]
+ * await Effect.runPromise(program) // => [[1, 3], ['0 is even', '2 is even']]
  * ```
  *
  * @category collecting
@@ -533,12 +533,12 @@ export const partition: {
   <A, B, E, R>(
     f: (a: A, i: number) => Effect<B, E, R>,
     options?: { readonly concurrency?: Concurrency | undefined }
-  ): (elements: Iterable<A>) => Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>
+  ): (elements: Iterable<A>) => Effect<[passes: Array<B>, fails: Array<E>], never, R>
   <A, B, E, R>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
     options?: { readonly concurrency?: Concurrency | undefined }
-  ): Effect<[excluded: Array<E>, satisfying: Array<B>], never, R>
+  ): Effect<[passes: Array<B>, fails: Array<E>], never, R>
 } = internal.partition
 
 /**

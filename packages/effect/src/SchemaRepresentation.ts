@@ -2432,7 +2432,9 @@ export interface ToRepresentationOptions {
  * **Details**
  *
  * Apply `SchemaAST.toType` to the AST first to lower its type side instead. The optional reference policy controls which
- * candidates are moved into the document's shared reference table.
+ * candidates are moved into the document's shared reference table. TypeScript-only
+ * distinctions such as those added by `Schema.brand` are absent from the AST
+ * and cannot be reconstructed from the resulting document.
  *
  * @see {@link toRepresentations} for multiple roots sharing one reference table
  *

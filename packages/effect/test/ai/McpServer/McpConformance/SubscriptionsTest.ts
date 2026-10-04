@@ -7,6 +7,7 @@ import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import type * as Arr from "effect/Array"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -21,6 +22,7 @@ import { RequestId } from "effect/rpc/RpcMessage"
 import type * as RpcSerialization from "effect/rpc/RpcSerialization"
 import * as RpcServer from "effect/rpc/RpcServer"
 import * as Schema from "effect/Schema"
+import * as TestClock from "effect/testing/TestClock"
 import { makeHttpHarness } from "../TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader } from "../TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "../TestUtils/McpServerLayer.ts"
@@ -127,7 +129,10 @@ const httpHeaders = (protocol: McpProtocol.ProtocolAdapter): HeadersInit => ({
   "Mcp-Method": "subscriptions/listen"
 })
 
-const makeHttpSubscriptionHarness = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolAdapter) {
+const makeHttpSubscriptionHarness = Effect.fnUntraced(function*(
+  protocol: McpProtocol.ProtocolAdapter,
+  clockLayer: Layer.Layer<never> = Layer.empty
+) {
   const serverReady = yield* Deferred.make<McpServer.McpServer["Service"]>()
   const registrations = Layer.effectDiscard(
     Effect.gen(function*() {
@@ -137,12 +142,35 @@ const makeHttpSubscriptionHarness = Effect.fnUntraced(function*(protocol: McpPro
     })
   )
   const harness = yield* makeHttpHarness(
-    registrations.pipe(Layer.provideMerge(makeServerLayer({
-      name: "SubscriptionConformance",
-      protocols: [protocol]
-    })))
+    registrations.pipe(
+      Layer.provideMerge(makeServerLayer({
+        name: "SubscriptionConformance",
+        protocols: [protocol]
+      })),
+      Layer.provideMerge(clockLayer)
+    )
   )
   return { harness, serverReady }
+})
+
+const makeTrackingClock = Effect.gen(function*() {
+  const clock = yield* Clock.Clock
+  let activeSleeps = 0
+  const trackingClock: Clock.Clock = {
+    ...clock,
+    sleep: (duration) =>
+      Effect.acquireUseRelease(
+        Effect.sync(() => {
+          activeSleeps++
+        }),
+        () => clock.sleep(duration),
+        () =>
+          Effect.sync(() => {
+            activeSleeps--
+          })
+      )
+  }
+  return { layer: Layer.succeed(Clock.Clock, trackingClock), activeSleeps: () => activeSleeps }
 })
 
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
@@ -564,6 +592,69 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           assert.notProperty(paramsOf(notification), "_meta")
         }))
 
+      it.effect("should keep idle HTTP subscriptions alive with periodic SSE comments", () =>
+        Effect.gen(function*() {
+          const clock = yield* makeTrackingClock
+          const { harness, serverReady } = yield* makeHttpSubscriptionHarness(
+            protocol,
+            clock.layer
+          )
+          yield* harness.post({
+            jsonrpc: "2.0",
+            id: "ready",
+            method: "server/discover",
+            params: { _meta: httpMetadata(protocol) }
+          }, { "MCP-Protocol-Version": protocol.protocolVersion, "Mcp-Method": "server/discover" })
+          yield* TestClock.adjust("1 second")
+          const response = yield* harness.post(httpListenRequest(protocol, "idle-http"), httpHeaders(protocol))
+          assert.match(response.headers.get("content-type") ?? "", /^text\/event-stream/)
+          assert.isNotNull(response.body)
+          const reader = response.body.getReader()
+          yield* Effect.addFinalizer(() => Effect.promise(() => reader.cancel()))
+          const read = Effect.promise(() => reader.read())
+          const decoder = new TextDecoder()
+          const acknowledgment = decoder.decode((yield* read).value)
+          assert.isTrue(acknowledgment.startsWith("data: "))
+          assertAcknowledged(JSON.parse(acknowledgment.slice(6)), "idle-http", { toolsListChanged: true })
+
+          const next = yield* read.pipe(Effect.forkChild)
+          yield* TestClock.adjust("14 seconds")
+          assert.isUndefined(next.pollUnsafe())
+          yield* TestClock.adjust("1 second")
+          assert.isDefined(next.pollUnsafe())
+          assert.strictEqual(decoder.decode((yield* Fiber.join(next)).value), ": keepalive\n\n")
+          const heartbeat = yield* read.pipe(Effect.forkChild)
+          yield* TestClock.adjust("15 seconds")
+          assert.strictEqual(decoder.decode((yield* Fiber.join(heartbeat)).value), ": keepalive\n\n")
+
+          const tools = yield* harness.post({
+            jsonrpc: "2.0",
+            id: "tools-during-subscription",
+            method: "tools/list",
+            params: { _meta: httpMetadata(protocol) }
+          }, { "MCP-Protocol-Version": protocol.protocolVersion, "Mcp-Method": "tools/list" })
+          assert.match(tools.headers.get("content-type") ?? "", /^application\/json/)
+          const listed = yield* Effect.promise(() => tools.json())
+          assert.strictEqual(listed.id, "tools-during-subscription")
+          assert.deepStrictEqual(listed.result.tools, [
+            { name: "http-subscription-baseline", inputSchema: { type: "object", properties: {} } }
+          ])
+          assert.strictEqual(clock.activeSleeps(), 1)
+
+          const server = yield* Deferred.await(serverReady)
+          yield* server.notifications["notifications/tools/list_changed"]({})
+          const notification = decoder.decode((yield* read).value)
+          assert.isTrue(notification.startsWith("data: "))
+          const message = JSON.parse(notification.slice(6))
+          assert.strictEqual(message.method, "notifications/tools/list_changed")
+          assert.strictEqual(subscriptionIdOf(message), "idle-http")
+          yield* Effect.promise(() => reader.cancel())
+          assert.strictEqual(clock.activeSleeps(), 0)
+          yield* TestClock.adjust("30 seconds")
+          assert.deepStrictEqual(yield* read, { done: true, value: undefined })
+          assert.strictEqual(clock.activeSleeps(), 0)
+        }))
+
       it.effect("should stream acknowledgment before matching events when using HTTP", () =>
         Effect.gen(function*() {
           const { harness, serverReady } = yield* makeHttpSubscriptionHarness(protocol)
@@ -582,7 +673,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
       it.effect("should close only the HTTP subscription stream when its pending backlog overflows", () =>
         Effect.gen(function*() {
-          const { harness, serverReady } = yield* makeHttpSubscriptionHarness(protocol)
+          const clock = yield* makeTrackingClock
+          const { harness, serverReady } = yield* makeHttpSubscriptionHarness(protocol, clock.layer)
           const response = yield* harness.post(
             httpListenRequest(protocol, "overflowing-http-subscription"),
             httpHeaders(protocol)
@@ -602,6 +694,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
           const remaining = yield* subscription.drain()
           assert.notInclude(remaining.map((message) => message.method), "notifications/cancelled")
+          assert.strictEqual(clock.activeSleeps(), 0)
 
           const discovery = yield* harness.post({
             jsonrpc: "2.0",
