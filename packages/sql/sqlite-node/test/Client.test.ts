@@ -1,9 +1,11 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, FileSystem, Option } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
+import { TestClock } from "effect/testing"
+import { DatabaseSync } from "node:sqlite"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -22,6 +24,18 @@ const makeClients = Effect.gen(function*() {
     contender: yield* SqliteClient.make({ filename })
   }
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
+
+const makeLockedDatabase = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  const filename = dir + "/test.db"
+  const lock = yield* Effect.acquireRelease(
+    Effect.sync(() => new DatabaseSync(filename)),
+    (db) => Effect.sync(() => db.close())
+  )
+  lock.exec("BEGIN IMMEDIATE")
+  return { filename, unlock: () => lock.exec("ROLLBACK") }
+}).pipe(Effect.provide(NodeFileSystem.layer))
 
 describe("Client", () => {
   it.effect("releases completed nested savepoints", () =>
@@ -302,4 +316,42 @@ describe("Client", () => {
       assert(metadata.totalPages > 0)
       assert.strictEqual(metadata.remainingPages, 0)
     }))
+
+  it.effect("retries enabling WAL while the database is locked", () =>
+    Effect.gen(function*() {
+      const { filename, unlock } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename }).pipe(Effect.forkChild({ startImmediately: true }))
+      unlock()
+      yield* TestClock.adjust("10 millis")
+      const sql = yield* Fiber.join(fiber)
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "wal" }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("fails to enable WAL with a typed error after busyTimeout", () =>
+    Effect.gen(function*() {
+      const { filename } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename, busyTimeout: "1 second" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* TestClock.adjust("2 seconds")
+      const error = yield* Effect.flip(Fiber.join(fiber))
+      assert.strictEqual(error.reason._tag, "LockTimeoutError")
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("does not enable WAL on readonly clients", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const filename = dir + "/test.db"
+
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename, disableWAL: true })
+          yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+        })
+      )
+
+      const sql = yield* SqliteClient.make({ filename, readonly: true })
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "delete" }])
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 })
