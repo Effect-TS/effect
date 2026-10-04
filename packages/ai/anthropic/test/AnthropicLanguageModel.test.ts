@@ -1265,20 +1265,7 @@ describe("AnthropicLanguageModel", () => {
       { role: "user", content: "Question 2" }
     ])
 
-    const systemMessage = (text: string) => ({
-      role: "system",
-      content: [{ type: "text", text, cache_control: null }]
-    })
-
-    it.effect("collects every system message into the top-level system field for unsupported models", () =>
-      Effect.gen(function*() {
-        const body = yield* getRequest("claude-sonnet-4-5", conversation)
-
-        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B"])
-        assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant", "user"])
-      }))
-
-    it.effect("sends later system messages in history for supported models", () =>
+    it.effect("sends later system messages after the next user turn", () =>
       Effect.gen(function*() {
         const body = yield* getRequest("claude-sonnet-5-5", conversation)
 
@@ -1289,85 +1276,48 @@ describe("AnthropicLanguageModel", () => {
           "user",
           "system"
         ])
-        assert.deepStrictEqual(body.messages[3], systemMessage("B"))
+        assert.deepStrictEqual(body.messages.at(-1), {
+          role: "system",
+          content: [{ type: "text", text: "B", cache_control: null }]
+        })
       }))
 
-    it.effect("places system messages after tool results", () =>
-      Effect.gen(function*() {
-        const body = yield* getRequest(
-          "claude-sonnet-5-5",
-          Prompt.make([
-            { role: "user", content: "Question" },
-            { role: "assistant", content: [{ type: "tool-call", id: "call_1", name: "lookup", params: {} }] },
-            { role: "system", content: "B" },
-            {
-              role: "tool",
-              content: [{ type: "tool-result", id: "call_1", name: "lookup", result: "Evidence", isFailure: false }]
-            }
-          ])
-        )
-
-        assert.deepStrictEqual(body.messages.map((message: any) => message.role), [
-          "user",
-          "assistant",
-          "user",
-          "system"
-        ])
-        assert.strictEqual(body.messages[2].content[0].type, "tool_result")
-        assert.deepStrictEqual(body.messages[3], systemMessage("B"))
-      }))
-
-    for (
-      const [label, next] of [
-        ["at the end", []],
-        ["before an assistant turn", [{ role: "assistant", content: "Answer 2" }]]
-      ] as const
-    ) {
-      it.effect(`collects every system message top-level when one after an assistant turn is ${label}`, () =>
-        Effect.gen(function*() {
-          const body = yield* getRequest(
-            "claude-sonnet-5-5",
-            Prompt.make([
-              { role: "system", content: "A" },
-              { role: "user", content: "Question 1" },
-              { role: "system", content: "B" },
-              { role: "assistant", content: "Answer 1" },
-              { role: "system", content: "C" },
-              ...next
-            ])
-          )
-
-          assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B", "C"])
-          assert.isFalse(body.messages.some((message: any) => message.role === "system"))
-        }))
-    }
-
-    it.effect("can disable system messages in history for a supported model", () =>
+    it.effect("sends every system message top-level when disabled", () =>
       Effect.gen(function*() {
         const body = yield* getRequest("claude-sonnet-5-5", conversation, { midConversationSystemMessages: false })
 
         assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B"])
         assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant", "user"])
+        assert.notProperty(body, "midConversationSystemMessages")
       }))
 
-    it.effect("can enable system messages in history for an unsupported model", () =>
+    it.effect("sends every system message top-level in order when one cannot follow a user turn", () =>
       Effect.gen(function*() {
-        const body = yield* getRequest("claude-sonnet-4-5", conversation, { midConversationSystemMessages: true })
+        const body = yield* getRequest(
+          "claude-sonnet-5-5",
+          Prompt.make([
+            { role: "system", content: "A" },
+            { role: "user", content: "Question" },
+            { role: "system", content: "B" },
+            { role: "assistant", content: "Answer" },
+            { role: "system", content: "C" }
+          ])
+        )
 
-        assert.deepStrictEqual(body.messages[3], systemMessage("B"))
-        assert.notProperty(body, "midConversationSystemMessages")
+        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B", "C"])
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant"])
       }))
 
     it.effect("reports support for the requested model", () =>
       Effect.gen(function*() {
         const model = yield* LanguageModel.LanguageModel
-        const supports = (config: typeof AnthropicLanguageModel.Config.Service) =>
-          model.supportsSystemMessagesInHistory!.pipe(AnthropicLanguageModel.withConfigOverride(config))
 
         assert.isTrue(yield* model.supportsSystemMessagesInHistory!)
-        assert.isFalse(yield* supports({ model: "claude-sonnet-5" }))
-        assert.isTrue(yield* supports({ model: "claude-sonnet-6-0" }))
-        assert.isFalse(yield* supports({ midConversationSystemMessages: false }))
+        assert.isFalse(
+          yield* model.supportsSystemMessagesInHistory!.pipe(
+            AnthropicLanguageModel.withConfigOverride({ model: "claude-sonnet-5" })
+          )
+        )
       }).pipe(
         Effect.provide(AnthropicLanguageModel.model("claude-sonnet-5-5")),
         Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
