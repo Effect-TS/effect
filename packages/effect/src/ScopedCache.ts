@@ -108,6 +108,7 @@ export interface Entry<A, E> {
   readonly scope: Scope.Closeable
   awaiters: number
   fiber?: Fiber.Fiber<A, E>
+  onInterrupt?: (() => void) | undefined
 }
 
 /**
@@ -279,7 +280,13 @@ export const get: {
           expiresAt: undefined,
           deferred,
           scope,
-          awaiters: 0
+          awaiters: 0,
+          onInterrupt: () => {
+            if (self.state._tag === "Open") {
+              const current = MutableHashMap.get(self.state.map, key)
+              if (Option.isSome(current) && current.value === entry) MutableHashMap.remove(self.state.map, key)
+            }
+          }
         }
         MutableHashMap.set(state.map, key, entry)
         return checkCapacity(fiber, state.map, self.capacity).pipe(
@@ -288,6 +295,8 @@ export const get: {
             entry.fiber = effect.forkUnsafe(
               fiber,
               effect.onExit(effect.suspend(() => Scope.provide(self.lookup(key), scope)), (exit) => {
+                // Drop the key reference once the lookup can no longer be interrupted.
+                entry.onInterrupt = undefined
                 if (effect.exitHasInterrupts(exit)) {
                   if (self.state._tag === "Open") {
                     const current = MutableHashMap.get(self.state.map, key)
@@ -320,13 +329,15 @@ const awaitEntry = <A, E>(
   entry: Entry<A, E>,
   restore: <X, Y, Z>(effect: Effect.Effect<X, Y, Z>) => Effect.Effect<X, Y, Z>
 ): Effect.Effect<A, E> => {
-  const fiber = entry.fiber
-  if (fiber === undefined || Deferred.isDoneUnsafe(entry.deferred)) return restore(Deferred.await(entry.deferred))
+  if (Deferred.isDoneUnsafe(entry.deferred)) return restore(Deferred.await(entry.deferred))
   entry.awaiters++
   // Install cleanup before restore so a pending interrupt cannot skip the decrement.
   return effect.onExit(restore(Deferred.await(entry.deferred)), () => {
     entry.awaiters--
-    if (entry.awaiters > 0 || Deferred.isDoneUnsafe(entry.deferred)) return effect.void
+    const fiber = entry.fiber
+    if (entry.awaiters > 0 || fiber === undefined || Deferred.isDoneUnsafe(entry.deferred)) return effect.void
+    // Detach before interruption so callers arriving during finalization start fresh.
+    entry.onInterrupt?.()
     return effect.flatMap(effect.fiberInterrupt(fiber), () => {
       const exit = fiber.pollUnsafe()!
       return Exit.isFailure(exit) && Cause.hasDies(exit.cause) ? effect.failCause(exit.cause) : effect.void
