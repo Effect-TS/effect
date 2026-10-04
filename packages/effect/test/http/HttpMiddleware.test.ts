@@ -7,6 +7,7 @@ import * as Fiber from "effect/Fiber"
 import * as Headers from "effect/http/Headers"
 import * as HttpEffect from "effect/http/HttpEffect"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Logger from "effect/Logger"
@@ -116,6 +117,50 @@ describe("HttpMiddleware", () => {
   })
 
   describe("logger", () => {
+    const clientAbort = Cause.annotate(Cause.interrupt(2), Context.make(HttpServerError.ClientAbort, true))
+
+    it.effect.each([
+      { name: "server interrupts", cause: Cause.interrupt(1), status: 503 },
+      {
+        name: "mixed server and client interrupts",
+        cause: Cause.combine(Cause.interrupt(1), clientAbort),
+        status: 499
+      },
+      {
+        name: "client aborts mixed with failures",
+        cause: Cause.combine(clientAbort, Cause.fail("handler failed")),
+        status: 499
+      },
+      {
+        name: "client aborts mixed with non-response defects",
+        cause: Cause.combine(clientAbort, Cause.die("handler defect")),
+        status: 499
+      }
+    ])("preserves cause logging and the failure exit for $name", ({ cause, status }) =>
+      Effect.gen(function*() {
+        const logs: Array<{ message: unknown; cause: Cause.Cause<unknown>; status: unknown }> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logs.push({
+            message: options.message,
+            cause: options.cause,
+            status: options.fiber.getRef(References.CurrentLogAnnotations)["http.status"]
+          })
+        })
+        // The server attaches the response to the failed handler cause.
+        const handlerCause = Cause.combine(cause, Cause.die(HttpServerResponse.empty({ status })))
+        const exit = yield* HttpMiddleware.logger(Effect.failCause(handlerCause)).pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost/slow"))
+          ),
+          Effect.provide(Logger.layer([logger])),
+          Effect.exit
+        )
+
+        assert.deepStrictEqual(exit, Exit.failCause(handlerCause))
+        assert.deepStrictEqual(logs, [{ message: [], cause, status }])
+      }))
+
     it.effect("logs client aborts as sent responses with status 499", () =>
       Effect.gen(function*() {
         const logs: Array<{
