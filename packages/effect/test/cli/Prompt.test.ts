@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { afterAll, assert, beforeAll, describe, it, vitest } from "@effect/vitest"
 import { Data, DateTime, Deferred, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/cli"
 import * as MockTerminal from "./services/MockTerminal.ts"
@@ -16,6 +16,24 @@ const Action = Data.taggedEnum<Prompt.ActionDefinition>()
 
 const escape = String.fromCharCode(27)
 const bell = String.fromCharCode(7)
+
+beforeAll(() => vitest.stubEnv("NO_COLOR", ""))
+afterAll(() => vitest.unstubAllEnvs())
+
+it.effect("respects NO_COLOR while retaining prompt cursor controls and emphasis", () =>
+  Effect.gen(function*() {
+    vitest.stubEnv("NO_COLOR", "1")
+    yield* MockTerminal.inputKey("enter")
+    yield* Prompt.run(Prompt.Select({ message: "Pick one", choices: [{ title: "Alice", value: "Alice" }] }))
+    const output = (yield* MockTerminal.displayLines).map(String).join("\n")
+    assert.notMatch(output, /\[(?:3\d|9\d)m/)
+    assert.include(output, "Pick one")
+    assert.include(output, "\x1b[1m")
+    assert.include(output, "\x1b[?25h")
+  }).pipe(
+    Effect.provide(TestLayer),
+    Effect.ensuring(Effect.sync(() => vitest.stubEnv("NO_COLOR", "")))
+  ), { concurrent: false })
 
 const stripAnsi = (text: string) => {
   let result = ""

@@ -106,8 +106,16 @@ export const blackBright = `${ESC}90m`
 export const cyanBright = `${ESC}96m`
 
 export const annotate = (text: string, ...styles: Array<string | Array<string>>) => {
-  const flat = styles.flat()
-  return `${flat.join("")}${text}${reset}`
+  const style = styles.flat().join("")
+  return style.length === 0 ? text : `${style}${text}${reset}`
+}
+
+/**
+ * @internal
+ */
+export const color = (style: string): string => {
+  const globalProcess = (globalThis as any).process
+  return typeof globalProcess === "object" && globalProcess !== null && globalProcess.env?.NO_COLOR ? "" : style
 }
 
 export const combine = (...styles: Array<string>): Array<string> => styles

@@ -248,18 +248,18 @@ const logCurrentCommand = (commandLine: ReadonlyArray<CommandLineArg>): Effect.E
   Console.log(renderCommandBlock("Current command", commandLine.map((arg) => arg.displayValue), Ansi.magenta))
 
 const renderSection = (commandName: string, section: string): string =>
-  `${Ansi.annotate(commandName.toUpperCase(), Ansi.bold, Ansi.cyanBright)} ${Ansi.annotate("·", Ansi.blackBright)} ${
-    Ansi.annotate(section, Ansi.bold, Ansi.white)
-  }`
+  `${Ansi.annotate(commandName.toUpperCase(), Ansi.bold, Ansi.color(Ansi.cyanBright))} ${
+    Ansi.annotate("·", Ansi.color(Ansi.blackBright))
+  } ${Ansi.annotate(section, Ansi.bold, Ansi.color(Ansi.white))}`
 
 export const renderIntroduction = (name: string, version: string, summary: string | undefined): string => {
-  const title = `${Ansi.annotate(name, Ansi.bold, Ansi.cyanBright)} ${Ansi.annotate(`v${version}`, Ansi.white)} ${
-    Ansi.annotate("· Command wizard", Ansi.bold, Ansi.white)
-  }`
+  const title = `${Ansi.annotate(name, Ansi.bold, Ansi.color(Ansi.cyanBright))} ${
+    Ansi.annotate(`v${version}`, Ansi.color(Ansi.white))
+  } ${Ansi.annotate("· Command wizard", Ansi.bold, Ansi.color(Ansi.white))}`
   return [
     title,
     ...(summary === undefined || summary.length === 0 ? [] : [summary]),
-    Ansi.annotate("Build a command interactively. Press Ctrl+C to cancel.", Ansi.blackBright),
+    Ansi.annotate("Build a command interactively. Press Ctrl+C to cancel.", Ansi.color(Ansi.blackBright)),
     ""
   ].join("\n")
 }
@@ -267,7 +267,7 @@ export const renderIntroduction = (name: string, version: string, summary: strin
 export const renderCompletion = (commandLine: ReadonlyArray<string>): string =>
   renderCommandBlock("Command ready", commandLine, Ansi.cyanBright, Ansi.green)
 
-export const renderQuit = (): string => `\n${Ansi.annotate("Wizard cancelled.", Ansi.red)}`
+export const renderQuit = (): string => `\n${Ansi.annotate("Wizard cancelled.", Ansi.color(Ansi.red))}`
 
 const renderCommandBlock = (
   label: string,
@@ -277,8 +277,8 @@ const renderCommandBlock = (
 ): string => {
   const lines = wrapCommand(commandLine)
   return [
-    Ansi.annotate(label, Ansi.bold, labelColor),
-    ...lines.map((line) => Ansi.annotate(line, commandColor)),
+    Ansi.annotate(label, Ansi.bold, Ansi.color(labelColor)),
+    ...lines.map((line) => Ansi.annotate(line, Ansi.color(commandColor))),
     ""
   ].join("\n")
 }
