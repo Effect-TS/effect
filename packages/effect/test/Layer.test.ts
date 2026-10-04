@@ -3,6 +3,7 @@ import { Channel, Context, Fiber, References, Stream, Tracer } from "effect"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Latch from "effect/Latch"
@@ -681,6 +682,105 @@ describe("Layer", () => {
 
         assert.deepStrictEqual(arr, [acquire1, acquire2, acquire2, release2, release2, release1])
       }))
+
+    describe("interruption", () => {
+      class Counter extends Context.Service<Counter, number>()("Counter") {}
+
+      const buildCounter = (layer: Layer.Layer<Counter>, memoMap: Layer.MemoMap) =>
+        Effect.scoped(Effect.flatMap(Effect.scope, (scope) => Layer.buildWithMemoMap(layer, memoMap, scope))).pipe(
+          Effect.map((context) => Context.get(context, Counter))
+        )
+
+      it.effect("interrupting the first requester keeps the build alive for the remaining requester", () =>
+        Effect.gen(function*() {
+          let builds = 0
+          let interrupted = false
+          const started = yield* Latch.make()
+          const release = yield* Latch.make()
+          const memoMap = Layer.makeMemoMapUnsafe()
+          const layer = Layer.effect(
+            Counter,
+            Effect.gen(function*() {
+              builds++
+              yield* started.open
+              yield* release.await
+              return builds
+            }).pipe(Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted = true
+              })
+            ))
+          )
+
+          const first = yield* Effect.forkChild(buildCounter(layer, memoMap), { startImmediately: true })
+          yield* started.await
+          const second = yield* Effect.forkChild(buildCounter(layer, memoMap), { startImmediately: true })
+          yield* Fiber.interrupt(first)
+          assert.isFalse(interrupted)
+
+          yield* release.open
+          assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(1))
+          assert.strictEqual(builds, 1)
+        }))
+
+      it.effect("interrupting every requester interrupts the build and the next request starts fresh", () =>
+        Effect.gen(function*() {
+          let builds = 0
+          const started = yield* Latch.make()
+          const interrupted = yield* Deferred.make<void>()
+          const memoMap = Layer.makeMemoMapUnsafe()
+          const layer = Layer.effect(
+            Counter,
+            Effect.suspend(() => {
+              if (++builds > 1) return Effect.succeed(builds)
+              return started.open.pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
+              )
+            })
+          )
+
+          const first = yield* Effect.forkChild(buildCounter(layer, memoMap), { startImmediately: true })
+          yield* started.await
+          const second = yield* Effect.forkChild(buildCounter(layer, memoMap), { startImmediately: true })
+          yield* Fiber.interrupt(first)
+          assert.isFalse(yield* Deferred.isDone(interrupted))
+          yield* Fiber.interrupt(second)
+          yield* Deferred.await(interrupted)
+
+          assert.strictEqual(yield* buildCounter(layer, memoMap), 2)
+          assert.strictEqual(builds, 2)
+        }))
+
+      it.effect("a request made while an abandoned build is finalizing starts fresh", () =>
+        Effect.gen(function*() {
+          let builds = 0
+          const started = yield* Latch.make()
+          const finalizing = yield* Latch.make()
+          const finishFinalizer = yield* Latch.make()
+          const memoMap = Layer.makeMemoMapUnsafe()
+          const layer = Layer.effect(
+            Counter,
+            Effect.suspend(() => {
+              if (++builds > 1) return Effect.succeed(builds)
+              return started.open.pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() => finalizing.open.pipe(Effect.andThen(finishFinalizer.await)))
+              )
+            })
+          )
+
+          const owner = yield* Effect.forkChild(buildCounter(layer, memoMap), { startImmediately: true })
+          yield* started.await
+          const interruptOwner = yield* Effect.forkChild(Fiber.interrupt(owner), { startImmediately: true })
+          yield* finalizing.await
+          const fresh = yield* Effect.forkChild(buildCounter(layer, memoMap), { startImmediately: true })
+          yield* finishFinalizer.open
+          yield* Fiber.join(interruptOwner)
+
+          assert.deepStrictEqual(yield* Fiber.await(fresh), Exit.succeed(2))
+        }))
+    })
   })
 
   describe("tracing", () => {
