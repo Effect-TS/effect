@@ -188,6 +188,59 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
     }))
 
+  it.effect("keeps reading socket replies after interrupting a stream with a full buffer", () =>
+    Effect.gen(function*() {
+      const consuming = yield* Deferred.make<void>()
+      const incoming = yield* Queue.unbounded<readonly [string]>()
+      const sent = yield* Queue.unbounded<RpcMessage.FromClientEncoded>()
+      const write = (frame: Uint8Array | string | Socket.CloseEvent) =>
+        Effect.sync(() => {
+          assert.isString(frame)
+          return JSON.parse(frame as string) as RpcMessage.FromClientEncoded
+        }).pipe(Effect.flatMap((message) => Queue.offer(sent, message)), Effect.asVoid)
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(incoming),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({
+          write,
+          writeAll: (frames) => Effect.forEach(frames, write, { discard: true })
+        })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const reader = yield* client.Events(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach(() => Deferred.succeed(consuming, void 0).pipe(Effect.andThen(Effect.never))),
+        Effect.forkChild
+      )
+      const streamRequest = yield* Queue.take(sent)
+      assert(streamRequest._tag === "Request")
+      yield* Queue.offer(incoming, [
+        JSON.stringify({ _tag: "Chunk", requestId: streamRequest.id, values: ["a", "b", "c"] }) + "\n"
+      ])
+      // The first element is being consumed; the rest of the chunk exceeds the buffer.
+      yield* Deferred.await(consuming)
+      yield* Fiber.interrupt(reader)
+      let interrupt = yield* Queue.take(sent)
+      while (interrupt._tag === "Ack") interrupt = yield* Queue.take(sent)
+      assert.deepStrictEqual(interrupt, { _tag: "Interrupt", requestId: streamRequest.id })
+
+      const ping = yield* client.Ping().pipe(Effect.timeout("1 second"), Effect.forkChild)
+      const pingRequest = yield* Queue.take(sent)
+      assert(pingRequest._tag === "Request")
+      yield* Queue.offer(incoming, [
+        JSON.stringify({ _tag: "Exit", requestId: pingRequest.id, exit: { _tag: "Success", value: "ok" } }) + "\n"
+      ])
+      yield* TestClock.adjust("1 second")
+      assert.strictEqual(yield* Fiber.join(ping), "ok")
+    }))
+
   for (const consumer of ["queue", "stream"] as const) {
     it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
       Effect.gen(function*() {
