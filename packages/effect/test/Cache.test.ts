@@ -515,6 +515,41 @@ describe("Cache", () => {
           assert.strictEqual(yield* Cache.get(cache, "K1"), 42)
         }))
 
+      it.effect("interrupts the lookup when the caller is interrupted while it starts", () =>
+        Effect.gen(function*() {
+          let lookupCount = 0
+          const lookupStarted = yield* Deferred.make<void>()
+          const lookupInterrupted = yield* Latch.make()
+          const cache = yield* Cache.make<string, number>({
+            capacity: 10,
+            lookup() {
+              lookupCount++
+              // Completing the Deferred synchronously resumes the interrupter
+              // below before Cache.get returns to the caller.
+              return lookupCount === 1 ?
+                Effect.onInterrupt(
+                  Deferred.succeed(lookupStarted, void 0).pipe(Effect.andThen(Effect.never)),
+                  () => lookupInterrupted.open
+                ) :
+                Effect.succeed(42)
+            }
+          })
+
+          let caller: Fiber.Fiber<unknown, unknown> | undefined
+          yield* Deferred.await(lookupStarted).pipe(
+            Effect.andThen(Effect.suspend(() => Fiber.interrupt(caller!))),
+            Effect.forkChild({ startImmediately: true })
+          )
+          const fiber = yield* Effect.withFiber((fiber) => {
+            caller = fiber
+            return Cache.get(cache, "K1")
+          }).pipe(Effect.forkChild({ startImmediately: true }))
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+
+          yield* lookupInterrupted.await
+          assert.strictEqual(yield* Cache.get(cache, "K1"), 42)
+        }))
+
       it.effect("concurrent access - interrupted lookup does not remove a newer set value", () =>
         Effect.gen(function*() {
           const lookupStarted = yield* Latch.make()

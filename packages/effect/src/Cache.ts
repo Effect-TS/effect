@@ -430,7 +430,7 @@ export const get: {
         if (!hasExpired(oentry.value, fiber)) {
           // Move the entry to the end of the map to keep it fresh
           MutableHashMap.set(self.map, key, oentry.value)
-          return oentry.value.await()
+          return awaitEntry(oentry.value, fiber)
         }
       }
       const entry = new EntryImpl(fiber, self.lookup(key))
@@ -461,7 +461,7 @@ export const get: {
       if (Number.isFinite(self.capacity)) {
         checkCapacity(self)
       }
-      return entry.await()
+      return awaitEntry(entry, fiber)
     })
 )
 
@@ -480,15 +480,22 @@ class EntryImpl<A, E> implements Entry<A, E> {
   }
 
   await(): Effect.Effect<A, E> {
-    const exit = this.fiber.pollUnsafe()
-    if (exit) return exit
-    this.awaiters++
-    return effect.onExit(effect.fiberJoin(this.fiber), () => {
-      this.awaiters--
-      if (this.awaiters > 0 || this.fiber.pollUnsafe()) return effect.void
-      return effect.fiberInterrupt(this.fiber)
-    })
+    return core.withFiber((fiber) => awaitEntry(this, fiber))
   }
+}
+
+const awaitEntry = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknown>): Effect.Effect<A, E> => {
+  const exit = entry.fiber.pollUnsafe()
+  if (exit) return exit
+  entry.awaiters++
+  // Register the release on the caller before returning: the lookup can
+  // interrupt the caller while it starts, and the returned effect never runs.
+  effect.onExitUnsafe(fiber, () => {
+    entry.awaiters--
+    if (entry.awaiters > 0 || entry.fiber.pollUnsafe()) return undefined
+    return effect.fiberInterrupt(entry.fiber)
+  })
+  return effect.fiberJoin(entry.fiber)
 }
 
 const hasExpired = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknown>): boolean => {
