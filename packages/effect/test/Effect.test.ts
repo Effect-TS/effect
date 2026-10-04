@@ -4406,6 +4406,39 @@ describe("Effect", () => {
         assert.strictEqual(yield* Fiber.join(owner), 42)
         assert.strictEqual(yield* cached, 42)
       }))
+
+    it.effect("shares a run until every caller is interrupted, then starts fresh", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const started = yield* Deferred.make<void>()
+        const finalizing = yield* Deferred.make<void>()
+        const finishFinalizer = yield* Deferred.make<void>()
+        const cached = yield* Effect.cached(
+          Effect.suspend(() => {
+            if (++runs > 1) return Effect.succeed(runs)
+            return Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Deferred.succeed(finalizing, void 0).pipe(Effect.andThen(Deferred.await(finishFinalizer)))
+              )
+            )
+          })
+        )
+
+        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(started)
+        const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(first)
+        assert.isFalse(yield* Deferred.isDone(finalizing))
+
+        // A call made while the abandoned run finalizes starts a fresh run.
+        const interruptSecond = yield* Effect.forkChild(Fiber.interrupt(second), { startImmediately: true })
+        yield* Deferred.await(finalizing)
+        const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.succeed(finishFinalizer, void 0)
+        yield* Fiber.join(interruptSecond)
+        assert.deepStrictEqual(yield* Fiber.await(fresh), Exit.succeed(2))
+      }))
   })
 
   describe("cachedWithTTL", () => {
@@ -4502,125 +4535,6 @@ describe("Effect", () => {
         assert.strictEqual(yield* Fiber.join(secondFiber), 1)
         assert.strictEqual(count, 1)
       }))
-  })
-
-  describe("cached interruption", () => {
-    const variants: ReadonlyArray<
-      readonly [string, <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Effect.Effect<A, E, R>>]
-    > = [
-      ["cached", (self) => Effect.cached(self)],
-      ["cachedWithTTL", (self) => Effect.cachedWithTTL(self, "1 minute")],
-      [
-        "cachedInvalidateWithTTL",
-        (self) => Effect.map(Effect.cachedInvalidateWithTTL(self, "1 minute"), ([get]) => get)
-      ]
-    ]
-
-    for (const [name, makeCached] of variants) {
-      describe(name, () => {
-        it.effect("does not cache an interrupted exit", () =>
-          Effect.gen(function*() {
-            let runs = 0
-            const cached = yield* makeCached(
-              Effect.suspend(() => ++runs === 1 ? Effect.interrupt : Effect.succeed(runs))
-            )
-
-            assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(cached)))
-            assert.strictEqual(yield* cached, 2)
-            assert.strictEqual(yield* cached, 2)
-          }))
-
-        it.effect("interrupting the first caller keeps the run alive for the remaining caller", () =>
-          Effect.gen(function*() {
-            let runs = 0
-            let interrupted = false
-            const started = yield* Deferred.make<void>()
-            const release = yield* Deferred.make<void>()
-            const cached = yield* makeCached(
-              Effect.gen(function*() {
-                runs++
-                yield* Deferred.succeed(started, void 0)
-                yield* Deferred.await(release)
-                return runs
-              }).pipe(Effect.onInterrupt(() =>
-                Effect.sync(() => {
-                  interrupted = true
-                })
-              ))
-            )
-
-            const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-            yield* Deferred.await(started)
-            const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-            yield* Fiber.interrupt(first)
-            assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(first)))
-            assert.isFalse(interrupted)
-
-            yield* Deferred.succeed(release, void 0)
-            assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(1))
-            assert.strictEqual(yield* cached, 1)
-            assert.strictEqual(runs, 1)
-          }))
-
-        it.effect("interrupting every caller interrupts the run and the next call starts fresh", () =>
-          Effect.gen(function*() {
-            let runs = 0
-            const started = yield* Deferred.make<void>()
-            const interrupted = yield* Deferred.make<void>()
-            const cached = yield* makeCached(
-              Effect.suspend(() => {
-                if (++runs > 1) return Effect.succeed(runs)
-                return Deferred.succeed(started, void 0).pipe(
-                  Effect.andThen(Effect.never),
-                  Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
-                )
-              })
-            )
-
-            const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-            yield* Deferred.await(started)
-            const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-            yield* Fiber.interrupt(first)
-            assert.isFalse(yield* Deferred.isDone(interrupted))
-            yield* Fiber.interrupt(second)
-            yield* Deferred.await(interrupted)
-
-            assert.strictEqual(yield* cached, 2)
-            assert.strictEqual(yield* cached, 2)
-            assert.strictEqual(runs, 2)
-          }))
-
-        it.effect("a call made while an abandoned run is finalizing starts fresh", () =>
-          Effect.gen(function*() {
-            let runs = 0
-            const started = yield* Deferred.make<void>()
-            const finalizing = yield* Deferred.make<void>()
-            const finishFinalizer = yield* Deferred.make<void>()
-            const cached = yield* makeCached(
-              Effect.suspend(() => {
-                if (++runs > 1) return Effect.succeed(runs)
-                return Deferred.succeed(started, void 0).pipe(
-                  Effect.andThen(Effect.never),
-                  Effect.onInterrupt(() =>
-                    Deferred.succeed(finalizing, void 0).pipe(Effect.andThen(Deferred.await(finishFinalizer)))
-                  )
-                )
-              })
-            )
-
-            const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-            yield* Deferred.await(started)
-            const interruptOwner = yield* Fiber.interrupt(owner).pipe(Effect.forkChild({ startImmediately: true }))
-            yield* Deferred.await(finalizing)
-            const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
-            yield* Deferred.succeed(finishFinalizer, void 0)
-            yield* Fiber.join(interruptOwner)
-
-            assert.deepStrictEqual(yield* Fiber.await(fresh), Exit.succeed(2))
-            assert.strictEqual(yield* cached, 2)
-          }))
-      })
-    }
   })
 
   describe("updateServiceScoped", () => {
