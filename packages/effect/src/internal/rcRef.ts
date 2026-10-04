@@ -21,6 +21,9 @@ declare namespace State {
     readonly _tag: "Acquiring"
     fiber: Fiber.Fiber<Acquired<A>, unknown> | undefined
     awaiters: number
+    // Set once references are allocated to the waiters, which can happen
+    // before the acquisition fiber exits.
+    acquired: Acquired<A> | undefined
   }
 
   interface Acquired<A> {
@@ -121,7 +124,12 @@ const getState = <A, E>(
     }
     case "Empty": {
       // The caller that starts the acquisition counts as its first awaiter.
-      const acquiring: State.Acquiring<A> = { _tag: "Acquiring", fiber: undefined, awaiters: 1 }
+      const acquiring: State.Acquiring<A> = {
+        _tag: "Acquiring",
+        fiber: undefined,
+        awaiters: 1,
+        acquired: undefined
+      }
       self.state = acquiring
       const scope = Scope.makeUnsafe()
       // Acquire on a detached fiber so the acquisition is shared by every
@@ -145,6 +153,7 @@ const getState = <A, E>(
             invalidated: false
           }
           self.state = state
+          acquiring.acquired = state
           return Effect.succeed(state)
         }),
         Effect.onExit((exit) => {
@@ -172,17 +181,19 @@ const awaitAcquiring = <A, E>(
   Effect.onExit(
     restore(Fiber.join(fiber)) as Effect.Effect<State.Acquired<A>, E>,
     (exit) => {
-      const result = fiber.pollUnsafe()
-      if (result === undefined) {
-        if (--acquiring.awaiters > 0) return Effect.void
-        // Detach the abandoned acquisition first so new callers start a fresh
-        // one instead of joining one that is being interrupted.
-        if (self.state === acquiring) self.state = stateEmpty
-        return Fiber.interrupt(fiber)
+      const acquired = acquiring.acquired
+      if (acquired !== undefined) {
+        // The acquisition counted this caller as a reference, possibly before
+        // its fiber exited. Release it if the caller was interrupted before it
+        // could register its finalizer.
+        return Exit.isFailure(exit) ? release(self, acquired) : Effect.void
       }
-      // The acquisition counted this caller as a reference. Release it if the
-      // caller was interrupted before it could register its finalizer.
-      return Exit.isSuccess(result) && Exit.isFailure(exit) ? release(self, result.value) : Effect.void
+      // A failed acquisition allocated no references.
+      if (fiber.pollUnsafe() !== undefined || --acquiring.awaiters > 0) return Effect.void
+      // Detach the abandoned acquisition first so new callers start a fresh
+      // one instead of joining one that is being interrupted.
+      if (self.state === acquiring) self.state = stateEmpty
+      return Fiber.interrupt(fiber)
     }
   )
 
