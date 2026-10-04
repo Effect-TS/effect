@@ -48,6 +48,7 @@ describe("OpenAiSchema", () => {
       null,
       { type: "unknown" },
       { type: "cache_miss", cache_missed_tokens: 2048 },
+      { type: "cache_miss", reason: "tools_changed" },
       { type: "cache_miss", reason: "unknown", cache_missed_tokens: 2048 },
       { type: "cache_miss", reason: "tools_changed", cache_missed_tokens: "2048" },
       { type: "cache_miss", reason: "tools_changed", cache_missed_tokens: 2048, comparison_reusable_tokens: null }

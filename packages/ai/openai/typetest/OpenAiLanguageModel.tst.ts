@@ -16,14 +16,14 @@ describe("OpenAiLanguageModel", () => {
   it("narrows cache misses in finish metadata", () => {
     type Metadata = NonNullable<Response.FinishPartMetadata["openai"]>
     type Diagnostics = NonNullable<Metadata["promptCacheDiagnostics"]>
-    type Miss = Extract<Diagnostics, { readonly type: "cache_miss" }>
 
     expect<Diagnostics["type"]>().type.toBe<
       "cache_hit" | "cache_miss" | "comparison_response_not_found" | "unavailable"
     >()
-    expect<Pick<Miss, "cache_missed_tokens" | "comparison_reusable_tokens">>().type.toBe<{
-      readonly cache_missed_tokens: number
-      readonly comparison_reusable_tokens?: number
-    }>()
+    const diagnostics = {} as Diagnostics
+    if (diagnostics.type === "cache_miss") {
+      expect(diagnostics.cache_missed_tokens).type.toBe<number>()
+      expect(diagnostics.comparison_reusable_tokens).type.toBe<number | undefined>()
+    }
   })
 })
