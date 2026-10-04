@@ -1392,7 +1392,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Effect.sandbox,
       Effect.tapError(Effect.logError),
       Effect.retry(Schedule.spaced(500)),
-      Effect.andThen(writeRequest(0, constEof)),
+      Effect.andThen(() => writeRequest(0, constEof)),
       Effect.forkScoped
     )
 
