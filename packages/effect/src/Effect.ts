@@ -7224,8 +7224,8 @@ export const cachedWithTTL: {
 } = internal.cachedWithTTL
 
 /**
- * Creates a cached effect result for a specified duration and allows manual
- * invalidation before expiration.
+ * Creates a cached effect result for a fixed duration or a duration computed
+ * from its `Exit` and allows manual invalidation before expiration.
  *
  * **When to use**
  *
@@ -7282,8 +7282,17 @@ export const cachedWithTTL: {
  * @since 2.0.0
  */
 export const cachedInvalidateWithTTL: {
+  <A, E>(
+    timeToLive: (exit: Exit.Exit<A, E>) => Duration.Input
+  ): <R>(self: Effect<A, E, R>) => Effect<[Effect<A, E, R>, Effect<void>]>
   (timeToLive: Duration.Input): <A, E, R>(self: Effect<A, E, R>) => Effect<[Effect<A, E, R>, Effect<void>]>
-  <A, E, R>(self: Effect<A, E, R>, timeToLive: Duration.Input): Effect<[Effect<A, E, R>, Effect<void>]>
+  <A, E>(
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): <R>(self: Effect<A, E, R>) => Effect<[Effect<A, E, R>, Effect<void>]>
+  <A, E, R>(
+    self: Effect<A, E, R>,
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): Effect<[Effect<A, E, R>, Effect<void>]>
 } = internal.cachedInvalidateWithTTL
 
 // -----------------------------------------------------------------------------
