@@ -558,8 +558,7 @@ declare module "effect/ai/Response" {
        */
       readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | null
       /**
-       * The prompt cache comparison result requested through
-       * `prompt_cache_options.comparison_response_id`.
+       * Prompt cache diagnostics for `prompt_cache_options.comparison_response_id`.
        */
       readonly promptCacheDiagnostics?: OpenAiSchema.PromptCacheDiagnostics
     } | null

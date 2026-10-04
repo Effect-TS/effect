@@ -887,12 +887,11 @@ const ResponseError = Schema.Struct({
 })
 
 /**
- * Schema for prompt cache diagnostics comparing a response with an earlier response.
+ * Schema for prompt cache diagnostics comparing two responses.
  *
  * **Details**
  *
- * Cache misses include a reason and estimated missed-token count, with an optional
- * reusable-prefix count. These estimates are separate from response usage.
+ * Cache misses report a reason and token estimates, separate from response usage.
  *
  * @category schemas
  * @since 4.0.0
