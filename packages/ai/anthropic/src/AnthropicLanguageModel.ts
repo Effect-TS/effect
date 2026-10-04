@@ -884,11 +884,14 @@ const prepareMessages = Effect.fnUntraced(
 
     let system: Array<typeof Generated.BetaRequestTextBlock.Encoded> | undefined = undefined
     const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
+    const allSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
     let pendingSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
+    let inlineSystem = capabilities.supportsMidConversationSystemMessages
 
     // A mid-conversation system message must directly follow a user turn and
     // precede the next assistant turn, so later instructions are deferred until
-    // then. Instructions that cannot be placed fall back to the top-level field.
+    // then. Inline instructions take precedence over the top-level field, so if
+    // any cannot be placed, every instruction falls back to the top-level field.
     const flushPendingSystem = () => {
       if (pendingSystem.length === 0) {
         return
@@ -896,8 +899,7 @@ const prepareMessages = Effect.fnUntraced(
       if (messages.at(-1)?.role === "user") {
         messages.push({ role: "system", content: pendingSystem })
       } else {
-        system ??= []
-        system.push(...pendingSystem)
+        inlineSystem = false
       }
       pendingSystem = []
     }
@@ -917,9 +919,9 @@ const prepareMessages = Effect.fnUntraced(
             text: message.content,
             cache_control: getCacheControl(message)
           }))
-          if (i === 0 || !capabilities.supportsMidConversationSystemMessages) {
-            system ??= []
-            system.push(...content)
+          allSystem.push(...content)
+          if (i === 0) {
+            system = content
           } else {
             pendingSystem.push(...content)
           }
@@ -1295,6 +1297,9 @@ const prepareMessages = Effect.fnUntraced(
 
     flushPendingSystem()
 
+    if (!inlineSystem && allSystem.length > 0) {
+      return { system: allSystem, messages: messages.filter((message) => message.role !== "system") }
+    }
     return { system, messages }
   }
 )
