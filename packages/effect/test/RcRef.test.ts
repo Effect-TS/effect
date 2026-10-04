@@ -382,4 +382,92 @@ describe("RcRef", () => {
       yield* Fiber.join(close)
       assert.strictEqual(released, 2)
     }))
+
+  describe("interruption", () => {
+    it.effect("interrupting the first get keeps the acquisition alive for the remaining get", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        let interrupted = false
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const ref = yield* RcRef.make({
+          acquire: Effect.gen(function*() {
+            acquired++
+            yield* Deferred.succeed(started, void 0)
+            yield* Deferred.await(release)
+            return acquired
+          }).pipe(Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              interrupted = true
+            })
+          ))
+        })
+
+        const first = yield* Effect.forkChild(Effect.scoped(RcRef.get(ref)), { startImmediately: true })
+        yield* Deferred.await(started)
+        const second = yield* Effect.forkChild(Effect.scoped(RcRef.get(ref)), { startImmediately: true })
+        yield* Fiber.interrupt(first)
+        assert.isFalse(interrupted)
+
+        yield* Deferred.succeed(release, void 0)
+        assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(1))
+        assert.strictEqual(acquired, 1)
+      }))
+
+    it.effect("interrupting every get interrupts the acquisition and the next get starts fresh", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const started = yield* Deferred.make<void>()
+        const interrupted = yield* Deferred.make<void>()
+        const ref = yield* RcRef.make({
+          acquire: Effect.suspend(() => {
+            if (++acquired > 1) return Effect.succeed(acquired)
+            return Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0))
+            )
+          })
+        })
+
+        const first = yield* Effect.forkChild(Effect.scoped(RcRef.get(ref)), { startImmediately: true })
+        yield* Deferred.await(started)
+        const second = yield* Effect.forkChild(Effect.scoped(RcRef.get(ref)), { startImmediately: true })
+        yield* Fiber.interrupt(first)
+        assert.isFalse(yield* Deferred.isDone(interrupted))
+        yield* Fiber.interrupt(second)
+        yield* Deferred.await(interrupted)
+
+        assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), 2)
+        assert.strictEqual(acquired, 2)
+      }))
+
+    it.effect("a get made while an abandoned acquisition is finalizing starts fresh", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const started = yield* Deferred.make<void>()
+        const finalizing = yield* Deferred.make<void>()
+        const finishFinalizer = yield* Deferred.make<void>()
+        const ref = yield* RcRef.make({
+          acquire: Effect.suspend(() => {
+            if (++acquired > 1) return Effect.succeed(acquired)
+            return Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Deferred.succeed(finalizing, void 0).pipe(Effect.andThen(Deferred.await(finishFinalizer)))
+              )
+            )
+          })
+        })
+
+        const owner = yield* Effect.forkChild(Effect.scoped(RcRef.get(ref)), { startImmediately: true })
+        yield* Deferred.await(started)
+        const interruptOwner = yield* Effect.forkChild(Fiber.interrupt(owner), { startImmediately: true })
+        yield* Deferred.await(finalizing)
+        const fresh = yield* Effect.forkChild(Effect.scoped(RcRef.get(ref)), { startImmediately: true })
+        yield* Deferred.succeed(finishFinalizer, void 0)
+        yield* Fiber.join(interruptOwner)
+
+        assert.deepStrictEqual(yield* Fiber.await(fresh), Exit.succeed(2))
+      }))
+  })
 })
