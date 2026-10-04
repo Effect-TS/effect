@@ -53,25 +53,19 @@ describe("RpcServer", () => {
       Effect.gen(function*() {
         const started = yield* Deferred.make<void>()
         const finishRequest = yield* Deferred.make<void>()
-        const writeStarted = yield* Deferred.make<void>()
-        const finishWrite = yield* Deferred.make<void>()
-        const output = yield* Ref.make<Array<string>>([])
+        const output: Array<string> = []
         const group = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}), success: Schema.String }))
         const stdio = Stdio.layerTest({
           stdin: Stream.make(
-            new TextEncoder().encode("{\"_tag\":\"Request\",\"id\":1,\"tag\":\"wait\",\"payload\":{},\"headers\":[]}\n")
+            new TextEncoder().encode(
+              `{"_tag":"Request","id":1,"tag":"wait","payload":{},"headers":[]}\n`
+            )
           ).pipe(
             Stream.concat(
               waitUntilStarted ? Stream.fromEffect(Deferred.await(started)).pipe(Stream.drain) : Stream.empty
             )
           ),
-          stdout: () =>
-            Sink.forEach((data) =>
-              Deferred.succeed(writeStarted, undefined).pipe(
-                Effect.andThen(Deferred.await(finishWrite)),
-                Effect.andThen(Ref.update(output, (chunks) => [...chunks, String(data)]))
-              )
-            )
+          stdout: () => Sink.forEach((data) => Effect.sync(() => output.push(String(data))))
         })
         const server = yield* Layer.launch(
           RpcServer.layer(group).pipe(
@@ -86,20 +80,44 @@ describe("RpcServer", () => {
           )
         ).pipe(Effect.forkScoped)
         yield* Deferred.await(started)
-        yield* Effect.yieldNow
-        assert.isUndefined(server.pollUnsafe())
         yield* Deferred.succeed(finishRequest, undefined)
-        yield* Deferred.await(writeStarted)
-        assert.isUndefined(server.pollUnsafe())
-        assert.deepStrictEqual(yield* Ref.get(output), [])
-        yield* Deferred.succeed(finishWrite, undefined)
         yield* Fiber.await(server)
-        const messages = (yield* Ref.get(output)).join("").trim().split("\n").map((line) => JSON.parse(line))
-        assert.lengthOf(messages, 1)
-        assert.strictEqual(messages[0]._tag, "Exit")
-        assert.strictEqual(messages[0].exit.value, "finished")
+        assert.deepStrictEqual(output.join("").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)), [
+          { _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: "finished" } }
+        ])
       }))
   }
+
+  it.effect("should wait for a blocked STDIO write before shutting down", () =>
+    Effect.gen(function*() {
+      const writeStarted = yield* Deferred.make<void>()
+      const finishWrite = yield* Deferred.make<void>()
+      const output: Array<string> = []
+      const server = yield* Layer.launch(
+        RpcServer.layer(RpcGroup.make()).pipe(
+          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.make(new TextEncoder().encode(`{"_tag":"Ping"}\n`)),
+            stdout: () =>
+              Sink.forEach((data) =>
+                Deferred.succeed(writeStarted, undefined).pipe(
+                  Effect.andThen(Deferred.await(finishWrite)),
+                  Effect.andThen(Effect.sync(() => output.push(String(data))))
+                )
+              )
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Deferred.await(writeStarted)
+      yield* Effect.yieldNow
+      assert.isUndefined(server.pollUnsafe())
+      yield* Deferred.succeed(finishWrite, undefined)
+      yield* Fiber.await(server)
+      assert.deepStrictEqual(output.join("").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)), [{
+        _tag: "Pong"
+      }])
+    }))
 
   it.effect("should shut down on empty stdin", () =>
     Effect.gen(function*() {
