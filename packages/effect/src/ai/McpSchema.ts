@@ -89,7 +89,7 @@ export const optional = <S extends Schema.Constraint>(
 ): Schema.decodeTo<Schema.toType<Schema.optional<S>>, Schema.optionalKey<S>> =>
   Schema.optionalKey(schema).pipe(
     Schema.decodeTo(Schema.toType(Schema.optional(schema)), {
-      decode: SchemaGetter.passthrough() as any,
+      decode: SchemaGetter.passthrough(),
       encode: SchemaGetter.transformOptional(Option.flatMap(Option.fromUndefinedOr))
     })
   )
