@@ -440,6 +440,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
+      tinybench:
+        specifier: ^6.2.0
+        version: 6.2.0
 
   packages/platform/deno:
     dependencies:
@@ -474,6 +477,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
+      tinybench:
+        specifier: ^6.2.0
+        version: 6.2.0
 
   packages/platform/node:
     dependencies:
