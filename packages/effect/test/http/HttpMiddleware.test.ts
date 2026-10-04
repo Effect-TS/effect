@@ -116,6 +116,45 @@ describe("HttpMiddleware", () => {
   })
 
   describe("logger", () => {
+    it.effect("logs client aborts as sent responses with status 499", () =>
+      Effect.gen(function*() {
+        const logs: Array<{
+          message: unknown
+          cause: Cause.Cause<unknown>
+          level: string
+          annotations: Record<string, unknown>
+        }> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logs.push({
+            message: options.message,
+            cause: options.cause,
+            level: options.logLevel,
+            annotations: { ...options.fiber.getRef(References.CurrentLogAnnotations) }
+          })
+        })
+        const started = Promise.withResolvers<void>()
+        const handler = HttpEffect.toWebHandler(
+          Effect.interruptible(Effect.andThen(Effect.sync(() => started.resolve()), Effect.never)),
+          (app) => HttpMiddleware.logger(app).pipe(Effect.provide(Logger.layer([logger])))
+        )
+        const controller = new AbortController()
+        const pending = handler(new Request("http://localhost/slow", { signal: controller.signal }))
+        yield* Effect.promise(() => started.promise)
+        controller.abort()
+        const response = yield* Effect.promise(() => pending)
+
+        assert.strictEqual(response.status, 499)
+        assert.strictEqual(logs.length, 1)
+        assert.deepStrictEqual(logs[0].annotations, {
+          "http.method": "GET",
+          "http.url": "/slow",
+          "http.status": 499
+        })
+        assert.strictEqual(logs[0].level, "Info")
+        assert.deepStrictEqual(logs[0].message, ["Sent HTTP response"])
+        assert.deepStrictEqual(logs[0].cause, Cause.empty)
+      }))
+
     it.effect("annotates method, path, and status without query or hash", () =>
       Effect.gen(function*() {
         const annotations: Array<Record<string, unknown>> = []
