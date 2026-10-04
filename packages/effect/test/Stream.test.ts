@@ -2587,19 +2587,11 @@ describe("Stream", () => {
   })
 
   describe("aggregateWithin", () => {
-    it.effect("does not grow the fiber continuation stack while upstream is idle", () =>
+    it.effect("does not step the schedule while upstream is idle", () =>
       Effect.gen(function*() {
-        const continuationCounts: Array<number> = []
+        let steps = 0
         const schedule = Schedule.spaced("10 millis").pipe(
-          Schedule.tap(() =>
-            Effect.withFiber((fiber) =>
-              Effect.sync(() => {
-                continuationCounts.push(
-                  (fiber as unknown as { readonly _stack: ReadonlyArray<unknown> })._stack.length
-                )
-              })
-            )
-          )
+          Schedule.tap(() => Effect.sync(() => steps++))
         )
         const fiber = yield* Stream.never.pipe(
           Stream.aggregateWithin(Sink.take(25), schedule),
@@ -2607,9 +2599,47 @@ describe("Stream", () => {
           Effect.forkChild({ startImmediately: true })
         )
         yield* TestClock.adjust("1 second")
-        assert.isAbove(continuationCounts.length, 1)
-        assert.strictEqual(continuationCounts.at(-1), continuationCounts[0])
+        assert.strictEqual(steps, 0)
         yield* Fiber.interrupt(fiber)
+      }))
+
+    it.effect("schedule exhaustion drains sink leftovers without pulling more upstream", () =>
+      Effect.gen(function*() {
+        let pulls = 0
+        const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(
+          Stream.concat(Stream.fromEffect(Effect.sync(() => ++pulls))),
+          Stream.aggregateWithin(
+            Sink.take(2).pipe(Sink.mapEffect((batch) => Effect.as(Effect.yieldNow, batch))),
+            Schedule.forever.pipe(Schedule.upTo({ times: 0 }))
+          ),
+          Stream.runCollect
+        )
+
+        assert.strictEqual(pulls, 0)
+        assert.deepStrictEqual(result, [[1, 2], [3, 4], [5]])
+      }))
+
+    it.effect("groupedWithin starts each window at its first element", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        const batches: Array<[number, ReadonlyArray<number>]> = []
+        yield* Stream.fromQueue(queue).pipe(
+          Stream.groupedWithin(10, "100 millis"),
+          Stream.runForEach((batch) =>
+            Effect.flatMap(Clock.currentTimeMillis, (now) => Effect.sync(() => batches.push([now, batch])))
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* TestClock.adjust("1030 millis")
+        yield* Queue.offer(queue, 1)
+        yield* TestClock.adjust("50 millis")
+        yield* Queue.offer(queue, 2)
+        yield* TestClock.adjust("1000 millis")
+        yield* Queue.offer(queue, 3)
+        yield* TestClock.adjust("100 millis")
+
+        deepStrictEqual(batches, [[1130, [1, 2]], [2180, [3]]])
       }))
 
     it.effect("groupedWithin does not emit empty arrays when upstream is idle", () =>
