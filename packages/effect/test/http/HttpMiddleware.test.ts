@@ -7,8 +7,10 @@ import * as Fiber from "effect/Fiber"
 import * as Headers from "effect/http/Headers"
 import * as HttpEffect from "effect/http/HttpEffect"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as Latch from "effect/Latch"
 import * as Logger from "effect/Logger"
 import * as References from "effect/References"
 import * as Scheduler from "effect/Scheduler"
@@ -116,6 +118,100 @@ describe("HttpMiddleware", () => {
   })
 
   describe("logger", () => {
+    it.effect("logs an aborted Web request without an interrupt cause", () =>
+      Effect.gen(function*() {
+        const started = Latch.makeUnsafe()
+        const logged = Latch.makeUnsafe()
+        const messages: Array<unknown> = []
+        const causes: Array<Cause.Cause<unknown>> = []
+        const annotations: Array<Record<string, unknown>> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          messages.push(options.message)
+          causes.push(options.cause)
+          annotations.push({ ...options.fiber.getRef(References.CurrentLogAnnotations) })
+          logged.openUnsafe()
+        })
+        yield* Effect.gen(function*() {
+          const context = yield* Effect.context<never>()
+          const handler = HttpEffect.toWebHandlerWith(context)(
+            Effect.andThen(started.open, Effect.never).pipe(Effect.interruptible),
+            HttpMiddleware.logger
+          )
+          const controller = new AbortController()
+          const response = handler(
+            new Request("http://localhost/slow?secret=hidden", {
+              signal: controller.signal
+            })
+          )
+          yield* started.await
+          controller.abort()
+          assert.strictEqual((yield* Effect.promise(() => response)).status, 499)
+          yield* logged.await
+        }).pipe(Effect.provide(Logger.layer([logger])))
+        assert.deepStrictEqual(messages, [["Sent HTTP response"]])
+        assert.deepStrictEqual(causes[0]?.reasons, [])
+        assert.deepStrictEqual(annotations, [{
+          "http.method": "GET",
+          "http.url": "/slow",
+          "http.status": 499
+        }])
+      }))
+
+    it.effect.each([
+      {
+        name: "server cancellation",
+        cause: Cause.interrupt(1),
+        status: 503,
+        reasons: ["Interrupt"]
+      },
+      {
+        name: "failure combined with client abort",
+        cause: Cause.combine(
+          Cause.fail("handler failed"),
+          Cause.annotate(Cause.interrupt(1), HttpServerError.ClientAbort.annotation)
+        ),
+        status: 500,
+        reasons: ["Fail"]
+      },
+      {
+        name: "defect combined with client abort",
+        cause: Cause.combine(
+          Cause.die("handler defect"),
+          Cause.annotate(Cause.interrupt(1), HttpServerError.ClientAbort.annotation)
+        ),
+        status: 500,
+        reasons: ["Die"]
+      }
+    ])("retains diagnostics for $name", ({ cause, reasons, status }) =>
+      Effect.gen(function*() {
+        const messages: Array<unknown> = []
+        const causes: Array<Cause.Cause<unknown>> = []
+        const annotations: Array<Record<string, unknown>> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          messages.push(options.message)
+          causes.push(options.cause)
+          annotations.push({ ...options.fiber.getRef(References.CurrentLogAnnotations) })
+        })
+        const [, mappedCause] = yield* HttpServerError.causeResponse(cause)
+        const exit = yield* HttpMiddleware.logger(Effect.failCause(mappedCause)).pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost/failure"))
+          ),
+          Effect.provide(Logger.layer([logger])),
+          Effect.exit
+        )
+        assert.isTrue(Exit.isFailure(exit))
+        assert.deepStrictEqual(exit, Exit.failCause(mappedCause))
+        assert.strictEqual(annotations[0]?.["http.status"], status)
+        assert.strictEqual(messages.length, 1)
+        assert.deepStrictEqual(messages, [[]])
+        assert.deepStrictEqual(
+          causes[0]?.reasons.map((reason) => reason._tag),
+          reasons
+        )
+      }))
+
     it.effect("annotates method, path, and status without query or hash", () =>
       Effect.gen(function*() {
         const annotations: Array<Record<string, unknown>> = []
