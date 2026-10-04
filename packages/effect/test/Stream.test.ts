@@ -2654,6 +2654,22 @@ describe("Stream", () => {
         yield* Fiber.join(fiber)
       }))
 
+    it.effect("schedule exhaustion drains sink leftovers without pulling more upstream", () =>
+      Effect.gen(function*() {
+        let pulls = 0
+        const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(
+          Stream.concat(Stream.fromEffect(Effect.sync(() => ++pulls))),
+          Stream.aggregateWithin(
+            Sink.take(2).pipe(Sink.mapEffect((batch) => Effect.as(Effect.yieldNow, batch))),
+            Schedule.forever.pipe(Schedule.upTo({ times: 0 }))
+          ),
+          Stream.runCollect
+        )
+
+        assert.strictEqual(pulls, 0)
+        assert.deepStrictEqual(result, [[1, 2], [3, 4], [5]])
+      }))
+
     it.effect("exponential schedules retain state between aggregations", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.unbounded<number>()
