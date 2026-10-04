@@ -8870,78 +8870,63 @@ export const aggregateWithin: {
       Effect.forkIn(scope)
     )
 
-    // Pause the schedule clock between aggregations.
+    // The schedule is stepped once an aggregation has input, and only sees
+    // time spent aggregating.
     const clock = yield* Clock
     const step = yield* Schedule.toStep(schedule)
     const hasInput = Latch.makeUnsafe(false)
+    let scheduleTime = clock.currentTimeMillisUnsafe()
+    let openedAt = 0
     let lastOutput = Option.none<B>()
     let leftover: Arr.NonEmptyReadonlyArray<A2> | undefined
-    let scheduleDone = false
-    let pausedAt: number | undefined
-    let pausedMillis = 0
-    const onInput = () => {
-      if (pausedAt !== undefined) {
-        pausedMillis += clock.currentTimeMillisUnsafe() - pausedAt
-        pausedAt = undefined
+    const onInput = <X>(chunk: X): Effect.Effect<X> => {
+      if (hasInput.openUnsafe()) {
+        openedAt = clock.currentTimeMillisUnsafe()
       }
-      hasInput.openUnsafe()
+      return Effect.succeed(chunk)
     }
     const stepToBuffer: Pull.Pull<never, E3, void, R3> = hasInput.await.pipe(
-      Effect.flatMap(() => step(clock.currentTimeMillisUnsafe() - pausedMillis, lastOutput)),
+      Effect.flatMap(() => step(scheduleTime, lastOutput)),
       Effect.flatMap(([, delay]) => Effect.sleep(delay)),
-      Pull.catchDone(() => {
-        scheduleDone = true
-        return Effect.void
-      }),
       Effect.flatMap(() => Queue.offer(buffer, scheduleStep)),
+      // When the schedule ends, so does the buffer: the sink drains what it
+      // already has without pulling more from upstream.
+      Pull.catchDone(() => Queue.end(buffer)),
       Effect.flatMap(() => Effect.never)
-    )
-
-    const pullFromBuffer: Pull.Pull<
-      Arr.NonEmptyReadonlyArray<A>,
-      E
-    > = Queue.take(buffer).pipe(
-      Effect.flatMap((arr) => {
-        if (arr === scheduleStep) {
-          return Cause.done()
-        }
-        onInput()
-        return Effect.succeed(arr)
-      })
     )
 
     const sinkUpstream = Effect.suspend((): Pull.Pull<Arr.NonEmptyReadonlyArray<A | A2>, E> => {
       if (leftover !== undefined) {
         const chunk = leftover
         leftover = undefined
-        onInput()
-        return Effect.succeed(chunk)
-      } else if (scheduleDone) {
+        return onInput(chunk)
+      }
+      if (buffer.state._tag === "Open") {
+        pullLatch.openUnsafe()
+      }
+      return Effect.flatMap(Queue.take(buffer), (arr) => arr === scheduleStep ? Cause.done() : onInput(arr))
+    })
+    const emit = Effect.flatMap(([value, leftover_]: Sink.End<B, A2>) => {
+      if (hasInput.isOpen()) {
+        scheduleTime += clock.currentTimeMillisUnsafe() - openedAt
+      } else if (buffer.state._tag === "Done") {
+        // Upstream ended before this aggregation received input.
         return Cause.done()
       }
-      pullLatch.openUnsafe()
-      return pullFromBuffer
-    })
-    const catchSinkHalt = Effect.flatMap(([value, leftover_]: Sink.End<B, A2>) => {
-      // Suppress the sink result if upstream ended without input.
-      if (!hasInput.isOpen() && buffer.state._tag === "Done") return Cause.done()
-      pausedAt = clock.currentTimeMillisUnsafe()
       lastOutput = Option.some(value)
       leftover = leftover_
       return Effect.succeed(Arr.of(value))
     })
 
     return Effect.suspend((): Pull.Pull<Arr.NonEmptyReadonlyArray<B>, E | E2 | E3, void, R2 | R3> => {
-      if (leftover === undefined) {
-        if (scheduleDone) return Cause.done()
-        if (buffer.state._tag === "Done") {
-          return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
-        }
+      if (buffer.state._tag === "Done" && leftover === undefined) {
+        return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
       }
       hasInput.closeUnsafe()
-      const pull = catchSinkHalt(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
-      // Drain leftovers without racing an exhausted schedule.
-      return scheduleDone ? pull : Effect.raceFirst(pull, stepToBuffer)
+      const pull = emit(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
+      // Once the buffer is done no more input can arrive, so the schedule is
+      // not needed to end the aggregation.
+      return buffer.state._tag === "Open" ? Effect.raceFirst(pull, stepToBuffer) : pull
     })
   }))))
 
