@@ -259,10 +259,7 @@ export const makeUpgradeHandler = <
         if (nodeResponse_ === undefined) {
           nodeResponse_ = new Http.ServerResponse(nodeRequest)
           if (upgraded || socket.destroyed) {
-            // The connection now carries WebSocket frames — or the socket is
-            // already gone (refused upgrade, HEAD on a closed socket, #8721)
-            // — so end the response before a socket is assigned to it to make
-            // handleResponse skip the write (writableEnded check).
+            // End without assigning the socket so handleResponse skips HTTP writes.
             nodeResponse_.end()
           } else {
             nodeResponse_.assignSocket(socket as any)
@@ -278,9 +275,7 @@ export const makeUpgradeHandler = <
         (wss) =>
           Effect.acquireRelease(
             Effect.callback<NodeWS.WebSocket, Socket.SocketError>((resume) => {
-              // `ws` never calls the upgrade callback when it refuses the
-              // handshake (#8721) — fail on socket close so the request
-              // ends instead of hanging a fiber past server shutdown.
+              // Refused handshakes never call the upgrade callback, so fail on close.
               const onClose = () =>
                 resume(Effect.fail(
                   new Socket.SocketError({
