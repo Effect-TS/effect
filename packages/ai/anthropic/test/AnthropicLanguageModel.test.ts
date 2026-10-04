@@ -1211,6 +1211,120 @@ describe("AnthropicLanguageModel", () => {
       }))
   })
 
+  describe("system messages", () => {
+    const getRequest = (
+      model: string,
+      prompt: Prompt.RawInput,
+      config?: { readonly midConversationSystemMessages?: boolean | undefined }
+    ) =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model,
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
+          Effect.provide(AnthropicLanguageModel.model(model, config)),
+          Effect.provide(layer)
+        )
+
+        if (capturedRequest === undefined) {
+          return yield* Effect.die(new Error("Expected a captured request"))
+        }
+        return yield* getRequestBody(capturedRequest)
+      })
+
+    const conversation = Prompt.make([
+      { role: "system", content: "A" },
+      { role: "user", content: "Question 1" },
+      { role: "assistant", content: "Answer 1" },
+      { role: "system", content: "B" },
+      { role: "user", content: "Question 2" }
+    ])
+
+    it.effect("sends later system messages after the next user turn", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-5-5", conversation)
+
+        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A"])
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), [
+          "user",
+          "assistant",
+          "user",
+          "system"
+        ])
+        assert.deepStrictEqual(body.messages.at(-1), {
+          role: "system",
+          content: [{ type: "text", text: "B", cache_control: null }]
+        })
+      }))
+
+    it.effect("sends every system message top-level when disabled", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-5-5", conversation, { midConversationSystemMessages: false })
+
+        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B"])
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant", "user"])
+        assert.notProperty(body, "midConversationSystemMessages")
+      }))
+
+    it.effect("sends every system message top-level in order when one cannot follow a user turn", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest(
+          "claude-sonnet-5-5",
+          Prompt.make([
+            { role: "system", content: "A" },
+            { role: "user", content: "Question" },
+            { role: "system", content: "B" },
+            { role: "assistant", content: "Answer" },
+            { role: "system", content: "C" }
+          ])
+        )
+
+        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B", "C"])
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant"])
+      }))
+
+    it.effect("reports support for the requested model", () =>
+      Effect.gen(function*() {
+        const model = yield* LanguageModel.LanguageModel
+
+        assert.isTrue(yield* model.supportsSystemMessagesInHistory!)
+        assert.isFalse(
+          yield* model.supportsSystemMessagesInHistory!.pipe(
+            AnthropicLanguageModel.withConfigOverride({ model: "claude-sonnet-5" })
+          )
+        )
+      }).pipe(
+        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-5-5")),
+        Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+        Effect.provide(Layer.succeed(HttpClient.HttpClient, makeHttpClient(() => Effect.die("unexpected request"))))
+      ))
+  })
+
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
   // `providerName: "memory"`, and is a client-executed provider tool. These
   // tests cover the round-trip that was broken on beta.98 (see #2615):
