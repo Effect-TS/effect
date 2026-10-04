@@ -273,6 +273,9 @@ export interface Tool<
    */
   readonly annotations: Context.Context<never>
 
+  /** Service keys declared by `Tool.make`. */
+  readonly dependencies?: ReadonlyArray<Context.Key<any, any>> | undefined
+
   /**
    * Specifies whether user approval is required before executing this tool.
    *
@@ -1106,8 +1109,8 @@ const Proto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
-  addDependency(this: Any) {
-    return clone(this)
+  addDependency(this: Any, dependency: Context.Key<any, any>) {
+    return clone(this, { dependencies: [...(this.dependencies ?? []), dependency] })
   },
   setParameters(this: Any, parametersSchema: Schema.Constraint) {
     return clone(this, { parametersSchema, jsonSchema: undefined })
@@ -1152,6 +1155,7 @@ const userDefinedProto = <
   readonly successSchema: Success
   readonly failureSchema: Failure
   readonly annotations: Context.Context<never>
+  readonly dependencies?: ReadonlyArray<Context.Key<any, any>> | undefined
   readonly failureMode: Mode
   readonly needsApproval?: NeedsApproval<Parameters> | undefined
 }): Tool<
@@ -1333,6 +1337,7 @@ export const make = <
     failureSchema,
     failureMode: options?.failureMode ?? "error",
     annotations: Context.empty(),
+    dependencies: options?.dependencies,
     needsApproval: options?.needsApproval as any
   }) as any
 }

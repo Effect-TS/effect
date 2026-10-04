@@ -10,6 +10,7 @@ import * as Effect from "../../Effect.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
+import type { PreparedParameters } from "./mcpToolkitParameters.ts"
 
 /**
  * @internal
@@ -169,7 +170,8 @@ export interface ToolRegistration {
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
-    invocation: McpInvocation
+    invocation: McpInvocation,
+    prepared?: PreparedParameters
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
     InvalidToolInput | InvalidToolContinuation | ToolExecutionError,
@@ -181,6 +183,8 @@ export interface ToolRegistration {
  * @internal
  */
 export interface Tools {
+  readonly decorate: (name: string, f: (registration: ToolRegistration) => ToolRegistration) => Effect.Effect<void>
+
   readonly register: (
     registration: ToolRegistration
   ) => Effect.Effect<void>
@@ -189,7 +193,8 @@ export interface Tools {
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>>
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
-    invocation: McpInvocation
+    invocation: McpInvocation,
+    prepared?: PreparedParameters
   ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
 }
 
@@ -417,6 +422,15 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
   >()
 
+  const runTool: Tools["call"] = (call, invocation, prepared) =>
+    Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
+      const registration = registrations.get(call.name)
+      if (registration === undefined || !registration.isVisible(invocation.protocol)) {
+        return new ToolNotFound({ name: call.name })
+      }
+      return registration.handle(call, invocation, prepared)
+    })
+
   const tools: Tools = {
     register: (registration) =>
       Effect.sync(() => {
@@ -432,16 +446,11 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         }
         return descriptors
       }),
-    call: (call, invocation) =>
-      Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
-        const registration = registrations.get(call.name)
-        if (registration === undefined) {
-          return new ToolNotFound({ name: call.name })
-        }
-        if (!registration.isVisible(invocation.protocol)) {
-          return new ToolNotFound({ name: call.name })
-        }
-        return registration.handle(call, invocation)
+    call: runTool,
+    decorate: (name, f) =>
+      Effect.sync(() => {
+        const registration = registrations.get(name)
+        if (registration !== undefined) registrations.set(name, f(registration))
       })
   }
 
