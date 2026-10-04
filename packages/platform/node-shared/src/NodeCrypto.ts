@@ -2,7 +2,8 @@
  * Node-compatible implementation of Effect's `Crypto` service.
  *
  * This module builds the service from `node:crypto`, using `randomBytes` for
- * random data and `createHash` for supported digest algorithms. It exports
+ * random data, `createHash` and `createHmac` for digests and authentication,
+ * and asynchronous `pbkdf2` for password derivation. It exports
  * `make` as the concrete service value and `layer` for providing it through
  * Effect context.
  *
@@ -16,6 +17,8 @@ import * as NodeCrypto from "node:crypto"
 
 const toHashAlgorithm = (algorithm: EffectCrypto.DigestAlgorithm): string => {
   switch (algorithm) {
+    case "MD5":
+      return "md5"
     case "SHA-1":
       return "sha1"
     case "SHA-256":
@@ -48,7 +51,45 @@ const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
  */
 export const make: EffectCrypto.Crypto = EffectCrypto.make({
   randomBytes: NodeCrypto.randomBytes,
-  digest
+  digest,
+  hmac: (algorithm, key, data) =>
+    Effect.try({
+      try: () => Uint8Array.from(NodeCrypto.createHmac(toHashAlgorithm(algorithm), key).update(data).digest()),
+      catch: (cause) =>
+        PlatformError.systemError({
+          module: "Crypto",
+          method: "hmac",
+          _tag: "Unknown",
+          description: "Could not compute HMAC",
+          cause
+        })
+    }),
+  pbkdf2: (algorithm, password, salt, iterations, length) =>
+    Effect.callback((resume) => {
+      try {
+        NodeCrypto.pbkdf2(password, salt, iterations, length, toHashAlgorithm(algorithm), (cause, key) => {
+          resume(
+            cause
+              ? Effect.fail(PlatformError.systemError({
+                module: "Crypto",
+                method: "pbkdf2",
+                _tag: "Unknown",
+                description: "Could not derive password key",
+                cause
+              }))
+              : Effect.succeed(Uint8Array.from(key))
+          )
+        })
+      } catch (cause) {
+        resume(Effect.fail(PlatformError.systemError({
+          module: "Crypto",
+          method: "pbkdf2",
+          _tag: "Unknown",
+          description: "Could not derive password key",
+          cause
+        })))
+      }
+    })
 })
 
 /**

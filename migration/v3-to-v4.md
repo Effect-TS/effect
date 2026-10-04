@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `HEAD` (`a84d4f65d978bf33aabc38227e477d187ff05c2c`)
+Head: `HEAD` (`217af1bb49b718dbaf39ea534c0a95ea00aaad7c`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -604,13 +604,16 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/sql-kysely/Kysely` -> `none`: The Effect integration was removed. Use native kysely#Kysely, explicitly wrap promise execution with Effect.tryPromise, and define an application service if needed. No Effect-native equivalent remains; construct native new Kysely(config) and explicitly wrap builder execution and errors with Effect.tryPromise.
 - `@effect/sql-kysely/Mssql` -> `none`: The integration was removed; use native Kysely with MssqlDialect and wrap promises, or rewrite against @effect/sql-mssql for Effect-native queries.
 - `@effect/sql-kysely/Mysql` -> `none`: The integration was removed; use native Kysely with MysqlDialect and wrap promises, or rewrite against @effect/sql-mysql2 for Effect-native queries.
-- `@effect/sql-kysely/Pg` -> `none`: The integration was removed; use native Kysely with PostgresDialect and wrap promises, or rewrite against @effect/sql-pg for Effect-native queries.
+- `@effect/sql-kysely/Pg` -> `none`: The integration was removed; use native Kysely with PostgresDialect and wrap promises, or rewrite against effect/postgres for Effect-native queries.
 - `@effect/sql-kysely/Sqlite` -> `none`: The integration was removed; use native Kysely with SqliteDialect and wrap promises, or rewrite against a matching @effect/sql-sqlite-\* client.
 - `@effect/sql-kysely/patch.types` -> `none`: The @effect/sql-kysely package was removed in v4 along with its kysely type patches; depend on native kysely types directly and wrap query execution with Effect.tryPromise.
 - `@effect/sql-libsql/index` -> `@effect/sql-libsql`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-libsql package root or import specific modules directly.
 - `@effect/sql-mssql/index` -> `@effect/sql-mssql`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-mssql package root or import specific modules directly.
 - `@effect/sql-mysql2/index` -> `@effect/sql-mysql2`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-mysql2 package root or import specific modules directly.
-- `@effect/sql-pg/index` -> `@effect/sql-pg`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-pg package root or import specific modules directly.
+- `@effect/sql-pg` -> `effect/postgres`: The native PostgreSQL client moved into Effect core. Import PgClient, PgConnection, PgPool, PgMigrator, PgProtocol, PgTypes, and PgAuth from effect/postgres; provide platform SocketConnector and Crypto layers to construct clients.
+- `@effect/sql-pg/PgClient` -> `effect/postgres/PgClient`: The native PostgreSQL client moved into Effect core. Provide platform SocketConnector and Crypto services for constructors and layers.
+- `@effect/sql-pg/PgMigrator` -> `effect/postgres/PgMigrator`: Import PostgreSQL migration helpers from Effect core. Schema dumps still use the platform child-process, filesystem, and path services with pg\_dump installed.
+- `@effect/sql-pg/index` -> `effect/postgres`: The explicit /index entrypoint was removed; import the same namespaces from the effect/postgres package root or import specific modules directly.
 - `@effect/sql-sqlite-bun/index` -> `@effect/sql-sqlite-bun`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-bun package root or import specific modules directly.
 - `@effect/sql-sqlite-do/index` -> `@effect/sql-sqlite-do`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-do package root or import specific modules directly.
 - `@effect/sql-sqlite-node/index` -> `@effect/sql-sqlite-node`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-node package root or import specific modules directly.
@@ -7942,15 +7945,33 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/sql-pg/PgClient`
 
-- `PgClient.PgClient` -> `@effect/sql-pg/PgClient#PgClient`: Retained; the service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers.
+- `PgClient.PgClient` -> `effect/postgres/PgClient#PgClient`: Moved to effect/postgres/PgClient; provide platform SocketConnector and Crypto layers. The service value is now a Context.Service. The listen method returns a scoped Effect acquiring a Queue.Dequeue\<PgConnection.Notification, SqlError\>; consume it with Queue operations or Stream.fromQueue and read each notification's payload. Connection failures after registration fail the queue with the original SqlError; scope closure interrupts consumers.
 
-- `PgClient.PgClientConfig` -> `@effect/sql-pg/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig. The types option takes a PgTypes.Registry rather than node-pg custom types. Timestamp and timestamptz results (including array elements) are Date values with millisecond precision; infinity, -infinity, and out-of-range values become invalid Dates. Numeric readers can use getTime() or register numeric codecs. Date parameters bind as timestamptz; use PgTypes.timestamp(value) to preserve UTC fields when writing a timestamp column instead of applying the session TimeZone.
+- `PgClient.PgClientConfig` -> `effect/postgres/PgClient#PgClientConfig / PgPoolConfig`: Use PgClientConfig for base settings and PgPoolConfig for make/layer; pool sizing, idle timeout, and connection TTL moved to PgPoolConfig. The types option takes a PgTypes.Registry rather than node-pg custom types. Timestamp and timestamptz results (including array elements) are Date values with millisecond precision; infinity, -infinity, and out-of-range values become invalid Dates. Numeric readers can use getTime() or register numeric codecs. Date parameters bind as timestamptz; use PgTypes.timestamp(value) to preserve UTC fields when writing a timestamp column instead of applying the session TimeZone.
 
 - `PgClient.PgClientFromPoolOptions` -> `none`: The node-pg Pool wrapper options were removed with fromPool. Use PgClient.PgPoolConfig with PgClient.make or PgClient.layer.
 
+- `PgClient.PgCustom` -> `effect/postgres/PgClient#PgCustom`: Import the PostgreSQL custom SQL fragment type from effect/postgres/PgClient.
+
+- `PgClient.TypeId` -> `effect/postgres/PgClient#TypeId`: Import the client marker from its new namespace; its identifier is now \~effect/postgres/PgClient.
+
 - `PgClient.fromPool` -> `none`: Wrapping an existing node-pg Pool was removed with the native protocol client. Use PgClient.make or PgClient.layer with connection settings.
 
-- `PgClient.layerFromPool` -> `PgClient.layer`: Wrapping an existing node-pg Pool was removed. Provide connection settings to PgClient.layer instead.
+- `PgClient.layer` -> `effect/postgres/PgClient#layer`: Import from effect/postgres/PgClient and provide runtime SocketConnector and Crypto layers. The layer provides both PgClient and SqlClient.
+
+- `PgClient.layerConfig` -> `effect/postgres/PgClient#layerConfig`: Import from effect/postgres/PgClient and compose runtime SocketConnector and Crypto layers with the configuration-backed client layer.
+
+- `PgClient.layerFromPool` -> `effect/postgres/PgClient#layer`: Wrapping an existing node-pg Pool was removed. Provide connection settings to PgClient.layer instead.
+
+- `PgClient.make` -> `effect/postgres/PgClient#make`: Construct the native client with connection settings and provide platform SocketConnector and Crypto services. Native connection and codec options replace node-pg driver options.
+
+- `PgClient.makeCompiler` -> `effect/postgres/PgClient#makeCompiler`: Import the PostgreSQL statement compiler from effect/postgres/PgClient.
+
+### `@effect/sql-pg/PgMigrator`
+
+- `PgMigrator.layer` -> `effect/postgres/PgMigrator#layer`: Import the PostgreSQL migration layer from effect/postgres/PgMigrator and compose it with the native PgClient layer and required platform services.
+
+- `PgMigrator.run` -> `effect/postgres/PgMigrator#run`: Import from effect/postgres/PgMigrator and run migrations using the native PgClient and SqlClient services. Schema dumps require the platform child-process, filesystem, and path services.
 
 ### `@effect/sql-sqlite-bun/SqliteClient`
 
@@ -7979,6 +8000,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-wasm/SqliteClient#SqliteClient`: Retained with the same export/import surface; the service value is now a Context.Service.
 
 - `SqliteClient.currentTransferables` -> `@effect/sql-sqlite-wasm/SqliteClient#Transferables`: Renamed and changed from FiberRef to Context.Reference; prefer withTransferables or provide Transferables as a service.
+
+### `@effect/sql/Migrator`
+
+- `Migrator.make` -> `effect/sql/Migrator#make`: Moved with the same curried make({ dumpSchema })(options) pattern.
 
 ### `@effect/sql/Model`
 

@@ -50,7 +50,7 @@ export class GroupNotFound extends Schema.TaggedError<GroupNotFound>()("GroupNot
 }) {}
 
 // The SqlClient layer determines which database you are talking to. Swap this
-// layer for `@effect/sql-pg`, `@effect/sql-mysql2` etc. to target another
+// layer for `effect/postgres`, `@effect/sql-mysql2` etc. to target another
 // database without changing the rest of the code.
 const SqlLayer = SqliteClient.layer({ filename: ":memory:" })
 

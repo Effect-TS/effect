@@ -19,9 +19,15 @@ import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
 import { constant, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
+import * as Predicate from "../Predicate.ts"
 import * as Queue from "../Queue.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
+
+const decodeScanReply = Schema.decodeUnknownEffect(Schema.Tuple([
+  Schema.String.check(Schema.isPattern(/^\d+$/u)),
+  Schema.Array(Schema.String)
+]))
 
 /**
  * A message received from a Redis pub/sub channel.
@@ -44,14 +50,18 @@ export interface RedisMessage {
  * @since 4.0.0
  */
 export class Redis extends Context.Service<Redis, {
+  /** Enables slot-affine key layouts in the persistence adapters. */
+  readonly cluster: boolean
+
+  /** Scans matching physical keys across all primary nodes. */
+  readonly scan: (pattern: string) => Effect.Effect<ReadonlyArray<string>, RedisError>
+
   readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
 
   /**
    * Subscribes to a Redis pub/sub channel for the lifetime of the current
-   * scope. Node and Deno subscribers reconnect and re-subscribe after an
-   * interruption, so messages published during recovery appear as delivery
-   * gaps. Bun subscribers do not reconnect: a dropped connection fails the
-   * dequeue, and the caller must subscribe again.
+   * scope. Node, Bun, and Deno adapters reconnect and re-subscribe after a
+   * connection loss. Messages published during recovery can be missed.
    */
   readonly subscribe: (
     channel: string
@@ -70,8 +80,12 @@ export class Redis extends Context.Service<Redis, {
  *
  * **Details**
  *
- * Lua scripts are loaded through `SCRIPT LOAD`, cached, and then invoked with
- * `EVALSHA`.
+ * Lua script hashes are computed by the supplied `scriptHash` operation, cached,
+ * and invoked with `EVALSHA`. A cache miss uses `EVAL` on the key's owning node,
+ * also caching the script there for subsequent calls.
+ *
+ * Scans follow `SCAN` cursors to completion and return unique matching keys.
+ * The supplied scan operation covers all primary nodes for its topology.
  *
  * @stability unstable
  * @category constructors
@@ -79,6 +93,10 @@ export class Redis extends Context.Service<Redis, {
  */
 export const make = Effect.fnUntraced(function*(
   options: {
+    readonly cluster?: boolean | undefined
+    readonly scan: (pattern: string) => Effect.Effect<ReadonlyArray<string>, RedisError>
+    /** Computes the Redis SHA1 Lua digest without issuing SCRIPT LOAD. */
+    readonly scriptHash: (lua: string) => Effect.Effect<string, RedisError>
     readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
     readonly subscribe: (
       channel: string,
@@ -87,7 +105,7 @@ export const make = Effect.fnUntraced(function*(
   }
 ) {
   const scriptCache = yield* Cache.makeWith(
-    (script: Script<any>) => options.send<string>("SCRIPT", "LOAD", script.lua),
+    (script: Script<any>) => options.scriptHash(script.lua),
     {
       capacity: Number.POSITIVE_INFINITY,
       timeToLive: (exit) => Exit.isSuccess(exit) ? Duration.infinity : Duration.zero
@@ -113,8 +131,17 @@ export const make = Effect.fnUntraced(function*(
     return Cache.get(scriptCache, script).pipe(
       Effect.flatMap(evalSha),
       Effect.catchIf(
-        (error) => String(error.cause).includes("NOSCRIPT"),
-        () => Cache.refresh(scriptCache, script).pipe(Effect.flatMap(evalSha))
+        (error) => {
+          const message = Predicate.isError(error.cause) ? error.cause.message : error.cause
+          return Predicate.isString(message) && /^-?NOSCRIPT(?:\s|$)/.test(message)
+        },
+        () =>
+          options.send<Config["result"]>(
+            "EVAL",
+            script.lua,
+            script.numberOfKeys(...params).toString(),
+            ...script.params(...params).map((param) => String(param))
+          )
       )
     )
   }
@@ -133,11 +160,56 @@ export const make = Effect.fnUntraced(function*(
   })
 
   return identity<Redis["Service"]>({
+    cluster: options.cluster ?? false,
+    scan: options.scan,
     send: options.send,
     subscribe,
     eval: eval_
   })
 })
+
+/**
+ * Scans one Redis primary to completion and returns unique matching keys.
+ *
+ * **Details**
+ *
+ * Validates each cursor and key page. Cluster adapters invoke this helper on
+ * every primary and combine the returned keys.
+ *
+ * @stability unstable
+ * @category utilities
+ * @since 4.0.0
+ */
+export const scan = Effect.fnUntraced(function*(send: Redis["Service"]["send"], pattern: string) {
+  const keys = new Set<string>()
+  let cursor = "0"
+  do {
+    const reply = yield* send("SCAN", cursor, "MATCH", pattern, "COUNT", "100")
+    const [next, batch] = yield* decodeScanReply(reply).pipe(Effect.mapError((cause) => new RedisError({ cause })))
+    cursor = next
+    for (const key of batch) keys.add(key)
+  } while (cursor !== "0")
+  return Array.from(keys)
+})
+
+/**
+ * Returns a persistence key prefix with a Cluster hash tag when required.
+ *
+ * **Details**
+ *
+ * Append related key suffixes to this prefix to keep atomic operations in one
+ * slot. Standalone and Sentinel adapters preserve the supplied key unchanged.
+ *
+ * @stability unstable
+ * @category utilities
+ * @since 4.0.0
+ */
+export const key = (redis: Redis["Service"], prefix: string): string => {
+  if (!redis.cluster) return prefix
+  let tag = ""
+  for (const byte of new TextEncoder().encode(prefix)) tag += byte.toString(16).padStart(2, "0")
+  return `{${tag || "empty"}}:${prefix}`
+}
 
 type ErrorTypeId = "~effect/persistence/Redis/RedisError"
 const ErrorTypeId: ErrorTypeId = "~effect/persistence/Redis/RedisError"

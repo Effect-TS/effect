@@ -956,7 +956,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
 
   return RateLimiterStore.of({
     fixedWindow(options) {
-      const key = `${prefix}${options.key}`
+      const key = Redis.key(redis, `${prefix}${options.key}`)
       const refillMillis = Duration.toMillis(options.refillRate)
       return Effect.mapError(
         fixedWindow(key, options.tokens, refillMillis, options.limit),
@@ -970,7 +970,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       )
     },
     tokenBucket(options) {
-      const key = `${prefix}${options.key}`
+      const key = Redis.key(redis, `${prefix}${options.key}`)
       const lastRefillKey = `${key}:refill`
       const refillMillis = Duration.toMillis(options.refillRate)
       return Effect.clockWith((clock) =>
@@ -998,7 +998,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       )
     },
     adaptiveConsume(options) {
-      const key = `${prefix}${options.key}:adaptive`
+      const key = `${Redis.key(redis, `${prefix}${options.key}`)}:adaptive`
       return Effect.map(
         Effect.mapError(
           adaptiveConsume(
@@ -1025,7 +1025,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     adaptiveFeedback(options) {
       if (options.status !== 429 || options.retryAfter === undefined) return Effect.void
       const retryAfterMillis = clampAdaptiveDurationMillis(Duration.toMillis(options.retryAfter))
-      const key = `${prefix}${options.key}:adaptive`
+      const key = `${Redis.key(redis, `${prefix}${options.key}`)}:adaptive`
       return Effect.asVoid(
         Effect.mapError(
           adaptiveFeedback(

@@ -888,7 +888,9 @@ export const layerBackingRedis: Layer.Layer<
   return BackingPersistence.of({
     make: (prefix) =>
       Effect.sync(() => {
-        const prefixed = (key: string) => `${prefix}:${key}`
+        const keyPrefix = Redis.key(redis, prefix)
+        const pattern = `${keyPrefix.replace(/[\\*?[\]]/g, "\\$&")}:*`
+        const prefixed = (key: string) => `${keyPrefix}:${key}`
         const parse = (str: string | null) => {
           if (str === null) {
             return Effect.undefined
@@ -983,7 +985,7 @@ export const layerBackingRedis: Layer.Layer<
               redis.send("DEL", prefixed(key)),
               ({ cause }) => new PersistenceError({ message: `Failed to remove key ${key} from Redis`, cause })
             ),
-          clear: redis.send<Array<string>>("KEYS", `${prefix}:*`).pipe(
+          clear: redis.scan(pattern).pipe(
             Effect.flatMap((keys) => keys.length === 0 ? Effect.void : redis.send("DEL", ...keys)),
             Effect.mapError(({ cause }) =>
               new PersistenceError({

@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@4.0.0-next.8/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "Effect-TS/effect" }],
+  "changelog": [
+    "@changesets/changelog-github",
+    {
+      "repo": "Effect-TS/effect"
+    }
+  ],
   "commit": false,
   "format": false,
   "linked": [],
@@ -38,7 +43,6 @@
       "@effect/sql-libsql",
       "@effect/sql-mssql",
       "@effect/sql-mysql2",
-      "@effect/sql-pg",
       "@effect/sql-pglite",
       "@effect/sql-sqlite-bun",
       "@effect/sql-sqlite-do",

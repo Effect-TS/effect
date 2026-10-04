@@ -1,6 +1,6 @@
 import { NodeClusterSocket, NodeCrypto, NodeSocket, NodeSocketServer } from "@effect/platform-node"
+import * as NodeSocketConnector from "@effect/platform-node/NodeSocketConnector"
 import { MysqlClient } from "@effect/sql-mysql2"
-import { PgClient } from "@effect/sql-pg"
 import { Clock, Context, Duration, Effect, Exit, Latch, Layer, Option, Redacted, Scope } from "effect"
 import {
   ClusterWorkflowEngine,
@@ -19,6 +19,7 @@ import {
   SqlMessageStorage,
   SqlRunnerStorage
 } from "effect/cluster"
+import { PgClient } from "effect/postgres"
 import type { Rpc } from "effect/rpc"
 import { RpcClient, RpcSerialization } from "effect/rpc"
 import * as Socket from "effect/socket/Socket"
@@ -429,7 +430,9 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   }
   const databases = inject("clusterDatabases")
   const databaseLayer = options.backend === "pg"
-    ? PgClient.layer({ url: Redacted.make(databases.pg), maxConnections: 32 })
+    ? PgClient.layer({ url: Redacted.make(databases.pg), maxConnections: 32 }).pipe(
+      Layer.provide(Layer.merge(NodeSocketConnector.layer, NodeCrypto.layer))
+    )
     : MysqlClient.layer({ url: Redacted.make(databases.mysql), maxConnections: 32 })
   const database = yield* Layer.buildWithScope(databaseLayer, parentScope)
   const sql = Context.get(database, SqlClient.SqlClient).withoutTransforms()

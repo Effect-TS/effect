@@ -1,6 +1,6 @@
 import * as BrowserCrypto from "@effect/platform-browser/BrowserCrypto"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Exit, Layer } from "effect"
+import { Cause, Deferred, Exit, Fiber, Layer } from "effect"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as PlatformError from "effect/PlatformError"
@@ -9,6 +9,71 @@ import { webcrypto } from "node:crypto"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+it.effect("computes HMAC and password derivation with Web Crypto", () =>
+  Effect.gen(function*() {
+    const service = yield* Crypto.Crypto
+    const encode = (s: string) => new TextEncoder().encode(s)
+    const hex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+    assert.strictEqual(
+      hex(yield* service.hmac("SHA-256", new Uint8Array(20).fill(0x0b), encode("Hi There"))),
+      "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
+    )
+    assert.strictEqual(
+      hex(yield* service.pbkdf2("SHA-256", encode("password"), encode("salt"), 2, 32)),
+      "ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43"
+    )
+    const unsupported = yield* Effect.flip(service.digest("MD5", encode("abc")))
+    assert.strictEqual(unsupported._tag, "PlatformError")
+  }).pipe(
+    Effect.provide(
+      BrowserCrypto.layer.pipe(
+        Layer.provide(Layer.succeed(BrowserCrypto.WebCrypto, webcrypto as unknown as globalThis.Crypto))
+      )
+    )
+  ))
+
+it.effect("owns HMAC data and PBKDF2 salt before importing a key", () =>
+  Effect.gen(function*() {
+    for (const operation of ["hmac", "pbkdf2"] as const) {
+      const imported = yield* Deferred.make<() => void>()
+      const data = new TextEncoder().encode(operation === "hmac" ? "Hi There" : "salt")
+      const crypto = Object.create(globalThis.crypto, {
+        subtle: {
+          value: {
+            importKey: (...args: Parameters<typeof webcrypto.subtle.importKey>) => {
+              return new Promise((resolve, reject) => {
+                Deferred.doneUnsafe(
+                  imported,
+                  Effect.succeed(() => {
+                    webcrypto.subtle.importKey(...args).then(resolve, reject)
+                  })
+                )
+              })
+            },
+            sign: webcrypto.subtle.sign.bind(webcrypto.subtle),
+            deriveBits: webcrypto.subtle.deriveBits.bind(webcrypto.subtle)
+          }
+        }
+      })
+      const program = Effect.flatMap(Crypto.Crypto, (service) =>
+        operation === "hmac"
+          ? service.hmac("SHA-256", new Uint8Array(20).fill(0x0b), data)
+          : service.pbkdf2("SHA-256", new TextEncoder().encode("password"), data, 2, 32))
+      const fiber = yield* Effect.forkChild(program.pipe(Effect.provide(layerWith(crypto))))
+      const release = yield* Deferred.await(imported)
+      data.fill(0)
+      release()
+      const bytes = yield* Fiber.join(fiber)
+      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+      assert.strictEqual(
+        hex,
+        operation === "hmac"
+          ? "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
+          : "ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43"
+      )
+    }
+  }))
 
 const getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
   if (array instanceof Uint8Array) {

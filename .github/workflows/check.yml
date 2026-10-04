@@ -145,7 +145,7 @@ jobs:
           docker pull mysql:lts &
           docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
-          docker pull redis:alpine &
+          docker pull redis:7.2.6@sha256:43c5c111b5b63afce26faea67198f8cf7e63b941460bcfe1525b68a6ad1eef92 &
           wait
 
       - name: Install dependencies

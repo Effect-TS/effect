@@ -689,15 +689,27 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     1
   )
   const prefix = options?.prefix ?? "effectq:"
-  const keyLock = (id: string) => `${prefix}${id}:lock`
-  const keysFor = (name: string) => ({
-    queue: `${prefix}${name}`,
-    pending: `${prefix}${name}:pending`,
-    failed: `${prefix}${name}:failed`,
-    delayed: `${prefix}${name}:delayed`,
-    attempts: `${prefix}${name}:attempts`,
-    ids: `${prefix}${name}:ids`
-  })
+  const escapedPrefix = prefix.replace(/[\\*?[\]]/g, "\\$&")
+  // Scans may match keys of other prefixes; keep only keys this store generates.
+  const ownsCleanupKey = (key: string, suffix: string): boolean => {
+    if (!key.endsWith(suffix)) return false
+    const base = key.slice(0, -suffix.length)
+    const logicalKey = redis.cluster ? base.slice(base.indexOf("}:") + 2) : base
+    return logicalKey.startsWith(prefix) && Redis.key(redis, logicalKey) === base
+  }
+  const lockPrefixFor = (name: string) => redis.cluster ? `${Redis.key(redis, `${prefix}${name}`)}:` : prefix
+  const keyLock = (name: string, id: string) => `${lockPrefixFor(name)}${id}:lock`
+  const keysFor = (name: string) => {
+    const key = Redis.key(redis, `${prefix}${name}`)
+    return {
+      queue: key,
+      pending: `${key}:pending`,
+      failed: `${key}:failed`,
+      delayed: `${key}:delayed`,
+      attempts: `${key}:attempts`,
+      ids: `${key}:ids`
+    }
+  }
   const workerId = crypto.randomUUID()
 
   const ackRetrySchedule = makeAckRetrySchedule(lockExpirationMillis)
@@ -740,7 +752,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                 requeue(
                   keys.queue,
                   keys.pending,
-                  keyLock(element.id),
+                  keyLock(name, element.id),
                   keys.attempts,
                   element.id,
                   element.payload
@@ -756,7 +768,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           keys.attempts,
           keys.failed,
           keys.ids,
-          prefix,
+          lockPrefixFor(name),
           state.maxAttempts,
           clock.currentTimeMillisUnsafe()
         )
@@ -773,7 +785,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             keys.pending,
             keys.delayed,
             keys.attempts,
-            prefix,
+            lockPrefixFor(name),
             workerId,
             size,
             lockExpirationMillis,
@@ -820,12 +832,16 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     idleTimeToLive: Duration.seconds(30)
   })
 
-  const activeLockKeys = new Set<string>()
+  const activeLockKeys = new Map<string, Set<string>>()
 
   yield* Effect.gen(function*() {
     while (true) {
       yield* Effect.sleep(lockRefreshMillis)
-      yield* Effect.ignore(expireAll(Array.from(activeLockKeys), lockExpirationMillis))
+      yield* Effect.forEach(
+        activeLockKeys.values(),
+        (keys) => Effect.ignore(expireAll(Array.from(keys), lockExpirationMillis)),
+        { concurrency: 16, discard: true }
+      )
     }
   }).pipe(
     Effect.forkScoped,
@@ -835,25 +851,6 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
       fiber: "refreshLocks"
     })
   )
-
-  const scanKeys = (pattern: string) =>
-    Effect.gen(function*() {
-      const keys: Array<string> = []
-      let cursor = "0"
-      do {
-        const [next, batch] = yield* redis.send<[string, Array<string>]>(
-          "SCAN",
-          cursor,
-          "MATCH",
-          pattern,
-          "COUNT",
-          "100"
-        )
-        cursor = next
-        for (const key of batch) keys.push(key)
-      } while (cursor !== "0")
-      return keys
-    })
 
   return PersistedQueueStore.of({
     offer: ({ element, id, isCustomId, name }) => {
@@ -901,13 +898,22 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           Effect.scoped,
           Effect.tap((element) => {
             const keys = keysFor(options.name)
-            const lock = keyLock(element.id)
-            activeLockKeys.add(lock)
+            const lock = keyLock(options.name, element.id)
+            const lockGroup = redis.cluster ? options.name : ""
+            let locks = activeLockKeys.get(lockGroup)
+            if (locks === undefined) {
+              locks = new Set()
+              activeLockKeys.set(lockGroup, locks)
+            }
+            locks.add(lock)
             const ack = (effect: Effect.Effect<unknown, Redis.RedisError>) =>
               effect.pipe(
                 Effect.retry(ackRetrySchedule),
                 Effect.orDie,
-                Effect.ensuring(Effect.sync(() => activeLockKeys.delete(lock)))
+                Effect.ensuring(Effect.sync(() => {
+                  locks.delete(lock)
+                  if (locks.size === 0) activeLockKeys.delete(lockGroup)
+                }))
               )
             return Effect.addFinalizer((exit) =>
               Effect.suspend(() => {
@@ -958,18 +964,18 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     cleanup: ({ failedTimeToLive, timeToLive }) =>
       Effect.gen(function*() {
         const now = clock.currentTimeMillisUnsafe()
-        const idsKeys = yield* scanKeys(`${prefix}*:ids`)
+        const idsKeys = yield* redis.scan(`${redis.cluster ? "{*}:" : ""}${escapedPrefix}*:ids`)
         const cutoff = now - Duration.toMillis(timeToLive)
         yield* Effect.forEach(
-          idsKeys,
+          idsKeys.filter((key) => ownsCleanupKey(key, ":ids")),
           (key) => redis.send("ZREMRANGEBYSCORE", key, "-inf", `(${cutoff}`),
           { concurrency: 16, discard: true }
         )
         if (failedTimeToLive !== undefined) {
           const failedCutoff = now - Duration.toMillis(failedTimeToLive)
-          const failedKeys = yield* scanKeys(`${prefix}*:failed`)
+          const failedKeys = yield* redis.scan(`${redis.cluster ? "{*}:" : ""}${escapedPrefix}*:failed`)
           yield* Effect.forEach(
-            failedKeys,
+            failedKeys.filter((key) => ownsCleanupKey(key, ":failed")),
             (key) =>
               trimFailed(key, `${key.slice(0, -":failed".length)}:ids`, failedCutoff).pipe(
                 // each call trims at most one batch, so drain until done

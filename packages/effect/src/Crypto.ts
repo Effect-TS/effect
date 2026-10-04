@@ -3,9 +3,9 @@
  *
  * Runtime packages provide concrete implementations backed by the host
  * platform's cryptography APIs. This module defines the service interface and a
- * constructor from random-byte and digest primitives. The service provides
+ * constructor from platform cryptographic primitives. The service provides
  * secure random bytes and numbers, UUIDv4 and UUIDv7 generation, shuffling, and
- * SHA message digests.
+ * message digests, message authentication codes, and password key derivation.
  *
  * @since 4.0.0
  */
@@ -23,8 +23,9 @@ const TypeId = "~effect/Crypto"
  *
  * **Gotchas**
  *
- * SHA-1 is included for interoperability with existing protocols. Do not use
- * SHA-1 for new security-sensitive designs.
+ * MD5 and SHA-1 are included for interoperability with existing protocols.
+ * Web Crypto implementations do not support MD5. Do not use MD5 or SHA-1 for
+ * new security-sensitive designs.
  *
  * **Example** (Using a digest algorithm)
  *
@@ -37,7 +38,15 @@ const TypeId = "~effect/Crypto"
  * @category models
  * @since 4.0.0
  */
-export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+export type DigestAlgorithm = "MD5" | "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+
+/**
+ * Hash algorithms supported for message authentication and password derivation.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type HmacAlgorithm = Exclude<DigestAlgorithm, "MD5">
 
 /**
  * Platform-agnostic cryptographic operations.
@@ -57,7 +66,9 @@ export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
  *   Crypto.Crypto,
  *   Crypto.make({
  *     randomBytes: (size) => new Uint8Array(size),
- *     digest: (_algorithm, data) => Effect.succeed(data)
+ *     digest: (_algorithm, data) => Effect.succeed(data),
+ *     hmac: (_algorithm, _key, data) => Effect.succeed(data),
+ *     pbkdf2: (_algorithm, password) => Effect.succeed(password)
  *   })
  * )
  *
@@ -100,6 +111,27 @@ export interface Crypto {
   digest(
     algorithm: DigestAlgorithm,
     data: Uint8Array
+  ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Computes an HMAC for the supplied key and data.
+   */
+  hmac(
+    algorithm: HmacAlgorithm,
+    key: Uint8Array,
+    data: Uint8Array
+  ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Derives a password key with PBKDF2 using a positive iteration count and
+   * an output length measured in bytes.
+   */
+  pbkdf2(
+    algorithm: HmacAlgorithm,
+    password: Uint8Array,
+    salt: Uint8Array,
+    iterations: number,
+    length: number
   ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
@@ -197,13 +229,13 @@ export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/C
  * **When to use**
  *
  * Use to build a Crypto service for a platform integration, test layer, or
- * custom runtime from primitive random-byte and digest operations.
+ * custom runtime from random-byte, digest, HMAC, and PBKDF2 operations.
  *
  * **Details**
  *
  * The constructor derives random numbers, booleans, integer ranges, shuffling,
- * and UUID generation from `impl.randomBytes`. Digest operations delegate to
- * `impl.digest`.
+ * and UUID generation from `impl.randomBytes`. Digest, HMAC, and PBKDF2
+ * operations delegate to the supplied platform primitives.
  *
  * **Gotchas**
  *
@@ -218,7 +250,9 @@ export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/C
  *
  * const testCrypto = Crypto.make({
  *   randomBytes: (size) => new Uint8Array(size),
- *   digest: (_algorithm, data) => Effect.succeed(data)
+ *   digest: (_algorithm, data) => Effect.succeed(data),
+ *   hmac: (_algorithm, _key, data) => Effect.succeed(data),
+ *   pbkdf2: (_algorithm, password) => Effect.succeed(password)
  * })
  *
  * await Effect.runPromise(testCrypto.randomBytes(4)) // => new Uint8Array([0, 0, 0, 0])
@@ -234,6 +268,8 @@ export const make = (
       algorithm: DigestAlgorithm,
       data: Uint8Array
     ) => Effect.Effect<Uint8Array, PlatformError.PlatformError>
+    readonly hmac: Crypto["hmac"]
+    readonly pbkdf2: Crypto["pbkdf2"]
   }
 ): Crypto => {
   const randomBytesUnsafe = impl.randomBytes
@@ -265,6 +301,17 @@ export const make = (
     nextDoubleUnsafe,
     nextIntUnsafe,
     digest: impl.digest,
+    hmac: impl.hmac,
+    pbkdf2: (algorithm, password, salt, iterations, length) => {
+      if (!Number.isSafeInteger(iterations) || iterations <= 0 || !Number.isSafeInteger(length) || length <= 0) {
+        return Effect.fail(PlatformError.badArgument({
+          module: "Crypto",
+          method: "pbkdf2",
+          description: "iterations and length must be positive safe integers"
+        }))
+      }
+      return impl.pbkdf2(algorithm, password, salt, iterations, length)
+    },
     random: Effect.sync(() => nextDoubleUnsafe()),
     randomBoolean: Effect.sync(() => nextDoubleUnsafe() > 0.5),
     randomInt: Effect.sync(() => nextIntUnsafe()),

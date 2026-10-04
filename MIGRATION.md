@@ -17,7 +17,7 @@ All Effect ecosystem packages now share a **single version number** and are
 released together. In v3, packages were versioned independently (e.g.
 `effect@3.x`, `@effect/platform@0.x`, `@effect/sql@0.x`), making compatibility
 between packages difficult to track. In v4, if you use `effect@4.0.0`,
-the matching SQL package is `@effect/sql-pg@4.0.0`.
+the matching SQL package is `@effect/sql-mysql2@4.0.0`.
 
 ### Package Consolidation
 
@@ -29,11 +29,14 @@ Packages that remain separate are platform-specific, provider-specific, or
 technology-specific:
 
 - `@effect/platform-*` — platform packages
-- `@effect/sql-*` — SQL driver packages
+- `@effect/sql-*` — SQL driver integrations
 - `@effect/ai-*` — AI provider packages
 - `@effect/opentelemetry` — OpenTelemetry integration
 - `@effect/atom-*` — framework-specific atom bindings
 - `@effect/vitest` — Vitest testing utilities
+
+The native Redis and PostgreSQL clients live in `effect/redis` and
+`effect/postgres`. They use platform socket and cryptography services.
 
 These packages must be bumped to matching v4 versions alongside `effect`.
 
@@ -49,7 +52,7 @@ across patch versions. APIs without a stability tag follow strict semver.
 
 APIs that expose a third-party dependency are also marked `@stability
 unstable`, because that dependency's own releases can change them. This covers
-accessors to underlying clients (for example `NodeRedis`'s `client` and `use`),
+accessors to underlying third-party clients,
 options typed as the dependency's options, and re-exports such as
 `@effect/platform-node/Undici`. It includes the generated provider schemas in
 the `@effect/ai-*` packages and the `@effect/opentelemetry` integration.

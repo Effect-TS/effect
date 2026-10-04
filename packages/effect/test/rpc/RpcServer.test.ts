@@ -308,7 +308,7 @@ describe("RpcServer", () => {
         reader: Effect.sync(() => {
           const chunks = ["12", "34", "5", "{\"_tag\":\"Ping\"}\n"]
           let index = 0
-          return {
+          return Socket.makeReader({
             pull: Effect.suspend(() => {
               if (closed || index >= chunks.length) {
                 return Deferred.succeed(completed, void 0).pipe(
@@ -329,7 +329,7 @@ describe("RpcServer", () => {
                   reason: new Socket.SocketUpgradeError({})
                 })
               )
-          }
+          })
         }),
         writer: Effect.succeed({
           write,

@@ -291,6 +291,46 @@ describe("Socket", () => {
       assert.strictEqual(received, "firstsecond")
     }))
 
+  it.live("preserves order when a parked pull switches to callback reading", () =>
+    Effect.gen(function*() {
+      const duplex = yield* makePassThrough
+      const { pull, run } = yield* (yield* NodeSocket.fromDuplex(Effect.succeed(duplex))).reader
+      const parked = yield* Effect.forkChild(pull, { startImmediately: true })
+      const scope = yield* Effect.scope
+      const delivered = yield* Deferred.make<void>()
+      let received = ""
+      let replacement: Fiber.Fiber<void, Socket.SocketError> | undefined
+      duplex.once("data", () => {
+        Effect.runSync(Fiber.interrupt(parked))
+        duplex.write("second")
+        // Canceling before read() unwinds leaves its original listener in place.
+        const canceled = Effect.runSync(Effect.forkIn(
+          run(() => {
+            assert.fail("Canceled callback reader must not consume the pull's bytes")
+          }),
+          scope,
+          { startImmediately: true }
+        ))
+        Effect.runSync(Fiber.interrupt(canceled))
+        assert.strictEqual(duplex.listenerCount("readable"), 1)
+        replacement = Effect.runSync(Effect.forkIn(
+          run((chunk) => {
+            received += Buffer.from(chunk).toString()
+            if (received.length >= "firstsecond".length) Deferred.doneUnsafe(delivered, Effect.void)
+          }),
+          scope,
+          { startImmediately: true }
+        ))
+      })
+      duplex.write("first")
+      duplex.emit("readable")
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(parked)))
+      assert.isDefined(replacement)
+      yield* Deferred.await(delivered).pipe(Effect.timeout("1 second"))
+      yield* Fiber.interrupt(replacement!)
+      assert.strictEqual(received, "firstsecond")
+    }))
+
   it.live("respects a zero open timeout", () =>
     Effect.gen(function*() {
       const socket = yield* NodeSocket.fromDuplex(Effect.never, { openTimeout: 0 })
