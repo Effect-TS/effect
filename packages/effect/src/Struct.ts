@@ -286,7 +286,14 @@ export const assign: {
   }
 )
 
-type Evolver<S> = { readonly [K in keyof S]?: (a: S[K]) => unknown }
+/**
+ * Keys of `S` accept a transform; keys of `E` that are not in `S` resolve to
+ * `never`, which rejects unknown keys. This is kept as a single mapped type on
+ * purpose: TypeScript can only derive a contextual type for nested calls (for
+ * example `evolve(s, { a: evolve({ ... }) })`) from a plain generic mapped
+ * type, not from an intersection.
+ */
+type Evolver<S, E> = { readonly [K in keyof S | keyof E]?: K extends keyof S ? (a: S[K]) => unknown : never }
 
 type Evolved<S, E> = Simplify<
   { [K in keyof S]: K extends keyof E ? (E[K] extends (...a: any) => infer R ? R : S[K]) : S[K] }
@@ -305,6 +312,11 @@ type Evolved<S, E> = Simplify<
  * Each transform function receives the current value and returns the new value;
  * the return type can differ from the input type.
  *
+ * **Gotchas**
+ *
+ * Keys that do not exist on the struct are rejected at compile time, so a
+ * misspelled key is caught instead of being silently ignored.
+ *
  * **Example** (Transforming selected values)
  *
  * ```ts import.meta.vitest
@@ -320,6 +332,7 @@ type Evolved<S, E> = Simplify<
  * result // => { name: "ALICE", age: 31, active: true }
  * ```
  *
+ * @see {@link modifyFields} – the same operation, constrained to preserve each field's type
  * @see {@link evolveKeys} – transform keys instead of values
  * @see {@link evolveEntries} – transform both keys and values
  * @see {@link map} – apply the same transformation to all values
@@ -327,11 +340,71 @@ type Evolved<S, E> = Simplify<
  * @since 2.0.0
  */
 export const evolve: {
-  <S extends object, E extends Evolver<S>>(e: E): (self: S) => Evolved<S, E>
-  <S extends object, E extends Evolver<S>>(self: S, e: E): Evolved<S, E>
+  <S extends object, E extends Evolver<S, E>>(e: E): (self: S) => Evolved<S, E>
+  <S extends object, E extends Evolver<S, E>>(self: S, e: E): Evolved<S, E>
 } = dual(
   2,
-  <S extends object, E extends Evolver<S>>(self: S, e: E): Evolved<S, E> => {
+  <S extends object, E extends Evolver<S, E>>(self: S, e: E): Evolved<S, E> => {
+    return buildStruct(self, (k, v) => [k, Object.hasOwn(e, k) ? (e as any)[k](v) : v])
+  }
+)
+
+/**
+ * Like {@link Evolver}, but each transform must return the same type as the
+ * field it replaces. Unknown keys resolve to `never` and are rejected.
+ */
+type FieldModifier<S, E> = { readonly [K in keyof S | keyof E]?: K extends keyof S ? (a: S[K]) => S[K] : never }
+
+/**
+ * Updates values of a struct selectively using per-key functions, preserving
+ * the type of every field. Keys without a corresponding function are copied
+ * unchanged.
+ *
+ * **When to use**
+ *
+ * Use when you want to update specific fields in place without changing the
+ * shape of the struct, for example bumping a counter or normalizing a string.
+ *
+ * **Details**
+ *
+ * Each function receives the current value and must return a value of the same
+ * type, so the result has exactly the type of the input struct. This is a
+ * stricter variant of {@link evolve}, which allows a transform to change the
+ * type of a field.
+ *
+ * **Gotchas**
+ *
+ * Keys that do not exist on the struct are rejected at compile time, so a
+ * misspelled key is caught instead of being silently ignored. A function that
+ * returns a different type is also rejected; use {@link evolve} when a value
+ * needs to change type.
+ *
+ * **Example** (Updating selected values in place)
+ *
+ * ```ts import.meta.vitest
+ * import { pipe, Struct } from "effect"
+ *
+ * const result = pipe(
+ *   { name: "alice", age: 30, active: true },
+ *   Struct.modifyFields({
+ *     name: (s) => s.toUpperCase(),
+ *     age: (n) => n + 1
+ *   })
+ * )
+ * result // => { name: "ALICE", age: 31, active: true }
+ * ```
+ *
+ * @see {@link evolve} – transform values, allowing the type to change
+ * @see {@link map} – apply the same transformation to all values
+ * @category transforming
+ * @since 4.0.0
+ */
+export const modifyFields: {
+  <S extends object, E extends FieldModifier<S, E>>(e: E): (self: S) => S
+  <S extends object, E extends FieldModifier<S, E>>(self: S, e: E): S
+} = dual(
+  2,
+  <S extends object, E extends FieldModifier<S, E>>(self: S, e: E): S => {
     return buildStruct(self, (k, v) => [k, Object.hasOwn(e, k) ? (e as any)[k](v) : v])
   }
 )
