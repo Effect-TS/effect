@@ -1026,6 +1026,149 @@ export const stripMarginWith: {
 export const stripMargin = (self: string): string => stripMarginWith(self, "|")
 
 /**
+ * Joins a tagged template like the global `String.raw` and strips the `|`
+ * margin from every line that starts inside the template.
+ *
+ * **Details**
+ *
+ * The template parts are joined using their raw text, so escape sequences such
+ * as `\n` are kept as written, exactly as with the global `String.raw`.
+ *
+ * On every line that begins inside the template, leading spaces and tabs
+ * followed by `|` are removed. A single space directly after the `|` is
+ * treated as part of the margin, so `| text` yields `text` and `|   text`
+ * yields `  text`. Lines without a margin are kept as written.
+ *
+ * Substituted values are inserted verbatim. A `|` inside a substituted value,
+ * or on a line that a substituted value started, is never treated as a margin,
+ * so multi-line values such as Markdown tables survive interpolation.
+ *
+ * Leading and trailing lines that contain only template whitespace and no
+ * margin are dropped. This removes the newline after the opening backtick and
+ * the indentation before the closing backtick. Add an empty `|` line to keep a
+ * blank line at either end, for example to end the result with a newline.
+ *
+ * When called with a plain string instead of a template, the string is
+ * returned unchanged. This makes it easy to build APIs that accept either a
+ * string or a tagged template.
+ *
+ * **Example** (Writing a multi-line text block)
+ *
+ * ```ts import.meta.vitest
+ * import { String } from "effect"
+ *
+ * const name = "world"
+ *
+ * String.stripMarginRaw`
+ *   | Hello, ${name}!
+ *   |   Indented line
+ *   |
+ *   | Done.
+ * ` // => "Hello, world!\n  Indented line\n\nDone."
+ * ```
+ *
+ * **Example** (Building an API that accepts a string or a template)
+ *
+ * ```ts import.meta.vitest
+ * import { String } from "effect"
+ *
+ * const prompt = (template: TemplateStringsArray | string, ...values: ReadonlyArray<unknown>) =>
+ *   String.stripMarginRaw(template, ...values)
+ *
+ * prompt("Say hello") // => "Say hello"
+ * prompt`
+ *   | Say ${"hello"}
+ * ` // => "Say hello"
+ * ```
+ *
+ * @see {@link stripMargin} for stripping a margin from an existing string
+ *
+ * @category transforming
+ * @since 4.0.0
+ */
+export const stripMarginRaw: {
+  (template: TemplateStringsArray, ...substitutions: ReadonlyArray<unknown>): string
+  (template: string): string
+  (template: TemplateStringsArray | string, ...substitutions: ReadonlyArray<unknown>): string
+} = (template: TemplateStringsArray | string, ...substitutions: ReadonlyArray<unknown>): string => {
+  if (typeof template === "string") {
+    return template
+  }
+
+  const parts = template.raw
+  const lines: Array<string> = []
+  // Whether each line contains only template whitespace: no margin and no
+  // substitution. Only such lines are dropped at either end of the result.
+  const blank: Array<boolean> = []
+
+  let text = ""
+  let hasMargin = false
+  let hasSubstitution = false
+
+  const flush = () => {
+    lines.push(text)
+    blank.push(!hasMargin && !hasSubstitution && isBlank(text))
+    text = ""
+    hasMargin = false
+    hasSubstitution = false
+  }
+
+  for (let i = 0; i < parts.length; i++) {
+    const segments = parts[i].split("\n")
+    for (let j = 0; j < segments.length; j++) {
+      if (j > 0) {
+        flush()
+      }
+      const segment = segments[j]
+      // A line starts inside the template when it follows a newline in a
+      // template part, or when it is the very start of the template.
+      if (j > 0 || i === 0) {
+        let index = 0
+        while (index < segment.length && (segment[index] === " " || segment[index] === "\t")) {
+          index++
+        }
+        if (index < segment.length && segment[index] === "|") {
+          hasMargin = true
+          index++
+          if (index < segment.length && segment[index] === " ") {
+            index++
+          }
+          text += segment.slice(index)
+          continue
+        }
+      }
+      text += segment
+    }
+    // Like `String.raw`, substitutions beyond the last gap are ignored.
+    if (i < parts.length - 1 && i < substitutions.length) {
+      text += String(substitutions[i])
+      hasSubstitution = true
+    }
+  }
+  flush()
+
+  let start = 0
+  while (start < lines.length && blank[start]) {
+    start++
+  }
+  let end = lines.length
+  while (end > start && blank[end - 1]) {
+    end--
+  }
+
+  return lines.slice(start, end).join("\n")
+}
+
+const isBlank = (line: string): boolean => {
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] !== " " && line[i] !== "\t") {
+      return false
+    }
+  }
+  return true
+}
+
+/**
  * Converts a snake_case string to camelCase.
  *
  * **Example** (Converting snake_case to camelCase)
