@@ -8870,8 +8870,7 @@ export const aggregateWithin: {
       Effect.forkIn(scope)
     )
 
-    // The schedule is stepped once an aggregation has input, and only sees
-    // time spent aggregating.
+    // The schedule clock excludes time between aggregations.
     const clock = yield* Clock
     const step = yield* Schedule.toStep(schedule)
     const hasInput = Latch.makeUnsafe(false)
@@ -8889,8 +8888,7 @@ export const aggregateWithin: {
       Effect.flatMap(() => step(scheduleTime, lastOutput)),
       Effect.flatMap(([, delay]) => Effect.sleep(delay)),
       Effect.flatMap(() => Queue.offer(buffer, scheduleStep)),
-      // When the schedule ends, so does the buffer: the sink drains what it
-      // already has without pulling more from upstream.
+      // End input so the sink drains leftovers without further upstream pulls.
       Pull.catchDone(() => Queue.end(buffer)),
       Effect.flatMap(() => Effect.never)
     )
@@ -8910,7 +8908,6 @@ export const aggregateWithin: {
       if (hasInput.isOpen()) {
         scheduleTime += clock.currentTimeMillisUnsafe() - openedAt
       } else if (buffer.state._tag === "Done") {
-        // Upstream ended before this aggregation received input.
         return Cause.done()
       }
       lastOutput = Option.some(value)
@@ -8924,8 +8921,6 @@ export const aggregateWithin: {
       }
       hasInput.closeUnsafe()
       const pull = emit(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
-      // Once the buffer is done no more input can arrive, so the schedule is
-      // not needed to end the aggregation.
       return buffer.state._tag === "Open" ? Effect.raceFirst(pull, stepToBuffer) : pull
     })
   }))))
