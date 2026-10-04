@@ -48,6 +48,72 @@ const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
 })
 
 describe("RpcServer", () => {
+  for (const waitUntilStarted of [false, true]) {
+    it.effect(`should drain STDIO output after ${waitUntilStarted ? "delayed" : "immediate"} stdin EOF`, () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const finishRequest = yield* Deferred.make<void>()
+        const writeStarted = yield* Deferred.make<void>()
+        const finishWrite = yield* Deferred.make<void>()
+        const output = yield* Ref.make<Array<string>>([])
+        const group = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}), success: Schema.String }))
+        const stdio = Stdio.layerTest({
+          stdin: Stream.make(
+            new TextEncoder().encode("{\"_tag\":\"Request\",\"id\":1,\"tag\":\"wait\",\"payload\":{},\"headers\":[]}\n")
+          ).pipe(
+            Stream.concat(
+              waitUntilStarted ? Stream.fromEffect(Deferred.await(started)).pipe(Stream.drain) : Stream.empty
+            )
+          ),
+          stdout: () =>
+            Sink.forEach((data) =>
+              Deferred.succeed(writeStarted, undefined).pipe(
+                Effect.andThen(Deferred.await(finishWrite)),
+                Effect.andThen(Ref.update(output, (chunks) => [...chunks, String(data)]))
+              )
+            )
+        })
+        const server = yield* Layer.launch(
+          RpcServer.layer(group).pipe(
+            Layer.provide(group.toLayerHandler("wait", () =>
+              Deferred.succeed(started, undefined).pipe(
+                Effect.andThen(Deferred.await(finishRequest)),
+                Effect.as("finished")
+              ))),
+            Layer.provide(RpcServer.layerProtocolStdio),
+            Layer.provide(RpcSerialization.layerNdjson),
+            Layer.provide(stdio)
+          )
+        ).pipe(Effect.forkScoped)
+        yield* Deferred.await(started)
+        yield* Effect.yieldNow
+        assert.isUndefined(server.pollUnsafe())
+        yield* Deferred.succeed(finishRequest, undefined)
+        yield* Deferred.await(writeStarted)
+        assert.isUndefined(server.pollUnsafe())
+        assert.deepStrictEqual(yield* Ref.get(output), [])
+        yield* Deferred.succeed(finishWrite, undefined)
+        yield* Fiber.await(server)
+        const messages = (yield* Ref.get(output)).join("").trim().split("\n").map((line) => JSON.parse(line))
+        assert.lengthOf(messages, 1)
+        assert.strictEqual(messages[0]._tag, "Exit")
+        assert.strictEqual(messages[0].exit.value, "finished")
+      }))
+  }
+
+  it.effect("should shut down on empty stdin", () =>
+    Effect.gen(function*() {
+      const group = RpcGroup.make()
+      const server = yield* Layer.launch(
+        RpcServer.layer(group).pipe(
+          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({ stdin: Stream.empty }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Fiber.await(server)
+    }))
+
   it.effect("should accept only cancellation of an active request when client input has ended", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()
