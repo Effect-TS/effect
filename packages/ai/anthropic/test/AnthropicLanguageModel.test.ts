@@ -13,128 +13,6 @@ import {
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicLanguageModel", () => {
-  describe("system message history", () => {
-    const Body = Schema.Struct({
-      system: Schema.optionalKey(Schema.Array(Schema.Json)),
-      messages: Schema.Array(Schema.Struct({ role: Schema.String, content: Schema.Array(Schema.Json) })),
-      cache_control: Schema.optionalKey(Schema.Json)
-    })
-    const cacheControl = { type: "ephemeral", ttl: "5m" } as const
-    const prompt = Prompt.make([
-      { role: "system", content: "Policy A", options: { anthropic: { cacheControl } } },
-      { role: "user", content: "First question" },
-      { role: "assistant", content: "First answer" },
-      { role: "system", content: "Policy B", options: { anthropic: { cacheControl } } },
-      { role: "user", content: "Second question" },
-      {
-        role: "assistant",
-        content: [{ type: "tool-call", id: "call-1", name: "lookup", params: {} }]
-      },
-      {
-        role: "tool",
-        content: [{ type: "tool-result", id: "call-1", name: "lookup", result: "Evidence", isFailure: false }],
-        options: { anthropic: { cacheControl } }
-      },
-      { role: "system", content: "Policy A" },
-      { role: "system", content: "Current context" }
-    ])
-
-    const run = Effect.fnUntraced(function*(
-      model: string,
-      check: (body: typeof Body.Type) => void,
-      stream = false
-    ) {
-      const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-        Layer.provide(Layer.succeed(
-          HttpClient.HttpClient,
-          makeHttpClient((request) =>
-            Effect.gen(function*() {
-              check(yield* Schema.decodeUnknownEffect(Body)(yield* getRequestBody(request)).pipe(Effect.orDie))
-              return stream
-                ? sseResponse(request, [{ type: "message_stop" }])
-                : jsonResponse(request, {
-                  id: "msg_test",
-                  type: "message",
-                  role: "assistant",
-                  model,
-                  content: [{ type: "text", text: "Done" }],
-                  stop_reason: "end_turn",
-                  stop_sequence: null,
-                  usage: {
-                    input_tokens: 10,
-                    output_tokens: 1,
-                    cache_creation: null,
-                    cache_creation_input_tokens: 0,
-                    cache_read_input_tokens: 0,
-                    service_tier: null
-                  }
-                })
-            })
-          )
-        ))
-      )
-      yield* (stream
-        ? LanguageModel.streamText({ prompt }).pipe(Stream.runDrain)
-        : LanguageModel.generateText({ prompt })).pipe(
-          Effect.provide(AnthropicLanguageModel.model(model, { cache_control: cacheControl })),
-          Effect.provide(layer)
-        )
-    })
-
-    it.effect("preserves every system group for legacy and unknown models", () =>
-      Effect.gen(function*() {
-        for (const model of ["claude-sonnet-4-5", "unknown-model"]) {
-          yield* run(model, (body) => {
-            assert.deepStrictEqual(body.system, [
-              { type: "text", text: "Policy A", cache_control: cacheControl },
-              { type: "text", text: "Policy B", cache_control: cacheControl },
-              { type: "text", text: "Policy A", cache_control: null },
-              { type: "text", text: "Current context", cache_control: null }
-            ])
-            assert.isFalse(body.messages.some((message) => message.role === "system"))
-          })
-        }
-      }))
-
-    it.effect("keeps supported model instructions after the user and tool results in both API paths", () =>
-      Effect.gen(function*() {
-        for (const stream of [false, true]) {
-          yield* run("claude-sonnet-5-5", (body) => {
-            assert.deepStrictEqual(body.system, [
-              { type: "text", text: "Policy A", cache_control: cacheControl }
-            ])
-            assert.deepStrictEqual(body.messages.map((message) => message.role), [
-              "user",
-              "assistant",
-              "user",
-              "system",
-              "assistant",
-              "user",
-              "system"
-            ])
-            assert.deepStrictEqual(body.messages[3], {
-              role: "system",
-              content: [{ type: "text", text: "Policy B", cache_control: cacheControl }]
-            })
-            assert.deepStrictEqual(body.messages.at(-1), {
-              role: "system",
-              content: [
-                { type: "text", text: "Policy A", cache_control: null },
-                { type: "text", text: "Current context", cache_control: null }
-              ]
-            })
-            assert.deepInclude(body.messages[4].content[0], { type: "tool_use", id: "call-1" })
-            assert.deepInclude(body.messages[5].content[0], {
-              type: "tool_result",
-              tool_use_id: "call-1",
-              cache_control: cacheControl
-            })
-            assert.deepStrictEqual(body.cache_control, cacheControl)
-          }, stream)
-        }
-      }))
-  })
-
   describe("streamText", () => {
     for (
       const [label, geo] of [
@@ -1331,6 +1209,137 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(response.value, { title: "Rain" })
         assert.strictEqual(response.toolCalls[0]?.name, "Weather")
       }))
+  })
+
+  describe("system messages", () => {
+    const getRequest = (
+      model: string,
+      prompt: Prompt.RawInput,
+      config?: { readonly midConversationSystemMessages?: boolean | undefined }
+    ) =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model,
+                content: [{ type: "text", text: "Done" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 1,
+                  output_tokens: 1,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({ prompt, disableToolCallResolution: true }).pipe(
+          Effect.provide(AnthropicLanguageModel.model(model, config)),
+          Effect.provide(layer)
+        )
+
+        if (capturedRequest === undefined) {
+          return yield* Effect.die(new Error("Expected a captured request"))
+        }
+        return yield* getRequestBody(capturedRequest)
+      })
+
+    const conversation = Prompt.make([
+      { role: "system", content: "A" },
+      { role: "user", content: "Question 1" },
+      { role: "assistant", content: "Answer 1" },
+      { role: "system", content: "B" },
+      { role: "user", content: "Question 2" }
+    ])
+
+    const systemMessage = (text: string) => ({
+      role: "system",
+      content: [{ type: "text", text, cache_control: null }]
+    })
+
+    it.effect("collects every system message into the top-level system field for unsupported models", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-4-5", conversation)
+
+        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B"])
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant", "user"])
+      }))
+
+    it.effect("sends later system messages in history for supported models", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-5-5", conversation)
+
+        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A"])
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), [
+          "user",
+          "assistant",
+          "user",
+          "system"
+        ])
+        assert.deepStrictEqual(body.messages[3], systemMessage("B"))
+      }))
+
+    it.effect("places system messages after tool results", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest(
+          "claude-sonnet-5-5",
+          Prompt.make([
+            { role: "user", content: "Question" },
+            { role: "assistant", content: [{ type: "tool-call", id: "call_1", name: "lookup", params: {} }] },
+            { role: "system", content: "B" },
+            {
+              role: "tool",
+              content: [{ type: "tool-result", id: "call_1", name: "lookup", result: "Evidence", isFailure: false }]
+            }
+          ])
+        )
+
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), [
+          "user",
+          "assistant",
+          "user",
+          "system"
+        ])
+        assert.strictEqual(body.messages[2].content[0].type, "tool_result")
+        assert.deepStrictEqual(body.messages[3], systemMessage("B"))
+      }))
+
+    it.effect("can enable system messages in history for an unsupported model", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-4-5", conversation, { midConversationSystemMessages: true })
+
+        assert.deepStrictEqual(body.messages[3], systemMessage("B"))
+        assert.notProperty(body, "midConversationSystemMessages")
+      }))
+
+    it.effect("reports support for the requested model", () =>
+      Effect.gen(function*() {
+        const model = yield* LanguageModel.LanguageModel
+
+        assert.isTrue(yield* model.supportsSystemMessagesInHistory!)
+        assert.isFalse(
+          yield* model.supportsSystemMessagesInHistory!.pipe(
+            AnthropicLanguageModel.withConfigOverride({ midConversationSystemMessages: false })
+          )
+        )
+      }).pipe(
+        Effect.provide(AnthropicLanguageModel.model("claude-sonnet-5-5")),
+        Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+        Effect.provide(Layer.succeed(HttpClient.HttpClient, makeHttpClient(() => Effect.die("unexpected request"))))
+      ))
   })
 
   // The packaged `Memory_20250818` tool ships `customName: "AnthropicMemory"` /
