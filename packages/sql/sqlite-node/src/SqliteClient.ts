@@ -191,7 +191,6 @@ export const make = (
       const prepareCacheTTL = options.prepareCacheTTL ?? Duration.minutes(10)
       const prepareCache = yield* Cache.makeWith(prepare, {
         capacity: options.prepareCacheSize ?? 200,
-        // Missing tables and locks are transient, so only cache successes.
         timeToLive: (exit) => Exit.isSuccess(exit) ? prepareCacheTTL : Duration.zero
       })
 
