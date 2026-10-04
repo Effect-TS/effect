@@ -1317,6 +1317,39 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(body.messages[3], systemMessage("B"))
       }))
 
+    for (
+      const [label, next] of [
+        ["at the end", []],
+        ["before an assistant turn", [{ role: "assistant", content: "Answer 2" }]]
+      ] as const
+    ) {
+      it.effect(`collects every system message top-level when one after an assistant turn is ${label}`, () =>
+        Effect.gen(function*() {
+          const body = yield* getRequest(
+            "claude-sonnet-5-5",
+            Prompt.make([
+              { role: "system", content: "A" },
+              { role: "user", content: "Question 1" },
+              { role: "system", content: "B" },
+              { role: "assistant", content: "Answer 1" },
+              { role: "system", content: "C" },
+              ...next
+            ])
+          )
+
+          assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B", "C"])
+          assert.isFalse(body.messages.some((message: any) => message.role === "system"))
+        }))
+    }
+
+    it.effect("can disable system messages in history for a supported model", () =>
+      Effect.gen(function*() {
+        const body = yield* getRequest("claude-sonnet-5-5", conversation, { midConversationSystemMessages: false })
+
+        assert.deepStrictEqual(body.system.map((block: any) => block.text), ["A", "B"])
+        assert.deepStrictEqual(body.messages.map((message: any) => message.role), ["user", "assistant", "user"])
+      }))
+
     it.effect("can enable system messages in history for an unsupported model", () =>
       Effect.gen(function*() {
         const body = yield* getRequest("claude-sonnet-4-5", conversation, { midConversationSystemMessages: true })
@@ -1328,13 +1361,13 @@ describe("AnthropicLanguageModel", () => {
     it.effect("reports support for the requested model", () =>
       Effect.gen(function*() {
         const model = yield* LanguageModel.LanguageModel
+        const supports = (config: typeof AnthropicLanguageModel.Config.Service) =>
+          model.supportsSystemMessagesInHistory!.pipe(AnthropicLanguageModel.withConfigOverride(config))
 
         assert.isTrue(yield* model.supportsSystemMessagesInHistory!)
-        assert.isFalse(
-          yield* model.supportsSystemMessagesInHistory!.pipe(
-            AnthropicLanguageModel.withConfigOverride({ midConversationSystemMessages: false })
-          )
-        )
+        assert.isFalse(yield* supports({ model: "claude-sonnet-5" }))
+        assert.isTrue(yield* supports({ model: "claude-sonnet-6-0" }))
+        assert.isFalse(yield* supports({ midConversationSystemMessages: false }))
       }).pipe(
         Effect.provide(AnthropicLanguageModel.model("claude-sonnet-5-5")),
         Effect.provide(AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") })),
