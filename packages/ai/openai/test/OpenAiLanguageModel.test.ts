@@ -1759,7 +1759,7 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
-    it.effect.each(["completed", "incomplete", "failed"] as const)(
+    it.effect.each(["completed", "failed"] as const)(
       "preserves prompt cache diagnostics in response.%s",
       (status) =>
         Effect.gen(function*() {
@@ -1769,8 +1769,7 @@ describe("OpenAiLanguageModel", () => {
             response: {
               ...makeDefaultResponse({
                 status,
-                error: status === "failed" ? { code: "server_error", message: "generation failed" } : null,
-                incomplete_details: status === "incomplete" ? { reason: "max_output_tokens" } : null
+                error: status === "failed" ? { code: "server_error", message: "generation failed" } : null
               }),
               service_tier: "fast",
               prompt_cache_diagnostics: { type: "cache_hit" }

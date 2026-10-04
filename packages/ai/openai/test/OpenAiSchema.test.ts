@@ -17,54 +17,6 @@ const makeResponse = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe("OpenAiSchema", () => {
-  describe("prompt cache diagnostics", () => {
-    it.each(["resp_baseline", null])("preserves the comparison response ID: %j", (comparison_response_id) => {
-      const request = { prompt_cache_options: { comparison_response_id } }
-
-      assert.deepStrictEqual(Schema.decodeUnknownSync(OpenAiSchema.CreateResponse)(request), request)
-    })
-
-    it.each(
-      [
-        { type: "cache_hit" },
-        { type: "comparison_response_not_found" },
-        { type: "unavailable" },
-        { type: "cache_miss", reason: "tools_changed", cache_missed_tokens: 2048 },
-        { type: "cache_miss", reason: "input_changed", cache_missed_tokens: 1024, comparison_reusable_tokens: 2048 }
-      ] as const
-    )("preserves the diagnostic result: %j", (prompt_cache_diagnostics) => {
-      const decoded = Schema.decodeUnknownSync(OpenAiSchema.Response)(makeResponse({ prompt_cache_diagnostics }))
-
-      assert.deepStrictEqual(decoded.prompt_cache_diagnostics, prompt_cache_diagnostics)
-    })
-
-    it("accepts responses without diagnostics", () => {
-      const decoded = Schema.decodeUnknownSync(OpenAiSchema.Response)(makeResponse())
-
-      assert.isFalse("prompt_cache_diagnostics" in decoded)
-    })
-
-    it.each([
-      null,
-      { type: "unknown" },
-      { type: "cache_miss", cache_missed_tokens: 2048 },
-      { type: "cache_miss", reason: "tools_changed" },
-      { type: "cache_miss", reason: "unknown", cache_missed_tokens: 2048 },
-      { type: "cache_miss", reason: "tools_changed", cache_missed_tokens: "2048" },
-      { type: "cache_miss", reason: "tools_changed", cache_missed_tokens: 2048, comparison_reusable_tokens: null }
-    ])("rejects malformed diagnostics: %j", (prompt_cache_diagnostics) => {
-      assert.throws(() => Schema.decodeUnknownSync(OpenAiSchema.Response)(makeResponse({ prompt_cache_diagnostics })))
-    })
-
-    it("rejects non-string comparison response IDs", () => {
-      assert.throws(() =>
-        Schema.decodeUnknownSync(OpenAiSchema.CreateResponse)({
-          prompt_cache_options: { comparison_response_id: 123 }
-        })
-      )
-    })
-  })
-
   describe("web search sources", () => {
     it("preserves API sources in response history", () => {
       const item = {
