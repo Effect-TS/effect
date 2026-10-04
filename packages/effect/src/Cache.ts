@@ -434,11 +434,11 @@ export const get: {
         }
       }
       const entry = new EntryImpl(fiber, self.lookup(key))
-      entry.onAbandon = () => removeEntry(self, key, entry)
+      entry.onInterrupt = () => removeEntry(self, key, entry)
       let skipCache = false
       entry.fiber.addObserver((exit) => {
-        // Release the key once the lookup can no longer be abandoned.
-        entry.onAbandon = undefined
+        // Release the key once the lookup can no longer be interrupted.
+        entry.onInterrupt = undefined
         if (effect.exitHasInterrupts(exit)) {
           removeEntry(self, key, entry)
           return
@@ -466,7 +466,7 @@ class EntryImpl<A, E> implements Entry<A, E> {
   expiresAt: number | undefined
   awaiters: number
   fiber: Fiber.Fiber<A, E>
-  onAbandon: (() => void) | undefined
+  onInterrupt: (() => void) | undefined
 
   constructor(
     parent: Fiber.Fiber<unknown, unknown>,
@@ -486,7 +486,7 @@ class EntryImpl<A, E> implements Entry<A, E> {
       if (this.awaiters > 0 || this.fiber.pollUnsafe()) return effect.void
       // Detach before interrupting so new lookups do not join the abandoned fiber
       // while its finalizers run.
-      this.onAbandon?.()
+      this.onInterrupt?.()
       return effect.fiberInterrupt(this.fiber)
     })
   }
@@ -1180,15 +1180,15 @@ export const refresh: {
   <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
     core.withFiber((fiber) => {
       const entry = new EntryImpl(fiber, self.lookup(key))
-      entry.onAbandon = () => removeEntry(self, key, entry)
+      entry.onInterrupt = () => removeEntry(self, key, entry)
       const existing = getImpl(self, key, fiber, false) !== undefined
       if (!existing) {
         MutableHashMap.set(self.map, key, entry)
         checkCapacity(self)
       }
       entry.fiber.addObserver((exit) => {
-        // Release the key once the lookup can no longer be abandoned.
-        entry.onAbandon = undefined
+        // Release the key once the lookup can no longer be interrupted.
+        entry.onInterrupt = undefined
         if (effect.exitHasInterrupts(exit)) {
           removeEntry(self, key, entry)
           return
