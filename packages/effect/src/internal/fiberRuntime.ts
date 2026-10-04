@@ -557,7 +557,11 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
    * log annotations and log level) may not be up-to-date.
    */
   getFiberRefs(): FiberRefs.FiberRefs {
-    this.setFiberRef(currentRuntimeFlags, this.currentRuntimeFlags)
+    // Guard against redundant flags synchronization on the hot fork path (Bug #6308)
+    const flagsEntry = this._fiberRefs.locals.get(currentRuntimeFlags)
+    if (flagsEntry === undefined || flagsEntry[0][1] !== this.currentRuntimeFlags) {
+      this.setFiberRef(currentRuntimeFlags, this.currentRuntimeFlags)
+    }
     return this._fiberRefs
   }
 
@@ -590,12 +594,16 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
    * **NOTE**: This method must be invoked by the fiber itself.
    */
   setFiberRef<X>(fiberRef: FiberRef.FiberRef<X>, value: X): void {
+    const oldFiberRefs = this._fiberRefs
     this._fiberRefs = fiberRefs.updateAs(this._fiberRefs, {
       fiberId: this._fiberId,
       fiberRef,
       value
     })
-    this.refreshRefCache()
+    // Only refresh cache when fiberRefs reference actually changed (Bug #6308)
+    if (oldFiberRefs !== this._fiberRefs) {
+      this.refreshRefCache()
+    }
   }
 
   refreshRefCache() {

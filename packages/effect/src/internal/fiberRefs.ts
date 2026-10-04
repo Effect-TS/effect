@@ -14,12 +14,15 @@ import * as core from "./core.js"
 export function unsafeMake(
   fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>
 ): FiberRefs.FiberRefs {
-  return new FiberRefsImpl(fiberRefLocals)
+  const forkRefs = Arr.fromIterable(fiberRefLocals.keys()).filter(
+    (ref) => (ref as any)._isForkIdentity !== true
+  )
+  return new FiberRefsImpl(fiberRefLocals, forkRefs)
 }
 
 /** @internal */
 export function empty(): FiberRefs.FiberRefs {
-  return unsafeMake(new Map())
+  return new FiberRefsImpl(new Map(), Arr.empty())
 }
 
 /** @internal */
@@ -32,7 +35,8 @@ export class FiberRefsImpl implements FiberRefs.FiberRefs {
     readonly locals: Map<
       FiberRef.FiberRef<any>,
       Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>
-    >
+    >,
+    readonly forkRefs: ReadonlyArray<FiberRef.FiberRef<any>> = Arr.empty()
   ) {}
   pipe() {
     return pipeArguments(this, arguments)
@@ -85,7 +89,12 @@ export const joinAs = dual<
   (fiberId: FiberId.Single, that: FiberRefs.FiberRefs) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
   (self: FiberRefs.FiberRefs, fiberId: FiberId.Single, that: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
 >(3, (self, fiberId, that) => {
+  // Fast-path for unchanged or empty child fiber refs (Bug #6308)
+  if (self === that || that.locals.size === 0) {
+    return self
+  }
   const parentFiberRefs = new Map(self.locals)
+  let combinedForkRefs = (self as FiberRefsImpl).forkRefs
   that.locals.forEach((childStack, fiberRef) => {
     const childValue = childStack[0][1]
     if (!childStack[0][0][Equal.symbol](fiberId)) {
@@ -97,6 +106,9 @@ export const joinAs = dual<
           fiberRef,
           [[fiberId, fiberRef.join(fiberRef.initial, childValue)]]
         )
+        if ((fiberRef as any)._isForkIdentity !== true && !combinedForkRefs.includes(fiberRef)) {
+          combinedForkRefs = [...combinedForkRefs, fiberRef]
+        }
         return
       }
       const parentStack = parentFiberRefs.get(fiberRef)!
@@ -118,11 +130,14 @@ export const joinAs = dual<
             newStack = [[fiberId, newValue] as const, ...parentStack]
           }
           parentFiberRefs.set(fiberRef, newStack)
+          if ((fiberRef as any)._isForkIdentity !== true && !combinedForkRefs.includes(fiberRef)) {
+            combinedForkRefs = [...combinedForkRefs, fiberRef]
+          }
         }
       }
     }
   })
-  return new FiberRefsImpl(parentFiberRefs)
+  return new FiberRefsImpl(parentFiberRefs, combinedForkRefs)
 })
 
 /** @internal */
@@ -130,9 +145,27 @@ export const forkAs = dual<
   (childId: FiberId.Single) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
   (self: FiberRefs.FiberRefs, childId: FiberId.Single) => FiberRefs.FiberRefs
 >(2, (self, childId) => {
-  const map = new Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, unknown]>>()
-  unsafeForkAs(self, map, childId)
-  return new FiberRefsImpl(map)
+  // O(1) fork fast-path when no custom fork refs exist (Bug #6308)
+  const forkRefs = (self as FiberRefsImpl).forkRefs
+  if (forkRefs.length === 0) {
+    return self
+  }
+  let map: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, unknown]>> | undefined =
+    undefined
+  for (let i = 0; i < forkRefs.length; i++) {
+    const fiberRef = forkRefs[i]
+    const stack = self.locals.get(fiberRef)
+    if (stack === undefined) continue
+    const oldValue = stack[0][1]
+    const newValue = fiberRef.patch(fiberRef.fork)(oldValue)
+    if (!Equal.equals(oldValue, newValue)) {
+      if (map === undefined) {
+        map = new Map(self.locals)
+      }
+      map.set(fiberRef, [[childId, newValue] as const, ...stack])
+    }
+  }
+  return map === undefined ? self : new FiberRefsImpl(map, forkRefs)
 })
 
 const unsafeForkAs = (
@@ -140,15 +173,17 @@ const unsafeForkAs = (
   map: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>,
   fiberId: FiberId.Single
 ) => {
-  self.locals.forEach((stack, fiberRef) => {
+  const forkRefs = (self as FiberRefsImpl).forkRefs
+  for (let i = 0; i < forkRefs.length; i++) {
+    const fiberRef = forkRefs[i]
+    const stack = self.locals.get(fiberRef)
+    if (stack === undefined) continue
     const oldValue = stack[0][1]
     const newValue = fiberRef.patch(fiberRef.fork)(oldValue)
-    if (Equal.equals(oldValue, newValue)) {
-      map.set(fiberRef, stack)
-    } else {
+    if (!Equal.equals(oldValue, newValue)) {
       map.set(fiberRef, [[fiberId, newValue] as const, ...stack])
     }
-  })
+  }
 }
 
 /** @internal */
@@ -166,9 +201,16 @@ export const delete_ = dual<
   <A>(fiberRef: FiberRef.FiberRef<A>) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
   <A>(self: FiberRefs.FiberRefs, fiberRef: FiberRef.FiberRef<A>) => FiberRefs.FiberRefs
 >(2, (self, fiberRef) => {
+  if (!self.locals.has(fiberRef)) {
+    return self
+  }
   const locals = new Map(self.locals)
   locals.delete(fiberRef)
-  return new FiberRefsImpl(locals)
+  let forkRefs = (self as FiberRefsImpl).forkRefs
+  if ((fiberRef as any)._isForkIdentity !== true && forkRefs.includes(fiberRef)) {
+    forkRefs = forkRefs.filter((r) => r !== fiberRef)
+  }
+  return new FiberRefsImpl(locals, forkRefs)
 })
 
 /** @internal */
@@ -210,12 +252,28 @@ export const updateAs = dual<
   readonly fiberRef: FiberRef.FiberRef<A>
   readonly value: A
 }) => {
+  // Fast-path: return self when identical value already set for current fiberId (Bug #6308)
+  const oldStack = self.locals.get(fiberRef)
+  if (oldStack !== undefined) {
+    const [currentId, currentValue] = oldStack[0]
+    if (currentId[Equal.symbol](fiberId) && Equal.equals(currentValue, value)) {
+      return self
+    }
+  }
+  const isCustomFork = (fiberRef as any)._isForkIdentity !== true
   if (self.locals.size === 0) {
-    return new FiberRefsImpl(new Map([[fiberRef, [[fiberId, value] as const]]]))
+    return new FiberRefsImpl(
+      new Map([[fiberRef, [[fiberId, value] as const]]]),
+      isCustomFork ? [fiberRef] : Arr.empty()
+    )
   }
   const locals = new Map(self.locals)
   unsafeUpdateAs(locals, fiberId, fiberRef, value)
-  return new FiberRefsImpl(locals)
+  let forkRefs = (self as FiberRefsImpl).forkRefs
+  if (isCustomFork && (oldStack === undefined || !forkRefs.includes(fiberRef))) {
+    forkRefs = [...forkRefs, fiberRef]
+  }
+  return new FiberRefsImpl(locals, forkRefs)
 })
 
 const unsafeUpdateAs = (
@@ -277,11 +335,14 @@ export const updateManyAs = dual<
   >
 }) => {
   if (self.locals.size === 0) {
-    return new FiberRefsImpl(new Map(entries))
+    const forkRefs = entries
+      .filter(([ref]) => (ref as any)._isForkIdentity !== true)
+      .map(([ref]) => ref)
+    return new FiberRefsImpl(new Map(entries), forkRefs)
   }
 
   const locals = new Map(self.locals)
-  if (forkAs !== undefined) {
+  if (forkAs !== undefined && (self as FiberRefsImpl).forkRefs.length > 0) {
     unsafeForkAs(self, locals, forkAs)
   }
   entries.forEach(([fiberRef, values]) => {
@@ -293,5 +354,11 @@ export const updateManyAs = dual<
       })
     }
   })
-  return new FiberRefsImpl(locals)
+  let forkRefs = (self as FiberRefsImpl).forkRefs
+  for (const [ref] of entries) {
+    if ((ref as any)._isForkIdentity !== true && !forkRefs.includes(ref)) {
+      forkRefs = [...forkRefs, ref]
+    }
+  }
+  return new FiberRefsImpl(locals, forkRefs)
 })

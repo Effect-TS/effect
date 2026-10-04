@@ -2000,7 +2000,9 @@ export const fiberRefUnsafeMakePatch = <Value, Patch>(
     combine: (first: Patch, second: Patch) => options.differ.combine(first, second),
     patch: (patch: Patch) => (oldValue: Value) => options.differ.patch(patch, oldValue),
     fork: options.fork,
-    join: options.join ?? ((_, n) => n)
+    join: options.join ?? ((_, n) => n),
+    // Track whether fork patch is identity to optimize child fiber creation (Bug #6308)
+    _isForkIdentity: options.fork === options.differ.empty
   }
   return _fiberRef
 }
