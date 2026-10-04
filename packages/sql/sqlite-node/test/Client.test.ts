@@ -82,7 +82,30 @@ describe("Client", () => {
         { id: 1, name: "hello" },
         { id: 2, name: "world" }
       ])
+      response = yield* sql`INSERT INTO test (name) VALUES ('unprepared')`.valuesUnprepared
+      assert.deepStrictEqual(response, [])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM test WHERE id = 3`, [{ id: 3, name: "unprepared" }])
     }))
+
+  it.effect.each(["rows", "values"] as const)(
+    "returns cached INSERT %s across count_changes OFF → ON → OFF",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* makeClient
+        yield* sql`CREATE TABLE count_changes (value INTEGER)`
+        yield* sql`PRAGMA count_changes = OFF`
+        const insert = sql`INSERT INTO count_changes VALUES (1)`
+        const execute = mode === "values" ? insert.values : insert
+
+        assert.deepStrictEqual(yield* execute, [])
+        yield* sql`PRAGMA count_changes = ON`
+        // Node may omit fields after recompilation; check only the row count.
+        assert.lengthOf(yield* execute, 1)
+        yield* sql`PRAGMA count_changes = OFF`
+        assert.deepStrictEqual(yield* execute, [])
+        assert.deepStrictEqual(yield* sql`SELECT COUNT(*) AS count FROM count_changes`, [{ count: 3 }])
+      })
+  )
 
   it.effect("should work with raw", () =>
     Effect.gen(function*() {
