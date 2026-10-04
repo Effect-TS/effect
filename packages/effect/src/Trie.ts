@@ -83,6 +83,30 @@ export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pi
 export const empty: <V = never>() => Trie<V> = TR.empty
 
 /**
+ * Checks whether a value is a Trie.
+ *
+ * **Example** (Checking Trie values)
+ *
+ * ```ts import.meta.vitest
+ * import { Trie } from "effect"
+ *
+ * const trie = Trie.make(["a", 1], ["b", 2])
+ * const notTrie = { a: 1 }
+ *
+ * Trie.isTrie(trie) // => true
+ * Trie.isTrie(notTrie) // => false
+ * Trie.isTrie(null) // => false
+ * ```
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isTrie: {
+  <V>(u: Iterable<readonly [string, V]>): u is Trie<V>
+  (u: unknown): u is Trie<unknown>
+} = TR.isTrie
+
+/**
  * Creates a new `Trie` from an iterable collection of key/value pairs (e.g. `Array<[string, V]>`).
  *
  * **Example** (Creating a trie from entries)

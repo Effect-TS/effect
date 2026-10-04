@@ -14,6 +14,7 @@ import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import type * as Effect from "../Effect.ts"
 import type * as NetAddress from "../net/NetAddress.ts"
+import * as Predicate from "../Predicate.ts"
 import type * as Socket from "./Socket.ts"
 
 /**
@@ -48,6 +49,15 @@ export const ErrorTypeId: ErrorTypeId = "@effect/platform/SocketServer/SocketSer
  * @since 4.0.0
  */
 export type ErrorTypeId = "@effect/platform/SocketServer/SocketServerError"
+
+/**
+ * Returns `true` when a value is a `SocketServerError`.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isSocketServerError = (u: unknown): u is SocketServerError => Predicate.hasProperty(u, ErrorTypeId)
 
 /**
  * Error reason for failures that occur while opening a socket server.
