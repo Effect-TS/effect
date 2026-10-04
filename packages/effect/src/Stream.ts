@@ -8859,22 +8859,18 @@ export const aggregateWithin: {
       capacity: 0
     })
 
-    // upstream -> buffer
     yield* pull.pipe(
       pullLatch.whenOpen,
       Effect.flatMap((arr) => {
         pullLatch.closeUnsafe()
         return Queue.offer(buffer, arr)
       }),
-      Effect.forever, // don't disable autoYield to prevent choking the schedule
+      Effect.forever, // Keep autoYield enabled so the schedule can run.
       Effect.catchCause((cause) => Queue.failCause(buffer, cause)),
       Effect.forkIn(scope)
     )
 
-    // schedule -> buffer
-    //
-    // The schedule is stepped at most once per aggregation, when it receives its
-    // first element. Time between aggregations is hidden from the schedule.
+    // Pause the schedule clock between aggregations.
     const clock = yield* Clock
     const step = yield* Schedule.toStep(schedule)
     const hasInput = Latch.makeUnsafe(false)
@@ -8901,7 +8897,6 @@ export const aggregateWithin: {
       Effect.flatMap(() => Effect.never)
     )
 
-    // buffer -> sink
     const pullFromBuffer: Pull.Pull<
       Arr.NonEmptyReadonlyArray<A>,
       E
@@ -8928,7 +8923,7 @@ export const aggregateWithin: {
       return pullFromBuffer
     })
     const catchSinkHalt = Effect.flatMap(([value, leftover_]: Sink.End<B, A2>) => {
-      // ignore the last output if the upstream only pulled a halt
+      // Suppress the sink result if upstream ended without input.
       if (!hasInput.isOpen() && buffer.state._tag === "Done") return Cause.done()
       pausedAt = clock.currentTimeMillisUnsafe()
       lastOutput = Option.some(value)
@@ -8937,7 +8932,6 @@ export const aggregateWithin: {
     })
 
     return Effect.suspend((): Pull.Pull<Arr.NonEmptyReadonlyArray<B>, E | E2 | E3, void, R2 | R3> => {
-      // the stream ends when there is no more data to process
       if (leftover === undefined) {
         if (scheduleDone) return Cause.done()
         if (buffer.state._tag === "Done") {
@@ -8946,7 +8940,7 @@ export const aggregateWithin: {
       }
       hasInput.closeUnsafe()
       const pull = catchSinkHalt(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
-      // after the schedule ends, only the leftovers are drained
+      // Drain leftovers without racing an exhausted schedule.
       return scheduleDone ? pull : Effect.raceFirst(pull, stepToBuffer)
     })
   }))))
