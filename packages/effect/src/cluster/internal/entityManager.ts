@@ -238,7 +238,7 @@ export const make = Effect.fnUntraced(function*<
         ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
 
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
-          spanPrefix: `${entity.type}(${address.entityId})`,
+          spanPrefix: entity.type,
           spanAttributes: {
             ...options.spanAttributes,
             "entity.type": entity.type,

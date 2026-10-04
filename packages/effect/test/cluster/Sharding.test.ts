@@ -58,6 +58,48 @@ import {
   User
 } from "./TestEntity.ts"
 
+describe("Sharding tracing", () => {
+  it.effect("keeps server operation names stable across entity IDs", () =>
+    Effect.gen(function*() {
+      const observation = Schema.Struct({
+        name: Schema.String,
+        entityType: Schema.String,
+        entityId: Schema.String
+      })
+      const entity = Entity.make("TraceEntity", [
+        Rpc.make("Read", { success: observation }),
+        Rpc.make("Inspect", { success: observation })
+      ])
+      const observe = Effect.map(Effect.orDie(Effect.currentSpan), (span) => ({
+        name: span.name,
+        entityType: String(span.attributes.get("entity.type")),
+        entityId: String(span.attributes.get("entity.id"))
+      }))
+      const layer = entity.toLayer({
+        Read: () => observe,
+        Inspect: () => observe
+      }).pipe(Layer.provideMerge(TestSharding))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* entity.client
+        for (const entityId of ["tenant-1", "tenant-2"]) {
+          const client = makeClient(entityId)
+          assert.deepStrictEqual(yield* client.Read(), {
+            name: "TraceEntity.Read",
+            entityType: "TraceEntity",
+            entityId
+          })
+          assert.deepStrictEqual(yield* client.Inspect(), {
+            name: "TraceEntity.Inspect",
+            entityType: "TraceEntity",
+            entityId
+          })
+        }
+      }).pipe(Effect.provide(layer))
+    }))
+})
+
 // Isolate the long-lived stream from concurrent shard-metric tests.
 describe("Sharding claim release regressions", { concurrent: false }, () => {
   it.effect("keeps the claim of an active request replayed after an entity defect", () =>
