@@ -43,12 +43,12 @@ export const withRun = <
       run(f) {
         return semaphore.withPermits(1)(Effect.gen(function*() {
           const prev = write
-          write = f
 
           for (const [args, context] of buffer) {
             yield* Effect.provideContext(Effect.suspend(() => f(...args)), context)
           }
           buffer = []
+          write = f
 
           return yield* Effect.onExit(Effect.never, () => {
             write = prev
