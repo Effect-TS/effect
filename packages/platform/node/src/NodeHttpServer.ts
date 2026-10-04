@@ -275,7 +275,7 @@ export const makeUpgradeHandler = <
         (wss) =>
           Effect.acquireRelease(
             Effect.callback<NodeWS.WebSocket, Socket.SocketError>((resume) => {
-              // Refused handshakes never call the upgrade callback, so fail on close.
+              // A refused handshake never invokes the callback, so fail on close instead.
               const onClose = () =>
                 resume(Effect.fail(
                   new Socket.SocketError({
@@ -285,22 +285,13 @@ export const makeUpgradeHandler = <
                     })
                   })
                 ))
-              if (socket.destroyed) {
-                onClose()
-                return
-              }
+              if (socket.destroyed) return onClose()
               socket.once("close", onClose)
-              try {
-                wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
-                  socket.off("close", onClose)
-                  upgraded = true
-                  resume(Effect.succeed(ws))
-                })
-              } catch (cause) {
+              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
                 socket.off("close", onClose)
-                throw cause
-              }
-              return Effect.sync(() => socket.off("close", onClose))
+                upgraded = true
+                resume(Effect.succeed(ws))
+              })
             }),
             (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
