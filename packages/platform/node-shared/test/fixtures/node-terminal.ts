@@ -1,5 +1,7 @@
+import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChildProcessSpawner"
+import * as NodeStdio from "@effect/platform-node-shared/NodeStdio"
 import * as NodeTerminal from "@effect/platform-node-shared/NodeTerminal"
-import { Prompt } from "effect/cli"
+import { Command, Flag, Prompt } from "effect/cli"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
@@ -7,12 +9,18 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Queue from "effect/Queue"
+import * as Stdio from "effect/Stdio"
+import * as Stream from "effect/Stream"
 import * as Terminal from "effect/Terminal"
 
-const TerminalLayer = Layer.mergeAll(
-  NodeTerminal.layer,
-  FileSystem.layerNoop({}),
-  Path.layer
+const TerminalLayer = Layer.provideMerge(
+  NodeChildProcessSpawner.layer,
+  Layer.mergeAll(
+    NodeTerminal.layer,
+    NodeStdio.layer,
+    FileSystem.layerNoop({}),
+    Path.layer
+  )
 )
 
 const prompts = Effect.gen(function*() {
@@ -80,8 +88,30 @@ const readLineDisposed = Effect.gen(function*() {
 })
 
 const mode = process.argv[2]
+const fallbackPrompt = Effect.gen(function*() {
+  let result = { profile: "", input: "" }
+  const prompt = mode === "composed-fallback"
+    ? Prompt.all([Prompt.succeed("x"), Prompt.succeed("")]).pipe(Prompt.map(([a, b]) => a + b))
+    : Prompt.succeed("x")
+  const command = Command.make(
+    "example",
+    { profile: Flag.String("profile").pipe(Flag.withFallbackPrompt(prompt)) },
+    ({ profile }) =>
+      Effect.gen(function*() {
+        yield* Effect.sleep("30 millis")
+        const stdio = yield* Stdio.Stdio
+        const input = yield* stdio.stdin.pipe(Stream.decodeText(), Stream.mkString)
+        result = { profile, input }
+      })
+  )
+  yield* Command.runWith(command, { version: "1.0.0" })(mode === "explicit-flag" ? ["--profile", "x"] : [])
+  return result
+})
+
 const program = Effect.gen(function*() {
-  if (mode === "prompts") {
+  if (mode === "fallback-prompt" || mode === "composed-fallback" || mode === "explicit-flag") {
+    return yield* fallbackPrompt
+  } else if (mode === "prompts") {
     return yield* prompts
   } else if (mode === "read-input") {
     return yield* readInput
