@@ -509,7 +509,10 @@ const rename = (() => {
 
 // == stat
 
-const makeFileInfo = (stat: NFS.BigIntStats): Effect.Effect<FileSystem.File.Info, Error.PlatformError> =>
+const makeFileInfo = (
+  stat: NFS.BigIntStats,
+  method = "stat"
+): Effect.Effect<FileSystem.File.Info, Error.PlatformError> =>
   Effect.try({
     try: (): FileSystem.File.Info => ({
       type: stat.isFile() ?
@@ -541,8 +544,20 @@ const makeFileInfo = (stat: NFS.BigIntStats): Effect.Effect<FileSystem.File.Info
       blksize: stat.blksize !== undefined ? Option.some(ByteSize.bytes(stat.blksize)) : Option.none(),
       blocks: bigintToNumberOption(stat.blocks)
     }),
-    catch: handleBadArgument("stat")
+    catch: handleBadArgument(method)
   })
+const lstat = (() => {
+  const nodeLstat = effectify(
+    NFS.lstat,
+    handleErrnoException("FileSystem", "lstat"),
+    handleBadArgument("lstat")
+  )
+  return (path: string) =>
+    Effect.flatMap(
+      nodeLstat(path, { bigint: true }),
+      (stat) => makeFileInfo(stat, "lstat")
+    )
+})()
 const stat = (() => {
   const nodeStat = effectify(
     NFS.stat,
@@ -678,6 +693,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     copyFile,
     glob,
     link,
+    lstat,
     makeDirectory,
     makeTempDirectory,
     makeTempDirectoryScoped,
