@@ -1043,6 +1043,58 @@ describe("HttpServer", () => {
       expect(response.status).toEqual(200)
     }).pipe(Effect.provide(layerTestWebsocket)))
 
+  it.effect("a refused websocket handshake fails the upgrade instead of hanging (#8721)", () =>
+    Effect.gen(function*() {
+      const outcome = yield* Deferred.make<string>()
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          // The reader runs the upgrade acquisition: with a refused
+          // handshake this used to hang past server shutdown.
+          const socket = yield* request.upgrade
+          const exit = yield* Effect.exit(Effect.scoped(socket.reader))
+          yield* Deferred.succeed(outcome, exit._tag)
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+
+      // ws refuses Sec-WebSocket-Version 12 and never calls handleUpgrade —
+      // without the close guard the request fiber hangs past server shutdown.
+      yield* Effect.callback<void>((resume) => {
+        const req = Http.request({
+          port,
+          path: "/ws",
+          method: "GET",
+          headers: {
+            Connection: "Upgrade",
+            Upgrade: "websocket",
+            "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+            "Sec-WebSocket-Version": "12"
+          }
+        })
+        req.on("response", (res) => {
+          res.resume()
+          req.destroy()
+          resume(Effect.void)
+        })
+        req.on("error", () => resume(Effect.void))
+        req.end()
+      })
+
+      const tag = yield* Deferred.await(outcome).pipe(
+        Effect.timeout("5 seconds"),
+        Effect.orElseSucceed(() => "Timeout" as const)
+      )
+      assert.strictEqual(tag, "Failure")
+    }).pipe(Effect.provide(layerTestWebsocket)), 10000)
+
   it.effect("does not write the HTTP response to an upgraded connection", () =>
     Effect.gen(function*() {
       yield* HttpRouter.add(
