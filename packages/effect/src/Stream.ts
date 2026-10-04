@@ -8369,8 +8369,9 @@ export const grouped: {
  *
  * **Details**
  *
- * Finite fractional chunk sizes are rounded down. `NaN` and non-positive sizes
- * are treated as `1`.
+ * The duration starts when the first element of a group arrives, so an idle
+ * stream does not wake up. Finite fractional chunk sizes are rounded down.
+ * `NaN` and non-positive sizes are treated as `1`.
  *
  * **Example** (Grouping elements by size or time)
  *
@@ -8800,6 +8801,8 @@ export const aggregate: {
  * **Details**
  *
  * The schedule can flush the current aggregation even if the sink has not finished.
+ * It is stepped once per aggregation, starting when the aggregation receives its
+ * first element, so an idle stream does not run the schedule.
  *
  * **Example** (Aggregating with a sink and schedule)
  *
@@ -8861,12 +8864,13 @@ export const aggregateWithin: {
     // schedule -> buffer
     let lastOutput = Option.none<B>()
     let leftover: Arr.NonEmptyReadonlyArray<A2> | undefined
-    let sinkHasInput = false
+    // Opens when the current window receives input, so idle streams do not
+    // step the schedule and each window starts with its first element.
+    const sinkHasInput = Latch.makeUnsafe(false)
     const step = yield* Schedule.toStepWithSleep(schedule)
-    const stepLoop = Effect.suspend(function loop(): Pull.Pull<void, E3, C | void, R3> {
-      return Effect.flatMap(step(lastOutput), () => !sinkHasInput ? loop() : Queue.offer(buffer, scheduleStep))
-    })
-    const stepToBuffer: Pull.Pull<never, E3, void, R3> = stepLoop.pipe(
+    const stepToBuffer: Pull.Pull<never, E3, void, R3> = sinkHasInput.await.pipe(
+      Effect.flatMap(() => step(lastOutput)),
+      Effect.flatMap(() => Queue.offer(buffer, scheduleStep)),
       Effect.flatMap(() => Effect.never),
       Pull.catchDone(() => Cause.done())
     )
@@ -8880,7 +8884,7 @@ export const aggregateWithin: {
         if (arr === scheduleStep) {
           return Cause.done()
         }
-        sinkHasInput = true
+        sinkHasInput.openUnsafe()
         return Effect.succeed(arr)
       })
     )
@@ -8889,7 +8893,7 @@ export const aggregateWithin: {
       if (leftover !== undefined) {
         const chunk = leftover
         leftover = undefined
-        sinkHasInput = true
+        sinkHasInput.openUnsafe()
         return Effect.succeed(chunk)
       }
       pullLatch.openUnsafe()
@@ -8897,7 +8901,7 @@ export const aggregateWithin: {
     })
     const catchSinkHalt = Effect.flatMap(([value, leftover_]: Sink.End<B, A2>) => {
       // ignore the last output if the upstream only pulled a halt
-      if (!sinkHasInput && buffer.state._tag === "Done") return Cause.done()
+      if (!sinkHasInput.isOpen() && buffer.state._tag === "Done") return Cause.done()
       lastOutput = Option.some(value)
       leftover = leftover_
       return Effect.succeed(Arr.of(value))
@@ -8908,7 +8912,11 @@ export const aggregateWithin: {
       if (buffer.state._tag === "Done" && leftover === undefined) {
         return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
       }
-      sinkHasInput = leftover !== undefined
+      if (leftover === undefined) {
+        sinkHasInput.closeUnsafe()
+      } else {
+        sinkHasInput.openUnsafe()
+      }
       return Effect.succeed(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
     }).pipe(
       Effect.flatMap((pull) => Effect.raceFirst(catchSinkHalt(pull), stepToBuffer))
