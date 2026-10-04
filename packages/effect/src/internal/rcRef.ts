@@ -7,15 +7,20 @@ import { identity } from "../Function.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as RcRef from "../RcRef.ts"
 import * as Scope from "../Scope.ts"
-import * as Semaphore from "../Semaphore.ts"
 
 const TypeId = "~effect/RcRef"
 
-type State<A> = State.Empty | State.Acquired<A> | State.Closed
+type State<A> = State.Empty | State.Acquiring<A> | State.Acquired<A> | State.Closed
 
 declare namespace State {
   interface Empty {
     readonly _tag: "Empty"
+  }
+
+  interface Acquiring<A> {
+    readonly _tag: "Acquiring"
+    fiber: Fiber.Fiber<Acquired<A>, unknown> | undefined
+    awaiters: number
   }
 
   interface Acquired<A> {
@@ -48,7 +53,6 @@ class RcRefImpl<A, E> implements RcRef.RcRef<A, E> {
   }
 
   state: State<A> = stateEmpty
-  readonly semaphore = Semaphore.makeUnsafe(1)
   readonly acquire: Effect.Effect<A, E>
   readonly context: Context.Context<never>
   readonly scope: Scope.Scope
@@ -85,11 +89,11 @@ export const make = <A, E, R>(options: {
     )
     return Effect.as(
       Scope.addFinalizerExit(scope, () => {
-        const close = ref.state._tag === "Acquired"
-          ? Scope.close(ref.state.scope, Exit.void)
-          : Effect.void
+        const state = ref.state
         ref.state = stateClosed
-        return close
+        if (state._tag === "Acquired") return Scope.close(state.scope, Exit.void)
+        if (state._tag === "Acquiring" && state.fiber) return Fiber.interrupt(state.fiber)
+        return Effect.void
       }),
       ref
     )
@@ -110,39 +114,77 @@ const getState = <A, E>(
         ? Effect.as(Fiber.interrupt(state.fiber), state)
         : Effect.succeed(state)
     }
+    case "Acquiring": {
+      const state = self.state
+      state.awaiters++
+      return awaitAcquiring(self, state, restore)
+    }
     case "Empty": {
-      return self.semaphore.withPermit(
-        Effect.suspend(() => {
-          if (self.state._tag !== "Empty") {
-            return getState(self, restore)
+      // The caller that starts the acquisition counts as its first awaiter.
+      const acquiring: State.Acquiring<A> = { _tag: "Acquiring", fiber: undefined, awaiters: 1 }
+      self.state = acquiring
+      const scope = Scope.makeUnsafe()
+      // Acquire on a detached fiber so the acquisition is shared by every
+      // caller and only interrupted once all of them have been interrupted.
+      const acquire = Effect.provideContext(
+        self.acquire as Effect.Effect<A, E>,
+        Context.add(self.context, Scope.Scope, scope)
+      ).pipe(
+        Effect.flatMap((value) => {
+          // The ref was closed, or the acquisition was abandoned.
+          if (self.state !== acquiring) {
+            return Effect.interrupt
           }
-          const scope = Scope.makeUnsafe()
-          return restore(Effect.provideContext(
-            self.acquire as Effect.Effect<A, E>,
-            Context.add(self.context, Scope.Scope, scope)
-          )).pipe(
-            Effect.flatMap((value) => {
-              if (self.state._tag === "Closed") {
-                return Effect.interrupt
-              }
-              const state: State.Acquired<A> = {
-                _tag: "Acquired",
-                value,
-                scope,
-                fiber: undefined,
-                refCount: 1,
-                invalidated: false
-              }
-              self.state = state
-              return Effect.succeed(state)
-            }),
-            Effect.onExit((exit) => Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void)
-          )
+          const state: State.Acquired<A> = {
+            _tag: "Acquired",
+            value,
+            scope,
+            fiber: undefined,
+            // Every caller still waiting holds a reference.
+            refCount: acquiring.awaiters,
+            invalidated: false
+          }
+          self.state = state
+          return Effect.succeed(state)
+        }),
+        Effect.onExit((exit) => {
+          acquiring.fiber = undefined
+          if (Exit.isSuccess(exit)) return Effect.void
+          if (self.state === acquiring) self.state = stateEmpty
+          return Scope.close(scope, exit)
         })
       )
+      // Fork synchronously so a concurrent get never sees an acquisition
+      // without its fiber.
+      const fiber = Effect.runForkWith(Fiber.getCurrent()!.context)(acquire)
+      if (fiber.pollUnsafe() === undefined) acquiring.fiber = fiber
+      return awaitAcquiring(self, acquiring, restore, fiber)
     }
   }
 }
+
+const awaitAcquiring = <A, E>(
+  self: RcRefImpl<A, E>,
+  acquiring: State.Acquiring<A>,
+  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>,
+  fiber = acquiring.fiber!
+): Effect.Effect<State.Acquired<A>, E> =>
+  Effect.onExit(
+    restore(Fiber.join(fiber)) as Effect.Effect<State.Acquired<A>, E>,
+    (exit) => {
+      const result = fiber.pollUnsafe()
+      if (result === undefined) {
+        if (--acquiring.awaiters > 0) return Effect.void
+        // Detach the abandoned acquisition first so new callers start a fresh
+        // one instead of joining one that is being interrupted.
+        if (self.state === acquiring) self.state = stateEmpty
+        return Fiber.interrupt(fiber)
+      }
+      // The acquisition counted this caller as a reference. Release it if the
+      // caller was interrupted before it could register its finalizer.
+      return Exit.isSuccess(result) && Exit.isFailure(exit) ? release(self, result.value) : Effect.void
+    }
+  )
 
 /** @internal */
 export const get = <A, E>(self_: RcRef.RcRef<A, E>): Effect.Effect<A, E, Scope.Scope> => {

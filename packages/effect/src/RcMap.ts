@@ -373,7 +373,12 @@ export const get: {
         Effect.suspend(() => self.lookup(key)).pipe(
           Effect.runForkWith(Context.makeUnsafe(context)),
           Fiber.runIn(entry.scope)
-        ).addObserver((exit) => Deferred.doneUnsafe(entry.deferred, exit))
+        ).addObserver((exit) => {
+          // Interruption is abandonment, so the entry is dropped and the next
+          // get starts a fresh lookup.
+          if (Exit.hasInterrupts(exit)) removeInterrupted(self, key, entry, parent)
+          Deferred.doneUnsafe(entry.deferred, exit)
+        })
       }
       const scope = Context.getUnsafe(parent.context, Scope.Scope)
       return Scope.addFinalizer(scope, entry.finalizer).pipe(
@@ -448,6 +453,24 @@ export const getOption: {
       )
     })
 )
+
+const removeInterrupted = <K, A, E>(
+  self: RcMap<K, A, E>,
+  key: K,
+  entry: State.Entry<A, E>,
+  parent: Fiber.Fiber<unknown, unknown>
+) => {
+  if (self.state._tag === "Closed") return
+  const o = MutableHashMap.get(self.state.map, key)
+  if (o._tag === "None" || o.value !== entry) return
+  MutableHashMap.remove(self.state.map, key)
+  // Borrowers close the entry on release; an idle entry has none left.
+  if (entry.refCount > 0) return
+  closeEntry(entry).pipe(
+    Effect.runForkWith(parent.context),
+    Fiber.runIn(self.scope)
+  )
+}
 
 const closeEntry = <A, E>(entry: State.Entry<A, E>) =>
   entry.fiber
