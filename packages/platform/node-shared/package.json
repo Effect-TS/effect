@@ -68,13 +68,13 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "effect": "workspace:^",
     "tar": "^7.5.22",
     "tinybench": "^6.2.0"
   },
   "dependencies": {
-    "@types/ws": "^8.18.1",
+    "@types/ws": "^8.18.2",
     "ws": "^8.22.0"
   }
 }

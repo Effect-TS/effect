@@ -74,11 +74,11 @@
     "redis": ">=5.0.0 <7.0.0"
   },
   "devDependencies": {
-    "@testcontainers/mysql": "^12.1.0",
-    "@testcontainers/postgresql": "^12.1.0",
-    "@testcontainers/redis": "^12.1.0",
-    "@types/node": "^26.6.3",
+    "@testcontainers/mysql": "^12.2.0",
+    "@testcontainers/postgresql": "^12.2.0",
+    "@testcontainers/redis": "^12.2.0",
+    "@types/node": "^26.6.4",
     "effect": "workspace:^",
-    "redis": "^6.2.1"
+    "redis": "^6.3.0"
   }
 }

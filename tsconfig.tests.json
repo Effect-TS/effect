@@ -118,7 +118,8 @@
       ],
       "diagnosticSeverity": {
         "unknownInEffectCatch": "off",
-        "multipleEffectProvide": "off"
+        "multipleEffectProvide": "off",
+        "unstableApiUsage": "off"
       }
     }]
   }

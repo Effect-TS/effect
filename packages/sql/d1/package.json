@@ -66,12 +66,12 @@
   },
   "devDependencies": {
     "effect": "workspace:^",
-    "miniflare": "5.20260925.0-alpha"
+    "miniflare": "5.20261001.0-alpha"
   },
   "peerDependencies": {
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^5.20260926.1"
+    "@cloudflare/workers-types": "^5.20261003.1"
   }
 }

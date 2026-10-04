@@ -46,7 +46,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "dependencies": {
-    "rolldown": "^1.2.11"
+    "rolldown": "^1.2.12"
   },
   "peerDependencies": {
     "effect": "workspace:^",
@@ -55,9 +55,9 @@
   },
   "devDependencies": {
     "@effect/vitest": "workspace:^",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "effect": "workspace:^",
-    "vite": "^8.3.1",
+    "vite": "^8.3.2",
     "vitest": "^5.0.2"
   }
 }
