@@ -3,4 +3,4 @@
 "effect": patch
 ---
 
-Preserve all Anthropic system instructions, using mid-conversation messages on supported models. Expose the current model's support for system messages in history.
+Preserve all Anthropic system instructions and support configurable mid-conversation system messages. Add optional `LanguageModel.supportsSystemMessagesInHistory` to query support with scoped overrides.

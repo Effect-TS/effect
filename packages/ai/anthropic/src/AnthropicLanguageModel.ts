@@ -95,11 +95,8 @@ export class Config extends Context.Service<
        */
       readonly structuredOutputs?: boolean | undefined
       /**
-       * Whether the model supports mid-conversation system messages.
-       *
-       * Overrides automatic capability detection based on the model identifier.
-       * When disabled, every system message is sent in the top-level `system`
-       * field.
+       * Overrides model detection for mid-conversation system messages.
+       * Set to `false` to send all instructions in the top-level `system` field.
        *
        * @see https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages
        */
@@ -888,10 +885,9 @@ const prepareMessages = Effect.fnUntraced(
     let pendingSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
     let inlineSystem = capabilities.supportsMidConversationSystemMessages
 
-    // A mid-conversation system message must directly follow a user turn and
-    // precede the next assistant turn, so later instructions are deferred until
-    // then. Inline instructions take precedence over the top-level field, so if
-    // any cannot be placed, every instruction falls back to the top-level field.
+    // Defer inline instructions until after a user turn and before an assistant
+    // turn or the end of the prompt. If placement fails, fall back for the whole
+    // request: inline instructions would override newer top-level instructions.
     const flushPendingSystem = () => {
       if (pendingSystem.length === 0) {
         return
@@ -3095,8 +3091,7 @@ const getConfigCapabilities = (config: typeof Config.Service & { readonly model:
 }
 
 /**
- * Returns the capabilities of a Claude model that are used for defaults and feature selection.
- * Legacy models are listed as exceptions so newly released models inherit modern defaults.
+ * Returns model defaults, optimistically assuming modern capabilities for unknown IDs.
  *
  * @see https://docs.claude.com/en/docs/about-claude/models/overview#model-comparison-table
  * @see https://platform.claude.com/docs/en/build-with-claude/structured-outputs
@@ -3159,7 +3154,7 @@ const getModelCapabilities = (modelId: string): ModelCapabilities => {
         modelId.includes("claude-opus-4-7") ||
         modelId.includes("claude-sonnet-4-6") ||
         modelId.includes("claude-mythos-preview") ||
-        // Claude Sonnet 5, but not later minor versions such as Claude Sonnet 5.5
+        // Match Sonnet 5, excluding minor versions such as 5.5.
         /claude-sonnet-5(?!-\d\b)/.test(modelId)
       )
     }

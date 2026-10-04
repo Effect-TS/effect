@@ -108,10 +108,9 @@ export interface LanguageModel {
   readonly [TypeId]: TypeId
 
   /**
-   * Whether the current provider configuration preserves system instructions in
-   * conversation history instead of collecting them before the conversation.
-   * Evaluate in the request's context: scoped model overrides can change support.
-   * Providers may constrain where these messages can appear. Absence is unknown.
+   * Whether the effective provider configuration supports system messages in
+   * history. Evaluate in the request's context to respect scoped overrides.
+   * Placement restrictions may apply; an absent capability means unknown support.
    */
   readonly supportsSystemMessagesInHistory?: Effect.Effect<boolean> | undefined
 
