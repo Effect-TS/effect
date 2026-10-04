@@ -51,7 +51,6 @@ import {
   args,
   causeAnnotate,
   causeCombine,
-  causeDie,
   causeEmpty,
   causeFromReasons,
   CauseImpl,
@@ -4440,48 +4439,74 @@ export const cachedInvalidateWithTTL: {
   self: Effect.Effect<A, E, R>,
   ttl: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
 ): Effect.Effect<[Effect.Effect<A, E, R>, Effect.Effect<void>]> =>
-  sync(() => {
-    const ttlMillis = typeof ttl === "function"
-      ? (exit: Exit.Exit<A, E>) => Duration.toMillis(Duration.fromInputUnsafe(ttl(exit)))
-      : constant(Duration.toMillis(Duration.fromInputUnsafe(ttl)))
-    const latch = makeLatchUnsafe(false)
-    let expiresAt = 0
-    let running = false
-    let exit: Exit.Exit<A, E> | undefined
-    const wait = flatMap(latch.await, () => exit!)
-    return [
-      withFiber((fiber) => {
-        const clock = fiber.getRef(ClockRef)
-        const now = expiresAt === Infinity ? 0 : clock.currentTimeMillisUnsafe()
-        if (running || now < expiresAt) return exit ?? wait
-        running = true
-        latch.closeUnsafe()
-        exit = undefined
-        onExitUnsafe<A, E>(fiber, (exit_) =>
-          sync(() => {
-            try {
-              const duration = ttlMillis(exit_)
-              expiresAt = clock.currentTimeMillisUnsafe() + duration
-              exit = exit_
-            } catch (error) {
-              const cause = causeDie(error)
-              // Publish the same combined cause that onExit returns to the owner.
-              exit = exitFailCause(exitIsFailure(exit_) ? causeCombine(exit_.cause, cause) : cause)
-              throw error
-            } finally {
-              running = false
-              latch.openUnsafe()
-            }
-          }))
-        return self
-      }),
-      sync(() => {
-        expiresAt = 0
-        latch.closeUnsafe()
-        exit = undefined
-      })
-    ]
-  }))
+  sync(() =>
+    makeCachedUnsafe(
+      self,
+      typeof ttl === "function"
+        ? (exit: Exit.Exit<A, E>) => Duration.toMillis(Duration.fromInputUnsafe(ttl(exit)))
+        : constant(Duration.toMillis(Duration.fromInputUnsafe(ttl)))
+    )
+  ))
+
+interface CachedRun<A, E> {
+  fiber: FiberImpl<A, E> | undefined
+  awaiters: number
+}
+
+const makeCachedUnsafe = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+  ttlMillis: (exit: Exit.Exit<A, E>) => number
+): [Effect.Effect<A, E, R>, Effect.Effect<void>] => {
+  let expiresAt = 0
+  let exit: Exit.Exit<A, E> | undefined
+  let current: CachedRun<A, E> | undefined
+
+  const join = (fiber: Fiber.Fiber<unknown, unknown>, run: CachedRun<A, E>): Effect.Effect<A, E> => {
+    run.awaiters++
+    onExitUnsafe(fiber, () => {
+      run.awaiters--
+      if (run.awaiters > 0 || run.fiber!._exit) return
+      // Every caller left, so abandon the run. Detach it first so new callers
+      // start a fresh run instead of joining one that is being interrupted.
+      if (current === run) current = undefined
+      return fiberInterrupt(run.fiber!)
+    })
+    return fiberJoin(run.fiber!)
+  }
+
+  return [
+    withFiber((fiber) => {
+      if (current !== undefined) return join(fiber, current)
+      const clock = fiber.getRef(ClockRef)
+      if (exit !== undefined && (expiresAt === Infinity || clock.currentTimeMillisUnsafe() < expiresAt)) {
+        return exit
+      }
+      exit = undefined
+      const run: CachedRun<A, E> = { fiber: undefined, awaiters: 0 }
+      current = run
+      run.fiber = forkUnsafe(
+        fiber,
+        onExitPrimitive(self, (exit_) => {
+          // An abandoned run must not overwrite or clear a replacement run.
+          if (current !== run) return
+          current = undefined
+          // Interruption is abandonment, so it is never cached.
+          if (exitHasInterrupts(exit_)) return
+          const duration = ttlMillis(exit_)
+          expiresAt = clock.currentTimeMillisUnsafe() + duration
+          exit = exit_
+        }),
+        true,
+        true
+      )
+      return run.fiber._exit ?? join(fiber, run)
+    }),
+    sync(() => {
+      expiresAt = 0
+      exit = undefined
+    })
+  ]
+}
 
 /** @internal */
 export const cachedWithTTL: {
@@ -4508,23 +4533,7 @@ export const cachedWithTTL: {
 
 /** @internal */
 export const cached = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Effect.Effect<A, E, R>> =>
-  sync(() => {
-    const latch = makeLatchUnsafe(false)
-    let started = false
-    let exit: Exit.Exit<A, E> | undefined
-    const wait = flatMap(latch.await, () => exit!)
-    return withFiber((fiber) => {
-      if (exit !== undefined) return exit
-      if (started) return wait
-      started = true
-      onExitUnsafe<A, E>(fiber, (result) =>
-        sync(() => {
-          exit = result
-          latch.openUnsafe()
-        }))
-      return self
-    })
-  })
+  sync(() => makeCachedUnsafe(self, constant(Infinity))[0])
 
 // ----------------------------------------------------------------------------
 // interruption

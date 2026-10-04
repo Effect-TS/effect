@@ -7084,6 +7084,11 @@ export const onExitFilter: {
  * evaluations of the same effect will return the cached result without
  * re-executing the logic.
  *
+ * Concurrent callers share the pending computation, which is interrupted only
+ * once every caller waiting on it has been interrupted. Interrupted
+ * computations are never cached, so the next evaluation starts a fresh
+ * computation.
+ *
  * **Example** (Memoizing an effect until invalidated)
  *
  * ```ts import.meta.vitest
@@ -7145,11 +7150,12 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  * `Duration.Input`. The function runs once after each fresh computation,
  * including failures, so successes and failures can have different TTLs. It
  * does not run when the cache is created or when a cached result is reused.
- * The callback also receives interruption exits, which are cached for the
- * returned duration.
+ * Interrupted computations are never cached and do not call the function.
  *
  * The TTL starts when the computation completes. Concurrent callers share the
- * pending computation. A zero TTL expires immediately, and an infinite TTL
+ * pending computation, which is interrupted only once every caller waiting on
+ * it has been interrupted. The next evaluation then starts a fresh
+ * computation. A zero TTL expires immediately, and an infinite TTL
  * keeps the result indefinitely.
  *
  * **Example** (Memoizing an effect with TTL)
