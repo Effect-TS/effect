@@ -70,8 +70,9 @@ describe("Client", () => {
       ])
     }))
 
-  for (const mode of ["rows", "values"] as const) {
-    it.effect(`returns ${mode} from cached statements after count_changes changes`, () =>
+  it.effect.each(["rows", "values"] as const)(
+    "returns cached INSERT %s across count_changes OFF → ON → OFF",
+    (mode) =>
       Effect.gen(function*() {
         const sql = yield* makeClient
         yield* sql`CREATE TABLE count_changes (value INTEGER)`
@@ -81,13 +82,13 @@ describe("Client", () => {
 
         assert.deepStrictEqual(yield* execute, [])
         yield* sql`PRAGMA count_changes = ON`
-        // Older Node releases omit recompiled columns, but the result row must survive.
+        // Node may omit recompiled fields; the result row must still be returned.
         assert.lengthOf(yield* execute, 1)
         yield* sql`PRAGMA count_changes = OFF`
         assert.deepStrictEqual(yield* execute, [])
         assert.deepStrictEqual(yield* sql`SELECT COUNT(*) AS count FROM count_changes`, [{ count: 3 }])
-      }))
-  }
+      })
+  )
 
   it.effect("should work with raw", () =>
     Effect.gen(function*() {
