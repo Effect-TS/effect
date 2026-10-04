@@ -1392,13 +1392,14 @@ export const makeProtocolStdio = Effect.gen(function*() {
       Effect.sandbox,
       Effect.tapError(Effect.logError),
       Effect.retry(Schedule.spaced(500)),
-      Effect.ensuring(Effect.forkDetach(Fiber.interrupt(fiber), { startImmediately: true })),
+      Effect.andThen(() => writeRequest(0, constEof)),
       Effect.forkScoped
     )
 
     yield* Stream.fromQueue(queue).pipe(
       Stream.run(stdio.stdout()),
       Effect.retry(Schedule.spaced(500)),
+      Effect.ensuring(Effect.forkDetach(Fiber.interrupt(fiber), { startImmediately: true })),
       Effect.forkScoped
     )
 
