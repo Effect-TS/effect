@@ -8801,8 +8801,11 @@ export const aggregate: {
  * **Details**
  *
  * The schedule can flush the current aggregation even if the sink has not finished.
- * It is stepped once per aggregation, starting when the aggregation receives its
- * first element, so an idle stream does not run the schedule.
+ * It is stepped once per aggregation, when the aggregation receives its first
+ * element, with the previous aggregation's output as input. Time spent waiting
+ * for that element is hidden from the schedule, so an idle stream does not run
+ * it. When the schedule ends, the current aggregation is emitted and the stream
+ * ends.
  *
  * **Example** (Aggregating with a sink and schedule)
  *
@@ -8862,17 +8865,33 @@ export const aggregateWithin: {
     )
 
     // schedule -> buffer
+    //
+    // The schedule is stepped once per aggregation, when it receives its first
+    // element. Time spent waiting for that element is hidden from the schedule.
+    const clock = yield* Clock
+    const step = yield* Schedule.toStep(schedule)
+    const hasInput = Latch.makeUnsafe(false)
     let lastOutput = Option.none<B>()
     let leftover: Arr.NonEmptyReadonlyArray<A2> | undefined
-    // Opens when the current window receives input, so idle streams do not
-    // step the schedule and each window starts with its first element.
-    const sinkHasInput = Latch.makeUnsafe(false)
-    const step = yield* Schedule.toStepWithSleep(schedule)
-    const stepToBuffer: Pull.Pull<never, E3, void, R3> = sinkHasInput.await.pipe(
-      Effect.flatMap(() => step(lastOutput)),
+    let scheduleDone = false
+    let pausedAt: number | undefined
+    let pausedMillis = 0
+    const onInput = () => {
+      if (pausedAt !== undefined) {
+        pausedMillis += clock.currentTimeMillisUnsafe() - pausedAt
+        pausedAt = undefined
+      }
+      hasInput.openUnsafe()
+    }
+    const stepToBuffer: Pull.Pull<never, E3, void, R3> = hasInput.await.pipe(
+      Effect.flatMap(() => step(clock.currentTimeMillisUnsafe() - pausedMillis, lastOutput)),
+      Effect.flatMap(([, delay]) => Effect.sleep(delay)),
+      Pull.catchDone(() => {
+        scheduleDone = true
+        return Effect.void
+      }),
       Effect.flatMap(() => Queue.offer(buffer, scheduleStep)),
-      Effect.flatMap(() => Effect.never),
-      Pull.catchDone(() => Cause.done())
+      Effect.flatMap(() => Effect.never)
     )
 
     // buffer -> sink
@@ -8884,7 +8903,7 @@ export const aggregateWithin: {
         if (arr === scheduleStep) {
           return Cause.done()
         }
-        sinkHasInput.openUnsafe()
+        onInput()
         return Effect.succeed(arr)
       })
     )
@@ -8893,7 +8912,7 @@ export const aggregateWithin: {
       if (leftover !== undefined) {
         const chunk = leftover
         leftover = undefined
-        sinkHasInput.openUnsafe()
+        onInput()
         return Effect.succeed(chunk)
       }
       pullLatch.openUnsafe()
@@ -8901,22 +8920,22 @@ export const aggregateWithin: {
     })
     const catchSinkHalt = Effect.flatMap(([value, leftover_]: Sink.End<B, A2>) => {
       // ignore the last output if the upstream only pulled a halt
-      if (!sinkHasInput.isOpen() && buffer.state._tag === "Done") return Cause.done()
+      if (!hasInput.isOpen() && buffer.state._tag === "Done") return Cause.done()
+      pausedAt = clock.currentTimeMillisUnsafe()
       lastOutput = Option.some(value)
       leftover = leftover_
       return Effect.succeed(Arr.of(value))
     })
 
     return Effect.suspend(() => {
-      // if the buffer has exited and there is no more data to process
-      if (buffer.state._tag === "Done" && leftover === undefined) {
+      // the stream ends with the schedule, or when the buffer has exited and
+      // there is no more data to process
+      if (scheduleDone) {
+        return Cause.done()
+      } else if (buffer.state._tag === "Done" && leftover === undefined) {
         return buffer.state.exit as Exit.Exit<never, Cause.Done<void> | E>
       }
-      if (leftover === undefined) {
-        sinkHasInput.closeUnsafe()
-      } else {
-        sinkHasInput.openUnsafe()
-      }
+      hasInput.closeUnsafe()
       return Effect.succeed(Effect.suspend(() => sink.transform(sinkUpstream as any, scope)))
     }).pipe(
       Effect.flatMap((pull) => Effect.raceFirst(catchSinkHalt(pull), stepToBuffer))
