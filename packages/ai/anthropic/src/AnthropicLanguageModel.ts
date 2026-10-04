@@ -95,12 +95,12 @@ export class Config extends Context.Service<
        */
       readonly structuredOutputs?: boolean | undefined
       /**
-       * Override support for mid-conversation system messages. By default only
-       * documented model identifiers enable this feature; unknown models collect
-       * all system instructions in the top-level system field.
+       * Whether the model supports mid-conversation system messages.
        *
-       * Later instructions are placed after the user/tool results and before the
-       * next assistant response. The API rejects unsupported message placement.
+       * Overrides automatic capability detection based on the model identifier.
+       * When disabled, every system message is sent in the top-level `system`
+       * field.
+       *
        * @see https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages
        */
       readonly midConversationSystemMessages?: boolean | undefined
@@ -734,16 +734,8 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       readonly payload: typeof Generated.BetaCreateMessageParams.Encoded
     }, AiError.AiError> {
       const betas = new Set<string>()
-      const modelCapabilities = getModelCapabilities(config.model!)
-      const capabilities = Predicate.isNotUndefined(config.structuredOutputs)
-        ? { ...modelCapabilities, supportsStructuredOutput: config.structuredOutputs }
-        : modelCapabilities
-      const { messages, system } = yield* prepareMessages({
-        betas,
-        options,
-        toolNameMapper,
-        systemMessagesInHistory: supportsSystemMessagesInHistory(config)
-      })
+      const capabilities = getConfigCapabilities(config)
+      const { messages, system } = yield* prepareMessages({ betas, capabilities, options, toolNameMapper })
       const outputFormat = yield* getOutputFormat({ capabilities, options })
       const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
       const params: Mutable<typeof Generated.BetaMessagesPostParams.Encoded> = {}
@@ -782,7 +774,10 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   return yield* LanguageModel.make({
     codecTransformer: toCodecAnthropic,
-    supportsSystemMessagesInHistory: Effect.map(makeConfig, supportsSystemMessagesInHistory),
+    supportsSystemMessagesInHistory: Effect.map(
+      makeConfig,
+      (config) => getConfigCapabilities(config).supportsMidConversationSystemMessages
+    ),
     generateText: Effect.fnUntraced(function*(options) {
       const config = yield* makeConfig
       const toolNameMapper = new Tool.NameMapper(options.tools)
@@ -876,11 +871,11 @@ export const withConfigOverride: {
 // =============================================================================
 
 const prepareMessages = Effect.fnUntraced(
-  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, options, toolNameMapper, systemMessagesInHistory }: {
+  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, capabilities, options, toolNameMapper }: {
     readonly betas: Set<string>
+    readonly capabilities: ModelCapabilities
     readonly options: LanguageModel.ProviderOptions
     readonly toolNameMapper: Tool.NameMapper<Tools>
-    readonly systemMessagesInHistory: boolean
   }): Effect.fn.Return<{
     readonly system: ReadonlyArray<typeof Generated.BetaRequestTextBlock.Encoded> | undefined
     readonly messages: ReadonlyArray<typeof Generated.BetaInputMessage.Encoded>
@@ -891,15 +886,28 @@ const prepareMessages = Effect.fnUntraced(
     const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
     let pendingSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
 
+    // A mid-conversation system message must directly follow a user turn and
+    // precede the next assistant turn, so later instructions are deferred until
+    // then. Instructions that cannot be placed fall back to the top-level field.
+    const flushPendingSystem = () => {
+      if (pendingSystem.length === 0) {
+        return
+      }
+      if (messages.at(-1)?.role === "user") {
+        messages.push({ role: "system", content: pendingSystem })
+      } else {
+        system ??= []
+        system.push(...pendingSystem)
+      }
+      pendingSystem = []
+    }
+
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i]
       const isLastGroup = i === groups.length - 1
 
-      // Instructions arriving before a new user message apply to its next
-      // assistant response. Keep them out of the tool-use/result pair.
-      if (group.type === "assistant" && pendingSystem.length > 0) {
-        messages.push({ role: "system", content: pendingSystem })
-        pendingSystem = []
+      if (group.type === "assistant") {
+        flushPendingSystem()
       }
 
       switch (group.type) {
@@ -909,7 +917,7 @@ const prepareMessages = Effect.fnUntraced(
             text: message.content,
             cache_control: getCacheControl(message)
           }))
-          if (i === 0 || !systemMessagesInHistory) {
+          if (i === 0 || !capabilities.supportsMidConversationSystemMessages) {
             system ??= []
             system.push(...content)
           } else {
@@ -1285,9 +1293,8 @@ const prepareMessages = Effect.fnUntraced(
       }
     }
 
-    if (pendingSystem.length > 0) {
-      messages.push({ role: "system", content: pendingSystem })
-    }
+    flushPendingSystem()
+
     return { system, messages }
   }
 )
@@ -3069,11 +3076,18 @@ const processCitation = Effect.fnUntraced(
 interface ModelCapabilities {
   readonly maxOutputTokens: number
   readonly supportsStructuredOutput: boolean
+  readonly supportsMidConversationSystemMessages: boolean
 }
 
-const supportsSystemMessagesInHistory = (config: typeof Config.Service & { readonly model: string }): boolean =>
-  config.midConversationSystemMessages ??
-    /^claude-(?:fable-5(?:-1)?|mythos-5(?:-1)?|opus-(?:4-8|5(?:-5)?)|sonnet-5-5)(?:-\d{8}|-latest)?$/.test(config.model)
+const getConfigCapabilities = (config: typeof Config.Service & { readonly model: string }): ModelCapabilities => {
+  const capabilities = getModelCapabilities(config.model)
+  return {
+    ...capabilities,
+    supportsStructuredOutput: config.structuredOutputs ?? capabilities.supportsStructuredOutput,
+    supportsMidConversationSystemMessages: config.midConversationSystemMessages ??
+      capabilities.supportsMidConversationSystemMessages
+  }
+}
 
 /**
  * Returns the capabilities of a Claude model that are used for defaults and feature selection.
@@ -3081,6 +3095,7 @@ const supportsSystemMessagesInHistory = (config: typeof Config.Service & { reado
  *
  * @see https://docs.claude.com/en/docs/about-claude/models/overview#model-comparison-table
  * @see https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+ * @see https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages
  */
 const getModelCapabilities = (modelId: string): ModelCapabilities => {
   if (
@@ -3090,12 +3105,14 @@ const getModelCapabilities = (modelId: string): ModelCapabilities => {
   ) {
     return {
       maxOutputTokens: 64000,
-      supportsStructuredOutput: true
+      supportsStructuredOutput: true,
+      supportsMidConversationSystemMessages: false
     }
   } else if (modelId.includes("claude-opus-4-1")) {
     return {
       maxOutputTokens: 32000,
-      supportsStructuredOutput: true
+      supportsStructuredOutput: true,
+      supportsMidConversationSystemMessages: false
     }
   } else if (
     modelId.includes("claude-sonnet-4-0") ||
@@ -3104,7 +3121,8 @@ const getModelCapabilities = (modelId: string): ModelCapabilities => {
   ) {
     return {
       maxOutputTokens: 64000,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else if (
     modelId.includes("claude-opus-4-0") ||
@@ -3112,22 +3130,33 @@ const getModelCapabilities = (modelId: string): ModelCapabilities => {
   ) {
     return {
       maxOutputTokens: 32000,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else if (modelId.includes("claude-3-5-haiku")) {
     return {
       maxOutputTokens: 8192,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else if (modelId.includes("claude-3-")) {
     return {
       maxOutputTokens: 4096,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else {
     return {
       maxOutputTokens: 128000,
-      supportsStructuredOutput: true
+      supportsStructuredOutput: true,
+      supportsMidConversationSystemMessages: !(
+        modelId.includes("claude-opus-4-6") ||
+        modelId.includes("claude-opus-4-7") ||
+        modelId.includes("claude-sonnet-4-6") ||
+        modelId.includes("claude-mythos-preview") ||
+        // Claude Sonnet 5, but not later minor versions such as Claude Sonnet 5.5
+        /claude-sonnet-5(?!-\d\b)/.test(modelId)
+      )
     }
   }
 }
