@@ -290,12 +290,22 @@ export const makeUpgradeHandler = <
                     })
                   })
                 ))
+              if (socket.destroyed) {
+                onClose()
+                return
+              }
               socket.once("close", onClose)
-              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+              try {
+                wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                  socket.off("close", onClose)
+                  upgraded = true
+                  resume(Effect.succeed(ws))
+                })
+              } catch (cause) {
                 socket.off("close", onClose)
-                upgraded = true
-                resume(Effect.succeed(ws))
-              })
+                throw cause
+              }
+              return Effect.sync(() => socket.off("close", onClose))
             }),
             (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
