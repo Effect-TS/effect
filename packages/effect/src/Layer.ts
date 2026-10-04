@@ -16,6 +16,7 @@ import * as Context from "./Context.ts"
 import * as Deferred from "./Deferred.ts"
 import type { Effect } from "./Effect.ts"
 import type * as Exit from "./Exit.ts"
+import type { Fiber } from "./Fiber.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constUndefined, dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
@@ -234,25 +235,52 @@ export interface MemoMap {
 
 type MemoMapEntry = {
   observers: number
+  awaiters: number
+  fiber: Fiber<Context.Context<any>, any> | undefined
   readonly deferred: Deferred.Deferred<Context.Context<any>, any>
   readonly scope: Scope.Closeable
   readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<void>
+  readonly remove: () => void
 }
 
 // The finalizer must not retain the caller of `getOrElseMemoize`.
 const makeMemoMapEntry = (memoMap: MemoMapImpl, layer: Layer<any, any, any>): MemoMapEntry => {
   const entry: MemoMapEntry = {
     observers: 0,
+    awaiters: 0,
+    fiber: undefined,
     deferred: Deferred.makeUnsafe(),
     scope: Scope.makeUnsafe(),
     finalizer: (exit) =>
       internalEffect.suspend(() => {
         if (--entry.observers > 0) return internalEffect.void
-        memoMap.map.delete(layer)
+        entry.remove()
         return Scope.close(entry.scope, exit)
-      })
+      }),
+    remove: () => {
+      // Only remove this entry, never a replacement built after it was abandoned.
+      if (memoMap.map.get(layer) === entry) memoMap.map.delete(layer)
+    }
   }
   return entry
+}
+
+// Waits for a pending build. The build is shared, so it is only interrupted
+// once every requester waiting on it has been interrupted.
+const memoMapJoin = (
+  fiber: Fiber<unknown, unknown>,
+  entry: MemoMapEntry
+): Effect<Context.Context<any>, any> => {
+  if (entry.deferred.effect) return entry.deferred.effect
+  entry.awaiters++
+  internalEffect.onExitUnsafe(fiber, () => {
+    if (--entry.awaiters > 0 || entry.deferred.effect) return
+    // Detach the abandoned entry first so new requesters start a fresh build
+    // instead of joining one that is being interrupted.
+    entry.remove()
+    return entry.fiber && internalEffect.fiberInterrupt(entry.fiber)
+  })
+  return Deferred.await(entry.deferred)
 }
 
 // Count and register synchronously so interruption cannot strand an observer.
@@ -422,7 +450,7 @@ class MemoMapImpl implements MemoMap {
     const local = this.map.get(layer)
     if (local) {
       memoMapObserve(local, scope)
-      return local.deferred.effect ?? Deferred.await(local.deferred)
+      return local.deferred.effect ?? core.withFiber((fiber) => memoMapJoin(fiber, local))
     }
     return this.parent?.get(layer, scope)
   }
@@ -432,25 +460,27 @@ class MemoMapImpl implements MemoMap {
     scope: Scope.Scope,
     build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
   ): Effect<Context.Context<ROut>, E, RIn> {
-    return internalEffect.suspend(() => {
-      // Install the exit handler before publishing an entry: it must complete
-      // the Deferred even if the first requester is interrupted.
-      let deferred: Deferred.Deferred<Context.Context<ROut>, E> | undefined
-      return internalEffect.onExitPrimitive(
-        internalEffect.suspend(() => {
-          const existing = this.get(layer, scope)
-          if (existing) return existing
-          const entry = makeMemoMapEntry(this, layer)
-          // A closed scope cannot own a shared entry; build in that scope instead.
-          if (!memoMapObserve(entry, scope)) return build(this, scope)
-          deferred = entry.deferred
-          this.map.set(layer, entry)
-          return build(this, entry.scope)
+    return core.withFiber((fiber) => {
+      const existing = this.get(layer, scope)
+      if (existing) return existing
+      const entry = makeMemoMapEntry(this, layer)
+      // A closed scope cannot own a shared entry; build in that scope instead.
+      if (!memoMapObserve(entry, scope)) return build(this, scope)
+      this.map.set(layer, entry)
+      // Build on a detached fiber so the first requester leaving does not
+      // interrupt the build for the others.
+      entry.fiber = internalEffect.forkUnsafe(
+        fiber,
+        internalEffect.onExitPrimitive(build(this, entry.scope), (exit) => {
+          entry.fiber = undefined
+          // Interruption is abandonment, so it is never memoized.
+          if (internalEffect.exitHasInterrupts(exit)) entry.remove()
+          Deferred.doneUnsafe(entry.deferred, exit)
         }),
-        (exit) => {
-          if (deferred) Deferred.doneUnsafe(deferred, exit)
-        }
+        true,
+        true
       )
+      return memoMapJoin(fiber, entry)
     })
   }
 }
