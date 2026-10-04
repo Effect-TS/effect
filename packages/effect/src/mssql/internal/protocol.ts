@@ -75,7 +75,7 @@ export const packets = (type: number, payload: Uint8Array, packetSize = 4096): R
 
 /** @internal */
 export const prelogin = (strict: boolean): Uint8Array =>
-  Uint8Array.of(0, 0, 11, 0, 6, 1, 0, 17, 0, 1, 255, 0, 0, 0, 0, 0, 0, strict ? 1 : 2)
+  Uint8Array.of(0, 0, 11, 0, 6, 1, 0, 17, 0, 1, 255, 0, 0, 0, 0, 0, 0, strict ? 0 : 2)
 
 /** @internal */
 export const encryption = (bytes: Uint8Array): number => {

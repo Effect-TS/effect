@@ -191,17 +191,40 @@ export const make = Effect.fnUntraced(
         if (packet.end) return Protocol.concat(parts)
       }
     })
+    const updatePacketSize = (size: number) =>
+      Effect.gen(function*() {
+        if (!Number.isInteger(size) || size < 512 || size > 32767) {
+          return yield* Effect.fail(failure(new Error("Invalid negotiated TDS packet size"), "prelogin", true))
+        }
+        if (strict) {
+          if (socket.setTlsMaxSendFragment === undefined) {
+            return yield* Effect.fail(
+              failure(
+                new Error("Strict TDS requires TLS send fragment control from the socket connector"),
+                "connect",
+                true
+              )
+            )
+          }
+          yield* socket.setTlsMaxSendFragment(Math.min(size, 16384)).pipe(
+            Effect.mapError((cause) => failure(cause, "connect", true))
+          )
+        }
+        packetSize = size
+      })
     const startup = Effect.gen(function*() {
+      yield* updatePacketSize(packetSize)
       yield* send(0x12, Protocol.prelogin(strict))
       const response = yield* receive
       const negotiated = yield* Effect.try({
         try: () => Protocol.encryption(response),
         catch: (cause) => failure(cause, "prelogin", true)
       })
-      if (strict ? negotiated !== 1 && negotiated !== 3 : negotiated !== 2) {
+      // TDS 8.0 establishes TLS before PRELOGIN, so its ENCRYPTION field is ignored.
+      if (!strict && negotiated !== 2) {
         return yield* Effect.fail(
           failure(
-            new Error("Server requires unsupported TDS 7.x encapsulated TLS or rejected strict encryption"),
+            new Error("Server requires unsupported TDS 7.x encapsulated TLS"),
             "prelogin",
             true
           )
@@ -233,7 +256,9 @@ export const make = Effect.fnUntraced(
       if (!parser.loginAcknowledged || !parser.done || parser.doneError) {
         return yield* Effect.fail(failure(new Error("SQL Server did not acknowledge login"), "login", true))
       }
-      if (parser.packetSize !== undefined) packetSize = parser.packetSize
+      if (parser.packetSize !== undefined && parser.packetSize !== packetSize) {
+        yield* updatePacketSize(parser.packetSize)
+      }
     }).pipe(Effect.onError(() => close))
     yield* startup.pipe(
       Effect.timeoutOrElse({
@@ -283,6 +308,9 @@ export const make = Effect.fnUntraced(
               try: () => parser.feed(packet.bytes, packet.end),
               catch: (cause) => failure(cause, "decode", true)
             })
+            if (parser.packetSize !== undefined && parser.packetSize !== packetSize) {
+              yield* updatePacketSize(parser.packetSize)
+            }
             if (packet.end) {
               if (parser.transactionChanged) transaction = parser.transaction
               finished = true

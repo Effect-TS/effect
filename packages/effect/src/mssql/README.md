@@ -29,6 +29,11 @@ The default `encryption: "strict"` opens TLS before sending PRELOGIN, requests
 ALPN `tds/8.0`, and uses TDS 8.0 LOGIN7. This requires SQL Server 2022 or another
 server that supports strict encryption. Certificate verification uses the
 connector's defaults; configure `tls.ca` for a private certificate authority.
+Strict connections require the connector's `setTlsMaxSendFragment` writer
+capability to cap TLS records to the TDS packet size. The Node, Bun, and Deno
+socket connectors provide it; custom connectors must provide it too. Missing support fails
+before PRELOGIN or password evaluation. The cap is updated when the server
+changes the packet size.
 
 TDS 7.x wraps its TLS handshake records inside PRELOGIN packets. The portable
 socket upgrade contract does not support that framing, so this client rejects
@@ -84,4 +89,29 @@ limits startup messages and individual result tokens (16 MiB by default).
 Protocol and fake-server tests cover fragmented packets/tokens, LOGIN7,
 parameter encoding, typed row decoding, strict/plaintext negotiation,
 transactions, stored procedure calls, concurrency, and abandoned streams.
-Live SQL Server integration has not been run for this implementation.
+
+The opt-in integration suite has passed all five tests against SQL Server
+2025 (17.0.4075.5) using strict TDS 8.0, TLS 1.2, ALPN `tds/8.0`, and a verified
+private CA-signed certificate. The same five tests passed against SQL Server
+2022 (16.0.4205.1) using explicitly enabled plaintext TDS 7.4. They cover bound
+values, large Unicode parameters spanning multiple packets, nested transactions,
+live row streaming, abandoned pooled streams, datetimeoffset decoding, and
+stored procedure output parameters inside a transaction. Strict TLS on the
+private SQL Server 2022 fixture remained unverified: the server rejected its
+configured certificate with error 17821 before the TLS handshake completed.
+
+Run against a disposable database with a SQL-authenticated user:
+
+```sh
+EFFECT_INTEGRATION_TESTS=1 MSSQL_TEST_HOST=localhost \
+  MSSQL_TEST_USERNAME=sa MSSQL_TEST_PASSWORD=... MSSQL_TEST_DATABASE=tempdb \
+  MSSQL_TEST_PROCEDURES=1 \
+  pnpm test --run packages/effect/test/mssql/MssqlClient.integration.test.ts
+```
+
+Strict TLS is the default. Set `MSSQL_TEST_CA` to the contents of the issuing
+PEM certificate authority and `MSSQL_TEST_SERVERNAME` when the certificate's
+hostname differs from the connection host. `MSSQL_TEST_PORT` defaults to 1433.
+The procedure test requires permission to create temporary stored procedures;
+omit `MSSQL_TEST_PROCEDURES=1` to skip it. To exercise plaintext on an isolated
+server configured to accept it, explicitly set `MSSQL_TEST_PLAINTEXT=1`.

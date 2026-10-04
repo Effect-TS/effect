@@ -205,6 +205,17 @@ export const makeReader = <A extends Uint8Array | string>(options: {
 export interface Writer {
   readonly write: (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<void, SocketError>
   readonly writeAll: (chunks: NonEmptyReadonlyArray<Uint8Array | string>) => Effect.Effect<void, SocketError>
+  /**
+   * Limits outgoing TLS plaintext records to an integer size from 512 to 16384 bytes.
+   *
+   * **Details**
+   *
+   * Protocols can set this limit after negotiating their packet size. Writers
+   * without this capability omit the method. Implementations fail with
+   * `SocketError` when the limit is invalid or cannot be applied to the active
+   * TLS connection; they must not silently ignore the requested limit.
+   */
+  readonly setTlsMaxSendFragment?: ((size: number) => Effect.Effect<void, SocketError>) | undefined
 }
 
 /**

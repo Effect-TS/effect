@@ -33,12 +33,15 @@ const errorToken = (number: number, message: string, severity = 16) => {
 
 const server = Effect.fnUntraced(function*(options: {
   readonly negotiate?: number
+  readonly loginResponse?: Uint8Array
+  readonly fragmentControl?: boolean
   readonly response?: (type: number, payload: Uint8Array, query: number) => ReadonlyArray<Uint8Array>
   readonly fragment?: boolean
   readonly stallWrite?: boolean
 } = {}) {
   const writes: Array<{ type: number; bytes: Uint8Array }> = []
   const endpoints: Array<SocketConnector.Endpoint> = []
+  const fragments: Array<number> = []
   let closed = 0
   let connections = 0
   let query = 0
@@ -52,6 +55,10 @@ const server = Effect.fnUntraced(function*(options: {
         run: (f) => Effect.forever(Effect.flatMap(Queue.take(incoming), (bytes) => f(bytes) ?? Effect.void)),
         upgrade: () => Effect.die("Native client must use TLS-first; raw STARTTLS is invalid for TDS7"),
         write: () => Effect.die("Expected packet writeAll"),
+        setTlsMaxSendFragment: options.fragmentControl === false ? undefined : (size: number) =>
+          Effect.sync(() => {
+            fragments.push(size)
+          }),
         writeAll: (chunks) =>
           Effect.sync(() => {
             const packets = chunks as ReadonlyArray<Uint8Array>
@@ -61,7 +68,7 @@ const server = Effect.fnUntraced(function*(options: {
             const payloads = type === 0x12
               ? [Uint8Array.of(1, 0, 6, 0, 1, 255, options.negotiate ?? 2)]
               : type === 0x10
-              ? [login]
+              ? [options.loginResponse ?? login]
               : options.response?.(type, bytes, ++query) ?? [rows]
             for (const payload of payloads) {
               for (const packet of Protocol.packets(4, payload, 512)) {
@@ -78,7 +85,7 @@ const server = Effect.fnUntraced(function*(options: {
         })
       }
     })
-  return { connector, writes, endpoints, closed: () => closed, connections: () => connections }
+  return { connector, writes, endpoints, fragments, closed: () => closed, connections: () => connections }
 })
 
 const unusedConnector = { connect: () => Effect.die("Unexpected default connector") }
@@ -119,11 +126,58 @@ it.effect("defaults to strict TLS-first with ALPN and authenticates LOGIN7", () 
     const peer = yield* server({ negotiate: 1 })
     const sql = yield* makeConnection({ connector: peer.connector, password: Redacted.make("secret") })
     assert.deepStrictEqual(peer.endpoints[0].tls, { alpnProtocols: ["tds/8.0"] })
+    assert.deepStrictEqual(peer.fragments, [4096])
     assert.strictEqual(new DataView(peer.writes[1].bytes.buffer).getUint32(4, true), 0x08000000)
     const result = yield* sql.query("SELECT 42 AS id")
     assert.deepStrictEqual(result.rows, [{ id: 42 }])
     assert.deepStrictEqual(result.values, [[42]])
   }))
+
+it.effect("requires TLS fragment control before sending strict PRELOGIN or evaluating credentials", () =>
+  Effect.gen(function*() {
+    const peer = yield* server({ fragmentControl: false })
+    const error = yield* Effect.flip(makeConnection({
+      connector: peer.connector,
+      password: Effect.die("Credentials must not be evaluated")
+    }))
+    assert.strictEqual(error.reason._tag, "ConnectionError")
+    assert.include(error.reason.message!, "TLS send fragment control")
+    assert.deepStrictEqual(peer.writes, [])
+    assert.strictEqual(peer.closed(), 1)
+  }))
+
+it.effect("clamps TLS fragments and reapplies the cap when the server changes packet size", () =>
+  Effect.gen(function*() {
+    const changed = (value: string, previous: string) => {
+      const body = Protocol.concat([
+        Uint8Array.of(4, value.length),
+        Protocol.unicode(value),
+        Uint8Array.of(previous.length),
+        Protocol.unicode(previous)
+      ])
+      return Protocol.concat([Uint8Array.of(0xe3), u16(body.length), body])
+    }
+    const peer = yield* server({
+      negotiate: 0,
+      loginResponse: Protocol.concat([changed("8192", "32767"), login]),
+      response: () => [Protocol.concat([changed("4096", "8192"), rows])]
+    })
+    const sql = yield* makeConnection({ connector: peer.connector, packetSize: 32767 })
+    assert.deepStrictEqual(peer.fragments, [16384, 8192])
+    yield* sql.query("SELECT 42 AS id")
+    assert.deepStrictEqual(peer.fragments, [16384, 8192, 4096])
+  }))
+
+for (const negotiate of [0, 2]) {
+  it.effect(`ignores legacy PRELOGIN encryption ${negotiate} after strict TLS is established`, () =>
+    Effect.gen(function*() {
+      const peer = yield* server({ negotiate })
+      const sql = yield* makeConnection({ connector: peer.connector, password: Redacted.make("secret") })
+      assert.deepStrictEqual(peer.endpoints[0].tls, { alpnProtocols: ["tds/8.0"] })
+      assert.strictEqual(Protocol.encryption(peer.writes[0].bytes), 0)
+      assert.deepStrictEqual((yield* sql.query("SELECT 42 AS id")).rows, [{ id: 42 }])
+    }))
+}
 
 it.effect("executes bound queries, values, raw results, and result name transformations", () =>
   Effect.gen(function*() {

@@ -689,8 +689,25 @@ export const fromDuplex = <RO>(
         return needsDrain ? awaitDrain(conn) : Effect.void
       })
 
+    const setTlsMaxSendFragment = (size: number): Effect.Effect<void, Socket.SocketError> =>
+      Effect.try({
+        try: () => {
+          if (!Number.isInteger(size) || size < 512 || size > 16384) {
+            throw new RangeError("TLS maximum send fragment must be an integer between 512 and 16384")
+          }
+          const conn = currentSocket
+          if (!(conn instanceof Tls.TLSSocket) || conn.destroyed || conn.writableEnded) {
+            throw new Error("TLS maximum send fragment requires an open TLS socket")
+          }
+          if (typeof conn.setMaxSendFragment !== "function" || !conn.setMaxSendFragment(size)) {
+            throw new Error("TLS maximum send fragment is not supported by this socket")
+          }
+        },
+        catch: (cause) => new Socket.SocketError({ reason: new Socket.SocketUpgradeError({ cause }) })
+      })
+
     const writer: Socket.Socket["writer"] = Effect.acquireRelease(
-      Effect.succeed({ write, writeAll }),
+      Effect.succeed({ write, writeAll, setTlsMaxSendFragment }),
       () =>
         Effect.sync(() => {
           if (!currentSocket || currentSocket.writableEnded) return

@@ -40,6 +40,30 @@ const makeSocket = () => {
 }
 
 describe("SocketConnector", () => {
+  it.effect("forwards optional TLS record configuration and prevents changes after closure", () =>
+    Effect.gen(function*() {
+      const fixture = makeSocket()
+      const sizes: Array<number> = []
+      const socket = Socket.make({
+        reader: fixture.socket.reader,
+        writer: Effect.succeed({
+          write: () => Effect.void,
+          writeAll: () => Effect.void,
+          setTlsMaxSendFragment: (size) =>
+            Effect.sync(() => {
+              sizes.push(size)
+            })
+        })
+      })
+      const connection = yield* SocketConnector.fromSocket(socket)
+      yield* connection.setTlsMaxSendFragment!(4096)
+      yield* connection.setTlsMaxSendFragment!(512)
+      yield* connection.close
+      assert.strictEqual((yield* Effect.flip(connection.setTlsMaxSendFragment!(1024))).reason._tag, "SocketCloseError")
+      assert.deepStrictEqual(sizes, [4096, 512])
+      assert.strictEqual((yield* SocketConnector.fromSocket(fixture.socket)).setTlsMaxSendFragment, undefined)
+    }))
+
   it.effect("closes a pull-derived receive loop while its callback is suspended", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()

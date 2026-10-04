@@ -118,6 +118,9 @@ export const fromSocket = Effect.fnUntraced(function*(socket: Socket.Socket): Ef
     upgrade: (options) => semaphore.withPermit(guard(reader.upgrade(options))),
     write: (chunk) => semaphore.withPermit(guard(writer.write(chunk))),
     writeAll: (chunks) => semaphore.withPermit(guard(writer.writeAll(chunks))),
+    setTlsMaxSendFragment: writer.setTlsMaxSendFragment === undefined
+      ? undefined
+      : (size) => semaphore.withPermit(guard(writer.setTlsMaxSendFragment!(size))),
     close
   }
 })

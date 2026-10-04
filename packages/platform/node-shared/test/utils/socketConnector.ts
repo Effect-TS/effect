@@ -49,6 +49,87 @@ const written = (stream: HeldStream) => stream.writes.map((bytes) => [...bytes])
 
 export const socketConnectorTests = (name: string, make: typeof NodeSocketConnector.make) =>
   describe(name, () => {
+    it.effect("rejects TLS fragment limits on a plaintext connection", () =>
+      Effect.gen(function*() {
+        const { stream, transport } = yield* held(make)
+        let invoked = false
+        Object.assign(stream, {
+          setMaxSendFragment: () => {
+            invoked = true
+            return true
+          }
+        })
+        assert.isDefined(transport.setTlsMaxSendFragment)
+        const error = yield* transport.setTlsMaxSendFragment!(4096).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+        assert.isFalse(invoked)
+      }))
+
+    it.effect.each([511, 16385, 512.5, NaN, Infinity])("rejects an invalid TLS fragment limit (%s)", (size) =>
+      Effect.gen(function*() {
+        const { transport } = yield* held(make)
+        const error = yield* transport.setTlsMaxSendFragment!(size).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+        if (error.reason._tag === "SocketUpgradeError") {
+          assert.instanceOf(error.reason.cause, RangeError)
+        }
+      }))
+
+    it.live.each([false, true])("sets TLS fragment limits on a native connection (upgrade: %s)", (upgrade) =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const transport = yield* make().connect({ ...address(server), tls: upgrade ? undefined : { ca: cert } })
+        if (upgrade) {
+          yield* transport.upgrade({ ca: cert, servername: "localhost" })
+        }
+        assert.isDefined(transport.setTlsMaxSendFragment)
+        for (const size of [512, 4096, 16384]) {
+          const result = yield* transport.setTlsMaxSendFragment!(size).pipe(Effect.result)
+          if (result._tag === "Failure") {
+            // Some compatibility runtimes expose a TLS setter that is not implemented.
+            assert.notStrictEqual(name, "NodeSocketConnector")
+            assert.strictEqual(result.failure.reason._tag, "SocketUpgradeError")
+            return
+          }
+        }
+        yield* transport.write("fragment-limit")
+        assert.strictEqual(Buffer.from((yield* transport.pull)[0]).toString(), "fragment-limit")
+      }))
+
+    it.live.each(["unavailable", "rejected", "throws"])("retains TLS fragment setter failures (%s)", (mode) =>
+      Effect.gen(function*() {
+        const cause = new Error("Native TLS fragment setter failed")
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const tls = yield* Effect.acquireRelease(
+          Effect.callback<Tls.TLSSocket>((resume) => {
+            const socket = Tls.connect({ ...address(server), ca: cert })
+            socket.once("secureConnect", () =>
+              resume(Effect.succeed(socket)))
+            socket.once("error", (cause) =>
+              resume(Effect.die(cause)))
+            return Effect.sync(() =>
+              socket.destroy()
+            )
+          }),
+          (socket) =>
+            Effect.sync(() =>
+              socket.destroy()
+            )
+        )
+        Object.defineProperty(tls, "setMaxSendFragment", {
+          value: mode === "unavailable" ? undefined : () => {
+            if (mode === "throws") throw cause
+            return false
+          }
+        })
+        const transport = yield* make({ stream: () => tls }).connect(endpoint)
+        const error = yield* transport.setTlsMaxSendFragment!(4096).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+        if (mode === "throws" && error.reason._tag === "SocketUpgradeError") {
+          assert.strictEqual(error.reason.cause, cause)
+        }
+      }))
+
     it.effect("delivers bytes buffered before receiving exactly once", () =>
       Effect.gen(function*() {
         const { stream, transport } = yield* held(make)
@@ -79,7 +160,9 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         assert.deepStrictEqual(Array.from((yield* transport.pull)[0] as Uint8Array), [2])
         assert.deepStrictEqual(Array.from((yield* transport.pull)[0] as Uint8Array), [3])
         const delivered = yield* Deferred.make<void>()
-        const next = yield* transport.run(() => Deferred.succeed(delivered, void 0)).pipe(Effect.forkChild)
+        const next = yield* transport.run(() =>
+          Deferred.succeed(delivered, void 0)
+        ).pipe(Effect.forkChild)
         stream.push(Buffer.from([4]))
         yield* Deferred.await(delivered)
         yield* Fiber.interrupt(next)
