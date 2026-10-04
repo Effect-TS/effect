@@ -5,7 +5,8 @@
  * platform's cryptography APIs. This module defines the service interface and a
  * constructor from platform cryptographic primitives. The service provides
  * secure random bytes and numbers, UUIDv4 and UUIDv7 generation, shuffling, and
- * message digests, message authentication codes, and password key derivation.
+ * message digests, message authentication codes, password key derivation,
+ * and RSA-OAEP public-key encryption.
  *
  * @since 4.0.0
  */
@@ -47,6 +48,25 @@ export type DigestAlgorithm = "MD5" | "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512
  * @since 4.0.0
  */
 export type HmacAlgorithm = Exclude<DigestAlgorithm, "MD5">
+
+/**
+ * Inputs for RSA-OAEP public-key encryption using a DER-encoded SPKI key.
+ *
+ * **Details**
+ *
+ * The hash defaults to SHA-256 and is also used for OAEP's mask generation.
+ * SHA-1 is available for compatibility with MySQL password authentication.
+ * The optional label must match the label used when decrypting the ciphertext.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface RsaOaepOptions {
+  readonly publicKey: Uint8Array
+  readonly data: Uint8Array
+  readonly hash?: HmacAlgorithm | undefined
+  readonly label?: Uint8Array | undefined
+}
 
 /**
  * Platform-agnostic cryptographic operations.
@@ -133,6 +153,19 @@ export interface Crypto {
     iterations: number,
     length: number
   ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Encrypts data with an RSA public key using OAEP padding.
+   *
+   * **Details**
+   *
+   * Platform implementations provide this capability. It is optional so
+   * existing custom Crypto services remain compatible. Use the module's
+   * `rsaOaepEncrypt` function to report unavailable support as a typed error.
+   */
+  readonly rsaOaepEncrypt?:
+    | ((options: RsaOaepOptions) => Effect.Effect<Uint8Array, PlatformError.PlatformError>)
+    | undefined
 
   /**
    * Generates a cryptographically secure random number between 0 (inclusive)
@@ -223,6 +256,34 @@ export interface Crypto {
 export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/Crypto")
 
 /**
+ * Encrypts data with the Crypto service's RSA-OAEP public-key capability.
+ *
+ * **Gotchas**
+ *
+ * Encryption fails with `PlatformError` if a custom service does not provide
+ * RSA-OAEP, the public key is invalid, or the plaintext exceeds the key's
+ * OAEP payload limit. Ciphertext is randomized; use the matching private key
+ * and hash to decrypt it. Public keys must come from a trusted source.
+ *
+ * @category encryption
+ * @since 4.0.0
+ */
+export const rsaOaepEncrypt = (
+  options: RsaOaepOptions
+): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(
+    Crypto,
+    (crypto) => crypto.rsaOaepEncrypt === undefined ? unsupportedRsaOaep : crypto.rsaOaepEncrypt(options)
+  )
+
+const unsupportedRsaOaep = Effect.fail(PlatformError.systemError({
+  module: "Crypto",
+  method: "rsaOaepEncrypt",
+  _tag: "Unknown",
+  description: "The Crypto implementation does not support RSA-OAEP encryption"
+}))
+
+/**
  * Creates a `Crypto` service from the primitive implementation, deriving the
  * random generator helpers and UUID generation from those primitives.
  *
@@ -235,7 +296,8 @@ export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/C
  *
  * The constructor derives random numbers, booleans, integer ranges, shuffling,
  * and UUID generation from `impl.randomBytes`. Digest, HMAC, and PBKDF2
- * operations delegate to the supplied platform primitives.
+ * operations delegate to the supplied platform primitives. RSA-OAEP encryption
+ * delegates when supplied and otherwise fails with `PlatformError`.
  *
  * **Gotchas**
  *
@@ -270,6 +332,7 @@ export const make = (
     ) => Effect.Effect<Uint8Array, PlatformError.PlatformError>
     readonly hmac: Crypto["hmac"]
     readonly pbkdf2: Crypto["pbkdf2"]
+    readonly rsaOaepEncrypt?: Crypto["rsaOaepEncrypt"] | undefined
   }
 ): Crypto => {
   const randomBytesUnsafe = impl.randomBytes
@@ -302,6 +365,7 @@ export const make = (
     nextIntUnsafe,
     digest: impl.digest,
     hmac: impl.hmac,
+    rsaOaepEncrypt: impl.rsaOaepEncrypt ?? (() => unsupportedRsaOaep),
     pbkdf2: (algorithm, password, salt, iterations, length) => {
       if (!Number.isSafeInteger(iterations) || iterations <= 0 || !Number.isSafeInteger(length) || length <= 0) {
         return Effect.fail(PlatformError.badArgument({

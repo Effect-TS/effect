@@ -57,7 +57,7 @@ The Effect v3 source code is available on the [`v3`](https://github.com/Effect-T
 
 This monorepo contains the core `effect` package alongside integration packages that extend it. All packages listed below are released together with synchronized versions.
 
-The core package includes native, platform-independent Redis and PostgreSQL clients under `effect/redis` and `effect/postgres`. Platform packages supply their socket and cryptography services.
+The core package includes native Redis, PostgreSQL, MySQL, SQL Server, ClickHouse, and remote libSQL clients under `effect/redis`, `effect/postgres`, `effect/mysql`, `effect/mssql`, `effect/clickhouse`, and `effect/libsql`. Platform packages supply socket, cryptography, and HTTP services.
 
 | Package                                                               | Description                                              | API Reference                                                      |
 | --------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ |

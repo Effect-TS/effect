@@ -61,7 +61,15 @@
     "./redis": "./src/redis/index.ts",
     "./redis/internal/*": null,
     "./postgres": "./src/postgres/index.ts",
-    "./postgres/internal/*": null
+    "./postgres/internal/*": null,
+    "./mysql": "./src/mysql/index.ts",
+    "./mysql/internal/*": null,
+    "./mssql": "./src/mssql/index.ts",
+    "./mssql/internal/*": null,
+    "./clickhouse": "./src/clickhouse/index.ts",
+    "./clickhouse/internal/*": null,
+    "./libsql": "./src/libsql/index.ts",
+    "./libsql/internal/*": null
   },
   "files": [
     "src/**/*.ts",
@@ -109,7 +117,15 @@
       "./redis": "./dist/redis/index.js",
       "./redis/internal/*": null,
       "./postgres": "./dist/postgres/index.js",
-      "./postgres/internal/*": null
+      "./postgres/internal/*": null,
+      "./mysql": "./dist/mysql/index.js",
+      "./mysql/internal/*": null,
+      "./mssql": "./dist/mssql/index.js",
+      "./mssql/internal/*": null,
+      "./clickhouse": "./dist/clickhouse/index.js",
+      "./clickhouse/internal/*": null,
+      "./libsql": "./dist/libsql/index.js",
+      "./libsql/internal/*": null
     }
   },
   "scripts": {

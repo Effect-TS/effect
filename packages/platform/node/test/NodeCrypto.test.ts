@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as TestClock from "effect/testing/TestClock"
+import { constants, generateKeyPairSync, privateDecrypt } from "node:crypto"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -86,3 +87,95 @@ describe("NodeCrypto", () => {
       assert.strictEqual(hex(digest), "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
     }).pipe(Effect.provide(NodeCrypto.layer)))
 })
+
+const rsaKeys = generateKeyPairSync("rsa", { modulusLength: 2048 })
+const rsaPublicKey = Uint8Array.from(rsaKeys.publicKey.export({ format: "der", type: "spki" }))
+const rsaSlice = (bytes: Uint8Array): Uint8Array => {
+  const backing = new Uint8Array(bytes.length + 9).fill(0xff)
+  backing.set(bytes, 4)
+  return backing.subarray(4, 4 + bytes.length)
+}
+
+// The independent native decryptor checks OAEP/MGF1 hashes, labels and byte ranges.
+describe("NodeCrypto RSA-OAEP", () => {
+  it.effect("interoperates with native RSA for all hashes and defaults to SHA-256", () =>
+    Effect.gen(function*() {
+      const data = new Uint8Array([0, 1, 127, 128, 255])
+      for (const hash of [undefined, "SHA-1", "SHA-256", "SHA-384", "SHA-512"] as const) {
+        const encrypted = yield* Crypto.rsaOaepEncrypt({ publicKey: rsaPublicKey, data, hash })
+        assert.strictEqual(encrypted.length, 256)
+        const decrypted = privateDecrypt({
+          key: rsaKeys.privateKey,
+          padding: constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: (hash ?? "SHA-256").replace("-", "").toLowerCase()
+        }, encrypted)
+        assert.deepStrictEqual(Uint8Array.from(decrypted), data)
+      }
+      const first = yield* Crypto.rsaOaepEncrypt({ publicKey: rsaPublicKey, data })
+      const second = yield* Crypto.rsaOaepEncrypt({ publicKey: rsaPublicKey, data })
+      assert.isFalse(first.every((byte, i) => byte === second[i]))
+    }).pipe(Effect.provide(NodeCrypto.layer)))
+
+  it.effect("preserves sliced key, payload and label byte ranges", () =>
+    Effect.gen(function*() {
+      const publicKey = rsaSlice(rsaPublicKey)
+      const data = rsaSlice(new TextEncoder().encode("password\0with binary suffix"))
+      const label = rsaSlice(new Uint8Array([0, 255, 128, 1]))
+      const before = [publicKey.slice(), data.slice(), label.slice()]
+      const encrypted = yield* Crypto.rsaOaepEncrypt({ publicKey, data, label, hash: "SHA-1" })
+      assert.deepStrictEqual(
+        Uint8Array.from(privateDecrypt({
+          key: rsaKeys.privateKey,
+          padding: constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: "sha1",
+          oaepLabel: Buffer.from(label)
+        }, encrypted)),
+        data
+      )
+      assert.deepStrictEqual([publicKey, data, label], before)
+      assert.throws(() =>
+        privateDecrypt({
+          key: rsaKeys.privateKey,
+          padding: constants.RSA_PKCS1_OAEP_PADDING,
+          oaepHash: "sha1",
+          oaepLabel: new Uint8Array([1])
+        }, encrypted)
+      )
+    }).pipe(Effect.provide(NodeCrypto.layer)))
+
+  it.effect("returns typed platform errors for invalid keys and oversized data", () =>
+    Effect.gen(function*() {
+      const ec = generateKeyPairSync("ec", { namedCurve: "prime256v1" })
+      for (
+        const options of [
+          { publicKey: new Uint8Array([0, 1, 2]), data: new Uint8Array([1]) },
+          {
+            publicKey: Uint8Array.from(ec.publicKey.export({ type: "spki", format: "der" })),
+            data: new Uint8Array([1])
+          },
+          { publicKey: rsaPublicKey, data: new Uint8Array(300) }
+        ]
+      ) {
+        const error = yield* Effect.flip(Crypto.rsaOaepEncrypt(options))
+        assert.strictEqual(error._tag, "PlatformError")
+        assert.strictEqual(error.reason._tag, "Unknown")
+        assert.strictEqual(error.reason.module, "Crypto")
+        assert.strictEqual(error.reason.method, "rsaOaepEncrypt")
+      }
+    }).pipe(Effect.provide(NodeCrypto.layer)))
+})
+
+it.effect("rejects invalid runtime OAEP hashes rather than falling back to SHA-1", () =>
+  Effect.gen(function*() {
+    for (const hash of ["MD5", "unsupported"] as const) {
+      const error = yield* Effect.flip(Crypto.rsaOaepEncrypt({
+        publicKey: rsaPublicKey,
+        data: new Uint8Array([42]),
+        hash: hash as Crypto.HmacAlgorithm
+      }))
+      assert.strictEqual(error._tag, "PlatformError")
+      assert.strictEqual(error.reason.method, "rsaOaepEncrypt")
+      assert.strictEqual(error.reason._tag, "Unknown")
+      if (error.reason._tag === "Unknown") assert.instanceOf(error.reason.cause, TypeError)
+    }
+  }).pipe(Effect.provide(NodeCrypto.layer)))

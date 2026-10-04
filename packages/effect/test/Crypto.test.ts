@@ -29,6 +29,29 @@ const makeCrypto = (value: bigint) =>
   })
 
 describe("Crypto", () => {
+  it.effect("reports unavailable RSA-OAEP on legacy Crypto services as a typed error", () =>
+    Effect.gen(function*() {
+      const legacy = { ...testCrypto }
+      delete legacy.rsaOaepEncrypt
+      const error = yield* Crypto.rsaOaepEncrypt({
+        publicKey: Uint8Array.of(1),
+        data: Uint8Array.of(2)
+      }).pipe(Effect.provideService(Crypto.Crypto, legacy), Effect.flip)
+      assert.strictEqual(error.reason._tag, "Unknown")
+      assert.strictEqual(error.reason.method, "rsaOaepEncrypt")
+      assert.strictEqual(error.reason.module, "Crypto")
+    }))
+
+  it.effect("keeps Crypto.make compatible when no RSA implementation is supplied", () =>
+    Effect.gen(function*() {
+      const error = yield* Crypto.rsaOaepEncrypt({
+        publicKey: Uint8Array.of(1),
+        data: Uint8Array.of(2)
+      }).pipe(Effect.provideService(Crypto.Crypto, testCrypto), Effect.flip)
+      assert.strictEqual(error.reason._tag, "Unknown")
+      assert.strictEqual(error.reason.method, "rsaOaepEncrypt")
+    }))
+
   it("uses the module path for its type ID", () => {
     assert.strictEqual(
       (testCrypto as unknown as Record<string, unknown>)["~effect/Crypto"],
