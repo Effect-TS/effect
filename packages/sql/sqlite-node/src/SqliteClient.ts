@@ -20,6 +20,7 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
@@ -187,10 +188,10 @@ export const make = (
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to prepare statement", "prepare") })
         })
 
-      const prepareCache = yield* Cache.make({
+      const prepareCacheTTL = options.prepareCacheTTL ?? Duration.minutes(10)
+      const prepareCache = yield* Cache.makeWith(prepare, {
         capacity: options.prepareCacheSize ?? 200,
-        timeToLive: options.prepareCacheTTL ?? Duration.minutes(10),
-        lookup: prepare
+        timeToLive: (exit) => Exit.isSuccess(exit) ? prepareCacheTTL : Duration.zero
       })
 
       const runStatement = (

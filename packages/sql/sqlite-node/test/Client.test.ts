@@ -107,6 +107,23 @@ describe("Client", () => {
       })
   )
 
+  it.effect.each(["rows", "values"] as const)(
+    "retries %s queries after a missing table is created",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* makeClient
+        const select = sql`SELECT value FROM created_later`
+        const execute: Effect.Effect<ReadonlyArray<unknown>, SqlError> = mode === "values" ? select.values : select
+
+        const error = yield* Effect.flip(execute)
+        assert.strictEqual(error._tag, "SqlError")
+        yield* sql`CREATE TABLE created_later (value INTEGER)`
+        yield* sql`INSERT INTO created_later VALUES (1)`
+
+        assert.deepStrictEqual(yield* execute, mode === "values" ? [[1]] : [{ value: 1 }])
+      })
+  )
+
   it.effect("should work with raw", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
