@@ -847,6 +847,14 @@ describe("Queue", () => {
       assert.strictEqual(next, 2)
     }))
 
+  it.effect("clear preserves a defect merged with Done", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number, Cause.Done>()
+      yield* Queue.failCause(queue, Cause.combine(Cause.fail(Cause.Done()), Cause.die("finalizer boom")))
+
+      assert.deepStrictEqual(yield* Effect.exit(Queue.clear(queue)), Exit.die("finalizer boom"))
+    }))
+
   it.effect("zero-capacity offerAll drains in order and completes a closing queue", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number, Cause.Done>(0)
