@@ -2269,8 +2269,7 @@ describe("McpServer", () => {
           tool: new McpSchema.Tool({ name: "Blocked", inputSchema: { type: "object" } }),
           annotations: Context.empty(),
           handle: () =>
-            Effect.yieldNow.pipe(
-              Effect.andThen(Deferred.succeed(started, undefined)),
+            Deferred.succeed(started, undefined).pipe(
               Effect.andThen(Effect.never),
               Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
             )
