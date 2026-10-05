@@ -14633,7 +14633,7 @@ export const tx = <A, E, R>(
 ): Effect<A, E, Exclude<R, Transaction>> =>
   withFiber((fiber) => {
     let state = Context.getOrUndefined(fiber.context, Transaction)
-    if (state) {
+    if (state && !completedTransactions.has(state)) {
       return effect as Effect<A, E, Exclude<R, Transaction>>
     }
     // Create transaction state only at the outermost boundary
@@ -14667,8 +14667,15 @@ export const tx = <A, E, R>(
         }),
         () => result!
       )
-    )
+    ).pipe(ensuring(sync(() => {
+      completedTransactions.add(state)
+      clearTransaction(state)
+    })))
   })
+
+// Track boundary lifetime without changing the publicly constructible service.
+// Retry resets keep the boundary active; only finalization marks it completed.
+const completedTransactions = new WeakSet<Transaction["Service"]>()
 
 const isTransactionConsistent = (state: Transaction["Service"]) => {
   for (const [ref, { version }] of state.journal) {
