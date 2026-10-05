@@ -167,6 +167,48 @@ const binary = (oids: ReadonlyArray<number>): Array<PgTypesResult.Column> =>
   oids.map((dataTypeOid) => ({ dataTypeOid, format: 1 }))
 
 describe("PgTypes", () => {
+  describe("interval decoding", () => {
+    // PostgreSQL interval_send layout: int64 microseconds, int32 days, int32 months.
+    // These fixtures are independent of the client encoder.
+    const intervals = [
+      {
+        literal: "3 days 04:05:06",
+        wire: "000000036c8bc0800000000300000000",
+        value: { months: 0, days: 3, microseconds: 14706000000n }
+      },
+      {
+        literal: "1 year 2 mons",
+        wire: "0000000000000000000000000000000e",
+        value: { months: 14, days: 0, microseconds: 0n }
+      },
+      {
+        literal: "-1 day",
+        wire: "0000000000000000ffffffff00000000",
+        value: { months: 0, days: -1, microseconds: 0n }
+      },
+      {
+        literal: "00:00:01.5",
+        wire: "000000000016e3600000000000000000",
+        value: { months: 0, days: 0, microseconds: 1500000n }
+      }
+    ]
+
+    for (const { literal, value, wire } of intervals) {
+      it(`decodes ${literal} without flattening calendar units`, () => {
+        assert.deepStrictEqual(PgTypes.decode(bytes(wire), 1186, 1), value)
+      })
+    }
+
+    it("reads interval fields alongside text and SQL NULL in a DataRow", () => {
+      const parser = PgProtocol.makeParser({
+        readField: PgTypes.makeFieldReader(binary([1186, PgTypes.OID.text, 1186]))
+      })
+      const frame = dataRow([bytes(intervals[0].wire), bytes("6f6b"), null])
+      const row = parser.push(frame)[0] as PgProtocol.DataRow<unknown>
+      assert.deepStrictEqual(row.values, [intervals[0].value, "ok", null])
+    })
+  })
+
   it("returns codec failures as Result values", () => {
     for (
       const result of [
