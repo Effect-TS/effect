@@ -136,15 +136,22 @@ interface Db {
   readonly _: unique symbol
 }
 declare const dbChannel: Channel.Channel<number, never, void, number, never, void, Db>
+declare const serviceFreeChannel: Channel.Channel<number, never, void, number, never, void>
 declare const parseWithConfig: (s: string) => Effect.Effect<number, never, Config>
 
 describe("Channel.mapInput", () => {
-  it("retains the requirements of f in data-last usage", () => {
+  it("adds mapper requirements and preserves channel requirements in data-last usage", () => {
+    const serviceFreeResult = pipe(serviceFreeChannel, Channel.mapInput(parseWithConfig))
+    expect(serviceFreeResult).type.toBe<Channel.Channel<number, never, void, string, never, void, Config>>()
+
     const result = pipe(dbChannel, Channel.mapInput(parseWithConfig))
     expect(result).type.toBe<Channel.Channel<number, never, void, string, never, void, Db | Config>>()
   })
 
-  it("retains the requirements of f in data-first usage", () => {
+  it("adds mapper requirements and preserves channel requirements in data-first usage", () => {
+    const serviceFreeResult = Channel.mapInput(serviceFreeChannel, parseWithConfig)
+    expect(serviceFreeResult).type.toBe<Channel.Channel<number, never, void, string, never, void, Config>>()
+
     const result = Channel.mapInput(dbChannel, parseWithConfig)
     expect(result).type.toBe<Channel.Channel<number, never, void, string, never, void, Db | Config>>()
   })
