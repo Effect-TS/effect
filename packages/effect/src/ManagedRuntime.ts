@@ -13,7 +13,7 @@ import type * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
-import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
+import { type FiberImpl, scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
 import * as Layer from "./Layer.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
@@ -350,8 +350,13 @@ export const make = <R, ER>(
       return self.dispose()
     },
     disposeEffect: Effect.withFiber((fiber) => {
-      // Disposal must not interrupt and await the fiber that is closing the scope.
-      scopeRemoveFinalizerUnsafe(fiberScope, fiber)
+      // A structured ancestor awaits its children on exit, so awaiting it here
+      // would also await the disposing fiber. Detached fibers have no parent.
+      let current: FiberImpl<unknown, unknown> | undefined = fiber as FiberImpl<unknown, unknown>
+      while (current) {
+        scopeRemoveFinalizerUnsafe(fiberScope, current)
+        current = current._parent
+      }
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
       return Scope.close(self.scope, Exit.void)
