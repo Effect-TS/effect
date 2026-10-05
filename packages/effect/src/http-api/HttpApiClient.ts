@@ -73,7 +73,13 @@ export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api e
   never
 
 /**
- * @internal
+ * Computes the decoded success value a client receives for an endpoint
+ * success schema, including headers, streaming Server-Sent Events, and
+ * streaming byte responses.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
  */
 export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
   infer _Inner,
