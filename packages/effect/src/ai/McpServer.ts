@@ -1550,10 +1550,12 @@ const mcpStdioSerialization = (
  * **Details**
  *
  * POST serves JSON-RPC and accepted notification-only requests return `202`.
- * Modern routing-header mismatches and unsupported protocol versions return
- * JSON-RPC errors with status `400`; unknown modern RPC methods return a
- * JSON-RPC method-not-found error with status `404`. Unsupported HTTP methods
- * return `405`. Requests carrying an `Origin` header are rejected unless the
+ * Header mismatches, unsupported protocol versions, and requests missing a
+ * required `MCP-Session-Id` return JSON-RPC errors with status `400`; unknown
+ * modern RPC methods return a JSON-RPC method-not-found error with status
+ * `404`. A session request without `MCP-Protocol-Version` uses the version
+ * negotiated at initialization. Unsupported HTTP methods return `405`.
+ * Requests carrying an `Origin` header are rejected unless the
  * exact origin appears in `allowedOrigins`; Origin-less non-browser clients
  * remain valid. The surrounding HTTP server remains responsible for binding
  * to an appropriate interface and installing authentication.

@@ -234,6 +234,11 @@ export const make = Effect.fnUntraced(function*(
   }
   const registry = yield* McpProtocolRegistry.make(protocols)
   const sessionTerminationListeners = new Set<(binding: RequestBinding) => Effect.Effect<void>>()
+  const unsupportedProtocolVersion = (requested: string) => ({
+    code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+    message: `Unsupported protocol version '${requested}'`,
+    data: { supported: protocolVersions, requested }
+  })
   const selectHttpSession = (headers: Headers.Headers, isInitialize: boolean): HttpProtocolSelection => {
     const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
     const sessionId = headers[MCP_SESSION_ID_HEADER]
@@ -246,14 +251,18 @@ export const make = Effect.fnUntraced(function*(
       protocolVersion !== undefined &&
       !registry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
     ) {
-      return { _tag: "Rejected", status: 400 }
+      return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
     }
+    // Without the header, a session uses the protocol version negotiated at initialization.
     if (
       !isInitialize &&
+      protocolVersion !== undefined &&
       binding?.protocol.runtime.transport.http.requiresVersionHeader === true &&
       protocolVersion !== binding.protocol.protocolVersion
     ) {
-      return { _tag: "Rejected", status: 400 }
+      return headerMismatch(
+        `MCP-Protocol-Version header '${protocolVersion}' does not match negotiated protocol version '${binding.protocol.protocolVersion}'`
+      )
     }
     return { _tag: "Accepted", binding, protocol: binding?.protocol }
   }
@@ -300,18 +309,7 @@ export const make = Effect.fnUntraced(function*(
         }
       }
       if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
-        return {
-          _tag: "Rejected",
-          status: 400,
-          error: {
-            code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-            message: `Unsupported protocol version '${protocolVersion}'`,
-            data: {
-              supported: protocolVersions,
-              requested: protocolVersion
-            }
-          }
-        }
+        return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
       }
       const method = inputRecord?.method
       if (typeof method !== "string" || headers[MCP_METHOD_HEADER] !== method) {
@@ -405,11 +403,13 @@ export const make = Effect.fnUntraced(function*(
       if (Result.isFailure(parsed)) {
         const version = headers[MCP_PROTOCOL_VERSION_HEADER]
         if (version !== undefined && !registry.protocols.some((protocol) => protocol.protocolVersion === version)) {
-          return reject(400)
+          return reject(400, unsupportedProtocolVersion(version))
         }
         const admission = selectHttpProtocol(headers, undefined)
-        return admission._tag === "Rejected" && admission.error === undefined
-          ? reject(admission.status)
+        // Rejections of the session or its protocol version header do not depend on the body.
+        return admission._tag === "Rejected" &&
+            (admission.error === undefined || admission.error.code === PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE)
+          ? reject(admission.status, admission.error)
           : reject(200, new PublicMcpSchema.ParseError({ message: "Parse error" }))
       }
       const input = parsed.success
@@ -454,8 +454,21 @@ export const make = Effect.fnUntraced(function*(
       }
       const isInitialize = Predicate.hasProperty(input, "method") && input.method === "initialize"
       const hasSession = headers[MCP_SESSION_ID_HEADER] !== undefined
-      if (isInitialize ? hasSession : !hasSession && admission.protocol?.runtime._tag !== "Stateless") {
-        return reject(400)
+      if (isInitialize && hasSession) {
+        return reject(
+          400,
+          new PublicMcpSchema.InvalidRequest({ message: "initialize must not include an MCP-Session-Id header" }),
+          id
+        )
+      }
+      if (!isInitialize && !hasSession && admission.protocol?.runtime._tag !== "Stateless") {
+        return reject(
+          400,
+          stateful === undefined ? undefined : new PublicMcpSchema.InvalidRequest({
+            message: "MCP-Session-Id header is required; send initialize to start a session"
+          }),
+          id
+        )
       }
       if (
         isRequest && admission.protocol?.runtime._tag === "Stateless" &&

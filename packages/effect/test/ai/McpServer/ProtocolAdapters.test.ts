@@ -1471,6 +1471,26 @@ describe("McpServer protocol adapters", () => {
       assert.strictEqual(currentShared.title, "Shared tool title")
     }))
 
+  // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header
+  it.effect("should reject a protocol version header that differs from the version negotiated for the session", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeFixture()
+      const { sessionId } = yield* initialize(fixture.post, "2025-06-18")
+      const headers = { "Mcp-Protocol-Version": "2025-11-25", "Mcp-Session-Id": sessionId }
+      const error = {
+        code: McpSchema.HEADER_MISMATCH_ERROR_CODE,
+        message: "MCP-Protocol-Version header '2025-11-25' does not match negotiated protocol version '2025-06-18'"
+      }
+
+      const response = yield* fixture.post({ jsonrpc: "2.0", id: 2, method: "ping", params: {} }, headers)
+      assert.strictEqual(response.status, 400)
+      assert.deepStrictEqual(yield* readJsonRpcResponse(response), { jsonrpc: "2.0", id: 2, error })
+
+      const malformed = yield* fixture.postText("{", headers)
+      assert.strictEqual(malformed.status, 400)
+      assert.deepStrictEqual(yield* readJsonRpcResponse(malformed), { jsonrpc: "2.0", id: null, error })
+    }))
+
   for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
     it.effect(`should expose the negotiated client profile when serving ${protocolVersion} requests`, () =>
       Effect.gen(function*() {

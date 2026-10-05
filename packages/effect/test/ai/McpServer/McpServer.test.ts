@@ -2440,6 +2440,11 @@ describe("McpServer", () => {
   it.effect("validates supplied protocol versions on POST", () =>
     Effect.gen(function*() {
       const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
+      const unsupportedVersionError = {
+        code: -32022,
+        message: "Unsupported protocol version '9999-01-01'",
+        data: { supported: ["2025-06-18"], requested: "9999-01-01" }
+      }
 
       yield* client.initialize(initializePayload)
 
@@ -2450,7 +2455,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(unsupportedResponse.status, 400)
-      strictEqual(yield* unsupportedResponse.text, "")
+      assert.deepInclude(yield* unsupportedResponse.json, { error: unsupportedVersionError })
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
       const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
@@ -2461,7 +2466,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(malformedResponse.status, 400)
-      strictEqual(yield* malformedResponse.text, "")
+      assert.deepInclude(yield* malformedResponse.json, { error: unsupportedVersionError })
 
       const malformedNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2481,7 +2486,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(invalidRequestResponse.status, 400)
-      strictEqual(yield* invalidRequestResponse.text, "")
+      assert.deepInclude(yield* invalidRequestResponse.json, { error: unsupportedVersionError })
 
       const invalidRequestNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2500,7 +2505,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(invalidInitializeResponse.status, 400)
-      strictEqual(yield* invalidInitializeResponse.text, "")
+      assert.deepInclude(yield* invalidInitializeResponse.json, { error: unsupportedVersionError })
 
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2509,7 +2514,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(responseOnly.status, 400)
-      strictEqual(yield* responseOnly.text, "")
+      assert.deepInclude(yield* responseOnly.json, { error: unsupportedVersionError })
 
       const absentVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
