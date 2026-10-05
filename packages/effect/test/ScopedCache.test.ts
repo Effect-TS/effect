@@ -363,7 +363,7 @@ describe("ScopedCache", () => {
           )
           yield* TestClock.adjust("1 second")
 
-          assert.isTrue(Option.isSome(yield* Fiber.join(reader)), "subsequent get never completed")
+          assert.deepStrictEqual(yield* Fiber.join(reader), Option.some(Exit.succeed(2)))
         }))
 
       it.effect("error handling - lookup function fails", () =>
