@@ -28,7 +28,7 @@ import * as Schedule from "../Schedule.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
-import { isSqlError, type SqlError } from "../sql/SqlError.ts"
+import { isSqlError, SqlError, UniqueViolation } from "../sql/SqlError.ts"
 import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
@@ -275,44 +275,92 @@ export const makeEncoded: (options?: {
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
-  const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
-    sql`
-      SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+  const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<KeyedRow>, SqlError> =>
+    sql<KeyedRow>`
+      SELECT m.id, m.entity_type, m.entity_id, m.tag, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
       FROM ${messagesTableSql} m
       LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
       WHERE m.message_id = ${message_id}
     `
 
-  // rows written before escaped primary keys existed are stored under the plain
-  // key, which may belong to a different tuple, so the address and tag are
-  // verified before treating the row as the same request
-  const selectLegacyCandidate = (
-    candidate: NonNullable<ReturnType<typeof InternalPrimaryKey.legacyCandidate>>
-  ): Effect.Effect<ReadonlyArray<Row & { readonly id: string | bigint }>, SqlError | PlatformError.PlatformError> => {
-    const select = (message_id: string) =>
-      sql<Row & { readonly id: string | bigint }>`
-        SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
-        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.message_id = ${message_id}
-        AND m.entity_type = ${candidate.entityType}
-        AND m.entity_id = ${candidate.entityId}
-        AND m.tag = ${candidate.tag}
-      `
-    return messageIdForPrimaryKey(candidate.primaryKey).pipe(
-      Effect.flatMap(select),
-      Effect.flatMap((rows) =>
-        rows.length === 0 && mayHaveLegacyRow(candidate.primaryKey)
-          ? select(candidate.primaryKey)
-          : Effect.succeed(rows)
-      )
+  // Rows written before escaped primary keys existed are stored under the plain
+  // key, which may belong to a different tuple (`a/b` + `c` and `a` + `b/c`
+  // share one), so a row found by key is only the same request when its
+  // address and tag match the decoded key.
+  type DecodedKey = ReturnType<typeof InternalPrimaryKey.decode>
+  const isOwnedBy = (key: DecodedKey) => (row: KeyedRow): boolean =>
+    key === undefined ||
+    (row.entity_type === key.entityType && row.entity_id === key.entityId && row.tag === key.tag)
+
+  // message ids that may hold a row previous versions wrote for the same tuple:
+  // the plain key of an escaped tuple, and sqlite's over-length plaintext keys
+  const legacyMessageIds = (
+    primaryKey: string,
+    key: DecodedKey
+  ): Effect.Effect<ReadonlyArray<string>, PlatformError.PlatformError> => {
+    const legacyKey = key?.legacyKey ?? primaryKey
+    const plaintext = mayHaveLegacyRow(legacyKey) ? [legacyKey] : []
+    return legacyKey === primaryKey
+      ? Effect.succeed(plaintext)
+      : Effect.map(messageIdForPrimaryKey(legacyKey), (messageId) => [messageId, ...plaintext])
+  }
+
+  const selectOwned = (
+    messageIds: ReadonlyArray<string>,
+    key: DecodedKey,
+    index = 0
+  ): Effect.Effect<ReadonlyArray<KeyedRow>, SqlError> =>
+    index >= messageIds.length ? Effect.succeed([]) : Effect.flatMap(selectByMessageId(messageIds[index]), (rows) => {
+      const owned = rows.filter(isOwnedBy(key))
+      return owned.length > 0 ? Effect.succeed(owned) : selectOwned(messageIds, key, index + 1)
+    })
+
+  const messageIdTaken = (message_id: string) =>
+    new SqlError({
+      reason: new UniqueViolation({
+        message: `message_id ${message_id} is held by an unrelated request`,
+        operation: "saveEnvelope",
+        constraint: "message_id",
+        cause: undefined
+      })
+    })
+
+  // Moves a legacy row stored under the plain key of a different tuple to its
+  // own canonical key, freeing the plain key. The rpc id is recovered from the
+  // incoming plain key because the stored message_id may be a digest. When the
+  // canonical key is already taken (a duplicate written during a mixed-version
+  // rollout), the legacy row only gives up its key and is otherwise untouched.
+  const rekeyLegacyRow = (
+    row: KeyedRow,
+    primaryKey: string,
+    message_id: string
+  ): Effect.Effect<void, SqlError | PlatformError.PlatformError> => {
+    const prefix = `${row.entity_type}/${row.entity_id}/${row.tag}/`
+    if (row.tag === null || !primaryKey.startsWith(prefix)) {
+      return Effect.fail(messageIdTaken(message_id))
+    }
+    const canonical = InternalPrimaryKey.make(row.entity_type, row.entity_id, row.tag, primaryKey.slice(prefix.length))
+    return messageIdForPrimaryKey(canonical).pipe(
+      Effect.flatMap((target) =>
+        sql`SELECT id FROM ${messagesTableSql} WHERE message_id = ${target}`.pipe(
+          // the message_id guard turns concurrent re-keys of the same row into no-ops
+          Effect.flatMap((taken) =>
+            sql`UPDATE ${messagesTableSql} SET message_id = ${taken.length === 0 ? target : null}
+              WHERE id = ${row.id} AND message_id = ${message_id}`
+          ),
+          sql.withTransaction,
+          // a concurrent insert may take the canonical key after the check
+          Effect.retry({ times: 2, while: (error) => error.reason._tag === "UniqueViolation" })
+        )
+      ),
+      Effect.asVoid
     )
   }
 
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
-  ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
+  ) => Effect.Effect<ReadonlyArray<KeyedRow>, SqlError> = sql.onDialectOrElse({
     pg: () => (row, message_id) =>
       sql`
         INSERT INTO ${messagesTableSql} ${sql.insert(row)}
@@ -340,37 +388,12 @@ export const makeEncoded: (options?: {
         ON target.message_id = source.message_id
         WHEN NOT MATCHED THEN
           INSERT ${sql.insert(row)}
-        OUTPUT
-          inserted.id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.id, r.kind, r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.kind
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_kind,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_payload,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.sequence
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_sequence;
-      `,
+        OUTPUT inserted.id;
+      `.pipe(Effect.flatMap((rows) => {
+        // OUTPUT only returns inserted rows
+        if (rows.length > 0) return Effect.succeed([])
+        return selectByMessageId(message_id)
+      })),
     orElse: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
@@ -378,6 +401,24 @@ export const makeEncoded: (options?: {
         Effect.retry({ times: 3 })
       )
   })
+
+  // inserts the row unless its key is taken, returning the row that holds the
+  // key. A legacy row of another tuple is re-keyed so the insert can proceed.
+  const insertOwned = (
+    row: MessageRow,
+    primaryKey: string,
+    message_id: string,
+    key: DecodedKey,
+    attempts = 3
+  ): Effect.Effect<ReadonlyArray<KeyedRow>, SqlError | PlatformError.PlatformError> =>
+    Effect.flatMap(insertEnvelope(row, message_id), (rows) => {
+      if (rows.length === 0 || isOwnedBy(key)(rows[0])) return Effect.succeed(rows)
+      if (attempts === 0) return Effect.fail(messageIdTaken(message_id))
+      return Effect.andThen(
+        rekeyLegacyRow(rows[0], primaryKey, message_id),
+        insertOwned(row, primaryKey, message_id, key, attempts - 1)
+      )
+    })
 
   const tenMinutesAgo = sql.onDialectOrElse({
     mssql: () => sql.literal(`DATEADD(MINUTE, -10, GETDATE())`),
@@ -549,23 +590,18 @@ export const makeEncoded: (options?: {
       Effect.suspend(() => {
         let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
         if (primaryKey !== null) {
-          insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
-            const row = envelopeToRow(envelope, messageId, deliverAt)
-            const candidate = InternalPrimaryKey.legacyCandidate(primaryKey)
-            if (candidate !== undefined) {
-              return Effect.flatMap(
-                selectLegacyCandidate(candidate),
-                (rows) => rows.length > 0 ? Effect.succeed(rows) : insertEnvelope(row, messageId)
+          const key = InternalPrimaryKey.decode(primaryKey)
+          insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) =>
+            legacyMessageIds(primaryKey, key).pipe(
+              Effect.flatMap((messageIds) =>
+                selectOwned(messageIds, key)
+              ),
+              Effect.flatMap((rows) =>
+                rows.length > 0
+                  ? Effect.succeed(rows)
+                  : insertOwned(envelopeToRow(envelope, messageId, deliverAt), primaryKey, messageId, key)
               )
-            }
-            if (!mayHaveLegacyRow(primaryKey)) {
-              return insertEnvelope(row, messageId)
-            }
-            return Effect.flatMap(
-              selectByMessageId(primaryKey),
-              (rows) => rows.length > 0 ? Effect.succeed(rows) : insertEnvelope(row, messageId)
-            )
-          })
+            ))
         } else {
           const row = envelopeToRow(envelope, null, deliverAt)
           insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
@@ -658,28 +694,16 @@ export const makeEncoded: (options?: {
       withTracerDisabled
     ),
 
-    requestIdForPrimaryKey: (primaryKey) =>
-      messageIdForPrimaryKey(primaryKey).pipe(
-        Effect.flatMap((messageId) =>
-          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
-        ),
-        Effect.flatMap(
-          (
-            rows
-          ): Effect.Effect<ReadonlyArray<{ readonly id: string | bigint }>, SqlError | PlatformError.PlatformError> => {
-            if (rows.length > 0) return Effect.succeed(rows)
-            const candidate = InternalPrimaryKey.legacyCandidate(primaryKey)
-            if (candidate !== undefined) return selectLegacyCandidate(candidate)
-            return mayHaveLegacyRow(primaryKey)
-              ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
-              : Effect.succeed(rows)
-          }
-        ),
+    requestIdForPrimaryKey: (primaryKey) => {
+      const key = InternalPrimaryKey.decode(primaryKey)
+      return Effect.all([messageIdForPrimaryKey(primaryKey), legacyMessageIds(primaryKey, key)]).pipe(
+        Effect.flatMap(([messageId, legacy]) => selectOwned([messageId, ...legacy], key)),
         Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]?.id), Snowflake.Snowflake)),
         Effect.provideService(SqlClient.SafeIntegers, true),
         PersistenceError.refail,
         withTracerDisabled
-      ),
+      )
+    },
 
     repliesFor: (requestIds) =>
       // replies where:
@@ -1272,6 +1296,13 @@ type ReplyRow = {
   readonly request_id: string | bigint
   readonly payload: string
   readonly sequence: number | bigint | null
+}
+
+type KeyedRow = Row & {
+  readonly id: string | bigint
+  readonly entity_type: string
+  readonly entity_id: string
+  readonly tag: string | null
 }
 
 type ReplyJoinRow = {

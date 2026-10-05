@@ -40,22 +40,33 @@ export const make = (entityType: string, entityId: string, tag: string, id: stri
     : `${escapeComponent(entityType)}:${escapeComponent(entityId)}:${escapeComponent(tag)}:${escapeComponent(id)}`
 
 /**
- * For keys in the escaped form, returns the decoded components together with
- * the plain key that versions without escaping wrote for the same tuple.
- * Storage drivers can use it to find rows persisted before the escaped form
- * existed, after verifying the row's entity type, entity id, and tag.
+ * Decodes a key produced by `make` into the tuple it identifies, together with
+ * the plain key that versions without escaping wrote for the same tuple (the
+ * key itself when it is already plain). A row stored under a plain key may
+ * belong to a different tuple written by those versions, so storage drivers
+ * verify the row's entity type, entity id, and tag against the decoded tuple.
  *
  * @internal
  */
-export const legacyCandidate = (primaryKey: string): {
+export const decode = (primaryKey: string): {
   readonly entityType: string
   readonly entityId: string
   readonly tag: string
-  readonly primaryKey: string
+  readonly legacyKey: string
 } | undefined => {
-  if (primaryKey.includes("/")) return undefined
-  const parts = primaryKey.split(":")
-  if (parts.length !== 4) return undefined
-  const [entityType, entityId, tag, id] = parts.map(unescapeComponent)
-  return { entityType, entityId, tag, primaryKey: `${entityType}/${entityId}/${tag}/${id}` }
+  if (!primaryKey.includes("/")) {
+    const parts = primaryKey.split(":")
+    if (parts.length !== 4) return undefined
+    const [entityType, entityId, tag, id] = parts.map(unescapeComponent)
+    return { entityType, entityId, tag, legacyKey: `${entityType}/${entityId}/${tag}/${id}` }
+  }
+  const parts = primaryKey.split("/")
+  const offset = parts[0] === "Workflow" ? 1 : 0
+  if (parts.length < 4 + offset) return undefined
+  return {
+    entityType: offset === 0 ? parts[0] : `${workflowPrefix}${parts[1]}`,
+    entityId: parts[1 + offset],
+    tag: parts[2 + offset],
+    legacyKey: primaryKey
+  }
 }
