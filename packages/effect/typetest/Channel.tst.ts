@@ -128,3 +128,24 @@ describe("Channel.runCount", () => {
     expect(Channel.runCount(Channel.fromIterable([1, 2, 3]))).type.toBe<Effect.Effect<number>>()
   })
 })
+
+interface Config {
+  readonly _: unique symbol
+}
+interface Db {
+  readonly _: unique symbol
+}
+declare const dbChannel: Channel.Channel<number, never, void, number, never, void, Db>
+declare const parseWithConfig: (s: string) => Effect.Effect<number, never, Config>
+
+describe("Channel.mapInput", () => {
+  it("retains the requirements of f in data-last usage", () => {
+    const result = pipe(dbChannel, Channel.mapInput(parseWithConfig))
+    expect(result).type.toBe<Channel.Channel<number, never, void, string, never, void, Db | Config>>()
+  })
+
+  it("retains the requirements of f in data-first usage", () => {
+    const result = Channel.mapInput(dbChannel, parseWithConfig)
+    expect(result).type.toBe<Channel.Channel<number, never, void, string, never, void, Db | Config>>()
+  })
+})
