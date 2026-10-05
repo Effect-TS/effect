@@ -215,6 +215,32 @@ describe("Channel", () => {
         assert.isTrue(yield* Ref.get(released))
       }))
 
+    it.effect("acquireUseRelease releases resource when interrupted during acquisition", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const gate = yield* Deferred.make<void>()
+        const released: Array<number> = []
+        const acquire = Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          yield* Deferred.await(gate)
+          return 1
+        })
+        const fiber = yield* Effect.forkChild(Channel.runDrain(Channel.acquireUseRelease(
+          acquire,
+          () => Channel.never,
+          (resource) =>
+            Effect.sync(() => {
+              released.push(resource)
+            })
+        )))
+        yield* Deferred.await(started)
+        yield* Effect.forkChild(Fiber.interrupt(fiber), { startImmediately: true })
+        yield* Deferred.succeed(gate, undefined)
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.deepStrictEqual(released, [1])
+      }))
+
     it.effect("acquireUseRelease combines usage and release failures", () =>
       Effect.gen(function*() {
         const result = yield* Channel.acquireUseRelease(
