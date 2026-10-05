@@ -363,4 +363,25 @@ describe("Metrics", () => {
       const secondValue = (secondResult.resourceMetrics.scopeMetrics[0]!.metrics[0] as any).dataPoints[0].value
       assert.deepStrictEqual([firstValue, secondValue], [1, 1])
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+  it.effect("does not report cumulative min/max for delta histograms", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, "delta")
+      const histogram = Metric.histogram("latency", {
+        boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 3 })
+      })
+
+      yield* Metric.update(histogram, 1)
+      yield* Metric.update(histogram, 100)
+      const first = findMetric(yield* Effect.promise(() => producer.collect()), "latency").dataPoints[0].value
+      assert.include(first, { count: 2, sum: 101, min: 1, max: 100 })
+
+      yield* Metric.update(histogram, 50)
+      yield* Metric.update(histogram, 60)
+      const second = findMetric(yield* Effect.promise(() => producer.collect()), "latency").dataPoints[0].value
+      assert.deepStrictEqual(
+        { count: second.count, sum: second.sum, min: second.min, max: second.max },
+        { count: 2, sum: 110, min: undefined, max: undefined }
+      )
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 })
