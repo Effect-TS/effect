@@ -2303,7 +2303,7 @@ describe("Arbitrary", () => {
             seed: "mixed-codec-cause"
           }))
 
-          assert.deepStrictEqual(exit, Exit.failCause(cause))
+          assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
         }))
     }
 
@@ -4120,7 +4120,7 @@ describe("Arbitrary", () => {
             { runs: 1, seed: "mixed-property-cause" }
           ))
 
-          assert.deepStrictEqual(exit, Exit.failCause(cause))
+          assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
         }))
     }
 
