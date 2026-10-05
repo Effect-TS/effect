@@ -1451,18 +1451,12 @@ describe("Effect.withExecutionPlan", () => {
     })
     const result = Effect.withExecutionPlan(Effect.fail("operation-failed" as const), schedulePlan)
     expect(result).type.toBe<Effect.Effect<never, "operation-failed" | "policy-failed", PolicyService>>()
-    expect(schedulePlan.captureRequirements).type.toBe<
-      Effect.Effect<
-        ExecutionPlan.ExecutionPlan<{
-          provides: never
-          input: unknown
-          error: "policy-failed"
-          requirements: never
-        }>,
-        never,
-        PolicyService
-      >
-    >()
+    const capturedResult = Effect.flatMap(schedulePlan.captureRequirements, (captured) => {
+      const result = Effect.withExecutionPlan(Effect.fail("operation-failed" as const), captured)
+      expect(result).type.toBe<Effect.Effect<never, "operation-failed" | "policy-failed">>()
+      return result
+    })
+    expect(capturedResult).type.toBe<Effect.Effect<never, "operation-failed" | "policy-failed", PolicyService>>()
   })
 })
 

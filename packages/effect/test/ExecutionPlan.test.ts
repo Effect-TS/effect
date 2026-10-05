@@ -113,8 +113,11 @@ describe("ExecutionPlan", () => {
           )
         })
         const captured = yield* schedulePlan.captureRequirements.pipe(Effect.provideService(Policy, { allow: true }))
-        const result = yield* Effect.withExecutionPlan(failOnce(), captured)
-        strictEqual(result, "ok")
+        for (const ambient of [undefined, { allow: false }]) {
+          const program = Effect.withExecutionPlan(failOnce(), captured)
+          const result = yield* ambient ? Effect.provideService(program, Policy, ambient) : program
+          strictEqual(result, "ok")
+        }
       }))
   })
 
