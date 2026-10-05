@@ -115,6 +115,7 @@ const addEntry = <A extends Request.Any>(
   }
   const key = resolver.batchKey(entry)
   batch = batchMap.get(key)
+  const isNewBatch = batch === undefined
   if (!batch) {
     if (batchPool.length > 0) {
       batch = batchPool.pop()!
@@ -129,19 +130,26 @@ const addEntry = <A extends Request.Any>(
         entrySet: new Set(),
         entries: new Set(),
         delayEffect: effect.flatMap(
-          effect.onExit(effect.suspend(() => newBatch.resolver.delay), (exit) => {
-            // An interrupted delay may finish after its batch has been reused.
-            if (
-              exit._tag === "Failure" &&
-              newBatch.fiber === effect.getCurrentFiber() &&
-              newBatch.map.get(newBatch.key) === newBatch
-            ) {
-              // Release the key before notifying callers, which may enqueue a retry.
-              newBatch.map.delete(newBatch.key)
-              completeBatch(newBatch, exit)
+          effect.onExit(
+            effect.suspend(() => {
+              // Claim fiber ownership before evaluating even a synchronous delay.
+              newBatch.fiber = effect.getCurrentFiber()!
+              return newBatch.resolver.delay
+            }),
+            (exit) => {
+              // An interrupted delay may finish after its batch has been reused.
+              if (
+                exit._tag === "Failure" &&
+                newBatch.fiber === effect.getCurrentFiber() &&
+                newBatch.map.get(newBatch.key) === newBatch
+              ) {
+                // Release the key before notifying callers, which may enqueue a retry.
+                newBatch.map.delete(newBatch.key)
+                completeBatch(newBatch, exit)
+              }
+              return effect.void
             }
-            return effect.void
-          }),
+          ),
           (_) => runBatch(newBatch)
         ) as Effect<void>,
         run: effect.onExit(
@@ -157,11 +165,16 @@ const addEntry = <A extends Request.Any>(
       batch = newBatch
     }
     batchMap.set(key, batch)
-    batch.fiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.cache.scheduler })
   }
 
   batch.entrySet.add(entry)
   batch.entries.add(entry)
+  if (isNewBatch) {
+    // Register the first entry before the delay can complete the batch.
+    effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.cache.scheduler })
+    // Synchronous completion may already have recycled the batch.
+    if (completed) return entry
+  }
   if (batch.resolver.collectWhile(batch.entries)) return entry
 
   // Claim the batch before interrupting its delay, so delay cleanup cannot fail it.
