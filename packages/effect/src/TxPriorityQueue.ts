@@ -9,6 +9,7 @@
  * is empty, so they can be combined with other transactional reads and writes in
  * one atomic workflow.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

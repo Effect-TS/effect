@@ -9,6 +9,7 @@
  * generation, formatting, equivalence, optics, and differs derived from schema
  * definitions.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

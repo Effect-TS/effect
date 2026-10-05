@@ -7,6 +7,7 @@
  * mostly useful when defining generic helpers or type classes that should work
  * across several data types.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Types from "./Types.ts"

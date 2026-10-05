@@ -8,6 +8,7 @@
  * values, and comparison helpers that avoid exposing the wrapped value at the
  * call site.
  *
+ * @stability stable
  * @since 3.3.0
  */
 import * as Equal from "./Equal.ts"

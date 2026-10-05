@@ -6,6 +6,7 @@
  * Typical use cases include masking secrets, tokens, or personal data in logs, traces,
  * and serialized output.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Context from "./Context.ts"

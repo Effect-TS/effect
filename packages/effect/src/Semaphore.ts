@@ -8,6 +8,7 @@
  * work that should only run immediately, and resizing support for an existing
  * semaphore.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Effect from "./Effect.ts"

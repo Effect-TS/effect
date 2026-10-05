@@ -7,6 +7,7 @@
  * search, count, or otherwise reduce streamed input, and they can be composed
  * when a stream needs more than one consuming step.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyReadonlyArray } from "./Array.ts"

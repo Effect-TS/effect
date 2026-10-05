@@ -7,6 +7,7 @@
  * interrupt background work by a stable key while keeping all fibers tied to
  * one scope.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Cause from "./Cause.ts"

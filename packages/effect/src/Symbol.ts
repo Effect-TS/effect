@@ -4,6 +4,7 @@
  * and must be narrowed before it can be used as a symbol key, identifier, or
  * discriminant.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

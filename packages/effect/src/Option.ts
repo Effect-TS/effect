@@ -8,6 +8,7 @@
  * and from common nullable or result-like shapes. It also includes `Option.gen`
  * for writing small generator-based computations that stop at the first `None`.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Combiner from "./Combiner.ts"

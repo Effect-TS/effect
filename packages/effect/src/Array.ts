@@ -7,6 +7,7 @@
  * arrays and preserve non-empty array types when the result is guaranteed to
  * contain values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equal from "./Equal.ts"

@@ -6,6 +6,7 @@
  * available. The module also provides `invalidate` for forcing the next `get`
  * to acquire a fresh resource.
  *
+ * @stability stable
  * @since 3.5.0
  */
 import type * as Duration from "./Duration.ts"

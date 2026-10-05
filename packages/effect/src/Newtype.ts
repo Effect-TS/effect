@@ -8,6 +8,7 @@
  * helpers for reusing carrier instances such as `Equivalence`, `Order`,
  * `Combiner`, and `Reducer`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Combiner from "./Combiner.ts"

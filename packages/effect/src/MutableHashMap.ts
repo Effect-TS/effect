@@ -7,6 +7,7 @@
  * Effect `Equal` and `Hash`, so callers can mix reference-based and structural
  * lookup in the same collection.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyArray } from "./Array.ts"

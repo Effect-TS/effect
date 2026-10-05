@@ -7,6 +7,7 @@
  * and runners for connecting Effect programs to JavaScript entry points such as
  * promises, callbacks, and synchronous code.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Context from "./Context.ts"

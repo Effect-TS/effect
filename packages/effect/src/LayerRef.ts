@@ -5,6 +5,7 @@
  * back as a layer or scoped effect, and supports invalidation so later users can
  * acquire a fresh context.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "./Context.ts"

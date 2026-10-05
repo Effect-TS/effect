@@ -7,6 +7,7 @@
  * from common input shapes, unit conversions, comparisons, arithmetic,
  * formatting, and reusable reducer or combiner helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Combiner from "./Combiner.ts"

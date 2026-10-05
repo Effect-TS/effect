@@ -7,6 +7,7 @@
  * and `Layer`, while this module is useful when code needs to create, provide,
  * fork, close, or inspect scopes directly.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

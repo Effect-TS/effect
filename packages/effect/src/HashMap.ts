@@ -7,6 +7,7 @@
  * batch updates. This module also includes constructors, iteration, conversion,
  * mapping, filtering, and reducing helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

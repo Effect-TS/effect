@@ -7,6 +7,7 @@
  * and updating the value, plus numeric increment/decrement helpers and a
  * boolean toggle helper.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equal from "./Equal.ts"

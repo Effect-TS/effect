@@ -8,6 +8,7 @@
  * helpers, comparisons, date arithmetic, current-time effects, and formatting
  * functions.
  *
+ * @stability stable
  * @since 3.6.0
  */
 import type { IllegalArgumentError } from "./Cause.ts"

@@ -5,6 +5,7 @@
  * constructor for reducers and a helper for reversing the order in which values
  * are combined.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 

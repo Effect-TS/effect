@@ -6,6 +6,7 @@
  * for composing providers, changing paths, and installing providers through
  * layers.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

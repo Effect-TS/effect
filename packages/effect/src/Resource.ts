@@ -6,6 +6,7 @@
  * schedule. Resource acquisition runs in a scope, so replacements and final
  * cleanup release the resources owned by previous values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"

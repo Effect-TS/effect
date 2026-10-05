@@ -3,6 +3,7 @@
  *
  * Decimal units use powers of 1,000 and binary units use powers of 1,024.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as BI from "./BigInt.ts"

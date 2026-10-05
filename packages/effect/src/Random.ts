@@ -6,6 +6,7 @@
  * random generation is a service, tests and applications can replace the
  * generator used by Effect programs.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Arr from "./Array.ts"

@@ -7,6 +7,7 @@
  * resolver shapes and tools for controlling batching, grouping, delays,
  * tracing, caching, racing, hooks around resolver execution, and persistence.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyArray } from "./Array.ts"

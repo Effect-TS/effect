@@ -7,6 +7,7 @@
  * `RequestResolver`, which performs backend-specific loading and completes each
  * pending request entry with a success, failure, cause, exit, or effect.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"

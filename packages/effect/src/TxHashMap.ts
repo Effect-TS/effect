@@ -7,6 +7,7 @@
  * shared registries, counters, indexes, and other maps that need safe
  * read-modify-write sequences alongside related transactional state.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

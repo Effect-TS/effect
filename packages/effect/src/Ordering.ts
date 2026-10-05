@@ -5,6 +5,7 @@
  * provides helpers for reversing an ordering, matching on the three cases, and
  * combining ordered comparison results with a reducer.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { LazyArg } from "./Function.ts"

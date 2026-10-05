@@ -6,6 +6,7 @@
  * makes them easy to narrow with pattern matching or simple checks. These
  * helpers are commonly used for domain values and errors in Effect programs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"

@@ -7,6 +7,7 @@
  * the `QuitError` used when a user cancels input, a guard for that error, and a
  * constructor for custom terminal service implementations.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "./Cause.ts"

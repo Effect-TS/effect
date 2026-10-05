@@ -10,6 +10,7 @@
  * membership checks, set algebra, mapping, filtering, reducing, and conversion
  * back to `HashSet`.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

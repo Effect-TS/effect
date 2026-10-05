@@ -8,6 +8,7 @@
  * layers for installing reporters and symbols for marking errors as ignored or
  * attaching severity and attributes.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "./Cause.ts"

@@ -7,6 +7,7 @@
  * keys, invalid types, invalid values, failed filters, failed transformations,
  * and alternatives that did not match. This module also formats issues.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"

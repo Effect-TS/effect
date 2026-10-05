@@ -1527,8 +1527,10 @@ function buildTags(
   }
   const deprecated = values.get("deprecated")?.[0] ?? null
   const stability = values.get("stability")?.[0]
-  if (stability !== undefined && stability !== "unstable" && stability !== "experimental") {
-    diagnostics.push(diagnostic("invalid-stability", "@stability must have the value unstable or experimental"))
+  if (stability !== undefined && stability !== "stable" && stability !== "unstable" && stability !== "experimental") {
+    diagnostics.push(
+      diagnostic("invalid-stability", "@stability must have the value stable, unstable, or experimental")
+    )
   }
   const resolvedStability: JSDocStability = stability === "unstable" || stability === "experimental"
     ? stability

@@ -6,6 +6,7 @@
  * logical operations, checking collections with `every` or `some`, ordering
  * booleans, and reducing boolean values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equ from "./Equivalence.ts"

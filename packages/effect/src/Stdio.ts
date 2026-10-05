@@ -9,6 +9,7 @@
  * provides a constructor for service values and a small test layer with
  * overridable defaults.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "./Context.ts"

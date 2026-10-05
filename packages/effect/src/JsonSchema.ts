@@ -6,6 +6,7 @@
  * JSON Schema Draft-04. The module also defines document types, meta-schema
  * constants, and OpenAPI component-key helpers.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as InternalRecord from "./internal/record.ts"

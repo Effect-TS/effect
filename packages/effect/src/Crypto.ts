@@ -7,6 +7,7 @@
  * secure random bytes and numbers, UUIDv4 and UUIDv7 generation, shuffling, and
  * SHA message digests.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "./Context.ts"

@@ -8,6 +8,7 @@
  * update variants that leave the value unchanged when an `Option.none` result
  * is returned.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Effect from "./Effect.ts"

@@ -7,6 +7,7 @@
  * exit codes and already-reported failures. Application code usually calls the
  * platform-provided runner instead of using this module directly.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"

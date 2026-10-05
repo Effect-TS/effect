@@ -9,6 +9,7 @@
  * lifecycles such as clients, sessions, and connections, not as a general
  * mutable cache.
  *
+ * @stability stable
  * @since 3.5.0
  */
 import * as Cause from "./Cause.ts"

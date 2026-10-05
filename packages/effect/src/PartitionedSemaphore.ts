@@ -5,6 +5,7 @@
  * groups of work compete for the same bounded resource and each group should
  * make progress without one busy group monopolizing released permits.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"

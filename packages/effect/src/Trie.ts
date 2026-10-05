@@ -7,6 +7,7 @@
  * includes exact lookup, prefix lookup, longest-prefix lookup, iteration,
  * mapping, filtering, reducing, and traversal helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { Equal } from "./Equal.ts"

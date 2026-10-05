@@ -5,6 +5,7 @@
  * work with schema-typed input and output while the inner channel uses encoded
  * values.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "./Array.ts"

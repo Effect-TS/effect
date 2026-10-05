@@ -7,6 +7,7 @@
  * combine with other layers, provide services to effects or streams, and attach
  * error handling, tracing, or lifecycle hooks.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "./Array.ts"

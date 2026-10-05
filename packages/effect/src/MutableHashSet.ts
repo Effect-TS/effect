@@ -7,6 +7,7 @@
  * follows the same hashing and equality rules as the underlying mutable hash
  * map.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import { format } from "./Formatter.ts"

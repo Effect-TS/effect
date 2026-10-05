@@ -6,6 +6,7 @@
  * padding, replacement, normalization, safe character access, search helpers
  * that return `Option`, and joining strings through a reducer.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

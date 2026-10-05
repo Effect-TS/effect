@@ -45,7 +45,9 @@ with `@stability unstable`.
 
 `@stability unstable` means an API may receive breaking changes in minor
 releases. `@stability experimental` means it may receive breaking changes
-across patch versions. APIs without a stability tag follow strict semver.
+across patch versions. `@stability stable` and APIs without a stability tag
+follow strict semver. Every module in the `effect` package declares its
+stability explicitly in its module documentation.
 
 APIs that expose a third-party dependency are also marked `@stability
 unstable`, because that dependency's own releases can change them. This covers

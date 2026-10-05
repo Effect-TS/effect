@@ -5,6 +5,7 @@
  * `Deferred` suspends the fiber instead of blocking an operating-system thread,
  * and every waiter observes the same completion.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"

@@ -6,6 +6,7 @@
  * closes. This module includes scoped runtime constructors plus helpers for
  * adding, clearing, running, counting, joining, and waiting for managed fibers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Cause from "./Cause.ts"

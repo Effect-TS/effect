@@ -7,6 +7,7 @@
  * Effect results need to be inspected, transformed, filtered, or matched
  * synchronously as data.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"

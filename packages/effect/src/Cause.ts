@@ -7,6 +7,7 @@
  * includes the `Cause` and `Reason` data types, helpers for building and
  * checking causes, and small error types used by several Effect APIs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"

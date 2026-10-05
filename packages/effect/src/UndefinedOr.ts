@@ -8,6 +8,7 @@
  * cases, throwing when a value is missing, adapting throwing functions, and
  * building reducers or combiners.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Combiner from "./Combiner.ts"

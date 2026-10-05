@@ -7,6 +7,7 @@
  * for creating, checking, mapping, combining, and extracting results, plus
  * conversions to and from `Option` and nullable values.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

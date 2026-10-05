@@ -7,6 +7,7 @@
  * value. Reads can be effectful or synchronous, and updates are synchronized so
  * only one replacement happens at a time.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Effect from "./Effect.ts"

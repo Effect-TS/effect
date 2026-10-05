@@ -9,6 +9,7 @@
  * and ready-made conversions for common string, number, binary, date, form, and
  * URL-related values.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"

@@ -8,6 +8,7 @@
  * `PlatformError`. The module also includes file handles, open flags, watch
  * events, and the watch backend service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"

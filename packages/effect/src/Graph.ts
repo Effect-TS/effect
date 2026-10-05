@@ -6,6 +6,7 @@
  * both nodes and edges. The module includes traversal, analysis, path-finding,
  * transformation, and diagram export utilities.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 

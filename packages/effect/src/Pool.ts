@@ -7,6 +7,7 @@
  * pools, pools that resize with a time-to-live policy, custom strategy pools,
  * per-item concurrency limits, and runtime state types used by pool strategies.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"

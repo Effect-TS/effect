@@ -8,6 +8,7 @@
  * patterns, and common checks such as strings, numbers, records, and class
  * instances.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as internal from "./internal/matcher.ts"

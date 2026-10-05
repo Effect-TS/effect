@@ -8,6 +8,7 @@
  * exports the protocol symbols, the `Unify` type that performs normalization,
  * and `unify`, an identity function that changes only the inferred type.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

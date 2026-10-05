@@ -7,6 +7,7 @@
  * tests or other environments. This module also includes scoped helpers that
  * close console groups or timers automatically.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Context from "./Context.ts"
