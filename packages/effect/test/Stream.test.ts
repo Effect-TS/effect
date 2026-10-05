@@ -4191,6 +4191,13 @@ describe("Stream", () => {
         strictEqual(result, "error")
       }))
 
+    it.effect("sink that fails after end-of-stream", () =>
+      Effect.gen(function*() {
+        const sink = Sink.collect<number>().pipe(Sink.mapEffect(() => Effect.fail("sink-end-failure")))
+        const exit = yield* Stream.make(1).pipe(Stream.tapSink(sink), Stream.runCollect, Effect.exit)
+        deepStrictEqual(exit, Exit.fail("sink-end-failure"))
+      }))
+
     it.effect("does not read ahead", () =>
       Effect.gen(function*() {
         const ref = yield* Ref.make(0)
