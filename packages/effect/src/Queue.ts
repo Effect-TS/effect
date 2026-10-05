@@ -1223,10 +1223,7 @@ export const shutdownUnsafe = <A, E>(self: Enqueue<A, E>): boolean => {
 export const clear = <A, E>(self: Dequeue<A, E>): Effect<Array<A>, Pull.ExcludeDone<E>> =>
   internalEffect.suspend(() => {
     if (self.state._tag === "Done") {
-      if (Pull.isDoneCause(self.state.exit.cause)) {
-        return internalEffect.succeed([])
-      }
-      return self.state.exit
+      return Pull.catchDone(self.state.exit, () => internalEffect.succeed([]))
     }
     const messages = takeAllUnsafe(self)
     releaseCapacity(self)
