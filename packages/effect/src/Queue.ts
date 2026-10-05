@@ -2078,6 +2078,11 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
       self.state.offers.delete(entry)
       entry.resume(core.exitSucceed([]))
     }
+    // The resumed producer may have replaced the state with Done.
+    const state = self.state as Queue.State<A, E>
+    if (state._tag === "Done") {
+      return Pull.isDoneCause(state.exit.cause)
+    }
   }
   return false
 }
