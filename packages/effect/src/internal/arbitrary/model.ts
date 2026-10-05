@@ -1,4 +1,4 @@
-import type * as Cause from "../../Cause.ts"
+import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
 import * as InternalArray from "../array.ts"
@@ -129,7 +129,10 @@ export function concatPulls<A>(pulls: ReadonlyArray<ShrinkPull<A>>): ShrinkPull<
     Effect.suspend(() =>
       index >= pulls.length
         ? done()
-        : Effect.catch(pulls[index], () => {
+        : Effect.catchCause(pulls[index], (cause) => {
+          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
+            return Effect.failCause(cause)
+          }
           index++
           return loop()
         })
@@ -182,8 +185,11 @@ export function retain<A>(sample: Sample<A>): Retained<A> {
       return Effect.suspend(() => {
         if (history !== undefined && index < history.length) return Effect.succeed(history[index++])
         if (ended) return done()
-        return Effect.matchEffect(source, {
-          onFailure: () => {
+        return Effect.matchCauseEffect(source, {
+          onFailure: (cause) => {
+            if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
+              return Effect.failCause(cause)
+            }
             ended = true
             return done()
           },
@@ -288,8 +294,11 @@ function filterMapPull<A, B>(
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchEffect(current, {
-        onFailure: () => {
+      return Effect.matchCauseEffect(current, {
+        onFailure: (cause) => {
+          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
+            return Effect.failCause(cause)
+          }
           stack.pop()
           return loop()
         },
@@ -318,8 +327,11 @@ function filterPull<A>(source: ShrinkPull<Attempt<A>>, predicate: (value: A) => 
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchEffect(current, {
-        onFailure: () => {
+      return Effect.matchCauseEffect(current, {
+        onFailure: (cause) => {
+          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
+            return Effect.failCause(cause)
+          }
           stack.pop()
           return loop()
         },

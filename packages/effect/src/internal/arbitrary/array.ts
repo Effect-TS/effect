@@ -1,3 +1,4 @@
+import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as InternalArray from "../array.ts"
 import { done } from "../core.ts"
@@ -54,8 +55,11 @@ function rebuild<A>(
         }
         if (index >= elementStart) itemShrinks ??= children[index].shrinks?.()
         if (itemShrinks !== undefined) {
-          return Effect.matchEffect(itemShrinks, {
-            onFailure: () => {
+          return Effect.matchCauseEffect(itemShrinks, {
+            onFailure: (cause) => {
+              if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
+                return Effect.failCause(cause)
+              }
               itemShrinks = undefined
               removable = undefined
               index++

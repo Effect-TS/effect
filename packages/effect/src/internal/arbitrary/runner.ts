@@ -384,8 +384,11 @@ function flatMapSourcePull<A, B>(
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchEffect(current, {
-        onFailure: () => {
+      return Effect.matchCauseEffect(current, {
+        onFailure: (cause) => {
+          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
+            return Effect.failCause(cause)
+          }
           stack.pop()
           return loop()
         },
@@ -522,7 +525,10 @@ const evaluateProperty = <A, E, R>(
 }
 
 const pullNext = <A>(pull: Model.ShrinkPull<Model.Attempt<A>>): Effect.Effect<Model.Attempt<A> | undefined> =>
-  Effect.catch(pull, () => Effect.succeed(undefined))
+  Effect.catchCause(pull, (cause) =>
+    Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)
+      ? Effect.failCause(cause as Cause.Cause<never>)
+      : Effect.succeed(undefined))
 
 const shrink = Effect.fnUntraced(function*<A, E, R>(
   initial: Model.Sample<A>,
