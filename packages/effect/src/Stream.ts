@@ -4596,12 +4596,14 @@ export const peel: {
       return Effect.failCause(cause_)
     })
 
-    let stream = fromPull(Effect.succeed(pull)) as Stream<A, E>
-    const leftover = yield* run(stream, sink)
-    if (cause) return [leftover, empty]
-
-    stream = fromPull(Effect.succeed(originalPull))
-    return [leftover, stream]
+    const [result, leftover] = yield* Effect.scopedWith((scope) =>
+      sink.transform(pull as Pull.Pull<Arr.NonEmptyReadonlyArray<A>>, scope)
+    )
+    let stream: Stream<A, E> = cause ? empty : fromPull(Effect.succeed(originalPull))
+    if (leftover) {
+      stream = concat(fromArray(leftover), stream)
+    }
+    return [result, stream]
   })
 )
 
