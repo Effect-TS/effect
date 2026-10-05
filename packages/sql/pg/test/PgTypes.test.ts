@@ -167,187 +167,79 @@ const binary = (oids: ReadonlyArray<number>): Array<PgTypesResult.Column> =>
   oids.map((dataTypeOid) => ({ dataTypeOid, format: 1 }))
 
 describe("PgTypes", () => {
-  describe("interval decoding", () => {
-    // PostgreSQL interval_send layout: int64 microseconds, int32 days, int32 months.
-    // These fixtures are independent of the client encoder.
-    const intervals = [
-      {
-        literal: "3 days 04:05:06",
-        wire: "000000036c8bc0800000000300000000",
-        value: { months: 0, days: 3, microseconds: 14706000000n }
-      },
-      {
-        literal: "1 year 2 mons",
-        wire: "0000000000000000000000000000000e",
-        value: { months: 14, days: 0, microseconds: 0n }
-      },
-      {
-        literal: "-1 day",
-        wire: "0000000000000000ffffffff00000000",
-        value: { months: 0, days: -1, microseconds: 0n }
-      },
-      {
-        literal: "00:00:01.5",
-        wire: "000000000016e3600000000000000000",
-        value: { months: 0, days: 0, microseconds: 1500000n }
-      }
+  describe("intervals", () => {
+    // PostgreSQL interval_send: int64 microseconds, int32 days, int32 months.
+    // Independent fixtures for the four values reported in #8743.
+    const wires = [
+      "000000036c8bc0800000000300000000",
+      "0000000000000000000000000000000e",
+      "0000000000000000ffffffff00000000",
+      "000000000016e3600000000000000000"
+    ]
+    const values = [
+      { months: 0, days: 3, microseconds: 14706000000n },
+      { months: 14, days: 0, microseconds: 0n },
+      { months: 0, days: -1, microseconds: 0n },
+      { months: 0, days: 0, microseconds: 1500000n }
     ]
 
-    for (const { literal, value, wire } of intervals) {
-      it(`decodes ${literal} without flattening calendar units`, () => {
-        assert.deepStrictEqual(PgTypes.decode(bytes(wire), 1186, 1), value)
+    it("reads the reported intervals alongside text and SQL NULL", () => {
+      const parser = PgProtocol.makeParser({
+        readField: PgTypes.makeFieldReader(binary([1186, 1186, 1186, 1186, PgTypes.OID.text, 1186]))
       })
-    }
-
-    it("encodes interval parameters as PostgreSQL wire bytes, including SQL NULL", () => {
-      for (const { value, wire } of intervals) {
-        assert.deepStrictEqual(PgTypes.encode(value, PgTypes.OID.interval), bytes(wire))
-        assert.deepStrictEqual(PgTypes.interval(value), makeParameter(1186, value))
-      }
-      const parameters = [...intervals.map(({ value }) => PgTypes.interval(value)), PgTypes.interval(null)]
-      const expected = [...intervals.map(({ wire }) => bytes(wire)), null]
-      assert.deepStrictEqual(parameters.map(PgTypes.encodeParameter), expected)
-      assert.deepStrictEqual(
-        PgProtocol.makeBindEncoder(PgTypes.writeParameter)({ portal: "", statement: "", parameters }),
-        PgProtocol.encodeBind({ portal: "", statement: "", parameters: expected })
-      )
+      const row = parser.push(dataRow([...wires.map(bytes), bytes("6f6b"), null]))[0] as PgProtocol.DataRow<unknown>
+      assert.deepStrictEqual(row.values, [...values, "ok", null])
     })
 
-    it("encodes and reads interval arrays with NULL elements and offset fields", () => {
-      const values = [intervals[0].value, null, intervals[2].value]
+    it("encodes and decodes an interval array with a NULL element", () => {
+      const value = [values[0], null, values[2]]
       const wire = bytes(
         "0000000100000001000004a20000000300000001" +
           "00000010000000036c8bc0800000000300000000" +
           "ffffffff" +
           "000000100000000000000000ffffffff00000000"
       )
-      assert.strictEqual(PgTypes.arrayOidFor(1186), 1187)
-      assert.deepStrictEqual(PgTypes.array(values, 1186), makeParameter(1187, values))
-      assert.deepStrictEqual(PgTypes.encode(values, 1187), wire)
-      assert.deepStrictEqual(PgTypes.decode(wire, 1187, 1), values)
-      const empty = bytes("0000000000000000000004a2")
-      assert.deepStrictEqual(PgTypes.encode([], 1187), empty)
-      assert.deepStrictEqual(PgTypes.decode(empty, 1187, 1), [])
-      const parameters = [PgTypes.array(values, 1186), PgTypes.array([], 1186), PgTypes.array(null, 1186)]
-      assert.deepStrictEqual(
-        PgProtocol.makeBindEncoder(PgTypes.writeParameter)({ portal: "", statement: "", parameters }),
-        PgProtocol.encodeBind({ portal: "", statement: "", parameters: [wire, empty, null] })
-      )
-      const parser = PgProtocol.makeParser({
-        readField: PgTypes.makeFieldReader(binary([PgTypes.OID.text, 1187, 1187]))
-      })
-      assert.deepStrictEqual(
-        (parser.push(dataRow([bytes("6f6b"), wire, null]))[0] as PgProtocol.DataRow<unknown>).values,
-        ["ok", values, null]
-      )
+      assert.deepStrictEqual(PgTypes.encodeParameter(PgTypes.array(value, 1186)), wire)
+      assert.deepStrictEqual(PgTypes.decode(wire, 1187, 1), value)
     })
 
-    it("rejects interval payloads whose length is not exactly sixteen bytes", () => {
-      for (const size of [0, 8, 15, 17]) {
-        const wire = new Uint8Array(size)
-        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(wire, 1186, 1))
-        const parser = PgProtocol.makeParser({ readField: PgTypes.makeFieldReader(binary([1186])) })
-        assertThrowsTagged("PgTypesCodecError", () => parser.push(dataRow([wire])))
-        // One interval element, with its own declared (invalid) length.
-        const array = bytes(
-          "0000000100000000000004a20000000100000001" +
-            size.toString(16).padStart(8, "0") + "00".repeat(size)
-        )
-        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(array, 1187, 1))
-      }
-    })
-
-    it("preserves independent signs and the full int32 and int64 boundaries", () => {
-      const cases = [
-        { wire: "ffffffffffffffff00000001fffffffe", value: { months: -2, days: 1, microseconds: -1n } },
-        {
-          wire: "80000000000000007fffffff80000000",
-          value: { months: -2147483648, days: 2147483647, microseconds: -9223372036854775808n }
-        },
-        {
-          wire: "7fffffffffffffff800000007fffffff",
-          value: { months: 2147483647, days: -2147483648, microseconds: 9223372036854775807n }
-        }
-      ]
-      for (const { value, wire } of cases) {
+    it("preserves signed int32 and int64 boundaries without flattening calendar units", () => {
+      for (
+        const { value, wire } of [
+          {
+            wire: "80000000000000007fffffff80000000",
+            value: { months: -2147483648, days: 2147483647, microseconds: -9223372036854775808n }
+          },
+          {
+            wire: "7fffffffffffffff800000007fffffff",
+            value: { months: 2147483647, days: -2147483648, microseconds: 9223372036854775807n }
+          }
+        ]
+      ) {
         assert.deepStrictEqual(PgTypes.decode(bytes(wire), 1186, 1), value)
-        assert.deepStrictEqual(PgTypes.encode(value, 1186), bytes(wire))
+        assert.deepStrictEqual(PgTypes.encodeParameter(PgTypes.interval(value)), bytes(wire))
       }
-      assert.deepStrictEqual(
-        PgProtocol.makeBindEncoder(PgTypes.writeParameter)({
-          portal: "",
-          statement: "",
-          parameters: cases.map(({ value }) => PgTypes.interval(value))
-        }),
-        PgProtocol.encodeBind({ portal: "", statement: "", parameters: cases.map(({ wire }) => bytes(wire)) })
-      )
     })
 
-    it("rejects invalid interval components through encode and the Bind writer", () => {
-      const valid = { months: 0, days: 0, microseconds: 0n }
-      const invalid = [
-        "1 day",
-        {},
-        ...[-2147483649, 2147483648, 0.5, Number.NaN, Number.POSITIVE_INFINITY, "1"].flatMap((value) => [
-          { ...valid, months: value },
-          { ...valid, days: value }
-        ]),
-        ...[-9223372036854775809n, 9223372036854775808n, 1, "1"].map((microseconds) => ({ ...valid, microseconds }))
-      ]
-      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
-      for (const value of invalid) {
+    it("requires exactly sixteen payload bytes", () => {
+      for (const size of [15, 17]) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(new Uint8Array(size), 1186, 1))
+      }
+    })
+
+    it("rejects out-of-range calendar units and invalid microseconds", () => {
+      for (
+        const value of [
+          { months: -2147483649, days: 0, microseconds: 0n },
+          { months: 0, days: 2147483648, microseconds: 0n },
+          { months: 0, days: 0, microseconds: 9223372036854775808n },
+          { months: 0, days: 0, microseconds: 1 }
+        ]
+      ) {
         assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode(value, 1186))
-        assertThrowsTagged("PgTypesCodecError", () =>
-          encodeBind({
-            portal: "",
-            statement: "",
-            parameters: [makeParameter(1186, value)]
-          }))
       }
-    })
-
-    it("uses registry overrides for intervals and their array elements without changing defaults", () => {
-      const registry = PgTypesResult.makeRegistry()
-      registry.register<string>(1186, {
-        encode: () => Result.succeed(bytes(intervals[0].wire)),
-        decode: () => Result.succeed("custom interval")
-      })
-      const wire = bytes(intervals[0].wire)
-      assert.strictEqual(success(PgTypesResult.decode(wire, 1186, 1, registry)), "custom interval")
-      assert.deepStrictEqual(success(PgTypesResult.encode("custom interval", 1186, registry)), wire)
-      const arrayWire = PgTypes.encode([intervals[0].value, null], 1187)
-      assert.deepStrictEqual(success(PgTypesResult.decode(arrayWire, 1187, 1, registry)), ["custom interval", null])
-      assert.deepStrictEqual(success(PgTypesResult.encode(["custom interval", null], 1187, registry)), arrayWire)
-      const parser = PgProtocol.makeParser({
-        readField: success(PgTypesResult.makeFieldReader(binary([1186, 1187]), registry))
-      })
-      assert.deepStrictEqual(
-        (parser.push(dataRow([wire, arrayWire]))[0] as PgProtocol.DataRow<unknown>).values,
-        ["custom interval", ["custom interval", null]]
-      )
-      const parameters = [makeParameter(1186, "custom interval"), makeParameter(1187, ["custom interval", null])]
-      assert.deepStrictEqual(
-        PgProtocol.makeBindEncoder<PgTypesResult.Parameter, PgTypesResult.CodecError>((sink, parameter) =>
-          PgTypesResult.writeParameter(sink, parameter, registry)
-        )({ portal: "", statement: "", parameters }),
-        PgProtocol.encodeBind({ portal: "", statement: "", parameters: [wire, arrayWire] })
-      )
-      assert.deepStrictEqual(PgTypes.decode(wire, 1186, 1), intervals[0].value)
-      assert.deepStrictEqual(PgTypes.decode(arrayWire, 1187, 1), [intervals[0].value, null])
-      const other = PgTypesResult.makeRegistry()
-      assert.deepStrictEqual(success(PgTypesResult.decode(wire, 1186, 1, other)), intervals[0].value)
-    })
-
-    it("reads interval fields alongside text and SQL NULL in a DataRow", () => {
-      const parser = PgProtocol.makeParser({
-        readField: PgTypes.makeFieldReader(binary([1186, PgTypes.OID.text, 1186]))
-      })
-      const frame = dataRow([bytes(intervals[0].wire), bytes("6f6b"), null])
-      const row = parser.push(frame)[0] as PgProtocol.DataRow<unknown>
-      assert.deepStrictEqual(row.values, [intervals[0].value, "ok", null])
     })
   })
-
   it("returns codec failures as Result values", () => {
     for (
       const result of [

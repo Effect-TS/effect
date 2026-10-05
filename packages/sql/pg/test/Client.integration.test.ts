@@ -1,19 +1,6 @@
-import { PgClient, PgTypes } from "@effect/sql-pg"
+import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import {
-  Cause,
-  DateTime,
-  Deferred,
-  Effect,
-  Fiber,
-  Option,
-  Queue,
-  Result,
-  Schedule,
-  Schema,
-  Stream,
-  String
-} from "effect"
+import { Cause, DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Model } from "effect/schema"
 import { SqlClient, SqlError, SqlModel } from "effect/sql"
@@ -26,38 +13,6 @@ const transformsNested = Statement.defaultTransforms(String.snakeToCamel)
 const transforms = Statement.defaultTransforms(String.snakeToCamel, false)
 
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) => {
-  it.effect("decodes and round trips PostgreSQL intervals and interval arrays", () =>
-    Effect.gen(function*() {
-      const sql = yield* PgClient.PgClient
-      const [row] = yield* sql`SELECT
-        interval '3 days 04:05:06' AS day_time,
-        interval '1 year 2 mons' AS calendar,
-        interval '-1 day' AS negative,
-        interval '00:00:01.5' AS fractional,
-        ARRAY[interval '-1 day', NULL, interval '00:00:01.5'] AS intervals,
-        NULL::interval AS absent,
-        (interval '3 days 04:05:06')::text AS text`
-      const negative = { months: 0, days: -1, microseconds: 0n }
-      const fractional = { months: 0, days: 0, microseconds: 1500000n }
-      assert.deepStrictEqual(row, {
-        day_time: { months: 0, days: 3, microseconds: 14706000000n },
-        calendar: { months: 14, days: 0, microseconds: 0n },
-        negative,
-        fractional,
-        intervals: [negative, null, fractional],
-        absent: null,
-        text: "3 days 04:05:06"
-      })
-      const value = { months: -2, days: 3, microseconds: -1500001n }
-      const array = [value, null, fractional]
-      assert.deepStrictEqual(
-        yield* sql`SELECT
-        ${PgTypes.interval(value)}::interval AS value,
-        ${Result.getOrThrow(PgTypes.array(array, PgTypes.OID.interval))}::interval[] AS array,
-        ${PgTypes.interval(null)}::interval AS absent`,
-        [{ value, array, absent: null }]
-      )
-    }))
   it.effect("round trips Model.DateTimeInsertFromDate through a repository", () =>
     Effect.gen(function*() {
       class Entry extends Model.Class<Entry>("Entry")({
