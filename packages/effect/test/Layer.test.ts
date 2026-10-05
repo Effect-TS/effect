@@ -495,7 +495,7 @@ describe("Layer", () => {
           Effect.suspend(() =>
             ++attempts === 1
               ? Effect.fail("transient")
-              : Effect.acquireRelease(Effect.succeed({ live: true }), (resource) =>
+              : Effect.acquireRelease(Effect.succeed<{ live: boolean }>({ live: true }), (resource) =>
                 Effect.sync(() => resource.live = false))
           )
         )
