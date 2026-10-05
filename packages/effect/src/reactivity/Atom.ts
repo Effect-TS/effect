@@ -712,7 +712,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
       | ((
         get: AtomContext
       ) => Effect.Effect<SubscriptionRef.SubscriptionRef<A>, E, Scope.Scope | R | AtomRegistry | Reactivity.Reactivity>)
-  ) => Writable<AsyncResult.AsyncResult<A, E>, A>
+  ) => Writable<AsyncResult.AsyncResult<A, E | ER>, A>
 }
 
 /**

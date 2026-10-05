@@ -1,4 +1,5 @@
-import { Layer } from "effect"
+import { Effect, Layer, SubscriptionRef } from "effect"
+import type { AsyncResult } from "effect/reactivity"
 import { Atom } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 
@@ -18,6 +19,15 @@ describe("Atom", () => {
       const memoMap = Layer.makeMemoMapUnsafe()
 
       expect(Atom.context({ memoMap })).type.toBe<Atom.SharedRuntimeFactory>()
+    })
+  })
+
+  describe("AtomRuntime", () => {
+    it("subscriptionRef includes the runtime setup error", () => {
+      const runtime = Atom.runtime(Layer.effectDiscard(Effect.fail("setup-failed" as const)))
+      const ref = runtime.subscriptionRef(SubscriptionRef.make(1))
+
+      expect(ref).type.toBe<Atom.Writable<AsyncResult.AsyncResult<number, "setup-failed">, number>>()
     })
   })
 })
