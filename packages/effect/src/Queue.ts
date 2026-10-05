@@ -1987,9 +1987,7 @@ const takeBetweenUnsafe = <A, E>(
   return core.exitSucceed(messages)
 }
 
-// Like `suspend`, but delivers a returned Exit in the same fiber step. A
-// scheduler yield before a take delivers its result would let an interrupt
-// drop messages that have already left the queue.
+// Deliver dequeued results in the same fiber step to prevent message loss on interruption.
 const suspendTake: <A, E>(f: () => Effect<A, E>) => Effect<A, E> = core.makePrimitive({
   op: "QueueTake",
   [core.evaluate](fiber) {
