@@ -1352,7 +1352,17 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
 const pollForItem = <A>(self: Subscription<A>) =>
   Effect.callback<A>((resume) => {
     if (self.shutdownFlag.current) return resume(Effect.interrupt)
-    if (Option.isSome(self.ended.current)) return resume(Effect.succeed(self.ended.current.value))
+    if (Option.isSome(self.ended.current)) {
+      // Messages may have been published after the empty check, before this callback ran.
+      const message = self.pollers.length === 0
+        ? self.subscription.poll()
+        : MutableList.Empty
+      if (message !== MutableList.Empty) {
+        self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
+        return resume(Effect.succeed(message))
+      }
+      return resume(Effect.succeed(self.ended.current.value))
+    }
     const deferred = Deferred.makeUnsafe<A>()
     let set = self.subscribers.get(self.subscription)
     if (!set) {
