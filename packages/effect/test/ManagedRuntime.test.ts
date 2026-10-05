@@ -106,6 +106,94 @@ describe("ManagedRuntime", () => {
     assert.deepEqual({ result, released }, { result: "settled", released: true })
   })
 
+  test("nested-child disposal awaits unrelated request cleanup before releasing the layer", async () => {
+    const events: Array<string> = []
+    const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        events.push("layer released")
+      })
+    )))
+
+    const disposing = Effect.runPromise(Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      runtime.runFork(
+        Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          return yield* Effect.never
+        }).pipe(Effect.ensuring(Effect.gen(function*() {
+          yield* Effect.sleep(1)
+          events.push("unrelated request cleaned up")
+        })))
+      )
+      yield* Deferred.await(started)
+
+      yield* Effect.promise(() =>
+        runtime.runPromise(Effect.gen(function*() {
+          const child = yield* Effect.forkChild(Effect.gen(function*() {
+            const grandchild = yield* Effect.forkChild(
+              Effect.sleep(1).pipe(Effect.ensuring(runtime.disposeEffect))
+            )
+            yield* Fiber.join(grandchild)
+          }))
+          yield* Fiber.join(child)
+        }))
+      )
+    }))
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      disposing.then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.deepEqual({ result, events }, {
+      result: "settled",
+      events: ["unrelated request cleaned up", "layer released"]
+    })
+  })
+
+  test("detached-fiber disposal still interrupts and awaits its former request", async () => {
+    const events: Array<string> = []
+    let requestInterrupted = false
+    const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        events.push("layer released")
+      })
+    )))
+
+    const disposing = Effect.runPromise(Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      const started = yield* Deferred.make<Fiber.Fiber<void>>()
+      const request = runtime.runFork(
+        Effect.gen(function*() {
+          const detached = yield* Effect.forkDetach(
+            Deferred.await(gate).pipe(Effect.ensuring(runtime.disposeEffect))
+          )
+          yield* Deferred.succeed(started, detached)
+          return yield* Effect.never
+        }).pipe(Effect.ensuring(Effect.gen(function*() {
+          yield* Effect.sleep(1)
+          events.push("former request cleaned up")
+        })))
+      )
+      const detached = yield* Deferred.await(started)
+      yield* Deferred.succeed(gate, undefined)
+      yield* Fiber.join(detached)
+      const exit = request.pollUnsafe()
+      requestInterrupted = exit !== undefined && Exit.hasInterrupts(exit)
+    }))
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      disposing.then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.deepEqual({ result, requestInterrupted, events }, {
+      result: "settled",
+      requestInterrupted: true,
+      events: ["former request cleaned up", "layer released"]
+    })
+  })
+
   for (const method of ["disposeEffect", "dispose"] as const) {
     it(`finishes request cleanup before releasing layer resources with ${method}`, async () => {
       const events = await Effect.runPromise(Effect.gen(function*() {
