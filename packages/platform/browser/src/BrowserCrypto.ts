@@ -41,8 +41,9 @@ export const WebCrypto = Context.Reference<Crypto>("@effect/platform-browser/Cry
  *
  * **Details**
  *
- * Random bytes are produced with `crypto.getRandomValues`. Digests are computed
- * with `crypto.subtle.digest` and returned as `Uint8Array` values.
+ * Random bytes are produced with `crypto.getRandomValues`. SHA digests, HMAC,
+ * PBKDF2, and RSA-OAEP encryption use `crypto.subtle` and return `Uint8Array`
+ * values. MD5 is unsupported and fails with `PlatformError`.
  *
  * **Gotchas**
  *
@@ -96,7 +97,88 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
 
     return EffectCrypto.make({
       randomBytes,
-      digest
+      digest,
+      rsaOaepEncrypt: (options) =>
+        Effect.map(
+          Effect.tryPromise({
+            try: async () => {
+              const ownedKey = new Uint8Array(options.publicKey)
+              const ownedData = new Uint8Array(options.data)
+              const ownedLabel = options.label === undefined ? undefined : new Uint8Array(options.label)
+              const key = await crypto.subtle.importKey(
+                "spki",
+                ownedKey,
+                { name: "RSA-OAEP", hash: options.hash ?? "SHA-256" },
+                false,
+                ["encrypt"]
+              )
+              return crypto.subtle.encrypt(
+                { name: "RSA-OAEP", ...(ownedLabel === undefined ? {} : { label: ownedLabel }) },
+                key,
+                ownedData
+              )
+            },
+            catch: (cause) =>
+              PlatformError.systemError({
+                module: "Crypto",
+                method: "rsaOaepEncrypt",
+                _tag: "Unknown",
+                description: "Could not encrypt with RSA-OAEP",
+                cause
+              })
+          }),
+          (buffer) => new Uint8Array(buffer)
+        ),
+      hmac: (algorithm, key, data) =>
+        Effect.map(
+          Effect.tryPromise({
+            try: async () => {
+              const ownedKey = new Uint8Array(key)
+              const ownedData = new Uint8Array(data)
+              const cryptoKey = await crypto.subtle.importKey(
+                "raw",
+                ownedKey,
+                { name: "HMAC", hash: algorithm },
+                false,
+                ["sign"]
+              )
+              return crypto.subtle.sign("HMAC", cryptoKey, ownedData)
+            },
+            catch: (cause) =>
+              PlatformError.systemError({
+                module: "Crypto",
+                method: "hmac",
+                _tag: "Unknown",
+                description: "Could not compute HMAC",
+                cause
+              })
+          }),
+          (buffer) => new Uint8Array(buffer)
+        ),
+      pbkdf2: (algorithm, password, salt, iterations, length) =>
+        Effect.map(
+          Effect.tryPromise({
+            try: async () => {
+              const ownedPassword = new Uint8Array(password)
+              const ownedSalt = new Uint8Array(salt)
+              const cryptoKey = await crypto.subtle.importKey("raw", ownedPassword, "PBKDF2", false, ["deriveBits"])
+              return crypto.subtle.deriveBits(
+                { name: "PBKDF2", hash: algorithm, salt: ownedSalt, iterations },
+                cryptoKey,
+                length * 8
+              )
+            },
+            catch: (cause) =>
+              PlatformError.systemError({
+                module: "Crypto",
+                method: "pbkdf2",
+                _tag: "Unknown",
+                description: "Could not derive password key",
+                cause
+              })
+          }),
+          (buffer) => new Uint8Array(buffer)
+        )
     })
   })
 )

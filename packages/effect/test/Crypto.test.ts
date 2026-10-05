@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
+import * as PlatformError from "effect/PlatformError"
 import * as TestClock from "effect/testing/TestClock"
 
 const testCrypto = Crypto.make({
@@ -25,6 +26,101 @@ const makeCrypto = (value: bigint) =>
   })
 
 describe("Crypto", () => {
+  it.effect("reports omitted primitives as typed platform errors", () =>
+    Effect.gen(function*() {
+      const bytes = Uint8Array.of(1)
+      const legacy = { ...testCrypto }
+      delete legacy.hmac
+      delete legacy.pbkdf2
+      delete legacy.rsaOaepEncrypt
+      for (const service of [testCrypto, legacy]) {
+        const operations = [
+          ["hmac", Crypto.hmac("SHA-256", bytes, bytes)],
+          ["pbkdf2", Crypto.pbkdf2("SHA-256", bytes, bytes, 1, 32)],
+          ["rsaOaepEncrypt", Crypto.rsaOaepEncrypt({ publicKey: bytes, data: bytes })]
+        ] as const
+        for (const [method, operation] of operations) {
+          const error = yield* Effect.flip(operation.pipe(Effect.provideService(Crypto.Crypto, service)))
+          assert.strictEqual(error.reason._tag, "Unknown")
+          assert.strictEqual(error.reason.module, "Crypto")
+          assert.strictEqual(error.reason.method, method)
+        }
+      }
+    }))
+
+  it.effect("delegates primitive arguments and preserves typed failures", () =>
+    Effect.gen(function*() {
+      const key = Uint8Array.of(1, 2)
+      const data = Uint8Array.of(3, 4)
+      const salt = Uint8Array.of(5, 6)
+      const failure = PlatformError.systemError({ module: "Crypto", method: "fixture", _tag: "Unknown" })
+      const crypto = Crypto.make({
+        randomBytes: (size) => new Uint8Array(size),
+        digest: (_algorithm, bytes) => Effect.succeed(bytes),
+        hmac: (algorithm, actualKey, actualData) => {
+          assert.strictEqual(algorithm, "SHA-384")
+          assert.strictEqual(actualKey, key)
+          assert.strictEqual(actualData, data)
+          return Effect.succeed(data)
+        },
+        pbkdf2: (algorithm, password, actualSalt, iterations, length) => {
+          assert.strictEqual(algorithm, "SHA-512")
+          assert.strictEqual(password, key)
+          assert.strictEqual(actualSalt, salt)
+          assert.strictEqual(iterations, 2)
+          assert.strictEqual(length, 64)
+          return Effect.fail(failure)
+        },
+        rsaOaepEncrypt: (options) => {
+          assert.strictEqual(options.publicKey, key)
+          assert.strictEqual(options.data, data)
+          assert.strictEqual(options.label, salt)
+          assert.strictEqual(options.hash, "SHA-1")
+          return Effect.succeed(data)
+        }
+      })
+      assert.strictEqual(
+        yield* Crypto.hmac("SHA-384", key, data).pipe(Effect.provideService(Crypto.Crypto, crypto)),
+        data
+      )
+      assert.strictEqual(
+        yield* Effect.flip(
+          Crypto.pbkdf2("SHA-512", key, salt, 2, 64).pipe(Effect.provideService(Crypto.Crypto, crypto))
+        ),
+        failure
+      )
+      assert.strictEqual(
+        yield* Crypto.rsaOaepEncrypt({ publicKey: key, data, label: salt, hash: "SHA-1" }).pipe(
+          Effect.provideService(Crypto.Crypto, crypto)
+        ),
+        data
+      )
+    }))
+
+  it.effect("rejects invalid PBKDF2 parameters before calling the primitive", () =>
+    Effect.gen(function*() {
+      const crypto = Crypto.make({
+        randomBytes: (size) => new Uint8Array(size),
+        digest: (_algorithm, data) => Effect.succeed(data),
+        pbkdf2: () => {
+          throw new Error("Invalid arguments reached the primitive")
+        }
+      })
+      const bytes = new Uint8Array()
+      for (const invalid of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+        for (const [iterations, length] of [[invalid, 32], [1, invalid]]) {
+          const error = yield* Effect.flip(
+            Crypto.pbkdf2("SHA-256", bytes, bytes, iterations, length).pipe(
+              Effect.provideService(Crypto.Crypto, crypto)
+            )
+          )
+          assert.strictEqual(error.reason._tag, "BadArgument")
+          assert.strictEqual(error.reason.method, "pbkdf2")
+          assert.strictEqual(error.reason.module, "Crypto")
+        }
+      }
+    }))
+
   it("uses the module path for its type ID", () => {
     assert.strictEqual(
       (testCrypto as unknown as Record<string, unknown>)["~effect/Crypto"],
