@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Prevent `Queue.take` from losing a dequeued message when a scheduler yield lets its timeout win before the take delivers its result.
+Prevent `Queue.take`, `takeAll`, `takeN`, `takeBetween`, `poll`, and `clear` from losing dequeued messages when the fiber is interrupted during a scheduler yield before the result is delivered.
