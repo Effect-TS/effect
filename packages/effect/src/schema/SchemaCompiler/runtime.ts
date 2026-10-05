@@ -65,12 +65,18 @@ const makeObjectBase = (
   const runFallback: SchemaIssueParser = (input, options) =>
     (fallback ??= ast.getParser(compile, compileField))(input, options)
   const resume = (
-    state: ObjectParserState,
+    snapshot: ObjectParserState,
     index: number,
     pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
   ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
     const property = properties![index]
     return Effect.flatMap(Effect.exit(pending), (exit) => {
+      // Keep the eager prefix without sharing mutable state between executions.
+      const state: ObjectParserState = {
+        ...snapshot,
+        out: { ...snapshot.out },
+        issues: snapshot.issues ? [...snapshot.issues] : undefined
+      }
       const terminal = SchemaAST.stepProperty(state, property, exit)
       if (terminal) return terminal
       const done = () => InternalParser.succeed(state.out)
