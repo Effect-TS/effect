@@ -318,6 +318,11 @@ export function formatJson(input: unknown, options?: {
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }
+      // JSON.stringify unboxes these by internal slot, which a proxy loses.
+      // Check after redaction and leave native coercion to JSON.stringify.
+      if (isJsonPrimitiveWrapper(redacted)) {
+        return redacted
+      }
       const current = redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")
         ? { ...redacted, name: redacted.name, message: redacted.message }
         : redacted
@@ -346,4 +351,20 @@ export function formatJson(input: unknown, options?: {
     },
     options?.space
   ) ?? "null"
+}
+
+const jsonPrimitiveValueOf = [Number.prototype.valueOf, Boolean.prototype.valueOf, String.prototype.valueOf]
+
+function isJsonPrimitiveWrapper(value: object): boolean {
+  for (const valueOf of jsonPrimitiveValueOf) {
+    try {
+      // Intrinsics check internal slots without calling user-defined valueOf
+      // or trusting the prototype chain or Symbol.toStringTag.
+      Reflect.apply(valueOf, value, [])
+      return true
+    } catch {
+      // Not a wrapper of this type.
+    }
+  }
+  return false
 }
