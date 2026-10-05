@@ -331,7 +331,18 @@ export function formatJson(input: unknown, options?: {
       if (current !== redacted) {
         ancestors.push(current)
       }
-      return current
+      // Redact accessor results on the same read JSON.stringify uses, before
+      // it can call toJSON. Re-reading a getter in the replacer could return
+      // a different value or repeat side effects. Data properties stay intact.
+      const serialized = new Proxy(current, {
+        get(target, key) {
+          const descriptor = Object.getOwnPropertyDescriptor(target, key)
+          const value = Reflect.get(target, key, target)
+          return descriptor && !("value" in descriptor) ? redact(value) : value
+        }
+      })
+      ancestors.push(serialized)
+      return serialized
     },
     options?.space
   ) ?? "null"
