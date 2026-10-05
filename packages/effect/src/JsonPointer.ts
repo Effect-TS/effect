@@ -4,7 +4,7 @@
  * document, so token text must encode literal `~` and `/` characters. URI
  * fragments additionally apply percent-encoding after JSON Pointer escaping.
  *
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 

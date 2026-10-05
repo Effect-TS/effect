@@ -1,7 +1,7 @@
 /**
  * Open, compiler-extensible representation of Effect schemas.
  *
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 import * as InternalRecord from "./internal/record.ts"

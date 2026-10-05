@@ -9,7 +9,7 @@
  * constructors, focusing helpers, and operations for replacing, modifying, or
  * collecting focused values.
  *
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 
