@@ -1440,7 +1440,7 @@ describe("Effect.withExecutionPlan", () => {
     expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
   })
 
-  it("tracks schedule errors and requirements separately", () => {
+  it("tracks schedule errors and requirements with an unscheduled fallback", () => {
     class PolicyService extends Context.Service<PolicyService, number>()("PolicyService") {}
     const schedulePlan = ExecutionPlan.make({
       provide: Layer.empty,
@@ -1448,7 +1448,7 @@ describe("Effect.withExecutionPlan", () => {
         Schedule.forever,
         () => Effect.flatMap(PolicyService, () => Effect.fail("policy-failed" as const))
       )
-    })
+    }, { provide: Layer.empty })
     const result = Effect.withExecutionPlan(Effect.fail("operation-failed" as const), schedulePlan)
     expect(result).type.toBe<Effect.Effect<never, "operation-failed" | "policy-failed", PolicyService>>()
     const capturedResult = Effect.flatMap(schedulePlan.captureRequirements, (captured) => {
