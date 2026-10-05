@@ -1592,6 +1592,18 @@ describe("Effect", () => {
   })
 
   describe("retry", () => {
+    it.effect("does not retry typed failures accompanied by interruptions", () =>
+      Effect.gen(function*() {
+        let attempts = 0
+        const source = Effect.suspend(() => {
+          attempts++
+          return Effect.failCause(Cause.combine(Cause.fail("error"), Cause.interrupt(1)))
+        })
+        const exit = yield* Effect.exit(Effect.retry(source, Schedule.recurs(1)))
+        assert.strictEqual(attempts, 1)
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("error"), Cause.interrupt(1))))
+      }))
+
     it.effect("does not retry typed failures accompanied by finalizer defects", () =>
       Effect.gen(function*() {
         let attempts = 0
