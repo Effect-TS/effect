@@ -4803,6 +4803,13 @@ describe("Stream", () => {
         deepStrictEqual(rest, [4, 5, 6])
       }))
 
+    it.effect("keeps the sink's leftovers in the remaining stream", () =>
+      Effect.gen(function*() {
+        const [peeled, rest] = yield* Stream.peel(Stream.make(1, 2, 3, 4), Sink.take<number>(2))
+        deepStrictEqual(peeled, [1, 2])
+        deepStrictEqual(yield* Stream.runCollect(rest), [3, 4])
+      }).pipe(Effect.scoped))
+
     it.effect("peel - propagates errors", () =>
       Effect.gen(function*() {
         const stream = Stream.fromEffectRepeat(Effect.fail("fail"))
