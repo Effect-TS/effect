@@ -340,6 +340,32 @@ describe("ScopedCache", () => {
           assert.strictEqual(result3, 2)
         }))
 
+      it.effect("get after an expired entry's finalizer dies does not hang", () =>
+        Effect.gen(function*() {
+          let lookups = 0
+          const cache = yield* ScopedCache.make({
+            capacity: 2,
+            timeToLive: 0,
+            lookup: (_key: string) =>
+              Effect.acquireRelease(
+                Effect.sync(() => ++lookups),
+                (value) => value === 1 ? Effect.die("cleanup defect") : Effect.void
+              )
+          })
+
+          assert.strictEqual(yield* ScopedCache.get(cache, "key"), 1)
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "key")), Exit.die("cleanup defect"))
+
+          const reader = yield* ScopedCache.get(cache, "key").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild
+          )
+          yield* TestClock.adjust("1 second")
+
+          assert.isTrue(Option.isSome(yield* Fiber.join(reader)), "subsequent get never completed")
+        }))
+
       it.effect("error handling - lookup function fails", () =>
         Effect.gen(function*() {
           const cache = yield* ScopedCache.make({
