@@ -4002,6 +4002,31 @@ describe("Effect", () => {
     })
 
     describe("retry", () => {
+      it.effect("should interrupt a parked retry and roll back without a ref change", () =>
+        Effect.gen(function*() {
+          const ref = TxRef.makeUnsafe(0)
+          const transaction = yield* Effect.tx(Effect.gen(function*() {
+            yield* TxRef.get(ref)
+            yield* TxRef.set(ref, 1)
+            return yield* Effect.txRetry
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+
+          assert.isUndefined(transaction.pollUnsafe())
+          const interrupted = yield* Fiber.interrupt(transaction).pipe(
+            Effect.andThen(Fiber.await(transaction)),
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild
+          )
+          yield* TestClock.adjust("1 second")
+
+          const result = yield* Fiber.join(interrupted)
+          assert.isTrue(Option.isSome(result), "interrupting a retry waiter must terminate promptly")
+          if (Option.isSome(result)) {
+            assert.isTrue(Exit.hasInterrupts(result.value))
+          }
+          assert.strictEqual(yield* Effect.tx(TxRef.get(ref)), 0)
+        }))
+
       it.effect("should fail and roll back when a retry finalizer dies", () =>
         Effect.gen(function*() {
           const gate = TxRef.makeUnsafe(0)
@@ -4019,6 +4044,38 @@ describe("Effect", () => {
           const exit = yield* Fiber.await(transaction)
           assert.isDefined(initialExit, "a finalizer defect must not suspend the transaction for retry")
           assertExitDefect(exit, "release-defect")
+          assert.strictEqual(yield* Effect.tx(TxRef.get(ref)), 0)
+        }))
+
+      it.effect("should preserve a retry cleanup failure when a read ref changes during cleanup", () =>
+        Effect.gen(function*() {
+          const gate = TxRef.makeUnsafe(0)
+          const ref = TxRef.makeUnsafe(0)
+          const cleaning = yield* Deferred.make<void>()
+          const release = yield* Deferred.make<void>()
+          let runs = 0
+          const transaction = yield* Effect.tx(Effect.gen(function*() {
+            runs++
+            if ((yield* TxRef.get(gate)) !== 0) return
+            yield* TxRef.set(ref, 1)
+            return yield* Effect.txRetry.pipe(Effect.onExit(() =>
+              Deferred.succeed(cleaning, undefined).pipe(
+                Effect.andThen(Deferred.await(release)),
+                Effect.andThen(Effect.fail("release-error"))
+              )
+            ))
+          })).pipe(Effect.forkChild)
+
+          yield* Deferred.await(cleaning)
+          yield* Effect.tx(TxRef.set(gate, 1))
+          yield* Deferred.succeed(release, undefined)
+
+          const exit = yield* Fiber.await(transaction)
+          assert.isTrue(Exit.isFailure(exit))
+          if (Exit.isFailure(exit)) {
+            assert.deepStrictEqual(Cause.findError(exit.cause), Result.succeed("release-error"))
+          }
+          assert.strictEqual(runs, 1, "a cleanup failure must not rerun an inconsistent transaction")
           assert.strictEqual(yield* Effect.tx(TxRef.get(ref)), 0)
         }))
 
