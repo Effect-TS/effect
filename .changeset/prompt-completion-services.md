@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Include services required by `McpServer.registerPrompt` and `McpServer.prompt` completion handlers in the returned effect and layer requirements.
+Include completion-handler services in the requirements of `McpServer.registerPrompt` and `McpServer.prompt`, including optional handlers.

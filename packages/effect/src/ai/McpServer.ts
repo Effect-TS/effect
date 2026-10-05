@@ -2318,7 +2318,8 @@ export const registerPrompt = <
     | Schema.Struct.DecodingServices<Params>
     | R
     | {
-      readonly [K in keyof Completions]-?: Completions[K] extends (...args: any) => infer Ret ? Effect.Services<Ret>
+      readonly [K in keyof Completions]-?: NonNullable<Completions[K]> extends (...args: any) => infer Ret ?
+        Effect.Services<Ret>
         : never
     }[keyof Completions],
     McpRequestContext
@@ -2465,7 +2466,8 @@ export const prompt = <
     | Schema.Struct.DecodingServices<Params>
     | R
     | {
-      readonly [K in keyof Completions]-?: Completions[K] extends (...args: any) => infer Ret ? Effect.Services<Ret>
+      readonly [K in keyof Completions]-?: NonNullable<Completions[K]> extends (...args: any) => infer Ret ?
+        Effect.Services<Ret>
         : never
     }[keyof Completions],
     McpRequestContext
