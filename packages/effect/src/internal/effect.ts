@@ -5524,16 +5524,16 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   const parentRuntime = parent as FiberImpl<FA, FE>
   const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
   const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
+  if (!daemon) {
+    parentRuntime.children().add(child)
+    child._parent = parentRuntime
+  }
   if (immediate) {
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
-  }
-  if (!daemon && !child._exit) {
-    parentRuntime.children().add(child)
-    child._parent = parentRuntime
   }
   return child
 }
