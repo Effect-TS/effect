@@ -11,6 +11,7 @@ import {
   Fiber,
   Latch,
   Layer,
+  Schedule,
   Scheduler,
   Stream
 } from "effect"
@@ -98,6 +99,21 @@ describe("ExecutionPlan", () => {
         const result = yield* Effect.withExecutionPlan(failOnce(), captured).pipe(
           Effect.provideService(Policy, { allow: false })
         )
+        strictEqual(result, "ok")
+      }))
+
+    it.effect("captures schedule requirements", () =>
+      Effect.gen(function*() {
+        const schedulePlan = ExecutionPlan.make({
+          provide: Layer.empty,
+          schedule: Schedule.recurs(1).pipe(
+            Schedule.map(() =>
+              Effect.flatMap(Policy, ({ allow }) => allow ? Effect.void : Effect.fail("denied" as const))
+            )
+          )
+        })
+        const captured = yield* schedulePlan.captureRequirements.pipe(Effect.provideService(Policy, { allow: true }))
+        const result = yield* Effect.withExecutionPlan(failOnce(), captured)
         strictEqual(result, "ok")
       }))
   })

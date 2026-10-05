@@ -6,11 +6,11 @@ import {
   Data,
   Duration,
   Effect,
-  type ExecutionPlan,
+  ExecutionPlan,
   Exit,
   Fiber,
   HashMap,
-  type Layer,
+  Layer,
   Metric,
   type Option,
   pipe,
@@ -1438,6 +1438,31 @@ describe("Effect.withExecutionPlan", () => {
   it("without options the requirements are unchanged", () => {
     const result = Effect.withExecutionPlan(self, plan)
     expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
+  })
+
+  it("tracks schedule errors and requirements separately", () => {
+    class PolicyService extends Context.Service<PolicyService, number>()("PolicyService") {}
+    const schedulePlan = ExecutionPlan.make({
+      provide: Layer.empty,
+      schedule: Schedule.map(
+        Schedule.forever,
+        () => Effect.flatMap(PolicyService, () => Effect.fail("policy-failed" as const))
+      )
+    })
+    const result = Effect.withExecutionPlan(Effect.fail("operation-failed" as const), schedulePlan)
+    expect(result).type.toBe<Effect.Effect<never, "operation-failed" | "policy-failed", PolicyService>>()
+    expect(schedulePlan.captureRequirements).type.toBe<
+      Effect.Effect<
+        ExecutionPlan.ExecutionPlan<{
+          provides: never
+          input: unknown
+          error: "policy-failed"
+          requirements: never
+        }>,
+        never,
+        PolicyService
+      >
+    >()
   })
 })
 
