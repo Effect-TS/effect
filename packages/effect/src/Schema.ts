@@ -6112,6 +6112,10 @@ type TaggedUnionUtils<
   >
 > = {
   /**
+   * Property key used to discriminate union members.
+   */
+  readonly tag: Tag
+  /**
    * Discriminant values in flattened member order.
    */
   readonly discriminants: { readonly [I in keyof Flattened]: Flattened[I]["Type"][Tag] }
@@ -6213,7 +6217,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
 
     walk(self)
 
-    return Object.assign(self, { cases, discriminants, isAnyOf, guards, match, matchOrElse }) as any
+    return Object.assign(self, { tag, cases, discriminants, isAnyOf, guards, match, matchOrElse }) as any
 
     function walk(schema: Constraint) {
       const ast = schema.ast
@@ -6298,6 +6302,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   readonly "~type.make.in": { [K in keyof Cases]: Cases[K]["~type.make"] }[keyof Cases]
   readonly "~type.make": { [K in keyof Cases]: Cases[K]["~type.make"] }[keyof Cases]
   readonly "Iso": { [K in keyof Cases]: Cases[K]["Type"] }[keyof Cases]
+  readonly tag: "_tag"
   readonly cases: Cases
   readonly isAnyOf: <const Keys>(
     keys: ReadonlyArray<Keys>
@@ -6327,7 +6332,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
 /**
  * Builds a discriminated union from a record of field sets, one per variant.
  * Each key becomes the `_tag` literal and the value is passed to {@link TaggedStruct}.
- * The result includes `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` utilities.
+ * The result includes `tag`, `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` utilities.
  *
  * **Example** (Pattern matching a discriminated union)
  *
@@ -6362,8 +6367,8 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
     members.push(member)
   }
   const union = Union(members)
-  const { guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
-  return make(union.ast, { cases, isAnyOf, guards, match, matchOrElse })
+  const { tag, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
+  return make(union.ast, { tag, cases, isAnyOf, guards, match, matchOrElse })
 }
 /**
  * Type-level representation returned by {@link Opaque}.
