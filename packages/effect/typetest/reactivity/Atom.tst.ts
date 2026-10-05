@@ -1,4 +1,4 @@
-import { Layer } from "effect"
+import { Layer, Schema } from "effect"
 import { Atom } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
 
@@ -18,6 +18,16 @@ describe("Atom", () => {
       const memoMap = Layer.makeMemoMapUnsafe()
 
       expect(Atom.context({ memoMap })).type.toBe<Atom.SharedRuntimeFactory>()
+    })
+  })
+
+  describe("serializable", () => {
+    it("encodes to and decodes from the JSON representation", () => {
+      const atom = Atom.serializable(Atom.make(1n), { key: "bigint", schema: Schema.BigInt })
+      const serializable = atom[Atom.SerializableTypeId]
+
+      expect(serializable.encode).type.toBe<(value: bigint) => Schema.Json>()
+      expect(serializable.decode).type.toBe<(value: Schema.Json) => bigint>()
     })
   })
 })
