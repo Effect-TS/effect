@@ -26,7 +26,7 @@ import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
-import { causeResponseStripped, ClientAbort } from "./HttpServerError.ts"
+import { causeResponseStripped, ClientAbort, HttpServerError, ResponseError } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import * as Response from "./HttpServerResponse.ts"
@@ -234,6 +234,11 @@ export const tracer: <E, R>(
           spanExit = Option.isSome(cause) ? Exit.failCause(cause.value) : Exit.succeed(response)
         } else {
           response = exit.value
+        }
+        // OpenTelemetry HTTP semantic conventions: a 5xx response marks a server
+        // span as an error, even when the handler rendered it as a response.
+        if (Exit.isSuccess(spanExit) && response.status >= 500) {
+          spanExit = Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
         }
         if (span.sampled) {
           span.attribute("http.request.method", request.method)

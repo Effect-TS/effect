@@ -414,6 +414,64 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(parentInFinalizer, undefined)
       }))
 
+    it.effect("fails the span when the handler renders a 5xx response", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/todos/1", { method: "POST" }))
+        const response = HttpServerResponse.empty({ status: 500 })
+
+        const exit = yield* Effect.exit(
+          HttpMiddleware.tracer(Effect.succeed(response)).pipe(
+            Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+            Effect.provideService(Tracer.Tracer, tracer)
+          )
+        )
+        yield* Effect.yieldNow
+
+        // The app itself still succeeds; only the span records the failure.
+        assert.deepStrictEqual(exit, Exit.succeed(response))
+        assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 500)
+        assert(serverSpan.status._tag === "Ended")
+        assert.deepStrictEqual(
+          serverSpan.status.exit,
+          Exit.fail(
+            new HttpServerError.HttpServerError({
+              reason: new HttpServerError.ResponseError({ request, response })
+            })
+          )
+        )
+      }))
+
+    it.effect.each([200, 404, 499])("keeps the span successful for a %d response", (status) =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/todos/1"))
+        const response = HttpServerResponse.empty({ status })
+
+        yield* HttpMiddleware.tracer(Effect.succeed(response)).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert(serverSpan.status._tag === "Ended")
+        assert.deepStrictEqual(serverSpan.status.exit, Exit.succeed(response))
+      }))
+
     it.effect("excludes the sent response from a failed stream span", () =>
       Effect.gen(function*() {
         let serverSpan: Tracer.NativeSpan | undefined
