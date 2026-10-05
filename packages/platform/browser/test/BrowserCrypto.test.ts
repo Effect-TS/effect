@@ -6,9 +6,32 @@ import * as Effect from "effect/Effect"
 import * as PlatformError from "effect/PlatformError"
 import * as TestClock from "effect/testing/TestClock"
 import { constants, generateKeyPairSync, privateDecrypt, webcrypto } from "node:crypto"
+import { cryptoTests } from "../../node-shared/test/utils/Crypto.ts"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+it.effect("shares keys across services with the same backend and rejects other backends", () =>
+  Effect.gen(function*() {
+    const primitives = Crypto.makeSubtle(webcrypto.subtle as unknown as SubtleCrypto)
+    const first = Crypto.make({ ...primitives, randomBytes: (size) => new Uint8Array(size) })
+    const second = Crypto.make({
+      ...Crypto.makeSubtle(webcrypto.subtle as unknown as SubtleCrypto),
+      randomBytes: (size) => new Uint8Array(size)
+    })
+    const other = Crypto.make({ ...Crypto.makeSubtle({} as SubtleCrypto), randomBytes: (size) => new Uint8Array(size) })
+    const key = yield* first.generateSecretKey({ name: "AES-GCM", length: 256 })
+    const data = Uint8Array.of(1, 2, 3)
+    const options: Crypto.CipherOptions = { name: "AES-GCM", iv: new Uint8Array(12) }
+    const encrypted = yield* second.encrypt(options, key, data)
+    assert.deepStrictEqual(yield* first.decrypt(options, key, encrypted), data)
+    const error = yield* Effect.flip(other.encrypt(options, key, data))
+    assert.strictEqual(error.reason._tag, "BadArgument")
+    assert.strictEqual(error.reason.method, "encrypt")
+    assert.ok(Object.isFrozen(key))
+    assert.ok(Object.isFrozen(key.algorithm))
+    assert.ok(Object.isFrozen(key.usages))
+  }))
 
 it.effect("computes HMAC and password derivation with Web Crypto", () =>
   Effect.gen(function*() {
@@ -474,3 +497,10 @@ it.effect("preserves synchronous and asynchronous primitive failures as platform
       }
     }
   }))
+
+cryptoTests(
+  BrowserCrypto.layer.pipe(
+    Layer.provide(Layer.succeed(BrowserCrypto.WebCrypto, webcrypto as unknown as globalThis.Crypto))
+  ),
+  false
+)

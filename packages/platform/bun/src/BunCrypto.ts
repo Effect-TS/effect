@@ -2,7 +2,7 @@
  * The `BunCrypto` module provides Bun's `Crypto` service layer for Effect
  * programs. Provide {@link layer} at the edge of a Bun app, CLI, script, or
  * test to satisfy `effect/Crypto` with cryptographically secure random bytes,
- * UUID generation, random values, digests, HMAC, PBKDF2, and RSA-OAEP encryption.
+ * UUID generation, random values, digests, HMAC, PBKDF2, key management, encryption, and signing.
  *
  * This adapter reuses the shared Node-compatible implementation, so randomness
  * and cryptographic operations follow Bun's `node:crypto` compatibility layer.

@@ -7,4 +7,4 @@
 "@effect/platform-deno": minor
 ---
 
-Add MD5 digests, SHA-based HMAC and PBKDF2, and RSA-OAEP public-key encryption to `Crypto`, with Node, Bun, browser, and Deno implementations. Custom `Crypto` services and calls to `Crypto.make` must now supply `hmac`, `pbkdf2`, and `rsaOaepEncrypt`. Browser MD5 remains unsupported.
+Expand `Crypto` with MD5 digests, SHA HMAC/PBKDF2, AES-GCM and RSA-OAEP encryption/decryption, RSA-PSS/ECDSA/Ed25519 signing, and key generation/import/export across Node, Bun, browser, and Deno. Add public helpers for existing operations and fix bounded random sampling and random-source failure handling; browser MD5 remains unsupported. Custom `Crypto` services and `Crypto.make` implementations must supply `hmac`, `pbkdf2`, `rsaOaepEncrypt`, `generateSecretKey`, `generateKeyPair`, `importKey`, `exportKey`, `encrypt`, `decrypt`, `sign`, and `verify`, or use `makeSubtle` with an explicitly supplied native backend.

@@ -3,7 +3,7 @@
  * Effect programs. Provide {@link layer} at the edge of a Node application,
  * CLI, script, or test to satisfy `effect/Crypto` with Node's `node:crypto`
  * implementation for secure random bytes, UUID generation, random values, and
- * digests, HMAC, PBKDF2, and RSA-OAEP encryption.
+ * digests, HMAC, PBKDF2, key management, encryption, and signing.
  *
  * This module is the public Node adapter around the shared Node-compatible
  * implementation. Cryptographic failures are reported as platform errors. MD5
