@@ -988,6 +988,18 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
         }
       }
 
+      // Compatible disambiguation picks the first occurrence of a repeated wall
+      // time. When starting in the second occurrence, that instant may be past.
+      if (
+        !reverse && !utc && dateTime.makeZonedUnsafe(current, {
+            timeZone: zoned.zone,
+            adjustForTimeZone: true
+          }).epochMilliseconds <= zoned.epochMilliseconds
+      ) {
+        current.setUTCSeconds(current.getUTCSeconds() + 1)
+        continue
+      }
+
       return
     }
 
