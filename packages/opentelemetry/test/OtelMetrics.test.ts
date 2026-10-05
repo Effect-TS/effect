@@ -363,4 +363,47 @@ describe("Metrics", () => {
       const secondValue = (secondResult.resourceMetrics.scopeMetrics[0]!.metrics[0] as any).dataPoints[0].value
       assert.deepStrictEqual([firstValue, secondValue], [1, 1])
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
+  it.effect.each(["delta", "cumulative"] as const)(
+    "histogram extrema with %s temporality",
+    (temporality) =>
+      Effect.gen(function*() {
+        const services = yield* Effect.context<never>()
+        const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, temporality)
+        const histogram = Metric.histogram("latency", {
+          boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 3 })
+        })
+
+        yield* Metric.update(histogram, 1)
+        yield* Metric.update(histogram, 100)
+        const first = findMetric(yield* Effect.promise(() => producer.collect()), "latency").dataPoints[0].value
+        assert.deepStrictEqual(first, {
+          buckets: { boundaries: [50], counts: [1, 1] },
+          count: 2,
+          sum: 101,
+          min: 1,
+          max: 100
+        })
+
+        yield* Metric.update(histogram, 50)
+        yield* Metric.update(histogram, 60)
+        const second = findMetric(yield* Effect.promise(() => producer.collect()), "latency").dataPoints[0].value
+        assert.deepStrictEqual(
+          second,
+          temporality === "delta"
+            ? {
+              buckets: { boundaries: [50], counts: [1, 1] },
+              count: 2,
+              sum: 110
+            }
+            : {
+              buckets: { boundaries: [50], counts: [2, 2] },
+              count: 4,
+              sum: 211,
+              min: 1,
+              max: 100
+            }
+        )
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map()))
+  )
 })
