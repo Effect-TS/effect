@@ -184,8 +184,9 @@ describe("PgTypes", () => {
     ]
 
     it("reads the reported intervals alongside text and SQL NULL", () => {
+      const { interval, text } = PgTypes.OID
       const parser = PgProtocol.makeParser({
-        readField: PgTypes.makeFieldReader(binary([1186, 1186, 1186, 1186, PgTypes.OID.text, 1186]))
+        readField: PgTypes.makeFieldReader(binary([interval, interval, interval, interval, text, interval]))
       })
       const row = parser.push(dataRow([...wires.map(bytes), bytes("6f6b"), null]))[0] as PgProtocol.DataRow<unknown>
       assert.deepStrictEqual(row.values, [...values, "ok", null])
@@ -199,8 +200,8 @@ describe("PgTypes", () => {
           "ffffffff" +
           "000000100000000000000000ffffffff00000000"
       )
-      assert.deepStrictEqual(PgTypes.encodeParameter(PgTypes.array(value, 1186)), wire)
-      assert.deepStrictEqual(PgTypes.decode(wire, 1187, 1), value)
+      assert.deepStrictEqual(PgTypes.encodeParameter(PgTypes.array(value, PgTypes.OID.interval)), wire)
+      assert.deepStrictEqual(PgTypes.decode(wire, PgTypes.OID.intervalArray, 1), value)
     })
 
     it("preserves signed int32 and int64 boundaries without flattening calendar units", () => {
@@ -216,14 +217,17 @@ describe("PgTypes", () => {
           }
         ]
       ) {
-        assert.deepStrictEqual(PgTypes.decode(bytes(wire), 1186, 1), value)
+        assert.deepStrictEqual(PgTypes.decode(bytes(wire), PgTypes.OID.interval, 1), value)
         assert.deepStrictEqual(PgTypes.encodeParameter(PgTypes.interval(value)), bytes(wire))
       }
     })
 
     it("requires exactly sixteen payload bytes", () => {
       for (const size of [15, 17]) {
-        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(new Uint8Array(size), 1186, 1))
+        assertThrowsTagged(
+          "PgTypesCodecError",
+          () => PgTypesResult.decode(new Uint8Array(size), PgTypes.OID.interval, 1)
+        )
       }
     })
 
@@ -236,7 +240,7 @@ describe("PgTypes", () => {
           { months: 0, days: 0, microseconds: 1 }
         ]
       ) {
-        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode(value, 1186))
+        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode(value, PgTypes.OID.interval))
       }
     })
   })

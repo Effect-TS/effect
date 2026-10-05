@@ -986,9 +986,9 @@ const utf8Codec: UnsafeCodec<any> = codecOf(
   (sink, value) => sink.utf8(requireString(value, "text"))
 )
 
-const int8Value = (value: unknown): bigint => {
-  const big = requireBigInt(value, "int8")
-  if (big < INT64_MIN || big > INT64_MAX) fail(`int8 out of range: ${big}`)
+const requireInt64 = (value: unknown, name: string): bigint => {
+  const big = requireBigInt(value, name)
+  if (big < INT64_MIN || big > INT64_MAX) fail(`${name} out of range: ${big}`)
   return big
 }
 
@@ -1205,10 +1205,7 @@ const intervalValue = (value: unknown): Interval => {
   const interval = value as Interval
   const months = requireInteger(interval.months, "interval months", INT32_MIN, INT32_MAX)
   const days = requireInteger(interval.days, "interval days", INT32_MIN, INT32_MAX)
-  const microseconds = requireBigInt(interval.microseconds, "interval microseconds")
-  if (microseconds < INT64_MIN || microseconds > INT64_MAX) {
-    return fail(`interval microseconds out of range: ${microseconds}`)
-  }
+  const microseconds = requireInt64(interval.microseconds, "interval microseconds")
   return { months, days, microseconds }
 }
 
@@ -1314,10 +1311,10 @@ const builtinScalars = new Map<number, UnsafeCodec<any>>([
         return scratchView8.getBigInt64(0)
       },
       (value) => {
-        scratchView8.setBigInt64(0, int8Value(value))
+        scratchView8.setBigInt64(0, requireInt64(value, "int8"))
         return takeScratch8()
       },
-      (sink, value) => sink.bigInt64(int8Value(value))
+      (sink, value) => sink.bigInt64(requireInt64(value, "int8"))
     )
   ],
   [
