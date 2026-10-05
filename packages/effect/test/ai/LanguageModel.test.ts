@@ -251,6 +251,71 @@ describe("LanguageModel", () => {
         Effect.provide(TransformToolkitLayer)
       ))
 
+    it.effect("validates tool parameters against the schemas of each request", () =>
+      Effect.gen(function*() {
+        const StructTransformToolkit = Toolkit.make(Tool.make("TransformTool", {
+          parameters: Schema.Struct({ value: Schema.Finite }),
+          success: Schema.Finite
+        }))
+
+        yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(Effect.provide(TransformToolkitLayer))
+
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: StructTransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(StructTransformToolkit.toLayer({ TransformTool: ({ value }) => Effect.succeed(value) })),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{
+            type: "tool-call",
+            id: "tool-transform",
+            name: "TransformTool",
+            params: "21"
+          }]
+        })
+      ))
+
+    it.effect("validates encoded tool parameters after a request with tool call resolution enabled", () => {
+      // A tool unused by other tests, so the opaque request decodes it first
+      const toolkit = Toolkit.make(Tool.make("TransformTool", {
+        parameters: Schema.FiniteFromString,
+        success: Schema.Finite
+      }))
+      const responses: Array<Array<Response.PartEncoded>> = [
+        [{ type: "tool-call", id: "tool-valid", name: "TransformTool", params: "21" }],
+        [{ type: "tool-call", id: "tool-invalid", name: "TransformTool", params: { invalid: true } }]
+      ]
+      return Effect.gen(function*() {
+        yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit
+        })
+
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(Effect.flip)
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: () => responses.shift()!
+        }),
+        Effect.provide(toolkit.toLayer({ TransformTool: (value) => Effect.succeed(value * 2) }))
+      )
+    })
+
     it.effect("validates provider-executed tool call parameters", () =>
       Effect.gen(function*() {
         const calls = yield* Ref.make(0)

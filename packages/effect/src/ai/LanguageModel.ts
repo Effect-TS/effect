@@ -108,6 +108,13 @@ export interface LanguageModel {
   readonly [TypeId]: TypeId
 
   /**
+   * Whether the effective provider configuration supports system messages in
+   * history. Evaluate in the request's context to respect scoped overrides.
+   * Placement restrictions may apply; an absent capability means unknown support.
+   */
+  readonly supportsSystemMessagesInHistory?: Effect.Effect<boolean> | undefined
+
+  /**
    * Generate text using the language model.
    */
   readonly generateText: {
@@ -833,6 +840,9 @@ export const make: (params: {
    * for structured output generation.
    */
   readonly codecTransformer?: CodecTransformer | undefined
+
+  /** Whether the effective provider configuration supports system messages in history. */
+  readonly supportsSystemMessagesInHistory?: Effect.Effect<boolean> | undefined
 }) => Effect.Effect<LanguageModel> = Effect.fnUntraced(function*(params) {
   const codecTransformer = params.codecTransformer ?? defaultCodecTransformer
 
@@ -1749,6 +1759,7 @@ export const make: (params: {
 
   return LanguageModel.of({
     [TypeId]: TypeId,
+    supportsSystemMessagesInHistory: params.supportsSystemMessagesInHistory,
     generateText: generateText as LanguageModel["generateText"],
     generateObject: generateObject as LanguageModel["generateObject"],
     streamText: streamText as LanguageModel["streamText"]
@@ -2417,18 +2428,32 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
+// Stable parameter-mode copies let Response reuse each tool's part schemas.
+const parameterModeTools = new WeakMap<Tool.Any, { encoded?: Tool.Any; opaque?: Tool.Any }>()
+
+const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any => {
+  let tools = parameterModeTools.get(tool)
+  if (tools === undefined) {
+    tools = {}
+    parameterModeTools.set(tool, tools)
+  }
+  return tools[mode] ??= tool.setParameters(
+    mode === "encoded" ? Schema.toEncoded(tool.parametersSchema) : Schema.Unknown
+  )
+}
+
 const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.toEncoded(tool.parametersSchema)))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "encoded"))
   )
 
 const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "opaque"))
   )
 
 // Provider-executed tools bypass Toolkit, so validate their parameters here.

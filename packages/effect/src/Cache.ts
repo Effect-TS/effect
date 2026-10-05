@@ -434,22 +434,19 @@ export const get: {
         }
       }
       const entry = new EntryImpl(fiber, self.lookup(key))
+      entry.onInterrupt = () => removeEntry(self, key, entry)
       let skipCache = false
       entry.fiber.addObserver((exit) => {
+        // Release the key once the lookup can no longer be interrupted.
+        entry.onInterrupt = undefined
         if (effect.exitHasInterrupts(exit)) {
-          const current = MutableHashMap.get(self.map, key)
-          if (Option.isSome(current) && current.value === entry) {
-            MutableHashMap.remove(self.map, key)
-          }
+          removeEntry(self, key, entry)
           return
         }
         const ttl = self.timeToLive(exit, key)
         if (Duration.isZero(ttl)) {
           skipCache = true
-          const current = MutableHashMap.get(self.map, key)
-          if (Option.isSome(current) && current.value === entry) {
-            MutableHashMap.remove(self.map, key)
-          }
+          removeEntry(self, key, entry)
         } else if (Duration.isFinite(ttl)) {
           entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
         }
@@ -469,6 +466,7 @@ class EntryImpl<A, E> implements Entry<A, E> {
   expiresAt: number | undefined
   awaiters: number
   fiber: Fiber.Fiber<A, E>
+  onInterrupt: (() => void) | undefined
 
   constructor(
     parent: Fiber.Fiber<unknown, unknown>,
@@ -486,8 +484,18 @@ class EntryImpl<A, E> implements Entry<A, E> {
     return effect.onExit(effect.fiberJoin(this.fiber), () => {
       this.awaiters--
       if (this.awaiters > 0 || this.fiber.pollUnsafe()) return effect.void
+      // Detach before interrupting so new lookups do not join the abandoned fiber
+      // while its finalizers run.
+      this.onInterrupt?.()
       return effect.fiberInterrupt(this.fiber)
     })
+  }
+}
+
+const removeEntry = <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key, entry: Entry<A, E>): void => {
+  const current = MutableHashMap.get(self.map, key)
+  if (Option.isSome(current) && current.value === entry) {
+    MutableHashMap.remove(self.map, key)
   }
 }
 
@@ -1172,25 +1180,23 @@ export const refresh: {
   <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
     core.withFiber((fiber) => {
       const entry = new EntryImpl(fiber, self.lookup(key))
+      entry.onInterrupt = () => removeEntry(self, key, entry)
       const existing = getImpl(self, key, fiber, false) !== undefined
       if (!existing) {
         MutableHashMap.set(self.map, key, entry)
         checkCapacity(self)
       }
       entry.fiber.addObserver((exit) => {
+        // Release the key once the lookup can no longer be interrupted.
+        entry.onInterrupt = undefined
         if (effect.exitHasInterrupts(exit)) {
-          const current = MutableHashMap.get(self.map, key)
-          if (Option.isSome(current) && current.value === entry) {
-            MutableHashMap.remove(self.map, key)
-          }
+          removeEntry(self, key, entry)
           return
         }
         const ttl = self.timeToLive(exit, key)
         if (Duration.isZero(ttl)) {
-          const current = MutableHashMap.get(self.map, key)
-          if (existing || (Option.isSome(current) && current.value === entry)) {
-            MutableHashMap.remove(self.map, key)
-          }
+          if (existing) MutableHashMap.remove(self.map, key)
+          else removeEntry(self, key, entry)
           return effect.void
         }
         entry.expiresAt = Duration.isFinite(ttl)

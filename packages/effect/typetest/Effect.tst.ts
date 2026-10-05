@@ -1461,6 +1461,26 @@ describe("Effect.cachedWithTTL", () => {
   })
 })
 
+describe("Effect.cachedInvalidateWithTTL", () => {
+  it("data-first", () => {
+    const cached = Effect.cachedInvalidateWithTTL(number, (exit) => {
+      expect(exit).type.toBe<Exit.Exit<number, "err-2">>()
+      return Exit.isSuccess(exit) ? Duration.seconds(exit.value) : 0
+    })
+
+    expect(cached).type.toBe<Effect.Effect<[Effect.Effect<number, "err-2", "dep-2">, Effect.Effect<void>]>>()
+  })
+
+  it("data-last", () => {
+    const cached = number.pipe(Effect.cachedInvalidateWithTTL((exit) => {
+      expect(exit).type.toBe<Exit.Exit<number, "err-2">>()
+      return Exit.isSuccess(exit) ? "1 second" : 0
+    }))
+
+    expect(cached).type.toBe<Effect.Effect<[Effect.Effect<number, "err-2", "dep-2">, Effect.Effect<void>]>>()
+  })
+})
+
 describe("Effect.track", () => {
   const observe = Effect.track(
     Metric.gauge("track"),

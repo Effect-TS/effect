@@ -95,6 +95,13 @@ export class Config extends Context.Service<
        */
       readonly structuredOutputs?: boolean | undefined
       /**
+       * Overrides model detection for mid-conversation system messages.
+       * Set to `false` to send all instructions in the top-level `system` field.
+       *
+       * @see https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages
+       */
+      readonly midConversationSystemMessages?: boolean | undefined
+      /**
        * Whether to use strict JSON schema validation for tool calls.
        *
        * **Details**
@@ -724,11 +731,8 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       readonly payload: typeof Generated.BetaCreateMessageParams.Encoded
     }, AiError.AiError> {
       const betas = new Set<string>()
-      const modelCapabilities = getModelCapabilities(config.model!)
-      const capabilities = Predicate.isNotUndefined(config.structuredOutputs)
-        ? { ...modelCapabilities, supportsStructuredOutput: config.structuredOutputs }
-        : modelCapabilities
-      const { messages, system } = yield* prepareMessages({ betas, options, toolNameMapper })
+      const capabilities = getConfigCapabilities(config)
+      const { messages, system } = yield* prepareMessages({ betas, capabilities, options, toolNameMapper })
       const outputFormat = yield* getOutputFormat({ capabilities, options })
       const { tools, toolChoice } = yield* prepareTools({ betas, capabilities, config, options })
       const params: Mutable<typeof Generated.BetaMessagesPostParams.Encoded> = {}
@@ -740,6 +744,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         output_config,
         strictJsonSchema: _strictJsonSchema,
         structuredOutputs: _structuredOutputs,
+        midConversationSystemMessages: _midConversationSystemMessages,
         ...requestConfig
       } = config
       const payload: Mutable<typeof Generated.BetaCreateMessageParams.Encoded> = {
@@ -766,6 +771,10 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   return yield* LanguageModel.make({
     codecTransformer: toCodecAnthropic,
+    supportsSystemMessagesInHistory: Effect.map(
+      makeConfig,
+      (config) => getConfigCapabilities(config).supportsMidConversationSystemMessages
+    ),
     generateText: Effect.fnUntraced(function*(options) {
       const config = yield* makeConfig
       const toolNameMapper = new Tool.NameMapper(options.tools)
@@ -859,8 +868,9 @@ export const withConfigOverride: {
 // =============================================================================
 
 const prepareMessages = Effect.fnUntraced(
-  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, options, toolNameMapper }: {
+  function*<Tools extends ReadonlyArray<Tool.Any>>({ betas, capabilities, options, toolNameMapper }: {
     readonly betas: Set<string>
+    readonly capabilities: ModelCapabilities
     readonly options: LanguageModel.ProviderOptions
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<{
@@ -869,8 +879,19 @@ const prepareMessages = Effect.fnUntraced(
   }, AiError.AiError> {
     const groups = groupMessages(options.prompt)
 
-    let system: Array<typeof Generated.BetaRequestTextBlock.Encoded> | undefined = undefined
+    // A system message in history must directly follow a user turn and directly
+    // precede an assistant turn or the end of the prompt, so later instructions
+    // are held until the next assistant turn. If any of them cannot be placed
+    // that way, every instruction goes in the top-level `system` field instead:
+    // inline instructions override top-level ones, so mixing would reorder them.
+    const inlineSystem = capabilities.supportsMidConversationSystemMessages &&
+      groups.every((group, i) =>
+        i === 0 || group.type !== "system" || groups[i - 1].type === "user" || groups[i + 1]?.type === "user"
+      )
+
+    const system: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
     const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
+    let pendingSystem: Array<typeof Generated.BetaRequestTextBlock.Encoded> = []
 
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i]
@@ -878,11 +899,14 @@ const prepareMessages = Effect.fnUntraced(
 
       switch (group.type) {
         case "system": {
-          system = group.messages.map((message) => ({
-            type: "text",
-            text: message.content,
-            cache_control: getCacheControl(message)
-          }))
+          const target = i === 0 || !inlineSystem ? system : pendingSystem
+          for (const message of group.messages) {
+            target.push({
+              type: "text",
+              text: message.content,
+              cache_control: getCacheControl(message)
+            })
+          }
           break
         }
 
@@ -1015,6 +1039,11 @@ const prepareMessages = Effect.fnUntraced(
         }
 
         case "assistant": {
+          if (pendingSystem.length > 0) {
+            messages.push({ role: "system", content: pendingSystem })
+            pendingSystem = []
+          }
+
           const content: Array<typeof Generated.BetaContentBlock.Encoded> = []
           const mcpToolIds = new Set<string>()
 
@@ -1253,8 +1282,12 @@ const prepareMessages = Effect.fnUntraced(
       }
     }
 
+    if (pendingSystem.length > 0) {
+      messages.push({ role: "system", content: pendingSystem })
+    }
+
     return {
-      system,
+      system: system.length > 0 ? system : undefined,
       messages
     }
   }
@@ -2717,13 +2750,22 @@ const makeStreamResponse = Effect.fnUntraced(
                     }
                   }
 
+                  const toolParams = yield* Effect.try({
+                    try: () => Tool.unsafeSecureJsonParse(finalParams),
+                    catch: (cause) =>
+                      AiError.make({
+                        module: "AnthropicLanguageModel",
+                        method: "makeStreamResponse",
+                        reason: new AiError.ToolParameterValidationError({
+                          toolName: contentBlock.name,
+                          description: `Failed to securely JSON parse tool parameters: ${cause}`
+                        })
+                      })
+                  })
+
                   const params = contentBlock.providerExecuted === true
-                    ? Tool.unsafeSecureJsonParse(finalParams)
-                    : yield* transformToolCallParams(
-                      options.tools,
-                      contentBlock.name,
-                      Tool.unsafeSecureJsonParse(finalParams)
-                    )
+                    ? toolParams
+                    : yield* transformToolCallParams(options.tools, contentBlock.name, toolParams)
 
                   parts.push({
                     type: "tool-call",
@@ -3028,14 +3070,25 @@ const processCitation = Effect.fnUntraced(
 interface ModelCapabilities {
   readonly maxOutputTokens: number
   readonly supportsStructuredOutput: boolean
+  readonly supportsMidConversationSystemMessages: boolean
+}
+
+const getConfigCapabilities = (config: typeof Config.Service & { readonly model: string }): ModelCapabilities => {
+  const capabilities = getModelCapabilities(config.model)
+  return {
+    ...capabilities,
+    supportsStructuredOutput: config.structuredOutputs ?? capabilities.supportsStructuredOutput,
+    supportsMidConversationSystemMessages: config.midConversationSystemMessages ??
+      capabilities.supportsMidConversationSystemMessages
+  }
 }
 
 /**
- * Returns the capabilities of a Claude model that are used for defaults and feature selection.
- * Legacy models are listed as exceptions so newly released models inherit modern defaults.
+ * Returns model defaults, optimistically assuming modern capabilities for unknown IDs.
  *
  * @see https://docs.claude.com/en/docs/about-claude/models/overview#model-comparison-table
  * @see https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+ * @see https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages
  */
 const getModelCapabilities = (modelId: string): ModelCapabilities => {
   if (
@@ -3045,12 +3098,14 @@ const getModelCapabilities = (modelId: string): ModelCapabilities => {
   ) {
     return {
       maxOutputTokens: 64000,
-      supportsStructuredOutput: true
+      supportsStructuredOutput: true,
+      supportsMidConversationSystemMessages: false
     }
   } else if (modelId.includes("claude-opus-4-1")) {
     return {
       maxOutputTokens: 32000,
-      supportsStructuredOutput: true
+      supportsStructuredOutput: true,
+      supportsMidConversationSystemMessages: false
     }
   } else if (
     modelId.includes("claude-sonnet-4-0") ||
@@ -3059,7 +3114,8 @@ const getModelCapabilities = (modelId: string): ModelCapabilities => {
   ) {
     return {
       maxOutputTokens: 64000,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else if (
     modelId.includes("claude-opus-4-0") ||
@@ -3067,22 +3123,33 @@ const getModelCapabilities = (modelId: string): ModelCapabilities => {
   ) {
     return {
       maxOutputTokens: 32000,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else if (modelId.includes("claude-3-5-haiku")) {
     return {
       maxOutputTokens: 8192,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else if (modelId.includes("claude-3-")) {
     return {
       maxOutputTokens: 4096,
-      supportsStructuredOutput: false
+      supportsStructuredOutput: false,
+      supportsMidConversationSystemMessages: false
     }
   } else {
     return {
       maxOutputTokens: 128000,
-      supportsStructuredOutput: true
+      supportsStructuredOutput: true,
+      supportsMidConversationSystemMessages: !(
+        modelId.includes("claude-opus-4-6") ||
+        modelId.includes("claude-opus-4-7") ||
+        modelId.includes("claude-sonnet-4-6") ||
+        modelId.includes("claude-mythos-preview") ||
+        // Match Sonnet 5, excluding minor versions such as 5.5.
+        /claude-sonnet-5(?!-\d\b)/.test(modelId)
+      )
     }
   }
 }

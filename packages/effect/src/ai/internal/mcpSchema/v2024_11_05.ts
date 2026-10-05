@@ -22,9 +22,9 @@ export const protocolVersion = "2024-11-05"
  */
 export const optional = <S extends Schema.Constraint>(
   schema: S
-): Schema.decodeTo<Schema.optional<S>, Schema.optionalKey<S>> =>
+): Schema.decodeTo<Schema.toType<Schema.optional<S>>, Schema.optionalKey<S>> =>
   Schema.optionalKey(schema).pipe(
-    Schema.decodeTo(Schema.optional(schema), {
+    Schema.decodeTo(Schema.toType(Schema.optional(schema)), {
       decode: SchemaGetter.passthrough(),
       encode: SchemaGetter.transformOptional(Option.flatMap(Option.fromUndefinedOr))
     })

@@ -1,10 +1,5 @@
 /**
- * Helps RPC protocol services buffer messages until their receive loop starts.
- *
- * Client and server protocol constructors use these helpers to expose a stable
- * service before the active receiver is installed. Writes made before `run`
- * starts are buffered with their current `Context`, then replayed once the
- * receiver is ready.
+ * Buffers RPC protocol messages until their receive loop starts.
  *
  * @stability unstable
  * @since 4.0.0
@@ -16,9 +11,8 @@ import type { Protocol } from "./RpcClient.ts"
 import type { FromServerEncoded } from "./RpcMessage.ts"
 
 /**
- * Builds a service with a `run` method that buffers writes until `run` installs
- * a writer, replays buffered writes with their original contexts, and restores
- * the previous writer when the run ends.
+ * Buffers writes until `run` replays them with their original contexts and
+ * installs the writer. Restores the previous writer when `run` ends.
  *
  * @stability unstable
  * @category services
@@ -43,12 +37,12 @@ export const withRun = <
       run(f) {
         return semaphore.withPermits(1)(Effect.gen(function*() {
           const prev = write
-          write = f
 
           for (const [args, context] of buffer) {
             yield* Effect.provideContext(Effect.suspend(() => f(...args)), context)
           }
           buffer = []
+          write = f
 
           return yield* Effect.onExit(Effect.never, () => {
             write = prev

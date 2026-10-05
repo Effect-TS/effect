@@ -8,9 +8,9 @@
 "@effect/sql-pglite": patch
 ---
 
-Add the native Redis client under `effect/redis` and move the native PostgreSQL client from `@effect/sql-pg` to `effect/postgres`. Both use platform socket and cryptography services without external runtime dependencies. Redis supports standalone, Cluster, Sentinel, RESP2/3, transactions, and Pub/Sub; the Node, Bun, and Deno convenience layers replace their external or built-in Redis drivers.
+Add the native Redis client under `effect/redis` and move the native PostgreSQL client from `@effect/sql-pg` to `effect/postgres`. Add native MySQL, SQL Server, ClickHouse, and remote libSQL clients under `effect/mysql`, `effect/mssql`, `effect/clickhouse`, and `effect/libsql`, keeping their existing SQL adapters available. The clients use portable socket, cryptography, and HTTP services without external database drivers. Redis supports standalone, Cluster, Sentinel, RESP2/3, transactions, and Pub/Sub; the Node, Bun, and Deno convenience layers replace their external or built-in Redis drivers.
 
-Improve repeated prepared-query throughput and handle buffered TLS write errors during connection shutdown.
+Add optional RSA-OAEP encryption to Crypto and its runtime providers for MySQL SHA authentication. Add optional socket TLS fragment configuration and handshake framing for certificate-verified SQL Server strict TDS 8 and mandatory TDS 7.4 encryption. Improve repeated PostgreSQL prepared-query throughput and handle buffered TLS write errors during connection shutdown.
 
 ### Breaking changes
 
