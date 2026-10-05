@@ -219,6 +219,27 @@ describe("Logger", () => {
       assert.match(result[3] as string, /boom/)
     }))
 
+  it.effect("batched final flush uses the construction context", () =>
+    Effect.gen(function*() {
+      const output: Array<string> = []
+      const constructionLogger = Logger.make((options) => {
+        output.push(`construction:${String(options.message)}`)
+      })
+      const closingLogger = Logger.make((options) => {
+        output.push(`closing:${String(options.message)}`)
+      })
+      const scope = yield* Scope.make()
+      const logger = yield* Logger.batched(Logger.make((options) => String(options.message)), {
+        window: "1 hour",
+        flush: (batch) => Effect.log(batch.join(","))
+      }).pipe(Scope.provide(scope), Effect.provide(Logger.layer([constructionLogger])))
+
+      yield* Effect.log("buffered").pipe(Effect.provide(Logger.layer([logger])))
+      yield* Scope.close(scope, Exit.void).pipe(Effect.provide(Logger.layer([closingLogger])))
+
+      assert.deepStrictEqual(output, ["construction:buffered"])
+    }))
+
   it.effect("batched finishes an in-flight flush before flushing remaining entries on scope close", () =>
     Effect.gen(function*() {
       const events: Array<string> = []
