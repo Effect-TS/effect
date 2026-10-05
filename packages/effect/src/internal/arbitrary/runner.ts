@@ -12,11 +12,12 @@ import type {
   SampleOptions,
   SchemaOptions
 } from "../../Arbitrary.ts"
+import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
 import { pipeArguments } from "../../Pipeable.ts"
 import * as Random from "../../Random.ts"
-import type * as Result from "../../Result.ts"
+import * as Result from "../../Result.ts"
 import * as Scheduler from "../../Scheduler.ts"
 import type * as Schema from "../../Schema.ts"
 import { done } from "../core.ts"
@@ -505,9 +506,18 @@ const evaluateProperty = <A, E, R>(
 ): Effect.Effect<typeof passedProperty | PropertyFailure<E>, never, R> => {
   const output = property(value)
   if (!Effect.isEffect(output)) return Effect.succeed(output === true ? passedProperty : returnedFalse)
-  return Effect.matchEager(output, {
-    onFailure: (error): PropertyError<E> => ({ _tag: "PropertyError", error }),
-    onSuccess: (success) => success === true ? passedProperty : returnedFalse
+  return Effect.matchCauseEffectEager(output, {
+    onFailure: (cause) => {
+      if (Cause.hasDies(cause) || Cause.hasInterrupts(cause)) {
+        // Mixed causes must escape intact, even though typed property errors normally become values.
+        return Effect.failCause(cause as Cause.Cause<never>)
+      }
+      const error = Cause.findError(cause)
+      return Result.isFailure(error)
+        ? Effect.failCause(error.failure)
+        : Effect.succeed<PropertyError<E>>({ _tag: "PropertyError", error: error.success })
+    },
+    onSuccess: (success) => Effect.succeed(success === true ? passedProperty : returnedFalse)
   })
 }
 

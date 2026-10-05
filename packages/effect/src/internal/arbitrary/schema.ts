@@ -1,4 +1,5 @@
 import * as BigDecimal from "../../BigDecimal.ts"
+import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import { identity } from "../../Function.ts"
@@ -6,6 +7,7 @@ import * as Hash from "../../Hash.ts"
 import * as Option from "../../Option.ts"
 import * as Order from "../../Order.ts"
 import * as Predicate from "../../Predicate.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
@@ -30,10 +32,18 @@ interface Checks {
 
 const infinity = Number.POSITIVE_INFINITY
 const finiteNumberConstraint: FilterConstraint = { number: "finite" }
-const optionMatch = { onFailure: Option.none, onSuccess: Option.some }
-
 const optionComputation = <A, E, R>(self: Effect.Effect<A, E, R>): Model.Computation<Option.Option<A>> => {
-  const result = Effect.matchEager(self, optionMatch) as Effect.Effect<Option.Option<A>>
+  const result = Effect.matchCauseEffectEager(self, {
+    onFailure: (cause) => {
+      if (Cause.hasDies(cause) || Cause.hasInterrupts(cause)) {
+        // Only ordinary typed failures are discards; preserve every reason in mixed causes.
+        return Effect.failCause(cause as Cause.Cause<never>)
+      }
+      const error = Cause.findError(cause)
+      return Result.isFailure(error) ? Effect.failCause(error.failure) : Effect.succeed(Option.none<A>())
+    },
+    onSuccess: (value) => Effect.succeed(Option.some(value))
+  }) as Effect.Effect<Option.Option<A>>
   return effectIsExit(result) && result._tag === "Success" ? result.value : result
 }
 
