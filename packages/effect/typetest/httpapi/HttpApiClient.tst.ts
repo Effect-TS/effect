@@ -190,6 +190,28 @@ describe("HttpApiClient", () => {
       expect(client).type.not.toHaveProperty("top")
     })
 
+    it("returns a union of results for a union-typed response mode", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("top", { topLevel: true })
+            .add(
+              HttpApiEndpoint.get("topHealth", "/top-health", {
+                success: Schema.String
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(client.topHealth({ responseMode: hole<"decoded-only" | "response-only">() })).type.toBe<
+        Effect.Effect<
+          string | HttpClientResponse.HttpClientResponse,
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+    })
+
     it("keeps nested and top-level methods distinct when identifiers overlap", () => {
       const NestedLookup = HttpApiEndpoint.post("lookup", "/users", {
         payload: Schema.Struct({ name: Schema.String }),
