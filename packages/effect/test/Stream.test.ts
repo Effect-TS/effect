@@ -3937,6 +3937,22 @@ describe("Stream", () => {
     })
 
     describe("zipLatest", () => {
+      for (const emptySide of ["left", "right"] as const) {
+        it.effect(`completes with no pairs when the ${emptySide} stream is empty`, () =>
+          Effect.gen(function*() {
+            const fiber = yield* Stream.zipLatest(
+              emptySide === "left" ? Stream.empty : Stream.succeed(1),
+              emptySide === "right" ? Stream.empty : Stream.succeed(1)
+            ).pipe(
+              Stream.runCollect,
+              Effect.timeoutOption("1 second"),
+              Effect.forkChild
+            )
+            yield* TestClock.adjust("1 second")
+            assert.deepStrictEqual(yield* Fiber.join(fiber), Option.some([]))
+          }))
+      }
+
       it.effect("combines streams with latest values", () =>
         Effect.gen(function*() {
           const result = yield* Stream.zipLatest(
