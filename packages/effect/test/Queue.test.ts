@@ -459,6 +459,58 @@ describe("Queue", () => {
       assert.strictEqual(yield* Fiber.join(liveFiber), 1)
     }))
 
+  // Yielding and interrupting at each yield check stands in for a timeout firing
+  // while a dequeue yields, including after it has removed the message.
+  const dequeues: Array<[string, (queue: Queue.Queue<number>) => Effect.Effect<ReadonlyArray<number>>, boolean]> = [
+    ["take", (queue) => Effect.map(Queue.take(queue), (value) => [value]), true],
+    ["takeAll", Queue.takeAll, true],
+    ["takeN", (queue) => Queue.takeN(queue, 1), true],
+    ["takeBetween", (queue) => Queue.takeBetween(queue, 1, 2), true],
+    ["poll", (queue) => Effect.map(Queue.poll(queue), Option.toArray), false],
+    ["clear", Queue.clear, false]
+  ]
+  for (const [name, dequeue, waits] of dequeues) {
+    it.effect.each([
+      { capacity: Infinity, offerFirst: true },
+      { capacity: Infinity, offerFirst: false },
+      { capacity: 0, offerFirst: true },
+      { capacity: 0, offerFirst: false }
+    ].filter(({ offerFirst }) => waits || offerFirst))(
+      `${name} interrupted at a yield keeps its message, capacity=$capacity offerFirst=$offerFirst`,
+      ({ capacity, offerFirst }) =>
+        Effect.gen(function*() {
+          let at = 0
+          let seen: number
+          do {
+            at++
+            seen = 0
+            const base = new Scheduler.MixedScheduler()
+            const scheduler: Scheduler.Scheduler = {
+              executionMode: base.executionMode,
+              makeDispatcher: () => base.makeDispatcher(),
+              shouldYield: (fiber) => {
+                if (++seen !== at) return base.shouldYield(fiber)
+                // Interrupt before the scheduler resumes the fiber.
+                queueMicrotask(() => fiber.interruptUnsafe())
+                return true
+              }
+            }
+            const queue = yield* Queue.make<number>({ capacity })
+            const offer = Effect.forkChild(Queue.offer(queue, 1), { startImmediately: true })
+            if (offerFirst) yield* offer
+            const taker = yield* dequeue(queue).pipe(
+              Effect.provideService(Scheduler.Scheduler, scheduler),
+              Effect.forkChild({ startImmediately: true })
+            )
+            if (!offerFirst) yield* offer
+            const exit = yield* Fiber.await(taker)
+            const taken = Exit.isSuccess(exit) ? exit.value : []
+            assert.deepStrictEqual([...taken, ...yield* Queue.clear(queue)], [1], `interrupted at yield check ${at}`)
+          } while (seen >= at)
+        })
+    )
+  }
+
   it.effect("done completes takes", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number, Cause.Done>(2)
