@@ -1,10 +1,21 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, expectTypeOf, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, Schema, Stream } from "effect"
 import { HttpBody, HttpClientRequest, HttpServerRequest } from "effect/http"
 import * as Option from "effect/Option"
 
 describe("HttpServerRequest", () => {
+  it("preserves an extension method through web-server-client conversion", () => {
+    const request = HttpServerRequest.fromWeb(new Request("http://localhost/", { method: "PROPFIND" }))
+    expectTypeOf(request.method).toEqualTypeOf<string>()
+    strictEqual(request.method, "PROPFIND")
+
+    const forwarded = HttpServerRequest.toClientRequest(request)
+    expectTypeOf(forwarded.method).toEqualTypeOf<string>()
+    strictEqual(forwarded.method, "PROPFIND")
+    strictEqual(HttpServerRequest.fromClientRequest(forwarded).method, "PROPFIND")
+  })
+
   it.effect("preserves FormData through client-server-client conversion", () =>
     Effect.gen(function*() {
       const formData = new FormData()
