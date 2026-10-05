@@ -552,17 +552,21 @@ export const withPermit: {
   if (args.length === 1) {
     const [self] = args
     return (effect: Effect.Effect<any, any, any>) =>
-      Effect.acquireUseRelease(
-        acquire(self),
-        () => effect,
-        () => release(self)
+      Effect.uninterruptibleMask((restore) =>
+        Effect.acquireUseRelease(
+          restore(acquire(self)),
+          () => restore(effect),
+          () => release(self)
+        )
       )
   }
   const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquire(self),
-    () => effect,
-    () => release(self)
+  return Effect.uninterruptibleMask((restore) =>
+    Effect.acquireUseRelease(
+      restore(acquire(self)),
+      () => restore(effect),
+      () => release(self)
+    )
   )
 }) as any
 
@@ -626,17 +630,21 @@ export const withPermits: {
   if (args.length === 2) {
     const [self, n] = args
     return (effect: Effect.Effect<any, any, any>) =>
-      Effect.acquireUseRelease(
-        acquireN(self, n),
-        () => effect,
-        () => releaseN(self, n)
+      Effect.uninterruptibleMask((restore) =>
+        Effect.acquireUseRelease(
+          restore(acquireN(self, n)),
+          () => restore(effect),
+          () => releaseN(self, n)
+        )
       )
   }
   const [self, n, effect] = args
-  return Effect.acquireUseRelease(
-    acquireN(self, n),
-    () => effect,
-    () => releaseN(self, n)
+  return Effect.uninterruptibleMask((restore) =>
+    Effect.acquireUseRelease(
+      restore(acquireN(self, n)),
+      () => restore(effect),
+      () => releaseN(self, n)
+    )
   )
 }) as any
 
@@ -694,7 +702,8 @@ export const withPermits: {
 export const withPermitScoped = (self: TxSemaphore): Effect.Effect<void, never, Scope.Scope> =>
   Effect.acquireRelease(
     acquire(self),
-    () => release(self)
+    () => release(self),
+    { interruptible: true }
   )
 
 /**

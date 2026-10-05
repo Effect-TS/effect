@@ -392,7 +392,8 @@ export const readLock = (self: TxReentrantLock): Effect.Effect<number, never, Sc
   Effect.withFiber((fiber) =>
     Effect.acquireRelease(
       acquireRead(self),
-      () => releaseReadFor(self, fiber.id)
+      () => releaseReadFor(self, fiber.id),
+      { interruptible: true }
     )
   )
 
@@ -429,7 +430,8 @@ export const writeLock = (self: TxReentrantLock): Effect.Effect<number, never, S
   Effect.withFiber((fiber) =>
     Effect.acquireRelease(
       acquireWrite(self),
-      () => releaseWriteFor(self, fiber.id)
+      () => releaseWriteFor(self, fiber.id),
+      { interruptible: true }
     )
   )
 
@@ -463,17 +465,21 @@ export const withReadLock: {
   if (args.length === 1) {
     const [effect] = args
     return (self: TxReentrantLock) =>
-      Effect.acquireUseRelease(
-        acquireRead(self),
-        () => effect,
-        () => releaseRead(self)
+      Effect.uninterruptibleMask((restore) =>
+        Effect.acquireUseRelease(
+          restore(acquireRead(self)),
+          () => restore(effect),
+          () => releaseRead(self)
+        )
       )
   }
   const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquireRead(self),
-    () => effect,
-    () => releaseRead(self)
+  return Effect.uninterruptibleMask((restore) =>
+    Effect.acquireUseRelease(
+      restore(acquireRead(self)),
+      () => restore(effect),
+      () => releaseRead(self)
+    )
   )
 }) as any
 
@@ -507,17 +513,21 @@ export const withWriteLock: {
   if (args.length === 1) {
     const [effect] = args
     return (self: TxReentrantLock) =>
-      Effect.acquireUseRelease(
-        acquireWrite(self),
-        () => effect,
-        () => releaseWrite(self)
+      Effect.uninterruptibleMask((restore) =>
+        Effect.acquireUseRelease(
+          restore(acquireWrite(self)),
+          () => restore(effect),
+          () => releaseWrite(self)
+        )
       )
   }
   const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquireWrite(self),
-    () => effect,
-    () => releaseWrite(self)
+  return Effect.uninterruptibleMask((restore) =>
+    Effect.acquireUseRelease(
+      restore(acquireWrite(self)),
+      () => restore(effect),
+      () => releaseWrite(self)
+    )
   )
 }) as any
 
