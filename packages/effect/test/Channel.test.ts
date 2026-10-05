@@ -33,6 +33,20 @@ describe("Channel", () => {
   })
 
   describe("constructors", () => {
+    for (
+      const [name, constructor] of [["callback", Channel.callback], ["callbackArray", Channel.callbackArray]] as const
+    ) {
+      it.live(`${name} propagates registration effect failures`, () =>
+        Effect.gen(function*() {
+          const exit = yield* constructor(() => Effect.fail("setup failed")).pipe(
+            Channel.runDrain,
+            Effect.timeout("500 millis"),
+            Effect.exit
+          )
+          assert.deepStrictEqual(exit, Exit.fail("setup failed"))
+        }))
+    }
+
     it.effect("empty", () =>
       Effect.gen(function*() {
         const result = yield* Channel.empty.pipe(
