@@ -77,6 +77,13 @@ local = 2026-08-05 01:02:03
     )
   })
 
+  it("trims a CRLF line break after an opening multiline string delimiter", () => {
+    assert.deepStrictEqual(
+      Toml.parse("basic = \"\"\"\r\nvalue\"\"\"\r\nliteral = '''\r\nvalue'''\r\n"),
+      { basic: "value", literal: "value" }
+    )
+  })
+
   it("rejects duplicate keys", () => {
     assert.throws(() => Toml.parse("key = 1\nkey = 2\n"))
     assert.throws(() => Toml.parse("key = 1__000\n"))
