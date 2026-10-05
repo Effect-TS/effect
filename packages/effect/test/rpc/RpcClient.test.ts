@@ -438,9 +438,7 @@ describe("RpcClient", () => {
         }),
         writer: Effect.succeed({ write, writeAll: write })
       })
-      const protocol = yield* RpcClient.makeProtocolSocket({
-        retryPolicy: Schedule.spaced("1 hour")
-      }).pipe(
+      const protocol = yield* RpcClient.makeProtocolSocket().pipe(
         Effect.provideService(Socket.Socket, socket),
         Effect.provide(RpcSerialization.layerNdjson)
       )
@@ -480,14 +478,12 @@ describe("RpcClient", () => {
         }),
         writer: Effect.succeed({ write, writeAll: write })
       })
-      const options = {
-        pingInterval: "2 seconds",
-        pingTimeout: "15 seconds",
-        retryTransientErrors: true,
-        retryPolicy: Schedule.spaced("1 hour")
-      } as const
       const context = yield* Layer.build(
-        RpcClient.layerProtocolSocket(options).pipe(
+        RpcClient.layerProtocolSocket({
+          pingInterval: "2 seconds",
+          pingTimeout: "15 seconds",
+          retryPolicy: Schedule.spaced("1 hour")
+        }).pipe(
           Layer.provide(RpcSerialization.layerNdjson),
           Layer.provide(Layer.succeed(Socket.Socket, socket))
         )

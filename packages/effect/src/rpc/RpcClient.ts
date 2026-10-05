@@ -1094,9 +1094,7 @@ export const makeProtocolSocket = (options?: {
           while: () => i < responses.length,
           body: () => {
             const response = responses[i++]
-            if (response._tag === "Pong") {
-              return Effect.void
-            }
+            if (response._tag === "Pong") return Effect.void
             if (Object.hasOwn(response, "requestId")) {
               const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
               const clientId = requestClientMap.get(requestId)
@@ -1216,16 +1214,16 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
   readonly pingTimeout?: Duration.Input | undefined
 }) {
   const clock = yield* Clock.Clock
-  const interval = Duration.fromInputUnsafe(options?.pingInterval ?? "5 seconds")
-  const timeoutMillis = Duration.toMillis(Duration.fromInputUnsafe(options?.pingTimeout ?? interval))
+  const interval = options?.pingInterval ?? "5 seconds"
+  const timeoutMillis = Duration.toMillis(options?.pingTimeout ?? interval)
   let lastSeen = clock.currentTimeMillisUnsafe()
   const latch = Latch.makeUnsafe()
-  const reset = () => {
-    lastSeen = clock.currentTimeMillisUnsafe()
-    latch.closeUnsafe()
-  }
   const onFrame = () => {
     lastSeen = clock.currentTimeMillisUnsafe()
+  }
+  const reset = () => {
+    onFrame()
+    latch.closeUnsafe()
   }
   yield* Effect.suspend((): Effect.Effect<void, E, R> => {
     if (clock.currentTimeMillisUnsafe() - lastSeen > timeoutMillis) return latch.open
