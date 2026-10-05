@@ -129,7 +129,19 @@ const addEntry = <A extends Request.Any>(
         entrySet: new Set(),
         entries: new Set(),
         delayEffect: effect.flatMap(
-          effect.suspend(() => newBatch.resolver.delay),
+          effect.onExit(effect.suspend(() => newBatch.resolver.delay), (exit) => {
+            // An interrupted delay may finish after its batch has been reused.
+            if (
+              exit._tag === "Failure" &&
+              newBatch.fiber === effect.getCurrentFiber() &&
+              newBatch.map.get(newBatch.key) === newBatch
+            ) {
+              // Release the key before notifying callers, which may enqueue a retry.
+              newBatch.map.delete(newBatch.key)
+              completeBatch(newBatch, exit)
+            }
+            return effect.void
+          }),
           (_) => runBatch(newBatch)
         ) as Effect<void>,
         run: effect.onExit(
@@ -137,24 +149,7 @@ const addEntry = <A extends Request.Any>(
             newBatch.resolver.runAll(Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>, newBatch.key)
           ),
           (exit) => {
-            for (const entry of newBatch.entrySet) {
-              entry.completeUnsafe(
-                exit._tag === "Success"
-                  ? exitDie(
-                    new Error("Effect.request: RequestResolver did not complete request", { cause: entry.request })
-                  )
-                  : exit
-              )
-            }
-            newBatch.entries.clear()
-            if (batchPool.length < 128) {
-              newBatch.entrySet.clear()
-              newBatch.key = undefined
-              newBatch.fiber = undefined
-              newBatch.resolver = undefined as any
-              newBatch.map = undefined as any
-              batchPool.push(newBatch)
-            }
+            completeBatch(newBatch, exit)
             return effect.void
           }
         )
@@ -169,8 +164,10 @@ const addEntry = <A extends Request.Any>(
   batch.entries.add(entry)
   if (batch.resolver.collectWhile(batch.entries)) return entry
 
+  // Claim the batch before interrupting its delay, so delay cleanup cannot fail it.
+  const run = runBatch(batch)
   batch.fiber!.interruptUnsafe(fiber.id)
-  batch.fiber = effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.cache.scheduler })
+  batch.fiber = effect.runForkWith(fiber.context)(run, { scheduler: fiber.cache.scheduler })
   return entry
 }
 
@@ -204,7 +201,28 @@ const maybeRemoveEntry = <A extends Request.Any>(
 ) => effect.sync(() => removeEntryUnsafe(resolver, entry))
 
 function runBatch(batch: Batch) {
-  if (!batch.map.has(batch.key)) return effect.void
+  if (batch.map.get(batch.key) !== batch) return effect.void
   batch.map.delete(batch.key)
   return batch.run
+}
+
+function completeBatch(batch: Batch, exit: Exit<void, unknown>) {
+  for (const entry of batch.entrySet) {
+    entry.completeUnsafe(
+      exit._tag === "Success"
+        ? exitDie(
+          new Error("Effect.request: RequestResolver did not complete request", { cause: entry.request })
+        )
+        : exit
+    )
+  }
+  batch.entries.clear()
+  batch.entrySet.clear()
+  if (batchPool.length < 128) {
+    batch.key = undefined
+    batch.fiber = undefined
+    batch.resolver = undefined as any
+    batch.map = undefined as any
+    batchPool.push(batch)
+  }
 }
