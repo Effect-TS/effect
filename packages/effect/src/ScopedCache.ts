@@ -284,6 +284,13 @@ export const get: {
         MutableHashMap.set(state.map, key, entry)
         return checkCapacity(fiber, state.map, self.capacity).pipe(
           Option.isSome(oentry) ? effect.flatMap(() => Scope.close(oentry.value.scope, effect.exitVoid)) : identity,
+          effect.onExit((exit) => {
+            if (Exit.isSuccess(exit)) return effect.void
+            // Readers may have joined while the expired entry was being finalized.
+            removeEntry(self, key, entry)
+            Deferred.doneUnsafe(deferred, Exit.failCause(exit.cause))
+            return Scope.close(scope, exit)
+          }),
           effect.flatMap(() => {
             entry.fiber = effect.forkUnsafe(
               fiber,
