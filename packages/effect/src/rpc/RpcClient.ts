@@ -13,8 +13,9 @@
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
+import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
-import type * as Duration from "../Duration.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -1030,16 +1031,24 @@ export const layerProtocolHttp = (options: {
  * `RpcSerialization`, connection hooks, ping timeouts, and the configured retry
  * policy.
  *
+ * **Details**
+ *
+ * `pingInterval` defaults to 5 seconds. `pingTimeout` defaults to the interval
+ * and measures time since the last decoded server frame, not the last pong.
+ * The timeout is checked on each ping tick; any decoded frame counts as liveness.
+ *
  * @stability unstable
  * @category protocols
  * @since 4.0.0
  */
 export const makeProtocolSocket = (options?: {
+  readonly pingInterval?: Duration.Input | undefined
+  readonly pingTimeout?: Duration.Input | undefined
   readonly retryTransientErrors?: boolean | undefined
   readonly retryPolicy?: Schedule.Schedule<any, Socket.SocketError> | undefined
   /**
    * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
-   * A missed pong fails in-flight calls and is not reported through this hook.
+   * A ping timeout fails in-flight calls and is not reported through this hook.
    * The returned `Effect<void>` cannot fail with a typed error or require
    * services; defects are logged and ignored so retries can continue.
    */
@@ -1062,7 +1071,7 @@ export const makeProtocolSocket = (options?: {
     // `parser` is replaced on every connect, and a stateful serialization
     // encodes against the connection it is writing to, so the ping is encoded
     // when it is sent rather than once up front.
-    const pinger = yield* makePinger(Effect.suspend(() => writer.write(parser.encode(constPing)!)))
+    const pinger = yield* makePinger(Effect.suspend(() => writer.write(parser.encode(constPing)!)), options)
     let currentError: RpcClientError | undefined
 
     const broadcast = (response: FromServerEncoded) =>
@@ -1079,13 +1088,13 @@ export const makeProtocolSocket = (options?: {
       try {
         const responses = parser.decode(data) as Array<FromServerEncoded>
         if (responses.length === 0) return Effect.void
+        pinger.onFrame()
         let i = 0
         return Effect.whileLoop({
           while: () => i < responses.length,
           body: () => {
             const response = responses[i++]
             if (response._tag === "Pong") {
-              pinger.onPong()
               return Effect.void
             }
             if (Object.hasOwn(response, "requestId")) {
@@ -1202,43 +1211,58 @@ const defaultRetryPolicy = Schedule.min([
   Schedule.spaced(5000)
 ])
 
-const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect<A, E, R>) {
-  let recievedPong = true
+const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect<A, E, R>, options?: {
+  readonly pingInterval?: Duration.Input | undefined
+  readonly pingTimeout?: Duration.Input | undefined
+}) {
+  const clock = yield* Clock.Clock
+  const interval = Duration.fromInputUnsafe(options?.pingInterval ?? "5 seconds")
+  const timeoutMillis = Duration.toMillis(Duration.fromInputUnsafe(options?.pingTimeout ?? interval))
+  let lastSeen = clock.currentTimeMillisUnsafe()
   const latch = Latch.makeUnsafe()
   const reset = () => {
-    recievedPong = true
+    lastSeen = clock.currentTimeMillisUnsafe()
     latch.closeUnsafe()
   }
-  const onPong = () => {
-    recievedPong = true
+  const onFrame = () => {
+    lastSeen = clock.currentTimeMillisUnsafe()
   }
   yield* Effect.suspend((): Effect.Effect<void, E, R> => {
-    if (!recievedPong) return latch.open
-    recievedPong = false
+    if (clock.currentTimeMillisUnsafe() - lastSeen > timeoutMillis) return latch.open
     return writePing
   }).pipe(
-    Effect.delay("5 seconds"),
+    Effect.delay(interval),
     Effect.ignore,
     Effect.forever,
     Effect.interruptible,
     Effect.forkScoped
   )
-  return { timeout: latch.await, reset, onPong } as const
+  return { timeout: latch.await, reset, onFrame } as const
 })
 
 /**
  * Provides a client `Protocol` backed by the current `Socket` and
  * `RpcSerialization` services.
  *
+ * **Details**
+ *
+ * `pingInterval` defaults to 5 seconds. `pingTimeout` defaults to the interval
+ * and measures time since the last decoded server frame, not the last pong.
+ * The timeout is checked on each ping tick; any decoded frame counts as liveness.
+ * `retryPolicy` configures retries after socket errors.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerProtocolSocket = (options?: {
+  readonly pingInterval?: Duration.Input | undefined
+  readonly pingTimeout?: Duration.Input | undefined
   readonly retryTransientErrors?: boolean | undefined
+  readonly retryPolicy?: Schedule.Schedule<any, Socket.SocketError> | undefined
   /**
    * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
-   * A missed pong fails in-flight calls and is not reported through this hook.
+   * A ping timeout fails in-flight calls and is not reported through this hook.
    * The returned `Effect<void>` cannot fail with a typed error or require
    * services; defects are logged and ignored so retries can continue.
    */
