@@ -157,6 +157,24 @@ describe("McpServer", () => {
       expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
       expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
     })
+
+    it("should require services used by optional completion handlers", () => {
+      class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
+      const completion: { readonly name?: () => Effect.Effect<Array<string>, never, Lookup> } = {
+        name: () => Effect.map(Lookup, (lookup) => lookup.values)
+      }
+      const options = {
+        name: "lookup",
+        parameters: { name: Schema.String },
+        completion,
+        content: () => Effect.succeed("content")
+      }
+      const registered = McpServer.registerPrompt(options)
+      const layer = McpServer.prompt(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
+    })
   })
 
   describe("request context", () => {
