@@ -177,11 +177,11 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
     | (Steps[number]["provide"] extends Context.Context<infer _P> | Layer.Layer<infer _P, infer E, infer _R> ? E
       : never)
     | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never)
-    | (Steps[number]["schedule"] extends Schedule.Schedule<infer _O, infer _I, infer E, infer _R> ? E : never)
+    | Schedule.Error<StepSchedule<Steps[number]>>
   requirements:
     | (Steps[number]["provide"] extends Layer.Layer<infer _A, infer _E, infer R> ? R : never)
     | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer R> ? R : never)
-    | (Steps[number]["schedule"] extends Schedule.Schedule<infer _O, infer _I, infer _E, infer R> ? R : never)
+    | Schedule.Env<StepSchedule<Steps[number]>>
 }> =>
   makeProto(steps.map((options, i) => {
     if (options.attempts !== undefined && options.attempts < 1) {
@@ -200,6 +200,8 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
       provide: options.provide
     }
   }) as any)
+
+type StepSchedule<Step> = Step extends { readonly schedule?: infer S } ? S : never
 
 /**
  * Namespace containing type helpers used by `ExecutionPlan.make`.
