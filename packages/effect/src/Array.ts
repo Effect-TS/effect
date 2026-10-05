@@ -4922,7 +4922,13 @@ export {
   let_ as let
 }
 
-const reducer = Reducer.make((a, b) => a.concat(b), [] as any)
+const combineAllConcat = <A>(collection: Iterable<ReadonlyArray<A>>): Array<A> => {
+  let out: Array<A> = []
+  for (const value of collection) {
+    out = out.concat(value)
+  }
+  return out
+}
 
 /**
  * Returns a `Reducer` that combines `ReadonlyArray` values by concatenation.
@@ -4933,7 +4939,7 @@ const reducer = Reducer.make((a, b) => a.concat(b), [] as any)
  * @since 4.0.0
  */
 export function getReadonlyReducerConcat<A>(): Reducer.Reducer<ReadonlyArray<A>> {
-  return reducer
+  return Reducer.make<ReadonlyArray<A>>((a, b) => a.concat(b), [], combineAllConcat)
 }
 
 /**
@@ -4945,7 +4951,7 @@ export function getReadonlyReducerConcat<A>(): Reducer.Reducer<ReadonlyArray<A>>
  * @since 4.0.0
  */
 export function makeReducerConcat<A>(): Reducer.Reducer<Array<A>> {
-  return reducer
+  return Reducer.make<Array<A>>((a, b) => a.concat(b), [], combineAllConcat)
 }
 
 /**
