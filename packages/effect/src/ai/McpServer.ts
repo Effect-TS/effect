@@ -1534,11 +1534,16 @@ const mcpStdioSerialization = (
  * remain valid. The surrounding HTTP server remains responsible for binding
  * to an appropriate interface and installing authentication.
  *
+ * Client session termination is opt-in. With `allowSessionTermination`, a
+ * DELETE carrying an `Mcp-Session-Id` ends that session with `204` (`404` for
+ * an unknown session, `400` without the header), and later requests with the
+ * id get `404`. Without it, DELETE returns `405` like other unsupported
+ * methods, which the spec allows.
+ *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
- * HTTP+SSE transport, GET SSE, event resumption, session expiry, or client
- * session termination.
+ * HTTP+SSE transport, GET SSE, event resumption, or session expiry.
  *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
@@ -1558,6 +1563,7 @@ export const layerHttp = (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
+  readonly allowSessionTermination?: boolean | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
   const runtime = McpRuntime.layer(options.protocols)
   const methodNotAllowedResponse = HttpServerResponse.empty({
@@ -1572,8 +1578,10 @@ export const layerHttp = (options: {
     HttpRouter.add("GET", options.path, methodNotAllowed),
     HttpRouter.add("PUT", options.path, methodNotAllowed),
     HttpRouter.add("PATCH", options.path, methodNotAllowed),
-    HttpRouter.add("DELETE", options.path, methodNotAllowed),
-    HttpRouter.add("OPTIONS", options.path, methodNotAllowed)
+    HttpRouter.add("OPTIONS", options.path, methodNotAllowed),
+    options.allowSessionTermination === true
+      ? Layer.empty
+      : HttpRouter.add("DELETE", options.path, methodNotAllowed)
   )
   return Layer.merge(layerWithRuntime(options, "http"), routes).pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
@@ -1585,6 +1593,7 @@ export const layerHttp = (options: {
 const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
+  readonly allowSessionTermination?: boolean | undefined
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
@@ -1627,6 +1636,21 @@ const layerMcpProtocolHttp = (options: {
           ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
           : response
       })
+    })
+    if (options.allowSessionTermination !== true) {
+      return protocol
+    }
+    // A client that no longer needs its session terminates it with DELETE. Later
+    // requests with that session id then get 404, which tells the client to
+    // initialize a new one.
+    yield* router.add("DELETE", options.path, (request) => {
+      if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
+        return Effect.succeed(HttpServerResponse.empty({ status: 403 }))
+      }
+      const sessionId = request.headers[MCP_SESSION_ID_HEADER]
+      return Effect.succeed(HttpServerResponse.empty({
+        status: sessionId === undefined ? 400 : runtime.terminateSession(sessionId) ? 204 : 404
+      }))
     })
     return protocol
   }))

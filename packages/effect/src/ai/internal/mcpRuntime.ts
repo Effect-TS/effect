@@ -175,6 +175,8 @@ export interface ServerRuntimeShape {
     fallback: LogLevel.LogLevel
   ) => LogLevel.LogLevel
   readonly disconnect: (clientId: number) => void
+  /** Ends an HTTP session; returns whether it existed. */
+  readonly terminateSession: (sessionId: string) => boolean
   readonly deliveryClientIds: () => Iterable<number>
   readonly canDeliver: (
     clientId: number,
@@ -464,6 +466,7 @@ export const make = Effect.fnUntraced(function*(
     },
     effectLogLevel: (clientId, headers, fallback) => stateful?.effectLogLevel(clientId, headers, fallback) ?? fallback,
     disconnect: (clientId) => stateful?.disconnect(clientId),
+    terminateSession: (sessionId) => stateful?.terminateSession(sessionId) ?? false,
     deliveryClientIds: () => stateful?.initializedClientIds() ?? [],
     canDeliver: (clientId, headers, notification, fallback) =>
       stateful?.canDeliver(clientId, headers, notification, fallback) ?? true,

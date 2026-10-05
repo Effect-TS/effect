@@ -38,7 +38,7 @@ import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import { collectGarbage } from "../../utils/gc.ts"
-import { initializeHttpSession, makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { initializeHttpSession, makeHttpHarness, MCP_ENDPOINT } from "./TestUtils/McpHttpHarness.ts"
 import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeMcpStdioHarness } from "./TestUtils/McpStdioHarness.ts"
@@ -2178,6 +2178,25 @@ describe("McpServer", () => {
       }
 
       yield* client.ping({})
+    }))
+
+  it.effect("terminates an HTTP session on DELETE when allowSessionTermination is set", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(makeServerLayer({
+        name: "SessionDelete",
+        protocols: [McpProtocol.v2025_11_25],
+        allowSessionTermination: true
+      }))
+      const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_11_25)
+      const remove = (headers: HeadersInit) =>
+        Effect.promise(() => harness.handler(new Request(MCP_ENDPOINT, { method: "DELETE", headers })))
+
+      strictEqual((yield* harness.post({ jsonrpc: "2.0", id: 2, method: "ping" }, headers)).status, 200)
+      strictEqual((yield* remove(headers)).status, 204)
+      // The session is gone: requests carrying its id get 404, so the client re-initializes.
+      strictEqual((yield* harness.post({ jsonrpc: "2.0", id: 3, method: "ping" }, headers)).status, 404)
+      strictEqual((yield* remove(headers)).status, 404)
+      strictEqual((yield* remove({})).status, 400)
     }))
 
   it.effect("returns an empty 202 for notifications and responses and remains successful for request POSTs", () =>
