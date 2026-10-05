@@ -1,8 +1,95 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
 import * as Scheduler from "effect/Scheduler"
+import { TestClock } from "effect/testing"
 
 describe("Queue", () => {
+  describe("take at the timeout boundary", () => {
+    it.effect.each([
+      { capacity: Infinity, waiting: false },
+      { capacity: Infinity, waiting: true },
+      { capacity: 1, waiting: false },
+      { capacity: 1, waiting: true },
+      { capacity: 0, waiting: true }
+    ])(
+      "delivers a dequeued value before yielding, capacity=$capacity waiting=$waiting",
+      ({ capacity, waiting }) =>
+        Effect.gen(function*() {
+          // Disable the TestClock warning fiber before using a manually stepped scheduler.
+          yield* TestClock.adjust(0)
+          const tasks: Array<() => void> = []
+          let queue: Queue.Queue<number>
+          let armed = false
+          let paused = false
+          const scheduler = new class extends Scheduler.MixedScheduler {
+            constructor() {
+              super("async", (task) => {
+                let cancelled = false
+                tasks.push(() => {
+                  if (!cancelled) task()
+                })
+                return () => {
+                  cancelled = true
+                }
+              })
+            }
+            override shouldYield(fiber: Fiber.Fiber<unknown, unknown>) {
+              const shouldYield = super.shouldYield(fiber)
+              if (shouldYield && armed && Queue.sizeUnsafe(queue) === 0) {
+                armed = false
+                paused = true
+              }
+              return shouldYield
+            }
+          }()
+          const drain = () => {
+            for (let i = 0; tasks.length > 0; i++) {
+              assert.isBelow(i, 200, "scheduler did not settle")
+              tasks.shift()!()
+            }
+          }
+          queue = yield* Queue.make<number>({ capacity }).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+          if (!waiting) yield* Queue.offer(queue, 1)
+          armed = !waiting
+          const fiber = yield* Queue.take(queue).pipe(
+            Effect.timeoutOption("2500 millis"),
+            Effect.provideService(Scheduler.Scheduler, scheduler),
+            Effect.provideService(Scheduler.MaxOpsBeforeYield, 3),
+            Effect.forkChild({ startImmediately: true })
+          )
+          if (waiting) {
+            drain()
+            armed = true
+            yield* Queue.offer(queue, 1)
+          }
+          for (let i = 0; tasks.length > 0; i++) {
+            if (paused) break
+            assert.isBelow(i, 200, "take did not settle")
+            tasks.shift()!()
+          }
+          // Let the timeout run while holding any continuation queued after the
+          // dequeue. Before the fix, this interrupts the take and returns None.
+          const held = tasks.splice(0)
+          yield* TestClock.adjust("2500 millis")
+          drain()
+          tasks.push(...held)
+          drain()
+          assert.deepStrictEqual(yield* Fiber.join(fiber), Option.some(1))
+          assert.deepStrictEqual(yield* Queue.clear(queue), [])
+        })
+    )
+
+    it.effect("an empty take remains interruptible and preserves later offers", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        const fiber = yield* Queue.take(queue).pipe(Effect.timeoutOption("2500 millis"), Effect.forkChild)
+        yield* TestClock.adjust("2500 millis")
+        assert.deepStrictEqual(yield* Fiber.join(fiber), Option.none())
+        yield* Queue.offer(queue, 1)
+        assert.strictEqual(yield* Queue.take(queue), 1)
+      }))
+  })
+
   describe("waiter registration after a yield", () => {
     // Budget 3 yields after the first queue check but before the old waiter registration.
     const withYield = <A, E>(effect: Effect.Effect<A, E>) =>

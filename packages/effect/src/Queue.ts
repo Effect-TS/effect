@@ -1453,10 +1453,19 @@ export const takeBetween: {
  * @category taking
  * @since 2.0.0
  */
-export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
-  internalEffect.suspend(() =>
-    takeUnsafe(self) ?? internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), take(self))
-  )
+export const take: <A, E>(self: Dequeue<A, E>) => Effect<A, E> = core.makePrimitive({
+  op: "QueueTake",
+  [core.evaluate](fiber) {
+    const self = this[core.args]
+    const exit = takeUnsafe(self)
+    if (exit === undefined) {
+      return internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), take(self))
+    }
+    // Deliver the result in the same step that removes the message, before a
+    // scheduler yield can let a timeout interrupt the take's success.
+    return (exit as unknown as core.Primitive)[core.evaluate](fiber)
+  }
+})
 
 /**
  * Attempts to take one item from the queue without waiting.
