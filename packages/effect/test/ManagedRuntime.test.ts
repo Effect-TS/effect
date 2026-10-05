@@ -71,6 +71,22 @@ describe("ManagedRuntime", () => {
     assert.isTrue(Exit.hasInterrupts(exit))
   })
 
+  test("disposeEffect inside runPromise after an async boundary releases the layer", async () => {
+    let released = false
+    const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        released = true
+      })
+    )))
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      runtime.runPromise(Effect.sleep(1).pipe(Effect.ensuring(runtime.disposeEffect))).then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.deepEqual({ result, released }, { result: "settled", released: true })
+  })
+
   for (const method of ["disposeEffect", "dispose"] as const) {
     it(`finishes request cleanup before releasing layer resources with ${method}`, async () => {
       const events = await Effect.runPromise(Effect.gen(function*() {
