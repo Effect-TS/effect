@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Equal, Graph, Hash, Option } from "effect"
+import { runInNewContext } from "node:vm"
 
 const directed = <N, E>(
   nodes: ReadonlyArray<N>,
@@ -1996,6 +1997,22 @@ describe("Graph", () => {
         )
       }
     })
+
+    for (const [name, cycleWeight, distance] of [["integer", 16, 1], ["floating-point", 0.1, 0.01]] as const) {
+      it(`reconstructs Floyd-Warshall paths with ${name} weights on a zero-cost cycle`, () => {
+        const graph = directed([0, 1, 2], [[0, 1, cycleWeight], [1, 0, -cycleWeight], [0, 2, distance]])
+        // A Vitest timeout cannot interrupt synchronous path reconstruction if next hops form a cycle.
+        const result: Graph.AllPairsResult<number> = runInNewContext(
+          "Graph.floydWarshall(graph, (edge) => edge)",
+          { Graph, graph },
+          { timeout: 1000 }
+        )
+        assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 2])
+        assert.deepStrictEqual(result.edges.get(0)?.get(2), [2])
+        assert.deepStrictEqual(result.costs.get(0)?.get(2), [distance])
+        assert.closeTo(result.distances.get(0)!.get(2)!, distance, 1e-15)
+      })
+    }
 
     it("preserves null edge payloads in Floyd-Warshall multihop paths", () => {
       type Edge = null | { readonly weight: number }
