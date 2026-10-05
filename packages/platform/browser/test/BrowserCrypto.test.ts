@@ -265,7 +265,7 @@ describe("BrowserCrypto RSA-OAEP", () => {
     Effect.gen(function*() {
       const publicKey = rsaSlice(rsaPublicKey)
       const data = rsaSlice(new TextEncoder().encode("password\0with binary suffix"))
-      const label = rsaSlice(new Uint8Array([0, 255, 128, 1]))
+      const label = rsaSlice(new TextEncoder().encode("sliced label"))
       const before = [publicKey.slice(), data.slice(), label.slice()]
       const encrypted = yield* Crypto.rsaOaepEncrypt({ publicKey, data, label, hash: "SHA-1" })
       assert.deepStrictEqual(
@@ -286,6 +286,43 @@ describe("BrowserCrypto RSA-OAEP", () => {
           oaepLabel: new Uint8Array([1])
         }, encrypted)
       )
+    }).pipe(Effect.provide(BrowserCrypto.layer)))
+
+  it.effect("preserves non-UTF8 OAEP label bytes", () =>
+    Effect.gen(function*() {
+      const publicKey = rsaSlice(rsaPublicKey)
+      const data = rsaSlice(new Uint8Array([0, 255, 42]))
+      const label = rsaSlice(new Uint8Array([0, 255, 128, 1]))
+      const before = [publicKey.slice(), data.slice(), label.slice()]
+      const encrypted = yield* Crypto.rsaOaepEncrypt({ publicKey, data, label, hash: "SHA-1" })
+      // Deno's node:crypto decryptor converts OAEP labels through UTF-8.
+      // Verify binary labels with the separate Web Crypto decryption operation.
+      const privateKey = yield* Effect.promise(() =>
+        webcrypto.subtle.importKey(
+          "pkcs8",
+          Uint8Array.from(rsaKeys.privateKey.export({ type: "pkcs8", format: "der" })),
+          { name: "RSA-OAEP", hash: "SHA-1" },
+          false,
+          ["decrypt"]
+        )
+      )
+      const decrypted = yield* Effect.promise(() =>
+        webcrypto.subtle.decrypt(
+          { name: "RSA-OAEP", label: new Uint8Array(label) },
+          privateKey,
+          new Uint8Array(encrypted)
+        )
+      )
+      assert.deepStrictEqual(new Uint8Array(decrypted), data)
+      assert.deepStrictEqual([publicKey, data, label], before)
+      const wrongLabel = yield* Effect.exit(Effect.promise(() =>
+        webcrypto.subtle.decrypt(
+          { name: "RSA-OAEP", label: Uint8Array.of(1) },
+          privateKey,
+          new Uint8Array(encrypted)
+        )
+      ))
+      assert.ok(Exit.isFailure(wrongLabel))
     }).pipe(Effect.provide(BrowserCrypto.layer)))
 
   it.effect("returns typed platform errors for invalid keys and oversized data", () =>

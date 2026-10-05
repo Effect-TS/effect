@@ -11,7 +11,7 @@ const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 const hex = (bytes: Uint8Array): string => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 
 describe("DenoCrypto", () => {
-  it.effect("computes PostgreSQL authentication primitives", () =>
+  it.effect("computes MD5, HMAC, and PBKDF2 vectors", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
       const encode = (s: string) => new TextEncoder().encode(s)
