@@ -359,11 +359,14 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     )
     const fiber = trackFiber(
       runFork(
-        effect,
+        // Register before the handler runs to catch synchronous cancellation.
+        Effect.withFiber((fiber) => {
+          client.fibers.set(request.id, fiber)
+          return effect
+        }),
         isUninterruptible ? { uninterruptible: true } : undefined
       )
     )
-    client.fibers.set(request.id, fiber)
     fiber.addObserver(function onExit(exit: Exit.Exit<any, any>): void {
       if (deferred) {
         const fiber = trackFiber(runFork(Effect.onExit(Deferred.await(deferred), (exit) =>
