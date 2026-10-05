@@ -6334,16 +6334,23 @@ export const mergeAll: {
               Effect.forever({ disableYield: true }),
               Effect.onError(Effect.fnUntraced(function*(cause) {
                 const halt = Pull.filterDone(cause)
-                yield* Effect.exit(Scope.close(
+                const closeExit = yield* Effect.exit(Scope.close(
                   childScope,
                   !Result.isFailure(halt) ? Exit.succeed(halt.success.value) : Exit.failCause(halt.failure)
                 ))
                 if (!fibers.has(fiber)) return
+                // Publish failures before allowing the outer channel to complete.
+                if (Exit.isFailure(closeExit)) {
+                  yield* Queue.failCause(
+                    queue,
+                    Result.isFailure(halt) ? Cause.combine(halt.failure, closeExit.cause) : closeExit.cause
+                  )
+                } else if (Result.isFailure(halt)) {
+                  yield* Queue.failCause(queue, halt.failure)
+                }
                 fibers.delete(fiber)
                 if (semaphore) yield* semaphore.release(1)
                 if (fibers.size === 0) yield* doneLatch.open
-                if (Result.isSuccess(halt)) return
-                return yield* Queue.failCause(queue, cause as any)
               })),
               Effect.forkChild
             )
