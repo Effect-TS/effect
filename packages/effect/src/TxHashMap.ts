@@ -336,12 +336,13 @@ export const make = <K, V>(
  */
 export const fromIterable = <K, V>(
   entries: Iterable<readonly [K, V]>
-): Effect.Effect<TxHashMap<K, V>> =>
-  Effect.gen(function*() {
-    const hashMap = HashMap.fromIterable(entries)
+): Effect.Effect<TxHashMap<K, V>> => {
+  const hashMap = HashMap.fromIterable(entries)
+  return Effect.gen(function*() {
     const ref = yield* TxRef.make(hashMap)
     return Object.assign(Object.create(TxHashMapProto), { ref })
   })
+}
 
 /**
  * Looks up the value for the specified key in the TxHashMap.
@@ -1073,8 +1074,10 @@ export const removeMany: {
   <K1 extends K, K, V>(self: TxHashMap<K, V>, keys: Iterable<K1>): Effect.Effect<void>
 } = dual(
   2,
-  <K1 extends K, K, V>(self: TxHashMap<K, V>, keys: Iterable<K1>): Effect.Effect<void> =>
-    TxRef.update(self.ref, (map) => HashMap.removeMany(map, keys))
+  <K1 extends K, K, V>(self: TxHashMap<K, V>, keys: Iterable<K1>): Effect.Effect<void> => {
+    const snapshot = Array.from(keys)
+    return TxRef.update(self.ref, (map) => HashMap.removeMany(map, snapshot))
+  }
 )
 
 /**
@@ -1152,7 +1155,10 @@ export const setMany: {
   <K1 extends K, K, V1 extends V, V>(
     self: TxHashMap<K, V>,
     entries: Iterable<readonly [K1, V1]>
-  ): Effect.Effect<void> => TxRef.update(self.ref, (map) => HashMap.setMany(map, entries))
+  ): Effect.Effect<void> => {
+    const snapshot = Array.from(entries)
+    return TxRef.update(self.ref, (map) => HashMap.setMany(map, snapshot))
+  }
 )
 
 /**
