@@ -760,6 +760,15 @@ describe("Cron", () => {
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), e.pipe(DateTime.formatIsoZoned))
   })
 
+  it("next skips the repeated hour when starting in the second DST fold hour", () => {
+    const cron = Cron.parseUnsafe("30 * * * *", "Europe/Berlin")
+    // Ambiguous times run only once, so both occurrences of 02:30 must be skipped.
+    deepStrictEqual(
+      next(cron, new Date("2024-10-27T02:15:00+01:00")),
+      new Date("2024-10-27T03:30:00+01:00")
+    )
+  })
+
   it("handles utc timezone", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const make = (date: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(date))
