@@ -2103,7 +2103,7 @@ export const orElse: {
 export const catchCause: {
   <E, A2, E2, R2>(
     f: (error: Cause.Cause<Types.NoInfer<E>>) => Effect.Effect<A2, E2, R2>
-  ): <A, In, L, R>(self: Sink<A, In, L, E, R>) => Sink<A2 | A, In, L, E, R2 | R>
+  ): <A, In, L, R>(self: Sink<A, In, L, E, R>) => Sink<A2 | A, In, L, E2, R2 | R>
   <A, In, L, E, R, A2, E2, R2>(
     self: Sink<A, In, L, E, R>,
     f: (error: Cause.Cause<E>) => Effect.Effect<A2, E2, R2>
