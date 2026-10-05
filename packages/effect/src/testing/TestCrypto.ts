@@ -42,8 +42,10 @@ import * as Random from "../Random.ts"
  * @category constructors
  * @since 4.0.0
  */
-export const make = (seed: string | number): Effect.Effect<Crypto.Crypto, never, Crypto.Crypto> =>
-  Effect.gen(function*() {
+export const make: (
+  seed: string | number
+) => Effect.Effect<Crypto.Crypto, never, Crypto.Crypto> = Effect.fnUntraced(
+  function*(_seed: string | number) {
     const crypto = yield* Crypto.Crypto
     const seededRandom = yield* Random.Random
     return Crypto.make({
@@ -56,7 +58,9 @@ export const make = (seed: string | number): Effect.Effect<Crypto.Crypto, never,
       },
       digest: crypto.digest
     })
-  }).pipe(Random.withSeed(seed))
+  },
+  (effect, seed) => Random.withSeed(effect, seed)
+)
 
 /**
  * Creates a layer that provides deterministic `Crypto` random operations from
