@@ -8,7 +8,7 @@ import type * as Request from "../Request.ts"
 import { makeEntry } from "../Request.ts"
 import type { RequestResolver } from "../RequestResolver.ts"
 import { Scheduler } from "../Scheduler.ts"
-import { exitDie, isEffect } from "./core.ts"
+import { exitDie, isEffect, withFiber } from "./core.ts"
 import * as effect from "./effect.ts"
 
 /** @internal */
@@ -115,6 +115,7 @@ const addEntry = <A extends Request.Any>(
   }
   const key = resolver.batchKey(entry)
   batch = batchMap.get(key)
+  const isNewBatch = batch === undefined
   if (!batch) {
     if (batchPool.length > 0) {
       batch = batchPool.pop()!
@@ -162,15 +163,24 @@ const addEntry = <A extends Request.Any>(
       batch = newBatch
     }
     batchMap.set(key, batch)
-    batch.fiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.cache.scheduler })
   }
 
   batch.entrySet.add(entry)
   batch.entries.add(entry)
-  if (batch.resolver.collectWhile(batch.entries)) return entry
+  const collect = resolver.collectWhile(batch.entries)
+  if (!isNewBatch && collect) return entry
 
-  batch.fiber!.interruptUnsafe(fiber.id)
-  batch.fiber = effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.cache.scheduler })
+  if (!isNewBatch) batch.fiber!.interruptUnsafe(fiber.id)
+  const batchToRun = batch
+  const batchEffect = collect ? batch.delayEffect : runBatch(batch)
+  effect.runForkWith(fiber.context)(
+    withFiber((batchFiber) => {
+      // Publish the fiber before execution can complete and recycle the batch.
+      batchToRun.fiber = batchFiber as Fiber<void, unknown>
+      return batchEffect
+    }),
+    { scheduler: fiber.cache.scheduler }
+  )
   return entry
 }
 
