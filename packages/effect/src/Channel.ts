@@ -470,7 +470,12 @@ const asyncQueue = <A, E = never, R = never>(
     strategy: options?.strategy
   }).pipe(
     Effect.tap((queue) => Scope.addFinalizer(scope, Queue.shutdown(queue))),
-    Effect.tap((queue) => Effect.forkIn(Scope.provide(f(queue), scope), scope))
+    Effect.tap((queue) =>
+      Scope.provide(f(queue), scope).pipe(
+        Effect.catchCause((cause) => Queue.failCause(queue, cause)),
+        Effect.forkIn(scope)
+      )
+    )
   )
 
 /**
