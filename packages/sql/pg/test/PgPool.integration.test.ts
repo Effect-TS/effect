@@ -1,6 +1,6 @@
-import { PgConnection, PgPool } from "@effect/sql-pg"
+import { PgConnection, PgPool, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Effect, Fiber, Queue, Redacted, Stream } from "effect"
+import { Effect, Fiber, Queue, Redacted, Result, Stream } from "effect"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
 import { PgContainer } from "./utils.ts"
@@ -608,10 +608,15 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
 
   it.effect("replaces a fatal session before the next pool.use query", () =>
     Effect.gen(function*() {
-      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const types = PgTypes.makeRegistry()
+      types.register<PgTypes.Interval>(PgTypes.OID.interval, {
+        encode: (value) => PgTypes.encode(value, PgTypes.OID.interval),
+        decode: () => Result.fail(new PgTypes.CodecError({ message: "Intentional decode failure" }))
+      })
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1, types })
       const first = yield* pool.use((connection) => Effect.succeed(connection.processId))
 
-      // Decoding this interval fails fatally in the connection's data handler.
+      // The custom codec fails fatally in the connection's data handler.
       // The next borrow must not see the dead session, even in the same fiber.
       const error = yield* Effect.flip(pool.use((connection) => connection.query("SELECT interval '-1 day' AS v")))
       assert.strictEqual(error._tag, "SqlError")
