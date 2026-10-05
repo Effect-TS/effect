@@ -22,12 +22,22 @@ describe("Atom", () => {
     })
   })
 
-  describe("AtomRuntime", () => {
-    it("subscriptionRef includes the runtime setup error", () => {
+  describe("AtomRuntime.subscriptionRef", () => {
+    it("includes the runtime error for an infallible ref", () => {
       const runtime = Atom.runtime(Layer.effectDiscard(Effect.fail("setup-failed" as const)))
-      const ref = runtime.subscriptionRef(SubscriptionRef.make(1))
 
-      expect(ref).type.toBe<Atom.Writable<AsyncResult.AsyncResult<number, "setup-failed">, number>>()
+      expect(runtime.subscriptionRef(SubscriptionRef.make(1)))
+        .type.toBe<Atom.Writable<AsyncResult.AsyncResult<number, "setup-failed">, number>>()
+    })
+
+    it("preserves ref errors alongside runtime errors for both input forms", () => {
+      const runtime = Atom.runtime(Layer.effectDiscard(Effect.fail("setup-failed" as const)))
+      const ref: Effect.Effect<SubscriptionRef.SubscriptionRef<number>, "ref-failed"> = Effect.fail("ref-failed")
+
+      expect(runtime.subscriptionRef(ref))
+        .type.toBe<Atom.Writable<AsyncResult.AsyncResult<number, "ref-failed" | "setup-failed">, number>>()
+      expect(runtime.subscriptionRef(() => ref))
+        .type.toBe<Atom.Writable<AsyncResult.AsyncResult<number, "ref-failed" | "setup-failed">, number>>()
     })
   })
 })
