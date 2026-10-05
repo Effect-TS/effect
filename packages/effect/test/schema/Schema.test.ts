@@ -4708,6 +4708,42 @@ Expected a value between -2147483648 and 2147483647`
         strictEqual(secondCalls, 1)
       }))
 
+    it(`mode: "oneOf" succeeds on each execution of the same suspended decode effect`, () => {
+      const first = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformEffect((s) => Effect.sync(() => s)),
+        encode: SchemaGetter.passthrough()
+      }))
+      const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))], { mode: "oneOf" })
+      const effect = SchemaParser.decodeUnknownEffect(schema)("a")
+
+      assertExitSuccess(Effect.runSyncExit(effect), "a")
+      assertExitSuccess(Effect.runSyncExit(effect), "a")
+    })
+
+    it(`mode: "anyOf" does not reuse a previous success when all members now fail`, () => {
+      let succeeds = true
+      const first = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformEffect((s) =>
+          Effect.suspend(() =>
+            succeeds ? Effect.succeed(s) : Effect.fail(new SchemaIssue.Forbidden({ message: "first failed" }))
+          )
+        ),
+        encode: SchemaGetter.passthrough()
+      }))
+      const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))])
+      const effect = SchemaParser.decodeUnknownEffect(schema)("a")
+
+      assertExitSuccess(Effect.runSyncExit(effect), "a")
+      succeeds = false
+      const exit = Effect.runSyncExit(effect)
+      assertTrue(Exit.isFailure(exit))
+      const reason = exit.cause.reasons[0]
+      strictEqual(reason._tag, "Fail")
+      if (reason._tag === "Fail") {
+        strictEqual(reason.error._tag, "AnyOf")
+      }
+    })
+
     it.effect(`mode: "oneOf" detects asynchronous successes in member order`, () =>
       Effect.gen(function*() {
         const firstStarted = yield* Deferred.make<void>()
