@@ -2216,6 +2216,155 @@ describe("McpServer", () => {
       strictEqual((yield* harness.delete({ ...headers, origin: "https://allowed.example" })).status, 204)
     }))
 
+  it.effect("rejects unsupported or mismatched DELETE protocol versions without terminating the session", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(makeServerLayer({
+        name: "SessionDelete",
+        protocols: [McpProtocol.v2025_06_18, McpProtocol.v2025_11_25],
+        allowSessionTermination: true
+      }))
+      const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_11_25)
+      for (const version of ["9999-01-01", "2025-06-18"]) {
+        strictEqual((yield* harness.delete({ ...headers, "Mcp-Protocol-Version": version })).status, 400)
+        const ping = yield* harness.post({ jsonrpc: "2.0", id: 2, method: "ping" }, headers)
+        strictEqual(ping.status, 200)
+        assert.deepStrictEqual(yield* readMcpHttpResponse(ping), { jsonrpc: "2.0", id: 2, result: {} })
+      }
+      strictEqual((yield* harness.delete(headers)).status, 204)
+    }))
+
+  it.effect("refuses DELETE for a stateless-only server even when termination is enabled", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(makeServerLayer({
+        name: "StatelessDelete",
+        protocols: [McpProtocol.v2026_07_28],
+        allowSessionTermination: true
+      }))
+      const response = yield* harness.delete()
+      strictEqual(response.status, 405)
+      strictEqual(response.headers.get("Allow"), "POST")
+    }))
+
+  it.effect("advertises DELETE on unsupported methods when stateful termination is enabled", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(makeServerLayer({
+        name: "SessionDelete",
+        protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25],
+        allowSessionTermination: true
+      }))
+      for (const method of ["GET", "PUT", "PATCH", "HEAD"] as const) {
+        const response = yield* Effect.promise(() => harness.handler(new Request("http://localhost/mcp", { method })))
+        strictEqual(response.status, 405)
+        strictEqual(response.headers.get("Allow"), "POST, DELETE")
+      }
+    }))
+
+  it.effect("interrupts an in-flight tool on DELETE and returns 404 for its pending POST", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const registration = Layer.effectDiscard(Effect.gen(function*() {
+        const server = yield* McpServer.McpServer
+        yield* server.addTool({
+          tool: new McpSchema.Tool({ name: "Blocked", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.yieldNow.pipe(
+              Effect.andThen(Deferred.succeed(started, undefined)),
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+            )
+        })
+      }))
+      const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+        makeServerLayer({
+          name: "SessionDelete",
+          protocols: [McpProtocol.v2025_11_25],
+          allowSessionTermination: true
+        })
+      )))
+      const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_11_25)
+      const pending = yield* harness.post({
+        jsonrpc: "2.0",
+        id: "blocked-tool",
+        method: "tools/call",
+        params: { name: "Blocked", arguments: {} }
+      }, headers).pipe(Effect.forkScoped)
+      yield* Deferred.await(started)
+      strictEqual((yield* harness.delete(headers)).status, 204)
+      yield* Deferred.await(interrupted)
+      strictEqual((yield* Fiber.join(pending)).status, 404)
+    }))
+
+  it.effect("closes an already-started elicitation stream on DELETE", () =>
+    Effect.gen(function*() {
+      const interrupted = yield* Deferred.make<void>()
+      const registration = Layer.effectDiscard(Effect.gen(function*() {
+        const server = yield* McpServer.McpServer
+        yield* server.addTool({
+          tool: new McpSchema.Tool({ name: "Authorize", inputSchema: { type: "object" } }),
+          annotations: Context.empty(),
+          handle: () =>
+            Effect.gen(function*() {
+              const client = yield* Effect.serviceOption(McpSchema.McpServerClient).pipe(
+                Effect.flatMap(Effect.fromOption)
+              )
+              const reverseClient = yield* client.getClient
+              yield* reverseClient.elicit(
+                Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)({
+                  mode: "url",
+                  message: "Authorize access",
+                  url: "https://example.com/authorize",
+                  elicitationId: "authorization-1"
+                })
+              )
+              return new McpSchema.CallToolResult({ content: [] })
+            }).pipe(
+              Effect.scoped,
+              Effect.orDie,
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+            )
+        })
+      }))
+      const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(
+        makeServerLayer({
+          name: "SessionDelete",
+          protocols: [McpProtocol.v2025_11_25],
+          allowSessionTermination: true
+        })
+      )))
+      const initialized = yield* harness.post({
+        jsonrpc: "2.0",
+        id: "initialize",
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: { elicitation: { url: {} } },
+          clientInfo: { name: "authorization-client", version: "1.0.0" }
+        }
+      })
+      yield* readMcpHttpResponse(initialized)
+      const sessionId = initialized.headers.get("Mcp-Session-Id")
+      assert.isNotNull(sessionId)
+      const headers = { "Mcp-Session-Id": sessionId, "Mcp-Protocol-Version": "2025-11-25" }
+      yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, headers)
+      const response = yield* harness.post({
+        jsonrpc: "2.0",
+        id: "authorize-tool",
+        method: "tools/call",
+        params: { name: "Authorize", arguments: {} }
+      }, headers)
+      const stream = makeMcpSseReader(response)
+      yield* Effect.addFinalizer(() => stream.cancel)
+      const elicitation = yield* stream.take()
+      strictEqual(elicitation.method, "elicitation/create")
+      assert.isDefined(elicitation.id)
+      strictEqual((yield* harness.delete(headers)).status, 204)
+      yield* Deferred.await(interrupted)
+      const remaining = yield* stream.drain()
+      assert.isFalse(remaining.some((message) => message.id === "authorize-tool"))
+    }))
+
   it.effect("returns an empty 202 for notifications and responses and remains successful for request POSTs", () =>
     Effect.gen(function*() {
       const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
