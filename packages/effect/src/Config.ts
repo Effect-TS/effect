@@ -7,8 +7,10 @@
  *
  * @since 4.0.0
  */
+import * as Cause from "./Cause.ts"
 import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
+import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
 import { dual, memoize } from "./Function.ts"
@@ -348,8 +350,16 @@ export const orElse: {
   <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2>
 } = dual(2, <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2> => {
   return make<A | A2>((provider, pathPrefix) =>
-    Effect.matchEffect(evaluateAt(self, provider, pathPrefix), {
-      onFailure: (error) => evaluateAt(that(error), provider, pathPrefix),
+    Effect.matchCauseEffect(evaluateAt(self, provider, pathPrefix), {
+      onFailure: (cause) => {
+        if (cause.reasons.some((reason) => !Cause.isFailReason(reason))) {
+          return Effect.failCause(cause)
+        }
+        const error = Cause.findErrorOption(cause)
+        return Option.isSome(error)
+          ? evaluateAt(that(error.value), provider, pathPrefix)
+          : Effect.failCause(cause)
+      },
       onSuccess: (resolution): Effect.Effect<Resolution<A | A2>, ConfigError> =>
         Result.isFailure(resolution)
           ? evaluateAt(that(resolution.failure), provider, pathPrefix)
@@ -617,7 +627,14 @@ const loadCursor: (
   path: Path
 ) => Effect.Effect<ConfigCursor> = (provider, path) =>
   provider.load(path).pipe(
-    Effect.orDie,
+    // Source errors must bypass schema issue recovery, without losing other reasons.
+    Effect.catchCause((cause) =>
+      Effect.failCause(Cause.fromReasons<never>(cause.reasons.map((reason) =>
+        Cause.isFailReason(reason)
+          ? Cause.makeDieReason(reason.error).annotate(Context.makeUnsafe(reason.annotations))
+          : reason
+      )))
+    ),
     Effect.mapEager((node) => ({ provider, path, node, toString: cursorToString }))
   )
 
@@ -836,7 +853,15 @@ export function schema<T>(codec: Schema.ConstraintCodec<T, unknown>, path?: stri
           })
         )
       ),
-      Effect.catchDefect((defect) => isSourceError(defect) ? Effect.fail(new ConfigError(defect)) : Effect.die(defect))
+      Effect.catchCause((cause) =>
+        Effect.failCause(
+          Cause.fromReasons(cause.reasons.map((reason) =>
+            Cause.isDieReason(reason) && isSourceError(reason.defect)
+              ? Cause.makeFailReason(new ConfigError(reason.defect)).annotate(Context.makeUnsafe(reason.annotations))
+              : reason
+          ))
+        )
+      )
     )
   })
 }
