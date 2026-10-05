@@ -5,6 +5,7 @@ import * as Client from "effect/mssql/MssqlClient"
 import * as Connection from "effect/mssql/MssqlConnection"
 import * as Procedure from "effect/mssql/Procedure"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Socket from "effect/socket/Socket"
 import * as SocketConnector from "effect/socket/SocketConnector"
 
 const done = Uint8Array.of(0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -35,6 +36,8 @@ const server = Effect.fnUntraced(function*(options: {
   readonly negotiate?: number
   readonly loginResponse?: Uint8Array
   readonly fragmentControl?: boolean
+  readonly allowUpgrade?: boolean
+  readonly upgradeFailure?: Socket.SocketError
   readonly response?: (type: number, payload: Uint8Array, query: number) => ReadonlyArray<Uint8Array>
   readonly fragment?: boolean
   readonly stallWrite?: boolean
@@ -42,6 +45,7 @@ const server = Effect.fnUntraced(function*(options: {
   const writes: Array<{ type: number; bytes: Uint8Array }> = []
   const endpoints: Array<SocketConnector.Endpoint> = []
   const fragments: Array<number> = []
+  const upgrades: Array<SocketConnector.TlsOptions | undefined> = []
   let closed = 0
   let connections = 0
   let query = 0
@@ -53,7 +57,12 @@ const server = Effect.fnUntraced(function*(options: {
       return {
         pull: Effect.map(Queue.take(incoming), (bytes) => [bytes] as const),
         run: (f) => Effect.forever(Effect.flatMap(Queue.take(incoming), (bytes) => f(bytes) ?? Effect.void)),
-        upgrade: () => Effect.die("Native client must use TLS-first; raw STARTTLS is invalid for TDS7"),
+        upgrade: (options_) =>
+          Effect.suspend(() => {
+            if (!options.allowUpgrade) return Effect.die("Unexpected TLS upgrade")
+            upgrades.push(options_)
+            return options.upgradeFailure === undefined ? Effect.void : Effect.fail(options.upgradeFailure)
+          }),
         write: () => Effect.die("Expected packet writeAll"),
         setTlsMaxSendFragment: options.fragmentControl === false ? undefined : (size: number) =>
           Effect.sync(() => {
@@ -85,7 +94,7 @@ const server = Effect.fnUntraced(function*(options: {
         })
       }
     })
-  return { connector, writes, endpoints, fragments, closed: () => closed, connections: () => connections }
+  return { connector, writes, endpoints, fragments, upgrades, closed: () => closed, connections: () => connections }
 })
 
 const unusedConnector = { connect: () => Effect.die("Unexpected default connector") }
@@ -106,7 +115,7 @@ it.effect("requires explicit plaintext opt-in before opening a socket", () =>
     assert.strictEqual(peer.connections(), 0)
   }))
 
-it.effect("rejects legacy negotiated TLS before evaluating or sending credentials", () =>
+it.effect("rejects a server requiring TLS when plaintext was requested", () =>
   Effect.gen(function*() {
     const peer = yield* server({ negotiate: 3 })
     const error = yield* Effect.flip(
@@ -117,6 +126,65 @@ it.effect("rejects legacy negotiated TLS before evaluating or sending credential
       })
     )
     assert.strictEqual(error.reason.operation, "prelogin")
+    assert.deepStrictEqual(peer.writes.map((write) => write.type), [0x12])
+    assert.strictEqual(peer.closed(), 1)
+  }))
+
+for (const negotiate of [1, 3]) {
+  it.effect(`upgrades mandatory TDS 7 encryption ${negotiate} before evaluating credentials`, () =>
+    Effect.gen(function*() {
+      const peer = yield* server({ negotiate, allowUpgrade: true, fragmentControl: false })
+      const sql = yield* makeConnection({
+        encryption: "mandatory",
+        host: "database.example.com",
+        tls: { ca: "private CA", servername: "certificate.example.com" },
+        connector: peer.connector,
+        password: Effect.sync(() => {
+          assert.strictEqual(peer.upgrades.length, 1)
+          return Redacted.make("secret")
+        })
+      })
+      assert.strictEqual(peer.endpoints[0].tls, false)
+      assert.strictEqual(Protocol.encryption(peer.writes[0].bytes), 1)
+      assert.strictEqual(peer.upgrades[0]?.ca, "private CA")
+      assert.strictEqual(peer.upgrades[0]?.servername, "certificate.example.com")
+      assert.isDefined(peer.upgrades[0]?.handshakeFraming)
+      assert.strictEqual(new DataView(peer.writes[1].bytes.buffer).getUint32(4, true), 0x74000004)
+      assert.deepStrictEqual((yield* sql.query("SELECT 42 AS id")).rows, [{ id: 42 }])
+    }))
+}
+
+for (const negotiate of [0, 2, 4]) {
+  it.effect(`rejects mandatory encryption negotiation ${negotiate} before credentials`, () =>
+    Effect.gen(function*() {
+      const peer = yield* server({ negotiate, allowUpgrade: true })
+      const error = yield* Effect.flip(makeConnection({
+        encryption: "mandatory",
+        connector: peer.connector,
+        password: Effect.die("Credentials must not be evaluated")
+      }))
+      assert.strictEqual(error.reason.operation, "prelogin")
+      assert.deepStrictEqual(peer.writes.map((write) => write.type), [0x12])
+      assert.deepStrictEqual(peer.upgrades, [])
+      assert.strictEqual(peer.closed(), 1)
+    }))
+}
+
+it.effect("closes a failed mandatory TLS upgrade before evaluating credentials", () =>
+  Effect.gen(function*() {
+    const upgradeFailure = new Socket.SocketError({
+      reason: new Socket.SocketUpgradeError({ cause: new Error("Certificate verification failed") })
+    })
+    const peer = yield* server({ negotiate: 1, allowUpgrade: true, upgradeFailure })
+    const error = yield* Effect.flip(makeConnection({
+      encryption: "mandatory",
+      host: "database.example.com",
+      connector: peer.connector,
+      password: Effect.die("Credentials must not be evaluated")
+    }))
+    assert.strictEqual(error.reason._tag, "ConnectionError")
+    assert.strictEqual(error.reason.cause, upgradeFailure)
+    assert.strictEqual(peer.upgrades[0]?.servername, "database.example.com")
     assert.deepStrictEqual(peer.writes.map((write) => write.type), [0x12])
     assert.strictEqual(peer.closed(), 1)
   }))

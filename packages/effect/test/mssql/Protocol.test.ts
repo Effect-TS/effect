@@ -46,6 +46,82 @@ describe("native TDS protocol", () => {
     assert.throws(() => Protocol.packets(3, bytes, 10), /packet size/)
   })
 
+  it("wraps TLS handshake records and decodes every transport split", () => {
+    const payload = Uint8Array.from({ length: 1400 }, (_, i) => i & 255)
+    const framing = Protocol.tlsHandshakeFraming(512, 4096)
+    assert.deepStrictEqual(framing.encode(payload), Protocol.concat(Protocol.packets(0x12, payload, 512)))
+    for (const type of [4, 0x12]) {
+      const bytes = Protocol.concat(Protocol.packets(type, payload, 512))
+      for (let split = 0; split <= bytes.length; split++) {
+        const decoder = Protocol.tlsHandshakeFraming(512, 4096)
+        assert.deepStrictEqual(
+          Protocol.concat([
+            ...decoder.decode(bytes.subarray(0, split)),
+            ...decoder.decode(bytes.subarray(split))
+          ]),
+          payload
+        )
+        assert.deepStrictEqual(decoder.onSecure(), [])
+      }
+    }
+  })
+
+  it("preserves raw TLS records coalesced with the final wrapped handshake", () => {
+    const framing = Protocol.tlsHandshakeFraming(512, 4096)
+    const handshake = Uint8Array.of(0x16, 3, 3, 0, 2, 42, 43)
+    const application = Uint8Array.of(0x17, 3, 3, 0, 2, 44, 45)
+    const bytes = Protocol.concat([...Protocol.packets(4, handshake, 512), application])
+    assert.deepStrictEqual(Protocol.concat(framing.decode(bytes)), handshake)
+    assert.deepStrictEqual(framing.onSecure(), [application])
+    assert.deepStrictEqual(framing.onSecure(), [])
+    assert.deepStrictEqual(framing.encode(application), application)
+    assert.deepStrictEqual(framing.decode(application), [application])
+  })
+
+  it("accepts SQL Server's zero packet IDs throughout wrapped handshake messages", () => {
+    const payload = Uint8Array.from({ length: 1400 }, (_, i) => i & 255)
+    const framing = Protocol.tlsHandshakeFraming(512, 4096)
+    const packets = Protocol.packets(4, payload, 512).map((packet) => {
+      const bytes = packet.slice()
+      bytes[6] = 0
+      return bytes
+    })
+    const decoded: Array<Uint8Array> = []
+    for (const byte of Protocol.concat(packets)) decoded.push(...framing.decode(Uint8Array.of(byte)))
+    assert.deepStrictEqual(Protocol.concat(decoded), payload)
+    const final = Protocol.packets(0x12, Uint8Array.of(42), 512)[0].slice()
+    final[6] = 0
+    assert.deepStrictEqual(framing.decode(final), [Uint8Array.of(42)])
+    assert.deepStrictEqual(framing.onSecure(), [])
+  })
+
+  it("rejects malformed and oversized framed TLS before handing it to the engine", () => {
+    const packet = Protocol.packets(4, Uint8Array.of(1, 2, 3), 512)[0]
+    for (const [offset, value] of [[0, 1], [1, 2], [3, 7], [6, 2], [7, 1]]) {
+      const invalid = packet.slice()
+      invalid[offset] = value
+      assert.throws(() => Protocol.tlsHandshakeFraming(512, 4096).decode(invalid), /Invalid/)
+    }
+    assert.throws(
+      () =>
+        Protocol.tlsHandshakeFraming(512, 512).decode(
+          Protocol.concat(Protocol.packets(4, new Uint8Array(600), 512))
+        ),
+      /maximum size/
+    )
+    assert.throws(() => Protocol.tlsHandshakeFraming(512, 512).encode(new Uint8Array(513)), /maximum size/)
+    const partial = Protocol.tlsHandshakeFraming(512, 4096)
+    partial.decode(packet.subarray(0, 5))
+    assert.throws(() => partial.onSecure(), /incomplete/)
+    const unfinished = Protocol.tlsHandshakeFraming(512, 4096)
+    unfinished.decode(Protocol.packets(4, new Uint8Array(600), 512)[0])
+    assert.throws(() => unfinished.onSecure(), /incomplete/)
+    const wrappedSequence = Protocol.tlsHandshakeFraming(512, 200000)
+    wrappedSequence.decode(Protocol.concat(Protocol.packets(4, new Uint8Array(256 * 504 + 1), 512).slice(0, 256)))
+    assert.throws(() => wrappedSequence.onSecure(), /incomplete/)
+    assert.throws(() => wrappedSequence.decode(Uint8Array.of(0x17, 3, 3, 0, 0)), /Incomplete/)
+  })
+
   it("decodes arbitrary token fragmentation without duplicating rows or side effects", () => {
     const metadata = Protocol.concat([
       Uint8Array.of(0x81),

@@ -27,7 +27,7 @@ const program = Effect.gen(function*() {
 
 The default `encryption: "strict"` opens TLS before sending PRELOGIN, requests
 ALPN `tds/8.0`, and uses TDS 8.0 LOGIN7. This requires SQL Server 2022 or another
-server that supports strict encryption. Certificate verification uses the
+server with TDS 8.0 support. Certificate verification uses the
 connector's defaults; configure `tls.ca` for a private certificate authority.
 Strict connections require the connector's `setTlsMaxSendFragment` writer
 capability to cap TLS records to the TDS packet size. The Node, Bun, and Deno
@@ -35,10 +35,14 @@ socket connectors provide it; custom connectors must provide it too. Missing sup
 before PRELOGIN or password evaluation. The cap is updated when the server
 changes the packet size.
 
-TDS 7.x wraps its TLS handshake records inside PRELOGIN packets. The portable
-socket upgrade contract does not support that framing, so this client rejects
-negotiated legacy TLS before evaluating passwords or sending LOGIN7. It does
-not fall back to an unencrypted connection.
+Set `encryption: "mandatory"` for encrypted TDS 7.4 connections, including older
+SQL Server versions and SQL Server 2022 on Linux. The client requests encryption in PRELOGIN, wraps the TLS
+handshake inside TDS packets, verifies the server certificate, and then sends
+LOGIN7 and queries over TLS. Its socket connector must support the portable
+`handshakeFraming` TLS upgrade option; Node, Bun, and Deno connectors provide it.
+Refused encryption or failed certificate verification fails before evaluating
+passwords. Selecting mandatory encryption is explicit; a failed strict
+connection never retries with another encryption mode.
 
 Unencrypted TDS 7.4 requires both `encryption: "disable"` and
 `allowPlaintext: true`, plus a server that accepts PRELOGIN `ENCRYPT_NOT_SUP`.
@@ -90,15 +94,15 @@ Protocol and fake-server tests cover fragmented packets/tokens, LOGIN7,
 parameter encoding, typed row decoding, strict/plaintext negotiation,
 transactions, stored procedure calls, concurrency, and abandoned streams.
 
-The opt-in integration suite has passed all five tests against SQL Server
+The opt-in integration suite has passed all six tests against SQL Server
 2025 (17.0.4075.5) using strict TDS 8.0, TLS 1.2, ALPN `tds/8.0`, and a verified
-private CA-signed certificate. The same five tests passed against SQL Server
-2022 (16.0.4205.1) using explicitly enabled plaintext TDS 7.4. They cover bound
+private CA-signed certificate. The same six tests passed against SQL Server
+2022 (16.0.4295.3) using mandatory TDS 7.4 TLS with certificate verification.
+Independent server queries confirmed encryption on both versions. They cover bound
 values, large Unicode parameters spanning multiple packets, nested transactions,
 live row streaming, abandoned pooled streams, datetimeoffset decoding, and
-stored procedure output parameters inside a transaction. Strict TLS on the
-private SQL Server 2022 fixture remained unverified: the server rejected its
-configured certificate with error 17821 before the TLS handshake completed.
+stored procedure output parameters inside a transaction, and certificate hostname
+rejection before evaluating credentials.
 
 Run against a disposable database with a SQL-authenticated user:
 
@@ -112,6 +116,7 @@ EFFECT_INTEGRATION_TESTS=1 MSSQL_TEST_HOST=localhost \
 Strict TLS is the default. Set `MSSQL_TEST_CA` to the contents of the issuing
 PEM certificate authority and `MSSQL_TEST_SERVERNAME` when the certificate's
 hostname differs from the connection host. `MSSQL_TEST_PORT` defaults to 1433.
+Set `MSSQL_TEST_ENCRYPTION=mandatory` to exercise TDS 7.4 TLS.
 The procedure test requires permission to create temporary stored procedures;
 omit `MSSQL_TEST_PROCEDURES=1` to skip it. To exercise plaintext on an isolated
 server configured to accept it, explicitly set `MSSQL_TEST_PLAINTEXT=1`.

@@ -27,6 +27,105 @@ const echo = (socket: Net.Socket) => {
   socket.pipe(socket)
 }
 
+const connectedTcp = (server: Net.Server) =>
+  Effect.acquireRelease(
+    Effect.callback<Net.Socket>((resume) => {
+      const socket = Net.createConnection(address(server))
+      socket.once("connect", () => resume(Effect.succeed(socket)))
+      socket.once("error", (cause) => resume(Effect.die(cause)))
+      return Effect.sync(() => socket.destroy())
+    }),
+    (socket) => Effect.sync(() => socket.destroy())
+  )
+const identityFraming = {
+  encode: (bytes: Uint8Array) => bytes,
+  decode: (bytes: Uint8Array) => [bytes],
+  onSecure: () => []
+}
+
+const handshakeFraming = () => {
+  let pending = Buffer.alloc(0)
+  let encoded = 0
+  let decoded = 0
+  let secured = 0
+  return {
+    encode(bytes: Uint8Array) {
+      encoded++
+      const frame = Buffer.alloc(bytes.length + 5)
+      frame[0] = 253
+      frame.writeUInt32BE(bytes.length, 1)
+      frame.set(bytes, 5)
+      return frame
+    },
+    decode(bytes: Uint8Array) {
+      decoded++
+      pending = Buffer.concat([pending, bytes])
+      const chunks: Array<Uint8Array> = []
+      while (pending.length >= 5 && pending.length >= pending.readUInt32BE(1) + 5) {
+        const length = pending.readUInt32BE(1)
+        assert.strictEqual(pending[0], 253)
+        chunks.push(pending.subarray(5, length + 5))
+        pending = pending.subarray(length + 5)
+      }
+      return chunks
+    },
+    onSecure() {
+      secured++
+      const chunks = pending.length === 0 ? [] : [pending]
+      pending = Buffer.alloc(0)
+      return chunks
+    },
+    counts: () => ({ encoded, decoded, secured }),
+    hasPending: () => pending.length > 0
+  }
+}
+
+const listenFramedTls = Effect.fnUntraced(function*(recordSizes?: Array<number>) {
+  const backend = yield* listen(Tls.createServer({ cert, key, minVersion: "TLSv1.2", maxVersion: "TLSv1.2" }, echo))
+  const peers: Array<Net.Socket> = []
+  const proxy = yield* listen(Net.createServer((client) => {
+    const remote = Net.createConnection(address(backend))
+    peers.push(client, remote)
+    const codec = handshakeFraming()
+    let plain = false
+    let records = Buffer.alloc(0)
+    client.on("error", () => remote.destroy())
+    remote.on("error", () => client.destroy())
+    client.on("end", () => remote.end())
+    remote.on("end", () => client.end())
+    client.on("data", (chunk) => {
+      const bytes = typeof chunk === "string" ? Buffer.from(chunk) : chunk
+      if (!plain && !codec.hasPending() && bytes[0] !== 253) plain = true
+      if (plain) {
+        if (recordSizes !== undefined) {
+          records = Buffer.concat([records, bytes])
+          while (records.length >= 5 && records.length >= records.readUInt16BE(3) + 5) {
+            const length = records.readUInt16BE(3)
+            if (records[0] === 23) recordSizes.push(length)
+            records = records.subarray(length + 5)
+          }
+        }
+        remote.write(bytes)
+      } else {
+        for (const chunk of codec.decode(bytes)) remote.write(chunk)
+      }
+    })
+    remote.on("data", (chunk) => {
+      const bytes = typeof chunk === "string" ? Buffer.from(chunk) : chunk
+      const output = plain ? bytes : codec.encode(bytes)
+      // Exercise frames whose header and payload arrive on separate reads.
+      client.write(output.subarray(0, 2))
+      client.write(output.subarray(2))
+    })
+  }))
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      for (const peer of peers) peer.destroy()
+    })
+  )
+  return proxy
+})
+
 class HeldStream extends Duplex {
   readonly writes: Array<Buffer> = []
   release: ((error?: Error | null) => void) | undefined
@@ -49,6 +148,205 @@ const written = (stream: HeldStream) => stream.writes.map((bytes) => [...bytes])
 
 export const socketConnectorTests = (name: string, make: typeof NodeSocketConnector.make) =>
   describe(name, () => {
+    it.live("reports native ciphertext write callback errors after the handshake", () =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const raw = yield* connectedTcp(server)
+        const transport = yield* make({ stream: () => raw }).connect(address(server))
+        yield* transport.upgrade({ ca: cert, servername: "localhost", handshakeFraming: identityFraming })
+        const cause = new Error("Ciphertext write failed")
+        raw.write = ((_bytes: Uint8Array, callback: (error?: Error) => void) => {
+          queueMicrotask(() => callback(cause))
+          return false
+        }) as typeof raw.write
+        const reading = yield* transport.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+        const error = yield* transport.write("callback-error").pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketWriteError")
+        const readError = yield* Fiber.join(reading)
+        assert.strictEqual(readError.reason._tag, "SocketReadError")
+        if (readError.reason._tag === "SocketReadError") assert.strictEqual(readError.reason.cause, cause)
+      }))
+
+    it.live("limits actual TLS application records after a framed handshake", () =>
+      Effect.gen(function*() {
+        const records: Array<number> = []
+        const server = yield* listenFramedTls(records)
+        const transport = yield* make({
+          tls: {
+            minVersion: "TLSv1.2",
+            maxVersion: "TLSv1.2",
+            ciphers: "ECDHE-RSA-AES128-GCM-SHA256"
+          }
+        }).connect(address(server))
+        yield* transport.upgrade({ ca: cert, servername: "localhost", handshakeFraming: handshakeFraming() })
+        yield* transport.setTlsMaxSendFragment!(512)
+        const payload = new Uint8Array(4096).fill(7)
+        const received: Array<number> = []
+        const completed = yield* Deferred.make<void>()
+        const reading = yield* transport.run((bytes) => {
+          received.push(...bytes as Uint8Array)
+          if (received.length >= payload.length) return Deferred.succeed(completed, void 0)
+        }).pipe(Effect.forkChild)
+        yield* transport.writeAll([payload.subarray(0, 1024), payload.subarray(1024)])
+        yield* Deferred.await(completed)
+        assert.deepStrictEqual(received, Array.from(payload))
+        assert.isAbove(records.length, 1)
+        // TLS 1.2 AES-GCM adds an 8-byte nonce and 16-byte authentication tag.
+        for (const length of records) assert.isAtMost(length, 512 + 24)
+        yield* Fiber.interrupt(reading)
+      }))
+
+    it.live.each(["end", "close"] as const)("terminates a pending TLS read on raw %s after the handshake", (event) =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        const raw = yield* connectedTcp(server)
+        const transport = yield* make({
+          stream: () =>
+            raw
+        }).connect(address(server))
+        yield* transport.upgrade({ ca: cert, servername: "localhost", handshakeFraming: identityFraming })
+        const reading = yield* transport.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+        raw.emit(event, false)
+        assert.strictEqual(
+          (yield* Fiber.join(reading).pipe(Effect.timeout("1 second"))).reason._tag,
+          "SocketCloseError"
+        )
+        assert.isTrue(raw.destroyed)
+      }))
+
+    it.live.each(["end", "close", "error"] as const)(
+      "terminates a framed TLS upgrade when raw transport emits %s",
+      (event) =>
+        Effect.gen(function*() {
+          let peer: Net.Socket | undefined
+          const server = yield* listen(Net.createServer((socket) => {
+            peer = socket
+            socket.on("error", () => {})
+          }))
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => peer?.destroy())
+          )
+          const raw = yield* connectedTcp(server)
+          const transport = yield* make({
+            stream: () => raw
+          }).connect(address(server))
+          const upgrading = yield* transport.upgrade({ handshakeFraming: identityFraming }).pipe(
+            Effect.flip,
+            Effect.forkChild({ startImmediately: true })
+          )
+          const cause = new Error("Raw handshake transport failed")
+          raw.emit(event, event === "error" ? cause : false)
+          const error = yield* Fiber.join(upgrading).pipe(Effect.timeout("1 second"))
+          assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+          if (event === "error" && error.reason._tag === "SocketUpgradeError") {
+            assert.strictEqual(error.reason.cause, cause)
+          }
+          assert.isTrue(raw.destroyed)
+        })
+    )
+
+    it.live("interrupts a stalled framed TLS handshake and removes raw listeners", () =>
+      Effect.gen(function*() {
+        let peer: Net.Socket | undefined
+        const server = yield* listen(Net.createServer((socket) => {
+          peer = socket
+          socket.on("error", () => {})
+        }))
+        yield* Effect.addFinalizer(() => Effect.sync(() => peer?.destroy()))
+        const raw = yield* connectedTcp(server)
+        const originalEndListeners = raw.listeners("end")
+        const transport = yield* make({ stream: () => raw }).connect(address(server))
+        const upgrading = yield* transport.upgrade({ handshakeFraming: identityFraming }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(upgrading)
+        assert.isTrue(raw.destroyed)
+        assert.strictEqual(raw.listenerCount("data"), 0)
+        assert.deepStrictEqual(raw.listeners("end"), originalEndListeners)
+      }))
+
+    it.live("fails pending reads and writes when an established framed TLS transport errors", () =>
+      Effect.gen(function*() {
+        let peer: Tls.TLSSocket | undefined
+        const server = yield* listen(Tls.createServer({ cert, key }, (socket) => {
+          peer = socket
+          socket.on("error", () => {})
+          socket.pause()
+        }))
+        yield* Effect.addFinalizer(() => Effect.sync(() => peer?.destroy()))
+        const raw = yield* connectedTcp(server)
+        const transport = yield* make({ stream: () => raw }).connect(address(server))
+        yield* transport.upgrade({ ca: cert, servername: "localhost", handshakeFraming: identityFraming })
+        raw.write = () => false
+        const reading = yield* transport.pull.pipe(Effect.flip, Effect.forkChild({ startImmediately: true }))
+        const writing = yield* transport.write(new Uint8Array(32768)).pipe(Effect.flip, Effect.forkChild)
+        yield* Effect.yieldNow
+        assert.isUndefined(writing.pollUnsafe())
+        const cause = new Error("Raw TLS transport failed")
+        raw.emit("error", cause)
+        const readError = yield* Fiber.join(reading).pipe(Effect.timeout("1 second"))
+        assert.strictEqual(readError.reason._tag, "SocketReadError")
+        if (readError.reason._tag === "SocketReadError") assert.strictEqual(readError.reason.cause, cause)
+        assert.strictEqual((yield* Fiber.join(writing)).reason._tag, "SocketWriteError")
+        assert.isTrue(raw.destroyed)
+      }))
+
+    it.effect("rejects handshake framing on a direct TLS endpoint before opening it", () =>
+      Effect.gen(function*() {
+        let opened = false
+        const error = yield* make({
+          stream: () => {
+            opened = true
+            return new HeldStream()
+          }
+        }).connect({ ...endpoint, tls: { handshakeFraming: handshakeFraming() } }).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketOpenError")
+        assert.isFalse(opened)
+      }))
+
+    it.live("frames a verified TLS handshake before switching to raw TLS records", () =>
+      Effect.gen(function*() {
+        const server = yield* listenFramedTls()
+        const transport = yield* make({ tls: { minVersion: "TLSv1.2", maxVersion: "TLSv1.2" } }).connect(
+          address(server)
+        )
+        const framing = handshakeFraming()
+        yield* transport.upgrade({ ca: cert, servername: "localhost", handshakeFraming: framing })
+        const counts = framing.counts()
+        assert.isAbove(counts.encoded, 0)
+        assert.isAbove(counts.decoded, 0)
+        assert.strictEqual(counts.secured, 1)
+        yield* transport.writeAll(["after", "handshake"])
+        const received = yield* transport.pull
+        assert.strictEqual(Buffer.concat(received.map((bytes) => Buffer.from(bytes))).toString(), "afterhandshake")
+        assert.deepStrictEqual(framing.counts(), counts)
+      }))
+
+    it.live.each(["encode", "decode", "onSecure"] as const)("reports TLS framing hook exceptions (%s)", (hook) =>
+      Effect.gen(function*() {
+        const server = yield* listen(Tls.createServer({ cert, key }, echo))
+        server.on("tlsClientError", () => {})
+        const cause = new Error("Framing hook failed")
+        const transport = yield* make().connect(address(server))
+        const error = yield* transport.upgrade({
+          ca: cert,
+          servername: "localhost",
+          handshakeFraming: {
+            encode: (bytes) =>
+              bytes,
+            decode: (bytes) => [bytes],
+            onSecure: () => [],
+            [hook]: () => {
+              throw cause
+            }
+          }
+        }).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+        if (error.reason._tag === "SocketUpgradeError") {
+          assert.strictEqual(error.reason.cause, cause)
+        }
+      }))
+
     it.effect("rejects TLS fragment limits on a plaintext connection", () =>
       Effect.gen(function*() {
         const { stream, transport } = yield* held(make)
@@ -118,11 +416,16 @@ export const socketConnectorTests = (name: string, make: typeof NodeSocketConnec
         )
         Object.defineProperty(tls, "setMaxSendFragment", {
           value: mode === "unavailable" ? undefined : () => {
-            if (mode === "throws") throw cause
+            if (mode === "throws") {
+              throw cause
+            }
             return false
           }
         })
-        const transport = yield* make({ stream: () => tls }).connect(endpoint)
+        const transport = yield* make({
+          stream: () =>
+            tls
+        }).connect(endpoint)
         const error = yield* transport.setTlsMaxSendFragment!(4096).pipe(Effect.flip)
         assert.strictEqual(error.reason._tag, "SocketUpgradeError")
         if (mode === "throws" && error.reason._tag === "SocketUpgradeError") {

@@ -23,9 +23,11 @@ import type { BoundParameter, ServerError } from "./MssqlTypes.ts"
  *
  * **Gotchas**
  *
- * Strict encryption requires SQL Server 2022 or another TDS 8.0 server.
- * TDS 7.x encapsulated TLS is unsupported. Disabling encryption also requires
- * `allowPlaintext: true` and a server that permits unencrypted connections.
+ * Strict encryption requires a TDS 8.0 server. Mandatory encryption requires a
+ * connector supporting framed TLS upgrades and verifies certificates by
+ * default. Disabling encryption also requires `allowPlaintext: true` and a
+ * server that permits unencrypted connections. Failed encrypted connections
+ * never retry using another encryption mode.
  *
  * @category models
  * @since 4.0.0
@@ -37,7 +39,7 @@ export interface Config {
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly applicationName?: string | undefined
-  readonly encryption?: "strict" | "disable" | undefined
+  readonly encryption?: "strict" | "mandatory" | "disable" | undefined
   readonly allowPlaintext?: boolean | undefined
   readonly tls?: SocketConnector.TlsOptions | undefined
   readonly connectTimeout?: Duration.Input | undefined
@@ -86,6 +88,9 @@ class PacketReader {
   constructor(socket: SocketConnector.Connection, maximum: number) {
     this.socket = socket
     this.maximum = maximum
+  }
+  hasPending(): boolean {
+    return this.bytes.length > 0
   }
   readonly next = Effect.fnUntraced(function*(this: PacketReader) {
     while (true) {
@@ -141,8 +146,12 @@ export const make = Effect.fnUntraced(
   function*(
     options: Config
   ): Effect.fn.Return<MssqlConnection, SqlError, Scope.Scope | SocketConnector.SocketConnector> {
-    const strict = options.encryption !== "disable"
-    if (!strict && options.allowPlaintext !== true) {
+    const strict = options.encryption === undefined || options.encryption === "strict"
+    const mandatory = options.encryption === "mandatory"
+    if (!strict && !mandatory && options.encryption !== "disable") {
+      return yield* Effect.fail(failure(new Error("Invalid SQL Server encryption mode"), "connect"))
+    }
+    if (options.encryption === "disable" && options.allowPlaintext !== true) {
       return yield* Effect.fail(
         failure(new Error("Disabling SQL Server encryption requires allowPlaintext: true"), "connect")
       )
@@ -196,8 +205,8 @@ export const make = Effect.fnUntraced(
         if (!Number.isInteger(size) || size < 512 || size > 32767) {
           return yield* Effect.fail(failure(new Error("Invalid negotiated TDS packet size"), "prelogin", true))
         }
-        if (strict) {
-          if (socket.setTlsMaxSendFragment === undefined) {
+        if (strict || mandatory) {
+          if (strict && socket.setTlsMaxSendFragment === undefined) {
             return yield* Effect.fail(
               failure(
                 new Error("Strict TDS requires TLS send fragment control from the socket connector"),
@@ -206,25 +215,44 @@ export const make = Effect.fnUntraced(
               )
             )
           }
-          yield* socket.setTlsMaxSendFragment(Math.min(size, 16384)).pipe(
-            Effect.mapError((cause) => failure(cause, "connect", true))
-          )
+          if (socket.setTlsMaxSendFragment !== undefined) {
+            yield* socket.setTlsMaxSendFragment(Math.min(size, 16384)).pipe(
+              Effect.mapError((cause) => failure(cause, "connect", true))
+            )
+          }
         }
         packetSize = size
       })
     const startup = Effect.gen(function*() {
-      yield* updatePacketSize(packetSize)
-      yield* send(0x12, Protocol.prelogin(strict))
+      if (strict) yield* updatePacketSize(packetSize)
+      yield* send(0x12, Protocol.prelogin(strict, mandatory))
       const response = yield* receive
       const negotiated = yield* Effect.try({
         try: () => Protocol.encryption(response),
         catch: (cause) => failure(cause, "prelogin", true)
       })
       // TDS 8.0 establishes TLS before PRELOGIN, so its ENCRYPTION field is ignored.
-      if (!strict && negotiated !== 2) {
+      if (mandatory) {
+        if (negotiated !== 1 && negotiated !== 3) {
+          return yield* Effect.fail(
+            failure(new Error("Server did not accept mandatory TLS encryption"), "prelogin", true)
+          )
+        }
+        if (reader.hasPending()) {
+          return yield* Effect.fail(
+            failure(new Error("Unexpected buffered data before TDS TLS upgrade"), "prelogin", true)
+          )
+        }
+        yield* socket.upgrade({
+          ...options.tls,
+          servername: options.tls?.servername ?? options.host ?? "localhost",
+          handshakeFraming: Protocol.tlsHandshakeFraming(packetSize, maximum)
+        }).pipe(Effect.mapError((cause) => failure(cause, "prelogin", true)))
+        yield* updatePacketSize(packetSize)
+      } else if (!strict && negotiated !== 2) {
         return yield* Effect.fail(
           failure(
-            new Error("Server requires unsupported TDS 7.x encapsulated TLS"),
+            new Error("Server requires TLS; configure encryption: mandatory or strict"),
             "prelogin",
             true
           )

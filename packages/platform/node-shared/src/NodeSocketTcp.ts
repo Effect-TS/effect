@@ -24,7 +24,7 @@ import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import { Buffer } from "node:buffer"
 import * as Net from "node:net"
-import type { Duplex } from "node:stream"
+import { Duplex } from "node:stream"
 import * as Tls from "node:tls"
 
 const isDeno = "Deno" in globalThis
@@ -64,6 +64,104 @@ const closeSocket = (conn: Net.Socket, isOpen: boolean, destroyOnClose: boolean)
     conn.destroy()
   } else {
     conn.destroySoon()
+  }
+}
+
+const frameTlsHandshake = (
+  raw: Duplex,
+  framing: Socket.TlsHandshakeFraming,
+  events: {
+    readonly onError: (cause: unknown) => void
+    readonly onEnd: () => void
+    readonly onClose: () => void
+  }
+) => {
+  let secure = false
+  let closed = false
+  const idle = Latch.makeUnsafe(true)
+  const framed = new Duplex({
+    read() {
+      raw.resume()
+    },
+    write(bytes: Buffer, _encoding, callback) {
+      idle.closeUnsafe()
+      try {
+        raw.write(secure ? bytes : framing.encode(bytes), (error) => {
+          if (error) {
+            events.onError(error)
+            callback()
+            framed.destroy()
+            return
+          }
+          callback(error)
+          queueMicrotask(() => {
+            if (framed.writableLength === 0) idle.openUnsafe()
+          })
+        })
+      } catch (cause) {
+        events.onError(cause)
+        callback()
+        framed.destroy()
+      }
+    },
+    final(callback) {
+      raw.end(callback)
+    },
+    destroy(error, callback) {
+      closed = true
+      idle.openUnsafe()
+      raw.off("data", onData)
+      raw.off("end", onEnd)
+      raw.off("error", onError)
+      raw.off("close", onClose)
+      raw.destroy()
+      callback(error)
+    }
+  })
+  const push = (chunks: ReadonlyArray<Uint8Array>) => {
+    for (const chunk of chunks) {
+      if (!framed.push(chunk)) raw.pause()
+    }
+  }
+  function onData(bytes: Buffer) {
+    try {
+      push(secure ? [bytes] : framing.decode(bytes))
+    } catch (cause) {
+      events.onError(cause)
+      framed.destroy()
+    }
+  }
+  function onEnd() {
+    framed.push(null)
+    events.onEnd()
+  }
+  function onError(error: Error) {
+    events.onError(error)
+    framed.destroy()
+  }
+  function onClose() {
+    events.onClose()
+    framed.destroy()
+  }
+  raw.on("data", onData)
+  raw.on("end", onEnd)
+  raw.on("error", onError)
+  raw.on("close", onClose)
+  return {
+    socket: framed,
+    flush: idle.whenOpen(Effect.suspend(() =>
+      closed
+        ? Effect.fail(
+          new Socket.SocketError({
+            reason: new Socket.SocketWriteError({ cause: new Error("TLS transport is closed") })
+          })
+        )
+        : Effect.void
+    )),
+    onSecure() {
+      secure = true
+      push(framing.onSecure())
+    }
   }
 }
 
@@ -147,6 +245,8 @@ export const makeNet = (
  *
  * Writes use `write()` return-value backpressure, awaiting one `drain` when
  * the internal buffer is full. `writeAll` corks the stream around the batch.
+ * Framed TLS transports also await write callbacks and ciphertext delivery.
+ * Deno implements configured TLS fragment limits with separate completed writes.
  * Releasing the writer scope half-closes the stream (`end()`). Native TLS
  * upgrade defaults can be supplied through `tlsUpgradeOptions`; defined
  * portable upgrade settings override them.
@@ -164,6 +264,8 @@ export const fromDuplex = <RO>(
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
+    let tlsMaxSendFragment: number | undefined
+    let handshakeTransport: ReturnType<typeof frameTlsHandshake> | undefined
     const latch = Latch.makeUnsafe(false)
     const openServices = fiber.context as Context.Context<RO>
     const isServer = options?.tlsServer === true
@@ -391,6 +493,9 @@ export const fromDuplex = <RO>(
           // A TLS wrapper is created by this reader, while open still owns the
           // underlying duplex. Close the wrapper before its raw socket is released.
           if (closing !== opened) closing.destroy()
+          handshakeTransport?.socket.destroy()
+          handshakeTransport = undefined
+          tlsMaxSendFragment = undefined
           latch.closeUnsafe()
           currentSocket = undefined
           upgradeAvailable = false
@@ -490,6 +595,10 @@ export const fromDuplex = <RO>(
             detachReadListeners(raw)
 
             let tls: Tls.TLSSocket
+            let framingFailed = false
+            let framingFailure: unknown
+            let upgradeSettled = false
+            let tlsEstablished = false
             try {
               const portableTlsOptions = Object.fromEntries(
                 Object.entries({
@@ -526,10 +635,35 @@ export const fromDuplex = <RO>(
                 ? effectiveOptions.secureContext
                 : Tls.createSecureContext(effectiveOptions)
               const tlsOptions = { ...effectiveOptions, secureContext }
+              handshakeTransport = upgradeOptions.handshakeFraming === undefined
+                ? undefined
+                : frameTlsHandshake(raw, upgradeOptions.handshakeFraming, {
+                  onError(cause) {
+                    if (tls === undefined) {
+                      framingFailed = true
+                      framingFailure = cause
+                    } else if (tlsEstablished) {
+                      fail(new Socket.SocketError({ reason: new Socket.SocketReadError({ cause }) }))
+                      tls.destroy()
+                    } else {
+                      failUpgrade(cause)
+                    }
+                  },
+                  onEnd() {
+                    if (tlsEstablished) onEnd()
+                    else failUpgrade(new Error("socket ended during TLS upgrade"))
+                  },
+                  onClose() {
+                    if (tlsEstablished) onClose(false)
+                    else failUpgrade(new Error("socket closed during TLS upgrade"))
+                  }
+                })
+              const transport = handshakeTransport?.socket ?? raw
               tls = isServer
-                ? new Tls.TLSSocket(raw as Net.Socket, { ...tlsOptions, isServer: true })
-                : Tls.connect({ ...tlsOptions, socket: raw as Net.Socket })
+                ? new Tls.TLSSocket(transport as Net.Socket, { ...tlsOptions, isServer: true })
+                : Tls.connect({ ...tlsOptions, socket: transport as Net.Socket })
             } catch (cause) {
+              handshakeTransport?.socket.destroy()
               attachReadListeners(raw)
               resume(Effect.fail(
                 new Socket.SocketError({
@@ -542,6 +676,10 @@ export const fromDuplex = <RO>(
             conn = tls
             closeObserved = false
             currentSocket = tls
+            if (framingFailed) {
+              failUpgrade(framingFailure)
+              return
+            }
 
             function cleanup() {
               tls.off(secureEvent, succeed)
@@ -549,7 +687,16 @@ export const fromDuplex = <RO>(
               tls.off("close", onUpgradeClose)
             }
             function succeed() {
+              if (upgradeSettled) return
+              try {
+                handshakeTransport?.onSecure()
+              } catch (cause) {
+                failUpgrade(cause)
+                return
+              }
               cleanup()
+              upgradeSettled = true
+              tlsEstablished = true
               upgradeAvailable = false
               // Bun pauses handshake input too, so wait until TLS is established.
               if (!isDeno) tls.pause()
@@ -557,12 +704,16 @@ export const fromDuplex = <RO>(
               resume(Effect.void)
             }
             function failUpgrade(cause: unknown) {
+              if (upgradeSettled) return
+              upgradeSettled = true
               cleanup()
               const upgradeError = new Socket.SocketError({
                 reason: new Socket.SocketUpgradeError({ cause })
               })
               fail(upgradeError)
               resume(Effect.fail(upgradeError))
+              tls.destroy()
+              handshakeTransport?.socket.destroy()
             }
             function onUpgradeClose() {
               failUpgrade(new Error("socket closed during TLS upgrade"))
@@ -573,6 +724,7 @@ export const fromDuplex = <RO>(
             tls.once("close", onUpgradeClose)
 
             return Effect.sync(() => {
+              upgradeSettled = true
               cleanup()
               fail(
                 new Socket.SocketError({
@@ -580,6 +732,7 @@ export const fromDuplex = <RO>(
                 })
               )
               tls.destroy()
+              handshakeTransport?.socket.destroy()
             })
           }).pipe(Effect.ensuring(Effect.sync(() => {
             consuming = false
@@ -624,6 +777,64 @@ export const fromDuplex = <RO>(
         return Effect.sync(cleanup)
       })
 
+    const writeWithCallback = (conn: Duplex, chunks: Arr.NonEmptyReadonlyArray<Uint8Array | string>) => {
+      const framed = handshakeTransport
+      return Effect.callback<void, Socket.SocketError>((resume) => {
+        function cleanup() {
+          conn.off("error", onError)
+          conn.off("close", onClose)
+        }
+        function onError(cause: unknown) {
+          cleanup()
+          resume(Effect.fail(new Socket.SocketError({ reason: new Socket.SocketWriteError({ cause }) })))
+        }
+        function onClose() {
+          onError(new Error("socket closed"))
+        }
+        conn.on("error", onError)
+        conn.on("close", onClose)
+        try {
+          if (chunks.length > 1) conn.cork()
+          try {
+            for (let i = 0; i < chunks.length; i++) {
+              conn.write(
+                chunks[i],
+                i === chunks.length - 1 ?
+                  (error) => {
+                    if (error) return onError(error)
+                    cleanup()
+                    resume(Effect.void)
+                  } :
+                  undefined
+              )
+            }
+          } finally {
+            if (chunks.length > 1) conn.uncork()
+          }
+        } catch (cause) {
+          onError(cause)
+        }
+        return Effect.sync(cleanup)
+      }).pipe(Effect.andThen(framed?.flush ?? Effect.void))
+    }
+
+    const writeTls = (conn: Duplex, chunks: Arr.NonEmptyReadonlyArray<Uint8Array | string>) => {
+      // Deno's rustls compatibility setter reports success without changing
+      // record size. Separate completed writes force rustls to flush each record.
+      if (isDeno && tlsMaxSendFragment !== undefined) {
+        const limit = tlsMaxSendFragment
+        return Effect.forEach(chunks, (chunk) => {
+          const bytes = typeof chunk === "string" ? Buffer.from(chunk) : chunk
+          const fragments: Array<Uint8Array> = []
+          for (let offset = 0; offset < bytes.length; offset += limit) {
+            fragments.push(bytes.subarray(offset, offset + limit))
+          }
+          return Effect.forEach(fragments, (fragment) => writeWithCallback(conn, [fragment]), { discard: true })
+        }, { discard: true })
+      }
+      return writeWithCallback(conn, chunks)
+    }
+
     const write = (
       chunk: Uint8Array | string | Socket.CloseEvent
     ): Effect.Effect<void, Socket.SocketError> =>
@@ -640,6 +851,9 @@ export const fromDuplex = <RO>(
         if (Socket.isCloseEvent(chunk)) {
           conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
           return Effect.void
+        }
+        if (handshakeTransport !== undefined || (isDeno && tlsMaxSendFragment !== undefined)) {
+          return writeTls(conn, [chunk])
         }
         try {
           return conn.write(chunk) ? Effect.void : awaitDrain(conn)
@@ -666,6 +880,9 @@ export const fromDuplex = <RO>(
           )
         }
         let needsDrain = false
+        if (handshakeTransport !== undefined || (isDeno && tlsMaxSendFragment !== undefined)) {
+          return writeTls(conn, chunks)
+        }
         try {
           if (chunks.length === 1) {
             needsDrain = !conn.write(chunks[0])
@@ -702,6 +919,7 @@ export const fromDuplex = <RO>(
           if (typeof conn.setMaxSendFragment !== "function" || !conn.setMaxSendFragment(size)) {
             throw new Error("TLS maximum send fragment is not supported by this socket")
           }
+          tlsMaxSendFragment = size
         },
         catch: (cause) => new Socket.SocketError({ reason: new Socket.SocketUpgradeError({ cause }) })
       })

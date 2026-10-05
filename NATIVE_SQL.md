@@ -31,8 +31,10 @@ Each client's README describes its configuration and supported features:
 MySQL supports native-password and SHA authentication over TLS or RSA-OAEP
 password exchange. RSA uses a pinned server key by default; retrieving a key
 requires explicit opt-in. The portable Crypto service provides RSA-OAEP through
-Node, Bun, Deno, and browser implementations. SQL Server supports SQL authentication with strict TDS 8 TLS;
-legacy TDS-wrapped TLS and Windows/FedAuth authentication are not implemented.
+Node, Bun, Deno, and browser implementations. SQL Server supports SQL authentication
+with strict TDS 8 TLS or explicitly selected mandatory TDS 7.4 TLS. The latter
+uses portable handshake framing hooks supplied by Node, Bun, and Deno socket
+connectors. Windows/FedAuth authentication is not implemented.
 ClickHouse transactions fail explicitly, and its migration runner requires one
 runner at a time. libSQL supports remote Hrana HTTP sessions; local files,
 replication, and WebSocket transport remain in the existing adapter package.

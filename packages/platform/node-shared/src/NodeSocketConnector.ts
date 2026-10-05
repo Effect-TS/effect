@@ -67,6 +67,16 @@ const hasNaN = (input: unknown): boolean =>
  */
 export const make = (options: Options = {}): SocketConnector.SocketConnector["Service"] => ({
   connect: Effect.fnUntraced(function*(endpoint: SocketConnector.Endpoint) {
+    if (typeof endpoint.tls === "object" && endpoint.tls.handshakeFraming !== undefined) {
+      return yield* Effect.fail(
+        new Socket.SocketError({
+          reason: new Socket.SocketOpenError({
+            kind: "Unknown",
+            cause: new Error("TLS handshake framing requires an upgrade of a connected socket")
+          })
+        })
+      )
+    }
     const openTimeout = endpoint.connectTimeout ?? options.connectTimeout ?? "10 seconds"
     const parsed = Duration.fromInput(openTimeout)
     if (Option.isNone(parsed) || Duration.toMillis(parsed.value) < 0 || hasNaN(openTimeout)) {

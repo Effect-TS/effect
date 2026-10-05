@@ -1,3 +1,4 @@
+import type * as Socket from "../../socket/Socket.ts"
 import type { BoundParameter, DataType, ServerError } from "../MssqlTypes.ts"
 
 const utf16 = new TextDecoder("utf-16le")
@@ -74,8 +75,86 @@ export const packets = (type: number, payload: Uint8Array, packetSize = 4096): R
 }
 
 /** @internal */
-export const prelogin = (strict: boolean): Uint8Array =>
-  Uint8Array.of(0, 0, 11, 0, 6, 1, 0, 17, 0, 1, 255, 0, 0, 0, 0, 0, 0, strict ? 0 : 2)
+export const tlsHandshakeFraming = (packetSize: number, maximum: number): Socket.TlsHandshakeFraming => {
+  if (
+    !Number.isInteger(packetSize) || packetSize < 512 || packetSize > 32767 ||
+    !Number.isSafeInteger(maximum) || maximum < 512
+  ) {
+    throw new Error("Invalid TDS TLS handshake size")
+  }
+  let pending: Uint8Array = new Uint8Array()
+  let expectedId = 1
+  let messageSize = 0
+  let messageOpen = false
+  let zeroPacketIds = false
+  let secure = false
+  return {
+    encode: (bytes) => {
+      if (secure) return bytes
+      if (bytes.length > maximum) throw new Error("TDS TLS handshake exceeds maximum size")
+      return concat(packets(0x12, bytes, packetSize))
+    },
+    decode: (bytes) => {
+      if (secure) return bytes.length === 0 ? [] : [bytes]
+      pending = concat([pending, bytes])
+      const chunks: Array<Uint8Array> = []
+      while (pending.length > 0) {
+        // The server's final wrapped handshake and its first raw TLS record
+        // can share a transport read. Keep the latter for the secure boundary.
+        if (pending[0] >= 20 && pending[0] <= 23) {
+          if (messageOpen) throw new Error("Incomplete TDS TLS handshake message")
+          if (pending.length > maximum) throw new Error("Buffered TLS data exceeds maximum size")
+          break
+        }
+        if (pending[0] !== 0x12 && pending[0] !== 4) throw new Error("Invalid TDS TLS handshake packet type")
+        if (pending.length < 8) break
+        const length = pending[2] * 256 + pending[3]
+        if (length < 8 || length - 8 > maximum) throw new Error("Invalid TDS TLS handshake packet length")
+        // SQL Server's TLS PRELOGIN responses use packet ID zero. Ordinary
+        // responses still use the numbered sequence, including wraparound.
+        if (!messageOpen && pending[6] === 0) zeroPacketIds = true
+        const packetId = zeroPacketIds ? 0 : expectedId
+        if ((pending[1] & ~1) !== 0 || pending[6] !== packetId || pending[7] !== 0) {
+          throw new Error(
+            `Invalid TDS TLS handshake packet header (status ${pending[1]}, id ${
+              pending[6]
+            }, expected ${packetId}, window ${pending[7]})`
+          )
+        }
+        if (pending.length < length) break
+        messageSize += length - 8
+        if (messageSize > maximum) throw new Error("TDS TLS handshake exceeds maximum size")
+        const packet = pending.subarray(0, length)
+        pending = pending.subarray(length)
+        chunks.push(packet.subarray(8))
+        if ((packet[1] & 1) !== 0) {
+          expectedId = 1
+          messageSize = 0
+          messageOpen = false
+          zeroPacketIds = false
+        } else {
+          expectedId = (expectedId + 1) & 255
+          messageOpen = true
+        }
+      }
+      return chunks
+    },
+    onSecure: () => {
+      if (secure) return []
+      if (messageOpen || pending.length > 0 && (pending[0] < 20 || pending[0] > 23)) {
+        throw new Error("TLS became secure inside an incomplete TDS handshake packet")
+      }
+      secure = true
+      const chunks = pending.length === 0 ? [] : [pending]
+      pending = new Uint8Array()
+      return chunks
+    }
+  }
+}
+
+/** @internal */
+export const prelogin = (strict: boolean, mandatory = false): Uint8Array =>
+  Uint8Array.of(0, 0, 11, 0, 6, 1, 0, 17, 0, 1, 255, 0, 0, 0, 0, 0, 0, strict ? 0 : mandatory ? 1 : 2)
 
 /** @internal */
 export const encryption = (bytes: Uint8Array): number => {

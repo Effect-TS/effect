@@ -3,12 +3,14 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Stream } from "effect"
 import { MssqlClient, MssqlConnection, MssqlTypes, Procedure } from "effect/mssql"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Socket from "effect/socket/Socket"
 
 // Run against a disposable SQL Server database:
 // EFFECT_INTEGRATION_TESTS=1 MSSQL_TEST_HOST=localhost MSSQL_TEST_USERNAME=sa
 // MSSQL_TEST_PASSWORD=... pnpm test --run packages/effect/test/mssql/MssqlClient.integration.test.ts
 // Strict TLS (SQL Server 2022 / TDS 8.0) is the default. MSSQL_TEST_CA supplies
 // a PEM certificate authority; MSSQL_TEST_SERVERNAME overrides its hostname.
+// MSSQL_TEST_ENCRYPTION=mandatory exercises encrypted TDS 7.4 instead.
 // MSSQL_TEST_PLAINTEXT=1 explicitly permits unencrypted TDS 7.4.
 // MSSQL_TEST_PROCEDURES=1 additionally exercises temporary stored procedures.
 const host = process.env.MSSQL_TEST_HOST
@@ -20,7 +22,7 @@ const options: MssqlClient.MssqlClientConfig = {
   username: process.env.MSSQL_TEST_USERNAME ?? "sa",
   password: Redacted.make(process.env.MSSQL_TEST_PASSWORD ?? ""),
   database: process.env.MSSQL_TEST_DATABASE ?? "tempdb",
-  encryption: plaintext ? "disable" : "strict",
+  encryption: plaintext ? "disable" : process.env.MSSQL_TEST_ENCRYPTION === "mandatory" ? "mandatory" : "strict",
   allowPlaintext: plaintext,
   tls: {
     ca: process.env.MSSQL_TEST_CA,
@@ -31,6 +33,20 @@ const options: MssqlClient.MssqlClientConfig = {
 }
 
 describe.skipIf(host === undefined)("native SQL Server integration", () => {
+  describe.skipIf(plaintext)("TLS certificate verification", () => {
+    it.effect("rejects a hostname mismatch before evaluating credentials", () =>
+      Effect.gen(function*() {
+        const error = yield* Effect.flip(MssqlConnection.make({
+          ...options,
+          tls: { ...options.tls, servername: "native-sql-certificate-mismatch.invalid" },
+          password: Effect.die("Credentials must not be evaluated before certificate verification")
+        }))
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        if (!Socket.isSocketError(error.reason.cause)) assert.fail("Expected a TLS socket error")
+        assert.propertyVal(error.reason.cause.reason.cause, "code", "ERR_TLS_CERT_ALTNAME_INVALID")
+      }).pipe(Effect.provide(transport)), { timeout: 30000 })
+  })
+
   it.effect("round trips native bound values through independent server decoding", () =>
     Effect.gen(function*() {
       const sql = yield* MssqlClient.makeClient(options)

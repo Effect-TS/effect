@@ -219,6 +219,28 @@ export interface Writer {
 }
 
 /**
+ * Synchronous framing hooks for protocols that carry TLS handshake bytes inside
+ * their own packets before switching to ordinary TLS records.
+ *
+ * **Details**
+ *
+ * Each upgrade uses fresh framing state. `encode` wraps outgoing handshake
+ * bytes, while `decode` can buffer incoming bytes and return zero or more TLS
+ * chunks. After TLS is established, `onSecure` releases any buffered bytes and
+ * both directions switch to unframed transport. Hook exceptions fail the
+ * upgrade through `SocketError`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface TlsHandshakeFraming {
+  readonly encode: (bytes: Uint8Array) => Uint8Array
+  readonly decode: (bytes: Uint8Array) => ReadonlyArray<Uint8Array>
+  readonly onSecure: () => ReadonlyArray<Uint8Array>
+}
+
+/**
  * TLS credentials and handshake settings used to upgrade a live socket.
  *
  * **Details**
@@ -244,6 +266,7 @@ export interface TlsUpgradeOptions {
   readonly requestCert?: boolean | undefined
   readonly servername?: string | undefined
   readonly rejectUnauthorized?: boolean | undefined
+  readonly handshakeFraming?: TlsHandshakeFraming | undefined
 }
 
 /**
