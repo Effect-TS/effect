@@ -68,6 +68,13 @@ Declaration tags appear in this order:
 - Use `@stability unstable` when an API may receive breaking changes in minor
   releases, or `@stability experimental` when it may receive breaking changes
   across patch versions. Leave the tag out for APIs that follow strict semver.
+- Tag any API that exposes a third-party dependency `@stability unstable`: an
+  accessor to the underlying client or instance, options typed as the
+  dependency's options, constructors that accept its instances, re-exports of
+  it, and signatures that mention its types. Tag the whole module when it exists
+  to wrap the dependency; otherwise tag only the exposing declarations or
+  members. Runtime built-ins (Node, Bun, Deno, DOM) and framework types inherent
+  to a binding (React, Solid, Vue) are exempt.
 
 Use canonical `**Example**` sections rather than `@example` tags or loose code
 fences.

@@ -159,6 +159,7 @@ export declare namespace LibsqlClientConfig {
   /**
    * Configuration that uses an existing libSQL client. The supplied `liveClient` is caller-owned and is not closed by the Effect client.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */

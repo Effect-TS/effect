@@ -14,6 +14,7 @@
  * transaction context must finish their transaction work before the enclosing
  * transaction exits; later use can bypass the connection semaphore.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
@@ -44,6 +45,7 @@ const classifyError = (cause: unknown, message: string, operation: string) =>
 /**
  * Runtime type identifier used to mark Cloudflare Durable Object `SqliteClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -52,6 +54,7 @@ export const TypeId: TypeId = "~@effect/sql-sqlite-do/SqliteClient"
 /**
  * Type-level identifier used to mark Cloudflare Durable Object `SqliteClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -60,6 +63,7 @@ export type TypeId = "~@effect/sql-sqlite-do/SqliteClient"
 /**
  * Cloudflare Durable Object SQLite client service, extending `SqlClient` with its configuration. `updateValues` is not supported.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -79,6 +83,7 @@ export interface SqliteClient extends Client.SqlClient {
  * Use to access or provide a Durable Object SQLite client through the Effect
  * context.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -91,6 +96,7 @@ const SqliteTransaction = Context.Service<Client.TransactionConnection, Client.T
 /**
  * Configuration for a Cloudflare Durable Object SQLite client, including either a `SqlStorage` handle or the full `DurableObjectStorage` for transaction support, span attributes, and query/result name transforms.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -178,6 +184,7 @@ const makeStorageBackedWithTransaction = (
 /**
  * Creates a scoped Cloudflare Durable Object SQLite client around Durable Object SQLite storage, serializing access and converting returned `ArrayBuffer` values to `Uint8Array`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -321,6 +328,7 @@ export const make = (
 /**
  * Creates a layer from a `Config`-wrapped Durable Object SQLite client configuration, providing both `SqliteClient` and `SqlClient`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -341,6 +349,7 @@ export const layerConfig = (
 /**
  * Creates a layer from a concrete Durable Object SQLite client configuration, providing both `SqliteClient` and `SqlClient`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

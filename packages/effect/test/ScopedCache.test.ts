@@ -1892,6 +1892,55 @@ describe("ScopedCache", () => {
 
   describe("error scenarios", () => {
     describe("Failed Lookups", () => {
+      it.effect("settles concurrent gets when TTL calculation throws after an asynchronous lookup", () =>
+        Effect.gen(function*() {
+          const started = yield* Latch.make()
+          const finish = yield* Latch.make()
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) => Effect.andThen(started.open, Effect.as(finish.await, 42)),
+            timeToLive: () => {
+              throw new Error("TTL defect")
+            }
+          })
+
+          const first = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* started.await
+          const second = yield* ScopedCache.get(cache, "test").pipe(
+            Effect.exit,
+            Effect.timeoutOption("1 second"),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Effect.yieldNow
+          yield* finish.open
+          yield* TestClock.adjust("1 second")
+
+          assert.deepStrictEqual(yield* Fiber.join(first), Option.some(Exit.succeed(42)))
+          assert.deepStrictEqual(yield* Fiber.join(second), Option.some(Exit.succeed(42)))
+        }))
+
+      it.effect("does not cache an asynchronous failure with zero TTL", () =>
+        Effect.gen(function*() {
+          let lookupCount = 0
+          const cache = yield* ScopedCache.makeWith({
+            capacity: 10,
+            lookup: (_key: string) =>
+              Effect.promise(() => Promise.resolve()).pipe(
+                Effect.andThen(Effect.sync(() => ++lookupCount)),
+                Effect.flatMap((count) => count === 1 ? Effect.fail("error") : Effect.succeed(count))
+              ),
+            timeToLive: (exit) => Exit.isFailure(exit) ? Duration.zero : Duration.infinity
+          })
+
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "test")), Exit.fail("error"))
+          assert.deepStrictEqual(yield* Effect.exit(ScopedCache.get(cache, "test")), Exit.succeed(2))
+          assert.strictEqual(lookupCount, 2)
+        }))
+
       it.effect("failed lookup caches the failure", () =>
         Effect.gen(function*() {
           let lookupCount = 0
@@ -2412,6 +2461,71 @@ describe("ScopedCache", () => {
   })
 
   describe("concurrency tests", () => {
+    it.effect("a get made while an abandoned lookup is finalizing starts a new lookup", () =>
+      Effect.gen(function*() {
+        let lookups = 0
+        const started = yield* Latch.make()
+        const finalizing = yield* Latch.make()
+        const finishFinalizer = yield* Latch.make()
+        const cache = yield* ScopedCache.make({
+          capacity: 10,
+          lookup: (_key: string) =>
+            Effect.suspend(() => {
+              if (++lookups > 1) return Effect.succeed(lookups)
+              return started.open.pipe(
+                Effect.andThen(Effect.never),
+                Effect.onInterrupt(() => finalizing.open.pipe(Effect.andThen(finishFinalizer.await)))
+              )
+            })
+        })
+
+        const first = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* started.await
+        const interruptFirst = yield* Fiber.interrupt(first).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* finalizing.await
+        const fresh = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* finishFinalizer.open
+        yield* Fiber.join(interruptFirst)
+
+        assert.deepStrictEqual(yield* Fiber.await(fresh), Exit.succeed(2))
+        assert.strictEqual(yield* ScopedCache.get(cache, "key"), 2)
+        assert.strictEqual(lookups, 2)
+      }))
+
+    it.effect("a getOption waiter arriving during eviction keeps the lookup alive when the first caller leaves", () =>
+      Effect.gen(function*() {
+        const closing = yield* Latch.make()
+        const close = yield* Latch.make()
+        const started = yield* Latch.make()
+        const finish = yield* Latch.make()
+        const cache = yield* ScopedCache.make({
+          capacity: 1,
+          lookup: (key: string) =>
+            Effect.gen(function*() {
+              if (key === "a") {
+                yield* Effect.acquireRelease(Effect.void, () => closing.open.pipe(Effect.andThen(close.await)))
+                return 1
+              }
+              yield* started.open
+              yield* finish.await
+              return 42
+            })
+        })
+
+        yield* ScopedCache.get(cache, "a")
+        const first = yield* ScopedCache.get(cache, "b").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* closing.await
+        const second = yield* ScopedCache.getOption(cache, "b").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* close.open
+        yield* started.await
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(first)
+        yield* finish.open
+
+        assert.deepStrictEqual(yield* Fiber.await(second), Exit.succeed(Option.some(42)))
+        assert.strictEqual(yield* ScopedCache.get(cache, "b"), 42)
+      }))
+
     it.effect("interrupting the only caller during eviction releases its lookup", () =>
       Effect.gen(function*() {
         const closing = yield* Latch.make()

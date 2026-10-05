@@ -1,5 +1,182 @@
 # effect
 
+## 4.0.1
+
+### Patch Changes
+
+- [#8603](https://github.com/Effect-TS/effect/pull/8603) [`ed2cc2f`](https://github.com/Effect-TS/effect/commit/ed2cc2f322dfd24da550c8d0ac811c3130b79d74) Thanks @danieljvdm! - Preserve all Anthropic system instructions and support configurable mid-conversation system messages. Add optional `LanguageModel.supportsSystemMessagesInHistory` to query support with scoped overrides.
+
+- [#8680](https://github.com/Effect-TS/effect/pull/8680) [`58a2ee8`](https://github.com/Effect-TS/effect/commit/58a2ee8e0db8e0a90bae83c6cceeff6916772fee) Thanks @danieljvdm! - Cache per-tool response schemas and parameter-mode copies to reduce schema construction in `LanguageModel.generateText` and `LanguageModel.streamText`. The schema cache also applies to direct calls to `Response.Part`, `Response.StreamPart` and `Response.AllParts`.
+
+- [#8719](https://github.com/Effect-TS/effect/pull/8719) [`bc44526`](https://github.com/Effect-TS/effect/commit/bc445262eeaaba6f7f28a154023a590e193e547d) Thanks @tim-smart! - Treat interruption as abandonment in `Effect.cached`, `Effect.cachedWithTTL`, `Effect.cachedInvalidateWithTTL`, `Cache`, `ScopedCache`, `RcRef`, `RcMap` and the cluster `ResourceMap`. Concurrent callers share one computation that is interrupted only after every caller has been interrupted, interrupted results are never cached, and a call made while an abandoned computation is still finalizing starts a fresh one.
+
+- [#8734](https://github.com/Effect-TS/effect/pull/8734) [`073bb47`](https://github.com/Effect-TS/effect/commit/073bb475d1e84e09cdcd8303a4a558f2a73d8396) Thanks @pawelblaszczyk5! - Adjust `Effect.cachedInvalidateWithTTL` types to accept callbacks that select a TTL from the computation's `Exit`, including piped calls.
+
+- [#8659](https://github.com/Effect-TS/effect/pull/8659) [`2ec021e`](https://github.com/Effect-TS/effect/commit/2ec021eff7fbd2206adc3e8bf4e803ed4bf07d6a) Thanks @samueleguino97! - Prevent entity registration when shard ownership is lost during construction. Pending requests retry on the new owner.
+
+- [#8662](https://github.com/Effect-TS/effect/pull/8662) [`cad1118`](https://github.com/Effect-TS/effect/commit/cad111867a666cebe8ff9bf2237a997fa6e4cb14) Thanks @tim-smart! - Avoid replaying suspended cluster workflows for unawaited deferred checkpoints while preserving interrupt wakes.
+
+- [#8637](https://github.com/Effect-TS/effect/pull/8637) [`1672d9c`](https://github.com/Effect-TS/effect/commit/1672d9ca8da3e5b536bf7afb73365cccc6c01f53) Thanks @tim-smart! - Fix cluster defect recovery to replay unfinished requests without duplicating requests awaiting their first dispatch. Stop replay and interrupt waiting requests on shutdown, and prevent superseded rebuilds from publishing stale handlers or SQL lock connections.
+
+- [#8741](https://github.com/Effect-TS/effect/pull/8741) [`a81e4e6`](https://github.com/Effect-TS/effect/commit/a81e4e6cb3dfbf01b1c53c1c877fddeaced8a278) Thanks @tim-smart! - Prevent PostgreSQL deadlocks between cluster message claims and shard or address resets by locking reset rows in message order.
+
+- [#8707](https://github.com/Effect-TS/effect/pull/8707) [`f5c2a91`](https://github.com/Effect-TS/effect/commit/f5c2a91621401a018b770446d35ef99806c5561f) Thanks @tim-smart! - Fix zoned DateTime conversion on runtimes that omit Intl fractional seconds, preserving milliseconds for pre-epoch timestamps.
+
+- [#8629](https://github.com/Effect-TS/effect/pull/8629) [`498e72b`](https://github.com/Effect-TS/effect/commit/498e72ba14d0191d6bf66cc0e931c229a1ff442f) Thanks @tim-smart! - Preserve a fiber's `AsyncLocalStorage` context when another fiber wakes or interrupts it. Run `Effect.tryPromise` error handlers in the resumed fiber's context.
+
+- [#8675](https://github.com/Effect-TS/effect/pull/8675) [`cabf123`](https://github.com/Effect-TS/effect/commit/cabf1230723e92684a4b0b836ccfde25c657f9f1) Thanks @IMax153! - Fix `HashRing.getShards` returning different shard assignments for the same nodes and weights after different add/remove histories. Sum weights in node-key order and break hash ties by node key. Assignments may change for fractional weights or hash ties.
+
+- [#8706](https://github.com/Effect-TS/effect/pull/8706) [`a5b1d4e`](https://github.com/Effect-TS/effect/commit/a5b1d4e4cae01dbe30890d3796f846bda00ad2ae) Thanks @tim-smart! - Prevent HttpApiSchemaError from being reported as a server failure for invalid requests.
+
+- [#8737](https://github.com/Effect-TS/effect/pull/8737) [`878cb33`](https://github.com/Effect-TS/effect/commit/878cb33f4f5f5a31d2c80a9ddb7d62a611230e1c) Thanks @tim-smart! - Log client-abort-only HTTP request causes as "Sent HTTP response" rather than an interrupt error, while preserving response status annotations and logging other causes.
+
+- [#8685](https://github.com/Effect-TS/effect/pull/8685) [`5e6f756`](https://github.com/Effect-TS/effect/commit/5e6f7568a4c895eab3087249b191c5dcba5e73ef) Thanks @tim-smart! - Fix HttpTraceContext decoding of B3 debug and legacy sampling values, and reject all-zero W3C trace and parent IDs.
+
+- [#8652](https://github.com/Effect-TS/effect/pull/8652) [`18dfb98`](https://github.com/Effect-TS/effect/commit/18dfb98cf6d2aeedbab8ef5734f9bc273a82d56e) Thanks @mikearnaldi! - Preserve pending interruptions when an uninterruptible effect fails. Drop typed failures when interruption skips recovery handlers, but keep defects.
+
+- [#8657](https://github.com/Effect-TS/effect/pull/8657) [`04706ef`](https://github.com/Effect-TS/effect/commit/04706eff5da94b4d475b99eab8b0256bed97b080) Thanks @schickling-assistant! - Fix JSON Schema pattern importing for valid expressions whose RegExp source is canonicalized, including slashes, empty patterns, and literal line terminators.
+
+- [#8723](https://github.com/Effect-TS/effect/pull/8723) [`f157482`](https://github.com/Effect-TS/effect/commit/f15748273a89afff4b05d5e6bec22c567c2a3cda) Thanks @serhii-indyrct! - Fix encoding optional MCP fields whose schemas decode to classes, such as `Implementation.icons`.
+
+- [#8644](https://github.com/Effect-TS/effect/pull/8644) [`b5a2d4c`](https://github.com/Effect-TS/effect/commit/b5a2d4c1d62c9620a68d72b7f20248c69ef7663b) Thanks @sbking! - Prevent shard lock refreshes from releasing shards acquired while the refresh is in flight.
+
+- [#8660](https://github.com/Effect-TS/effect/pull/8660) [`1c18c68`](https://github.com/Effect-TS/effect/commit/1c18c688df10b697c10283160dba143e049f3d50) Thanks @tim-smart! - Prevent singleton shard reassignment from durably cancelling outstanding RPC requests.
+
+- [#8705](https://github.com/Effect-TS/effect/pull/8705) [`43416c4`](https://github.com/Effect-TS/effect/commit/43416c4142f973f4988440716eb54a498659cd3a) Thanks @tim-smart! - Honor If-Range in HttpStaticServer, returning the full file when the entity-tag is stale or weak instead of serving a partial response. Reject date validators because filesystem metadata cannot establish their strength.
+
+- [#8704](https://github.com/Effect-TS/effect/pull/8704) [`d6ac8f9`](https://github.com/Effect-TS/effect/commit/d6ac8f923a33ff298a87f31230735e71d2d082e9) Thanks @tim-smart! - Fix `Stream.scan` to emit its initial state for empty streams.
+
+- [#8698](https://github.com/Effect-TS/effect/pull/8698) [`1d9fb8c`](https://github.com/Effect-TS/effect/commit/1d9fb8c540a11326650baa0866a17951665189e7) Thanks @bishil06! - Fix accumulated rate drift in `Stream.throttle` with the `"shape"` strategy by retaining token debt after early wake-ups. Use monotonic time so wall clock changes do not affect throttling.
+
+- [#8664](https://github.com/Effect-TS/effect/pull/8664) [`20dcd50`](https://github.com/Effect-TS/effect/commit/20dcd5060581077b46325a433f787ba10a56963d) Thanks @lloydrichards! - Preserve server and client extension capabilities in stateful MCP protocols.
+
+- [#8653](https://github.com/Effect-TS/effect/pull/8653) [`42e5750`](https://github.com/Effect-TS/effect/commit/42e5750f7e2fbf349cfe45452d7cc9dce98d6fe9) Thanks @lloydrichards! - Keep idle MCP HTTP subscriptions open on Cloudflare Workers with SSE keepalives.
+
+- [#8679](https://github.com/Effect-TS/effect/pull/8679) [`888e326`](https://github.com/Effect-TS/effect/commit/888e326a3180aea9b117fe7c97aace5dd527596e) Thanks @tim-smart! - Fix `Pool` usage TTL to expire only idle, unreserved excess items, oldest idle first. Measure idle time from the last release to avoid retiring recently used items.
+
+- [#8648](https://github.com/Effect-TS/effect/pull/8648) [`0b52bb4`](https://github.com/Effect-TS/effect/commit/0b52bb42fac5aecb8bcb8d899293c641b62c3f66) Thanks @dv-waynehaffenden! - Fix `RpcClient` stream interruption leaving chunk delivery blocked on a full buffer and stalling the shared protocol receive loop.
+
+- [#8627](https://github.com/Effect-TS/effect/pull/8627) [`e823e69`](https://github.com/Effect-TS/effect/commit/e823e693773aa163c0081af00a5236118446c6ae) Thanks @tim-smart! - Keep streaming RPC chunk decode failures local to the affected request and interrupt it on the server, without disconnecting unrelated requests.
+
+- [#8658](https://github.com/Effect-TS/effect/pull/8658) [`962647b`](https://github.com/Effect-TS/effect/commit/962647b6a16000f882e6999f001c513a8cccc711) Thanks @tim-smart! - Fix `RpcClient` protocol errors incorrectly failing requests started synchronously by error handlers. Only requests pending when the error broadcast begins now receive that error; new requests remain pending for their own responses.
+
+- [#8714](https://github.com/Effect-TS/effect/pull/8714) [`43fdcdc`](https://github.com/Effect-TS/effect/commit/43fdcdc6c81b6ad22d54061d6c6c45d9243d7c33) Thanks @jaideeppyne! - Fix RPC stdio shutdown to drain responses after stdin EOF.
+
+- [#8618](https://github.com/Effect-TS/effect/pull/8618) [`1f89b8e`](https://github.com/Effect-TS/effect/commit/1f89b8ec64e6362da3eaaff8cbb235df88d3441c) Thanks @serhii-indyrct! - Set `ScopedCache` entry expiry before waking lookup waiters, so a zero-TTL result cannot be reused.
+
+- [#8718](https://github.com/Effect-TS/effect/pull/8718) [`e1a521a`](https://github.com/Effect-TS/effect/commit/e1a521a6886a281abee016ff9aa57c3b172057c8) Thanks @juliusmarminge! - Pause schedules while `Stream.aggregateWithin`, `Stream.groupedWithin` and `Stream.aggregate` are idle. When a schedule ends, emit the current aggregation and drain sink leftovers without further upstream pulls.
+
+## 4.0.0
+
+### Patch Changes
+
+- [#8580](https://github.com/Effect-TS/effect/pull/8580) [`cbfc7b4`](https://github.com/Effect-TS/effect/commit/cbfc7b422046111c439a69ecbce7fc4f4899789d) Thanks @gcanti! - Restrict `Schema.brand` to a single concrete identifier and require `Schema.fromBrand` to use the constructor's sole brand key. Apply `brand` or `fromBrand` repeatedly when composing distinct brands. For enum brand keys, pass the enum member instead of its string value.
+
+- [#8601](https://github.com/Effect-TS/effect/pull/8601) [`5a81a6f`](https://github.com/Effect-TS/effect/commit/5a81a6f47521123a4075c6c221fb888d109778af) Thanks @RizgarOzan! - Prevent a stale `Atom.family` finalizer from evicting a newer cached atom.
+
+- [#8576](https://github.com/Effect-TS/effect/pull/8576) [`68b6394`](https://github.com/Effect-TS/effect/commit/68b639473ff211b654b49b7b82183cafd225f4a3) Thanks @tim-smart! - Prevent stale concurrent workflow resumes from clearing a newer completed reply. Custom message storage implementations must honor the optional expected reply ID on `clearReplies` to provide this safety guarantee.
+
+- [#8589](https://github.com/Effect-TS/effect/pull/8589) [`5250ca6`](https://github.com/Effect-TS/effect/commit/5250ca63c6f15152b4cdd36ef78b32ab06a0075e) Thanks @marek-hanzal! - Fix lost synchronous successes and failures in concurrent `Atom.fn` calls.
+
+- [#8625](https://github.com/Effect-TS/effect/pull/8625) [`5f9c9d1`](https://github.com/Effect-TS/effect/commit/5f9c9d17c1a2d18e3217b251d28de0015bba02fd) Thanks @tim-smart! - Fix `MutableHashMap` retaining previously used equal object keys after they are replaced or removed, including when `Cache` and `ScopedCache` refresh entries on hits.
+
+- [#8619](https://github.com/Effect-TS/effect/pull/8619) [`3278821`](https://github.com/Effect-TS/effect/commit/3278821a6490f7f76b30217115e921e1d3dc7f34) Thanks @tim-smart! - Keep `Queue.takeN` suspended when only part of its requested batch is available. Previously a single offer woke the batch taker in a synchronous retry loop that starved the host. `Queue.State.takers` now holds `Queue.Taker` entries: call `entry.resume(...)` instead of calling the entry as a function.
+
+- [#8607](https://github.com/Effect-TS/effect/pull/8607) [`83429b4`](https://github.com/Effect-TS/effect/commit/83429b42023e79c29137381dc210a57bc0137ade) Thanks @mannyc2! - Interrupt losers in `Effect.race`, `Effect.raceFirst`, `Effect.raceAll` and `Effect.raceAllFirst` when the race settles or is interrupted while other effects are still starting.
+
+- [#8626](https://github.com/Effect-TS/effect/pull/8626) [`0af6d0c`](https://github.com/Effect-TS/effect/commit/0af6d0c8ceaf08656f76bba41e5965bbf9a76bac) Thanks @tim-smart! - The `RpcMessage.ExitEncoded` interrupt `fiberId` type now admits the `null` emitted by JSON encoding. Consumers reading encoded interrupts should handle `null` alongside `undefined`.
+
+- [#8614](https://github.com/Effect-TS/effect/pull/8614) [`927e01e`](https://github.com/Effect-TS/effect/commit/927e01e00579c14d446e15e077775e973d75f9a1) Thanks @gcanti! - Fix `SchemaRepresentation.toCodeDocument` to preserve the grouping of branded union types in generated TypeScript code.
+
+- [#8617](https://github.com/Effect-TS/effect/pull/8617) [`10d8524`](https://github.com/Effect-TS/effect/commit/10d8524dc40fd06075f6a70f88d3a0cbd3477178) Thanks @gcanti! - Fix `Schema.toType` and `Schema.toEncoded` losing parent checks when projecting checked children without transformations. Suspended children remain opaque, and structural checks continue to be preserved.
+
+- [#8583](https://github.com/Effect-TS/effect/pull/8583) [`35ac25a`](https://github.com/Effect-TS/effect/commit/35ac25a80bec4977a082af57a618d6a02bb41e25) Thanks @KhraksMamtsov! - `Array`, `Chunk`, `Effect`, and `Record` `partition`, their `separate` helpers, and `Option.partitionMap` now return successes before failures, matching `Stream.partition`. Swap the tuple when moving from the previous `[failures, successes]` order.
+
+- [#8585](https://github.com/Effect-TS/effect/pull/8585) [`29e0aa7`](https://github.com/Effect-TS/effect/commit/29e0aa7dcc7735e207a687ba0f6a7ddebfe0996e) Thanks @roninjin10! - Preserve sibling and callback cleanup failures alongside interruption in concurrent `Effect.forEach` / `Effect.all`, including shared `Layer.build`.
+
+- [#8593](https://github.com/Effect-TS/effect/pull/8593) [`8783536`](https://github.com/Effect-TS/effect/commit/878353689f69b555ad64f9dc14d4c66fd547360d) Thanks @tim-smart! - Fail in-flight RPC calls when a socket misses a pong, even with transient connection retries enabled. Missed pongs no longer invoke `onTransientError`; connection-open failures still do.
+
+- [#8579](https://github.com/Effect-TS/effect/pull/8579) [`df77fff`](https://github.com/Effect-TS/effect/commit/df77fff9396fe31de72d1947ecb5b74f8cee89e1) Thanks @jasonkuhrt! - Fix union-of-tag inference for flat RPC clients and `AtomRpc.query` and `AtomRpc.mutation`. Payloads and results now reflect the selected RPCs instead of resolving to `never`.
+
+- [#8628](https://github.com/Effect-TS/effect/pull/8628) [`ef7d77f`](https://github.com/Effect-TS/effect/commit/ef7d77f382dcb2a4f7648211ed6d674984a47c36) Thanks @gcanti! - Make `Schema.brand` type-only: brand identifiers are no longer stored in AST annotations or preserved by `SchemaRepresentation`. Reapply `Schema.brand` after rebuilding a representation when a branded TypeScript type is required; checks added by `Schema.fromBrand` remain preserved. Preserve the order of equal-priority union members that share an AST when deriving JSON and string-tree codecs.
+
+- [#8597](https://github.com/Effect-TS/effect/pull/8597) [`035e369`](https://github.com/Effect-TS/effect/commit/035e369b3a30bcd840a7a78ccfb94d251bf931b7) Thanks @Ceereals! - Speed up JIT and AOT Schema decoding of transformations whose source has checks, such as a pattern-checked string decoded to a number. Fix compiled TemplateLiteral validation to enforce oneOf parts and preserve interpreter diagnostics when templates appear in transformation chains.
+
+- [#8630](https://github.com/Effect-TS/effect/pull/8630) [`f72790c`](https://github.com/Effect-TS/effect/commit/f72790c618260bdfbf7a4e14d10abc2341d21e56) Thanks @gcanti! - Fix duplicate references in decoded and encoded schema representations when reusing schemas through optional or mutable keys.
+
+- [#8555](https://github.com/Effect-TS/effect/pull/8555) [`aa19472`](https://github.com/Effect-TS/effect/commit/aa1947284cee5cec68d08df9c5b41fae8fe1aa8c) Thanks @front-depiction! - Resolve a Schema union's candidate parsers once per union instead of on every decode, so union decoding and encoding allocate less and run faster.
+
+- [#8598](https://github.com/Effect-TS/effect/pull/8598) [`988c467`](https://github.com/Effect-TS/effect/commit/988c467afa90449b1d441c2db645eaec236763ac) Thanks @tim-smart! - Close server WebSockets with 1000 on success, 1001 on interruption, or 1011 on failure, while preserving explicit close codes. HTTP request scopes retain the handler's failure exit through response handling and middleware.
+
+- [#8632](https://github.com/Effect-TS/effect/pull/8632) [`735b77b`](https://github.com/Effect-TS/effect/commit/735b77b65ca909ca6e41915f0d1366531c32142a) Thanks @gcanti! - Add `succeedEffect`, `failEffect`, and `verifyRoundTripEffect` to `TestSchema` so assertions can use the calling Effect's services, test clock, and interruption, and mark the module and its public APIs as unstable. Preserve defects and interruption when they occur alongside schema validation failures. Rename `verifyLosslessTransformation` to `verifyRoundTrip`; existing callers must update to the new name.
+
+- [#8575](https://github.com/Effect-TS/effect/pull/8575) [`e5f7d12`](https://github.com/Effect-TS/effect/commit/e5f7d12af9abef188f7dc39b0207af1801b03ffd) Thanks @tim-smart! - Retry failed workflow run resets instead of acknowledging deferred completion before the run resumes.
+
+- [#8633](https://github.com/Effect-TS/effect/pull/8633) [`2c552f2`](https://github.com/Effect-TS/effect/commit/2c552f220e09dd63d4a777db6cd20b9a13e732f4) Thanks @IMax153! - Effect 4.0 is the first stable release of Effect v4. It replaces the 4.0.0 beta and release-candidate series, whose per-release notes remain below under the `4.0.0-beta.*` and `4.0.0-rc.*` headings. To upgrade from Effect 3, follow the [migration guide](https://github.com/Effect-TS/effect/blob/main/MIGRATION.md).
+  
+  **Packaging and versioning**
+  
+  - All Effect packages share one version number and are released together. Use the same version of `effect` and every `@effect/*` package.
+  - `@effect/platform`, `@effect/rpc`, `@effect/cluster`, `@effect/cli`, `@effect/ai`, `@effect/sql`, `@effect/workflow`, `@effect/experimental` and similar packages are merged into `effect`. Separate packages remain only for platforms (`@effect/platform-*`), SQL drivers (`@effect/sql-*`), AI providers (`@effect/ai-*`), framework bindings (`@effect/atom-*`), OpenTelemetry, Vitest and tooling.
+  - Modules such as `effect/http`, `effect/http-api`, `effect/rpc`, `effect/cluster`, `effect/workflow`, `effect/ai`, `effect/cli`, `effect/sql` and `effect/schema` import from `effect/<area>`. APIs tagged `@stability unstable` may have breaking changes in minor releases. APIs without a stability tag follow semver.
+  - APIs that expose a third-party dependency are tagged `@stability unstable`, because that dependency's releases can change them. This covers `NodeRedis`, `DenoRedis`, `BunRedis`, `@effect/platform-node/Undici` and the undici dispatcher APIs, the `ws` options and re-exports in the platform packages, driver-specific options and clients in `@effect/sql-clickhouse`, `@effect/sql-d1`, `@effect/sql-libsql`, `@effect/sql-mssql`, `@effect/sql-mysql2`, `@effect/sql-pglite` and `@effect/sql-sqlite-do`, the provider clients, models and generated schemas in the `@effect/ai-*` packages, `@effect/opentelemetry`, and the `vitest` re-export in `@effect/vitest`.
+  - `effect` has no runtime dependencies.
+  - New packages in v4: `@effect/platform-deno`, `@effect/sql-pglite`, `@effect/ai-openai-compat`, `@effect/ai-typesafe`, `@effect/atom-react`, `@effect/atom-solid`, `@effect/atom-vue`, `@effect/openapi-generator` and `@effect/doctest`. `@effect/docgen` now lives in this repository.
+  
+  **Core**
+  
+  - The fiber runtime was rewritten for lower memory use and faster execution, with smaller bundles and better tree-shaking.
+  - Services are defined with `Context.Service`, `FiberRef` is replaced by `Context.Reference`, `Cause` has a flat structure, and many combinators were renamed. See the migration guide for the full list.
+  - Software transactional memory is built into `Effect.tx`, with `TxRef`, `TxQueue`, `TxHashMap`, `TxPubSub`, `TxSemaphore` and related `Tx*` data types.
+  - `Clock` separates wall-clock time from monotonic time.
+  - New modules include `Semaphore`, `Latch`, `LayerRef`, `ErrorReporter`, `ByteSize`, `Newtype` and `Crypto`. `Arbitrary` is now a native property-based testing module and no longer depends on fast-check.
+  
+  **Schema**
+  
+  - Schema v4 is a new implementation with faster parsing, class-based schemas, `make` constructors on every schema, and effectful decoding with services.
+  - `SchemaRepresentation` powers JSON Schema (Draft-04, Draft-07, 2020-12 and OpenAPI 3.0/3.1) import and export, TypeScript code generation, and AI structured output.
+  - `SchemaBinary` provides a compact binary codec and is the default wire format for cluster transports.
+  - Optional JIT and AOT schema compilers are available as experimental modules.
+  
+  **Platform, HTTP and RPC**
+  
+  - `HttpApi` supports typed response headers, streaming and SSE responses, the HTTP `QUERY` method, `HttpApiTest` for in-memory testing, and much faster type checking for large APIs.
+  - The HTTP modules add static file serving, response compression, rate-limited clients and graceful server shutdown.
+  - `Socket` has a pull-based reader with backpressure and STARTTLS support. Network addresses are modeled by `effect/net`.
+  - RPC serialization is schema-aware and supports server-originated requests and notifications.
+  - `@effect/platform-deno` adds full Deno support. The Node, Bun, Deno and browser packages all provide the platform `Crypto` service, and the browser package adds IndexedDB support.
+  
+  **Cluster and Workflow**
+  
+  - Workflows can be declared with class syntax, and `DurableQueue` and an in-memory `WorkflowEngine` are available.
+  - Runner memory can be bounded with `ShardingConfig` limits. Shutdown, entity movement and persisted replies are more reliable.
+  
+  **SQL**
+  
+  - `@effect/sql-pg` uses a built-in PostgreSQL client with pipelining, prepared statements and binary codecs, and no longer depends on `pg`.
+  - `@effect/sql-sqlite-node` uses Node's built-in `node:sqlite` and requires Node 22.16 or newer.
+  - `SqlError` exposes structured reasons such as `UniqueViolation`.
+  
+  **AI**
+  
+  - `effect/ai` adds `EmbeddingModel`, the `DecisionModel` classification and rating API, dynamic tools and tool approvals.
+  - The MCP server supports protocol versions 2024-11-05 through 2026-07-28, including elicitation, sampling with tools, resource subscriptions and typed tool output.
+  - Provider packages cover Anthropic, OpenAI, OpenAI-compatible APIs and OpenRouter.
+  
+  **CLI, Atom, observability and testing**
+  
+  - `effect/cli` adds global flags, command aliases and examples, an interactive wizard mode, and shell completions for Bash, Zsh and Fish.
+  - `effect/reactivity` and the `@effect/atom-*` bindings add SSR hydration, stale-while-revalidate atoms and serializable RPC and HttpApi queries.
+  - The OTLP exporters can be configured with standard OpenTelemetry environment variables, and `@effect/opentelemetry` aligns logs and spans with the OpenTelemetry specification.
+  - `@effect/vitest` runs property tests with the native `Arbitrary` module and supports Vitest fixtures.
+  
+  **Requirements**
+  
+  - TypeScript 5.9 or newer. TypeScript 7 is recommended.
+  - `@effect/vitest` and `@effect/doctest` require Vitest 5.
+  - `@effect/atom-react` requires React 19.
+  - `@effect/platform-deno` requires Deno 2.8.3 or newer.
+
 ## 4.0.0-rc.118
 
 ### Patch Changes

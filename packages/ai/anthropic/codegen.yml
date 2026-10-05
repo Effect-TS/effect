@@ -5,10 +5,13 @@ spec:
 output: src/Generated.ts
 name: AnthropicClient
 patches:
+  # Allow system messages in conversation history.
+  - '[{"op":"replace","path":"/components/schemas/BetaInputMessage/properties/role/enum","value":["user","assistant","system"]},{"op":"replace","path":"/components/schemas/InputMessage/properties/role/enum","value":["user","assistant","system"]}]'
   # Make iterations and speed optional in BetaUsage, iterations optional in BetaMessageDeltaUsage (API may omit these fields)
   - '[{"op":"remove","path":"/components/schemas/BetaUsage/required/9"},{"op":"remove","path":"/components/schemas/BetaUsage/required/5"},{"op":"remove","path":"/components/schemas/BetaMessageDeltaUsage/required/3"}]'
 header: |
   /**
+   * @stability unstable
    * @since 1.0.0
    */
 excludeAnnotations:

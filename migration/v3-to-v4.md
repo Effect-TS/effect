@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`0963a1c17f5be8e26676ed5ffc9c542bd26f97f0`)
+Base: `origin/v3` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `HEAD` (`072cdc42a84421694593035d65d0f3375d1a17fd`)
+Head: `HEAD` (`a84d4f65d978bf33aabc38227e477d187ff05c2c`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -14435,7 +14435,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Number` -> `Schema.Number`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.NumberFromString` -> `Schema.NumberFromString`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.NumberFromString` -> `Schema.NumberFromString`: Decoding now uses JavaScript number coercion: unlike v3, `"abc"` decodes to `NaN`, while `""` and whitespace-only strings decode to `0`. `FiniteFromString` rejects non-finite results, so it rejects invalid strings but also the `"NaN"` and infinity spellings accepted by v3; it still decodes blank strings to `0`. Use a custom codec to preserve the v3 acceptance rules exactly.
 
 - `Schema.Object` -> `Schema.ObjectKeyword`: Rename the object keyword schema.
 
@@ -14923,9 +14923,9 @@ Schema.toFormatter(schema)
 
 - `Schema.optionalWith` -> `Schema.optional / Schema.optionalKey / Schema.withDecodingDefaultType`: Choose `optional` or `optionalKey`; use the decoding-default helpers and an explicit nullable transformation as required by the old options.
 
-- `Schema.parseJson` -> `Schema.UnknownFromJsonString / Schema.fromJsonString(schema)`: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
+- `Schema.parseJson` -> `Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)`: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 
-- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec.
+- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec. Unlike v3 `parseNumber`, invalid strings decode to `NaN`, while blank strings decode to `0`. `FiniteFromString` rejects non-finite results but also the `"NaN"` and infinity spellings accepted by v3; exact compatibility requires a custom codec.
 
 - `Schema.partial` -> `schema.mapFields(Struct.map(Schema.optional))`: Map struct fields with `Schema.optional`.
 
@@ -15111,7 +15111,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ParseIssueTitleAnnotationId` -> `none`: The symbol annotation was removed; use message or expected annotations.
 
-- `SchemaAST.ParseJsonSchemaId` -> `Schema.UnknownFromJsonString`: Use the built-in JSON string codec instead of checking the old schema ID.
+- `SchemaAST.ParseJsonSchemaId` -> `Schema.fromJsonString(Schema.Unknown)`: Use the built-in JSON string codec instead of checking the old schema ID.
 
 - `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. propertyOrder was removed. concurrency follows Effect.forEach semantics for tuple, array, struct, record, and struct-with-rest children, applies independently at each nested product, and does not make Union candidates concurrent. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser.
 

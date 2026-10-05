@@ -179,7 +179,9 @@ interface TestState {
   capabilityInvocations: number
 }
 
-const makeFixture = Effect.fnUntraced(function*() {
+const makeFixture = Effect.fnUntraced(function*(
+  extensions?: NonNullable<McpSchema.ServerCapabilities["extensions"]>
+) {
   const state: TestState = {
     sharedInvocations: 0,
     structuredInvocations: 0,
@@ -250,6 +252,7 @@ const makeFixture = Effect.fnUntraced(function*() {
         sizes: ["any"]
       })],
       path: "/mcp",
+      extensions,
       protocols: [
         McpProtocol.v2026_07_28,
         McpProtocol.v2025_11_25,
@@ -1239,6 +1242,18 @@ describe("McpServer protocol adapters", () => {
         assert.isUndefined(yield* protocol.projectNotification(elicitationComplete))
       }
     }))
+
+  for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
+    it.effect(`should preserve server extensions when initializing ${protocolVersion} requests`, () =>
+      Effect.gen(function*() {
+        const extensions = { "example/extension": { enabled: true } }
+        const fixture = yield* makeFixture(extensions)
+        const client = yield* initialize(fixture.post, protocolVersion)
+
+        assert.deepNestedPropertyVal(client.initializeResult, "capabilities.extensions", extensions)
+      }))
+  }
+
   it.effect("should omit elicitation when the negotiated protocol predates v2025-06-18", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
@@ -1456,11 +1471,12 @@ describe("McpServer protocol adapters", () => {
       assert.strictEqual(currentShared.title, "Shared tool title")
     }))
 
-  for (const protocolVersion of ["2025-06-18", "2024-11-05"] as const) {
+  for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
     it.effect(`should expose the negotiated client profile when serving ${protocolVersion} requests`, () =>
       Effect.gen(function*() {
         const fixture = yield* makeFixture()
         const advertisedCapabilities = {
+          extensions: { "example/extension": { enabled: true } },
           roots: { listChanged: true },
           sampling: {}
         }

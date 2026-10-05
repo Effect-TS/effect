@@ -7,6 +7,7 @@ import * as Fiber from "effect/Fiber"
 import * as Headers from "effect/http/Headers"
 import * as HttpEffect from "effect/http/HttpEffect"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Logger from "effect/Logger"
@@ -116,6 +117,74 @@ describe("HttpMiddleware", () => {
   })
 
   describe("logger", () => {
+    it.effect("preserves failures mixed with client aborts even with status 499", () =>
+      Effect.gen(function*() {
+        const cause = Cause.combine(
+          Cause.annotate(Cause.interrupt(2), Context.make(HttpServerError.ClientAbort, true)),
+          Cause.fail("handler failed")
+        )
+        const logs: Array<{ message: unknown; cause: Cause.Cause<unknown>; status: unknown }> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logs.push({
+            message: options.message,
+            cause: options.cause,
+            status: options.fiber.getRef(References.CurrentLogAnnotations)["http.status"]
+          })
+        })
+        // The server attaches the response to the failed handler cause.
+        const handlerCause = Cause.combine(cause, Cause.die(HttpServerResponse.empty({ status: 499 })))
+        const exit = yield* HttpMiddleware.logger(Effect.failCause(handlerCause)).pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost/slow"))
+          ),
+          Effect.provide(Logger.layer([logger])),
+          Effect.exit
+        )
+
+        assert.deepStrictEqual(exit, Exit.failCause(handlerCause))
+        assert.deepStrictEqual(logs, [{ message: [], cause, status: 499 }])
+      }))
+
+    it.effect("logs client aborts as sent responses with status 499", () =>
+      Effect.gen(function*() {
+        const logs: Array<{
+          message: unknown
+          cause: Cause.Cause<unknown>
+          level: string
+          annotations: Record<string, unknown>
+        }> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logs.push({
+            message: options.message,
+            cause: options.cause,
+            level: options.logLevel,
+            annotations: { ...options.fiber.getRef(References.CurrentLogAnnotations) }
+          })
+        })
+        const started = Promise.withResolvers<void>()
+        const handler = HttpEffect.toWebHandler(
+          Effect.interruptible(Effect.andThen(Effect.sync(() => started.resolve()), Effect.never)),
+          (app) => HttpMiddleware.logger(app).pipe(Effect.provide(Logger.layer([logger])))
+        )
+        const controller = new AbortController()
+        const pending = handler(new Request("http://localhost/slow", { signal: controller.signal }))
+        yield* Effect.promise(() => started.promise)
+        controller.abort()
+        const response = yield* Effect.promise(() => pending)
+
+        assert.strictEqual(response.status, 499)
+        assert.strictEqual(logs.length, 1)
+        assert.deepStrictEqual(logs[0].annotations, {
+          "http.method": "GET",
+          "http.url": "/slow",
+          "http.status": 499
+        })
+        assert.strictEqual(logs[0].level, "Info")
+        assert.deepStrictEqual(logs[0].message, ["Sent HTTP response"])
+        assert.deepStrictEqual(logs[0].cause, Cause.empty)
+      }))
+
     it.effect("annotates method, path, and status without query or hash", () =>
       Effect.gen(function*() {
         const annotations: Array<Record<string, unknown>> = []

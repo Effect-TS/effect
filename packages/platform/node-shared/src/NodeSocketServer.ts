@@ -146,6 +146,7 @@ export const layerTls: (
  * providing the WebSocket and its Node `IncomingMessage` to connection
  * handlers and closing the server when the scope ends.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -253,6 +254,7 @@ export const makeWebSocket: (
  * Provides a WebSocket `SocketServer` backed by the `ws` package and managed
  * with the supplied server options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -4669,32 +4669,26 @@ Serialization converts typed values into a format suitable for storage or transm
 
 ## JSON Support
 
-#### UnknownFromJsonString
-
-A schema that decodes a JSON-encoded string into an unknown value.
-
-This schema takes a string as input and attempts to parse it as JSON during decoding. If parsing succeeds, the result is passed along as an unknown value. If the string is not valid JSON, decoding fails.
-
-When encoding, any value is converted back into a JSON string using JSON.stringify. If the value is not a valid JSON value, encoding fails.
-
-**Example**
-
-```ts
-import { Schema } from "effect"
-
-Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(`{"a":1,"b":2}`)
-// => { a: 1, b: 2 }
-```
-
 #### fromJsonString
 
 Returns a schema that decodes a JSON string and then decodes the parsed value using the given schema.
 
-This is useful when working with JSON-encoded strings where the actual structure of the value is known and described by an existing schema.
+Use `Schema.Unknown` to parse the JSON string without validating its structure, or provide a more specific schema to validate the parsed value.
 
-The resulting schema first parses the input string as JSON, and then runs the provided schema on the parsed result.
+Decoding fails if the input is not valid JSON or the parsed value does not satisfy the provided schema.
 
-**Example**
+During encoding, the schema encodes the value with the provided schema and then converts the result to a JSON string.
+
+**Example** (Parsing without validation)
+
+```ts
+import { Schema } from "effect"
+
+Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(`{"a":1,"b":2}`)
+// => { a: 1, b: 2 }
+```
+
+**Example** (Parsing and validating a known structure)
 
 ```ts
 import { Schema } from "effect"

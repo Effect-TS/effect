@@ -4,6 +4,7 @@ output: src/Generated.ts
 name: OpenAiClient
 header: |
   /** 
+   * @stability unstable
    * @since 1.0.0
    */
 patches:

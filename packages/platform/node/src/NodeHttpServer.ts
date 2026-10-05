@@ -78,6 +78,8 @@ export interface Options extends Net.ListenOptions {
    * wiring options the server manages itself. Use this to enable
    * `permessage-deflate` compression or tune payload limits, e.g.
    * `websocket: { perMessageDeflate: true }`.
+   *
+   * @stability unstable
    */
   readonly websocket?:
     | Omit<NodeWS.ServerOptions, "noServer" | "server" | "host" | "port" | "path">
@@ -223,6 +225,7 @@ export const makeHandler = <
  * exposing the upgraded WebSocket as the request's `upgrade` effect and
  * interrupting the request fiber when the socket closes early.
  *
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -255,10 +258,8 @@ export const makeUpgradeHandler = <
       const nodeResponse = () => {
         if (nodeResponse_ === undefined) {
           nodeResponse_ = new Http.ServerResponse(nodeRequest)
-          if (upgraded) {
-            // the connection now carries WebSocket frames, so end the response
-            // before a socket is assigned to it to make handleResponse skip the
-            // write (writableEnded check)
+          if (upgraded || socket.destroyed) {
+            // End without assigning the socket so handleResponse skips HTTP writes.
             nodeResponse_.end()
           } else {
             nodeResponse_.assignSocket(socket as any)
@@ -273,12 +274,25 @@ export const makeUpgradeHandler = <
         lazyWss,
         (wss) =>
           Effect.acquireRelease(
-            Effect.callback<NodeWS.WebSocket>((resume) =>
+            Effect.callback<NodeWS.WebSocket, Socket.SocketError>((resume) => {
+              // A refused handshake never invokes the callback, so fail on close instead.
+              const onClose = () =>
+                resume(Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({
+                      kind: "Unknown",
+                      cause: new Error("The socket closed before the upgrade")
+                    })
+                  })
+                ))
+              if (socket.destroyed) return onClose()
+              socket.once("close", onClose)
               wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                socket.off("close", onClose)
                 upgraded = true
                 resume(Effect.succeed(ws))
               })
-            ),
+            }),
             (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
       ))

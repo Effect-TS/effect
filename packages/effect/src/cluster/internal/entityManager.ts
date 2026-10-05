@@ -97,6 +97,8 @@ export type EntityState = {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
     sentReply: boolean
+    /** Excludes requests awaiting their first dispatch from replay. */
+    delivered: boolean
     sentExit: boolean
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
@@ -200,11 +202,19 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
-    let defectRequestIds = new Set<Snowflake.Snowflake>()
-    let isRestartingDueToDefect = false
+    const retired = Latch.makeUnsafe()
+    const isActive = () => !retired.isOpen()
 
-    // the server is stored in a ref, so if there is a defect, we can
-    // swap the server without losing the active requests
+    // Replay previously dispatched requests before admitting new work.
+    const replay = Effect.fnUntraced(function*(write: EntityState["write"]) {
+      if (!isActive()) return
+      for (const request of activeRequests.values()) {
+        if (!request.delivered) continue
+        request.sentExit = false
+        yield* write(0, requestEnvelope(request), requestWriteOptions(request))
+      }
+    })
+
     const writeRef = yield* ResourceRef.from(
       scope,
       Effect.fnUntraced(function*(handlerScope) {
@@ -245,11 +255,8 @@ export const make = Effect.fnUntraced(function*<
                 request.sentReply = true
                 request.sentExit = true
 
-                if (
-                  isShuttingDown &&
-                  Exit.hasInterrupts(response.exit) &&
-                  defectRequestIds.has(Snowflake.Snowflake(response.requestId))
-                ) {
+                // Rebuild interrupts are not replies; replacement handlers replay the request.
+                if (isShuttingDown && Exit.hasInterrupts(response.exit) && isActive()) {
                   return Effect.void
                 }
 
@@ -265,19 +272,7 @@ export const make = Effect.fnUntraced(function*<
                 ) {
                   if (!isShuttingDown) {
                     request.sentExit = false
-                    return server.write(
-                      0,
-                      {
-                        ...request.message.envelope,
-                        id: request.message.envelope.requestId as any,
-                        tag: request.message.envelope.tag as any,
-                        payload: new Request({
-                          ...request.message.envelope,
-                          lastSentChunk: request.lastSentChunk
-                        } as any) as any
-                      },
-                      requestWriteOptions(request)
-                    ).pipe(
+                    return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
                       Effect.forkIn(handlerScope)
                     )
                   }
@@ -335,7 +330,10 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                return Effect.forkIn(onDefect(Cause.die(response.defect)), managerScope)
+                if (!isActive()) return endLatch.open
+                const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
+                if (!rebuild) return Effect.void
+                return Effect.forkIn(restart(Cause.die(response.defect), rebuild), managerScope)
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -354,56 +352,25 @@ export const make = Effect.fnUntraced(function*<
           })
         )
 
-        if (defectRequestIds.size > 0) {
-          for (const id of defectRequestIds) {
-            const request = activeRequests.get(id)
-            if (!request) continue
-            const { lastSentChunk, message } = request
-            request.sentExit = false
-            yield* server.write(
-              0,
-              {
-                ...message.envelope,
-                id: message.envelope.requestId as any,
-                tag: message.envelope.tag as any,
-                payload: new Request({
-                  ...message.envelope,
-                  lastSentChunk
-                } as any) as any
-              },
-              requestWriteOptions(request)
-            )
-          }
-          defectRequestIds.clear()
-        }
-
         return server.write
       }),
       address
     )
 
-    function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
-      if (!activeServers.has(address.entityId)) {
-        return endLatch.open
-      }
-      if (isRestartingDueToDefect) {
-        return Effect.void
-      }
-      defectRequestIds = new Set(activeRequests.keys())
-      isRestartingDueToDefect = true
-      const effect = writeRef.rebuildUnsafe()
+    function restart(cause: Cause.Cause<unknown>, rebuild: Effect.Effect<void>): Effect.Effect<void> {
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver(void 0))),
-        Effect.flatMap(() => activeServers.has(address.entityId) ? effect : endLatch.open),
-        Effect.ensuring(Effect.sync(() => {
-          isRestartingDueToDefect = false
-        })),
+        Effect.flatMap(() => isActive() ? rebuild : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
           runner: options.runnerAddress
         }),
-        Effect.catchCause(onDefect)
+        Effect.catchCause((cause) => {
+          if (Cause.hasInterruptsOnly(cause)) return Effect.void
+          const retry = isActive() ? writeRef.rebuildUnsafe({ prepare: replay }) : undefined
+          return retry ? restart(cause, retry) : Effect.void
+        })
       )
     }
 
@@ -411,10 +378,27 @@ export const make = Effect.fnUntraced(function*<
       scope,
       address,
       write(clientId, message, writeOptions) {
-        if (writeRef.state.current._tag !== "Acquired") {
-          return Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
-        }
-        return writeRef.state.current.value(clientId, message, writeOptions)
+        return Effect.suspend(() => {
+          if (message._tag !== "Request") {
+            // Interrupts, acks and EOF reach the handlers even during shutdown.
+            const write = writeRef.getUnsafe()
+            return write
+              ? write(clientId, message, writeOptions)
+              : Effect.flatMap(writeRef.await, (write) => write(clientId, message, writeOptions))
+          }
+          if (!isActive()) return Effect.interrupt
+          const write = writeRef.getUnsafe()
+          if (write === undefined) {
+            return Effect.flatMap(
+              Effect.raceFirst(writeRef.await, retired.await),
+              () => state.write(clientId, message, writeOptions)
+            )
+          }
+          const request = activeRequests.get(Snowflake.Snowflake(message.id))
+          if (!request) return Effect.void
+          request.delivered = true
+          return write(clientId, message, writeOptions)
+        })
       },
       activeRequests,
       lastActiveCheck: clock.currentTimeMillisUnsafe(),
@@ -430,6 +414,7 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.suspend(() => {
         activeServers.delete(address.entityId)
+        retired.openUnsafe()
         acquireEntity(address)
         return Effect.raceFirst(
           state.write(0, { _tag: "Eof" }).pipe(
@@ -441,6 +426,9 @@ export const make = Effect.fnUntraced(function*<
         )
       })
     )
+    if (!options.sharding.hasShardId(address.shardId)) {
+      return yield* new EntityNotAssignedToRunner({ address })
+    }
     // Do not make shard interruption wait for an entity that is still building.
     serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
@@ -544,6 +532,7 @@ export const make = Effect.fnUntraced(function*<
                 rpc,
                 message,
                 sentReply: false,
+                delivered: false,
                 sentExit: false,
                 lastSentChunk: Option.filter(
                   message.lastSentReply,
@@ -565,21 +554,7 @@ export const make = Effect.fnUntraced(function*<
                     }
                   }))
               }
-              return server.write(
-                0,
-                {
-                  ...message.envelope,
-                  id: message.envelope.requestId as any,
-                  payload: new Request({
-                    ...message.envelope,
-                    lastSentChunk: Option.filter(
-                      message.lastSentReply,
-                      (reply): reply is Reply.Chunk<R> => reply._tag === "Chunk"
-                    )
-                  })
-                },
-                requestWriteOptions(entry)
-              )
+              return server.write(0, requestEnvelope(entry), requestWriteOptions(entry))
             }
             case "IncomingEnvelope": {
               const entry = server.activeRequests.get(message.envelope.requestId)
@@ -794,6 +769,19 @@ const makeMessageDecode = <Rpcs extends Rpc.Any>(entityRpcs: Map<string, Rpcs>) 
     >
   }
 }
+
+const requestEnvelope = (entry: {
+  readonly message: Message.IncomingRequestLocal<any>
+  readonly lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
+}): Parameters<EntityState["write"]>[1] => ({
+  ...entry.message.envelope,
+  id: entry.message.envelope.requestId as any,
+  tag: entry.message.envelope.tag as any,
+  payload: new Request({
+    ...entry.message.envelope,
+    lastSentChunk: entry.lastSentChunk
+  } as any) as any
+})
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?
