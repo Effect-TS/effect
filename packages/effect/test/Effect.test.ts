@@ -3825,6 +3825,19 @@ describe("Effect", () => {
   })
 
   describe("catchCause", () => {
+    it("repeated throwing handlers do not overflow the stack and run finalizers", () => {
+      let program: Effect.Effect<unknown> = Effect.die("initial")
+      for (let i = 0; i < 20_000; i++) {
+        program = Effect.catchCause(program, () => {
+          throw "handler defect"
+        })
+      }
+      let finalized = 0
+      const exit = Effect.runSyncExit(Effect.ensuring(program, Effect.sync(() => finalized++)))
+      assert.deepStrictEqual(exit, Exit.die("handler defect"))
+      assert.strictEqual(finalized, 1)
+    })
+
     it.effect("first argument as success", () =>
       Effect.gen(function*() {
         const result = yield* Effect.catchCause(Effect.succeed(1), () => Effect.fail("e2" as const))
