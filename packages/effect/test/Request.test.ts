@@ -742,6 +742,30 @@ describe("Request", { concurrent: false }, () => {
     })
   )
 
+  it.effect("synchronous resolver delays include the triggering request and keep resolvers isolated", () =>
+    Effect.gen(function*() {
+      const seenA: Array<Array<number>> = []
+      const seenB: Array<Array<number>> = []
+      const a = Resolver.fromFunctionBatched<GetNameById>((entries) => {
+        seenA.push(entries.map((entry) => entry.request.id))
+        return entries.map((entry) => String(entry.request.id))
+      }).pipe(Resolver.setDelayEffect(Effect.void))
+      const b = Resolver.fromFunctionBatched<GetNameById>((entries) => {
+        seenB.push(entries.map((entry) => entry.request.id))
+        return entries.map((entry) => String(entry.request.id))
+      })
+
+      const exitA = yield* Effect.exit(Effect.request(new GetNameById({ id: 1 }), a))
+      const exitB = yield* Effect.exit(Effect.request(new GetNameById({ id: 2 }), b))
+
+      assert.deepStrictEqual({ exitA, exitB, seenA, seenB }, {
+        exitA: Exit.succeed("1"),
+        exitB: Exit.succeed("2"),
+        seenA: [[1]],
+        seenB: [[2]]
+      })
+    }))
+
   it.effect(
     "batch fibers use request services for delay effects",
     Effect.fnUntraced(function*() {
