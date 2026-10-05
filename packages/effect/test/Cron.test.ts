@@ -769,6 +769,15 @@ describe("Cron", () => {
     )
   })
 
+  it("next skips the repeated interval when starting in a three-hour fold", () => {
+    const cron = Cron.parseUnsafe("* * * * * *", "Antarctica/Casey")
+    // Casey rolls back from +11:00 to +08:00, repeating 00:00 through 02:59:59.
+    deepStrictEqual(
+      next(cron, new Date("2023-03-09T00:00:00+08:00")),
+      new Date("2023-03-09T03:00:00+08:00")
+    )
+  })
+
   it("handles utc timezone", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const make = (date: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(date))
