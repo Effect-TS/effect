@@ -866,6 +866,26 @@ describe("PubSub", () => {
         assert.strictEqual(yield* PubSub.take(slow), 0)
       }))
 
+    it.effect("rejects a backpressured publish that yields before registering its surplus", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.bounded<number>(1)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        // Yield after the initial lifecycle check, before surplus registration.
+        const publisher = yield* Effect.forkChild(
+          PubSub.publish(pubsub, 2).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 3)),
+          { startImmediately: true }
+        )
+
+        PubSub.endUnsafe(pubsub, 0)
+        yield* Effect.yieldNow
+
+        assert.strictEqual(yield* PubSub.take(subscription), 1)
+        assert.strictEqual(yield* PubSub.take(subscription), 0)
+        assert.isFalse(yield* Fiber.join(publisher))
+        assert.strictEqual(yield* PubSub.take(subscription), 0)
+      }))
+
     it.effect("shutdown still interrupts subscribers", () =>
       Effect.gen(function*() {
         const pubsub = yield* PubSub.unbounded<number>()
