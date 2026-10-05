@@ -47,6 +47,20 @@ describe("TxHashMap", () => {
         assert.deepStrictEqual(c, Option.some(3))
       })))
 
+    it.effect("fromIterable creates independent maps on each execution", () =>
+      Effect.gen(function*() {
+        const make = TxHashMap.fromIterable((function*() {
+          yield ["a", 1] as const
+        })())
+        const first = yield* Effect.tx(make)
+        yield* Effect.tx(TxHashMap.clear(first))
+        const second = yield* Effect.tx(make)
+
+        assert.strictEqual(yield* Effect.tx(TxHashMap.size(second)), 1)
+        assert.deepStrictEqual(yield* Effect.tx(TxHashMap.get(second, "a")), Option.some(1))
+        assert.strictEqual(yield* Effect.tx(TxHashMap.size(first)), 0)
+      }))
+
     it.effect("fromIterable", () =>
       Effect.tx(Effect.gen(function*() {
         const entries = [["a", 1], ["b", 2], ["c", 3]] as const

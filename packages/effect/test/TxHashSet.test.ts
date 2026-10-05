@@ -81,6 +81,20 @@ describe("TxHashSet", () => {
         assert.strictEqual(yield* TxHashSet.has(txSet, "z"), true)
       })))
 
+    it.effect("fromIterable creates independent sets on each execution", () =>
+      Effect.gen(function*() {
+        const make = TxHashSet.fromIterable((function*() {
+          yield "a"
+        })())
+        const first = yield* Effect.tx(make)
+        yield* Effect.tx(TxHashSet.clear(first))
+        const second = yield* Effect.tx(make)
+
+        assert.strictEqual(yield* Effect.tx(TxHashSet.size(second)), 1)
+        assert.strictEqual(yield* Effect.tx(TxHashSet.has(second, "a")), true)
+        assert.strictEqual(yield* Effect.tx(TxHashSet.size(first)), 0)
+      }))
+
     it.effect("fromHashSet creates TxHashSet from HashSet", () =>
       Effect.tx(Effect.gen(function*() {
         const hashSet = HashSet.make("foo", "bar", "baz")
