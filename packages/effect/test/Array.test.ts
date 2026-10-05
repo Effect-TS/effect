@@ -1593,6 +1593,17 @@ describe("Array", () => {
     deepStrictEqual(reducer.initialValue, [])
   })
 
+  it("makeReducerConcat does not share mutable empty results between reducers", () => {
+    const xs = Arr.makeReducerConcat<number>().combineAll([])
+    try {
+      xs.push(99)
+      deepStrictEqual(Arr.makeReducerConcat<string>().combineAll([["ok"]]), ["ok"])
+    } finally {
+      // Restore the mutated result so a failing regression does not affect other tests.
+      xs.length = 0
+    }
+  })
+
   it("allocate", () => {
     deepStrictEqual(Arr.allocate(0).length, 0)
     deepStrictEqual(Arr.allocate(Number.NaN).length, 0)
