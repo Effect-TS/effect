@@ -22,6 +22,36 @@ function standardConvertToJSONSchemaOutput(
 }
 
 describe("toStandardJSONSchemaV1", () => {
+  it("describes subclass fields when the parent already has a Standard JSON Schema adapter", () => {
+    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
+    Schema.toStandardJSONSchemaV1(Parent)
+    class Child extends Parent.extend<Child>("Child")({ b: Schema.FiniteFromString }) {}
+    const child = Schema.toStandardJSONSchemaV1(Child)
+
+    deepStrictEqual(standardConvertToJSONSchemaInput(child), {
+      $ref: "#/$defs/Child",
+      $defs: {
+        Child: {
+          type: "object",
+          properties: { a: { type: "string" }, b: { type: "string" } },
+          required: ["a", "b"],
+          additionalProperties: true
+        }
+      }
+    })
+    deepStrictEqual(standardConvertToJSONSchemaOutput(child), {
+      $ref: "#/$defs/Child",
+      $defs: {
+        Child: {
+          type: "object",
+          properties: { a: { type: "string" }, b: { type: "number" } },
+          required: ["a", "b"],
+          additionalProperties: true
+        }
+      }
+    })
+  })
+
   it("should return a schema with Standard JSON Schema metadata", () => {
     const schema = Schema.FiniteFromString
     const standardSchema = Schema.toStandardJSONSchemaV1(schema)
