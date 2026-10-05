@@ -148,6 +148,12 @@ export const makeUnsafe = <K = unknown>(options: {
   const releaseUnsafe = (permits: number): number => {
     if (!(permits > 0)) return totalPermits
     pendingPermits += permits
+    // Free permits must be visible before a reentrant release returns.
+    if (waitingPermits === 0) {
+      totalPermits = Math.min(maxPermits, totalPermits + pendingPermits)
+      pendingPermits = 0
+      return totalPermits
+    }
     // Synchronous waiter finalizers can release again. Let the active loop
     // allocate those permits rather than recursively resuming another fiber.
     if (releasing) return totalPermits
