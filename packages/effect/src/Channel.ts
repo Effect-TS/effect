@@ -6531,9 +6531,18 @@ export const merge: {
           )
         ),
         Effect.onError((cause) =>
-          Effect.andThen(
-            Scope.close(scope, Pull.doneExitFromCause(cause)),
-            onExit(side, cause)
+          Effect.flatMap(
+            Effect.exit(Scope.close(scope, Pull.doneExitFromCause(cause))),
+            (exit) =>
+              onExit(
+                side,
+                Exit.isFailure(exit)
+                  ? Cause.combine(
+                    Cause.fromReasons(cause.reasons.filter((reason) => !Pull.isDoneFailure(reason))),
+                    exit.cause
+                  )
+                  : cause
+              )
           )
         ),
         Effect.forkIn(forkedScope)
