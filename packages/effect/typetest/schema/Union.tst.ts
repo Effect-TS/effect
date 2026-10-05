@@ -121,6 +121,7 @@ describe("Union", () => {
 
         const schema = original.pipe(Schema.toTaggedUnion("_tag"))
 
+        expect(schema.tag).type.toBe<"_tag">()
         expect(schema.discriminants).type.toBe<readonly ["A", "C", "B"]>()
 
         expect(Schema.revealCodec(schema)).type.toBe<
@@ -152,6 +153,8 @@ describe("Union", () => {
           Schema.Struct({ kind: Schema.tag("b"), b: Schema.String }),
           Schema.Struct({ kind: Schema.tag("c"), c: Schema.Boolean })
         ]).pipe(Schema.toTaggedUnion("kind"))
+
+        expect(schema.tag).type.toBe<"kind">()
 
         const value = hole<Schema.Schema.Type<typeof schema>>()
 
@@ -264,6 +267,8 @@ describe("Union", () => {
           C: { c: Schema.Boolean },
           B: { b: Schema.FiniteFromString }
         }).annotate({})
+
+        expect(schema.tag).type.toBe<"_tag">()
 
         expect(Schema.revealCodec(schema)).type.toBe<
           Schema.Codec<

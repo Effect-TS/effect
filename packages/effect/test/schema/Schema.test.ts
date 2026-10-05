@@ -9533,9 +9533,21 @@ pointed message
           Schema.Struct({ _tag: Schema.tag("B"), type: Schema.tag("TypeB"), b: Schema.FiniteFromString })
         ]).pipe(Schema.toTaggedUnion("type"))
 
+        strictEqual(schema.tag, "type")
+
         // cases
         deepStrictEqual(schema.cases.TypeA, schema.members[0])
         deepStrictEqual(schema.cases.TypeB, schema.members[1])
+      })
+
+      it("should expose a symbol tag", () => {
+        const tag = Symbol.for("tag")
+        const schema = Schema.Union([
+          Schema.Struct({ [tag]: Schema.tag("A") }),
+          Schema.Struct({ [tag]: Schema.tag("B") })
+        ]).pipe(Schema.toTaggedUnion(tag))
+
+        strictEqual(schema.tag, tag)
       })
 
       it("should throw on duplicate discriminants", () => {
@@ -9601,6 +9613,8 @@ pointed message
           C: { c: Schema.Boolean },
           B: { b: Schema.FiniteFromString }
         }).annotate({})
+
+        strictEqual(schema.tag, "_tag")
 
         const { A, B, C } = schema.cases
 
