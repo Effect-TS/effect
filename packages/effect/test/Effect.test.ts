@@ -4002,6 +4002,26 @@ describe("Effect", () => {
     })
 
     describe("retry", () => {
+      it.effect("should fail and roll back when a retry finalizer dies", () =>
+        Effect.gen(function*() {
+          const gate = TxRef.makeUnsafe(0)
+          const ref = TxRef.makeUnsafe(0)
+          const transaction = yield* Effect.tx(Effect.gen(function*() {
+            if ((yield* TxRef.get(gate)) !== 0) return
+            yield* TxRef.set(ref, 1)
+            return yield* Effect.txRetry.pipe(Effect.onExit(() => Effect.die("release-defect")))
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+
+          // Cleanup failure must terminate the transaction without waiting for a ref change.
+          const initialExit = transaction.pollUnsafe()
+          // Wake a buggy implementation so the test can fail without leaving a suspended child.
+          yield* Effect.tx(TxRef.set(gate, 1))
+          const exit = yield* Fiber.await(transaction)
+          assert.isDefined(initialExit, "a finalizer defect must not suspend the transaction for retry")
+          assertExitDefect(exit, "release-defect")
+          assert.strictEqual(yield* Effect.tx(TxRef.get(ref)), 0)
+        }))
+
       it.effect("should rerun when a read ref changed while the transaction was suspended", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)
