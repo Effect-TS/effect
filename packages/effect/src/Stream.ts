@@ -2214,7 +2214,8 @@ export const tapSink: {
             streamDone = true
             sinkLatch.closeUnsafe()
             upstreamLatch.openUnsafe()
-            return Effect.flatMap(sinkLatch.await, () => Cause.done())
+            return Effect.flatMap(sinkLatch.await, (): Pull.Pull<never, E2> =>
+              causeSink ? Effect.failCause(causeSink) : Cause.done())
           })
         )
 
