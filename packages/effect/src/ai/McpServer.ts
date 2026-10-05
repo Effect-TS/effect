@@ -1048,7 +1048,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
               if (httpRequest !== undefined && session !== undefined) {
                 appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
                   Effect.succeed(
-                    // The session was terminated while this request was in flight.
                     runtime.resolveRequest(clientId, headers) === undefined
                       ? HttpServerResponse.empty({ status: 404 })
                       : HttpServerResponse.setHeader(
@@ -1218,7 +1217,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     }
   })
   if (isHttp) {
-    // Replies to a terminated session's server requests would be rejected, so stop its in-flight requests.
+    // Stop requests that can no longer receive client replies after termination.
     yield* runtime.onSessionTerminated((binding) =>
       Effect.forEach(Array.from(activeRequests), ([clientId, requests]) =>
         Effect.forEach(
@@ -1616,7 +1615,6 @@ const layerMcpProtocolHttp = (options: {
       Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
     )
     const router = yield* HttpRouter.HttpRouter
-    // Revisions from 2026-07-28 have no sessions, so DELETE stays unsupported without a stateful protocol.
     const allowSessionTermination = options.allowSessionTermination === true &&
       runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
     const methodNotAllowedResponse = HttpServerResponse.empty({

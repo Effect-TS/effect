@@ -359,7 +359,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     )
     const fiber = trackFiber(
       runFork(
-        // Register before the handler runs, so an interrupt sent while it runs synchronously can find it.
+        // Register before the handler runs to catch synchronous cancellation.
         Effect.withFiber((fiber) => {
           client.fibers.set(request.id, fiber)
           return effect

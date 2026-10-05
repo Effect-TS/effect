@@ -47,7 +47,6 @@ export interface StatefulRuntime {
   readonly registerConnection: (clientId: number, registration: Registration) => Binding
   readonly resolve: (clientId: number, headers: Headers.Headers) => Binding | undefined
   readonly resolveSessionId: (sessionId: string) => Binding | undefined
-  /** Ends an HTTP session; returns whether it existed. */
   readonly terminateSession: (sessionId: string) => boolean
   readonly setLogLevel: (
     level: PublicMcpSchema.LoggingLevel,
