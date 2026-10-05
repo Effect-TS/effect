@@ -172,8 +172,8 @@ const addEntry = <A extends Request.Any>(
   if (isNewBatch) {
     // Register the first entry before the delay can complete the batch.
     effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.cache.scheduler })
-    // Synchronous completion may already have recycled the batch.
-    if (completed) return entry
+    // Synchronous completion may recycle the batch; a successful delay may already start resolution.
+    if (completed || batchMap.get(key) !== batch) return entry
   }
   if (batch.resolver.collectWhile(batch.entries)) return entry
 
