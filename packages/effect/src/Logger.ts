@@ -720,7 +720,7 @@ export const batched = dual<
     readonly flush: (messages: Array<NoInfer<Output>>) => Effect.Effect<void>
   }
 ): Effect.Effect<Logger<Message, void>, never, Scope.Scope> =>
-  effect.flatMap(effect.scope, (scope) => {
+  effect.suspend(() => {
     let buffer: Array<Output> = []
     const flush = effect.uninterruptible(effect.suspend(() => {
       if (buffer.length === 0) {
@@ -740,9 +740,10 @@ export const batched = dual<
       ).pipe(
         effect.forkDetach,
         effect.flatMap((fiber) =>
-          effect.scopeAddFinalizerExit(scope, () =>
+          effect.addFinalizer(() =>
             // Wait for any in-flight flush before draining the remaining buffer.
-            effect.andThen(effect.fiberInterrupt(fiber), flush))
+            effect.andThen(effect.fiberInterrupt(fiber), flush)
+          )
         ),
         effect.as(
           effect.loggerMake((options) => {
