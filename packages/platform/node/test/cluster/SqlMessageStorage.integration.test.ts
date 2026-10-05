@@ -448,6 +448,64 @@ describe("SqlMessageStorage", () => {
           expect(retry.originalId).toEqual(distinct.envelope.requestId)
         }))
 
+      it.effect("does not deduplicate plain primary keys against unrelated legacy rows", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* SqlMessageStorage.makeEncoded().pipe(Effect.provide(NodeCrypto.layer))
+          const snowflake = yield* Snowflake.Generator
+          const address = (entityType: string, entityId: string) =>
+            EntityAddress.make({
+              shardId: ShardId.make("default", 1),
+              entityType: EntityType.make(entityType),
+              entityId: EntityId.make(entityId)
+            })
+          const legacyAddress = address("Orders/Europe", "42")
+          const plainAddress = address("Orders", "Europe")
+          const legacy: Envelope.PartialRequestEncoded = {
+            _tag: "Request",
+            requestId: String(snowflake.nextUnsafe()),
+            address: legacyAddress,
+            tag: "submit",
+            payload: {},
+            headers: {}
+          }
+          const plain: Envelope.PartialRequestEncoded = {
+            ...legacy,
+            requestId: String(snowflake.nextUnsafe()),
+            address: plainAddress,
+            tag: "42"
+          }
+          const legacyKey = Envelope.primaryKeyByAddress({
+            address: legacyAddress,
+            tag: legacy.tag,
+            id: "once"
+          })
+          const plainKey = Envelope.primaryKeyByAddress({
+            address: plainAddress,
+            tag: plain.tag,
+            id: "submit/once"
+          })
+          const save = (envelope: Envelope.PartialRequestEncoded, primaryKey: string) =>
+            storage.saveEnvelope({ envelope, primaryKey, deliverAt: null })
+          expect((yield* save(legacy, legacyKey))._tag).toEqual("Success")
+          // Simulate the coherent row written by the old slash-joining encoder.
+          yield* sql`UPDATE cluster_messages SET message_id = ${"Orders/Europe/42/submit/once"}
+            WHERE id = ${legacy.requestId}`
+
+          expect(yield* storage.requestIdForPrimaryKey(plainKey)).toEqual(Option.none())
+          expect((yield* save(plain, plainKey))._tag).toEqual("Success")
+          for (const [envelope, key] of [[legacy, legacyKey], [plain, plainKey]] as const) {
+            expect(yield* storage.requestIdForPrimaryKey(key)).toEqual(
+              Option.some(Snowflake.Snowflake(envelope.requestId))
+            )
+            const retry = yield* save({ ...envelope, requestId: String(snowflake.nextUnsafe()) }, key)
+            assert(retry._tag === "Duplicate")
+            expect(retry.originalId).toEqual(Snowflake.Snowflake(envelope.requestId))
+          }
+        }))
+
       if (label === "sqlite") {
         // sqlite's TEXT message_id column stored over-long plaintext keys
         // before hashing, so the legacy fallback must also cover keys longer
