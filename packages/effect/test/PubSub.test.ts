@@ -927,31 +927,41 @@ describe("PubSub", () => {
         assert.isFalse(yield* Fiber.join(publisher))
       }))
 
-    it.effect("rejects a suspended publish for a custom strategy", () =>
-      Effect.gen(function*() {
-        const base = new PubSub.BackPressureStrategy<number>()
-        const pubsub = yield* PubSub.make<number>({
-          atomicPubSub: () => PubSub.makeAtomicBounded(1),
-          strategy: () => ({
-            get shutdown() {
-              return base.shutdown
-            },
-            handleSurplus: (...args) => base.handleSurplus(...args),
-            onPubSubEmptySpaceUnsafe: (...args) => base.onPubSubEmptySpaceUnsafe(...args),
-            completePollersUnsafe: (...args) => base.completePollersUnsafe(...args),
-            completeSubscribersUnsafe: (...args) => base.completeSubscribersUnsafe(...args)
+    it.effect.each(["publish", "publishAll"] as const)(
+      "rejects a suspended %s for a custom strategy",
+      (method) =>
+        Effect.gen(function*() {
+          const base = new PubSub.BackPressureStrategy<number>()
+          const pubsub = yield* PubSub.make<number>({
+            atomicPubSub: () => PubSub.makeAtomicBounded(1),
+            strategy: () => ({
+              get shutdown() {
+                return base.shutdown
+              },
+              handleSurplus: (...args) => base.handleSurplus(...args),
+              onPubSubEmptySpaceUnsafe: (...args) => base.onPubSubEmptySpaceUnsafe(...args),
+              completePollersUnsafe: (...args) => base.completePollersUnsafe(...args),
+              completeSubscribersUnsafe: (...args) => base.completeSubscribersUnsafe(...args)
+            })
           })
+          const fast = yield* PubSub.subscribe(pubsub)
+          const slow = yield* PubSub.subscribe(pubsub)
+          yield* PubSub.publish(pubsub, 1)
+          const publish = method === "publish" ? PubSub.publish(pubsub, 2) : PubSub.publishAll(pubsub, [2, 3])
+          const publisher = yield* Effect.forkChild(publish, { startImmediately: true })
+          yield* Effect.yieldNow
+          assert.isUndefined(publisher.pollUnsafe())
+          assert.strictEqual(yield* PubSub.take(fast), 1)
+
+          yield* PubSub.end(pubsub, 0)
+
+          assert.strictEqual(yield* PubSub.take(fast), 0)
+          assert.strictEqual(yield* PubSub.take(slow), 1)
+          assert.isFalse(yield* Fiber.join(publisher))
+          assert.strictEqual(yield* PubSub.take(fast), 0)
+          assert.strictEqual(yield* PubSub.take(slow), 0)
         })
-        const subscription = yield* PubSub.subscribe(pubsub)
-        yield* PubSub.publish(pubsub, 1)
-        const publisher = yield* Effect.forkChild(PubSub.publish(pubsub, 2), { startImmediately: true })
-
-        yield* PubSub.end(pubsub, 0)
-
-        assert.isFalse(yield* Fiber.join(publisher))
-        assert.strictEqual(yield* PubSub.take(subscription), 1)
-        assert.strictEqual(yield* PubSub.take(subscription), 0)
-      }))
+    )
 
     it.effect("shutdown still interrupts subscribers", () =>
       Effect.gen(function*() {
