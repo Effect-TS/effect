@@ -8719,14 +8719,14 @@ export const runIntoPubSub: {
     } | undefined
   ): <OutErr, OutDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>
-  ) => Effect.Effect<void, never, Env>
+  ) => Effect.Effect<void, OutErr, Env>
   <OutElem, OutErr, OutDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>,
     pubsub: PubSub.PubSub<OutElem>,
     options?: {
       readonly shutdownOnEnd?: boolean | undefined
     } | undefined
-  ): Effect.Effect<void, never, Env>
+  ): Effect.Effect<void, OutErr, Env>
 } = dual(
   (args) => isChannel(args[0]),
   <OutElem, OutErr, OutDone, Env>(
