@@ -1147,6 +1147,7 @@ export const withCache: {
     const cache = MutableHashMap.empty<A, {
       readonly entry: Request.Entry<A>
       exit: Request.Result<A> | undefined
+      pending: Array<Request.Entry<A>>
     }>()
     return makeWith({
       ...self,
@@ -1165,7 +1166,11 @@ export const withCache: {
       preCheck(entry) {
         const ocached = MutableHashMap.get(cache, entry.request)
         if (ocached._tag === "None") {
-          const cached = { entry, exit: undefined as Request.Result<A> | undefined }
+          const cached = {
+            entry,
+            exit: undefined as Request.Result<A> | undefined,
+            pending: [] as Array<Request.Entry<A>>
+          }
           MutableHashMap.set(cache, entry.request, cached)
           const prevComplete = entry.completeUnsafe
           entry.completeUnsafe = function(exit) {
@@ -1179,7 +1184,12 @@ export const withCache: {
             } else {
               cached.exit = exit as any
             }
+            const pending = cached.pending
+            cached.pending = []
             prevComplete(exit)
+            for (const entry of pending) {
+              entry.completeUnsafe(exit)
+            }
           }
           return true
         }
@@ -1192,11 +1202,7 @@ export const withCache: {
           entry.completeUnsafe(cached.exit as any)
         } else {
           cached.entry.uninterruptible = true
-          const prevComplete = cached.entry.completeUnsafe
-          cached.entry.completeUnsafe = function(exit) {
-            prevComplete(exit)
-            entry.completeUnsafe(exit)
-          }
+          cached.pending.push(entry)
         }
         return false
       }
