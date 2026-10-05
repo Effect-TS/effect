@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, TxSemaphore } from "effect"
+import { Deferred, Effect, Exit, Fiber, TxSemaphore } from "effect"
 
 describe("TxSemaphore", () => {
   describe("constructors", () => {
@@ -232,6 +232,80 @@ describe("TxSemaphore", () => {
         assert.isFalse(TxSemaphore.isTxSemaphore(undefined))
         assert.isFalse(TxSemaphore.isTxSemaphore([5]))
       })))
+  })
+
+  describe("interruptibility contracts", () => {
+    const helpers = [
+      [
+        "withPermit",
+        1,
+        (semaphore: TxSemaphore.TxSemaphore, use: Effect.Effect<void>) => TxSemaphore.withPermit(semaphore, use)
+      ],
+      [
+        "withPermits",
+        3,
+        (semaphore: TxSemaphore.TxSemaphore, use: Effect.Effect<void>) => TxSemaphore.withPermits(semaphore, 3, use)
+      ],
+      [
+        "withPermitScoped",
+        1,
+        (semaphore: TxSemaphore.TxSemaphore, use: Effect.Effect<void>) =>
+          Effect.scoped(Effect.andThen(TxSemaphore.withPermitScoped(semaphore), use))
+      ]
+    ] as const
+
+    for (const [name, permits, run] of helpers) {
+      it.effect(name + " releases its acquisition when use is interrupted", () =>
+        Effect.gen(function*() {
+          const semaphore = yield* TxSemaphore.make(5)
+          // Keep one permit held to detect releasing more than was acquired.
+          yield* TxSemaphore.acquire(semaphore)
+          const entered = yield* Deferred.make<void>()
+          const finish = yield* Deferred.make<void>()
+          const use = Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(finish))
+          const fiber = yield* Effect.forkChild(run(semaphore, use), { startImmediately: true })
+          yield* Deferred.await(entered)
+          const availableDuringUse = yield* TxSemaphore.available(semaphore)
+          const interruptor = yield* Effect.forkChild(Fiber.interrupt(fiber), { startImmediately: true })
+          yield* Effect.yieldNow
+          yield* Effect.yieldNow
+          const interrupted = interruptor.pollUnsafe() !== undefined
+          // Unblock use before asserting if a regression left it masked.
+          yield* Deferred.succeed(finish, undefined)
+          yield* Fiber.join(interruptor)
+
+          assert.isTrue(interrupted, "use must remain interruptible")
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
+          assert.strictEqual(availableDuringUse, 4 - permits)
+          assert.strictEqual(yield* TxSemaphore.available(semaphore), 4)
+        }))
+
+      it.effect(name + " inherits an uninterruptible caller while acquiring", () =>
+        Effect.gen(function*() {
+          const semaphore = yield* TxSemaphore.make(5)
+          yield* TxSemaphore.acquireN(semaphore, 5)
+          let used = false
+          const use = Effect.sync(() => {
+            used = true
+          })
+          const fiber = yield* Effect.forkChild(Effect.uninterruptible(run(semaphore, use)), {
+            startImmediately: true
+          })
+          const interruptor = yield* Effect.forkChild(Fiber.interrupt(fiber), { startImmediately: true })
+          yield* Effect.yieldNow
+          yield* Effect.yieldNow
+          const interrupted = interruptor.pollUnsafe() !== undefined
+          const usedWhileHeld = used
+          // Release before asserting so an uninterruptible waiter can finish.
+          yield* TxSemaphore.releaseN(semaphore, 5)
+          yield* Fiber.join(interruptor)
+
+          assert.isFalse(interrupted, "acquisition must inherit the caller's mask")
+          assert.isFalse(usedWhileHeld)
+          assert.isTrue(used, "the masked caller must acquire and run use despite pending interruption")
+          assert.strictEqual(yield* TxSemaphore.available(semaphore), 5)
+        }))
+    }
   })
 
   describe("concurrency", () => {
