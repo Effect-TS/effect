@@ -29,6 +29,7 @@ import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
 import { isSqlError, type SqlError } from "../sql/SqlError.ts"
+import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
@@ -494,6 +495,28 @@ export const makeEncoded: (options?: {
       ? Effect.succeed([])
       : getUnprocessedMessagesForDialect(shardIds, now, unprocessedFilters(options))
 
+  const resetUnprocessed = sql.onDialectOrElse({
+    // Match the claim query's lock order to avoid deadlocks during resets.
+    pg: () => (filter: Fragment) =>
+      sql`
+      WITH messages AS (
+        SELECT id FROM ${messagesTableSql}
+        WHERE processed = ${sqlFalse} AND ${filter}
+        ORDER BY rowid ASC
+        FOR UPDATE
+      )
+      UPDATE ${messagesTableSql}
+      SET last_read = NULL
+      WHERE id IN (SELECT id FROM messages)
+    `,
+    orElse: () => (filter: Fragment) =>
+      sql`
+      UPDATE ${messagesTableSql}
+      SET last_read = NULL
+      WHERE processed = ${sqlFalse} AND ${filter}
+    `
+  })
+
   const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
@@ -716,11 +739,7 @@ export const makeEncoded: (options?: {
     resetAddresses: (addresses) =>
       addresses.length === 0
         ? Effect.void
-        : sql`
-        UPDATE ${messagesTableSql}
-        SET last_read = NULL
-        WHERE processed = ${sqlFalse}
-        AND (${
+        : resetUnprocessed(sql`(${
           sql.or(
             groupAddresses(addresses).map(
               (group) =>
@@ -731,8 +750,7 @@ export const makeEncoded: (options?: {
                 ])
             )
           )
-        })
-        `.pipe(
+        })`).pipe(
           Effect.asVoid,
           PersistenceError.refail,
           withTracerDisabled
@@ -761,12 +779,7 @@ export const makeEncoded: (options?: {
       ),
 
     resetShards: (shardIds) =>
-      sql`
-        UPDATE ${messagesTableSql}
-        SET last_read = NULL
-        WHERE processed = ${sqlFalse}
-        AND shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
-      `.pipe(
+      resetUnprocessed(sql`shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})`).pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled

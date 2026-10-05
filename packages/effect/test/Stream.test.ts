@@ -1363,6 +1363,15 @@ describe("Stream", () => {
   })
 
   describe("scanning", () => {
+    it.effect("scan emits the initial state for Stream.empty", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.empty.pipe(
+          Stream.scan(() => 0, (acc, curr: number) => acc + curr),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [0])
+      }))
+
     it.effect("scan", () =>
       Effect.gen(function*() {
         const stream = Stream.make(1, 2, 3, 4, 5)
@@ -2578,19 +2587,11 @@ describe("Stream", () => {
   })
 
   describe("aggregateWithin", () => {
-    it.effect("does not grow the fiber continuation stack while upstream is idle", () =>
+    it.effect("does not step the schedule while upstream is idle", () =>
       Effect.gen(function*() {
-        const continuationCounts: Array<number> = []
+        let steps = 0
         const schedule = Schedule.spaced("10 millis").pipe(
-          Schedule.tap(() =>
-            Effect.withFiber((fiber) =>
-              Effect.sync(() => {
-                continuationCounts.push(
-                  (fiber as unknown as { readonly _stack: ReadonlyArray<unknown> })._stack.length
-                )
-              })
-            )
-          )
+          Schedule.tap(() => Effect.sync(() => steps++))
         )
         const fiber = yield* Stream.never.pipe(
           Stream.aggregateWithin(Sink.take(25), schedule),
@@ -2598,9 +2599,47 @@ describe("Stream", () => {
           Effect.forkChild({ startImmediately: true })
         )
         yield* TestClock.adjust("1 second")
-        assert.isAbove(continuationCounts.length, 1)
-        assert.strictEqual(continuationCounts.at(-1), continuationCounts[0])
+        assert.strictEqual(steps, 0)
         yield* Fiber.interrupt(fiber)
+      }))
+
+    it.effect("schedule exhaustion drains sink leftovers without pulling more upstream", () =>
+      Effect.gen(function*() {
+        let pulls = 0
+        const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(
+          Stream.concat(Stream.fromEffect(Effect.sync(() => ++pulls))),
+          Stream.aggregateWithin(
+            Sink.take(2).pipe(Sink.mapEffect((batch) => Effect.as(Effect.yieldNow, batch))),
+            Schedule.forever.pipe(Schedule.upTo({ times: 0 }))
+          ),
+          Stream.runCollect
+        )
+
+        assert.strictEqual(pulls, 0)
+        assert.deepStrictEqual(result, [[1, 2], [3, 4], [5]])
+      }))
+
+    it.effect("groupedWithin starts each window at its first element", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.unbounded<number>()
+        const batches: Array<[number, ReadonlyArray<number>]> = []
+        yield* Stream.fromQueue(queue).pipe(
+          Stream.groupedWithin(10, "100 millis"),
+          Stream.runForEach((batch) =>
+            Effect.flatMap(Clock.currentTimeMillis, (now) => Effect.sync(() => batches.push([now, batch])))
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* TestClock.adjust("1030 millis")
+        yield* Queue.offer(queue, 1)
+        yield* TestClock.adjust("50 millis")
+        yield* Queue.offer(queue, 2)
+        yield* TestClock.adjust("1000 millis")
+        yield* Queue.offer(queue, 3)
+        yield* TestClock.adjust("100 millis")
+
+        deepStrictEqual(batches, [[1130, [1, 2]], [2180, [3]]])
       }))
 
     it.effect("groupedWithin does not emit empty arrays when upstream is idle", () =>
@@ -3135,6 +3174,65 @@ describe("Stream", () => {
           Stream.runCollect
         )
         deepStrictEqual(result, [1, 2, 3, 4])
+      }))
+
+    it.effect("throttleShape - keeps the rate when sleeps end early", () =>
+      Effect.gen(function*() {
+        const clock = yield* Clock.Clock
+        const earlyClock: Clock.Clock = {
+          ...clock,
+          monotonicTimeNanosUnsafe: () => (1n << 80n) + clock.monotonicTimeNanosUnsafe(),
+          sleep: (duration) => clock.sleep(Duration.millis(Duration.toMillis(duration) - 1))
+        }
+        const fiber = yield* pipe(
+          Stream.range(1, 3),
+          Stream.rechunk(1),
+          Stream.throttle({
+            strategy: "shape",
+            cost: (arr) => arr.length,
+            units: 1,
+            duration: Duration.seconds(1)
+          }),
+          Stream.mapEffect(() => clock.currentTimeMillis),
+          Stream.runCollect,
+          Effect.provideService(Clock.Clock, earlyClock),
+          Effect.forkScoped
+        )
+        yield* TestClock.adjust(Duration.seconds(3))
+        const timestamps = yield* Fiber.join(fiber)
+        deepStrictEqual(timestamps, [0, 999, 1999], "Early wake-ups must not accumulate rate drift")
+      }))
+
+    it.effect("throttleShape - is not affected by wall clock changes", () =>
+      Effect.gen(function*() {
+        const clock = yield* Clock.Clock
+        let offset = 0
+        const shiftedClock: Clock.Clock = {
+          ...clock,
+          currentTimeMillisUnsafe: () => clock.currentTimeMillisUnsafe() + offset
+        }
+        const fiber = yield* pipe(
+          Stream.range(1, 2),
+          Stream.rechunk(1),
+          Stream.throttle({
+            strategy: "shape",
+            cost: (arr) => arr.length,
+            units: 1,
+            duration: Duration.seconds(1)
+          }),
+          Stream.tap((n) =>
+            Effect.sync(() => {
+              if (n === 1) offset = -5000
+            })
+          ),
+          Stream.mapEffect(() => clock.currentTimeMillis),
+          Stream.runCollect,
+          Effect.provideService(Clock.Clock, shiftedClock),
+          Effect.forkScoped
+        )
+        yield* TestClock.adjust(Duration.seconds(6))
+        const timestamps = yield* Fiber.join(fiber)
+        deepStrictEqual(timestamps, [0, 1000], "Wall clock changes must not affect the refill rate")
       }))
   })
 

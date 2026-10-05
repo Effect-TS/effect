@@ -4407,25 +4407,60 @@ describe("Effect", () => {
         assert.strictEqual(yield* cached, 42)
       }))
 
-    it.effect("replays the owner's interrupted exit", () =>
+    it.effect("shares a run until every caller is interrupted, then starts fresh", () =>
       Effect.gen(function*() {
+        let runs = 0
         const started = yield* Deferred.make<void>()
+        const finalizing = yield* Deferred.make<void>()
+        const finishFinalizer = yield* Deferred.make<void>()
         const cached = yield* Effect.cached(
-          Deferred.succeed(started, void 0).pipe(Effect.andThen(Effect.never))
+          Effect.suspend(() => {
+            if (++runs > 1) return Effect.succeed(runs)
+            return Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Deferred.succeed(finalizing, void 0).pipe(Effect.andThen(Deferred.await(finishFinalizer)))
+              )
+            )
+          })
         )
 
-        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
         yield* Deferred.await(started)
-        yield* Fiber.interrupt(owner)
-        const ownerExit = yield* Fiber.await(owner)
-        const replayedExit = yield* Effect.exit(cached)
+        const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(first)
+        assert.isFalse(yield* Deferred.isDone(finalizing))
 
-        assert.isTrue(Exit.hasInterrupts(ownerExit))
-        assert.deepStrictEqual(replayedExit, ownerExit)
+        // A call made while the abandoned run finalizes starts a fresh run.
+        const interruptSecond = yield* Effect.forkChild(Fiber.interrupt(second), { startImmediately: true })
+        yield* Deferred.await(finalizing)
+        const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.succeed(finishFinalizer, void 0)
+        yield* Fiber.join(interruptSecond)
+        assert.deepStrictEqual(yield* Fiber.await(fresh), Exit.succeed(2))
       }))
   })
 
   describe("cachedWithTTL", () => {
+    it.effect("skips the ttl callback on interruption and invokes it once on the next successful run", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const exits: Array<Exit.Exit<number>> = []
+        const cached = yield* Effect.cachedWithTTL(
+          Effect.suspend(() => ++runs === 1 ? Effect.interrupt : Effect.succeed(runs)),
+          (exit: Exit.Exit<number>) => {
+            exits.push(exit)
+            return "1 minute"
+          }
+        )
+
+        assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(cached)))
+        assert.deepStrictEqual(exits, [])
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.succeed(2)])
+      }))
+
     it.effect("selects ttl from each fresh exit without evaluating on cache hits", () =>
       Effect.gen(function*() {
         let count = 0
@@ -4499,6 +4534,28 @@ describe("Effect", () => {
         yield* TestClock.adjust("2 seconds")
         assert.strictEqual(yield* Fiber.join(secondFiber), 1)
         assert.strictEqual(count, 1)
+      }))
+  })
+
+  describe("cachedInvalidateWithTTL", () => {
+    it.effect("supports a piped callback that skips failures and caches successes", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const exits: Array<Exit.Exit<number, string>> = []
+        const [cached] = yield* Effect.suspend(() => ++count === 1 ? Effect.fail("boom") : Effect.succeed(count)).pipe(
+          Effect.cachedInvalidateWithTTL((exit: Exit.Exit<number, string>) => {
+            exits.push(exit)
+            return Exit.isFailure(exit) ? 0 : "1 second"
+          })
+        )
+
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("boom"))
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2)])
+        yield* TestClock.adjust("1 second")
+        assert.strictEqual(yield* cached, 3)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
       }))
   })
 

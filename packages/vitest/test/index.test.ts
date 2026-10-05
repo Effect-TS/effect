@@ -21,6 +21,14 @@ it("throwsAsync fails when the promise resolves", async () => {
   await expect(testAssert.throwsAsync(() => Promise.resolve())).rejects.toThrow()
 })
 
+it("deepStrictEqual fails with the assertion diff when no message is given", () => {
+  expect(() => testAssert.deepStrictEqual({ a: 1 }, { a: 2 })).toThrow("Expected values to be strictly deep-equal")
+})
+
+it("notDeepStrictEqual fails with the assertion message when no message is given", () => {
+  expect(() => testAssert.notDeepStrictEqual({ a: 1 }, { a: 1 })).toThrow("not to be strictly deep-equal")
+})
+
 // each
 
 it.effect.each([1, 2, 3])(

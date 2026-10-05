@@ -99,7 +99,7 @@ export const b3: FromHeaders = (headers) => {
   return Option.some(Tracer.externalSpan({
     traceId: parts[0],
     spanId: parts[1],
-    sampled: parts[2] ? parts[2] === "1" : true
+    sampled: parts[2] ? parts[2] === "1" || parts[2] === "d" : true
   }))
 }
 
@@ -109,7 +109,7 @@ export const b3: FromHeaders = (headers) => {
  * **Details**
  *
  * The decoder reads `x-b3-traceid`, `x-b3-spanid`, and optional `x-b3-sampled`
- * headers.
+ * and `x-b3-flags` headers. Debug flags override the sampling decision.
  *
  * @stability unstable
  * @category decoding
@@ -122,7 +122,8 @@ export const xb3: FromHeaders = (headers) => {
   return Option.some(Tracer.externalSpan({
     traceId: headers["x-b3-traceid"],
     spanId: headers["x-b3-spanid"],
-    sampled: headers["x-b3-sampled"] ? headers["x-b3-sampled"] === "1" : true
+    sampled: headers["x-b3-flags"] === "1" ||
+      (headers["x-b3-sampled"] ? headers["x-b3-sampled"] === "1" || headers["x-b3-sampled"] === "true" : true)
   }))
 }
 
@@ -151,7 +152,10 @@ export const w3c: FromHeaders = (headers) => {
   const [version, traceId, spanId, flags] = parts
   switch (version) {
     case "00": {
-      if (w3cTraceId.test(traceId) === false || w3cSpanId.test(spanId) === false) {
+      if (
+        w3cTraceId.test(traceId) === false || w3cSpanId.test(spanId) === false ||
+        traceId === "00000000000000000000000000000000" || spanId === "0000000000000000"
+      ) {
         return Option.none()
       }
       return Option.some(Tracer.externalSpan({

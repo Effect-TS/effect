@@ -26,7 +26,7 @@ import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
-import { causeResponseStripped } from "./HttpServerError.ts"
+import { causeResponseStripped, ClientAbort } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import * as Response from "./HttpServerResponse.ts"
@@ -158,8 +158,14 @@ export const logger: <E, R>(
           return exit
         } else if (exit._tag === "Failure") {
           const [response, cause] = causeResponseStripped(exit.cause)
+          const message = Option.isSome(cause) &&
+              !cause.value.reasons.every((reason) =>
+                reason._tag === "Interrupt" && reason.annotations.has(ClientAbort.key)
+              )
+            ? cause.value
+            : "Sent HTTP response"
           return Effect.andThen(
-            Effect.annotateLogs(Effect.log(Option.getOrElse(cause, () => "Sent HTTP Response")), {
+            Effect.annotateLogs(Effect.log(message), {
               "http.method": request.method,
               "http.url": path,
               "http.status": response.status
