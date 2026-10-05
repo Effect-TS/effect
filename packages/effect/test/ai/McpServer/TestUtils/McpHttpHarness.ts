@@ -52,12 +52,15 @@ export const makeHttpHarness = Effect.fnUntraced(function*<A, E>(
     )
 
   const post = (body: unknown, headers?: HeadersInit) => postText(JSON.stringify(body), headers)
+  const deleteSession = (headers?: HeadersInit) =>
+    Effect.promise(() => handler(new Request(MCP_ENDPOINT, { method: "DELETE", headers: headers ?? {} })))
 
   return {
     handler,
     fetch,
     post,
     postText,
+    delete: deleteSession,
     responses
   } as const
 })
