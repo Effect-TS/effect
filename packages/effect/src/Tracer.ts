@@ -7,6 +7,7 @@
  * external span support, trace propagation settings, and the default in-memory
  * span implementation.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"

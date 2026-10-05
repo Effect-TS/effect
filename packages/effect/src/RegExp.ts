@@ -8,6 +8,7 @@
  * data-driven text, check whether an unknown value is already a `RegExp`, or
  * access the native constructor without leaving the Effect namespace.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as predicate from "./Predicate.ts"

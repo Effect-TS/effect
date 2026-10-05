@@ -5,6 +5,7 @@
  * divide, round, and format decimal values such as money, quantities, and
  * measurements.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

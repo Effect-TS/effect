@@ -7,6 +7,7 @@
  * reference-based hashes, plus functions for combining and optimizing numeric
  * hash values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"

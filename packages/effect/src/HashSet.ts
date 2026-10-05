@@ -7,6 +7,7 @@
  * union, intersection, difference, subset checks, mapping, filtering, and
  * reducing helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

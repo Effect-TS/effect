@@ -7,6 +7,7 @@
  * comparison builders, and helpers for marking objects that should compare only
  * by reference.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { Equivalence } from "./Equivalence.ts"

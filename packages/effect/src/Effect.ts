@@ -8,6 +8,7 @@
  * creating effects, combining them, handling failures, managing resources, and
  * running effect programs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Arr from "./Array.ts"

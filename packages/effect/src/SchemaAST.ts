@@ -8,6 +8,7 @@
  * ASTs programmatically, change encoded or decoded views, collect issues, or
  * run low-level schema checks.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

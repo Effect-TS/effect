@@ -7,6 +7,7 @@
  * keyed resource families such as tenant clients, regional connections, or
  * environment-specific services.
  *
+ * @stability unstable
  * @since 3.14.0
  */
 import * as Context from "./Context.ts"

@@ -8,6 +8,7 @@
  * subscribers, message-taking helpers, capacity and shutdown operations, a
  * type guard, and low-level types for custom hub strategies.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Arr from "./Array.ts"

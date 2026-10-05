@@ -7,6 +7,7 @@
  * `Combiner` interface, a constructor for custom combining logic, and common
  * combiners for choosing or ordering values.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Order from "./Order.ts"

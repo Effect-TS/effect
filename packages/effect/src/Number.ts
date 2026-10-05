@@ -5,6 +5,7 @@
  * checking, parsing, arithmetic, safe division, comparison, range checks,
  * clamping, rounding, ordering, equivalence, and numeric aggregation.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equ from "./Equivalence.ts"

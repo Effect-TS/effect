@@ -7,6 +7,7 @@
  * and when another transaction completes the deferred the waiting transaction
  * can resume with either the success value or the typed failure.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

@@ -7,6 +7,7 @@
  * updates. This module includes constructors, reads, writes, update and modify
  * helpers, transactional-queue subscriptions, stream subscriptions, and a guard.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"

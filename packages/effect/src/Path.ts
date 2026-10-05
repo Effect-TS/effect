@@ -7,6 +7,7 @@
  * file URLs. This module includes the service interface, parsed path type,
  * service tag, runtime marker, and built-in POSIX path layer.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "./Context.ts"

@@ -9,6 +9,7 @@
  * constructors for pure or effectful conversions, and common conversions used
  * by the Schema module.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

@@ -6,6 +6,7 @@
  * module also contains small identity, constant, tuple, type-level, and
  * memoization helpers used across the library.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { TypeLambda } from "./HKT.ts"

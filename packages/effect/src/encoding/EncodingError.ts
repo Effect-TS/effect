@@ -1,6 +1,7 @@
 /**
  * Shared error type for encoding and decoding operations.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Data from "../Data.ts"

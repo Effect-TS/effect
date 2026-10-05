@@ -5,6 +5,7 @@
  * multiple settings. Configs are also Effects, so they can be yielded in
  * `Effect.gen` after a provider has been supplied.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type { Path, SourceError } from "./ConfigProvider.ts"

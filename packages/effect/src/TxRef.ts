@@ -9,6 +9,7 @@
  * core operations for reading, setting, updating, and modifying a transactional
  * value while returning a separate result.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"

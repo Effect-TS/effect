@@ -8,6 +8,7 @@
  * removing values, checking size, slicing, mapping, filtering, and combining
  * chunks.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Chunk from "./Chunk.ts"

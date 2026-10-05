@@ -6,6 +6,7 @@
  * next step. Schedules are used by retry, repeat, stream, and channel APIs to
  * decide when work should continue, how long to wait, and when to stop.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyReadonlyArray } from "./Array.ts"

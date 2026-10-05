@@ -8,6 +8,7 @@
  * full bounded queue. This makes the queue useful for coordinating producers
  * and consumers alongside other transactional state changes.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Arr from "./Array.ts"

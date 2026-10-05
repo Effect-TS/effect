@@ -5,6 +5,7 @@
  * difference between two JSON documents, serialize that difference, and replay
  * it without mutating the original input.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as InternalRecord from "./internal/record.ts"

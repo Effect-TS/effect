@@ -1,6 +1,7 @@
 /**
  * Hexadecimal encoding, decoding, and random value helpers.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Result from "../Result.ts"

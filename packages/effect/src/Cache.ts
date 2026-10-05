@@ -6,6 +6,7 @@
  * by capacity and optional time-to-live rules. This module includes helpers for
  * reading, setting, refreshing, invalidating, and inspecting cache contents.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Context from "./Context.ts"

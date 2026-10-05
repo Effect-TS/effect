@@ -8,6 +8,7 @@
  * from concurrent updates. This module includes constructors, reads, writes,
  * updates, partial updates, and effectful update helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Effect from "./Effect.ts"

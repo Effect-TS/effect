@@ -6,6 +6,7 @@
  * or unbounded, and bounded queues can suspend, drop, or slide values when
  * producers are faster than consumers.
  *
+ * @stability stable
  * @since 3.8.0
  */
 import * as Arr from "./Array.ts"

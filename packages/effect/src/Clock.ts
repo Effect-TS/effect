@@ -5,6 +5,7 @@
  * accessed through a service, tests can replace the clock with a controlled
  * implementation.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Context from "./Context.ts"

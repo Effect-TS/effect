@@ -5,6 +5,7 @@
  * can create or parse schedules, compare them, test whether a date matches, and
  * find previous or next scheduled occurrences.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Arr from "./Array.ts"

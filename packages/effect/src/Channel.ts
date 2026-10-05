@@ -7,6 +7,7 @@
  * higher-level modules instead. This module is useful when implementing stream
  * operators or specialized streaming workflows.
  *
+ * @stability stable
  * @since 2.0.0
  */
 // @effect-diagnostics returnEffectInGen:off

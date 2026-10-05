@@ -5,6 +5,7 @@
  * information lives in the type system unless you choose a validating
  * constructor.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Arr from "./Array.ts"

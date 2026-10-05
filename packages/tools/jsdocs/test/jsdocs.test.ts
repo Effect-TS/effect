@@ -98,9 +98,15 @@ describe("jsdocs", () => {
     })
   })
 
+  it("accepts explicit stable declarations", () => {
+    assert.deepStrictEqual(stabilityResult("@stability stable"), {
+      diagnostics: [],
+      stability: "stable"
+    })
+  })
+
   it("rejects unknown stability values", () => {
     assert.deepStrictEqual(stabilityResult("@stability bogus").diagnostics, ["invalid-stability"])
-    assert.deepStrictEqual(stabilityResult("@stability stable").diagnostics, ["invalid-stability"])
   })
 
   it("rejects duplicate stability tags", () => {

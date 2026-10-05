@@ -7,6 +7,7 @@
  * entries. Helpers that change values return new records instead of mutating the
  * input.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

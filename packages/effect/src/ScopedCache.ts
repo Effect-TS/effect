@@ -8,6 +8,7 @@
  * share one in-progress effect, and entries can expire, be refreshed, be
  * invalidated, or be evicted by capacity limits.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"

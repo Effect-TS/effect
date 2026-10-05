@@ -7,6 +7,7 @@
  * creating, reading, slicing, mapping, filtering, sorting, zipping, combining,
  * and converting chunks to and from arrays and iterables.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as RA from "./Array.ts"

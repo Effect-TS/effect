@@ -9,6 +9,7 @@
  * providing a new value changes behavior for the provided effect and the fibers
  * it starts.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Context from "./Context.ts"

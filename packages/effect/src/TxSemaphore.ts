@@ -7,6 +7,7 @@
  * creating semaphores, checking capacity and availability, acquiring or
  * releasing permits, and running effects while permits are held.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

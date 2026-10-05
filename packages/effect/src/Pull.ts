@@ -8,6 +8,7 @@
  * filtering, catching, converting, and matching done signals separately from
  * ordinary failures.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "./Cause.ts"

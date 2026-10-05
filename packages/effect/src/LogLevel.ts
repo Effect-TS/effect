@@ -4,6 +4,7 @@
  * equality and ordering instances, threshold comparison helpers, and an effect
  * for checking whether a level is enabled by the current logging settings.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Effect from "./Effect.ts"

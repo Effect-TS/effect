@@ -8,6 +8,7 @@
  * histogram boundaries, registry snapshots, text dumps, and controls for
  * enabling runtime metrics.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

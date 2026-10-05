@@ -8,6 +8,7 @@
  * typed positions, and deriving comparison or combination helpers for tuple
  * shapes.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Combiner from "./Combiner.ts"

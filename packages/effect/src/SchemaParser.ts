@@ -8,6 +8,7 @@
  * synchronous functions that throw. It also contains the lower-level runner that
  * walks a schema AST and reports schema failures as `SchemaIssue.Issue` values.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Cause from "./Cause.ts"

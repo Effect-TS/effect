@@ -7,6 +7,7 @@
  * order until the workflow succeeds or the plan is exhausted. This module also
  * supports merging plans and reading metadata for the active step and attempt.
  *
+ * @stability unstable
  * @since 3.16.0
  */
 import type { NonEmptyReadonlyArray } from "./Array.ts"

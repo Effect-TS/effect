@@ -8,6 +8,7 @@
  * for creating keys, building contexts, adding and reading services, merging
  * contexts, and selecting or removing services.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type { Effect, EffectIterator } from "./Effect.ts"

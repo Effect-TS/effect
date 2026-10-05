@@ -4,6 +4,7 @@
  * `NonEmptyIterable<A>` can be consumed anywhere an `Iterable<A>` is expected,
  * while also carrying the guarantee that reading the first element is safe.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

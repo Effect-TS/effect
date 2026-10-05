@@ -7,6 +7,7 @@
  * helpers for tuples, arrays, structs, records, dates, and values compared
  * through a derived field.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"

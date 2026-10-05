@@ -4,6 +4,7 @@
  * emitted values, a failed `Exit`, or a successful `Exit` carrying the
  * completion value.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyReadonlyArray } from "./Array.ts"

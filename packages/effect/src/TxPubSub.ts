@@ -7,6 +7,7 @@
  * bounded, dropping, sliding, and unbounded hubs, publishing helpers, scoped
  * subscriptions, shutdown operations, and a guard.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"

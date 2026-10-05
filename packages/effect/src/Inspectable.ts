@@ -7,6 +7,7 @@
  * the `Inspectable` interface, safe conversion helpers, and shared prototype or
  * class implementations for custom values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import { format, formatJson } from "./Formatter.ts"

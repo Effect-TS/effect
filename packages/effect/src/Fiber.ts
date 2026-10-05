@@ -5,6 +5,7 @@
  * interrupt one or many fibers, check unknown values, access the current fiber,
  * and attach manually managed fibers to a `Scope` for cleanup.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Arr from "./Array.ts"

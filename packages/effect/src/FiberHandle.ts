@@ -8,6 +8,7 @@
  * for setting, reading, clearing, and running fibers, and operations for joining
  * the current fiber or waiting until the handle is empty.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Cause from "./Cause.ts"

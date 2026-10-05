@@ -8,6 +8,7 @@
  * live clock, and warning when a test appears to be waiting on time without
  * advancing it.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Arr from "../Array.ts"

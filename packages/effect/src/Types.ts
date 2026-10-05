@@ -6,6 +6,7 @@
  * object shapes, tagged unions, reason-tagged errors, mutability, exactness,
  * required keys, concurrency settings, and variance markers.
  *
+ * @stability stable
  * @since 4.0.0
  */
 

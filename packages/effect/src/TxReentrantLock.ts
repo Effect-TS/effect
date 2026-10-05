@@ -8,6 +8,7 @@
  * until the lock becomes available. This module includes manual, scoped, and
  * wrapper-style operations for read and write locking.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"

@@ -5,6 +5,7 @@
  * includes effectful and synchronous constructors plus helpers to open, release,
  * close, wait, and gate effects behind the latch.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Effect from "./Effect.ts"

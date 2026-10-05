@@ -8,6 +8,7 @@
  * list of keys. The module also includes type-level helpers for simplifying and
  * merging object shapes.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

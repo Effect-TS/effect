@@ -4,6 +4,7 @@
  * domain-specific values, such as service keys or configuration descriptions,
  * be evaluated by Effect and yielded inside `Effect.gen`.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Effect from "./Effect.ts"

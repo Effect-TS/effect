@@ -1,6 +1,7 @@
 /**
  * Base64 encoding and decoding helpers.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Result from "../Result.ts"

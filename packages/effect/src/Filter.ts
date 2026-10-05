@@ -8,6 +8,7 @@
  * filters for common JavaScript values and tags, helpers for combining filters,
  * and conversions to predicates, options, and results.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Effect } from "./Effect.ts"

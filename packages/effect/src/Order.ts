@@ -8,6 +8,7 @@
  * orders, tools for reversing and combining comparisons, tuple and struct
  * helpers, comparison predicates, clamping, and reducer support.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"

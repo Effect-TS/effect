@@ -7,6 +7,7 @@
  * for queued tasks, and references for tuning or disabling automatic scheduler
  * yields.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"

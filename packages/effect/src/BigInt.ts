@@ -6,6 +6,7 @@
  * that return `Option`, integer square roots, aggregation, ordering,
  * equivalence, reducers, and combiners.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

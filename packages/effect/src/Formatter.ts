@@ -7,6 +7,7 @@
  * wraps JSON formatting with redaction and circular-reference handling, and the
  * module also includes helpers for property keys, paths, and dates.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Predicate from "./Predicate.ts"

@@ -7,6 +7,7 @@
  * property and tag checks, tuple and struct checks, boolean combinators, and
  * helpers for composing predicates and refinements.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import { dual } from "./Function.ts"

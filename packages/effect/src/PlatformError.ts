@@ -7,6 +7,7 @@
  * operating system, while preserving useful details such as the module, method,
  * path, descriptor, description, and original cause when available.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "./Data.ts"

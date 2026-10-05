@@ -53,7 +53,8 @@ Declaration tags appear in this order:
 1. `@deprecated`
 2. `@default`
 3. `@see`
-4. `@stability unstable` or `@stability experimental` (when applicable)
+4. `@stability stable`, `@stability unstable`, or `@stability experimental`
+   (when applicable)
 5. `@category`
 6. `@since`
 
@@ -67,7 +68,8 @@ Declaration tags appear in this order:
   `@see` tags.
 - Use `@stability unstable` when an API may receive breaking changes in minor
   releases, or `@stability experimental` when it may receive breaking changes
-  across patch versions. Leave the tag out for APIs that follow strict semver.
+  across patch versions. `@stability stable` marks an API that follows strict
+  semver; declarations may leave the tag out in that case.
 - Tag any API that exposes a third-party dependency `@stability unstable`: an
   accessor to the underlying client or instance, options typed as the
   dependency's options, constructors that accept its instances, re-exports of
@@ -84,9 +86,15 @@ fences.
 When present, the first top-level JSDoc is the module block unless TypeScript
 attaches it to a non-import first declaration. An `@internal` module is omitted.
 Module prose does not use the declaration template. Its tags are optional
-non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability unstable`
-or `@stability experimental`, then required stable-semver `@since`. Its examples
-and links follow the declaration contracts.
+non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability stable`,
+`@stability unstable`, or `@stability experimental`, then required stable-semver
+`@since`. Its examples and links follow the declaration contracts.
+
+Every module in `packages/effect` declares its stability explicitly. A module is
+`@stability stable` only when it existed as a stable `effect` module in 3.x,
+directly or through the v3-to-v4 import map. New modules, modules that came from
+0.x packages, and modules that were `@experimental` in 3.x are
+`@stability unstable`.
 
 Inline `{@link Symbol}` targets must resolve to TypeScript symbols; use normal
 Markdown links for URLs. Prefer code formatting when navigation does not help a

@@ -7,6 +7,7 @@
  * console layer, helpers for reading captured `Console.log` and `Console.error`
  * arguments, and access to the provided test console service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Array from "../Array.ts"

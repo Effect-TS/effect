@@ -7,6 +7,7 @@
  * can create rings, add or remove nodes by `PrimaryKey`, route an input string
  * to a node, and compute shard assignments.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { dual } from "./Function.ts"

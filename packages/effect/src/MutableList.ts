@@ -6,6 +6,7 @@
  * the same list object in place and keep its `length` field current. Taking
  * from an empty list returns the `Empty` symbol.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"

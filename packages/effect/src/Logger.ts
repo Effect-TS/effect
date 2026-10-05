@@ -7,6 +7,7 @@
  * logger references, console routing helpers, built-in formatters, batching,
  * file logging, and layers for installing loggers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Array from "./Array.ts"

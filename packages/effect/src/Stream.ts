@@ -8,6 +8,7 @@
  * stream lifecycle: create a stream, transform or combine it, control buffering
  * and timing, handle failures, and finally consume it.
  *
+ * @stability stable
  * @since 2.0.0
  */
 // @effect-diagnostics returnEffectInGen:off

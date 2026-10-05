@@ -8,6 +8,7 @@
  * used by modules such as `Effect`, `Option`, and `Result` to type their
  * `gen` APIs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { Kind, TypeLambda } from "./HKT.ts"

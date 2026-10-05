@@ -4,6 +4,7 @@
  * method at {@link symbol}; consumers can check unknown values with
  * {@link isPrimaryKey} and read the key with {@link value}.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

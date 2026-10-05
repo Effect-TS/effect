@@ -6,6 +6,7 @@
  * fold iterable values while preserving the input as an iterable instead of
  * forcing an array first.
  *
+ * @stability stable
  * @since 2.0.0
  */
 

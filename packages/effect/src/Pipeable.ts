@@ -8,6 +8,7 @@
  * to compose transformations, validations, and effectful operations while
  * keeping the original value as the starting point of the pipeline.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
