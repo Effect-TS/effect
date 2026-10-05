@@ -6445,14 +6445,16 @@ export interface AllPairsResult<E> {
  *
  * **When to use**
  *
- * Use when many or all node pairs will be queried and cubic computation plus
- * quadratic result storage is acceptable.
+ * Use when many or all node pairs will be queried and cubic distance computation
+ * plus storage for reconstructed paths is acceptable.
  *
  * **Details**
  *
  * Computes distances, reconstructed node paths, and edge-data paths for every
- * source and target pair in O(V^3) time. Negative edge weights are allowed, and
- * `Infinity` behaves like an impassable edge.
+ * source and target pair. Distance computation takes O(V^3) time. Negative edge
+ * weights are allowed, and `Infinity` behaves like an impassable edge. Immutable
+ * path witnesses can require O(V^3) working storage; reconstructed paths have
+ * repeated nodes removed.
  *
  * **Gotchas**
  *
@@ -6501,13 +6503,15 @@ export const floydWarshall: {
   const edgeIds = csr.getEdgeIds(cache)
   const edgeCache = csr.getEdgeEndpoints(cache)
   const size = cache.nodeIds.length
-  // Flat matrices keep the O(N^2) working set contiguous and avoid nested map lookups in the O(N^3) loop.
+  // Immutable witnesses retain the actual walks used by relaxation. Following
+  // independently updated next-hop rows can create cycles through rounding.
+  type Witness =
+    | { readonly target: number; readonly edge: number }
+    | { readonly target: number; readonly left: Witness; readonly right: Witness }
+  const witnesses: Array<Witness | undefined> = new Array(size * size)
+  // The flat distance matrix avoids nested map lookups in the O(N^3) loop.
   const distancesMatrix = new Float64Array(size * size)
-  const nextMatrix = new Int32Array(size * size)
-  const edgeMatrix = new Int32Array(size * size)
   distancesMatrix.fill(Infinity)
-  nextMatrix.fill(-1)
-  edgeMatrix.fill(-1)
   for (let i = 0; i < size; i++) {
     distancesMatrix[i * size + i] = 0
   }
@@ -6523,15 +6527,13 @@ export const floydWarshall: {
       const position = source * size + target
       if (weight < distancesMatrix[position]) {
         distancesMatrix[position] = weight
-        nextMatrix[position] = target
-        edgeMatrix[position] = edge
+        witnesses[position] = { target, edge }
       }
       if (graph.type === "undirected") {
         const reverse = target * size + source
         if (weight < distancesMatrix[reverse]) {
           distancesMatrix[reverse] = weight
-          nextMatrix[reverse] = source
-          edgeMatrix[reverse] = edge
+          witnesses[reverse] = { target: source, edge }
         }
       }
     }
@@ -6545,7 +6547,7 @@ export const floydWarshall: {
       if (distanceIK === Infinity) {
         continue
       }
-      const nextIK = nextMatrix[iRow + k]
+      const left = witnesses[iRow + k]
       for (let j = 0; j < size; j++) {
         const distanceKJ = distancesMatrix[kRow + j]
         if (distanceKJ === Infinity) {
@@ -6555,9 +6557,14 @@ export const floydWarshall: {
         if (!Number.isFinite(candidate)) {
           throw new GraphError({ message: "Floyd-Warshall distance calculation exceeded the finite number range" })
         }
-        if (candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
+        if (candidate < distancesMatrix[iRow + j]) {
           distancesMatrix[iRow + j] = candidate
-          nextMatrix[iRow + j] = nextIK
+          const right = witnesses[kRow + j]
+          witnesses[iRow + j] = left === undefined
+            ? right
+            : right === undefined
+            ? left
+            : { target: j, left, right }
         }
       }
     }
@@ -6600,19 +6607,34 @@ export const floydWarshall: {
         const path = [source]
         const pathEdges: Array<EdgeIndex> = []
         const pathCosts: Array<E> = []
-        let current = i
-        while (current !== j) {
-          const next = nextMatrix[current * size + j]
-          if (next === -1) {
-            break
+        const positions = new Int32Array(size)
+        positions.fill(-1)
+        positions[i] = 0
+        const nodes = [i]
+        const stack = [witnesses[i * size + j]!]
+        // Witnesses only reference older witnesses, so this traversal cannot
+        // follow a cyclic pointer chain. Erase closed walks rather than return
+        // a truncated route or reject a valid zero-cost cycle.
+        while (stack.length > 0) {
+          const witness = stack.pop()!
+          const position = positions[witness.target]
+          if (position !== -1) {
+            for (let p = position + 1; p < nodes.length; p++) {
+              positions[nodes[p]] = -1
+            }
+            nodes.length = position + 1
+            path.length = position + 1
+            pathEdges.length = position
+            pathCosts.length = position
+          } else if ("edge" in witness) {
+            positions[witness.target] = nodes.length
+            nodes.push(witness.target)
+            path.push(cache.nodeIds[witness.target])
+            pathEdges.push(edgeIds[witness.edge])
+            pathCosts.push(edges[witness.edge].data)
+          } else {
+            stack.push(witness.right, witness.left)
           }
-          const edge = edgeMatrix[current * size + next]
-          if (edge !== -1) {
-            pathEdges.push(edgeIds[edge])
-            pathCosts.push(edges[edge].data)
-          }
-          current = next
-          path.push(cache.nodeIds[current])
         }
         pathRow.set(target, path)
         edgePathRow.set(target, pathEdges)
