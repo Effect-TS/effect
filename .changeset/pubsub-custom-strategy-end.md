@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `PubSub.end` leaving publishers suspended on surplus with a custom `PubSub.Strategy`; they now complete with `false`, as with the built-in backpressure strategy.
+Fix `PubSub.end` leaving backpressured publishers suspended with custom strategies or strategy subclasses. Pending publishes now complete with `false` after interruption cleanup.
