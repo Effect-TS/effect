@@ -106,6 +106,26 @@ describe("ManagedRuntime", () => {
     assert.deepEqual({ result, released }, { result: "settled", released: true })
   })
 
+  test("disposeEffect inside an immediately started request child releases the layer", async () => {
+    let released = false
+    const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        released = true
+      })
+    )))
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      runtime.runPromise(Effect.gen(function*() {
+        yield* Effect.sleep(1)
+        const child = yield* Effect.forkChild(runtime.disposeEffect, { startImmediately: true })
+        yield* Fiber.join(child)
+      })).then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.deepEqual({ result, released }, { result: "settled", released: true })
+  })
+
   test("nested-child disposal awaits unrelated request cleanup before releasing the layer", async () => {
     const events: Array<string> = []
     const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
