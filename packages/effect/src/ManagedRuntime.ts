@@ -13,6 +13,7 @@ import type * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
+import { scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
 import * as Layer from "./Layer.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
@@ -293,7 +294,15 @@ export const make = <R, ER>(
   const layerScope = Scope.forkUnsafe(scope, "sequential")
   const fiberScope = Scope.forkUnsafe(scope, "parallel")
   const defaultRunOptions: Effect.RunOptions = {
-    onFiberStart: Fiber.runIn(fiberScope)
+    onFiberStart: (fiber) => {
+      if (fiber.pollUnsafe()) return
+      if (fiberScope.state._tag === "Closed") {
+        fiber.interruptUnsafe(fiber.id)
+        return
+      }
+      scopeAddFinalizerUnsafe(fiberScope, fiber, () => Fiber.interrupt(fiber))
+      fiber.addObserver(() => scopeRemoveFinalizerUnsafe(fiberScope, fiber))
+    }
   }
   const mergeRunOptions = <O extends Effect.RunOptions>(options?: O): O =>
     options
@@ -340,7 +349,9 @@ export const make = <R, ER>(
     [Symbol.asyncDispose](): Promise<void> {
       return self.dispose()
     },
-    disposeEffect: Effect.suspend(() => {
+    disposeEffect: Effect.withFiber((fiber) => {
+      // Disposal must not interrupt and await the fiber that is closing the scope.
+      scopeRemoveFinalizerUnsafe(fiberScope, fiber)
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
       return Scope.close(self.scope, Exit.void)
