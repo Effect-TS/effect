@@ -7,6 +7,20 @@ describe("Fiber", () => {
     assert.isTrue(Fiber.isFiber(result))
   })
 
+  it("preserves synchronous child exits when their parent completes", () => {
+    const children = Effect.runSync(Effect.gen(function*() {
+      const succeeded = yield* Effect.forkChild(Effect.succeed(42), { startImmediately: true })
+      const failed = yield* Effect.forkChild(Effect.fail("child failure"), { startImmediately: true })
+
+      assert.deepStrictEqual(succeeded.pollUnsafe(), Exit.succeed(42))
+      assert.deepStrictEqual(failed.pollUnsafe(), Exit.fail("child failure"))
+      return [succeeded, failed] as const
+    }))
+
+    assert.deepStrictEqual(Effect.runSync(Fiber.await(children[0])), Exit.succeed(42))
+    assert.deepStrictEqual(Effect.runSync(Fiber.await(children[1])), Exit.fail("child failure"))
+  })
+
   it("notifies all observers when an observer cancels during exit", () => {
     const fiber = Effect.runFork(Effect.never)
     const observed: Array<number> = []
