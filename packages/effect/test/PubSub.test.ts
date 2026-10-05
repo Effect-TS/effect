@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Effect, Exit, Fiber, Latch, MutableList, PubSub, Scheduler, Scope, Stream } from "effect"
+import { Array, Deferred, Effect, Exit, Fiber, Latch, MutableList, PubSub, Scheduler, Scope, Stream } from "effect"
 import { pipe } from "effect/Function"
 
 describe("PubSub", () => {
@@ -1043,6 +1043,53 @@ describe("PubSub", () => {
           assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [0])
         })
     )
+
+    it.effect("does not deliver rejected surplus while custom strategy removal is pending", () =>
+      Effect.gen(function*() {
+        const cleanupStarted = yield* Latch.make()
+        const finishCleanup = yield* Latch.make()
+        const pubsub = yield* PubSub.make<number>({
+          atomicPubSub: () => PubSub.makeAtomicBounded(1),
+          strategy: () =>
+            new class extends PubSub.BackPressureStrategy<number> {
+              override handleSurplus(...args: Parameters<PubSub.BackPressureStrategy<number>["handleSurplus"]>) {
+                return Effect.callback<boolean>((resume) => {
+                  const [atomic, subscribers, elements] = args
+                  const deferred = Deferred.makeUnsafe<boolean>()
+                  const values = [...elements]
+                  for (let i = 0; i < values.length; i++) {
+                    MutableList.append(this.publishers, [values[i], deferred, i === values.length - 1])
+                  }
+                  this.onPubSubEmptySpaceUnsafe(atomic, subscribers)
+                  this.completeSubscribersUnsafe(atomic, subscribers)
+                  if (deferred.effect) return resume(deferred.effect)
+                  deferred.resumes = [resume]
+                  const remove = () => this.removeUnsafe(deferred)
+                  return Effect.gen(function*() {
+                    yield* cleanupStarted.open
+                    yield* finishCleanup.await
+                    yield* Effect.sync(remove)
+                  })
+                })
+              }
+            }()
+        })
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        const publisher = yield* Effect.forkChild(PubSub.publish(pubsub, 2), { startImmediately: true })
+        yield* Effect.yieldNow
+        assert.isUndefined(publisher.pollUnsafe())
+
+        yield* PubSub.end(pubsub, 0)
+        yield* cleanupStarted.await
+        const first = yield* PubSub.take(subscription)
+        const second = yield* PubSub.take(subscription)
+        yield* finishCleanup.open
+
+        assert.isFalse(yield* Fiber.join(publisher))
+        assert.strictEqual(first, 1)
+        assert.strictEqual(second, 0)
+      }))
 
     it.effect("shutdown still interrupts subscribers", () =>
       Effect.gen(function*() {
