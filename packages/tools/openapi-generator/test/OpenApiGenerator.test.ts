@@ -828,8 +828,8 @@ export const make = (
 export interface TestClient {
   readonly httpClient: HttpClient.HttpClient
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config>, HttpClientError.HttpClientError | SchemaError>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config | undefined>, HttpClientError.HttpClientError | SchemaError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError | SchemaError>;
+    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, HttpClientError.HttpClientError | SchemaError>;
   }
 }
 
@@ -962,7 +962,7 @@ export const TestClientError = <Tag extends string, E>(
         },
         [
           `import * as Sse from "effect/encoding/Sse"`,
-          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: StreamEvents200Sse }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get("/events").pipe(`,
           `sseRequest(StreamEvents200Sse)`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
@@ -1024,7 +1024,7 @@ export const TestClientError = <Tag extends string, E>(
         [
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("message"), "data": Schema.String`,
           `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/http-api/stream/failure"), "data": Schema.String`,
-          `readonly "streamEventsSse": () => Stream.Stream<typeof StreamEvents200Sse.Type, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<StreamEvents200Sse, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof StreamEvents200Sse.DecodingServices>`,
           `sseEventRequest(StreamEvents200Sse)`,
           `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
         ]
@@ -1125,7 +1125,7 @@ export const TestClientError = <Tag extends string, E>(
         `TestClientError<"500", undefined>`
       ], [
         `"200": decodeSuccess(DownloadMixedContent200)`,
-        `typeof DownloadMixedContent200.Type | Uint8Array`
+        `DownloadMixedContent200 | Uint8Array`
       ]))
 
     it.effect("routes mixed and non-2xx bodiless success responses", () =>
@@ -1133,7 +1133,7 @@ export const TestClientError = <Tag extends string, E>(
         `"200": decodeSuccess(MixedSuccess200)`,
         `"204": () => Effect.void`,
         `"304": () => Effect.void`,
-        `WithOptionalResponse<typeof MixedSuccess200.Type | void, Config>`
+        `WithOptionalResponse<MixedSuccess200 | void, Config>`
       ]))
   })
 

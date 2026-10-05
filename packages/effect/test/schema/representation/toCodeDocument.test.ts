@@ -449,6 +449,26 @@ describe("toCodeDocument", () => {
   })
 
   describe("Number", () => {
+    it("emits the canonical finite schema without duplicating its first check", () => {
+      assertSchema({
+        schema: Schema.Number.annotate({ description: "amount" }).check(Schema.isFinite(), Schema.isGreaterThan(0))
+      }, {
+        codes: makeCode(`Schema.Finite.annotate({ "description": "amount" }).check(Schema.isGreaterThan(0))`, "number")
+      })
+    })
+
+    it("preserves custom, aborted, and grouped finite checks", () => {
+      const custom = Schema.Number.check(Schema.isFinite({ toCode: () => ({ runtime: "Schema.isGreaterThan(10)" }) }))
+      const aborted = Schema.Number.check(Schema.isFinite().abort())
+      const grouped = Schema.Number.check(Schema.makeFilterGroup([Schema.isFinite(), Schema.isGreaterThan(0)]))
+      for (const schema of [custom, aborted, grouped]) {
+        const code = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast])).codes[0]
+        assert.isDefined(code)
+        assert.include(code!.runtime, "Schema.Number.check(")
+        assert.notInclude(code!.runtime, "Schema.Finite")
+      }
+    })
+
     it("Number", () => {
       assertSchema({ schema: Schema.Number }, {
         codes: makeCode("Schema.Number", "number")
@@ -1140,7 +1160,7 @@ describe("toCodeDocument", () => {
         }
       }, {
         codes: makeCode(
-          `Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Number.check(Schema.isFinite())]))])`,
+          `Schema.Tuple([Schema.optionalKey(Schema.Union([Schema.String, Schema.Finite]))])`,
           `readonly [(string | number)?]`
         )
       })
@@ -1919,7 +1939,7 @@ describe("toCodeDocument", () => {
             {
               $ref: "A",
               code: makeCode(
-                `Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String }).annotate({ "identifier": "A" })`,
+                `Schema.Struct({ "b": Schema.Finite, "a": Schema.String }).annotate({ "identifier": "A" })`,
                 `{ readonly "b": number, readonly "a": string }`
               )
             }
