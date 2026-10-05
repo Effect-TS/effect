@@ -22,6 +22,19 @@ describe("Schema compiler construction", { concurrent: false }, () => {
       assert.deepStrictEqual(makeOption({ value: 2 }), Option.some({ value: 2 }))
     }))
 
+  it.effect("re-running a compiled Struct makeEffect keeps earlier results intact", () =>
+    Effect.gen(function*() {
+      let n = 0
+      const schema = Schema.Struct({
+        id: Schema.Number.pipe(Schema.withConstructorDefault(Effect.sync(() => ++n)))
+      })
+      SchemaJITCompiler.enable(SchemaAST.toType(schema.ast))
+      const program = SchemaParser.makeEffect(schema)({})
+      const first = yield* program
+      const second = yield* program
+      assert.deepStrictEqual([first, second], [{ id: 1 }, { id: 2 }])
+    }))
+
   it.effect("matches interpreted construction, effects and options", () =>
     Effect.gen(function*() {
       const fixtures = Object.entries(constructionCases)
