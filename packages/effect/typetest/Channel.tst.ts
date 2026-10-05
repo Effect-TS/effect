@@ -1,10 +1,11 @@
-import { Channel, Data, type Effect, pipe, Result } from "effect"
+import { Channel, Data, type Effect, pipe, type PubSub, Result } from "effect"
 import { describe, expect, it } from "tstyche"
 
 class ErrorA extends Data.TaggedError("ErrorA")<{ readonly message: string }> {}
 class ErrorB extends Data.TaggedError("ErrorB")<{ readonly code: number }> {}
 
 declare const channel: Channel.Channel<number, ErrorA | ErrorB>
+declare const pubsub: PubSub.PubSub<number>
 
 class RateLimit extends Data.TaggedError("RateLimit")<{ readonly retryAfter: number }> {}
 class Quota extends Data.TaggedError("Quota")<{ readonly limit: number }> {}
@@ -154,5 +155,12 @@ describe("Channel.mapInput", () => {
 
     const result = Channel.mapInput(dbChannel, parseWithConfig)
     expect(result).type.toBe<Channel.Channel<number, never, void, string, never, void, Db | Config>>()
+  })
+})
+
+describe("Channel.runIntoPubSub", () => {
+  it("preserves the channel error", () => {
+    expect(Channel.runIntoPubSub(channel, pubsub)).type.toBe<Effect.Effect<void, ErrorA | ErrorB>>()
+    expect(pipe(channel, Channel.runIntoPubSub(pubsub))).type.toBe<Effect.Effect<void, ErrorA | ErrorB>>()
   })
 })
