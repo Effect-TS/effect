@@ -1,4 +1,4 @@
-import { Effect, Layer, Schema, type Stream } from "effect"
+import { Effect, hole, Layer, Schema, type Stream } from "effect"
 import type { Sse } from "effect/encoding"
 import { HttpClient, type HttpClientError, type HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema } from "effect/http-api"
@@ -112,6 +112,13 @@ describe("AtomHttpApi", () => {
     expect<Atom.Failure<typeof mutation>>().type.toBe<
       MiddlewareError | MiddlewareClientError
     >()
+  })
+
+  it("returns union successes for union response modes in mutations", () => {
+    const responseMode = hole<"decoded-only" | "response-only">()
+    const mutation = Client.mutation("group", "get", { responseMode })
+
+    expect<Atom.Success<typeof mutation>>().type.toBe<string | HttpClientResponse.HttpClientResponse>()
   })
 
   it("should expose generated SSE stream errors from queries", () => {
