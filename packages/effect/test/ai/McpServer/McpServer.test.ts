@@ -2332,21 +2332,7 @@ describe("McpServer", () => {
           allowSessionTermination: true
         })
       )))
-      const initialized = yield* harness.post({
-        jsonrpc: "2.0",
-        id: "initialize",
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-11-25",
-          capabilities: { elicitation: { url: {} } },
-          clientInfo: { name: "authorization-client", version: "1.0.0" }
-        }
-      })
-      yield* readMcpHttpResponse(initialized)
-      const sessionId = initialized.headers.get("Mcp-Session-Id")
-      assert.isNotNull(sessionId)
-      const headers = { "Mcp-Session-Id": sessionId, "Mcp-Protocol-Version": "2025-11-25" }
-      yield* harness.post({ jsonrpc: "2.0", method: "notifications/initialized" }, headers)
+      const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_11_25, { elicitation: { url: {} } })
       const response = yield* harness.post({
         jsonrpc: "2.0",
         id: "authorize-tool",

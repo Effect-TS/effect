@@ -1218,17 +1218,17 @@ const runWithRuntime = Effect.fnUntraced(function*(
   })
   if (isHttp) {
     // Stop requests that can no longer receive client replies after termination.
-    yield* runtime.onSessionTerminated((binding) =>
-      Effect.forEach(Array.from(activeRequests), ([clientId, requests]) =>
-        Effect.forEach(
-          Array.from(requests.values()),
-          ({ prepared, requestId }) =>
-            prepared.binding === binding && cancelRequest(clientId, requestId)
-              ? writeFromClient(clientId, { _tag: "Interrupt", requestId })
-              : Effect.void,
-          { discard: true }
-        ), { discard: true })
-    )
+    yield* runtime.onSessionTerminated((binding) => {
+      const interrupts: Array<Effect.Effect<void>> = []
+      for (const [clientId, requests] of activeRequests) {
+        for (const { prepared, requestId } of requests.values()) {
+          if (prepared.binding === binding && cancelRequest(clientId, requestId)) {
+            interrupts.push(writeFromClient(clientId, { _tag: "Interrupt", requestId }))
+          }
+        }
+      }
+      return Effect.all(interrupts, { discard: true })
+    })
   }
 
   const { notificationDelivery, notifications } = internalState.get(server)!
@@ -1558,14 +1558,13 @@ const mcpStdioSerialization = (
  * remain valid. The surrounding HTTP server remains responsible for binding
  * to an appropriate interface and installing authentication.
  *
- * Client session termination is opt-in. With `allowSessionTermination`, a
- * DELETE carrying an `Mcp-Session-Id` ends that session with `204` and
- * interrupts its in-flight requests; later requests with the id get `404`.
- * DELETE returns `404` for an unknown session, `400` without the header, and
- * `400` for an `MCP-Protocol-Version` that POST would also reject. Without the
- * option, or when only sessionless revisions such as `v2026_07_28` are
- * configured, DELETE returns `405`. Any caller holding a session id can end
- * that session, so authenticate requests in the surrounding router.
+ * With `allowSessionTermination`, a DELETE carrying `Mcp-Session-Id` ends that
+ * session with `204` and interrupts its in-flight requests; later requests with
+ * that id get `404`. DELETE validates the session and `MCP-Protocol-Version`
+ * headers like POST. Without the option, or when only sessionless revisions
+ * such as `v2026_07_28` are configured, DELETE returns `405`. Any caller
+ * holding a session id can end that session, so authenticate requests in the
+ * surrounding router.
  *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
@@ -1617,16 +1616,17 @@ const layerMcpProtocolHttp = (options: {
     const router = yield* HttpRouter.HttpRouter
     const allowSessionTermination = options.allowSessionTermination === true &&
       runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
-    const methodNotAllowedResponse = HttpServerResponse.empty({
+    const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
+    const withAllowedOrigin = (
+      handler: (request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+    ) =>
+    (request: HttpServerRequest.HttpServerRequest) =>
+      isAllowedMcpOrigin(request, options.allowedOrigins) ? handler(request) : forbidden
+    const methodNotAllowedResponse = Effect.succeed(HttpServerResponse.empty({
       status: 405,
       headers: { allow: allowSessionTermination ? "POST, DELETE" : "POST" }
-    })
-    const methodNotAllowed = (request: HttpServerRequest.HttpServerRequest) =>
-      Effect.succeed(
-        isAllowedMcpOrigin(request, options.allowedOrigins)
-          ? methodNotAllowedResponse
-          : HttpServerResponse.empty({ status: 403 })
-      )
+    }))
+    const methodNotAllowed = withAllowedOrigin(() => methodNotAllowedResponse)
     for (const method of ["GET", "PUT", "PATCH", "OPTIONS"] as const) {
       yield* router.add(method, options.path, methodNotAllowed)
     }
@@ -1634,10 +1634,7 @@ const layerMcpProtocolHttp = (options: {
       "DELETE",
       options.path,
       allowSessionTermination
-        ? (request) =>
-          isAllowedMcpOrigin(request, options.allowedOrigins)
-            ? runtime.terminateHttpSession(request.headers)
-            : Effect.succeed(HttpServerResponse.empty({ status: 403 }))
+        ? withAllowedOrigin((request) => runtime.terminateHttpSession(request.headers))
         : methodNotAllowed
     )
     yield* router.add("POST", options.path, (request) => {
