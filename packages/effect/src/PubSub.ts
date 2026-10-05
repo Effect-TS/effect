@@ -895,6 +895,8 @@ export const endUnsafe: {
       if (last) Deferred.doneUnsafe(deferred, Exit.succeed(false))
     }
   }
+  const signal = endSignals.get(self)
+  if (signal) Deferred.doneUnsafe(signal, Exit.succeed(false))
   // A waiting subscriber has nothing buffered, so it receives the final
   // message right away.
   const exit = Exit.succeed(value)
@@ -1064,13 +1066,7 @@ export const publish: {
       return Effect.succeed(true)
     }
 
-    return self.strategy.handleSurplus(
-      self.pubsub,
-      self.subscribers,
-      [value],
-      self.shutdownFlag,
-      self.ended
-    )
+    return handleSurplus(self, [value])
   }))
 
 /**
@@ -1167,13 +1163,7 @@ export const publishAll: {
     if (surplus.length === 0) {
       return Effect.succeed(true)
     }
-    return self.strategy.handleSurplus(
-      self.pubsub,
-      self.subscribers,
-      surplus,
-      self.shutdownFlag,
-      self.ended
-    )
+    return handleSurplus(self, surplus)
   }))
 
 /**
@@ -2480,6 +2470,27 @@ class PubSubImpl<in out A> implements PubSub<A> {
   pipe() {
     return pipeArguments(this, arguments)
   }
+}
+
+// Settles suspended publishers of custom strategies with `false` when the
+// PubSub ends, as the built-in strategies are handled directly by `endUnsafe`.
+const endSignals = new WeakMap<PubSub<any>, Deferred.Deferred<boolean>>()
+
+const handleSurplus = <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect<boolean> => {
+  const effect = self.strategy.handleSurplus(self.pubsub, self.subscribers, elements, self.shutdownFlag)
+  if (
+    self.strategy instanceof BackPressureStrategy ||
+    self.strategy instanceof DroppingStrategy ||
+    self.strategy instanceof SlidingStrategy
+  ) {
+    return effect
+  }
+  let signal = endSignals.get(self)
+  if (signal === undefined) {
+    signal = Deferred.makeUnsafe<boolean>()
+    endSignals.set(self, signal)
+  }
+  return Effect.raceFirst(effect, Deferred.await(signal))
 }
 
 const makePubSubUnsafe = <A>(
