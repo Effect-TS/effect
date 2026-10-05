@@ -274,6 +274,18 @@ describe("Request", { concurrent: false }, () => {
       })
   )
 
+  it.effect("synchronous batch delays allow asynchronous resolution at the batch limit", () =>
+    Effect.gen(function*() {
+      const resolver = Resolver.fromEffect<GetNameById>(() => Effect.andThen(Effect.yieldNow, Effect.succeed("Alice")))
+        .pipe(
+          Resolver.setDelayEffect(Effect.void),
+          Resolver.batchN(1)
+        )
+      const exit = yield* Effect.exit(Effect.request(new GetNameById({ id: 1 }), resolver))
+
+      assert.deepStrictEqual(exit, Exit.succeed("Alice"))
+    }))
+
   it.effect.each([
     { name: "array", make: (values: Array<string>) => values },
     { name: "array iterator", make: (values: Array<string>) => values.values() },
