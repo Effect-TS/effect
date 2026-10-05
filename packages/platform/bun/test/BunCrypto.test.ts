@@ -7,7 +7,7 @@ import { constants, generateKeyPairSync, privateDecrypt } from "node:crypto"
 const hex = (bytes: Uint8Array): string => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 
 describe("BunCrypto", () => {
-  it.effect("computes PostgreSQL authentication primitives", () =>
+  it.effect("computes MD5, HMAC, and PBKDF2 vectors", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
       const encode = (s: string) => new TextEncoder().encode(s)
