@@ -485,7 +485,7 @@ describe("RpcClient", () => {
         pingTimeout: "15 seconds",
         retryTransientErrors: true,
         retryPolicy: Schedule.spaced("1 hour")
-      }
+      } as const
       const context = yield* Layer.build(
         RpcClient.layerProtocolSocket(options).pipe(
           Layer.provide(RpcSerialization.layerNdjson),
