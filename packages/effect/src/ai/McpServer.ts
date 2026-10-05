@@ -1998,6 +1998,19 @@ export type ValidateCompletions<Completions, Keys extends string> =
   }
 
 /**
+ * Utility type that collects the services required by the handlers of a
+ * completion-handler record, including handlers declared as optional.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type CompletionServices<Completions> = {
+  [K in keyof Completions]-?: NonNullable<Completions[K]> extends (...args: any) => infer Ret ? Effect.Services<Ret>
+    : never
+}[keyof Completions]
+
+/**
  * Completion-handler map for a resource URI template.
  *
  * **Details**
@@ -2317,11 +2330,7 @@ export const registerPrompt = <
   | Exclude<
     | Schema.Struct.DecodingServices<Params>
     | R
-    | {
-      readonly [K in keyof Completions]-?: NonNullable<Completions[K]> extends (...args: any) => infer Ret ?
-        Effect.Services<Ret>
-        : never
-    }[keyof Completions],
+    | CompletionServices<Completions>,
     McpRequestContext
   >
   | McpServer
@@ -2465,11 +2474,7 @@ export const prompt = <
   Exclude<
     | Schema.Struct.DecodingServices<Params>
     | R
-    | {
-      readonly [K in keyof Completions]-?: NonNullable<Completions[K]> extends (...args: any) => infer Ret ?
-        Effect.Services<Ret>
-        : never
-    }[keyof Completions],
+    | CompletionServices<Completions>,
     McpRequestContext
   >
 > =>

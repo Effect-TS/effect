@@ -143,12 +143,14 @@ describe("McpServer", () => {
   })
 
   describe("prompts", () => {
+    class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
+    const name = () => Effect.map(Lookup, (lookup) => lookup.values)
+
     it("should require services used by completion handlers", () => {
-      class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
       const options = {
         name: "lookup",
         parameters: { name: Schema.String },
-        completion: { name: () => Effect.map(Lookup, (lookup) => lookup.values) },
+        completion: { name },
         content: () => Effect.succeed("content")
       }
       const registered = McpServer.registerPrompt(options)
@@ -159,10 +161,7 @@ describe("McpServer", () => {
     })
 
     it("should require services used by optional completion handlers", () => {
-      class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
-      const completion: { readonly name?: () => Effect.Effect<Array<string>, never, Lookup> } = {
-        name: () => Effect.map(Lookup, (lookup) => lookup.values)
-      }
+      const completion: { readonly name?: typeof name } = { name }
       const options = {
         name: "lookup",
         parameters: { name: Schema.String },
