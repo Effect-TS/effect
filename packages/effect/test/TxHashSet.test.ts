@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Equal, Hash, HashSet, TxHashSet } from "effect"
+import { Effect, Equal, Fiber, Hash, HashSet, TxHashSet, TxRef } from "effect"
 
 class TestValue implements Equal.Equal {
   constructor(readonly value: string) {}
@@ -19,6 +19,27 @@ class TestValue implements Equal.Equal {
 
 describe("TxHashSet", () => {
   describe("constructors", () => {
+    it.effect("fromIterable preserves a one-shot iterable across transaction retries", () =>
+      Effect.gen(function*() {
+        const gate = yield* TxRef.make(false)
+        const operation = TxHashSet.fromIterable((function*() {
+          yield "a"
+          yield "b"
+          yield "a"
+        })())
+        const fiber = yield* Effect.forkChild(
+          Effect.tx(Effect.gen(function*() {
+            const txSet = yield* operation
+            if (!(yield* TxRef.get(gate))) return yield* Effect.txRetry
+            return txSet
+          })),
+          { startImmediately: true }
+        )
+        yield* TxRef.set(gate, true)
+        const txSet = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(Array.from(yield* TxHashSet.toHashSet(txSet)).sort(), ["a", "b"])
+      }))
+
     it.effect("empty creates an empty TxHashSet", () =>
       Effect.tx(Effect.gen(function*() {
         const txSet = yield* TxHashSet.empty<string>()
