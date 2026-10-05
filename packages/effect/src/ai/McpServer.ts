@@ -2314,7 +2314,16 @@ export const registerPrompt = <
 ): Effect.Effect<
   void,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext> | McpServer
+  | Exclude<
+    | Schema.Struct.DecodingServices<Params>
+    | R
+    | {
+      readonly [K in keyof Completions]-?: Completions[K] extends (...args: any) => infer Ret ? Effect.Services<Ret>
+        : never
+    }[keyof Completions],
+    McpRequestContext
+  >
+  | McpServer
 > => {
   const args = Arr.empty<PromptArgument>()
   const props: Record<string, Schema.Constraint> = options.parameters ?? {}
@@ -2452,7 +2461,15 @@ export const prompt = <
 ): Layer.Layer<
   never,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext>
+  Exclude<
+    | Schema.Struct.DecodingServices<Params>
+    | R
+    | {
+      readonly [K in keyof Completions]-?: Completions[K] extends (...args: any) => infer Ret ? Effect.Services<Ret>
+        : never
+    }[keyof Completions],
+    McpRequestContext
+  >
 > =>
   Layer.effectDiscard(registerPrompt(options)).pipe(
     Layer.provide(McpServer.layer)

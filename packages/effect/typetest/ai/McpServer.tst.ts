@@ -1,7 +1,8 @@
 import { McpProtocol, McpSchema, McpServer } from "effect/ai"
 import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
-import type * as Effect from "effect/Effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcGroup from "effect/rpc/RpcGroup"
@@ -138,6 +139,23 @@ describe("McpServer", () => {
 
       expect<Effect.Error<typeof run>>().type.toBe<Cause.IllegalArgumentError>()
       expect<Layer.Error<typeof layer>>().type.toBe<Cause.IllegalArgumentError>()
+    })
+  })
+
+  describe("prompts", () => {
+    it("should require services used by completion handlers", () => {
+      class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
+      const options = {
+        name: "lookup",
+        parameters: { name: Schema.String },
+        completion: { name: () => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: () => Effect.succeed("content")
+      }
+      const registered = McpServer.registerPrompt(options)
+      const layer = McpServer.prompt(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
     })
   })
 
