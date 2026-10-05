@@ -14631,7 +14631,7 @@ export class Transaction extends Context.Service<
 export const tx = <A, E, R>(
   effect: Effect<A, E, R>
 ): Effect<A, E, Exclude<R, Transaction>> =>
-  withFiber((fiber) => {
+  core.withFiber((fiber) => {
     let state = Context.getOrUndefined(fiber.context, Transaction)
     if (state) {
       return effect as Effect<A, E, Exclude<R, Transaction>>
@@ -14646,14 +14646,24 @@ export const tx = <A, E, R>(
           body: constant(
             restore(effect).pipe(
               provideService(Transaction, state),
-              tapCause(() => {
-                if (!state.retry) return void_
+              tapCause((cause) => {
+                if (!state.retry || !internal.hasInterruptsOnly(cause)) return void_
                 return restore(awaitPendingTransaction(state))
               }),
               exit
             )
           ),
           step(exit: Exit.Exit<A, E>) {
+            // Cleanup failures and external interruption must not be discarded as retries,
+            // even if the journal changed while the transaction was running.
+            if (
+              Exit.isFailure(exit) &&
+              (fiber._interruptedCause || (state.retry && !internal.hasInterruptsOnly(exit.cause)))
+            ) {
+              clearTransaction(state)
+              result = exit
+              return
+            }
             if (state.retry || !isTransactionConsistent(state)) {
               return clearTransaction(state)
             }
