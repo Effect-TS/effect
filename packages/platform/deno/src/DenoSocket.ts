@@ -183,7 +183,7 @@ export const fromConn = <RO>(
             Effect.asVoid
           )
         })
-      return {
+      return Socket.makeReader({
         pull: Effect.suspend(() => {
           if (error !== undefined) return Effect.fail(error)
           return Effect.flatMap(read, ({ done, value }) =>
@@ -196,7 +196,7 @@ export const fromConn = <RO>(
               : Effect.succeed([value] as const))
         }),
         upgrade
-      }
+      })
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
     ) as Socket.Socket["reader"]

@@ -6,7 +6,9 @@ import * as TestClock from "effect/testing/TestClock"
 const testCrypto = Crypto.make({
   randomBytes: (size) =>
     size === 7 ? Uint8Array.of(0x18, 0, 0, 0, 0, 0, 0) : Uint8Array.from({ length: size }, (_, i) => i),
-  digest: (algorithm, data) => Effect.succeed(Uint8Array.of(data.length, algorithm.length))
+  digest: (algorithm, data) => Effect.succeed(Uint8Array.of(data.length, algorithm.length)),
+  hmac: (_algorithm, _key, data) => Effect.succeed(data),
+  pbkdf2: (_algorithm, password) => Effect.succeed(password)
 })
 
 const makeCrypto = (value: bigint) =>
@@ -21,10 +23,35 @@ const makeCrypto = (value: bigint) =>
         Number((value >> 8n) & 0xffn),
         Number(value & 0xffn)
       ),
-    digest: (_algorithm, data) => Effect.succeed(data)
+    digest: (_algorithm, data) => Effect.succeed(data),
+    hmac: (_algorithm, _key, data) => Effect.succeed(data),
+    pbkdf2: (_algorithm, password) => Effect.succeed(password)
   })
 
 describe("Crypto", () => {
+  it.effect("reports unavailable RSA-OAEP on legacy Crypto services as a typed error", () =>
+    Effect.gen(function*() {
+      const legacy = { ...testCrypto }
+      delete legacy.rsaOaepEncrypt
+      const error = yield* Crypto.rsaOaepEncrypt({
+        publicKey: Uint8Array.of(1),
+        data: Uint8Array.of(2)
+      }).pipe(Effect.provideService(Crypto.Crypto, legacy), Effect.flip)
+      assert.strictEqual(error.reason._tag, "Unknown")
+      assert.strictEqual(error.reason.method, "rsaOaepEncrypt")
+      assert.strictEqual(error.reason.module, "Crypto")
+    }))
+
+  it.effect("keeps Crypto.make compatible when no RSA implementation is supplied", () =>
+    Effect.gen(function*() {
+      const error = yield* Crypto.rsaOaepEncrypt({
+        publicKey: Uint8Array.of(1),
+        data: Uint8Array.of(2)
+      }).pipe(Effect.provideService(Crypto.Crypto, testCrypto), Effect.flip)
+      assert.strictEqual(error.reason._tag, "Unknown")
+      assert.strictEqual(error.reason.method, "rsaOaepEncrypt")
+    }))
+
   it("uses the module path for its type ID", () => {
     assert.strictEqual(
       (testCrypto as unknown as Record<string, unknown>)["~effect/Crypto"],
@@ -89,7 +116,9 @@ describe("Crypto", () => {
       Crypto.Crypto,
       Crypto.make({
         randomBytes: (size) => new Uint8Array(size).fill(0xff),
-        digest: (_algorithm, data) => Effect.succeed(data)
+        digest: (_algorithm, data) => Effect.succeed(data),
+        hmac: (_algorithm, _key, data) => Effect.succeed(data),
+        pbkdf2: (_algorithm, password) => Effect.succeed(password)
       })
     )))
 

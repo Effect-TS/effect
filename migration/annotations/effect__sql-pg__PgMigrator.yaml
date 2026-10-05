@@ -1,0 +1,9 @@
+"@effect/sql-pg/PgMigrator":
+  replacement: "effect/postgres/PgMigrator"
+  note: "Import PostgreSQL migration helpers from Effect core. Schema dumps still use the platform child-process, filesystem, and path services with pg_dump installed."
+"@effect/sql-pg/PgMigrator#layer":
+  replacement: "effect/postgres/PgMigrator#layer"
+  note: "Import the PostgreSQL migration layer from effect/postgres/PgMigrator and compose it with the native PgClient layer and required platform services."
+"@effect/sql-pg/PgMigrator#run":
+  replacement: "effect/postgres/PgMigrator#run"
+  note: "Import from effect/postgres/PgMigrator and run migrations using the native PgClient and SqlClient services. Schema dumps require the platform child-process, filesystem, and path services."

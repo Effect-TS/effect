@@ -1,155 +1,104 @@
 /**
- * Deno Redis integration backed by `@db/redis`.
+ * Native Redis clients for Deno over TCP, TLS, and Unix sockets.
  *
- * This module creates a scoped, native Deno Redis client and exposes it as
- * both the portable `Redis` service and the Deno-specific {@link DenoRedis}
- * service for direct access to the raw client. Unlike Bun's built-in client,
- * `@db/redis` connects eagerly using RESP2, so layer construction can fail
- * with a `RedisError`.
+ * Provides standalone, Cluster, and Sentinel clients together with the Redis
+ * persistence adapter through Deno's Node compatibility APIs.
  *
  * @stability unstable
  * @since 4.0.0
  */
-import { connect, parseURL, type Redis as RedisClient, type RedisConnectOptions } from "@db/redis"
+import type * as Shared from "@effect/platform-node-shared/NodeRedis"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Redis from "effect/persistence/Redis"
-import * as Predicate from "effect/Predicate"
-import * as Record from "effect/Record"
+import type * as Redis from "effect/persistence/Redis"
+import * as RedisClient from "effect/redis/RedisClient"
+import type { RedisError } from "effect/redis/RedisError"
+import * as RedisPersistence from "effect/redis/RedisPersistence"
+import * as SocketConnector from "effect/socket/SocketConnector"
+import * as DenoCrypto from "./DenoCrypto.ts"
+import * as DenoSocketConnector from "./DenoSocketConnector.ts"
 
 /**
- * Options for connecting to Redis, including a Redis URL or individual
- * connection settings. Explicit settings override values from the URL.
+ * Native client configuration with socket settings and Redis URLs.
+ *
+ * **Details**
+ *
+ * Explicit settings override URL authority credentials, the pathname database,
+ * and connection settings. Query parameters do not configure the connection.
+ * Use `socket.host` for the hostname and `topology` for Cluster or Sentinel.
  *
  * @stability unstable
- * @category models
+ * @category configuration
  * @since 4.0.0
  */
-export type RedisOptions = Omit<RedisConnectOptions, "hostname"> & {
-  readonly hostname?: string
-  readonly url?: string
-}
+export interface Options extends Shared.Options {}
 
 /**
- * Service tag for Deno Redis integration, exposing the raw `@db/redis` client
- * and a `use` helper that maps client promise failures to `RedisError`.
+ * Service tag for Deno's native Redis client.
+ *
+ * **Details**
+ *
+ * Use `execute` for raw replies, `run` for checked descriptors, and `reserve`
+ * for stateful or blocking work. Operations return Effects.
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export class DenoRedis extends Context.Service<DenoRedis, {
-  readonly client: RedisClient
-  readonly use: <A>(f: (client: RedisClient) => Promise<A>) => Effect.Effect<A, Redis.RedisError>
-}>()("@effect/platform-deno/DenoRedis") {}
-
-const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
-  const connectClient = () => {
-    const { url, ...connectOptions } = options
-    const parsedUrl = url === undefined ? undefined : new URL(url)
-    const { name, ...parsed } = url === undefined ? { hostname: "localhost" } : parseURL(url)
-    return connect({
-      ...parsed,
-      ...(name === undefined ? {} : { username: name }),
-      ...(parsedUrl?.username ? { username: decodeURIComponent(parsedUrl.username) } : {}),
-      ...(parsedUrl?.password ? { password: decodeURIComponent(parsedUrl.password) } : {}),
-      ...Record.filter(connectOptions, Predicate.isNotUndefined)
-    })
-  }
-
-  const client = yield* Effect.acquireRelease(
-    Effect.tryPromise({
-      try: connectClient,
-      catch: (cause) => new Redis.RedisError({ cause })
-    }),
-    (client) => Effect.sync(() => client.close())
-  )
-
-  const use = <A>(f: (client: RedisClient) => Promise<A>) =>
-    Effect.tryPromise({
-      try: () => f(client),
-      catch: (cause) => new Redis.RedisError({ cause })
-    })
-
-  const redis = yield* Redis.make({
-    send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) =>
-      Effect.tryPromise({
-        try: () => client.sendCommand(command, args as Array<string>) as Promise<A>,
-        catch: (cause) => new Redis.RedisError({ cause })
-      }),
-    subscribe: (channel, onMessage) =>
-      Effect.acquireRelease(
-        Effect.tryPromise({
-          try: async () => {
-            const subscriber = await connectClient()
-            try {
-              const subscription = await subscriber.subscribe(channel)
-              // @db/redis resolves subscribe after writing the command, before
-              // reading its acknowledgement. This ordered reply proves that
-              // Redis processed SUBSCRIBE before the dequeue is returned.
-              await subscriber.ping()
-              return { subscriber, subscription }
-            } catch (cause) {
-              subscriber.close()
-              throw cause
-            }
-          },
-          catch: (cause) => new Redis.RedisError({ cause })
-        }),
-        ({ subscriber }) => Effect.sync(() => subscriber.close())
-      ).pipe(
-        Effect.map(({ subscription }) =>
-          Effect.tryPromise({
-            try: async () => {
-              for await (const message of subscription.receive()) {
-                onMessage(message)
-              }
-            },
-            catch: (cause) => new Redis.RedisError({ cause })
-          })
-        )
-      )
-  })
-
-  const denoRedis = Fn.identity<DenoRedis["Service"]>({
-    client,
-    use
-  })
-
-  return Context.make(DenoRedis, denoRedis).pipe(
-    Context.add(Redis.Redis, redis)
-  )
-})
+export class DenoRedis
+  extends Context.Service<DenoRedis, RedisClient.RedisClient>()("@effect/platform-deno/DenoRedis")
+{}
 
 /**
- * Provides `Redis` and `DenoRedis` services backed by an `@db/redis` client,
- * closing the client when the layer scope ends. URL-derived options can be
- * overridden by other supplied options.
+ * Acquires a scoped native client and validates its initial connection.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (options?: Options) =>
+  RedisClient.makeWithPlatform(clientOptions(options)).pipe(
+    Effect.provideService(SocketConnector.SocketConnector, DenoSocketConnector.make({ stream: options?.stream }))
+  )
+
+const clientOptions = (options?: Options): RedisClient.Options => {
+  const { stream: _stream, ...config } = options ?? {}
+  return config
+}
+
+const makeContext = (options?: Options) =>
+  RedisPersistence.makeContext(clientOptions(options)).pipe(
+    Effect.provideService(SocketConnector.SocketConnector, DenoSocketConnector.make({ stream: options?.stream })),
+    Effect.provide(DenoCrypto.layer),
+    Effect.map((context) => Context.add(context, DenoRedis, Context.get(context, RedisClient.RedisClient)))
+  )
+
+/**
+ * Provides Deno Redis, general client, and persistence adapter services.
+ *
+ * **Details**
+ *
+ * Cluster persistence groups related keys with hash tags per cache namespace,
+ * queue, or rate limiter. Moving persisted data into Cluster requires a key
+ * migration.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layer = (
-  options?: RedisOptions | undefined
-): Layer.Layer<Redis.Redis | DenoRedis, Redis.RedisError> => Layer.effectContext(make(options))
+export const layer = (options?: Options): Layer.Layer<DenoRedis | RedisClient.RedisClient | Redis.Redis, RedisError> =>
+  Layer.effectContext(makeContext(options))
 
 /**
- * Provides `Redis` and `DenoRedis` services from `Config`-backed options,
- * closing the client when the layer scope ends.
+ * Provides native Redis services from Effect configuration.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
 export const layerConfig = (
-  options: Config.Wrap<RedisOptions>
-): Layer.Layer<Redis.Redis | DenoRedis, Redis.RedisError | Config.ConfigError> =>
-  Layer.effectContext(
-    Config.unwrap(options).pipe(
-      Effect.flatMap(make)
-    )
-  )
+  options: Config.Wrap<Options>
+): Layer.Layer<DenoRedis | RedisClient.RedisClient | Redis.Redis, RedisError | Config.ConfigError> =>
+  Layer.effectContext(Config.unwrap(options).pipe(Effect.flatMap(makeContext)))

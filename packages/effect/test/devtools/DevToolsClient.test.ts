@@ -29,7 +29,7 @@ describe("DevToolsClient", () => {
           const closed = Latch.makeUnsafe(false)
           yield* Effect.addFinalizer(() => closed.open)
           let sent = false
-          return {
+          return Socket.makeReader({
             pull: Effect.suspend(() => {
               if (sent) {
                 return Effect.andThen(
@@ -46,7 +46,7 @@ describe("DevToolsClient", () => {
                   reason: new Socket.SocketUpgradeError({})
                 })
               )
-          }
+          })
         }),
         writer: Effect.succeed({
           write,

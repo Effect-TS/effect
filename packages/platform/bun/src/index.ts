@@ -88,6 +88,11 @@ export * as BunSocket from "./BunSocket.ts"
 /**
  * @since 4.0.0
  */
+export * as BunSocketConnector from "./BunSocketConnector.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as BunSocketServer from "./BunSocketServer.ts"
 
 /**

@@ -95,6 +95,8 @@ export default defineConfig({
         isBun
           ? [
             ...exclude,
+            "test/redis/**",
+            "test/postgres/**",
             // These tests assert Node-specific Web API or stack trace behavior.
             "test/reactivity/Atom.test.ts",
             "test/schema/Schema.test.ts",
@@ -104,7 +106,7 @@ export default defineConfig({
             "test/http/HttpEffect.test.ts",
             "test/http/HttpServerRequest.test.ts"
           ]
-          : undefined
+          : [...exclude, "test/redis/**", "test/postgres/**"]
       ),
       ...project("@effect/ai-anthropic", "packages/ai/anthropic"),
       ...project("@effect/ai-cloudflare", "packages/ai/cloudflare"),
@@ -172,6 +174,26 @@ export default defineConfig({
         ]
       ),
       ...project("@effect/platform-node-shared", "packages/platform/node-shared", isNode),
+      // Topology fixtures start several Redis containers per test. Avoid
+      // competing startup bursts alongside the other integration projects.
+      ...project(
+        "effect/redis",
+        "packages/effect",
+        true,
+        integrationTestsEnabled
+          ? {
+            test: {
+              fileParallelism: false,
+              sequence: {
+                concurrent: false,
+                groupOrder: 1
+              }
+            }
+          }
+          : {},
+        exclude,
+        ["test/redis/**/*.test.ts"]
+      ),
       ...project("@effect/vitest", "packages/vitest"),
       ...project("@effect/sql-clickhouse", "packages/sql/clickhouse"),
       ...project("@effect/sql-d1", "packages/sql/d1", !isDeno),
@@ -194,7 +216,7 @@ export default defineConfig({
           }
           : {}
       ),
-      ...project("@effect/sql-pg", "packages/sql/pg"),
+      ...project("effect/postgres", "packages/effect", true, {}, exclude, ["test/postgres/**/*.test.ts"]),
       ...project("@effect/sql-pglite", "packages/sql/pglite"),
       ...project("@effect/sql-sqlite-bun", "packages/sql/sqlite-bun"),
       ...project(

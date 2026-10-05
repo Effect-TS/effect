@@ -57,6 +57,8 @@ The Effect v3 source code is available on the [`v3`](https://github.com/Effect-T
 
 This monorepo contains the core `effect` package alongside integration packages that extend it. All packages listed below are released together with synchronized versions.
 
+The core package includes native Redis, PostgreSQL, MySQL, SQL Server, ClickHouse, and remote libSQL clients under `effect/redis`, `effect/postgres`, `effect/mysql`, `effect/mssql`, `effect/clickhouse`, and `effect/libsql`. Platform packages supply socket, cryptography, and HTTP services.
+
 | Package                                                               | Description                                              | API Reference                                                      |
 | --------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ |
 | [`effect`](packages/effect)                                           | The core package                                         | [docs](https://effect.website/docs/v4/api/effect)                  |
@@ -70,7 +72,6 @@ This monorepo contains the core `effect` package alongside integration packages 
 | [`@effect/sql-libsql`](packages/sql/libsql)                           | SQL client for libSQL                                    | [docs](https://effect.website/docs/v4/api/sql-libsql)              |
 | [`@effect/sql-mssql`](packages/sql/mssql)                             | SQL client for Microsoft SQL Server                      | [docs](https://effect.website/docs/v4/api/sql-mssql)               |
 | [`@effect/sql-mysql2`](packages/sql/mysql2)                           | SQL client for MySQL                                     | [docs](https://effect.website/docs/v4/api/sql-mysql2)              |
-| [`@effect/sql-pg`](packages/sql/pg)                                   | SQL client for PostgreSQL                                | [docs](https://effect.website/docs/v4/api/sql-pg)                  |
 | [`@effect/sql-pglite`](packages/sql/pglite)                           | SQL client for [PGlite](https://pglite.dev)              | [docs](https://effect.website/docs/v4/api/sql-pglite)              |
 | [`@effect/sql-sqlite-bun`](packages/sql/sqlite-bun)                   | SQL client for SQLite via `bun:sqlite`                   | [docs](https://effect.website/docs/v4/api/sql-sqlite-bun)          |
 | [`@effect/sql-sqlite-do`](packages/sql/sqlite-do)                     | SQL client for Cloudflare Durable Objects SQLite         | [docs](https://effect.website/docs/v4/api/sql-sqlite-do)           |

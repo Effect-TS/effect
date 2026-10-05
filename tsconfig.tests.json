@@ -26,6 +26,12 @@
       // that would otherwise be considered cyclic dependencies (e.g. loading `@effect/sql-sqlite-node` in the test
       // suite of `@effect/platform-node` which itself depends on `@effect/platform-node`).
       "effect": ["./packages/effect/src/index.ts"],
+      "effect/redis": ["./packages/effect/src/redis/index.ts"],
+      "effect/postgres": ["./packages/effect/src/postgres/index.ts"],
+      "effect/mysql": ["./packages/effect/src/mysql/index.ts"],
+      "effect/mssql": ["./packages/effect/src/mssql/index.ts"],
+      "effect/clickhouse": ["./packages/effect/src/clickhouse/index.ts"],
+      "effect/libsql": ["./packages/effect/src/libsql/index.ts"],
       "effect/schema": ["./packages/effect/src/schema/index.ts"],
       "effect/*": ["./packages/effect/src/*.ts"],
       "@effect/ai-anthropic": ["./packages/ai/anthropic/src/index.ts"],
@@ -66,8 +72,6 @@
       "@effect/sql-mssql/*": ["./packages/sql/mssql/src/*.ts"],
       "@effect/sql-mysql2": ["./packages/sql/mysql2/src/index.ts"],
       "@effect/sql-mysql2/*": ["./packages/sql/mysql2/src/*.ts"],
-      "@effect/sql-pg": ["./packages/sql/pg/src/index.ts"],
-      "@effect/sql-pg/*": ["./packages/sql/pg/src/*.ts"],
       "@effect/sql-pglite": ["./packages/sql/pglite/src/index.ts"],
       "@effect/sql-pglite/*": ["./packages/sql/pglite/src/*.ts"],
       "@effect/sql-sqlite-bun": ["./packages/sql/sqlite-bun/src/index.ts"],

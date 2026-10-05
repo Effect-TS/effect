@@ -35,6 +35,12 @@ export * as NodeHttpCompression from "./NodeHttpCompression.ts"
 export * as NodePath from "./NodePath.ts"
 
 /**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as NodeRedis from "./NodeRedis.ts"
+
+/**
  * @since 4.0.0
  */
 export * as NodeRuntime from "./NodeRuntime.ts"
@@ -52,7 +58,17 @@ export * as NodeSocket from "./NodeSocket.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeSocketConnector from "./NodeSocketConnector.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodeSocketServer from "./NodeSocketServer.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as NodeSocketTcp from "./NodeSocketTcp.ts"
 
 /**
  * @since 4.0.0

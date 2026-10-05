@@ -1,10 +1,9 @@
 /**
  * Models bidirectional socket connections in Effect.
  *
- * A `Socket` exposes a pull-based `reader` and a scoped `writer`. Acquiring
- * the reader dials the connection and returns an `Effect` that yields batches
- * of incoming frames with end-to-end backpressure: nothing is read from the
- * transport until the consumer pulls. Every termination, including clean
+ * A `Socket` exposes a `reader` and a scoped `writer`. Acquiring the reader
+ * dials the connection. The reader supports pulling batches or running a
+ * receive callback with backpressure. Every termination, including clean
  * closes, surfaces as a `SocketError`, so reconnecting is a plain
  * `Effect.retry` around the scoped consume loop.
  *
@@ -112,7 +111,14 @@ export interface Socket {
  *
  * **Details**
  *
- * `pull` reads the next non-empty batch. `upgrade` wraps this connection with
+ * `pull` reads the next non-empty batch. `run` delivers individual chunks to
+ * its callback until the connection closes. A synchronous callback returns
+ * `void`; returning an Effect suspends further reads until it completes.
+ * Callback exceptions fail with a `SocketReadError` retaining the cause.
+ * Only one pull, receive loop, or TLS upgrade may be active at a time.
+ * Interrupting `run` stops delivery and releases the reader for another consumer.
+ *
+ * `upgrade` wraps this connection with
  * TLS when the transport supports it. Unsupported readers fail with a
  * `SocketUpgradeError`. The upgrade also fails with `SocketUpgradeError` when
  * the selected TLS role requires an identity but `key` and `cert` are not both
@@ -125,7 +131,62 @@ export interface Socket {
  */
 export interface Reader<A extends Uint8Array | string = Uint8Array | string> {
   readonly pull: Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>
+  readonly run: (onChunk: (chunk: A) => void | Effect.Effect<void, SocketError>) => Effect.Effect<void, SocketError>
   readonly upgrade: (options?: TlsUpgradeOptions) => Effect.Effect<void, SocketError>
+}
+
+/**
+ * Creates a socket reader with a receive loop derived from its pull operation.
+ *
+ * **Details**
+ *
+ * The receive callback runs once for each chunk. Returning an Effect suspends
+ * delivery until it completes; throwing fails with a `SocketReadError`.
+ * Pulls, receive loops, and TLS upgrades cannot overlap. Interrupting a receive
+ * loop releases the reader for its next consumer.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeReader = <A extends Uint8Array | string>(options: {
+  readonly pull: Effect.Effect<NonEmptyReadonlyArray<A>, SocketError>
+  readonly upgrade: Reader<A>["upgrade"]
+}): Reader<A> => {
+  let consuming = false
+  const exclusive = <B>(effect: Effect.Effect<B, SocketError>): Effect.Effect<B, SocketError> =>
+    Effect.suspend(() => {
+      if (consuming) {
+        return Effect.fail(
+          new SocketError({
+            reason: new SocketReadError({ cause: new Error("socket reader already has an active consumer") })
+          })
+        )
+      }
+      consuming = true
+      return Effect.ensuring(
+        effect,
+        Effect.sync(() => {
+          consuming = false
+        })
+      )
+    })
+  return {
+    pull: exclusive(options.pull),
+    run: (onChunk) =>
+      exclusive(
+        Effect.forever(Effect.flatMap(options.pull, (chunks) =>
+          Effect.forEach(chunks, (chunk) =>
+            Effect.suspend(() => {
+              try {
+                return onChunk(chunk) ?? Effect.void
+              } catch (cause) {
+                return Effect.fail(new SocketError({ reason: new SocketReadError({ cause }) }))
+              }
+            }), { discard: true })))
+      ),
+    upgrade: (settings) => exclusive(options.upgrade(settings))
+  }
 }
 
 /**
@@ -144,6 +205,39 @@ export interface Reader<A extends Uint8Array | string = Uint8Array | string> {
 export interface Writer {
   readonly write: (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<void, SocketError>
   readonly writeAll: (chunks: NonEmptyReadonlyArray<Uint8Array | string>) => Effect.Effect<void, SocketError>
+  /**
+   * Limits outgoing TLS plaintext records to an integer size from 512 to 16384 bytes.
+   *
+   * **Details**
+   *
+   * Protocols can set this limit after negotiating their packet size. Writers
+   * without this capability omit the method. Implementations fail with
+   * `SocketError` when the limit is invalid or cannot be applied to the active
+   * TLS connection; they must not silently ignore the requested limit.
+   */
+  readonly setTlsMaxSendFragment?: ((size: number) => Effect.Effect<void, SocketError>) | undefined
+}
+
+/**
+ * Synchronous framing hooks for protocols that carry TLS handshake bytes inside
+ * their own packets before switching to ordinary TLS records.
+ *
+ * **Details**
+ *
+ * Each upgrade uses fresh framing state. `encode` wraps outgoing handshake
+ * bytes, while `decode` can buffer incoming bytes and return zero or more TLS
+ * chunks. After TLS is established, `onSecure` releases any buffered bytes and
+ * both directions switch to unframed transport. Hook exceptions fail the
+ * upgrade through `SocketError`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface TlsHandshakeFraming {
+  readonly encode: (bytes: Uint8Array) => Uint8Array
+  readonly decode: (bytes: Uint8Array) => ReadonlyArray<Uint8Array>
+  readonly onSecure: () => ReadonlyArray<Uint8Array>
 }
 
 /**
@@ -170,7 +264,9 @@ export interface TlsUpgradeOptions {
   readonly passphrase?: Redacted.Redacted<string> | undefined
   readonly alpnProtocols?: ReadonlyArray<string> | undefined
   readonly requestCert?: boolean | undefined
+  readonly servername?: string | undefined
   readonly rejectUnauthorized?: boolean | undefined
+  readonly handshakeFraming?: TlsHandshakeFraming | undefined
 }
 
 /**
@@ -1081,7 +1177,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       currentWS = ws
       latch.openUnsafe()
 
-      return {
+      return makeReader({
         pull: Effect.callback<NonEmptyReadonlyArray<Uint8Array | string>, SocketError>((resume) => {
           if (buffer.length > 0) return resume(Effect.succeed(takeBuffer()))
           if (error !== undefined) return resume(Effect.fail(error))
@@ -1091,7 +1187,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
           })
         }),
         upgrade: SocketUpgradeError.unsupported
-      }
+      })
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
     ) as Socket["reader"]
@@ -1250,7 +1346,7 @@ export const fromTransformStream = <R>(
             reason: new SocketReadError({ cause })
           })
       })
-      return {
+      return makeReader({
         pull: Effect.suspend(() => {
           if (error !== undefined) return Effect.fail(error)
           return Effect.flatMap(read, ({ done, value }) =>
@@ -1259,7 +1355,7 @@ export const fromTransformStream = <R>(
               : Effect.succeed([value] as unknown as NonEmptyReadonlyArray<Uint8Array | string>))
         }),
         upgrade: SocketUpgradeError.unsupported
-      }
+      })
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
     ) as Socket["reader"]

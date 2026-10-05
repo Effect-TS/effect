@@ -1,12 +1,20 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../../../tsconfig.base.json",
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "references": [
-    { "path": "../../effect" },
-    { "path": "../node-shared" }
+    {
+      "path": "../../effect"
+    },
+    {
+      "path": "../node-shared"
+    }
   ],
   "compilerOptions": {
-    "types": ["deno"]
+    "types": [
+      "deno"
+    ]
   }
 }

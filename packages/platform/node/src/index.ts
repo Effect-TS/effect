@@ -98,6 +98,11 @@ export * as NodeSocket from "./NodeSocket.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeSocketConnector from "./NodeSocketConnector.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodeSocketServer from "./NodeSocketServer.ts"
 
 /**

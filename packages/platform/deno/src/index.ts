@@ -88,6 +88,11 @@ export * as DenoSocket from "./DenoSocket.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoSocketConnector from "./DenoSocketConnector.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoSocketServer from "./DenoSocketServer.ts"
 
 /**
