@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -1359,5 +1359,13 @@ Missing key
         yield* Fiber.join(next)
         strictEqual(yield* Ref.get(attempts), 3)
       }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+  })
+
+  it("reads cookies when Headers has no getSetCookie", () => {
+    // React Native's Headers implementation does not provide getSetCookie.
+    const source = new Response(null, { headers: { "content-type": "text/plain" } })
+    Object.defineProperty(source.headers, "getSetCookie", { value: undefined })
+    const response = HttpClientResponse.fromWeb(HttpClientRequest.get("http://localhost"), source)
+    assert.isTrue(Cookies.isEmpty(response.cookies))
   })
 })
