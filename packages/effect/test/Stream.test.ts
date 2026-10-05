@@ -4179,6 +4179,22 @@ describe("Stream", () => {
         deepStrictEqual(result, [1, 1, 2, 3, 5, 8])
       }))
 
+    it.live("sink finishing during an upstream pull still lets the stream complete", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const finished = yield* Deferred.make<void>()
+        const source = Stream.fromEffect(Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          yield* Deferred.await(finished)
+          // Let the sink finish before the suspended upstream pull returns.
+          yield* Effect.yieldNow
+          return 1
+        }))
+        const sink = Sink.fromEffect(Effect.andThen(Deferred.await(started), Deferred.succeed(finished, undefined)))
+        const result = yield* source.pipe(Stream.tapSink(sink), Stream.runCollect, Effect.timeoutOption("1 second"))
+        deepStrictEqual(result, Option.some([1]))
+      }))
+
     it.effect("sink that fails before stream", () =>
       Effect.gen(function*() {
         const sink = Sink.fail("error")
