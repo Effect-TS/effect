@@ -394,6 +394,33 @@ describe("Formatter", () => {
         `{"a":{"secret":"[REDACTED]"}}`
       )
     })
+
+    it("should read getters once with the original receiver", () => {
+      let receiverIsHolder = false
+      let reads = 0
+      const holder = {
+        get a() {
+          receiverIsHolder = Object.is(this, holder)
+          // unstable getter: a second read would leak the raw secret
+          return reads++ === 0 ? data : { secret: "my-secret-key" }
+        }
+      }
+
+      strictEqual(formatJson(holder), `{"a":{"secret":"[REDACTED]"}}`)
+      strictEqual(reads, 1)
+      assertTrue(receiverIsHolder)
+    })
+
+    it("should redact sensitive data returned from a frozen accessor", () => {
+      strictEqual(
+        formatJson(Object.freeze({
+          get a() {
+            return data
+          }
+        })),
+        `{"a":{"secret":"[REDACTED]"}}`
+      )
+    })
   })
 
   describe("Inspectable.toJson", () => {
