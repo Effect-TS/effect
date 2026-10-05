@@ -189,6 +189,22 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
       assert.strictEqual(yield* fs.readFileString(marker), "exited")
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 
+  it.live("scope release force kills descendants after the leader exits with a non-zero code", () =>
+    Effect.gen(function*() {
+      const { descendantPid, handle, marker, scope } = yield* startProcessGroup("ignore-signal", {
+        stdin: "pipe",
+        forceKillAfter: "200 millis"
+      })
+      yield* Effect.addFinalizer(() => killDescendant(descendantPid))
+
+      yield* Stream.run(Stream.make(new TextEncoder().encode("exit 1\n")), handle.stdin)
+      assert.strictEqual(yield* handle.exitCode, 1)
+
+      yield* Scope.close(scope, Exit.void).pipe(liveTimeout(2_000))
+
+      yield* assertHeartbeatStopped(marker)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+
   it.live("scope release cleans descendants after the leader is killed externally", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

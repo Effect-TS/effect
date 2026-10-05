@@ -479,6 +479,7 @@ export class HttpApiSchemaError extends Data.TaggedClass("HttpApiSchemaError")<{
   readonly cause: Schema.SchemaError
 }> {
   readonly [HttpApiSchemaErrorTypeId]: HttpApiSchemaErrorTypeId = HttpApiSchemaErrorTypeId
+  readonly [ErrorReporter.ignore] = true
 
   static is(u: unknown): u is HttpApiSchemaError {
     return hasProperty(u, HttpApiSchemaErrorTypeId)

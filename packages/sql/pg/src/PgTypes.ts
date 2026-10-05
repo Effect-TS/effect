@@ -26,6 +26,10 @@
  * preserve its UTC fields. `timestamptz` round trips preserve the instant
  * regardless of session timezone.
  *
+ * `interval` values decode to `Interval`, preserving calendar months, days,
+ * and signed bigint microseconds independently. No units are normalized.
+ * Convert microseconds explicitly before JSON serialization.
+ *
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
@@ -311,6 +315,7 @@ export const OID = {
   time: 1083,
   timestamp: 1114,
   timestamptz: 1184,
+  interval: 1186,
   timetz: 1266,
   numeric: 1700,
   regclass: 2205,
@@ -335,6 +340,7 @@ export const OID = {
   timeArray: 1183,
   timestampArray: 1115,
   timestamptzArray: 1185,
+  intervalArray: 1187,
   timetzArray: 1270,
   numericArray: 1231,
   regclassArray: 2210,
@@ -362,6 +368,7 @@ const arrayToElement = new Map<number, number>([
   [OID.timeArray, OID.time],
   [OID.timestampArray, OID.timestamp],
   [OID.timestamptzArray, OID.timestamptz],
+  [OID.intervalArray, OID.interval],
   [OID.timetzArray, OID.timetz],
   [OID.numericArray, OID.numeric],
   [OID.regclassArray, OID.regclass],
@@ -979,9 +986,9 @@ const utf8Codec: UnsafeCodec<any> = codecOf(
   (sink, value) => sink.utf8(requireString(value, "text"))
 )
 
-const int8Value = (value: unknown): bigint => {
-  const big = requireBigInt(value, "int8")
-  if (big < INT64_MIN || big > INT64_MAX) fail(`int8 out of range: ${big}`)
+const requireInt64 = (value: unknown, name: string): bigint => {
+  const big = requireBigInt(value, name)
+  if (big < INT64_MIN || big > INT64_MAX) fail(`${name} out of range: ${big}`)
   return big
 }
 
@@ -1180,6 +1187,55 @@ const oidCodec: UnsafeCodec<any> = codecOf(
   (sink, value) => sink.int32(requireInteger(value, "oid", 0, 4294967295))
 )
 
+/**
+ * A PostgreSQL interval with independent signed calendar and time components.
+ * Months and days are int32 values; microseconds is an int64 value.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Interval {
+  readonly months: number
+  readonly days: number
+  readonly microseconds: bigint
+}
+
+const intervalValue = (value: unknown): Interval => {
+  if (typeof value !== "object" || value === null) return fail("Expected an object for interval")
+  const interval = value as Interval
+  const months = requireInteger(interval.months, "interval months", INT32_MIN, INT32_MAX)
+  const days = requireInteger(interval.days, "interval days", INT32_MIN, INT32_MAX)
+  const microseconds = requireInt64(interval.microseconds, "interval microseconds")
+  return { months, days, microseconds }
+}
+
+const intervalCodec: UnsafeCodec<Interval> = codecOf(
+  (bytes, offset, size) => {
+    requireSize(size, 16, "interval")
+    stage8(bytes, offset)
+    return {
+      months: readInt32(bytes, offset + 12),
+      days: readInt32(bytes, offset + 8),
+      microseconds: scratchView8.getBigInt64(0)
+    }
+  },
+  (value) => {
+    const interval = intervalValue(value)
+    const bytes = new Uint8Array(16)
+    scratchView8.setBigInt64(0, interval.microseconds)
+    bytes.set(scratchBytes8)
+    writeInt32(bytes, 8, interval.days)
+    writeInt32(bytes, 12, interval.months)
+    return bytes
+  },
+  (sink, value) => {
+    const interval = intervalValue(value)
+    sink.bigInt64(interval.microseconds)
+    sink.int32(interval.days)
+    sink.int32(interval.months)
+  }
+)
+
 const builtinScalars = new Map<number, UnsafeCodec<any>>([
   [
     OID.bool,
@@ -1255,10 +1311,10 @@ const builtinScalars = new Map<number, UnsafeCodec<any>>([
         return scratchView8.getBigInt64(0)
       },
       (value) => {
-        scratchView8.setBigInt64(0, int8Value(value))
+        scratchView8.setBigInt64(0, requireInt64(value, "int8"))
         return takeScratch8()
       },
-      (sink, value) => sink.bigInt64(int8Value(value))
+      (sink, value) => sink.bigInt64(requireInt64(value, "int8"))
     )
   ],
   [
@@ -1319,7 +1375,8 @@ const builtinScalars = new Map<number, UnsafeCodec<any>>([
   [OID.date, dateCodec],
   [OID.timetz, timetzCodec],
   [OID.timestamp, timestampCodec],
-  [OID.timestamptz, timestampCodec]
+  [OID.timestamptz, timestampCodec],
+  [OID.interval, intervalCodec]
 ])
 
 const makeArrayCodec = (elementOid: number, lookup: Lookup): UnsafeCodec<ReadonlyArray<unknown>> =>
@@ -1998,6 +2055,14 @@ export const timestamp: (value: Date | number | null) => Parameter = parameter(O
  * @since 4.0.0
  */
 export const timestamptz: (value: Date | number | null) => Parameter = parameter(OID.timestamptz)
+
+/**
+ * An `interval` parameter with independent months, days, and microseconds.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const interval: (value: Interval | null) => Parameter = parameter(OID.interval)
 
 /**
  * A one-dimensional array parameter whose elements have the given OID.

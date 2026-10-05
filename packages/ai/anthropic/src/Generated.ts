@@ -8467,20 +8467,20 @@ export const InputContentBlock = Schema.Union([
 ], { mode: "oneOf" })
 export type BetaInputMessage = {
   readonly "content": string | ReadonlyArray<BetaInputContentBlock>
-  readonly "role": "user" | "assistant"
+  readonly "role": "user" | "assistant" | "system"
 }
 export const BetaInputMessage = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Array(BetaInputContentBlock)]).annotate({ "title": "Content" }),
-  "role": Schema.Literals(["user", "assistant"]).annotate({ "title": "Role" })
-}).annotate({ "title": "InputMessage" })
+  "role": Schema.Literals(["user", "assistant", "system"]).annotate({ "title": "Role" })
+}).annotate({ "title": "InputMessage", "identifier": "BetaInputMessage" })
 export type InputMessage = {
   readonly "content": string | ReadonlyArray<InputContentBlock>
-  readonly "role": "user" | "assistant"
+  readonly "role": "user" | "assistant" | "system"
 }
 export const InputMessage = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Array(InputContentBlock)]).annotate({ "title": "Content" }),
-  "role": Schema.Literals(["user", "assistant"]).annotate({ "title": "Role" })
-}).annotate({ "title": "InputMessage" })
+  "role": Schema.Literals(["user", "assistant", "system"]).annotate({ "title": "Role" })
+}).annotate({ "title": "InputMessage", "identifier": "InputMessage" })
 export type BetaCountMessageTokensParams = {
   readonly "cache_control"?: BetaCacheControlEphemeral | null
   readonly "context_management"?: BetaContextManagementConfig | null

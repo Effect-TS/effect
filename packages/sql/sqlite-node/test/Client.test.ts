@@ -1,9 +1,11 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, FileSystem, Option } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option } from "effect"
 import { Reactivity } from "effect/reactivity"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
+import { TestClock } from "effect/testing"
+import { DatabaseSync } from "node:sqlite"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -22,6 +24,18 @@ const makeClients = Effect.gen(function*() {
     contender: yield* SqliteClient.make({ filename })
   }
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
+
+const makeLockedDatabase = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  const filename = dir + "/test.db"
+  const lock = yield* Effect.acquireRelease(
+    Effect.sync(() => new DatabaseSync(filename)),
+    (db) => Effect.sync(() => db.close())
+  )
+  lock.exec("BEGIN IMMEDIATE")
+  return { filename, unlock: () => lock.exec("ROLLBACK") }
+}).pipe(Effect.provide(NodeFileSystem.layer))
 
 describe("Client", () => {
   it.effect("releases completed nested savepoints", () =>
@@ -68,7 +82,47 @@ describe("Client", () => {
         { id: 1, name: "hello" },
         { id: 2, name: "world" }
       ])
+      response = yield* sql`INSERT INTO test (name) VALUES ('unprepared')`.valuesUnprepared
+      assert.deepStrictEqual(response, [])
+      assert.deepStrictEqual(yield* sql`SELECT * FROM test WHERE id = 3`, [{ id: 3, name: "unprepared" }])
     }))
+
+  it.effect.each(["rows", "values"] as const)(
+    "returns cached INSERT %s across count_changes OFF → ON → OFF",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* makeClient
+        yield* sql`CREATE TABLE count_changes (value INTEGER)`
+        yield* sql`PRAGMA count_changes = OFF`
+        const insert = sql`INSERT INTO count_changes VALUES (1)`
+        const execute = mode === "values" ? insert.values : insert
+
+        assert.deepStrictEqual(yield* execute, [])
+        yield* sql`PRAGMA count_changes = ON`
+        // Node may omit fields after recompilation; check only the row count.
+        assert.lengthOf(yield* execute, 1)
+        yield* sql`PRAGMA count_changes = OFF`
+        assert.deepStrictEqual(yield* execute, [])
+        assert.deepStrictEqual(yield* sql`SELECT COUNT(*) AS count FROM count_changes`, [{ count: 3 }])
+      })
+  )
+
+  it.effect.each(["rows", "values"] as const)(
+    "retries %s queries after a missing table is created",
+    (mode) =>
+      Effect.gen(function*() {
+        const sql = yield* makeClient
+        const select = sql`SELECT value FROM created_later`
+        const execute: Effect.Effect<ReadonlyArray<unknown>, SqlError> = mode === "values" ? select.values : select
+
+        const error = yield* Effect.flip(execute)
+        assert.strictEqual(error._tag, "SqlError")
+        yield* sql`CREATE TABLE created_later (value INTEGER)`
+        yield* sql`INSERT INTO created_later VALUES (1)`
+
+        assert.deepStrictEqual(yield* execute, mode === "values" ? [[1]] : [{ value: 1 }])
+      })
+  )
 
   it.effect("should work with raw", () =>
     Effect.gen(function*() {
@@ -302,4 +356,42 @@ describe("Client", () => {
       assert(metadata.totalPages > 0)
       assert.strictEqual(metadata.remainingPages, 0)
     }))
+
+  it.effect("retries enabling WAL while the database is locked", () =>
+    Effect.gen(function*() {
+      const { filename, unlock } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename }).pipe(Effect.forkChild({ startImmediately: true }))
+      unlock()
+      yield* TestClock.adjust("10 millis")
+      const sql = yield* Fiber.join(fiber)
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "wal" }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("fails to enable WAL with a typed error after busyTimeout", () =>
+    Effect.gen(function*() {
+      const { filename } = yield* makeLockedDatabase
+      const fiber = yield* SqliteClient.make({ filename, busyTimeout: "1 second" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* TestClock.adjust("2 seconds")
+      const error = yield* Effect.flip(Fiber.join(fiber))
+      assert.strictEqual(error.reason._tag, "LockTimeoutError")
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("does not enable WAL on readonly clients", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const filename = dir + "/test.db"
+
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const sql = yield* SqliteClient.make({ filename, disableWAL: true })
+          yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY)`
+        })
+      )
+
+      const sql = yield* SqliteClient.make({ filename, readonly: true })
+      assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "delete" }])
+    }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
 })
