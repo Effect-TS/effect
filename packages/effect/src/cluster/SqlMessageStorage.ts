@@ -33,6 +33,7 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
+import * as InternalPrimaryKey from "./internal/primaryKey.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -96,14 +97,14 @@ export const makeEncoded: (options?: {
   const repliesTable = table("replies")
   const repliesTableSql = sql(repliesTable)
 
-  // The composed primary key (`entityType/entityId/tag/id`) can legally exceed
+  // The composed primary key (e.g. `entityType/entityId/tag/id`) can legally exceed
   // the 255-character `message_id` column: entity_type(150) + entity_id(255) +
   // tag(50) alone total 458 characters before the RPC primary key is appended.
   // Keys that fit are stored as-is, keeping `message_id` byte-compatible with
   // rows written by previous versions; longer keys are stored as a SHA-256
   // digest (64 hex characters, collision probability negligible at a 2^128
-  // birthday bound). Digests never contain "/" while composed keys always do,
-  // so the two encodings cannot collide.
+  // birthday bound). Digests are hex-only while composed keys always contain
+  // "/" or ":" (see `internal/primaryKey.ts`), so the encodings cannot collide.
   const encoder = new TextEncoder()
   const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
     primaryKey.length <= 255
@@ -281,6 +282,32 @@ export const makeEncoded: (options?: {
       LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
       WHERE m.message_id = ${message_id}
     `
+
+  // rows written before escaped primary keys existed are stored under the plain
+  // key, which may belong to a different tuple, so the address and tag are
+  // verified before treating the row as the same request
+  const selectLegacyCandidate = (
+    candidate: NonNullable<ReturnType<typeof InternalPrimaryKey.legacyCandidate>>
+  ): Effect.Effect<ReadonlyArray<Row & { readonly id: string | bigint }>, SqlError | PlatformError.PlatformError> => {
+    const select = (message_id: string) =>
+      sql<Row & { readonly id: string | bigint }>`
+        SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        FROM ${messagesTableSql} m
+        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+        WHERE m.message_id = ${message_id}
+        AND m.entity_type = ${candidate.entityType}
+        AND m.entity_id = ${candidate.entityId}
+        AND m.tag = ${candidate.tag}
+      `
+    return messageIdForPrimaryKey(candidate.primaryKey).pipe(
+      Effect.flatMap(select),
+      Effect.flatMap((rows) =>
+        rows.length === 0 && mayHaveLegacyRow(candidate.primaryKey)
+          ? select(candidate.primaryKey)
+          : Effect.succeed(rows)
+      )
+    )
+  }
 
   const insertEnvelope: (
     row: MessageRow,
@@ -524,6 +551,13 @@ export const makeEncoded: (options?: {
         if (primaryKey !== null) {
           insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
             const row = envelopeToRow(envelope, messageId, deliverAt)
+            const candidate = InternalPrimaryKey.legacyCandidate(primaryKey)
+            if (candidate !== undefined) {
+              return Effect.flatMap(
+                selectLegacyCandidate(candidate),
+                (rows) => rows.length > 0 ? Effect.succeed(rows) : insertEnvelope(row, messageId)
+              )
+            }
             if (!mayHaveLegacyRow(primaryKey)) {
               return insertEnvelope(row, messageId)
             }
@@ -629,10 +663,17 @@ export const makeEncoded: (options?: {
         Effect.flatMap((messageId) =>
           sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
         ),
-        Effect.flatMap((rows) =>
-          rows.length === 0 && mayHaveLegacyRow(primaryKey)
-            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
-            : Effect.succeed(rows)
+        Effect.flatMap(
+          (
+            rows
+          ): Effect.Effect<ReadonlyArray<{ readonly id: string | bigint }>, SqlError | PlatformError.PlatformError> => {
+            if (rows.length > 0) return Effect.succeed(rows)
+            const candidate = InternalPrimaryKey.legacyCandidate(primaryKey)
+            if (candidate !== undefined) return selectLegacyCandidate(candidate)
+            return mayHaveLegacyRow(primaryKey)
+              ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+              : Effect.succeed(rows)
+          }
         ),
         Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]?.id), Snowflake.Snowflake)),
         Effect.provideService(SqlClient.SafeIntegers, true),

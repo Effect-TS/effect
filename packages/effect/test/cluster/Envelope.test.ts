@@ -56,3 +56,26 @@ describe("Envelope.OpaqueHole", () => {
     assert.throws(() => encode({ id: 1 }), /Uint8Array/)
   })
 })
+
+describe("Envelope.primaryKeyByAddress", () => {
+  const key = (entityType: string, entityId: string, tag: string, id: string) =>
+    Envelope.primaryKeyByAddress({
+      address: EntityAddress.make({
+        shardId: ShardId.make("default", 1),
+        entityType: EntityType.make(entityType),
+        entityId: EntityId.make(entityId)
+      }),
+      tag,
+      id
+    })
+
+  it("keeps keys distinct when components contain slashes", () => {
+    assert.notStrictEqual(key("Orders/Europe", "42", "submit", "once"), key("Orders", "Europe/42", "submit", "once"))
+    assert.notStrictEqual(key("Workflow", "Order", "run", "a/b"), key("Workflow/Order", "run", "a", "b"))
+  })
+
+  it("keeps the persisted format for unambiguous keys", () => {
+    assert.strictEqual(key("Orders", "42", "submit", "once/again"), "Orders/42/submit/once/again")
+    assert.strictEqual(key("Workflow/Order", "abc", "activity", "charge/1"), "Workflow/Order/abc/activity/charge/1")
+  })
+})

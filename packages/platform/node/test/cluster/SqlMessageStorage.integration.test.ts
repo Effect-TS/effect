@@ -406,6 +406,41 @@ describe("SqlMessageStorage", () => {
           expect(requestId).toEqual(Option.some(request.envelope.requestId))
         }))
 
+      it.effect("verifies legacy plaintext rows for escaped primary keys", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const make = makeRequest({
+            rpc: PrimaryKeyTest,
+            payload: PrimaryKeyTest.payloadSchema.make({ id: 789 }),
+            entityId: "a/b"
+          })
+          const request = yield* make
+          yield* storage.saveRequest(request)
+
+          // simulate a row written before slash-containing components were escaped
+          const legacy = "test/a/b/PrimaryKeyTest/789"
+          const requestId = String(request.envelope.requestId)
+          yield* sql`UPDATE cluster_messages SET message_id = ${legacy} WHERE id = ${requestId}`
+
+          const duplicate = yield* storage.saveRequest(yield* make)
+          assert(duplicate._tag === "Duplicate")
+          expect(duplicate.originalId).toEqual(request.envelope.requestId)
+          expect(
+            yield* storage.requestIdForPrimaryKey({
+              address: request.envelope.address,
+              tag: request.envelope.tag,
+              id: "789"
+            })
+          ).toEqual(Option.some(request.envelope.requestId))
+
+          // the same plaintext key written for a different address is not a duplicate
+          yield* sql`UPDATE cluster_messages SET entity_id = ${"a"} WHERE id = ${requestId}`
+          expect((yield* storage.saveRequest(yield* make))._tag).toEqual("Success")
+        }))
+
       if (label === "sqlite") {
         // sqlite's TEXT message_id column stored over-long plaintext keys
         // before hashing, so the legacy fallback must also cover keys longer

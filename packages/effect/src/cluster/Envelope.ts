@@ -18,6 +18,7 @@ import type * as Rpc from "../rpc/Rpc.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import { EntityAddress } from "./EntityAddress.ts"
+import * as InternalPrimaryKey from "./internal/primaryKey.ts"
 import { type Snowflake, SnowflakeFromBigInt } from "./Snowflake.ts"
 
 /**
@@ -491,4 +492,4 @@ export const primaryKeyByAddress = (options: {
 }): string =>
   // storage drivers with fixed-width key columns (e.g. SqlMessageStorage)
   // hash this composed key at their own boundary
-  `${options.address.entityType}/${options.address.entityId}/${options.tag}/${options.id}`
+  InternalPrimaryKey.make(options.address.entityType, options.address.entityId, options.tag, options.id)
