@@ -4,7 +4,14 @@ import * as Effect from "effect/Effect"
 import * as PlatformError from "effect/PlatformError"
 import * as TestClock from "effect/testing/TestClock"
 
+const primitives: Pick<Crypto.Crypto, "hmac" | "pbkdf2" | "rsaOaepEncrypt"> = {
+  hmac: (_algorithm, _key, data) => Effect.succeed(data),
+  pbkdf2: (_algorithm, _password, _salt, _iterations, length) => Effect.succeed(new Uint8Array(length)),
+  rsaOaepEncrypt: ({ data }) => Effect.succeed(data)
+}
+
 const testCrypto = Crypto.make({
+  ...primitives,
   randomBytes: (size) =>
     size === 7 ? Uint8Array.of(0x18, 0, 0, 0, 0, 0, 0) : Uint8Array.from({ length: size }, (_, i) => i),
   digest: (algorithm, data) => Effect.succeed(Uint8Array.of(data.length, algorithm.length))
@@ -12,6 +19,7 @@ const testCrypto = Crypto.make({
 
 const makeCrypto = (value: bigint) =>
   Crypto.make({
+    ...primitives,
     randomBytes: () =>
       Uint8Array.of(
         Number((value >> 48n) & 0x3fn),
@@ -26,25 +34,26 @@ const makeCrypto = (value: bigint) =>
   })
 
 describe("Crypto", () => {
-  it.effect("reports omitted primitives as typed platform errors", () =>
+  it.effect("preserves platform failures from all cryptographic operations", () =>
     Effect.gen(function*() {
       const bytes = Uint8Array.of(1)
-      const legacy = { ...testCrypto }
-      delete legacy.hmac
-      delete legacy.pbkdf2
-      delete legacy.rsaOaepEncrypt
-      for (const service of [testCrypto, legacy]) {
-        const operations = [
-          ["hmac", Crypto.hmac("SHA-256", bytes, bytes)],
-          ["pbkdf2", Crypto.pbkdf2("SHA-256", bytes, bytes, 1, 32)],
-          ["rsaOaepEncrypt", Crypto.rsaOaepEncrypt({ publicKey: bytes, data: bytes })]
-        ] as const
-        for (const [method, operation] of operations) {
-          const error = yield* Effect.flip(operation.pipe(Effect.provideService(Crypto.Crypto, service)))
-          assert.strictEqual(error.reason._tag, "Unknown")
-          assert.strictEqual(error.reason.module, "Crypto")
-          assert.strictEqual(error.reason.method, method)
-        }
+      const failure = PlatformError.systemError({ module: "Crypto", method: "fixture", _tag: "Unknown" })
+      const service = Crypto.make({
+        randomBytes: (size) => new Uint8Array(size),
+        digest: (_algorithm, data) => Effect.succeed(data),
+        hmac: () => Effect.fail(failure),
+        pbkdf2: () => Effect.fail(failure),
+        rsaOaepEncrypt: () => Effect.fail(failure)
+      })
+      for (
+        const operation of [
+          Crypto.hmac("SHA-256", bytes, bytes),
+          Crypto.pbkdf2("SHA-256", bytes, bytes, 1, 32),
+          Crypto.rsaOaepEncrypt({ publicKey: bytes, data: bytes })
+        ]
+      ) {
+        const error = yield* Effect.flip(operation.pipe(Effect.provideService(Crypto.Crypto, service)))
+        assert.strictEqual(error, failure)
       }
     }))
 
@@ -102,6 +111,7 @@ describe("Crypto", () => {
       const crypto = Crypto.make({
         randomBytes: (size) => new Uint8Array(size),
         digest: (_algorithm, data) => Effect.succeed(data),
+        ...primitives,
         pbkdf2: () => {
           throw new Error("Invalid arguments reached the primitive")
         }
@@ -184,6 +194,7 @@ describe("Crypto", () => {
     }).pipe(Effect.provideService(
       Crypto.Crypto,
       Crypto.make({
+        ...primitives,
         randomBytes: (size) => new Uint8Array(size).fill(0xff),
         digest: (_algorithm, data) => Effect.succeed(data)
       })
