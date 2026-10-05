@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Cron.next` returning a past occurrence when starting in the second DST fold hour.
+Fix `Cron.next` returning past occurrences or exhausting its search limit when starting in a repeated DST interval.

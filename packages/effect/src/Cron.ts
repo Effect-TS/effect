@@ -997,6 +997,10 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
           }).epochMilliseconds <= zoned.epochMilliseconds
       ) {
         current.setUTCSeconds(current.getUTCSeconds() + 1)
+        // A matching wall time rejected during a fold is not a failed field
+        // search. Give the next candidate a fresh budget; impossible schedules
+        // never reach this branch and still exhaust the search limit.
+        i = -1
         continue
       }
 
