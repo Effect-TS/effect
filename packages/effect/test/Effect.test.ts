@@ -663,6 +663,33 @@ describe("Effect", () => {
       }))
   })
 
+  describe("effectify", () => {
+    it.effect("turns a throwing onError mapper in an async callback into a defect", () =>
+      Effect.gen(function*() {
+        let callback!: (error: Error | null, value?: string) => void
+        let finalized = false
+        const defect = new Error("mapper")
+        const effectified = Effect.effectify(
+          (cb: (error: Error | null, value?: string) => void) => {
+            callback = cb
+          },
+          () => {
+            throw defect
+          }
+        )
+        const fiber = yield* effectified().pipe(
+          Effect.ensuring(Effect.sync(() => {
+            finalized = true
+          })),
+          Effect.forkChild({ startImmediately: true })
+        )
+        // Invoke after registration returns, outside effectify's synchronous try/catch.
+        assert.doesNotThrow(() => callback(new Error("source")))
+        assertExitDefect(yield* Fiber.await(fiber), defect)
+        assert.isTrue(finalized)
+      }))
+  })
+
   describe("gen", () => {
     it("gen", () =>
       Effect.gen(function*() {

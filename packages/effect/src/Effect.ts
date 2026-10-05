@@ -15086,7 +15086,7 @@ export const effectify: {
       try {
         fn(...args, (err: globalThis.Error | null, result: A) => {
           if (err) {
-            resume(fail(onError ? onError(err, args) : err))
+            resume(onError ? suspend(() => fail(onError(err, args))) : fail(err))
           } else {
             resume(succeed(result))
           }
