@@ -210,6 +210,57 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it("searchParam keeps the hash and omits an empty query", async () => {
+    const previousWindow = (globalThis as any).window
+    const r = AtomRegistry.make()
+    const location = {
+      pathname: "/path",
+      search: "?q=1",
+      hash: "#section"
+    }
+    const urls: Array<string> = []
+    Object.defineProperty(globalThis, "window", {
+      value: {
+        location,
+        history: {
+          pushState: (_state: unknown, _title: string, url: string) => {
+            urls.push(url)
+            const next = new URL(url, "http://localhost")
+            location.pathname = next.pathname
+            location.search = next.search
+            location.hash = next.hash
+          }
+        },
+        addEventListener: () => {
+        },
+        removeEventListener: () => {
+        }
+      },
+      configurable: true,
+      writable: true
+    })
+
+    try {
+      const q = Atom.searchParam("q")
+      r.set(q, "2")
+      await vitest.advanceTimersByTimeAsync(500)
+      r.set(q, "")
+      await vitest.advanceTimersByTimeAsync(500)
+      expect(urls).toEqual(["/path?q=2#section", "/path#section"])
+    } finally {
+      r.dispose()
+      if (typeof previousWindow === "undefined") {
+        delete (globalThis as any).window
+      } else {
+        Object.defineProperty(globalThis, "window", {
+          value: previousWindow,
+          configurable: true,
+          writable: true
+        })
+      }
+    }
+  })
+
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
       Atom.withLabel("count")
