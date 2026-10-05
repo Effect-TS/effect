@@ -545,9 +545,11 @@ class YamlParser {
       }
       output += "\n".repeat(blankLines)
     }
-    if (chomp === "keep") return output.endsWith("\n") ? output : `${output}\n`
+    // The last content line keeps its line break unless it ends the input.
+    if (content.length > 0 && end < this.lines.length) output += "\n"
+    if (chomp === "keep") return output.length === 0 || output.endsWith("\n") ? output : `${output}\n`
     output = output.replace(/\n+$/, "")
-    return chomp === "strip" ? output : `${output}\n`
+    return chomp === "strip" || output.length === 0 ? output : `${output}\n`
   }
 
   private skipBlankLines(): number {

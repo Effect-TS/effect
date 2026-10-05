@@ -89,6 +89,28 @@ indented: >-
     assert.deepStrictEqual(Yaml.parse(source), { message: expected })
   })
 
+  it.each([
+    ["literal keep chomping before a sibling key", "message: |+\n  first\n\nnext: 1\n", "first\n\n"],
+    ["folded keep chomping before a sibling key", "message: >+\n  first\n\n\nnext: 1\n", "first\n\n\n"],
+    ["an empty kept literal before a sibling key", "message: |+\nnext: 1\n", ""],
+    ["an empty clipped literal before a sibling key", "message: |\nnext: 1\n", ""],
+    ["an empty clipped folded scalar before a sibling key", "message: >\n\nnext: 1\n", ""]
+  ])("handles trailing line breaks for %s", (_, source, expected) => {
+    assert.deepStrictEqual(Yaml.parse(source), { message: expected, next: 1 })
+  })
+
+  it("parses the YAML 1.2 empty scalar chomping example", () => {
+    assert.deepStrictEqual(Yaml.parse("strip: >-\n\nclip: >\n\nkeep: |+\n\n"), {
+      strip: "",
+      clip: "",
+      keep: "\n"
+    })
+  })
+
+  it("preserves kept trailing lines in block sequence entries", () => {
+    assert.deepStrictEqual(Yaml.parse("- |+\n  first\n\n- second\n"), ["first\n\n", "second"])
+  })
+
   it("resolves aliases", () => {
     assert.deepStrictEqual(
       Yaml.parse(`
