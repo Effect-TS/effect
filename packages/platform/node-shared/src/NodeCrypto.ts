@@ -4,8 +4,9 @@
  * This module builds the service from `node:crypto`, using `randomBytes` for
  * random data, `createHash` and `createHmac` for digests and authentication,
  * asynchronous `pbkdf2` for password derivation, and `publicEncrypt` for RSA-OAEP
- * encryption. It exports `make` as the concrete service value and `layer` for providing it through
- * Effect context.
+ * encryption. Node's native `webcrypto.subtle` provides managed keys, AES-GCM,
+ * RSA-OAEP decryption, RSA-PSS, ECDSA, and Ed25519. It exports `make` as the
+ * concrete service value and `layer` for providing it through Effect context.
  *
  * @stability unstable
  * @since 1.0.0
@@ -52,6 +53,7 @@ const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
  * @since 1.0.0
  */
 export const make: EffectCrypto.Crypto = EffectCrypto.make({
+  ...EffectCrypto.makeSubtle(NodeCrypto.webcrypto.subtle as unknown as SubtleCrypto),
   randomBytes: NodeCrypto.randomBytes,
   digest,
   rsaOaepEncrypt: (options) =>

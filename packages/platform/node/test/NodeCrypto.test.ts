@@ -4,6 +4,7 @@ import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as TestClock from "effect/testing/TestClock"
 import { constants, generateKeyPairSync, privateDecrypt } from "node:crypto"
+import { cryptoTests } from "../../node-shared/test/utils/Crypto.ts"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -240,3 +241,5 @@ it.effect("matches HMAC SHA vectors and byte-oriented PBKDF2 with sliced inputs"
     assert.deepStrictEqual(password, encode("password"))
     assert.deepStrictEqual(salt, encode("salt"))
   }).pipe(Effect.provide(NodeCrypto.layer)))
+
+cryptoTests(NodeCrypto.layer, true)

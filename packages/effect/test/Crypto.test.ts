@@ -1,10 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Cause from "effect/Cause"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as PlatformError from "effect/PlatformError"
 import * as TestClock from "effect/testing/TestClock"
 
-const primitives: Pick<Crypto.Crypto, "hmac" | "pbkdf2" | "rsaOaepEncrypt"> = {
+const primitives: Omit<Parameters<typeof Crypto.make>[0], "randomBytes"> = {
+  ...Crypto.makeSubtle({} as SubtleCrypto),
   hmac: (_algorithm, _key, data) => Effect.succeed(data),
   pbkdf2: (_algorithm, _password, _salt, _iterations, length) => Effect.succeed(new Uint8Array(length)),
   rsaOaepEncrypt: ({ data }) => Effect.succeed(data)
@@ -33,12 +36,192 @@ const makeCrypto = (value: bigint) =>
     digest: (_algorithm, data) => Effect.succeed(data)
   })
 
+const makeSequence = (values: ReadonlyArray<bigint>) => {
+  let index = 0
+  return Crypto.make({
+    ...primitives,
+    randomBytes: (size) => {
+      assert.strictEqual(size, 7)
+      assert.isBelow(index, values.length, "Consumed more random draws than expected")
+      const value = values[index++]
+      return Uint8Array.of(
+        Number((value >> 48n) & 0x3fn),
+        Number((value >> 40n) & 0xffn),
+        Number((value >> 32n) & 0xffn),
+        Number((value >> 24n) & 0xffn),
+        Number((value >> 16n) & 0xffn),
+        Number((value >> 8n) & 0xffn),
+        Number(value & 0xffn)
+      )
+    },
+    digest: (_algorithm, data) => Effect.succeed(data)
+  })
+}
+
 describe("Crypto", () => {
+  it.effect("exposes every service operation through public helpers", () =>
+    Effect.gen(function*() {
+      const bytes = yield* Crypto.randomBytes(4)
+      assert.deepStrictEqual(bytes, Uint8Array.of(0, 1, 2, 3))
+      assert.deepStrictEqual(yield* Crypto.digest("SHA-256", bytes), Uint8Array.of(4, 7))
+      assert.strictEqual(yield* Crypto.random, 0.75)
+      assert.strictEqual(yield* Crypto.randomBoolean, true)
+      assert.strictEqual(yield* Crypto.randomInt, -2251799813685247)
+      assert.strictEqual(yield* Crypto.randomBetween(10, 20), 17.5)
+      assert.strictEqual(yield* Crypto.randomIntBetween(1, 6), 5)
+      assert.deepStrictEqual(yield* Crypto.randomShuffle(new Set([1, 2, 3])), [1, 2, 3])
+      assert.strictEqual(yield* Crypto.randomUUIDv4, "00010203-0405-4607-8809-0a0b0c0d0e0f")
+      yield* TestClock.setTime(0x0123456789ab)
+      assert.strictEqual(yield* Crypto.randomUUIDv7, "01234567-89ab-7607-8809-0a0b0c0d0e0f")
+      assert.strictEqual(yield* Crypto.randomULID, "014D2PF2DB000G40R40M30E209")
+    }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
+
+  it.effect("generates fresh bytes on every execution and resolves the current service", () => {
+    let calls = 0
+    const service = Crypto.make({
+      ...primitives,
+      randomBytes: (size) => new Uint8Array(size).fill(++calls),
+      digest: (_algorithm, data) => Effect.succeed(data)
+    })
+    const program = Crypto.randomBytes(1)
+    assert.strictEqual(calls, 0)
+    return Effect.gen(function*() {
+      const first = yield* program.pipe(Effect.provideService(Crypto.Crypto, service))
+      const second = yield* program.pipe(Effect.provideService(Crypto.Crypto, service))
+      assert.deepStrictEqual(first, Uint8Array.of(1))
+      assert.deepStrictEqual(second, Uint8Array.of(2))
+      assert.notStrictEqual(first, second)
+      assert.deepStrictEqual(
+        yield* program.pipe(Effect.provideService(Crypto.Crypto, testCrypto)),
+        Uint8Array.of(0)
+      )
+    })
+  })
+
+  it.effect("reports random-byte and identifier failures through their declared error channel", () =>
+    Effect.gen(function*() {
+      const cause = new Error("CSPRNG unavailable")
+      for (
+        const failure of [cause, PlatformError.systemError({ module: "Crypto", method: "fixture", _tag: "Unknown" })]
+      ) {
+        const service = Crypto.make({
+          ...primitives,
+          randomBytes: () => {
+            throw failure
+          },
+          digest: (_algorithm, data) => Effect.succeed(data)
+        })
+        const operations: ReadonlyArray<
+          readonly [
+            string,
+            Effect.Effect<unknown, PlatformError.PlatformError, Crypto.Crypto>
+          ]
+        > = [
+          ["randomBytes", Crypto.randomBytes(1)],
+          ["randomUUIDv4", Crypto.randomUUIDv4],
+          ["randomUUIDv7", Crypto.randomUUIDv7],
+          ["randomULID", Crypto.randomULID]
+        ]
+        for (const [method, program] of operations) {
+          const error = yield* Effect.flip(program.pipe(Effect.provideService(Crypto.Crypto, service)))
+          if (failure === cause) {
+            assert.strictEqual(error.reason.module, "Crypto")
+            assert.strictEqual(error.reason.method, method)
+            assert.strictEqual(error.reason._tag, "Unknown")
+            assert.strictEqual(error.reason.cause, cause)
+          } else {
+            assert.strictEqual(error, failure)
+          }
+        }
+        for (const size of [-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+          const error = yield* Effect.flip(service.randomBytes(size))
+          assert.strictEqual(error.reason._tag, "BadArgument")
+        }
+      }
+    }))
+
+  it.effect("splits boolean outcomes exactly at the midpoint", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(yield* makeCrypto((1n << 52n) - 1n).randomBoolean, false)
+      assert.strictEqual(yield* makeCrypto(1n << 52n).randomBoolean, true)
+    }))
+
+  it.effect("uses equal-sized integer buckets and rejects the incomplete final bucket", () =>
+    Effect.gen(function*() {
+      const bucketSize = (1n << 53n) / 3n
+      for (const [draw, expected] of [[0n, 1], [bucketSize - 1n, 1], [bucketSize, 2], [2n * bucketSize, 3]] as const) {
+        assert.strictEqual(yield* makeCrypto(draw).randomIntBetween(1, 3), expected)
+      }
+      const crypto = makeSequence([3n * bucketSize, 0n])
+      assert.strictEqual(yield* crypto.randomIntBetween(1, 3), 1)
+    }))
+
+  it.effect("preserves adjacent integers throughout ranges wider than 53 bits", () =>
+    Effect.gen(function*() {
+      for (
+        const [draw, expected] of [
+          [0n, Number.MIN_SAFE_INTEGER],
+          [1n, Number.MIN_SAFE_INTEGER + 1],
+          [(1n << 53n) - 1n, 0],
+          [1n << 53n, 1],
+          [(1n << 54n) - 2n, Number.MAX_SAFE_INTEGER]
+        ] as const
+      ) {
+        assert.strictEqual(
+          yield* makeCrypto(draw).randomIntBetween(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER),
+          expected
+        )
+      }
+      const crypto = makeSequence([(1n << 54n) - 1n, 1n << 53n])
+      assert.strictEqual(yield* crypto.randomIntBetween(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER), 1)
+    }))
+
+  it.effect("rounds integer bounds and rejects empty or unsafe ranges", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(yield* makeCrypto(0n).randomIntBetween(1.2, 3.9), 2)
+      assert.strictEqual(yield* makeCrypto(0n).randomIntBetween(1.2, 3.9, { halfOpen: true }), 2)
+      for (
+        const [min, max, halfOpen] of [
+          [2, 1, false],
+          [2, 2, true],
+          [1.1, 1.9, false],
+          [NaN, 1, false],
+          [0, Infinity, false],
+          [Number.MIN_SAFE_INTEGER - 1, 0, false],
+          [0, Number.MAX_SAFE_INTEGER + 1, false]
+        ] as const
+      ) {
+        const exit = yield* Effect.exit(makeCrypto(0n).randomIntBetween(min, max, { halfOpen }))
+        assert.ok(Exit.isFailure(exit))
+        const reason = exit.cause.reasons[0]
+        assert.ok(Cause.isDieReason(reason))
+        assert.instanceOf(reason.defect, RangeError)
+      }
+    }))
+
+  it.effect("shuffles with rejection sampling and preserves the input", () =>
+    Effect.gen(function*() {
+      const input = [1, 2, 3]
+      const crypto = makeSequence([(1n << 53n) - 1n, 0n, 0n])
+      assert.deepStrictEqual(yield* crypto.randomShuffle(input), [2, 3, 1])
+      assert.deepStrictEqual(input, [1, 2, 3])
+    }))
+
+  it.effect("handles finite floating-point bounds whose difference overflows", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(yield* makeCrypto(0n).randomBetween(-Number.MAX_VALUE, Number.MAX_VALUE), -Number.MAX_VALUE)
+      assert.strictEqual(yield* makeCrypto(1n << 52n).randomBetween(-Number.MAX_VALUE, Number.MAX_VALUE), 0)
+      assert.isBelow(
+        yield* makeCrypto((1n << 53n) - 1n).randomBetween(-Number.MAX_VALUE, Number.MAX_VALUE),
+        Number.MAX_VALUE
+      )
+    }))
   it.effect("preserves platform failures from all cryptographic operations", () =>
     Effect.gen(function*() {
       const bytes = Uint8Array.of(1)
       const failure = PlatformError.systemError({ module: "Crypto", method: "fixture", _tag: "Unknown" })
       const service = Crypto.make({
+        ...primitives,
         randomBytes: (size) => new Uint8Array(size),
         digest: (_algorithm, data) => Effect.succeed(data),
         hmac: () => Effect.fail(failure),
@@ -64,6 +247,7 @@ describe("Crypto", () => {
       const salt = Uint8Array.of(5, 6)
       const failure = PlatformError.systemError({ module: "Crypto", method: "fixture", _tag: "Unknown" })
       const crypto = Crypto.make({
+        ...primitives,
         randomBytes: (size) => new Uint8Array(size),
         digest: (_algorithm, bytes) => Effect.succeed(bytes),
         hmac: (algorithm, actualKey, actualData) => {
@@ -109,9 +293,9 @@ describe("Crypto", () => {
   it.effect("rejects invalid PBKDF2 parameters before calling the primitive", () =>
     Effect.gen(function*() {
       const crypto = Crypto.make({
+        ...primitives,
         randomBytes: (size) => new Uint8Array(size),
         digest: (_algorithm, data) => Effect.succeed(data),
-        ...primitives,
         pbkdf2: () => {
           throw new Error("Invalid arguments reached the primitive")
         }
@@ -193,11 +377,7 @@ describe("Crypto", () => {
       assert.strictEqual(value, 5)
     }).pipe(Effect.provideService(
       Crypto.Crypto,
-      Crypto.make({
-        ...primitives,
-        randomBytes: (size) => new Uint8Array(size).fill(0xff),
-        digest: (_algorithm, data) => Effect.succeed(data)
-      })
+      makeCrypto((1n << 53n) - 3n)
     )))
 
   it.effect("randomUUIDv4 formats UUID bytes from randomBytes", () =>

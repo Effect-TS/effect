@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import { constants, generateKeyPairSync, privateDecrypt } from "node:crypto"
+import { cryptoTests } from "../../node-shared/test/utils/Crypto.ts"
 
 const hex = (bytes: Uint8Array): string => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 
@@ -157,3 +158,5 @@ it.effect("matches HMAC SHA vectors and byte-oriented PBKDF2 with sliced inputs"
     assert.deepStrictEqual(password, encode("password"))
     assert.deepStrictEqual(salt, encode("salt"))
   }).pipe(Effect.provide(BunCrypto.layer)))
+
+cryptoTests(BunCrypto.layer, true)

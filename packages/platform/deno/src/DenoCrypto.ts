@@ -2,8 +2,8 @@
  * Deno-backed implementation of Effect's Crypto service.
  *
  * This module uses Deno's global Web Crypto API for secure randomness, SHA
- * digests, HMAC, PBKDF2, and RSA-OAEP encryption. Legacy MD5 protocol digests
- * use `node:crypto`.
+ * digests, HMAC, PBKDF2, key management, encryption, and signing. Legacy MD5
+ * protocol digests use `node:crypto`.
  *
  * @stability unstable
  * @since 4.0.0
@@ -37,6 +37,9 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
   EffectCrypto.Crypto,
   Effect.gen(function*() {
     const crypto = yield* WebCrypto
+    if (!crypto) {
+      return yield* Effect.die(new Error("Web Crypto API is not available"))
+    }
     const randomBytes = (size: number): Uint8Array => {
       const bytes = new Uint8Array(size)
       for (let offset = 0; offset < bytes.length; offset += 65_536) {
@@ -76,89 +79,9 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
     }
 
     return EffectCrypto.make({
+      ...EffectCrypto.makeSubtle(crypto.subtle),
       randomBytes,
-      digest,
-      rsaOaepEncrypt: (options) =>
-        Effect.map(
-          Effect.tryPromise({
-            try: async () => {
-              const ownedKey = new Uint8Array(options.publicKey)
-              const ownedData = new Uint8Array(options.data)
-              const ownedLabel = options.label === undefined ? undefined : new Uint8Array(options.label)
-              const key = await crypto.subtle.importKey(
-                "spki",
-                ownedKey,
-                { name: "RSA-OAEP", hash: options.hash ?? "SHA-256" },
-                false,
-                ["encrypt"]
-              )
-              return crypto.subtle.encrypt(
-                { name: "RSA-OAEP", ...(ownedLabel === undefined ? {} : { label: ownedLabel }) },
-                key,
-                ownedData
-              )
-            },
-            catch: (cause) =>
-              PlatformError.systemError({
-                module: "Crypto",
-                method: "rsaOaepEncrypt",
-                _tag: "Unknown",
-                description: "Could not encrypt with RSA-OAEP",
-                cause
-              })
-          }),
-          (buffer) => new Uint8Array(buffer)
-        ),
-      hmac: (algorithm, key, data) =>
-        Effect.map(
-          Effect.tryPromise({
-            try: async () => {
-              const ownedKey = new Uint8Array(key)
-              const ownedData = new Uint8Array(data)
-              const cryptoKey = await crypto.subtle.importKey(
-                "raw",
-                ownedKey,
-                { name: "HMAC", hash: algorithm },
-                false,
-                ["sign"]
-              )
-              return crypto.subtle.sign("HMAC", cryptoKey, ownedData)
-            },
-            catch: (cause) =>
-              PlatformError.systemError({
-                module: "Crypto",
-                method: "hmac",
-                _tag: "Unknown",
-                description: "Could not compute HMAC",
-                cause
-              })
-          }),
-          (buffer) => new Uint8Array(buffer)
-        ),
-      pbkdf2: (algorithm, password, salt, iterations, length) =>
-        Effect.map(
-          Effect.tryPromise({
-            try: async () => {
-              const ownedPassword = new Uint8Array(password)
-              const ownedSalt = new Uint8Array(salt)
-              const cryptoKey = await crypto.subtle.importKey("raw", ownedPassword, "PBKDF2", false, ["deriveBits"])
-              return crypto.subtle.deriveBits(
-                { name: "PBKDF2", hash: algorithm, salt: ownedSalt, iterations },
-                cryptoKey,
-                length * 8
-              )
-            },
-            catch: (cause) =>
-              PlatformError.systemError({
-                module: "Crypto",
-                method: "pbkdf2",
-                _tag: "Unknown",
-                description: "Could not derive password key",
-                cause
-              })
-          }),
-          (buffer) => new Uint8Array(buffer)
-        )
+      digest
     })
   })
 )

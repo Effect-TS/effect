@@ -1,9 +1,10 @@
 import * as DenoCrypto from "@effect/platform-deno/DenoCrypto"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Fiber, Layer } from "effect"
+import { Cause, Deferred, Exit, Fiber, Layer } from "effect"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import { constants, generateKeyPairSync, privateDecrypt, webcrypto } from "node:crypto"
+import { cryptoTests } from "../../node-shared/test/utils/Crypto.ts"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -11,6 +12,19 @@ const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 const hex = (bytes: Uint8Array): string => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 
 describe("DenoCrypto", () => {
+  it.effect("dies during layer construction when the Web Crypto object is absent", () =>
+    Effect.gen(function*() {
+      const layer = DenoCrypto.layer.pipe(
+        Layer.provide(Layer.succeed(DenoCrypto.WebCrypto, undefined as unknown as globalThis.Crypto))
+      )
+      const exit = yield* Effect.exit(Crypto.Crypto.pipe(Effect.provide(layer)))
+      assert.ok(Exit.isFailure(exit))
+      const reason = exit.cause.reasons[0]
+      assert.ok(Cause.isDieReason(reason))
+      assert.instanceOf(reason.defect, Error)
+      assert.strictEqual((reason.defect as Error).message, "Web Crypto API is not available")
+    }))
+
   it.effect("computes MD5, HMAC, and PBKDF2 vectors", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
@@ -281,3 +295,5 @@ it.effect("preserves synchronous and asynchronous primitive failures as platform
       }
     }
   }))
+
+cryptoTests(DenoCrypto.layer, true)
