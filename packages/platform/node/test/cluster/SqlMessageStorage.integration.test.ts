@@ -436,9 +436,16 @@ describe("SqlMessageStorage", () => {
             })
           ).toEqual(Option.some(request.envelope.requestId))
 
-          // the same plaintext key written for a different address is not a duplicate
-          yield* sql`UPDATE cluster_messages SET entity_id = ${"a"} WHERE id = ${requestId}`
-          expect((yield* storage.saveRequest(yield* make))._tag).toEqual("Success")
+          // test/a + b has the same legacy key as test + a/b, but is a different request
+          yield* sql`UPDATE cluster_messages SET entity_type = ${"test/a"}, entity_id = ${"b"} WHERE id = ${requestId}`
+          const lookup = { address: request.envelope.address, tag: request.envelope.tag, id: "789" }
+          expect(yield* storage.requestIdForPrimaryKey(lookup)).toEqual(Option.none())
+          const distinct = yield* make
+          expect((yield* storage.saveRequest(distinct))._tag).toEqual("Success")
+          expect(yield* storage.requestIdForPrimaryKey(lookup)).toEqual(Option.some(distinct.envelope.requestId))
+          const retry = yield* storage.saveRequest(yield* make)
+          assert(retry._tag === "Duplicate")
+          expect(retry.originalId).toEqual(distinct.envelope.requestId)
         }))
 
       if (label === "sqlite") {

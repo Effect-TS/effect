@@ -71,7 +71,17 @@ describe("Envelope.primaryKeyByAddress", () => {
 
   it("keeps keys distinct when components contain slashes", () => {
     assert.notStrictEqual(key("Orders/Europe", "42", "submit", "once"), key("Orders", "Europe/42", "submit", "once"))
+    assert.notStrictEqual(key("Orders", "42/submit", "once", "again"), key("Orders", "42", "submit/once", "again"))
+    assert.notStrictEqual(key("Orders", "42", "submit/once", "again"), key("Orders", "42", "submit", "once/again"))
     assert.notStrictEqual(key("Workflow", "Order", "run", "a/b"), key("Workflow/Order", "run", "a", "b"))
+  })
+
+  it("keeps literal percent escapes and colons distinct in slash-containing keys", () => {
+    assert.notStrictEqual(
+      key("Orders/Europe", "a/b", "submit", "once"),
+      key("Orders/Europe", "a%2Fb", "submit", "once")
+    )
+    assert.notStrictEqual(key("Orders", "a/b:c", "submit", "once"), key("Orders", "a/b", "c:submit", "once"))
   })
 
   it("keeps the persisted format for unambiguous keys", () => {
