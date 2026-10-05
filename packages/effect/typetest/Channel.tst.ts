@@ -6,6 +6,10 @@ class ErrorB extends Data.TaggedError("ErrorB")<{ readonly code: number }> {}
 
 declare const channel: Channel.Channel<number, ErrorA | ErrorB>
 declare const pubsub: PubSub.PubSub<number>
+interface Dependency {
+  readonly Dependency: unique symbol
+}
+declare const pubsubChannel: Channel.Channel<number, ErrorA | ErrorB, void, unknown, unknown, unknown, Dependency>
 
 class RateLimit extends Data.TaggedError("RateLimit")<{ readonly retryAfter: number }> {}
 class Quota extends Data.TaggedError("Quota")<{ readonly limit: number }> {}
@@ -159,8 +163,10 @@ describe("Channel.mapInput", () => {
 })
 
 describe("Channel.runIntoPubSub", () => {
-  it("preserves the channel error", () => {
-    expect(Channel.runIntoPubSub(channel, pubsub)).type.toBe<Effect.Effect<void, ErrorA | ErrorB>>()
-    expect(pipe(channel, Channel.runIntoPubSub(pubsub))).type.toBe<Effect.Effect<void, ErrorA | ErrorB>>()
+  it("preserves the channel error and environment in both overloads", () => {
+    expect(Channel.runIntoPubSub(pubsubChannel, pubsub)).type.toBe<Effect.Effect<void, ErrorA | ErrorB, Dependency>>()
+    expect(pipe(pubsubChannel, Channel.runIntoPubSub(pubsub))).type.toBe<
+      Effect.Effect<void, ErrorA | ErrorB, Dependency>
+    >()
   })
 })
