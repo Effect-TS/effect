@@ -2307,6 +2307,39 @@ describe("Arbitrary", () => {
         }))
     }
 
+    for (
+      const [name, reason] of [
+        ["defects", Cause.die("codec shrink defect")],
+        ["interruption", Cause.interrupt(123)]
+      ] as const
+    ) {
+      it.effect(`propagates ${name} alongside canonical codec shrink decode errors`, () =>
+        Effect.gen(function*() {
+          const cause = Cause.combine(
+            Cause.fail(new SchemaIssue.Forbidden({ message: "unsupported shrink value" })),
+            reason
+          )
+          const encoded = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
+          const schema = Schema.declare<number>((input): input is number => typeof input === "number", {
+            toCodecArbitrary: () =>
+              Schema.link<number>()(
+                encoded,
+                SchemaTransformation.transformEffect({
+                  decode: (value) => value === 100 ? Effect.succeed(value) : Effect.failCause(cause),
+                  encode: Effect.succeed
+                })
+              )
+          })
+          const exit = yield* Effect.exit(Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
+            runs: 1,
+            maxDiscards: 0,
+            seed: 47
+          }))
+
+          assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
+        }))
+    }
+
     it.effect("keeps asynchronous canonical codecs interruptible", () =>
       Effect.gen(function*() {
         const started = yield* Deferred.make<void>()
