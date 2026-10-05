@@ -349,6 +349,9 @@ function compareHashed<A>(
     }
     return false
   }
+  for (const group of groups.values()) {
+    if (group.length > 0) return false
+  }
   return true
 }
 
