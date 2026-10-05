@@ -1,8 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Schema } from "effect"
+import { Duration, Effect, Redacted, Schema } from "effect"
 import { AiError } from "effect/ai"
+import { HttpClientError, HttpClientRequest } from "effect/http"
 
 describe("AiError", () => {
+  it("preserves redacted query parameters in request details", () => {
+    const secret = Redacted.make("secret")
+    const request = HttpClientRequest.get("https://example.test/").pipe(HttpClientRequest.setUrlParam("token", secret))
+    const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request }))
+    assert.deepStrictEqual(error.request.urlParams, [["token", secret]])
+    assert.isTrue(Schema.is(AiError.HttpRequestDetails)(error.request))
+    assert.isFalse(JSON.stringify(error).includes("secret"))
+  })
+
   describe("reason types", () => {
     describe("RateLimitError", () => {
       it("should be retryable", () => {
