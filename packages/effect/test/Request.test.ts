@@ -240,33 +240,39 @@ describe("Request", { concurrent: false }, () => {
       assert.isTrue(Exit.hasInterrupts(exit))
     }))
 
-  it.effect("failed batch delays complete pending requests and allow later batches", () =>
-    Effect.gen(function*() {
-      let failDelay = true
-      const resolver = Resolver.fromFunction<GetNameById>(() => "Alice").pipe(
-        Resolver.setDelayEffect(Effect.andThen(
-          Effect.yieldNow,
-          Effect.suspend(() => {
-            if (!failDelay) return Effect.void
-            failDelay = false
-            return Effect.die("delay defect")
-          })
-        ))
-      )
-      const first = yield* Effect.request(new GetNameById({ id: 1 }), resolver).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-      for (let i = 0; i < 5; i++) yield* Effect.yieldNow
-      const second = yield* Effect.request(new GetNameById({ id: 2 }), resolver).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-      for (let i = 0; i < 5; i++) yield* Effect.yieldNow
+  it.effect.each([
+    { name: "yielding", yieldFirst: true },
+    { name: "synchronous", yieldFirst: false }
+  ])(
+    "$name failed batch delays complete pending requests and allow later batches",
+    ({ yieldFirst }) =>
+      Effect.gen(function*() {
+        let failDelay = true
+        const resolver = Resolver.fromFunction<GetNameById>(() => "Alice").pipe(
+          Resolver.setDelayEffect(Effect.andThen(
+            yieldFirst ? Effect.yieldNow : Effect.void,
+            Effect.suspend(() => {
+              if (!failDelay) return Effect.void
+              failDelay = false
+              return Effect.die("delay defect")
+            })
+          ))
+        )
+        const first = yield* Effect.request(new GetNameById({ id: 1 }), resolver).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        for (let i = 0; i < 5; i++) yield* Effect.yieldNow
+        const second = yield* Effect.request(new GetNameById({ id: 2 }), resolver).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        for (let i = 0; i < 5; i++) yield* Effect.yieldNow
 
-      assert.deepStrictEqual(
-        [first.pollUnsafe(), second.pollUnsafe()],
-        [Exit.die("delay defect"), Exit.succeed("Alice")]
-      )
-    }))
+        assert.deepStrictEqual(
+          [first.pollUnsafe(), second.pollUnsafe()],
+          [Exit.die("delay defect"), Exit.succeed("Alice")]
+        )
+      })
+  )
 
   it.effect.each([
     { name: "array", make: (values: Array<string>) => values },
