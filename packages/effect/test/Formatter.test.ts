@@ -383,6 +383,17 @@ describe("Formatter", () => {
       strictEqual(formatJson([data]), `[{"secret":"[REDACTED]"}]`)
       strictEqual(formatJson(date), `"[REDACTED]"`)
     })
+
+    it("should redact sensitive data returned from a getter", () => {
+      strictEqual(
+        formatJson({
+          get a() {
+            return data
+          }
+        }),
+        `{"a":{"secret":"[REDACTED]"}}`
+      )
+    })
   })
 
   describe("Inspectable.toJson", () => {
