@@ -87,6 +87,25 @@ describe("ManagedRuntime", () => {
     assert.deepEqual({ result, released }, { result: "settled", released: true })
   })
 
+  test("disposeEffect inside a request child after an async boundary releases the layer", async () => {
+    let released = false
+    const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        released = true
+      })
+    )))
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      runtime.runPromise(Effect.gen(function*() {
+        const child = yield* Effect.forkChild(Effect.sleep(1).pipe(Effect.ensuring(runtime.disposeEffect)))
+        yield* Fiber.join(child)
+      })).then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.deepEqual({ result, released }, { result: "settled", released: true })
+  })
+
   for (const method of ["disposeEffect", "dispose"] as const) {
     it(`finishes request cleanup before releasing layer resources with ${method}`, async () => {
       const events = await Effect.runPromise(Effect.gen(function*() {
