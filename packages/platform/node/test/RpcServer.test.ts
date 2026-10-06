@@ -13,6 +13,7 @@ describe("RpcServer", () => {
   describe("request defect isolation over HTTP", () => {
     const Ok = Rpc.make("Ok", { success: Schema.String })
     const Missing = Rpc.make("Missing")
+    const MissingWithSchemas = Rpc.make("MissingWithSchemas", { success: Schema.Number, error: Schema.String })
     const serverGroup = RpcGroup.make(
       Ok,
       Rpc.make("Invalid", { payload: { value: Schema.String } })
@@ -20,6 +21,7 @@ describe("RpcServer", () => {
     const clientGroup = RpcGroup.make(
       Ok,
       Missing,
+      MissingWithSchemas,
       Rpc.make("Invalid", { payload: { value: Schema.Number } })
     )
     const Server = HttpRouter.serve(
@@ -36,7 +38,8 @@ describe("RpcServer", () => {
     for (
       const [name, serialization] of [
         ["JSON", RpcSerialization.layerJson],
-        ["SchemaBinary", RpcSerialization.layerSchemaBinary()]
+        ["SchemaBinary", RpcSerialization.layerSchemaBinary()],
+        ["SchemaBinary with fingerprints", RpcSerialization.layerSchemaBinary({ fingerprintPayloads: true })]
       ] as const
     ) {
       const ClientProtocol = RpcClient.layerProtocolHttp({
@@ -47,18 +50,20 @@ describe("RpcServer", () => {
         Layer.provide([NodeHttpServer.layerTest, serialization])
       )
 
-      it.effect(`${name}: an unknown tag fails only its request and the client remains reusable`, () =>
-        Effect.gen(function*() {
-          const client = yield* RpcClient.make(clientGroup)
-          assert.strictEqual(yield* client.Ok(), "ok")
-          const missing = yield* Effect.exit(client.Missing())
-          const subsequent = yield* Effect.exit(client.Ok())
-          assert.deepStrictEqual(subsequent, Exit.succeed("ok"))
-          if (!Exit.isFailure(missing)) {
-            return assert.fail("Missing must fail with a request defect")
-          }
-          assert.deepStrictEqual(missing.cause, Cause.die("Unknown request tag: Missing"))
-        }).pipe(Effect.provide(ClientProtocol)))
+      for (const tag of ["Missing", "MissingWithSchemas"] as const) {
+        it.effect(`${name}: unknown tag ${tag} fails only its request and the client remains reusable`, () =>
+          Effect.gen(function*() {
+            const client = yield* RpcClient.make(clientGroup)
+            assert.strictEqual(yield* client.Ok(), "ok")
+            const missing = yield* Effect.exit(client[tag]())
+            const subsequent = yield* Effect.exit(client.Ok())
+            assert.deepStrictEqual(subsequent, Exit.succeed("ok"))
+            if (!Exit.isFailure(missing)) {
+              return assert.fail(`${tag} must fail with a request defect`)
+            }
+            assert.deepStrictEqual(missing.cause, Cause.die(`Unknown request tag: ${tag}`))
+          }).pipe(Effect.provide(ClientProtocol)))
+      }
 
       it.effect(`${name}: an invalid payload fails only its request and the client remains reusable`, () =>
         Effect.gen(function*() {
@@ -73,8 +78,12 @@ describe("RpcServer", () => {
           assert.strictEqual(invalid.cause.reasons.length, 1)
           assert.strictEqual(invalid.cause.reasons[0]._tag, "Die")
           const diagnostic = String(Cause.squash(invalid.cause))
-          assert.include(diagnostic, name === "JSON" ? "Expected string" : "Missing key")
-          assert.include(diagnostic, "at [\"value\"]")
+          if (name === "SchemaBinary with fingerprints") {
+            assert.include(diagnostic, "Expected matching layout fingerprint")
+          } else {
+            assert.include(diagnostic, name === "JSON" ? "Expected string" : "Missing key")
+            assert.include(diagnostic, "at [\"value\"]")
+          }
         }).pipe(Effect.provide(ClientProtocol)))
     }
   })
