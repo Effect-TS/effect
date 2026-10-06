@@ -345,6 +345,9 @@ describe("Formatter", () => {
     ])("should serialize boxed %s values", (_, value, expected) => {
       strictEqual(formatJson(value), expected)
       strictEqual(formatJson({ value }), `{"value":${expected}}`)
+      // JSON.stringify unboxes wrappers and ignores their own properties
+      Object.defineProperty(value, "extra", { get: () => 1, enumerable: true })
+      strictEqual(formatJson(value), expected)
     })
 
     it("should stringify BigInt values", () => {
@@ -429,6 +432,13 @@ describe("Formatter", () => {
         })),
         `{"a":{"secret":"[REDACTED]"}}`
       )
+    })
+
+    it("should redact sensitive data returned from a non-enumerable array index getter", () => {
+      const array: Array<unknown> = []
+      // JSON.stringify reads array indices regardless of enumerability
+      Object.defineProperty(array, "0", { get: () => data })
+      strictEqual(formatJson(array), `[{"secret":"[REDACTED]"}]`)
     })
   })
 
