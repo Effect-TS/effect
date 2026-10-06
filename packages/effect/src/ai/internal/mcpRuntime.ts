@@ -246,22 +246,18 @@ export const make = Effect.fnUntraced(function*(
     if (sessionId !== undefined && binding === undefined) {
       return { _tag: "Rejected", status: 404 }
     }
-    if (
-      !isInitialize &&
-      protocolVersion !== undefined &&
-      !registry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
-    ) {
-      return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
-    }
-    if (
-      !isInitialize &&
-      protocolVersion !== undefined &&
-      binding?.protocol.runtime.transport.http.requiresVersionHeader === true &&
-      protocolVersion !== binding.protocol.protocolVersion
-    ) {
-      return headerMismatch(
-        `MCP-Protocol-Version header '${protocolVersion}' does not match negotiated protocol version '${binding.protocol.protocolVersion}'`
-      )
+    if (!isInitialize && protocolVersion !== undefined) {
+      if (!protocolVersions.includes(protocolVersion)) {
+        return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
+      }
+      if (
+        binding?.protocol.runtime.transport.http.requiresVersionHeader === true &&
+        protocolVersion !== binding.protocol.protocolVersion
+      ) {
+        return headerMismatch(
+          `MCP-Protocol-Version header '${protocolVersion}' does not match negotiated protocol version '${binding.protocol.protocolVersion}'`
+        )
+      }
     }
     return { _tag: "Accepted", binding, protocol: binding?.protocol }
   }
@@ -369,11 +365,7 @@ export const make = Effect.fnUntraced(function*(
         return yield* Effect.die("MCP stateless runtime invariant failed")
       }
       if (requestedVersion !== undefined && requestedVersion !== protocol.protocolVersion) {
-        return yield* new McpProtocol.ProtocolError({
-          code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-          message: `Unsupported protocol version '${requestedVersion}'`,
-          data: { supported: protocolVersions, requested: requestedVersion }
-        })
+        return yield* new McpProtocol.ProtocolError(unsupportedProtocolVersion(requestedVersion))
       }
       const decodedProfile = yield* statelessDescriptor.profileFromRequestMetadata(metadata)
       const profile: McpCore.NegotiatedProtocolProfile<string> = {
@@ -401,7 +393,7 @@ export const make = Effect.fnUntraced(function*(
       })
       if (Result.isFailure(parsed)) {
         const version = headers[MCP_PROTOCOL_VERSION_HEADER]
-        if (version !== undefined && !registry.protocols.some((protocol) => protocol.protocolVersion === version)) {
+        if (version !== undefined && !protocolVersions.includes(version)) {
           return reject(400, unsupportedProtocolVersion(version))
         }
         const admission = selectHttpProtocol(headers, undefined)
