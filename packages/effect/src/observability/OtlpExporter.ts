@@ -26,6 +26,7 @@ import * as Num from "../Number.ts"
 import * as Option from "../Option.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
+import * as Version from "../Version.ts"
 
 const retryAfterDelay = (value: string | undefined): Effect.Effect<Duration.Duration> => {
   const seconds = Option.fromUndefinedOr(value).pipe(Option.flatMap(Num.parse))
@@ -194,7 +195,7 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
-  const defaultUserAgent = `OTel-OTLP-Exporter-JavaScript-Effect-${options.label}`
+  const defaultUserAgent = `OTel-OTLP-Exporter-JavaScript-Effect-${options.label}/${Version.getCurrentVersion()}`
   const userHeaders = Headers.fromInput(options.headers)
   const headers = Headers.set(
     userHeaders,

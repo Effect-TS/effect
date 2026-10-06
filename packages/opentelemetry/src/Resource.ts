@@ -20,6 +20,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Rec from "effect/Record"
+import * as Version from "effect/Version"
 
 /**
  * Service tag for OpenTelemetry metadata attached to emitted telemetry.
@@ -67,8 +68,8 @@ export const layer = (config: {
  * **Details**
  *
  * The returned record copies `attributes` first, then sets `service.name`,
- * `telemetry.sdk.name`, and `telemetry.sdk.language`. `service.version` is
- * included only when `serviceVersion` is provided.
+ * `telemetry.sdk.name`, `telemetry.sdk.language`, and `telemetry.sdk.version`.
+ * `service.version` is included only when `serviceVersion` is provided.
  *
  * **Gotchas**
  *
@@ -93,7 +94,8 @@ export const configToAttributes = (options: {
     [OtelSemConv.ATTR_TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
     [OtelSemConv.ATTR_TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
       ? OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
-      : OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_WEBJS
+      : OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_WEBJS,
+    [OtelSemConv.ATTR_TELEMETRY_SDK_VERSION]: Version.getCurrentVersion()
   }
   if (options.serviceVersion) {
     attributes[OtelSemConv.ATTR_SERVICE_VERSION] = options.serviceVersion

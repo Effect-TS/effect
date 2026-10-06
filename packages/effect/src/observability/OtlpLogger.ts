@@ -24,6 +24,7 @@ import type * as LogLevel from "../LogLevel.ts"
 import * as Option from "../Option.ts"
 import { CurrentLogAnnotations, CurrentLogSpans } from "../References.ts"
 import type * as Scope from "../Scope.ts"
+import * as Version from "../Version.ts"
 import * as OtlpEnv from "./internal/otlpEnv.ts"
 import * as Exporter from "./OtlpExporter.ts"
 import type { AnyValue, Fixed64, KeyValue, Resource } from "./OtlpResource.ts"
@@ -65,7 +66,8 @@ export const make: (
   const serialization = yield* OtlpSerialization
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const scope: IInstrumentationScope = {
-    name: "effect"
+    name: "effect",
+    version: Version.getCurrentVersion()
   }
 
   const exporter = yield* Exporter.make({

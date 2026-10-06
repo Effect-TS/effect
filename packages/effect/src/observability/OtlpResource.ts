@@ -13,6 +13,7 @@ import * as Config from "../Config.ts"
 import * as Effect from "../Effect.ts"
 import { format } from "../Formatter.ts"
 import * as Schema from "../Schema.ts"
+import * as Version from "../Version.ts"
 
 /**
  * OTLP resource metadata attached to exported logs, metrics, and traces.
@@ -31,40 +32,39 @@ export interface Resource {
 // Detect browser windows and workers without platform-specific imports.
 const isBrowser = "window" in globalThis || "importScripts" in globalThis
 
-const sdkAttributes: Record<string, string> = {
-  "telemetry.sdk.name": "effect",
-  "telemetry.sdk.language": isBrowser ? "webjs" : "nodejs"
-}
-
 /**
  * Creates an OTLP resource from service metadata and additional attributes.
  *
  * **Details**
  *
- * The resource includes `service.name`, `telemetry.sdk.name`, and
- * `telemetry.sdk.language`, includes `service.version` when provided, and converts custom
- * attributes into OTLP attribute values. Custom attributes override the SDK
- * defaults.
+ * The resource includes `telemetry.sdk.name`, `telemetry.sdk.language`, and
+ * `telemetry.sdk.version`, includes `service.name` and `service.version` when
+ * provided, and converts custom attributes into OTLP attribute values. Custom
+ * attributes override the SDK defaults.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const make = (options: {
-  readonly serviceName: string
+  readonly serviceName?: string | undefined
   readonly serviceVersion?: string | undefined
   readonly attributes?: Record<string, unknown> | undefined
 }): Resource => {
   const resourceAttributes = entriesToAttributes(Object.entries({
-    ...sdkAttributes,
+    "telemetry.sdk.name": "effect",
+    "telemetry.sdk.language": isBrowser ? "webjs" : "nodejs",
+    "telemetry.sdk.version": Version.getCurrentVersion(),
     ...options.attributes
   }))
-  resourceAttributes.push({
-    key: "service.name",
-    value: {
-      stringValue: options.serviceName
-    }
-  })
+  if (options.serviceName) {
+    resourceAttributes.push({
+      key: "service.name",
+      value: {
+        stringValue: options.serviceName
+      }
+    })
+  }
   if (options.serviceVersion) {
     resourceAttributes.push({
       key: "service.version",
@@ -97,9 +97,7 @@ export const make = (options: {
  * matching explicit attributes. Explicit attributes take precedence over
  * environment variables. `OTEL_SERVICE_NAME` and `OTEL_SERVICE_VERSION` take
  * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. When no
- * service name is configured, `service.name` falls back to
- * `unknown_service:<process.executable.name>` if the merged attributes contain a
- * non-empty executable name, or `unknown_service` otherwise.
+ * service name is configured, the resource has no `service.name` attribute.
  *
  * @stability unstable
  * @category constructors
@@ -122,24 +120,20 @@ export const fromConfig: (
     "OTEL_RESOURCE_ATTRIBUTES"
   ).pipe(Config.withDefault(undefined))
 
-  const attributes = {
-    ...env,
-    ...options?.attributes
-  }
-  const executableName = attributes["process.executable.name"]
-
   const serviceName = options?.serviceName
     ?? options?.attributes?.["service.name"] as string | undefined
     ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_NAME"))
     ?? env?.["service.name"] as string | undefined
-    ?? (typeof executableName === "string" && executableName.length > 0
-      ? `unknown_service:${executableName}`
-      : "unknown_service")
 
   const serviceVersion = options?.serviceVersion
     ?? options?.attributes?.["service.version"] as string | undefined
     ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_VERSION"))
     ?? env?.["service.version"] as string | undefined
+
+  const attributes = {
+    ...env,
+    ...options?.attributes
+  }
 
   delete attributes["service.name"]
   delete attributes["service.version"]
