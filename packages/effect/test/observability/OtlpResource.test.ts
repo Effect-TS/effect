@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ConfigProvider, Effect } from "effect"
+import { Cause, ConfigProvider, Effect, Exit } from "effect"
 import { OtlpResource } from "effect/observability"
 import * as Version from "effect/Version"
 
@@ -137,23 +137,13 @@ describe("OtlpResource", () => {
         )
       ))
 
-    it.effect("omits service.name when no service name is configured", () =>
+    it.effect("dies when no service name is configured", () =>
       Effect.gen(function*() {
-        const resource = yield* OtlpResource.fromConfig()
-        assert.deepStrictEqual(attributesRecord(resource), sdk)
+        const exit = yield* Effect.exit(OtlpResource.fromConfig())
+        assert(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+        assert.include(Cause.pretty(exit.cause), "OTEL_SERVICE_NAME")
       }).pipe(
         Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
-      ))
-
-    it.effect("preserves environment-provided service names without a dedicated service variable", () =>
-      Effect.gen(function*() {
-        const resource = yield* OtlpResource.fromConfig()
-        assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "service.name": "env-service" })
-      }).pipe(
-        Effect.provideService(
-          ConfigProvider.ConfigProvider,
-          ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: "service.name=env-service" } })
-        )
       ))
   })
 
