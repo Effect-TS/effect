@@ -1,6 +1,7 @@
 import { AnthropicClient, AnthropicLanguageModel, AnthropicTool } from "@effect/ai-anthropic"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Layer, Option, Redacted, Schema, Stream } from "effect"
+import { assertDefined } from "@effect/vitest/utils"
+import { Cause, Effect, Exit, Layer, Option, Redacted, Schema, Stream, Tracer } from "effect"
 import {
   type AiError,
   AnthropicStructuredOutput,
@@ -14,6 +15,74 @@ import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientRes
 
 describe("AnthropicLanguageModel", () => {
   describe("streamText", () => {
+    it.effect("reports total input tokens and cache usage on the span", () =>
+      Effect.gen(function*() {
+        const spans: Array<Tracer.NativeSpan> = []
+        const tracer = Tracer.make({
+          span(options) {
+            const span = new Tracer.NativeSpan(options)
+            spans.push(span)
+            return span
+          }
+        })
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-sonnet-4-20250514",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: null,
+                      cache_creation_input_tokens: 20,
+                      cache_read_input_tokens: 30,
+                      input_tokens: 10,
+                      output_tokens: 0,
+                      service_tier: null
+                    }
+                  }
+                },
+                {
+                  type: "message_delta",
+                  delta: { stop_reason: "end_turn", stop_sequence: null },
+                  usage: {
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    input_tokens: null,
+                    output_tokens: 5
+                  }
+                },
+                { type: "message_stop" }
+              ]))
+            )
+          ))
+        )
+
+        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer),
+          Effect.withTracer(tracer)
+        )
+        const finish = parts.find((part) => part.type === "finish")
+        assertDefined(finish)
+        assert.deepStrictEqual(finish.usage.inputTokens, { uncached: 10, total: 60, cacheRead: 30, cacheWrite: 20 })
+        const span = spans.find((span) => span.name === "LanguageModel.streamText")
+        assertDefined(span)
+        assert.strictEqual(span.attributes.get("gen_ai.usage.input_tokens"), 60)
+        assert.strictEqual(span.attributes.get("gen_ai.usage.cache_read.input_tokens"), 30)
+        assert.strictEqual(span.attributes.get("gen_ai.usage.cache_write.input_tokens"), 20)
+        assert.strictEqual(span.attributes.get("gen_ai.usage.output_tokens"), 5)
+      }))
+
     for (
       const [label, geo] of [
         ["missing", {}],
@@ -636,6 +705,56 @@ describe("AnthropicLanguageModel", () => {
           assert.isTrue(response.content.some((part) => part.type === "text" && part.text === "Hello"))
         }))
     }
+
+    it.effect("reports total input tokens and cache usage on the span", () =>
+      Effect.gen(function*() {
+        const spans: Array<Tracer.NativeSpan> = []
+        const tracer = Tracer.make({
+          span(options) {
+            const span = new Tracer.NativeSpan(options)
+            spans.push(span)
+            return span
+          }
+        })
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "Hello" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: 20,
+                  cache_read_input_tokens: 30,
+                  input_tokens: 10,
+                  output_tokens: 5,
+                  service_tier: null
+                }
+              }))
+            )
+          ))
+        )
+
+        yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer),
+          Effect.withTracer(tracer)
+        )
+        const span = spans.find((span) => span.name === "LanguageModel.generateText")
+        assertDefined(span)
+        const attributes = span.attributes
+        assert.strictEqual(attributes.get("gen_ai.provider.name"), "anthropic")
+        assert.strictEqual(attributes.get("gen_ai.usage.input_tokens"), 60)
+        assert.strictEqual(attributes.get("gen_ai.usage.cache_read.input_tokens"), 30)
+        assert.strictEqual(attributes.get("gen_ai.usage.cache_write.input_tokens"), 20)
+        assert.strictEqual(attributes.get("gen_ai.usage.output_tokens"), 5)
+      }))
 
     it.effect("omits strictJsonSchema from the request while preserving tool strictness", () =>
       Effect.gen(function*() {
