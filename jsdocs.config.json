@@ -14,9 +14,5 @@
     "packages/**/src/internal/**",
     "packages/**/src/**/internal/**"
   ],
-  "output": ".data/jsdocs.json",
-  "requireStability": [
-    "packages/**/src/*.ts",
-    "packages/**/src/**/*.ts"
-  ]
+  "output": ".data/jsdocs.json"
 }
