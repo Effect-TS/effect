@@ -128,10 +128,10 @@ export const make: (options: {
     const nextHistogramState = new Map(previousHistogramState)
     const nextFrequencyState = new Map(previousFrequencyState)
     const metricData: Array<IMetric> = []
-    const metricDataByName = new Map<string, IMetric>()
-    const addMetricData = (data: IMetric) => {
+    const metricDataByIdentity = new Map<string, IMetric>()
+    const addMetricData = (identity: string, data: IMetric) => {
       metricData.push(data)
-      metricDataByName.set(data.name, data)
+      metricDataByIdentity.set(identity, data)
     }
 
     const isDelta = temporality === "delta"
@@ -144,8 +144,9 @@ export const make: (options: {
 
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const state = snapshot[i]
-      // Series sharing a metric id share one OTLP metric, so the first series' unit wins
       const unit = toUcumUnit(state.attributes?.unit ?? state.attributes?.time_unit)
+      // Series of one metric id with different units are exported as separate metrics
+      const identity = `${state.id}\u0000${unit}`
       const attributes = state.attributes
         ? OtlpResource.entriesToAttributes(exportedAttributeEntries(state.attributes))
         : []
@@ -188,10 +189,10 @@ export const make: (options: {
           } else {
             dataPoint.asDouble = reportValue
           }
-          if (metricDataByName.has(state.id)) {
-            metricDataByName.get(state.id)!.sum!.dataPoints.push(dataPoint)
+          if (metricDataByIdentity.has(identity)) {
+            metricDataByIdentity.get(identity)!.sum!.dataPoints.push(dataPoint)
           } else {
-            addMetricData({
+            addMetricData(identity, {
               name: state.id,
               description: state.description!,
               unit,
@@ -216,10 +217,10 @@ export const make: (options: {
           } else {
             dataPoint.asDouble = state.state.value
           }
-          if (metricDataByName.has(state.id)) {
-            metricDataByName.get(state.id)!.gauge!.dataPoints.push(dataPoint)
+          if (metricDataByIdentity.has(identity)) {
+            metricDataByIdentity.get(identity)!.gauge!.dataPoints.push(dataPoint)
           } else {
-            addMetricData({
+            addMetricData(identity, {
               name: state.id,
               description: state.description!,
               unit,
@@ -287,10 +288,10 @@ export const make: (options: {
             explicitBounds: currentBuckets.boundaries
           }
 
-          if (metricDataByName.has(state.id)) {
-            metricDataByName.get(state.id)!.histogram!.dataPoints.push(dataPoint)
+          if (metricDataByIdentity.has(identity)) {
+            metricDataByIdentity.get(identity)!.histogram!.dataPoints.push(dataPoint)
           } else {
-            addMetricData({
+            addMetricData(identity, {
               name: state.id,
               description: state.description!,
               unit,
@@ -330,10 +331,10 @@ export const make: (options: {
             nextFrequencyState.set(metricKey, currentOccurrences)
           }
 
-          if (metricDataByName.has(state.id)) {
-            metricDataByName.get(state.id)!.sum!.dataPoints.push(...dataPoints)
+          if (metricDataByIdentity.has(identity)) {
+            metricDataByIdentity.get(identity)!.sum!.dataPoints.push(...dataPoints)
           } else {
-            addMetricData({
+            addMetricData(identity, {
               name: state.id,
               description: state.description!,
               unit,
@@ -363,10 +364,10 @@ export const make: (options: {
             quantileValues
           }
 
-          if (metricDataByName.has(state.id)) {
-            metricDataByName.get(state.id)!.summary!.dataPoints.push(dataPoint)
+          if (metricDataByIdentity.has(identity)) {
+            metricDataByIdentity.get(identity)!.summary!.dataPoints.push(dataPoint)
           } else {
-            addMetricData({
+            addMetricData(identity, {
               name: state.id,
               description: state.description!,
               unit,
