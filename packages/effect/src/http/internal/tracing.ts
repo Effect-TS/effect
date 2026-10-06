@@ -1,5 +1,6 @@
 import { getStackTraceLimit, setStackTraceLimit } from "../../internal/stackTraceLimit.ts"
 import type * as Tracer from "../../Tracer.ts"
+import * as Headers from "../Headers.ts"
 
 const knownMethods: ReadonlySet<string> = new Set([
   "CONNECT",
@@ -15,7 +16,7 @@ const knownMethods: ReadonlySet<string> = new Set([
 ])
 
 /** @internal */
-export const spanNameMethod = (method: string): string => knownMethods.has(method) ? method : "HTTP"
+export const spanName = (method: string): string => knownMethods.has(method) ? method : "HTTP"
 
 /** @internal */
 export const setMethodAttributes = (span: Tracer.Span, method: string): void => {
@@ -27,11 +28,24 @@ export const setMethodAttributes = (span: Tracer.Span, method: string): void => 
   }
 }
 
-/**
- * Query parameters whose values are redacted. The semantic conventions list
- * `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`; the `X-Amz-*`
- * keys extend that list to cover AWS SigV4 presigned URLs.
- */
+/** @internal */
+export const setHeaderAttributes = (
+  span: Tracer.Span,
+  phase: "request" | "response",
+  headers: Headers.Headers,
+  filter: (name: string, phase: "request" | "response") => boolean,
+  redactedNames: ReadonlyArray<string | RegExp>
+): void => {
+  for (const name in headers) {
+    if (!filter(name, phase)) continue
+    span.attribute(`http.${phase}.header.${name}`, [
+      Headers.isRedactedName(name, redactedNames) ? "<redacted>" : headers[name]
+    ])
+  }
+}
+
+// The semantic conventions list `AWSAccessKeyId`, `Signature`, `sig` and
+// `X-Goog-Signature`. The `X-Amz-*` keys cover AWS SigV4 presigned URLs.
 const sensitiveQueryKeys: ReadonlySet<string> = new Set([
   "AWSAccessKeyId",
   "Signature",
@@ -42,30 +56,22 @@ const sensitiveQueryKeys: ReadonlySet<string> = new Set([
   "X-Goog-Signature"
 ])
 
-/** @internal */
-export const redactQuery = (query: string): string => {
-  let redacted = false
-  const parts = query.split("&")
-  for (let i = 0; i < parts.length; i++) {
-    const index = parts[i].indexOf("=")
-    if (index === -1) continue
-    const key = parts[i].slice(0, index)
-    if (sensitiveQueryKeys.has(decodeQueryKey(key))) {
-      parts[i] = `${key}=REDACTED`
-      redacted = true
-    }
-  }
-  return redacted ? parts.join("&") : query
-}
-
 const decodeQueryKey = (key: string): string => {
-  if (!key.includes("%") && !key.includes("+")) return key
+  if (!key.includes("%")) return key
   try {
-    return decodeURIComponent(key.replace(/\+/g, " "))
+    return decodeURIComponent(key)
   } catch {
     return key
   }
 }
+
+/** @internal */
+export const redactQuery = (query: string): string =>
+  query.replace(
+    /(^|&)([^&=]+)=[^&]*/g,
+    (param, separator: string, key: string) =>
+      sensitiveQueryKeys.has(decodeQueryKey(key)) ? `${separator}${key}=REDACTED` : param
+  )
 
 /** @internal */
 export const setUrlAttributes = (span: Tracer.Span, url: URL): void => {
@@ -73,18 +79,16 @@ export const setUrlAttributes = (span: Tracer.Span, url: URL): void => {
   const redactedQuery = redactQuery(query)
   const hasCredentials = url.username !== "" || url.password !== ""
   if (hasCredentials || redactedQuery !== query) {
-    const redacted = new URL(url)
+    url = new URL(url)
     if (hasCredentials) {
-      redacted.username = "REDACTED"
-      redacted.password = "REDACTED"
+      url.username = "REDACTED"
+      url.password = "REDACTED"
     }
     if (redactedQuery !== query) {
-      redacted.search = redactedQuery
+      url.search = redactedQuery
     }
-    span.attribute("url.full", redacted.toString())
-  } else {
-    span.attribute("url.full", url.toString())
   }
+  span.attribute("url.full", url.toString())
   span.attribute("url.path", url.pathname)
   span.attribute("url.scheme", url.protocol.slice(0, -1))
   if (redactedQuery !== "") {
@@ -92,39 +96,12 @@ export const setUrlAttributes = (span: Tracer.Span, url: URL): void => {
   }
 }
 
-/** @internal */
-export const defaultPort = (protocol: string): number | undefined => {
-  switch (protocol) {
-    case "http:":
-    case "ws:":
-      return 80
-    case "https:":
-    case "wss:":
-      return 443
-    default:
-      return undefined
-  }
-}
-
-/** @internal */
-export const setHeaderAttributes = (
-  span: Tracer.Span,
-  phase: "request" | "response",
-  headers: Readonly<Record<string, string>>,
-  filter: (headerName: string, phase: "request" | "response") => boolean,
-  isRedacted: (headerName: string) => boolean
-): void => {
-  for (const name in headers) {
-    if (!filter(name, phase)) continue
-    span.attribute(`http.${phase}.header.${name}`, [isRedacted(name) ? "<redacted>" : headers[name]])
-  }
-}
-
-/** @internal */
-export const serverAddress = (url: URL): string =>
-  url.hostname.startsWith("[") && url.hostname.endsWith("]") ? url.hostname.slice(1, -1) : url.hostname
-
-/** @internal */
+/**
+ * Span exits for error statuses only describe the response, so their errors
+ * skip stack trace capture.
+ *
+ * @internal
+ */
 export const withoutStackTrace = <A>(f: () => A): A => {
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)

@@ -22,6 +22,7 @@ import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constant, constFalse, constTrue, dual, flow, identity } from "../Function.ts"
 import * as Inspectable from "../Inspectable.ts"
+import * as internalEffect from "../internal/effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as RateLimiter from "../persistence/RateLimiter.ts"
@@ -664,20 +665,65 @@ const Proto = {
   )
 }
 
-// Fails the span for 4xx and 5xx responses; the caller still gets the response.
-const endSpanWithStatusError = (
+const startSpan = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  request: HttpClientRequest.HttpClientRequest,
+  url: URL
+): Tracer.Span => {
+  const span = internalEffect.makeSpanUnsafe(fiber, fiber.getRef(SpanNameGenerator)(request), { kind: "client" })
+  tracing.setMethodAttributes(span, request.method)
+  const hostname = url.hostname
+  span.attribute("server.address", hostname.startsWith("[") ? hostname.slice(1, -1) : hostname)
+  const port = url.port !== "" ? +url.port : url.protocol === "https:" || url.protocol === "wss:" ? 443 : 80
+  span.attribute("server.port", port)
+  tracing.setUrlAttributes(span, url)
+  tracing.setHeaderAttributes(
+    span,
+    "request",
+    request.headers,
+    fiber.getRef(TracerHeaderFilter),
+    fiber.getRef(Headers.CurrentRedactedNames)
+  )
+  return span
+}
+
+// Client spans fail for 4xx and 5xx responses, while the caller still receives
+// the response.
+const endSpan = (
   fiber: Fiber.Fiber<unknown, unknown>,
   span: Tracer.Span,
   request: HttpClientRequest.HttpClientRequest,
-  response: HttpClientResponse.HttpClientResponse
+  exit: Exit.Exit<HttpClientResponse.HttpClientResponse, unknown>
 ): void => {
-  span.attribute("error.type", String(response.status))
-  const error = tracing.withoutStackTrace(() =>
-    new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) })
-  )
+  let spanExit: Exit.Exit<unknown, unknown> = exit
+  if (Exit.isSuccess(exit)) {
+    const response = exit.value
+    span.attribute("http.response.status_code", response.status)
+    tracing.setHeaderAttributes(
+      span,
+      "response",
+      response.headers,
+      fiber.getRef(TracerHeaderFilter),
+      fiber.getRef(Headers.CurrentRedactedNames)
+    )
+    if (response.status >= 400) {
+      span.attribute("error.type", String(response.status))
+      spanExit = Exit.fail(
+        tracing.withoutStackTrace(() =>
+          new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) })
+        )
+      )
+    }
+  } else if (!Cause.hasInterruptsOnly(exit.cause)) {
+    const error = Cause.findErrorOption(exit.cause)
+    span.attribute(
+      "error.type",
+      Option.isSome(error) && Error.isHttpClientError(error.value) ? error.value.reason._tag : "_OTHER"
+    )
+  }
   span.end(
     fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
-    Exit.fail(error)
+    spanExit
   )
 }
 
@@ -719,74 +765,34 @@ export const make = (
         const url = urlResult.success
         const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
-        if (tracerDisabled) {
-          const effect = f(request, url, controller.signal, fiber as any)
-          if (scopedController) return effect
-          return Effect.uninterruptibleMask((restore) =>
-            Effect.matchCauseEffect(restore(effect), {
+        if (tracerDisabled && scopedController) {
+          return f(request, url, controller.signal, fiber as any)
+        }
+        return Effect.uninterruptibleMask((restore) => {
+          const span = tracerDisabled ? undefined : startSpan(fiber, request, url)
+          if (span !== undefined && fiber.getRef(TracerPropagationEnabled)) {
+            request = HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
+          }
+          const effect = restore(f(request, url, controller.signal, fiber as any))
+          return Effect.matchCauseEffect(
+            span === undefined ? effect : Effect.withParentSpan(effect, span, { captureStackTrace: false }),
+            {
               onSuccess(response) {
+                if (span !== undefined) endSpan(fiber, span, request, Exit.succeed(response))
+                if (scopedController) return Effect.succeed(response)
                 responseRegistry.register(response, controller)
                 return Effect.succeed(new InterruptibleResponse(response, controller))
               },
               onFailure(cause) {
-                if (Cause.hasInterrupts(cause)) {
+                if (span !== undefined) endSpan(fiber, span, request, Exit.failCause(cause))
+                if (!scopedController && Cause.hasInterrupts(cause)) {
                   controller.abort()
                 }
                 return Effect.failCause(cause)
               }
-            })
-          )
-        }
-        return Effect.useSpan(
-          fiber.getRef(SpanNameGenerator)(request),
-          { kind: "client" },
-          (span) => {
-            tracing.setMethodAttributes(span, request.method)
-            span.attribute("server.address", tracing.serverAddress(url))
-            const port = url.port !== "" ? +url.port : tracing.defaultPort(url.protocol)
-            if (port !== undefined) {
-              span.attribute("server.port", port)
             }
-            tracing.setUrlAttributes(span, url)
-            const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
-            const headerFilter = fiber.getRef(TracerHeaderFilter)
-            const isRedacted = (name: string) => Headers.isRedactedName(name, redactedHeaderNames)
-            tracing.setHeaderAttributes(span, "request", request.headers, headerFilter, isRedacted)
-            request = fiber.getRef(TracerPropagationEnabled)
-              ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
-              : request
-            return Effect.uninterruptibleMask((restore) =>
-              restore(f(request, url, controller.signal, fiber as any)).pipe(
-                Effect.withParentSpan(span, { captureStackTrace: false }),
-                Effect.matchCauseEffect({
-                  onSuccess: (response) => {
-                    span.attribute("http.response.status_code", response.status)
-                    tracing.setHeaderAttributes(span, "response", response.headers, headerFilter, isRedacted)
-                    if (response.status >= 400) {
-                      endSpanWithStatusError(fiber, span, request, response)
-                    }
-
-                    if (scopedController) return Effect.succeed(response)
-                    responseRegistry.register(response, controller)
-                    return Effect.succeed(new InterruptibleResponse(response, controller))
-                  },
-                  onFailure(cause) {
-                    const error = Cause.findErrorOption(cause)
-                    if (Option.isSome(error) && Error.isHttpClientError(error.value)) {
-                      span.attribute("error.type", error.value.reason._tag)
-                    } else if (!Cause.hasInterruptsOnly(cause)) {
-                      span.attribute("error.type", "_OTHER")
-                    }
-                    if (!scopedController && Cause.hasInterrupts(cause)) {
-                      controller.abort()
-                    }
-                    return Effect.failCause(cause)
-                  }
-                })
-              )
-            )
-          }
-        )
+          )
+        })
       })), Effect.succeed as HttpClient.Preprocess<never, never>)
 
 /**
@@ -1684,7 +1690,7 @@ export const TracerDisabledWhen = Context.Reference<
  *
  * **Details**
  *
- * Header attributes are opt-in, so no headers are recorded by default.
+ * No headers are recorded unless the filter selects them.
  *
  * @stability unstable
  * @category services
@@ -1717,7 +1723,7 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/
 export const SpanNameGenerator = Context.Reference<
   (request: HttpClientRequest.HttpClientRequest) => string
 >("effect/http/HttpClient/SpanNameGenerator", {
-  defaultValue: () => (request) => tracing.spanNameMethod(request.method)
+  defaultValue: () => (request) => tracing.spanName(request.method)
 })
 
 /**

@@ -23,7 +23,7 @@ import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
-import { nativeTracer, ParentSpan, type Span, Tracer } from "../Tracer.ts"
+import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
@@ -138,7 +138,7 @@ export const layerTracerDisabledForUrls = (
  */
 export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) => string>(
   "@effect/platform/HttpMiddleware/SpanNameGenerator",
-  { defaultValue: () => (request) => tracing.spanNameMethod(request.method) }
+  { defaultValue: () => (request) => tracing.spanName(request.method) }
 )
 
 /**
@@ -146,7 +146,7 @@ export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) 
  *
  * **Details**
  *
- * Header attributes are opt-in, so no headers are recorded by default.
+ * No headers are recorded unless the filter selects them.
  *
  * @stability unstable
  * @category services
@@ -213,29 +213,24 @@ export const isTracerDisabledUnsafe = (
   request: HttpServerRequest
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
-// Server spans fail only for 5xx. Interrupt-only causes below 500 (client
-// aborts) keep their interrupt exit.
-const responseSpanExit = (
-  span: Span,
+// Server spans fail only for 5xx responses. Interrupts below 500, such as
+// client aborts, keep their interrupt exit.
+const spanExit = (
   request: HttpServerRequest,
   response: HttpServerResponse,
-  cause?: Cause.Cause<unknown>
-): Exit.Exit<HttpServerResponse, unknown> => {
-  if (!(response.status >= 500 && response.status < 600)) {
+  cause: Cause.Cause<unknown> | undefined
+): Exit.Exit<unknown, unknown> => {
+  if (response.status < 500 || response.status >= 600) {
     return cause !== undefined && Cause.hasInterruptsOnly(cause) ? Exit.failCause(cause) : Exit.succeed(response)
-  }
-  span.attribute("error.type", String(response.status))
-  if (cause !== undefined && !Cause.hasInterruptsOnly(cause)) {
+  } else if (cause !== undefined && !Cause.hasInterruptsOnly(cause)) {
     return Exit.failCause(cause)
   }
-  // Add a response failure so interrupt-only 5xx spans export as ERROR. Avoid
+  // Interrupt-only exits are exported as OK, so add a response failure. Avoid
   // `Cause.combine`: hashing the request can read its body.
-  const error = tracing.withoutStackTrace(() =>
-    new HttpServerError({ reason: new ResponseError({ request, response }) })
+  const failure = Cause.makeFailReason(
+    tracing.withoutStackTrace(() => new HttpServerError({ reason: new ResponseError({ request, response }) }))
   )
-  return cause === undefined
-    ? Exit.fail(error)
-    : Exit.failCause(Cause.fromReasons([...cause.reasons, Cause.makeFailReason(error)]))
+  return Exit.failCause(Cause.fromReasons(cause === undefined ? [failure] : [...cause.reasons, failure]))
 }
 
 /**
@@ -264,21 +259,20 @@ export const tracer: <E, R>(
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, responseSpanExit(span, request, exit.value))
+        span.end(endTime, spanExit(request, exit.value, undefined))
         return undefined
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)
       fiber.currentDispatcher.scheduleTask(() => {
         let response: HttpServerResponse
-        let spanExit: Exit.Exit<HttpServerResponse, unknown>
+        let cause: Cause.Cause<unknown> | undefined
         if (Exit.isFailure(exit)) {
-          const [failureResponse, cause] = causeResponseStripped(exit.cause)
+          const [failureResponse, failureCause] = causeResponseStripped(exit.cause)
           response = failureResponse
-          spanExit = responseSpanExit(span, request, response, Option.getOrUndefined(cause))
+          cause = Option.getOrUndefined(failureCause)
         } else {
           response = exit.value
-          spanExit = responseSpanExit(span, request, response)
         }
         if (span.sampled) {
           tracing.setMethodAttributes(span, request.method)
@@ -286,17 +280,12 @@ export const tracer: <E, R>(
             const host = request.headers.host ?? "localhost"
             const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
             const queryIndex = request.url.indexOf("?")
-            if (queryIndex === -1) {
-              span.attribute("url.full", `${protocol}://${host}${request.url}`)
-              span.attribute("url.path", request.url)
-            } else {
-              const query = tracing.redactQuery(request.url.slice(queryIndex + 1))
-              const path = request.url.slice(0, queryIndex)
-              span.attribute("url.full", `${protocol}://${host}${path}?${query}`)
-              span.attribute("url.path", path)
-              if (query !== "") {
-                span.attribute("url.query", query)
-              }
+            const path = queryIndex === -1 ? request.url : request.url.slice(0, queryIndex)
+            const query = queryIndex === -1 ? "" : tracing.redactQuery(request.url.slice(queryIndex + 1))
+            span.attribute("url.full", `${protocol}://${host}${path}${queryIndex === -1 ? "" : `?${query}`}`)
+            span.attribute("url.path", path)
+            if (query !== "") {
+              span.attribute("url.query", query)
             }
             span.attribute("url.scheme", protocol)
           } else {
@@ -308,15 +297,17 @@ export const tracer: <E, R>(
           if (request.headers["user-agent"] !== undefined) {
             span.attribute("user_agent.original", request.headers["user-agent"])
           }
-          const isRedacted = (name: string) => Headers.isRedactedName(name, redactedHeaderNames)
-          tracing.setHeaderAttributes(span, "request", request.headers, headerFilter, isRedacted)
+          tracing.setHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
           if (Option.isSome(request.remoteAddress)) {
             span.attribute("client.address", request.remoteAddress.value)
           }
           span.attribute("http.response.status_code", response.status)
-          tracing.setHeaderAttributes(span, "response", response.headers, headerFilter, isRedacted)
+          if (response.status >= 500 && response.status < 600) {
+            span.attribute("error.type", String(response.status))
+          }
+          tracing.setHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
         }
-        span.end(endTime, spanExit)
+        span.end(endTime, spanExit(request, response, cause))
       }, 0)
       return undefined
     })
