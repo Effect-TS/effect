@@ -12,7 +12,6 @@ import type {
   SampleOptions,
   SchemaOptions
 } from "../../Arbitrary.ts"
-import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
 import { pipeArguments } from "../../Pipeable.ts"
@@ -384,11 +383,8 @@ function flatMapSourcePull<A, B>(
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchCauseEffect(current, {
-        onFailure: (cause) => {
-          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
-            return Effect.failCause(cause)
-          }
+      return Model.matchPull(current, {
+        onDone: () => {
           stack.pop()
           return loop()
         },
@@ -511,11 +507,7 @@ const evaluateProperty = <A, E, R>(
   if (!Effect.isEffect(output)) return Effect.succeed(output === true ? passedProperty : returnedFalse)
   return Effect.matchCauseEffectEager(output, {
     onFailure: (cause) => {
-      if (Cause.hasDies(cause) || Cause.hasInterrupts(cause)) {
-        // Mixed causes must escape intact, even though typed property errors normally become values.
-        return Effect.failCause(cause as Cause.Cause<never>)
-      }
-      const error = Cause.findError(cause)
+      const error = Model.findTypedError(cause)
       return Result.isFailure(error)
         ? Effect.failCause(error.failure)
         : Effect.succeed<PropertyError<E>>({ _tag: "PropertyError", error: error.success })
@@ -525,10 +517,7 @@ const evaluateProperty = <A, E, R>(
 }
 
 const pullNext = <A>(pull: Model.ShrinkPull<Model.Attempt<A>>): Effect.Effect<Model.Attempt<A> | undefined> =>
-  Effect.catchCause(pull, (cause) =>
-    Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)
-      ? Effect.failCause(cause as Cause.Cause<never>)
-      : Effect.succeed(undefined))
+  Effect.catchCauseFilter(pull, Model.findTypedError, () => Effect.succeed(undefined))
 
 const shrink = Effect.fnUntraced(function*<A, E, R>(
   initial: Model.Sample<A>,

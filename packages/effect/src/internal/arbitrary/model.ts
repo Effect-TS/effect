@@ -1,11 +1,42 @@
 import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
+import * as Result from "../../Result.ts"
 import * as InternalArray from "../array.ts"
 import { done } from "../core.ts"
 
 /** @internal */
 export type ShrinkPull<A> = Effect.Effect<A, Cause.Done>
+
+/**
+ * Finds the typed error of a cause made solely of typed failures. A cause that
+ * also carries a defect or interruption is kept intact as the failure, so
+ * callers re-fail with every reason instead of swallowing the rest.
+ *
+ * @internal
+ */
+export const findTypedError = <E>(cause: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
+  cause.reasons.every(Cause.isFailReason) ? Cause.findError(cause) : Result.fail(cause as Cause.Cause<never>)
+
+/**
+ * Matches a shrink pull, treating only a typed `Done` failure as exhaustion.
+ *
+ * @internal
+ */
+export const matchPull = <A, B, E, R>(
+  pull: ShrinkPull<A>,
+  options: {
+    readonly onDone: () => Effect.Effect<B, E, R>
+    readonly onSuccess: (value: A) => Effect.Effect<B, E, R>
+  }
+): Effect.Effect<B, E, R> =>
+  Effect.matchCauseEffect(pull, {
+    onFailure: (cause) => {
+      const done = findTypedError(cause)
+      return Result.isFailure(done) ? Effect.failCause(done.failure) : options.onDone()
+    },
+    onSuccess: options.onSuccess
+  })
 
 /** @internal */
 export interface Sample<out A> {
@@ -129,10 +160,7 @@ export function concatPulls<A>(pulls: ReadonlyArray<ShrinkPull<A>>): ShrinkPull<
     Effect.suspend(() =>
       index >= pulls.length
         ? done()
-        : Effect.catchCause(pulls[index], (cause) => {
-          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
-            return Effect.failCause(cause)
-          }
+        : Effect.catchCauseFilter(pulls[index], findTypedError, () => {
           index++
           return loop()
         })
@@ -185,11 +213,8 @@ export function retain<A>(sample: Sample<A>): Retained<A> {
       return Effect.suspend(() => {
         if (history !== undefined && index < history.length) return Effect.succeed(history[index++])
         if (ended) return done()
-        return Effect.matchCauseEffect(source, {
-          onFailure: (cause) => {
-            if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
-              return Effect.failCause(cause)
-            }
+        return matchPull(source, {
+          onDone: () => {
             ended = true
             return done()
           },
@@ -294,11 +319,8 @@ function filterMapPull<A, B>(
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchCauseEffect(current, {
-        onFailure: (cause) => {
-          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
-            return Effect.failCause(cause)
-          }
+      return matchPull(current, {
+        onDone: () => {
           stack.pop()
           return loop()
         },
@@ -327,11 +349,8 @@ function filterPull<A>(source: ShrinkPull<Attempt<A>>, predicate: (value: A) => 
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchCauseEffect(current, {
-        onFailure: (cause) => {
-          if (Cause.hasDies(cause) || Cause.hasInterrupts(cause) || !Cause.hasFails(cause)) {
-            return Effect.failCause(cause)
-          }
+      return matchPull(current, {
+        onDone: () => {
           stack.pop()
           return loop()
         },
