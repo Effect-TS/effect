@@ -172,7 +172,7 @@ Missing key
     }))
 
   describe("tracer", () => {
-    it.effect("includes request and response headers by default", () =>
+    it.effect("omits request and response headers by default", () =>
       Effect.gen(function*() {
         let clientSpan: Tracer.NativeSpan | undefined
         const tracer = Tracer.make({
@@ -197,8 +197,106 @@ Missing key
         }).pipe(Effect.provideService(Tracer.Tracer, tracer))
 
         assert(clientSpan !== undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), "request")
-        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), "response")
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), undefined)
+      }))
+
+    it.effect("names spans after the request method", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const { client } = yield* makeStatusClient(200)
+
+        yield* client.post("http://test/").pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.name, "POST")
+      }))
+
+    it.effect.each([
+      { status: 200, failed: false },
+      { status: 404, failed: true },
+      { status: 503, failed: true }
+    ])(
+      "ends the span for a $status response with failed=$failed and returns the response",
+      ({ failed, status }) =>
+        Effect.gen(function*() {
+          let clientSpan: Tracer.NativeSpan | undefined
+          const tracer = Tracer.make({
+            span(options) {
+              clientSpan = new Tracer.NativeSpan(options)
+              return clientSpan
+            }
+          })
+          const { client } = yield* makeStatusClient(status)
+
+          const response = yield* client.get("http://test/").pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+          assert.strictEqual(response.status, status)
+          assert(clientSpan !== undefined && clientSpan.status._tag === "Ended")
+          assert.strictEqual(clientSpan.status.exit._tag === "Failure", failed)
+          assert.strictEqual(clientSpan.attributes.get("http.response.status_code"), status)
+        })
+    )
+
+    it.effect.each([
+      { url: "http://example.com/", address: "example.com", port: 80 },
+      { url: "https://example.com/", address: "example.com", port: 443 },
+      { url: "https://example.com:8443/", address: "example.com", port: 8443 }
+    ])("records server.address and server.port for $url", ({ address, port, url }) =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const { client } = yield* makeStatusClient(200)
+
+        yield* client.get(url).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("server.address"), address)
+        assert.strictEqual(clientSpan.attributes.get("server.port"), port)
+      }))
+
+    it.effect("redacts URL credentials and signed query values without changing the sent URL", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        let sentUrl: string | undefined
+        const client = HttpClient.make((request, url) =>
+          Effect.sync(() => {
+            sentUrl = url.toString()
+            return HttpClientResponse.fromWeb(request, new Response(null))
+          })
+        )
+        const url =
+          "https://user:secret@example.com/file?AWSAccessKeyId=key&Signature=signature&sig=sig&X-Goog-Signature=goog&keep=value"
+
+        yield* client.get(url).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert.strictEqual(sentUrl, url)
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "https://REDACTED:REDACTED@example.com/file?AWSAccessKeyId=REDACTED&Signature=REDACTED&sig=REDACTED&X-Goog-Signature=REDACTED&keep=value"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "AWSAccessKeyId=REDACTED&Signature=REDACTED&sig=REDACTED&X-Goog-Signature=REDACTED&keep=value"
+        )
       }))
 
     it.effect("filters request and response header span attributes", () =>

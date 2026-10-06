@@ -324,22 +324,17 @@ describe("HttpMiddleware", () => {
             method: "POST",
             headers: {
               "user-agent": "test-agent",
-              "x-request": "request",
-              "x-request-secret": "request-secret"
+              "x-request": "request"
             }
           })
         )
         const response = HttpServerResponse.empty({
           status: 201,
-          headers: {
-            "x-response": "response",
-            "x-response-secret": "response-secret"
-          }
+          headers: { "x-response": "response" }
         })
 
         yield* HttpMiddleware.tracer(Effect.succeed(response)).pipe(
           Effect.provideService(HttpServerRequest.HttpServerRequest, request),
-          Effect.provideService(Headers.CurrentRedactedNames, ["x-request-secret", "x-response-secret"]),
           Effect.provideService(Tracer.Tracer, tracer)
         )
         yield* Effect.yieldNow
@@ -350,11 +345,186 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.attributes.get("url.path"), "/todos/1")
         assert.strictEqual(serverSpan.attributes.get("url.query"), "foo=bar")
         assert.strictEqual(serverSpan.attributes.get("user_agent.original"), "test-agent")
+        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), undefined)
+        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 201)
+        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), undefined)
+      }))
+
+    it.effect("names spans after the request method", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/", { method: "POST" }))
+
+        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.name, "POST")
+      }))
+
+    it.effect("records filtered and redacted headers when enabled by TracerHeaderFilter", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(
+          new Request("http://localhost:3000/", {
+            headers: {
+              "x-request": "request",
+              "x-request-secret": "request-secret",
+              "x-request-drop": "drop"
+            }
+          })
+        )
+        const response = HttpServerResponse.empty({
+          headers: {
+            "x-response": "response",
+            "x-response-secret": "response-secret",
+            "x-response-drop": "drop"
+          }
+        })
+
+        yield* HttpMiddleware.tracer(Effect.succeed(response)).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(HttpMiddleware.TracerHeaderFilter, (name) => !name.endsWith("-drop")),
+          Effect.provideService(Headers.CurrentRedactedNames, ["x-request-secret", "x-response-secret"]),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
         assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), "request")
         assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request-secret"), "<redacted>")
-        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 201)
+        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request-drop"), undefined)
         assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), "response")
         assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), "<redacted>")
+        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-drop"), undefined)
+      }))
+
+    it.effect.each([
+      { host: "example.com:8080", url: "http://example.com:8080/", address: "example.com", port: 8080 },
+      { host: "example.com", url: "http://example.com/", address: "example.com", port: 80 }
+    ])(
+      "records server.address and server.port from Host $host",
+      ({ address, host, port, url }) =>
+        Effect.gen(function*() {
+          let serverSpan: Tracer.NativeSpan | undefined
+          const tracer = Tracer.make({
+            span(options) {
+              serverSpan = new Tracer.NativeSpan(options)
+              return serverSpan
+            }
+          })
+          const request = HttpServerRequest.fromWeb(new Request(url, { headers: { host } }))
+
+          yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty())).pipe(
+            Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+            Effect.provideService(Tracer.Tracer, tracer)
+          )
+          yield* Effect.yieldNow
+
+          assert(serverSpan !== undefined)
+          assert.strictEqual(serverSpan.attributes.get("server.address"), address)
+          assert.strictEqual(serverSpan.attributes.get("server.port"), port)
+        })
+    )
+
+    it.effect("normalizes unknown request methods", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/", { method: "PROPFIND" }))
+
+        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.name, "HTTP")
+        assert.strictEqual(serverSpan.attributes.get("http.request.method"), "_OTHER")
+        assert.strictEqual(serverSpan.attributes.get("http.request.method_original"), "PROPFIND")
+      }))
+
+    it.effect("redacts signed query values", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(
+          new Request("http://localhost:3000/file?AWSAccessKeyId=key&Signature=signature&sig=sig&keep=value", {
+            headers: { host: "localhost:3000" }
+          })
+        )
+
+        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(
+          serverSpan.attributes.get("url.query"),
+          "AWSAccessKeyId=REDACTED&Signature=REDACTED&sig=REDACTED&keep=value"
+        )
+        assert.strictEqual(
+          serverSpan.attributes.get("url.full"),
+          "http://localhost:3000/file?AWSAccessKeyId=REDACTED&Signature=REDACTED&sig=REDACTED&keep=value"
+        )
+      }))
+
+    it.effect("does not fail the span for a 4xx response from a respondable failure", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/missing"))
+        let sentStatus: number | undefined
+
+        yield* HttpEffect.toHandled(
+          Effect.fail(new HttpServerError.RouteNotFound({ request })),
+          (_request, response) =>
+            Effect.sync(() => {
+              sentStatus = response.status
+            })
+        ).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer),
+          Effect.exit
+        )
+        yield* Effect.yieldNow
+
+        assert.strictEqual(sentStatus, 404)
+        assert(serverSpan !== undefined && serverSpan.status._tag === "Ended")
+        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 404)
+        assert.strictEqual(serverSpan.status.exit._tag, "Success")
       }))
 
     it.effect("skips attributes for unsampled spans", () =>
