@@ -70,7 +70,11 @@ describe("RpcServer", () => {
           if (!Exit.isFailure(invalid)) {
             return assert.fail("Invalid must fail with a request defect")
           }
-          assert.include(String(Cause.squash(invalid.cause)), "Expected string")
+          assert.strictEqual(invalid.cause.reasons.length, 1)
+          assert.strictEqual(invalid.cause.reasons[0]._tag, "Die")
+          const diagnostic = String(Cause.squash(invalid.cause))
+          assert.include(diagnostic, name === "JSON" ? "Expected string" : "Missing key")
+          assert.include(diagnostic, "at [\"value\"]")
         }).pipe(Effect.provide(ClientProtocol)))
     }
   })
