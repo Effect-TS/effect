@@ -15,7 +15,6 @@
 import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -102,63 +101,27 @@ export const make = Effect.fnUntraced(function*(
   const scope = yield* Effect.scope
   const server = evaluate()
 
-  // One Deferred, not Effect.cached: timeoutOrElse interrupts the waiter, and
-  // a cached close treats that interruption as abandonment.
-  const closed = Deferred.makeUnsafe<void>()
-  let closeStarted = false
-  let draining = false
-  const pendingResponses = new Set<Http.ServerResponse>()
-  const removeServeListeners = new Set<() => void>()
-
-  const closeIfHeadersUnsent = (nodeResponse: Http.ServerResponse) => {
-    if (!nodeResponse.headersSent) {
-      drainingResponses.add(nodeResponse)
-      nodeResponse.setHeader("Connection", "close")
+  const shutdown = yield* Effect.callback<void>((resume) => {
+    if (!server.listening) {
+      return resume(Effect.void)
     }
-  }
-  const beginDraining = () => {
-    if (draining) {
-      return
-    }
-    draining = true
-    for (const nodeResponse of pendingResponses) {
-      closeIfHeadersUnsent(nodeResponse)
-    }
-    pendingResponses.clear()
-  }
-  const shutdown = Effect.suspend(() => {
-    if (!closeStarted) {
-      closeStarted = true
-      beginDraining()
-      if (server.listening) {
-        server.close((error) => {
-          Deferred.doneUnsafe(closed, error ? Exit.die(error) : Exit.void)
-        })
+    server.close((error) => {
+      if (error) {
+        resume(Effect.die(error))
       } else {
-        Deferred.doneUnsafe(closed, Exit.void)
+        resume(Effect.void)
       }
-    }
-    return Deferred.await(closed)
-  })
+    })
+  }).pipe(Effect.cached)
 
   const preemptiveShutdown = options.disablePreemptiveShutdown ?
     Effect.void :
     Effect.timeoutOrElse(shutdown, {
       duration: options.gracefulShutdownTimeout ?? Duration.seconds(20),
-      orElse: () =>
-        Effect.sync(() => {
-          server.closeAllConnections()
-        }).pipe(Effect.andThen(Deferred.await(closed)))
+      orElse: () => Effect.void
     })
 
-  yield* Scope.addFinalizer(
-    scope,
-    shutdown.pipe(Effect.ensuring(Effect.sync(() => {
-      for (const removeListeners of removeServeListeners) {
-        removeListeners()
-      }
-    })))
-  )
+  yield* Scope.addFinalizer(scope, shutdown)
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
@@ -203,28 +166,15 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
-      const onRequest = (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => {
-        if (draining) {
-          closeIfHeadersUnsent(nodeResponse)
-        } else {
-          pendingResponses.add(nodeResponse)
-          nodeResponse.once("close", () => {
-            pendingResponses.delete(nodeResponse)
+      yield* Scope.addFinalizerExit(serveScope, () =>
+        Effect.ensuring(
+          preemptiveShutdown,
+          Effect.sync(() => {
+            server.off("request", handler)
+            server.off("upgrade", upgradeHandler)
           })
-        }
-        handler(nodeRequest, nodeResponse)
-      }
-      const removeListeners = () => {
-        server.off("request", onRequest)
-        server.off("upgrade", upgradeHandler)
-        removeServeListeners.delete(removeListeners)
-      }
-      removeServeListeners.add(removeListeners)
-      yield* Scope.addFinalizerExit(
-        serveScope,
-        () => preemptiveShutdown.pipe(Effect.ensuring(Effect.sync(removeListeners)))
-      )
-      server.on("request", onRequest)
+        ))
+      server.on("request", handler)
       server.on("upgrade", upgradeHandler)
     })
   })
@@ -586,21 +536,6 @@ export const layerTest: Layer.Layer<
 const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
   Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
-const drainingResponses = new WeakSet<Http.ServerResponse>()
-
-const writeResponseHead = (
-  nodeResponse: Http.ServerResponse,
-  response: HttpServerResponse,
-  headers: Record<string, string | Array<string>>
-) => {
-  // writeHead headers override setHeader, so apply the drain policy last.
-  nodeResponse.writeHead(
-    response.status,
-    response.statusText,
-    drainingResponses.has(nodeResponse) ? { ...headers, connection: "close" } : headers
-  )
-}
-
 const handleResponse = (
   request: HttpServerRequest,
   response: HttpServerResponse
@@ -621,7 +556,7 @@ const handleResponse = (
   }
 
   if (request.method === "HEAD") {
-    writeResponseHead(nodeResponse, response, headers)
+    nodeResponse.writeHead(response.status, response.statusText, headers)
     return Effect.andThen(
       cancelResponseBody(response.body),
       Effect.callback<void>((resume) => {
@@ -640,12 +575,12 @@ const handleResponse = (
   const body = response.body
   switch (body._tag) {
     case "Empty": {
-      writeResponseHead(nodeResponse, response, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       nodeResponse.end()
       return Effect.void
     }
     case "Raw": {
-      writeResponseHead(nodeResponse, response, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       if (
         typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
         typeof body.body.pipe === "function"
@@ -671,7 +606,7 @@ const handleResponse = (
       })
     }
     case "Uint8Array": {
-      writeResponseHead(nodeResponse, response, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       // If the body is less than 1MB, we skip the callback
       if (body.contentLength < 1024 * 1024) {
         // Writing text directly lets Node flush headers and body together.
@@ -685,7 +620,7 @@ const handleResponse = (
     case "FormData": {
       return Effect.suspend(() => {
         const r = new globalThis.Response(body.formData)
-        writeResponseHead(nodeResponse, response, {
+        nodeResponse.writeHead(response.status, response.statusText, {
           ...headers,
           ...Object.fromEntries(r.headers)
         })
@@ -714,7 +649,7 @@ const handleResponse = (
       })
     }
     case "Stream": {
-      writeResponseHead(nodeResponse, response, headers)
+      nodeResponse.writeHead(response.status, response.statusText, headers)
       const drainLatch = Latch.makeUnsafe()
       nodeResponse.on("drain", () => drainLatch.openUnsafe())
       return body.stream.pipe(
