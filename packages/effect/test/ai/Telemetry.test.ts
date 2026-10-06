@@ -27,7 +27,8 @@ describe("Telemetry", () => {
         ["gemini", "gcp.gemini"],
         ["vertex_ai", "gcp.vertex_ai"],
         ["xai", "x_ai"],
-        ["cohere", "cohere"]
+        ["cohere", "cohere"],
+        ["constructor", "constructor"]
       ] as const
     ) {
       it.effect(`maps legacy ${system} to ${expected}`, () =>

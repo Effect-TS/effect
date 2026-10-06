@@ -70,6 +70,16 @@ describe("LanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("records the default tool choice on the span", () =>
+      LanguageModel.generateText({ prompt: "hi" }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.attributes.get("effect.ai.tool_choice"), "auto")
+            return []
+          }
+        })
+      ))
+
     it.effect("uses a client span with namespaced tool attributes", () =>
       LanguageModel.generateText({
         prompt: "hi",
