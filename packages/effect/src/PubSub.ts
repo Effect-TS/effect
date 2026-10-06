@@ -1368,7 +1368,7 @@ const pollForItem = <A>(self: Subscription<A>) =>
         ? self.subscription.poll()
         : MutableList.Empty
       if (message !== MutableList.Empty) {
-        self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
+        onPubSubEmptySpaceUnsafe(self.strategy, self.pubsub, self.subscribers)
         return resume(Effect.succeed(message))
       }
       return resume(Effect.succeed(self.ended.current.value))
