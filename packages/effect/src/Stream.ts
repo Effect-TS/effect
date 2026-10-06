@@ -4297,72 +4297,74 @@ export const partitionQueue: {
   >
 } = dual(
   (args) => isStream(args[0]),
-  Effect.fnUntraced(
-    function*<A, E, R, Pass, Fail>(
-      self: Stream<A, E, R>,
-      filter: Filter.Filter<NoInfer<A>, Pass, Fail>,
-      options?: {
-        readonly capacity?: number | "unbounded" | undefined
-      }
-    ): Effect.fn.Return<
-      [
-        passes: Queue.Dequeue<Pass, E | Cause.Done>,
-        fails: Queue.Dequeue<Fail, E | Cause.Done>
-      ],
-      never,
-      R | Scope.Scope
-    > {
-      const scope = yield* Effect.scope
-      const pull = yield* Channel.toPullScoped(self.channel, scope)
-      const capacity = options?.capacity === "unbounded" ? undefined : options?.capacity ?? DefaultChunkSize
-      const passes = yield* Queue.make<Pass, E | Cause.Done>({ capacity })
-      const fails = yield* Queue.make<Fail, E | Cause.Done>({ capacity })
+  (self, filter, options) => partitionQueueImpl(self, filter, options)
+)
 
-      yield* Effect.gen(function*() {
-        while (true) {
-          const chunk = yield* pull
-          const excluded: Array<Fail> = []
-          const satisfying: Array<Pass> = []
-          for (let i = 0; i < chunk.length; i++) {
-            const result = filter(chunk[i] as NoInfer<A>)
-            if (Result.isFailure(result)) {
-              excluded.push(result.failure)
-            } else {
-              satisfying.push(result.success)
-            }
-          }
-          let passFiber: Fiber.Fiber<any> | undefined = undefined
-          if (satisfying.length > 0) {
-            const leftover = Queue.offerAllUnsafe(passes, satisfying)
-            if (leftover.length > 0) {
-              passFiber = yield* Effect.forkChild(Queue.offerAll(passes, leftover))
-            }
-          }
-          if (excluded.length > 0) {
-            const leftover = Queue.offerAllUnsafe(fails, excluded)
-            if (leftover.length > 0) {
-              yield* Queue.offerAll(fails, leftover)
-            }
-          }
-          if (passFiber) yield* Fiber.join(passFiber)
-        }
-      }).pipe(
-        Effect.onError((cause) => {
-          Queue.failCauseUnsafe(passes, cause)
-          Queue.failCauseUnsafe(fails, cause)
-          return Effect.void
-        }),
-        Effect.forkIn(scope)
-      )
-
-      return [passes, fails]
+const partitionQueueImpl = Effect.fnUntraced(
+  function*<A, E, R, Pass, Fail>(
+    self: Stream<A, E, R>,
+    filter: Filter.Filter<NoInfer<A>, Pass, Fail>,
+    options?: {
+      readonly capacity?: number | "unbounded" | undefined
     }
-  )
+  ): Effect.fn.Return<
+    [
+      passes: Queue.Queue<Pass, E | Cause.Done>,
+      fails: Queue.Queue<Fail, E | Cause.Done>
+    ],
+    never,
+    R | Scope.Scope
+  > {
+    const scope = yield* Effect.scope
+    const pull = yield* Channel.toPullScoped(self.channel, scope)
+    const capacity = options?.capacity === "unbounded" ? undefined : options?.capacity ?? DefaultChunkSize
+    const passes = yield* Queue.make<Pass, E | Cause.Done>({ capacity })
+    const fails = yield* Queue.make<Fail, E | Cause.Done>({ capacity })
+
+    yield* Effect.gen(function*() {
+      while (true) {
+        const chunk = yield* pull
+        const excluded: Array<Fail> = []
+        const satisfying: Array<Pass> = []
+        for (let i = 0; i < chunk.length; i++) {
+          const result = filter(chunk[i] as NoInfer<A>)
+          if (Result.isFailure(result)) {
+            excluded.push(result.failure)
+          } else {
+            satisfying.push(result.success)
+          }
+        }
+        let passFiber: Fiber.Fiber<any> | undefined = undefined
+        if (satisfying.length > 0) {
+          const leftover = Queue.offerAllUnsafe(passes, satisfying)
+          if (leftover.length > 0) {
+            passFiber = yield* Effect.forkChild(Queue.offerAll(passes, leftover))
+          }
+        }
+        if (excluded.length > 0) {
+          const leftover = Queue.offerAllUnsafe(fails, excluded)
+          if (leftover.length > 0) {
+            yield* Queue.offerAll(fails, leftover)
+          }
+        }
+        if (passFiber) yield* Fiber.join(passFiber)
+      }
+    }).pipe(
+      Effect.onError((cause) => {
+        Queue.failCauseUnsafe(passes, cause)
+        Queue.failCauseUnsafe(fails, cause)
+        return Effect.void
+      }),
+      Effect.forkIn(scope)
+    )
+
+    return [passes, fails]
+  }
 )
 
 // Streams the queue and shuts it down when the reader stops.
-const fromQueueShutdownOnEnd = <A, E>(queue: Queue.Dequeue<A, E>): Stream<A, Exclude<E, Cause.Done>> =>
-  fromQueue(queue).pipe(ensuring(Queue.shutdown(queue as Queue.Queue<A, E>)))
+const fromQueueShutdownOnEnd = <A, E>(queue: Queue.Queue<A, E>): Stream<A, Exclude<E, Cause.Done>> =>
+  fromQueue(queue).pipe(ensuring(Queue.shutdown(queue)))
 
 /**
  * Splits a stream with an effectful `Filter`, returning scoped streams for
@@ -4431,7 +4433,7 @@ export const partitionEffect: {
     R | RX | Scope.Scope
   > =>
     Effect.map(
-      partitionQueue<Result.Result<Pass, Fail>, E | EX, R | RX, Pass, Fail>(
+      partitionQueueImpl<Result.Result<Pass, Fail>, E | EX, R | RX, Pass, Fail>(
         mapEffect(self, (a) => filter(a as NoInfer<A>), options),
         (result) => result,
         options
@@ -4511,7 +4513,7 @@ export const partition: {
     R | Scope.Scope
   > =>
     Effect.map(
-      partitionQueue(self, filter, { capacity: options?.capacity ?? 16 }),
+      partitionQueueImpl(self, filter, { capacity: options?.capacity ?? 16 }),
       ([passes, fails]) => [fromQueueShutdownOnEnd(passes), fromQueueShutdownOnEnd(fails)] as const
     )
 )
