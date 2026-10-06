@@ -6,8 +6,9 @@
  *
  * This adapter reuses the shared Node-compatible implementation, so randomness
  * and cryptographic operations follow Bun's `node:crypto` compatibility layer.
- * MD5 and SHA-1 support interoperability with existing protocols; use stronger
- * algorithms for new security-sensitive designs.
+ * Argon2id requires native runtime support; unavailable algorithms fail with
+ * platform errors. MD5 and SHA-1 support interoperability with existing
+ * protocols; use stronger algorithms for new security-sensitive designs.
  *
  * @stability unstable
  * @since 1.0.0

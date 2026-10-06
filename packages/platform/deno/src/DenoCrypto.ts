@@ -2,12 +2,15 @@
  * Deno-backed implementation of Effect's Crypto service.
  *
  * This module uses Deno's global Web Crypto API for secure randomness, SHA
- * digests, HMAC, PBKDF2, key management, encryption, and signing. Legacy MD5
- * protocol digests use `node:crypto`.
+ * digests, HMAC, HKDF, PBKDF2, key management, encryption, and signing. Legacy MD5
+ * protocol digests use `node:crypto`. Argon2id and XChaCha20-Poly1305 use the
+ * Node-compatible backend and fail with `PlatformError` when Deno omits the
+ * corresponding native algorithm.
  *
  * @stability unstable
  * @since 4.0.0
  */
+import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
 import * as Context from "effect/Context"
 import * as EffectCrypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
@@ -81,6 +84,9 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
     return EffectCrypto.make({
       ...EffectCrypto.makeSubtle(crypto.subtle),
       randomBytes,
+      argon2id: NodeCrypto.make.argon2id,
+      xchacha20poly1305Encrypt: NodeCrypto.make.xchacha20poly1305Encrypt,
+      xchacha20poly1305Decrypt: NodeCrypto.make.xchacha20poly1305Decrypt,
       digest
     })
   })

@@ -36,6 +36,12 @@ describe("Crypto", () => {
           | "decrypt"
           | "sign"
           | "verify"
+          | "hkdf"
+          | "argon2id"
+          | "xchacha20poly1305Encrypt"
+          | "xchacha20poly1305Decrypt"
+          | "importJwk"
+          | "exportJwk"
         >
       >
     >()
@@ -72,6 +78,12 @@ describe("Crypto", () => {
     expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, decrypt: undefined })
     expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, sign: undefined })
     expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, verify: undefined })
+    expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, hkdf: undefined })
+    expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, argon2id: undefined })
+    expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, xchacha20poly1305Encrypt: undefined })
+    expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, xchacha20poly1305Decrypt: undefined })
+    expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, importJwk: undefined })
+    expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, exportJwk: undefined })
   })
 
   it("infers managed key results and the Crypto service requirement", () => {
@@ -82,6 +94,10 @@ describe("Crypto", () => {
       Effect.Effect<Crypto.KeyPair, PlatformError.PlatformError, Crypto.Crypto>
     >()
     const key = {} as Crypto.Key
+    expect(Crypto.exportJwk(key)).type.toBe<Effect.Effect<Crypto.Jwk, PlatformError.PlatformError, Crypto.Crypto>>()
+    expect(Crypto.importJwk({ kty: "oct", k: "AQID" }, { name: "HMAC", hash: "SHA-256" })).type.toBe<
+      Effect.Effect<Crypto.Key, PlatformError.PlatformError, Crypto.Crypto>
+    >()
     const data = new Uint8Array()
     expect(Crypto.verify({ name: "Ed25519" }, key, data, data)).type.toBe<
       Effect.Effect<boolean, PlatformError.PlatformError, Crypto.Crypto>
