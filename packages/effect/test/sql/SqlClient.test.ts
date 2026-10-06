@@ -30,11 +30,14 @@ let harnessIdCounter = 0
  */
 const makeHarness = (options: {
   readonly begin?: SqlError.SqlError | undefined
+  readonly commit?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
+  readonly onCommitFailure?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
   readonly savepoint?: SqlError.SqlError | undefined
   readonly rollbackSavepoint?: SqlError.SqlError | undefined
   readonly releaseSavepoint?: true | SqlError.SqlError | undefined
 } = {}) => {
   const release = options.releaseSavepoint
+  const onCommitFailure = options.onCommitFailure
   const calls: Array<string> = []
   const conn: StubConnection = { id: "stub" }
   const transactionService = Context.Service<
@@ -76,11 +79,16 @@ const makeHarness = (options: {
       }),
     commit: () =>
       Effect.flatMap(record("commit"), () =>
-        transactionActive
+        options.commit !== undefined
+          ? options.commit()
+          : transactionActive
           ? Effect.sync(() => {
             transactionActive = false
           })
           : Effect.fail(sqlError("cannot commit - no transaction is active"))),
+    onCommitFailure: onCommitFailure === undefined ?
+      undefined :
+      () => Effect.andThen(record("onCommitFailure"), onCommitFailure),
     rollback: () =>
       Effect.flatMap(record("rollback"), () =>
         transactionActive
@@ -120,6 +128,114 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
 
 describe("SqlClient", () => {
   describe("makeWithTransaction", () => {
+    it.effect("propagates a failed commit as a typed error after successful cleanup", () =>
+      Effect.gen(function*() {
+        const commitError = sqlError("commit rejected")
+        const harness = makeHarness({
+          commit: () => Effect.fail(commitError),
+          onCommitFailure: () => Effect.void
+        })
+
+        const exit = yield* Effect.exit(harness.withTransaction(Effect.succeed(1)))
+
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "commit",
+          "onCommitFailure",
+          "closeConnection"
+        ])
+        assertTypedFailure(exit, commitError)
+      }))
+
+    it.effect("allows catchTag to recover a unique violation at commit", () =>
+      Effect.gen(function*() {
+        const commitError = new SqlError.SqlError({
+          reason: new SqlError.UniqueViolation({
+            cause: new Error("duplicate key"),
+            constraint: "deferred_unique",
+            operation: "commit"
+          })
+        })
+        const harness = makeHarness({ commit: () => Effect.fail(commitError) })
+
+        const exit = yield* Effect.exit(
+          harness.withTransaction(Effect.succeed("body")).pipe(
+            Effect.catchTag("SqlError", (error) => Effect.succeed(error.reason._tag))
+          )
+        )
+
+        assert.deepStrictEqual(exit, Exit.succeed("UniqueViolation"))
+        assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection"])
+      }))
+
+    it.effect("retries the whole transaction on a serialization failure at commit", () =>
+      Effect.gen(function*() {
+        const commitError = new SqlError.SqlError({
+          reason: new SqlError.SerializationError({ cause: new Error("40001"), operation: "commit" })
+        })
+        let commits = 0
+        let bodies = 0
+        const harness = makeHarness({
+          commit: () => Effect.suspend(() => ++commits === 1 ? Effect.fail(commitError) : Effect.void)
+        })
+
+        const exit = yield* Effect.exit(
+          harness.withTransaction(Effect.sync(() => ++bodies)).pipe(
+            Effect.retry({ times: 1, while: (error) => error.reason._tag === "SerializationError" })
+          )
+        )
+
+        assert.deepStrictEqual(exit, Exit.succeed(2))
+        assert.strictEqual(commits, 2)
+        assert.strictEqual(bodies, 2)
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "commit",
+          "closeConnection",
+          "acquireConnection",
+          "begin",
+          "commit",
+          "closeConnection"
+        ])
+      }))
+
+    // Preserve both errors without deciding whether the commit must also become
+    // a defect when cleanup fails. That recovery policy needs a separate decision.
+    it.effect("retains the commit error and cleanup defect before closing the connection", () =>
+      Effect.gen(function*() {
+        const commitError = sqlError("commit rejected")
+        const cleanupError = sqlError("cleanup rejected")
+        const harness = makeHarness({
+          commit: () => Effect.fail(commitError),
+          onCommitFailure: () => Effect.fail(cleanupError)
+        })
+
+        const exit = yield* Effect.exit(harness.withTransaction(Effect.void))
+
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.isTrue(exit.cause.reasons.some((reason) =>
+            Cause.isFailReason(reason) ?
+              reason.error === commitError :
+              Cause.isDieReason(reason) && reason.defect === commitError
+          ))
+          assert.isTrue(
+            exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === cleanupError)
+          )
+          assert.match(Cause.pretty(exit.cause), /commit rejected/)
+          assert.match(Cause.pretty(exit.cause), /cleanup rejected/)
+        }
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "commit",
+          "onCommitFailure",
+          "closeConnection"
+        ])
+      }))
+
     it.effect("propagates a failed begin as a typed error without rolling back", () =>
       Effect.gen(function*() {
         const beginError = sqlError("database is locked")
