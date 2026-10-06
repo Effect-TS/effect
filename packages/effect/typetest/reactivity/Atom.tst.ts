@@ -67,4 +67,14 @@ describe("Atom", () => {
       expect(runtime.fn).type.toBeCallableWith(() => Effect.void, { reactivityKeys: keys })
     })
   })
+
+  describe("serializable", () => {
+    it("encodes to and decodes from the JSON representation", () => {
+      const atom = Atom.serializable(Atom.make(1n), { key: "bigint", schema: Schema.BigInt })
+      const serializable = atom[Atom.SerializableTypeId]
+
+      expect(serializable.encode).type.toBe<(value: bigint) => Schema.Json>()
+      expect(serializable.decode).type.toBe<(value: Schema.Json) => bigint>()
+    })
+  })
 })
