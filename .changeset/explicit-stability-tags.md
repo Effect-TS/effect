@@ -1,4 +1,5 @@
 ---
+"effect": patch
 "@effect/ai-anthropic": patch
 "@effect/ai-cloudflare": patch
 "@effect/ai-openai": patch
@@ -29,4 +30,4 @@
 "@effect/vitest": patch
 ---
 
-Tag every module and directly importable export with `@stability unstable`. These packages were 0.x in effect 3.x, so their APIs may receive breaking changes in minor releases until individual modules are marked `@stability stable`.
+Tag every module and directly importable export with an explicit `@stability`. `@stability stable` follows strict semver, and `@stability unstable` may receive breaking changes in minor releases.
