@@ -441,10 +441,10 @@ describe("BunHttpServer", () => {
     it.effect(`closes a WebSocket with the handler's ${name} code`, () =>
       Effect.gen(function*() {
         const opened = yield* Deferred.make<void>()
-        const logged = Promise.withResolvers<unknown>()
+        const logged = yield* Deferred.make<unknown>()
         const logger = Logger.make((options) => {
           const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
-          if (annotations["http.url"] === "/") logged.resolve(annotations["http.status"])
+          if (annotations["http.url"] === "/") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
         })
         const { forceStop, server } = yield* makeForceStoppableServer
         yield* server.serve(
@@ -470,17 +470,17 @@ describe("BunHttpServer", () => {
         const actual = yield* readWebSocketClose(port, opened)
         forceStop()
         assert.strictEqual(actual, code)
-        if (exit === "success") assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+        if (exit === "success") assert.strictEqual(yield* Deferred.await(logged), 101)
       }).pipe(Effect.timeout("5 seconds")), 10000)
   }
 
   it.effect("logs status 101 for a WebSocket upgraded through a prefixed route", () =>
     Effect.gen(function*() {
       const opened = yield* Deferred.make<void>()
-      const logged = Promise.withResolvers<unknown>()
+      const logged = yield* Deferred.make<unknown>()
       const logger = Logger.make((options) => {
         const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
-        if (annotations["http.url"] === "/ws") logged.resolve(annotations["http.status"])
+        if (annotations["http.url"] === "/ws") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
       })
       const app = yield* HttpRouter.toHttpEffect(HttpRouter.use((router) =>
         router.prefixed("/ws").add(
@@ -503,7 +503,7 @@ describe("BunHttpServer", () => {
       const actual = yield* readWebSocketClose(port, opened, "/ws")
       forceStop()
       assert.strictEqual(actual, 1000)
-      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+      assert.strictEqual(yield* Deferred.await(logged), 101)
     }).pipe(Effect.timeout("5 seconds")), 10000)
 
   it.effect("fails a concurrent reader waiting behind a closed reader", () =>

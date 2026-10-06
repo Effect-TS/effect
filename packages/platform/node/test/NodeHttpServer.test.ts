@@ -916,21 +916,21 @@ describe("HttpServer", () => {
 
   it.effect("logs and traces status 101 after an upgraded WebSocket closes", () =>
     Effect.gen(function*() {
-      const logged = Promise.withResolvers<unknown>()
+      const logged = yield* Deferred.make<unknown>()
       const logger = Logger.make((options) => {
         const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
         if (annotations["http.url"] === "/ws") {
-          logged.resolve(annotations["http.status"])
+          Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
         }
       })
-      const traced = Promise.withResolvers<unknown>()
+      const traced = yield* Deferred.make<unknown>()
       const tracer = Tracer.make({
         span(options) {
           const span = new Tracer.NativeSpan(options)
           if (options.kind === "server") {
             span.end = (endTime, exit) => {
               Tracer.NativeSpan.prototype.end.call(span, endTime, exit)
-              traced.resolve(span.attributes.get("http.response.status_code"))
+              Deferred.doneUnsafe(traced, Effect.succeed(span.attributes.get("http.response.status_code")))
             }
           }
           return span
@@ -965,8 +965,8 @@ describe("HttpServer", () => {
         return Effect.sync(() => ws.close())
       })
       assert.strictEqual(handshakeStatus, 101)
-      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
-      assert.strictEqual(yield* Effect.promise(() => traced.promise), 101)
+      assert.strictEqual(yield* Deferred.await(logged), 101)
+      assert.strictEqual(yield* Deferred.await(traced), 101)
     }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
 
   for (const failHandler of [false, true]) {
@@ -974,10 +974,12 @@ describe("HttpServer", () => {
       `logs the fallback status when an upgrade fails and the handler ${failHandler ? "fails" : "recovers"}`,
       () =>
         Effect.gen(function*() {
-          const logged = Promise.withResolvers<unknown>()
+          const logged = yield* Deferred.make<unknown>()
           const logger = Logger.make((options) => {
             const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
-            if (annotations["http.url"] === "/ws") logged.resolve(annotations["http.status"])
+            if (annotations["http.url"] === "/ws") {
+              Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+            }
           })
           yield* HttpRouter.add(
             "GET",
@@ -997,7 +999,7 @@ describe("HttpServer", () => {
           // An ordinary HTTP request has no upgrade transport, so acquisition fails.
           const response = yield* HttpClient.get("/ws")
           assert.strictEqual(response.status, failHandler ? 500 : 426)
-          assert.strictEqual(yield* Effect.promise(() => logged.promise), response.status)
+          assert.strictEqual(yield* Deferred.await(logged), response.status)
         }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)),
       10000
     )

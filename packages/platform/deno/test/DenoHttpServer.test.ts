@@ -1,6 +1,7 @@
 import * as DenoHttpServer from "@effect/platform-deno/DenoHttpServer"
 import { assert, describe, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -717,25 +718,25 @@ describe("DenoHttpServer", () => {
 
   it.effect("round trips WebSocket frames and closes cleanly", () =>
     Effect.gen(function*() {
-      const logged = Promise.withResolvers<unknown>()
+      const logged = yield* Deferred.make<unknown>()
       const logger = Logger.make((options) => {
         const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
-        if (annotations["http.url"] === "/") logged.resolve(annotations["http.status"])
+        if (annotations["http.url"] === "/") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
       })
       yield* serveWebSocket(echoWebSocket).pipe(Effect.provide(Logger.layer([logger])))
       const server = yield* HttpServer.HttpServer
       const port = (server.address as NetAddress.InetAddress).port
       const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/`, (socket) => socket.send("hello"), 1)
       assert.deepStrictEqual(messages, ["hello"])
-      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+      assert.strictEqual(yield* Deferred.await(logged), 101)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("logs status 101 for a WebSocket upgraded through a prefixed route", () =>
     Effect.gen(function*() {
-      const logged = Promise.withResolvers<unknown>()
+      const logged = yield* Deferred.make<unknown>()
       const logger = Logger.make((options) => {
         const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
-        if (annotations["http.url"] === "/ws") logged.resolve(annotations["http.status"])
+        if (annotations["http.url"] === "/ws") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
       })
       yield* HttpRouter.use((router) =>
         router.prefixed("/ws").add(
@@ -752,7 +753,7 @@ describe("DenoHttpServer", () => {
       const port = (server.address as NetAddress.InetAddress).port
       const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/ws`, (socket) => socket.send("hello"), 1)
       assert.deepStrictEqual(messages, ["hello"])
-      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+      assert.strictEqual(yield* Deferred.await(logged), 101)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("preserves eager WebSocket frames across an async boundary", () =>
