@@ -1710,6 +1710,23 @@ Expected "Infinity" | "-Infinity" | "NaN"
           )
         })
 
+        it("keeps key-value separators inside values", async () => {
+          const config = Config.Record(Schema.String, Schema.String, "OTEL_EXPORTER_OTLP_HEADERS")
+
+          await assertSuccess(
+            config,
+            ConfigProvider.fromEnv({
+              env: {
+                OTEL_EXPORTER_OTLP_HEADERS: "authorization=Basic dXNlcjpwYXNz==,x-tenant=a=b"
+              }
+            }),
+            {
+              "authorization": "Basic dXNlcjpwYXNz==",
+              "x-tenant": "a=b"
+            }
+          )
+        })
+
         it("supports custom separators", async () => {
           const options = { separator: "&", keyValueSeparator: "==" }
           const input = "service.name==my-service&service.version==1.0.0&custom.attribute==value"
