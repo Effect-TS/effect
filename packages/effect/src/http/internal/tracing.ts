@@ -27,7 +27,19 @@ export const redactQuery = (query: string, redactedNames: ReadonlyArray<string |
   return redacted ? params.join("&") : query
 }
 
-/** @internal */
+const defaultPorts: Record<string, number> = {
+  "http:": 80,
+  "https:": 443,
+  "ws:": 80,
+  "wss:": 443
+}
+
+/**
+ * Records the `url.*` and `server.*` attributes for a request URL, returning
+ * the redacted `url.full` value.
+ *
+ * @internal
+ */
 export const addUrlAttributes = (
   span: Tracer.Span,
   url: URL,
@@ -42,53 +54,15 @@ export const addUrlAttributes = (
     span.attribute("url.query", query)
   }
   span.attribute("url.scheme", url.protocol.slice(0, -1))
+  if (url.hostname !== "") {
+    // URL keeps IPv6 brackets in the hostname, but the semantic conventions do not.
+    span.attribute("server.address", url.hostname.startsWith("[") ? url.hostname.slice(1, -1) : url.hostname)
+    const port = url.port === "" ? defaultPorts[url.protocol] : Number(url.port)
+    if (port !== undefined) {
+      span.attribute("server.port", port)
+    }
+  }
   return full
-}
-
-const defaultPorts: Record<string, number> = {
-  http: 80,
-  https: 443,
-  ws: 80,
-  wss: 443
-}
-
-/** @internal */
-export const addServerAttributes = (
-  span: Tracer.Span,
-  hostname: string,
-  port: string,
-  scheme: string
-): void => {
-  if (hostname === "") return
-  span.attribute(
-    "server.address",
-    hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname.toLowerCase()
-  )
-  const portNumber = port === "" ? defaultPorts[scheme] : Number(port)
-  if (portNumber !== undefined && Number.isInteger(portNumber)) {
-    span.attribute("server.port", portNumber)
-  }
-}
-
-/** @internal */
-export const addHostAttributes = (span: Tracer.Span, host: string, scheme: string): void => {
-  let hostname = host
-  let port = ""
-  if (host.startsWith("[")) {
-    const end = host.indexOf("]")
-    if (end === -1) return
-    hostname = host.slice(0, end + 1)
-    if (host[end + 1] === ":") {
-      port = host.slice(end + 2)
-    }
-  } else {
-    const index = host.lastIndexOf(":")
-    if (index !== -1) {
-      hostname = host.slice(0, index)
-      port = host.slice(index + 1)
-    }
-  }
-  addServerAttributes(span, hostname, port, scheme)
 }
 
 /** @internal */

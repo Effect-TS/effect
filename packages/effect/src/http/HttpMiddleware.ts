@@ -238,9 +238,6 @@ const responseSpanExit = (
   }
 }
 
-const isHandledClientError = (response: HttpServerResponse, cause: Cause.Cause<unknown>): boolean =>
-  response.status >= 400 && response.status < 500 && !Cause.hasInterrupts(cause)
-
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
@@ -278,8 +275,8 @@ export const tracer: <E, R>(
         if (Exit.isFailure(exit)) {
           const [failureResponse, cause] = causeResponseStripped(exit.cause)
           response = failureResponse
-          // OpenTelemetry does not treat handled 4xx server responses as errors.
-          spanExit = Option.isSome(cause) && !isHandledClientError(response, cause.value)
+          // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
+          spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
             ? Exit.failCause(cause.value)
             : responseSpanExit(request, response)
         } else {
@@ -288,29 +285,9 @@ export const tracer: <E, R>(
         }
         if (span.sampled) {
           span.attribute("http.request.method", request.method)
-          if (request.url.startsWith("/")) {
-            const host = request.headers.host ?? "localhost"
-            const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
-            const queryIndex = request.url.indexOf("?")
-            const path = queryIndex === -1 ? request.url : request.url.slice(0, queryIndex)
-            const query = queryIndex === -1
-              ? ""
-              : tracing.redactQuery(request.url.slice(queryIndex + 1), redactedHeaderNames)
-            span.attribute("url.full", `${protocol}://${host}${path}${query === "" ? "" : `?${query}`}`)
-            span.attribute("url.path", path)
-            if (query !== "") {
-              span.attribute("url.query", query)
-            }
-            span.attribute("url.scheme", protocol)
-            if (request.headers.host !== undefined) {
-              tracing.addHostAttributes(span, request.headers.host, protocol)
-            }
-          } else {
-            const url = Request.toURL(request)
-            if (Option.isSome(url)) {
-              tracing.addUrlAttributes(span, url.value, redactedHeaderNames)
-              tracing.addServerAttributes(span, url.value.hostname, url.value.port, url.value.protocol.slice(0, -1))
-            }
+          const url = Request.toURL(request)
+          if (Option.isSome(url)) {
+            tracing.addUrlAttributes(span, url.value, redactedHeaderNames)
           }
           if (request.headers["user-agent"] !== undefined) {
             span.attribute("user_agent.original", request.headers["user-agent"])

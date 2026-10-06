@@ -726,8 +726,6 @@ export const make = (
           { kind: "client" },
           (span) => {
             span.attribute("http.request.method", request.method)
-            const scheme = url.protocol.slice(0, -1)
-            tracing.addServerAttributes(span, url.hostname, url.port, scheme)
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
             const redactedUrl = tracing.addUrlAttributes(span, url, redactedHeaderNames)
             const headerFilter = fiber.getRef(TracerHeaderFilter)

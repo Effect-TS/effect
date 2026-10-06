@@ -33,11 +33,7 @@ export const unknownToAttributeValue = (value: unknown): Otel.AttributeValue => 
 const isHomogeneousPrimitiveArray = (
   array: ReadonlyArray<unknown>
 ): array is Array<string> | Array<number> | Array<boolean> => {
-  if (array.length === 0) return true
   const type = typeof array[0]
-  if (type !== "string" && type !== "number" && type !== "boolean") return false
-  for (let i = 1; i < array.length; i++) {
-    if (typeof array[i] !== type) return false
-  }
-  return true
+  return (array.length === 0 || type === "string" || type === "number" || type === "boolean") &&
+    array.every((item) => typeof item === type)
 }
