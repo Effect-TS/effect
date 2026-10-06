@@ -26,6 +26,7 @@ import * as Option from "../Option.ts"
 import type * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type { ExtractTag } from "../Types.ts"
+import * as Version from "../Version.ts"
 import * as OtlpEnv from "./internal/otlpEnv.ts"
 import * as Exporter from "./OtlpExporter.ts"
 import type { KeyValue, Resource } from "./OtlpResource.ts"
@@ -67,7 +68,8 @@ export const make: (
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const serialization = yield* OtlpSerialization
   const scope: Scope = {
-    name: OtlpResource.serviceNameUnsafe(otelResource)
+    name: "effect",
+    version: Version.getCurrentVersion()
   }
 
   const exporter = yield* Exporter.make({
@@ -404,6 +406,7 @@ export interface ScopeSpan {
 
 interface Scope {
   readonly name: string
+  readonly version?: string
 }
 
 interface OtlpSpan {

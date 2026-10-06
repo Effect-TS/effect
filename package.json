@@ -30,7 +30,7 @@
     "ai-docgen:watch": "pnpm ai-docgen --watch",
     "api-diff": "pnpm --dir packages/tools/api-diff exec node src/bin.ts",
     "test-types": "tstyche --target '>=5.9'",
-    "changeset-version": "changeset version",
+    "changeset-version": "changeset version && node scripts/version.mjs",
     "changeset-publish": "node scripts/set-strip-internal.mjs && pnpm codemod && pnpm build && changeset publish"
   },
   "devDependencies": {
