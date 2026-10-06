@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Option } from "effect"
+import { ByteSize, Effect, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
@@ -913,6 +913,46 @@ describe("HttpServer", () => {
       )
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("logs status 101 after an upgraded WebSocket closes", () =>
+    Effect.gen(function*() {
+      const logged = Promise.withResolvers<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") {
+          logged.resolve(annotations["http.status"])
+        }
+      })
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(Logger.layer([logger])),
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const handshakeStatus = yield* Effect.callback<number | undefined, Error>((resume) => {
+        const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
+        let status: number | undefined
+        ws.on("upgrade", (response) => {
+          status = response.statusCode
+        })
+        ws.on("open", () => ws.close(1000))
+        ws.on("close", () => resume(Effect.succeed(status)))
+        ws.on("error", (error) => resume(Effect.fail(error)))
+        return Effect.sync(() => ws.close())
+      })
+      assert.strictEqual(handshakeStatus, 101)
+      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+    }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
 
   it.effect("websocket options are forwarded to the WebSocketServer", () =>
     Effect.gen(function*() {
