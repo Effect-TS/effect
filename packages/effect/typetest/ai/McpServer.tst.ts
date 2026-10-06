@@ -1,4 +1,4 @@
-import { McpProtocol, McpSchema, McpServer } from "effect/ai"
+import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -7,6 +7,7 @@ import type * as Layer from "effect/Layer"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcGroup from "effect/rpc/RpcGroup"
 import * as Schema from "effect/Schema"
+import * as SchemaGetter from "effect/SchemaGetter"
 import type * as Scope from "effect/Scope"
 import { describe, expect, it } from "tstyche"
 
@@ -139,6 +140,63 @@ describe("McpServer", () => {
 
       expect<Effect.Error<typeof run>>().type.toBe<Cause.IllegalArgumentError>()
       expect<Layer.Error<typeof layer>>().type.toBe<Cause.IllegalArgumentError>()
+    })
+  })
+
+  describe("toolkit dependencies", () => {
+    class Lookup extends Context.Service<Lookup, { readonly value: number }>()("McpToolkitLookup") {}
+    class Decoder extends Context.Service<Decoder, { readonly value: number }>()("McpToolkitDecoder") {}
+    class Encoder extends Context.Service<Encoder, { readonly value: string }>()("McpToolkitEncoder") {}
+
+    it("should retain handler and schema services from every tool", () => {
+      const parameters = Schema.Struct({
+        value: Schema.String.pipe(Schema.decodeTo(Schema.Number, {
+          decode: SchemaGetter.transformEffect(() => Effect.map(Decoder, (service) => service.value)),
+          encode: SchemaGetter.transform(String)
+        }))
+      })
+      const encoded = Schema.String.pipe(Schema.decodeTo(Schema.Number, {
+        decode: SchemaGetter.transform(Number),
+        encode: SchemaGetter.transformEffect(() => Effect.map(Encoder, (service) => service.value))
+      }))
+      const toolkit = Toolkit.make(
+        Tool.make("lookup", { dependencies: [Lookup] }),
+        Tool.make("decode", { parameters }),
+        Tool.make("encodeSuccess", { success: encoded }),
+        Tool.make("encodeFailure", { failure: encoded })
+      )
+      type Requirements = Tool.HandlersFor<typeof toolkit.tools> | Lookup | Decoder | Encoder
+
+      const registered = McpServer.registerToolkit(toolkit)
+      const layer = McpServer.toolkit(toolkit)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<McpServer.McpServer | Requirements>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
+
+      const withoutServices = registered.pipe(
+        Effect.provide(McpServer.McpServer.layer),
+        Effect.provide(toolkit.toLayer({
+          lookup: () => Effect.asVoid(Lookup),
+          decode: () => Effect.void,
+          encodeSuccess: () => Effect.succeed(1),
+          encodeFailure: () => Effect.void
+        }))
+      )
+      expect<Effect.Services<typeof withoutServices>>().type.toBe<Lookup | Decoder | Encoder>()
+      expect(Effect.runPromise).type.not.toBeCallableWith(withoutServices)
+    })
+
+    it("should exclude per-call request context while retaining the legacy client service", () => {
+      const toolkit = Toolkit.make(
+        Tool.make("request", { dependencies: [McpSchema.McpRequestContext] }),
+        Tool.make("client", { dependencies: [McpSchema.McpServerClient] })
+      )
+      const registered = McpServer.registerToolkit(toolkit)
+      const layer = McpServer.toolkit(toolkit)
+      type Requirements = Tool.HandlersFor<typeof toolkit.tools> | McpSchema.McpServerClient
+
+      expect<Effect.Services<typeof registered>>().type.toBe<McpServer.McpServer | Requirements>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
     })
   })
 
