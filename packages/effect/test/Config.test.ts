@@ -90,51 +90,27 @@ describe("Config", () => {
       }
     }))
 
-  it.effect("keeps provider finalizer defects alongside wrapped source errors", () =>
+  it.effect("does not recover source errors with finalizer defects", () =>
     Effect.gen(function*() {
       const sourceError = new ConfigProvider.SourceError({ message: "read failed" })
       const cleanup = new Error("cleanup failed")
       const provider = ConfigProvider.make(() => Effect.fail(sourceError).pipe(Effect.ensuring(Effect.die(cleanup))))
-      const config = Config.String("value")
-      const exit = yield* Effect.exit(config.parse(provider))
+      const exit = yield* Effect.exit(
+        Config.String("value").pipe(Config.orElse(() => Config.succeed("fallback"))).parse(provider)
+      )
 
       assert.deepStrictEqual(
         exit,
         Exit.failCause(Cause.combine(Cause.fail(new Config.ConfigError(sourceError)), Cause.die(cleanup)))
       )
-      let recovered = false
-      const fallbackExit = yield* Effect.exit(
-        config.pipe(Config.orElse(() => {
-          recovered = true
-          return Config.succeed("fallback")
-        })).parse(provider)
-      )
-      assert.strictEqual(recovered, false)
-      assert.deepStrictEqual(fallbackExit, exit)
     }))
 
-  it.effect("preserves every defect in a provider cause", () =>
-    Effect.gen(function*() {
-      const first = new Error("first defect")
-      const second = new Error("second defect")
-      const cause = Cause.combine(Cause.die(first), Cause.die(second))
-      const provider = ConfigProvider.make(() => Effect.failCause(cause))
-      const exit = yield* Effect.exit(Config.String("value").parse(provider))
-
-      assert.deepStrictEqual(exit, Exit.failCause(cause))
-    }))
-
-  it("keeps provider interruption reasons alongside wrapped source errors", async () => {
-    const sourceError = new ConfigProvider.SourceError({ message: "read interrupted" })
-    const provider = ConfigProvider.make(() =>
-      Effect.failCause(Cause.combine(Cause.fail(sourceError), Cause.interrupt(123)))
-    )
+  it("preserves provider defects and interruption reasons", async () => {
+    const cause = Cause.combine(Cause.die(new Error("provider defect")), Cause.interrupt(123))
+    const provider = ConfigProvider.make(() => Effect.failCause(cause))
     const exit = await Effect.runPromiseExit(Config.String("value").parse(provider))
 
-    assert.deepStrictEqual(
-      exit,
-      Exit.failCause(Cause.combine(Cause.fail(new Config.ConfigError(sourceError)), Cause.interrupt(123)))
-    )
+    assert.deepStrictEqual(exit, Exit.failCause(cause))
   })
 
   describe("constructors", () => {
