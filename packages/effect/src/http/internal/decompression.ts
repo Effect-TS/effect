@@ -8,7 +8,6 @@ import type * as Socket from "../../socket/Socket.ts"
 import * as Stream from "../../Stream.ts"
 import * as Headers from "../Headers.ts"
 import * as HttpIncomingMessage from "../HttpIncomingMessage.ts"
-import type { HttpMethod } from "../HttpMethod.ts"
 import { HttpServerError, RequestParseError } from "../HttpServerError.ts"
 import * as HttpServerRequest from "../HttpServerRequest.ts"
 import * as Multipart from "../Multipart.ts"
@@ -97,7 +96,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     return this.inner.originalUrl
   }
 
-  get method(): HttpMethod {
+  get method(): string {
     return this.inner.method
   }
 
