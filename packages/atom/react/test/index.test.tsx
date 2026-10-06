@@ -11,6 +11,7 @@ import * as React from "react"
 import { Suspense } from "react"
 import * as ReactDOMClient from "react-dom/client"
 import { renderToString } from "react-dom/server"
+import { prerenderToNodeStream } from "react-dom/static"
 import { ErrorBoundary } from "react-error-boundary"
 import { beforeEach, describe, expect, it, test, vi } from "vitest"
 import {
@@ -690,22 +691,18 @@ describe("atom-react", { concurrent: false }, () => {
       expect(screen.getByText("0")).toBeInTheDocument()
     })
 
-    it("hydrates a delayed Suspense boundary after the atom changes", async () => {
-      const userAtom = Atom.make("loading")
-
-      function Name({ id }: { id: string }) {
-        return <span id={id}>{useAtomValue(userAtom)}</span>
-      }
-
+    // Server-renders `Reader` twice, then hydrates the second copy inside a
+    // Suspense boundary that stays dehydrated until `mutate` has run.
+    async function hydrateDelayedBoundary(Reader: React.ComponentType<{ id: string }>, mutate: () => void) {
       const Passthrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>
 
       function App({ Panel }: { Panel: React.ComponentType<{ children?: React.ReactNode }> }) {
         return (
           <div>
-            <Name id="header" />
+            <Reader id="header" />
             <Suspense fallback={<span>...</span>}>
               <Panel>
-                <Name id="panel" />
+                <Reader id="panel" />
               </Panel>
             </Suspense>
           </div>
@@ -742,20 +739,91 @@ describe("atom-react", { concurrent: false }, () => {
       })
 
       await act(async () => {
-        registry.set(userAtom, "Alice")
+        mutate()
       })
 
       await act(async () => {
         loadPanel({ default: Passthrough })
       })
 
-      expect(recoverableErrors).toEqual([])
-      expect(container.innerHTML).toBe(
-        `<div><span id="header">Alice</span><!--$--><span id="panel">Alice</span><!--/$--></div>`
-      )
-
+      const result = { recoverableErrors, html: container.innerHTML }
       act(() => root.unmount())
       container.remove()
+      return result
+    }
+
+    it("hydrates a delayed Suspense boundary after the atom changes", async () => {
+      const userAtom = Atom.make("loading")
+
+      function Name({ id }: { id: string }) {
+        return <span id={id}>{useAtomValue(userAtom)}</span>
+      }
+
+      const result = await hydrateDelayedBoundary(Name, () => registry.set(userAtom, "Alice"))
+
+      expect(result.recoverableErrors).toEqual([])
+      expect(result.html).toBe(
+        `<div><span id="header">Alice</span><!--$--><span id="panel">Alice</span><!--/$--></div>`
+      )
+    })
+
+    it("hydrates a delayed Suspense boundary after the atom changes when using a selector", async () => {
+      const userAtom = Atom.make("loading")
+      const toUpperCase = (name: string) => name.toUpperCase()
+
+      function Name({ id }: { id: string }) {
+        return <span id={id}>{useAtomValue(userAtom, toUpperCase)}</span>
+      }
+
+      const result = await hydrateDelayedBoundary(Name, () => registry.set(userAtom, "Alice"))
+
+      expect(result.recoverableErrors).toEqual([])
+      expect(result.html).toBe(
+        `<div><span id="header">ALICE</span><!--$--><span id="panel">ALICE</span><!--/$--></div>`
+      )
+    })
+
+    it("renders the current value when a server registry is reused", () => {
+      const countAtom = Atom.make(1)
+
+      function Count() {
+        return <span>{useAtomValue(countAtom)}</span>
+      }
+
+      const renderCount = () =>
+        renderToString(
+          <RegistryContext.Provider value={registry}>
+            <Count />
+          </RegistryContext.Provider>
+        )
+
+      expect(renderCount()).toBe("<span>1</span>")
+      registry.set(countAtom, 2)
+      expect(renderCount()).toBe("<span>2</span>")
+    })
+
+    it("resolves useAtomSuspense during streaming SSR", async () => {
+      const userAtom = Atom.make(Effect.succeed("Alice").pipe(Effect.delay(10)))
+
+      function Name() {
+        return <span>{useAtomSuspense(userAtom).value}</span>
+      }
+
+      // Abort instead of hanging if the suspended reader never resolves.
+      const { prelude } = await prerenderToNodeStream(
+        <RegistryContext.Provider value={registry}>
+          <Suspense fallback={<span>loading</span>}>
+            <Name />
+          </Suspense>
+        </RegistryContext.Provider>,
+        { signal: AbortSignal.timeout(1000) }
+      )
+      let html = ""
+      for await (const chunk of prelude) {
+        html += chunk
+      }
+
+      expect(html).toContain("<span>Alice</span>")
     })
   })
 
