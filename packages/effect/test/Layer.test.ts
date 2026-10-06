@@ -486,6 +486,29 @@ describe("Layer", () => {
   })
 
   describe("MemoMap", () => {
+    it.effect("retrying a buildWithMemoMap effect keeps the resource alive until its scope closes", () =>
+      Effect.gen(function*() {
+        const Resource = Context.Service<{ live: boolean }>("Resource")
+        let attempts = 0
+        const layer = Layer.effect(
+          Resource,
+          Effect.suspend(() =>
+            ++attempts === 1
+              ? Effect.fail("transient")
+              : Effect.acquireRelease(Effect.succeed<{ live: boolean }>({ live: true }), (resource) =>
+                Effect.sync(() => resource.live = false))
+          )
+        )
+        const owner = yield* Effect.acquireRelease(Scope.make(), (scope, exit) => Scope.close(scope, exit))
+        const build = Layer.buildWithMemoMap(layer, Layer.makeMemoMapUnsafe(), owner)
+        const context = yield* Effect.retry(build, { times: 1 })
+        const resource = Context.get(context, Resource)
+
+        assert.isTrue(resource.live)
+        yield* Scope.close(owner, Exit.void)
+        assert.isFalse(resource.live)
+      }).pipe(Effect.scoped))
+
     class Shared extends Context.Service<Shared, { readonly n: number }>()("Shared") {}
 
     const releaseCounted = (released: Ref.Ref<number>) =>
