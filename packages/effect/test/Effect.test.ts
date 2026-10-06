@@ -3897,6 +3897,20 @@ describe("Effect", () => {
           assert.strictEqual(val2, 200)
         }))
 
+      it.effect("should publish child transaction writes after the enclosing transaction completes", () =>
+        Effect.gen(function*() {
+          const ref = TxRef.makeUnsafe(0)
+          const gate = yield* Deferred.make<void>()
+          const child = yield* Effect.tx(
+            Effect.forkChild(Deferred.await(gate).pipe(Effect.andThen(Effect.tx(TxRef.set(ref, 42)))))
+          )
+
+          yield* Deferred.succeed(gate, undefined)
+          yield* Fiber.join(child)
+
+          assert.strictEqual(yield* TxRef.get(ref), 42)
+        }))
+
       it.effect("should allow TxRef.modify outside an existing transaction", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)

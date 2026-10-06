@@ -14633,7 +14633,7 @@ export const tx = <A, E, R>(
 ): Effect<A, E, Exclude<R, Transaction>> =>
   withFiber((fiber) => {
     let state = Context.getOrUndefined(fiber.context, Transaction)
-    if (state) {
+    if (state && !completedTransactions.has(state)) {
       return effect as Effect<A, E, Exclude<R, Transaction>>
     }
     // Create transaction state only at the outermost boundary
@@ -14659,9 +14659,9 @@ export const tx = <A, E, R>(
             }
             if (Exit.isSuccess(exit)) {
               commitTransaction(fiber, state)
-            } else {
-              clearTransaction(state)
             }
+            clearTransaction(state)
+            completedTransactions.add(state)
             result = exit
           }
         }),
@@ -14669,6 +14669,10 @@ export const tx = <A, E, R>(
       )
     )
   })
+
+// Child fibers inherit the boundary's state, so mark it completed once the
+// boundary finishes and let later `tx` calls start a fresh boundary.
+const completedTransactions = new WeakSet<Transaction["Service"]>()
 
 const isTransactionConsistent = (state: Transaction["Service"]) => {
   for (const [ref, { version }] of state.journal) {
