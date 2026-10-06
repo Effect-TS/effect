@@ -152,8 +152,7 @@ export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) 
  * **Details**
  *
  * Header capture is opt-in: the default filter records no headers. Captured
- * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`,
- * and the same list redacts matching URL query parameter values.
+ * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`.
  *
  * @stability unstable
  * @category services
@@ -287,7 +286,11 @@ export const tracer: <E, R>(
           span.attribute("http.request.method", request.method)
           const url = Request.toURL(request)
           if (Option.isSome(url)) {
-            tracing.addUrlAttributes(span, url.value, redactedHeaderNames)
+            if (!request.url.startsWith("/") && (url.value.username !== "" || url.value.password !== "")) {
+              url.value.username = "REDACTED"
+              url.value.password = "REDACTED"
+            }
+            tracing.addUrlAttributes(span, url.value)
           }
           if (request.headers["user-agent"] !== undefined) {
             span.attribute("user_agent.original", request.headers["user-agent"])

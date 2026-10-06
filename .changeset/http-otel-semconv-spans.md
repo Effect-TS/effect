@@ -3,4 +3,4 @@
 "@effect/opentelemetry": patch
 ---
 
-HTTP client and server spans now follow the OpenTelemetry HTTP semantic conventions.
+Align HTTP tracing span names, response error status, server addresses and ports with OpenTelemetry conventions. Make header capture opt-in and export homogeneous primitive arrays as array attributes in `@effect/opentelemetry`.

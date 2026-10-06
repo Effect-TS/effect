@@ -727,7 +727,7 @@ export const make = (
           (span) => {
             span.attribute("http.request.method", request.method)
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
-            const redactedUrl = tracing.addUrlAttributes(span, url, redactedHeaderNames)
+            tracing.addUrlAttributes(span, url)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
             request = fiber.getRef(TracerPropagationEnabled)
@@ -744,7 +744,7 @@ export const make = (
                     // 5xx responses, while the response itself still succeeds.
                     if (response.status >= 400 && response.status < 600) {
                       span.attribute("error.type", String(response.status))
-                      endSpanWithStatusError(fiber, span, request.method, redactedUrl, response)
+                      endSpanWithStatusError(fiber, span, request, response)
                     }
 
                     if (scopedController) return Effect.succeed(response)
@@ -764,20 +764,16 @@ export const make = (
         )
       })), Effect.succeed as HttpClient.Preprocess<never, never>)
 
-// The span failure is only exported as telemetry, so it carries a request with
-// the redacted URL and no headers or body instead of the request that was sent.
 const endSpanWithStatusError = (
   fiber: Fiber.Fiber<unknown, unknown>,
   span: Tracer.Span,
-  method: HttpMethod.HttpMethod,
-  redactedUrl: string,
+  request: HttpClientRequest.HttpClientRequest,
   response: HttpClientResponse.HttpClientResponse
 ): void => {
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
   let exit: Exit.Exit<never, Error.HttpClientError>
   try {
-    const request = HttpClientRequest.make(method)(redactedUrl)
     exit = Exit.fail(new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) }))
   } finally {
     setStackTraceLimit(stackTraceLimit)
@@ -1684,8 +1680,7 @@ export const TracerDisabledWhen = Context.Reference<
  * **Details**
  *
  * Header capture is opt-in: the default filter records no headers. Captured
- * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`,
- * and the same list redacts matching URL query parameter values.
+ * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`.
  *
  * @stability unstable
  * @category services
