@@ -1,5 +1,4 @@
 import assert from "node:assert/strict"
-import { createHmac } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { test } from "node:test"
 
@@ -26,7 +25,9 @@ function harness(overrides = {}) {
     event: event(),
     githubToken: "test-token",
     webhookUrl: "https://relay.invalid/webhook",
-    secret: "test-secret",
+    // Legacy input keeps unrelated contracts runnable during this tests-only
+    // migration. The relay must ignore it; absence is tested separately below.
+    secret: "obsolete-test-secret",
     // Policy seams, not proposed production command/key algorithms.
     isCommand: (body) => body === command,
     deliveryKey: () => "test-policy-key",
@@ -94,16 +95,26 @@ test("permission lookup failure never posts or reacts", async () => {
   assert.equal(h.calls.length, 1)
 })
 
-test("missing webhook URL or signing secret fails before any network request", async () => {
+test("missing webhook URL or GitHub token fails before any network request", async () => {
   const relay = await loadRelay()
-  for (const config of [{ secret: "" }, { webhookUrl: "" }]) {
+  for (const config of [{ githubToken: "" }, { webhookUrl: "" }]) {
     const h = harness(config)
     await assert.rejects(() => relay(h.options))
     assert.deepEqual(h.calls, [])
   }
 })
 
-test("payload preserves untrusted text as data and signs exact outgoing bytes", async () => {
+test("relay needs no signing secret", async () => {
+  const relay = await loadRelay()
+  for (const secret of [undefined, ""]) {
+    const h = harness({ secret })
+    assert.equal((await relay(h.options)).status, "accepted")
+    assert.equal(h.posts().length, 1)
+    assert.equal(new Headers(h.posts()[0].headers).has("X-Hub-Signature-256"), false)
+  }
+})
+
+test("payload preserves untrusted text as data and sends no signature even with a legacy secret", async () => {
   const relay = await loadRelay()
   const body = "/effect-bot $(touch NEVER) `echo nope` \"\n雪\n${{ secrets.TEST }}"
   const input = event()
@@ -128,8 +139,7 @@ test("payload preserves untrusted text as data and signs exact outgoing bytes", 
   assert.equal(headers.get("X-GitHub-Event"), "issue_comment")
   assert.equal(headers.get("X-GitHub-Delivery"), "test-policy-key")
   assert.equal(headers.get("Content-Type"), "application/json")
-  assert.equal(headers.get("X-Hub-Signature-256"),
-    "sha256=" + createHmac("sha256", h.options.secret).update(post.body).digest("hex"))
+  assert.equal(headers.has("X-Hub-Signature-256"), false)
 })
 
 test("PR conversation and same-repository review payloads preserve context", async () => {
@@ -317,8 +327,7 @@ test("workflow locks trusted checkout and literal shell command (static guard, n
     "        run: node scripts/effect-bot.mjs",
     "        env:",
     "          GITHUB_TOKEN: ${{ github.token }}",
-    "          MULTICA_EFFECT_BOT_WEBHOOK_URL: ${{ secrets.MULTICA_EFFECT_BOT_WEBHOOK_URL }}",
-    "          MULTICA_EFFECT_BOT_WEBHOOK_SECRET: ${{ secrets.MULTICA_EFFECT_BOT_WEBHOOK_SECRET }}"
+    "          MULTICA_EFFECT_BOT_WEBHOOK_URL: ${{ secrets.MULTICA_EFFECT_BOT_WEBHOOK_URL }}"
   ].join("\n"))
   assert.match(executable, /github\.event_name != 'pull_request_review_comment' \|\|\s+github\.event\.pull_request\.head\.repo\.full_name == github\.repository/u)
   assert.match(executable, /permissions: \{\}/u)
