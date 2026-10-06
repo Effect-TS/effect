@@ -4716,8 +4716,8 @@ Expected a value between -2147483648 and 2147483647`
       const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))], { mode: "oneOf" })
       const effect = SchemaParser.decodeUnknownEffect(schema)("a")
 
-      assertExitSuccess(Effect.runSyncExit(effect), "a")
-      assertExitSuccess(Effect.runSyncExit(effect), "a")
+      strictEqual(Effect.runSync(effect), "a")
+      strictEqual(Effect.runSync(effect), "a")
     })
 
     it(`mode: "anyOf" does not reuse a previous success when all members now fail`, () => {
@@ -4733,15 +4733,9 @@ Expected a value between -2147483648 and 2147483647`
       const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))])
       const effect = SchemaParser.decodeUnknownEffect(schema)("a")
 
-      assertExitSuccess(Effect.runSyncExit(effect), "a")
+      strictEqual(Effect.runSync(effect), "a")
       succeeds = false
-      const exit = Effect.runSyncExit(effect)
-      assertTrue(Exit.isFailure(exit))
-      const reason = exit.cause.reasons[0]
-      strictEqual(reason._tag, "Fail")
-      if (reason._tag === "Fail") {
-        strictEqual(reason.error._tag, "AnyOf")
-      }
+      strictEqual(Effect.runSync(Effect.flip(effect))._tag, "AnyOf")
     })
 
     it.effect(`mode: "oneOf" detects asynchronous successes in member order`, () =>
