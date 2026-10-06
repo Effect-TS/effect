@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -23,6 +24,8 @@ import * as SqlError from "../sql/SqlError.ts"
 import * as Stream from "../Stream.ts"
 import { Entry, EntryId, makeRemoteIdUnsafe, RemoteEntry, type RemoteId } from "./EventJournal.ts"
 import * as EventLogServerUnencrypted from "./EventLogServerUnencrypted.ts"
+
+let transactionId = 0
 
 /**
  * Creates unencrypted event-log server `Storage` backed by SQL.
@@ -230,6 +233,40 @@ export const makeStorage = (options?: {
       idleTimeToLive: "5 minutes"
     })
 
+    type PendingWrites = Array<readonly [string, Array<RemoteEntry>]>
+    const pendingWrites = Context.Service<PendingWrites>(
+      `effect/eventlog/SqlEventLogServerUnencrypted/PendingWrites/${transactionId++}`
+    )
+    const withTransaction = <A, E, R>(
+      effect: Effect.Effect<A, E, R>
+    ): Effect.Effect<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> =>
+      // Keep the transaction body interruptible, but do not allow interruption
+      // between a successful commit and its notifications.
+      Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function*() {
+          const parent = yield* Effect.serviceOption(pendingWrites)
+          const writes: PendingWrites = []
+          const result = yield* sql.withTransaction(
+            Effect.provideService(restore(effect), pendingWrites, writes)
+          )
+          // A released savepoint is not a commit. Only merge successful nested
+          // writes; a rollback (including a failed COMMIT) discards this buffer.
+          if (parent._tag === "Some") {
+            for (const write of writes) {
+              parent.value.push(write)
+            }
+          } else {
+            yield* Effect.scoped(Effect.gen(function*() {
+              for (const [storeId, entries] of writes) {
+                const pubsub = yield* RcMap.get(pubsubs, storeId)
+                yield* PubSub.publishAll(pubsub, entries)
+              }
+            }))
+          }
+          return result
+        })
+      )
+
     const ensureStore = (storeId: string) =>
       sql.onDialectOrElse({
         pg: () =>
@@ -403,13 +440,12 @@ export const makeStorage = (options?: {
           const nextSequence = currentNextSequence + entries.length
           yield* setNextSequence(storeId, nextSequence)
 
-          const pubsub = yield* RcMap.get(pubsubs, storeId)
-          yield* PubSub.publishAll(pubsub, committed)
+          const writes = yield* pendingWrites
+          writes.push([storeId, committed])
 
           return committed
         },
-        Effect.scoped,
-        sql.withTransaction,
+        withTransaction,
         withTracerDisabled,
         Effect.orDie
       ),
@@ -436,7 +472,7 @@ export const makeStorage = (options?: {
         Stream.unwrap
       ),
       withTransaction: (effect) =>
-        sql.withTransaction(effect).pipe(
+        withTransaction(effect).pipe(
           Effect.catchIf(SqlError.isSqlError, Effect.die)
         )
     })
