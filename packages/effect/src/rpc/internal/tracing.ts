@@ -2,8 +2,8 @@
 export const rpcSystemName = "effect_rpc"
 
 /**
- * Follows the OpenTelemetry RPC conventions: the span is named after
- * `rpc.method` unless a `spanPrefix` was explicitly configured.
+ * Names the span after the RPC method, or `${spanPrefix}.${tag}` when a prefix
+ * is configured.
  *
  * @internal
  */
@@ -11,7 +11,8 @@ export const spanName = (spanPrefix: string | undefined, tag: string): string =>
   spanPrefix === undefined ? tag : `${spanPrefix}.${tag}`
 
 /**
- * Returns a lookup of span attributes per rpc tag, merged once and cached.
+ * Caches the span attributes for each RPC tag. User attributes override the
+ * defaults.
  *
  * @internal
  */
