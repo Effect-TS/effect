@@ -76,6 +76,20 @@ export interface AtomRegistry {
   readonly refresh: <A>(atom: Atom.Atom<A>) => void
   readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
   readonly setSerializable: (key: string, encoded: unknown) => void
+  /**
+   * Gives an atom a starting value, as the `initialValues` option of `make`
+   * does, in a registry that already exists.
+   *
+   * **Details**
+   *
+   * The value goes to the atom's `initialValueTarget`, so a wrapper such as
+   * `Atom.withRefresh` passes it to its source. An atom that has no value yet
+   * keeps it through its first computation, which still reads and tracks its
+   * dependencies. An atom that already has a value is set to it.
+   *
+   * @since 4.1.0
+   */
+  readonly setInitialValue: <A>(atom: Atom.Atom<A>, value: A) => void
   readonly modify: <R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]) => A
   readonly update: <R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W) => void
   readonly subscribe: <A>(atom: Atom.Atom<A>, f: (_: A) => void, options?: {
@@ -376,11 +390,7 @@ class RegistryImpl implements AtomRegistry {
     }
     if (initialValues !== undefined) {
       for (const [atom, value] of initialValues) {
-        let target = atom
-        while (target.initialValueTarget) {
-          target = target.initialValueTarget
-        }
-        this.ensureNode(target).setInitialValue(value)
+        this.setInitialValue(atom, value)
       }
     }
   }
@@ -405,6 +415,14 @@ class RegistryImpl implements AtomRegistry {
 
   setSerializable(key: string, encoded: unknown): void {
     this.preloadedSerializable.set(key, encoded)
+  }
+
+  setInitialValue<A>(atom: Atom.Atom<A>, value: A): void {
+    let target: Atom.Atom<any> = atom
+    while (target.initialValueTarget) {
+      target = target.initialValueTarget
+    }
+    this.ensureNode(target).setInitialValue(value)
   }
 
   modify<R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]): A {
