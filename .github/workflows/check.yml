@@ -71,6 +71,8 @@ jobs:
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
       - run: pnpm build
+      - name: Check Node-only declarations
+        run: pnpm exec tsc -p packages/effect/typetest/node-only/tsconfig.json
       - run: pnpm check-dist-types
 
   bundle:
