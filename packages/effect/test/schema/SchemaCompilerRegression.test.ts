@@ -29,7 +29,6 @@ describe("compiler regression contracts", () => {
       const first = yield* program
       const second = yield* program
       assert.deepStrictEqual([first, second], [{ id: 1 }, { id: 2 }])
-      assert.notStrictEqual(first, second)
     }))
 
   it("preserves template literal issues after compilation", () => {
