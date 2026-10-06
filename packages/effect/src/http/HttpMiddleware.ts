@@ -213,8 +213,8 @@ export const isTracerDisabledUnsafe = (
   request: HttpServerRequest
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
-// OpenTelemetry fails server spans only for 5xx responses. Interrupts (such as
-// client aborts) keep their interrupt exit.
+// Server spans fail only for 5xx. Interrupt-only causes below 500 (client
+// aborts) keep their interrupt exit.
 const responseSpanExit = (
   span: Span,
   request: HttpServerRequest,
@@ -228,9 +228,8 @@ const responseSpanExit = (
   if (cause !== undefined && !Cause.hasInterruptsOnly(cause)) {
     return Exit.failCause(cause)
   }
-  // Interrupt-only causes (such as server aborts) would export as OK, so add
-  // the response error to keep 5xx spans failed. `Cause.combine` is avoided
-  // because its structural hashing would read the request body.
+  // Add a response failure so interrupt-only 5xx spans export as ERROR. Avoid
+  // `Cause.combine`: hashing the request can read its body.
   const error = tracing.withoutStackTrace(() =>
     new HttpServerError({ reason: new ResponseError({ request, response }) })
   )

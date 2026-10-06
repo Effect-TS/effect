@@ -1,7 +1,6 @@
 import { getStackTraceLimit, setStackTraceLimit } from "../../internal/stackTraceLimit.ts"
 import type * as Tracer from "../../Tracer.ts"
 
-// HTTP methods known to the OpenTelemetry HTTP semantic conventions.
 const knownMethods: ReadonlySet<string> = new Set([
   "CONNECT",
   "DELETE",
@@ -125,12 +124,7 @@ export const setHeaderAttributes = (
 export const serverAddress = (url: URL): string =>
   url.hostname.startsWith("[") && url.hostname.endsWith("]") ? url.hostname.slice(1, -1) : url.hostname
 
-/**
- * Builds an error without capturing a stack trace, for span exits that only
- * describe a response status.
- *
- * @internal
- */
+/** @internal */
 export const withoutStackTrace = <A>(f: () => A): A => {
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)

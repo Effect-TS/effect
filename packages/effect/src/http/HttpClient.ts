@@ -664,8 +664,7 @@ const Proto = {
   )
 }
 
-// OpenTelemetry marks client spans as failed for 4xx and 5xx responses. The
-// response still succeeds for the caller, only the span ends with an error.
+// Fails the span for 4xx and 5xx responses; the caller still gets the response.
 const endSpanWithStatusError = (
   fiber: Fiber.Fiber<unknown, unknown>,
   span: Tracer.Span,
