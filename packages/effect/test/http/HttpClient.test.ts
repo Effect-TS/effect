@@ -172,7 +172,7 @@ Missing key
     }))
 
   describe("tracer", () => {
-    it.effect("includes request and response headers by default", () =>
+    it.effect("omits request and response headers by default", () =>
       Effect.gen(function*() {
         let clientSpan: Tracer.NativeSpan | undefined
         const tracer = Tracer.make({
@@ -197,8 +197,8 @@ Missing key
         }).pipe(Effect.provideService(Tracer.Tracer, tracer))
 
         assert(clientSpan !== undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), "request")
-        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), "response")
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), undefined)
       }))
 
     it.effect("filters request and response header span attributes", () =>

@@ -265,6 +265,39 @@ describe("Tracer", () => {
         spanProcessor: [new SimpleSpanProcessor(exporter)]
       }))))
     })
+    it.effect("exports homogeneous primitive arrays as array attributes", () =>
+      Effect.gen(function*() {
+        const exporter = new InMemorySpanExporter()
+        const spanProcessor = new SimpleSpanProcessor(exporter)
+
+        yield* Effect.void.pipe(
+          Effect.withSpan("array-span", {
+            attributes: {
+              strings: ["a", "b"],
+              numbers: [1, 2],
+              booleans: [true, false],
+              mixed: [1, "a"]
+            }
+          }),
+          Effect.andThen(Effect.never), // keep the exporter alive
+          Effect.provide(NodeSdk.layer(() => ({
+            resource: {
+              serviceName: "test"
+            },
+            spanProcessor: [spanProcessor]
+          }))),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        const spanData = exporter.getFinishedSpans()[0]
+        if (spanData === undefined) {
+          return yield* Effect.die("Missing span data")
+        }
+        assert.deepStrictEqual(spanData.attributes.strings, ["a", "b"])
+        assert.deepStrictEqual(spanData.attributes.numbers, [1, 2])
+        assert.deepStrictEqual(spanData.attributes.booleans, [true, false])
+        assert.isString(spanData.attributes.mixed)
+      }))
 
     it.effect("withSpanContext", () =>
       Effect.gen(function*() {

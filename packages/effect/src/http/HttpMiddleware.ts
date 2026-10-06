@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -36,6 +37,7 @@ import * as TraceContext from "./HttpTraceContext.ts"
 import * as compressionInternal from "./internal/compression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe } from "./internal/preResponseHandler.ts"
+import * as tracing from "./internal/tracing.ts"
 
 /**
  * Middleware that transforms an HTTP server app effect into another HTTP server app effect.
@@ -131,14 +133,36 @@ export const layerTracerDisabledForUrls = (
 /**
  * Context reference for generating server span names from HTTP server requests.
  *
+ * **Details**
+ *
+ * Defaults to the request method unchanged.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
 export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) => string>(
   "@effect/platform/HttpMiddleware/SpanNameGenerator",
-  { defaultValue: () => (request) => `http.server ${request.method}` }
+  { defaultValue: () => (request) => request.method }
 )
+
+/**
+ * Context reference for filtering request and response headers added to server spans.
+ *
+ * **Details**
+ *
+ * Header capture is opt-in: the default filter records no headers. Captured
+ * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const TracerHeaderFilter = Context.Reference<
+  (headerName: string, phase: "request" | "response") => boolean
+>("effect/http/HttpMiddleware/TracerHeaderFilter", {
+  defaultValue: () => constFalse
+})
 
 /**
  * Middleware that logs sent HTTP responses with request method, request URL, and response status annotations.
@@ -243,68 +267,40 @@ export const tracer: <E, R>(
         return undefined
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+      const headerFilter = fiber.getRef(TracerHeaderFilter)
       fiber.currentDispatcher.scheduleTask(() => {
         let response: HttpServerResponse
         let spanExit: Exit.Exit<HttpServerResponse, unknown>
         if (Exit.isFailure(exit)) {
           const [failureResponse, cause] = causeResponseStripped(exit.cause)
           response = failureResponse
-          spanExit = Option.isSome(cause) ? Exit.failCause(cause.value) : responseSpanExit(request, response)
+          // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
+          spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
+            ? Exit.failCause(cause.value)
+            : responseSpanExit(request, response)
         } else {
           response = exit.value
           spanExit = responseSpanExit(request, response)
         }
         if (span.sampled) {
           span.attribute("http.request.method", request.method)
-          if (request.url.startsWith("/")) {
-            const host = request.headers.host ?? "localhost"
-            const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
-            span.attribute("url.full", `${protocol}://${host}${request.url}`)
-            const queryIndex = request.url.indexOf("?")
-            if (queryIndex === -1) {
-              span.attribute("url.path", request.url)
-            } else {
-              span.attribute("url.path", request.url.slice(0, queryIndex))
-              if (queryIndex < request.url.length - 1) {
-                span.attribute("url.query", request.url.slice(queryIndex + 1))
-              }
+          const url = Request.toURL(request)
+          if (Option.isSome(url)) {
+            if (!request.url.startsWith("/") && (url.value.username !== "" || url.value.password !== "")) {
+              url.value.username = "REDACTED"
+              url.value.password = "REDACTED"
             }
-            span.attribute("url.scheme", protocol)
-          } else {
-            const url = Request.toURL(request)
-            if (Option.isSome(url)) {
-              if (url.value.username !== "" || url.value.password !== "") {
-                url.value.username = "REDACTED"
-                url.value.password = "REDACTED"
-              }
-              span.attribute("url.full", url.value.toString())
-              span.attribute("url.path", url.value.pathname)
-              const query = url.value.search.slice(1)
-              if (query !== "") {
-                span.attribute("url.query", query)
-              }
-              span.attribute("url.scheme", url.value.protocol.slice(0, -1))
-            }
+            tracing.addUrlAttributes(span, url.value)
           }
           if (request.headers["user-agent"] !== undefined) {
             span.attribute("user_agent.original", request.headers["user-agent"])
           }
-          for (const name in request.headers) {
-            span.attribute(
-              `http.request.header.${name}`,
-              Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : request.headers[name]
-            )
-          }
+          tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
           if (Option.isSome(request.remoteAddress)) {
             span.attribute("client.address", request.remoteAddress.value)
           }
           span.attribute("http.response.status_code", response.status)
-          for (const name in response.headers) {
-            span.attribute(
-              `http.response.header.${name}`,
-              Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : response.headers[name]
-            )
-          }
+          tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
         }
         span.end(endTime, spanExit)
       }, 0)
