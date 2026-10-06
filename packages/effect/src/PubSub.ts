@@ -166,6 +166,8 @@ export declare namespace PubSub {
      * Describes how publishers should signal to subscribers that they are
      * waiting for space to become available in the `PubSub`.
      *
+     * **Details**
+     *
      * The publisher may have yielded since `publish` checked `ended`, so it
      * must be checked again before registering or publishing the surplus.
      */
