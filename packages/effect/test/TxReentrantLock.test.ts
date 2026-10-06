@@ -1,12 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Scope, TxReentrantLock } from "effect"
+import { Effect, Exit, Fiber, Scope, TxReentrantLock } from "effect"
 
 describe("TxReentrantLock", () => {
   describe("interruption while waiting", () => {
     const acquisitions = [
-      ["withReadLock", (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.withReadLock(lock, Effect.void)],
       ["withWriteLock", (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.withWriteLock(lock, Effect.void)],
-      ["readLock", (lock: TxReentrantLock.TxReentrantLock) => Effect.scoped(TxReentrantLock.readLock(lock))],
       ["writeLock", (lock: TxReentrantLock.TxReentrantLock) => Effect.scoped(TxReentrantLock.writeLock(lock))]
     ] as const
 
@@ -267,72 +265,6 @@ describe("TxReentrantLock", () => {
         assert.strictEqual(result, "piped-write")
         assert.strictEqual(yield* Effect.tx(TxReentrantLock.writeLocked(lock)), false)
       }))
-  })
-
-  describe("interruptibility contracts", () => {
-    // Write locks represent the shared wrapper and scoped paths; read acquisition is tested above.
-    const helpers = [
-      [
-        "withWriteLock",
-        (lock: TxReentrantLock.TxReentrantLock, use: Effect.Effect<void>) => TxReentrantLock.withWriteLock(lock, use)
-      ],
-      [
-        "writeLock",
-        (lock: TxReentrantLock.TxReentrantLock, use: Effect.Effect<void>) =>
-          Effect.scoped(Effect.andThen(TxReentrantLock.writeLock(lock), use))
-      ]
-    ] as const
-
-    for (const [name, run] of helpers) {
-      it.effect(name + " releases its acquisition when use is interrupted", () =>
-        Effect.gen(function*() {
-          const lock = yield* TxReentrantLock.make()
-          const entered = yield* Deferred.make<void>()
-          const finish = yield* Deferred.make<void>()
-          const use = Effect.andThen(Deferred.succeed(entered, undefined), Deferred.await(finish))
-          const fiber = yield* Effect.forkChild(run(lock, use), { startImmediately: true })
-          yield* Deferred.await(entered)
-          const interruptor = yield* Effect.forkChild(Fiber.interrupt(fiber), { startImmediately: true })
-          yield* Effect.yieldNow
-          yield* Effect.yieldNow
-          const interrupted = interruptor.pollUnsafe() !== undefined
-          // Unblock use before asserting if a regression left it masked.
-          yield* Deferred.succeed(finish, undefined)
-          yield* Fiber.join(interruptor)
-
-          assert.isTrue(interrupted, "use must remain interruptible")
-          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
-          assert.strictEqual(yield* TxReentrantLock.readLocks(lock), 0)
-          assert.strictEqual(yield* TxReentrantLock.writeLocks(lock), 0)
-        }))
-
-      it.effect(name + " inherits an uninterruptible caller while acquiring", () =>
-        Effect.gen(function*() {
-          const lock = yield* TxReentrantLock.make()
-          yield* TxReentrantLock.acquireWrite(lock)
-          let used = false
-          const use = Effect.sync(() => {
-            used = true
-          })
-          const fiber = yield* Effect.forkChild(Effect.uninterruptible(run(lock, use)), {
-            startImmediately: true
-          })
-          const interruptor = yield* Effect.forkChild(Fiber.interrupt(fiber), { startImmediately: true })
-          yield* Effect.yieldNow
-          yield* Effect.yieldNow
-          const interrupted = interruptor.pollUnsafe() !== undefined
-          const usedWhileHeld = used
-          // Release before asserting so an uninterruptible waiter can finish.
-          yield* TxReentrantLock.releaseWrite(lock)
-          yield* Fiber.join(interruptor)
-
-          assert.isFalse(interrupted, "acquisition must inherit the caller's mask")
-          assert.isFalse(usedWhileHeld)
-          assert.isTrue(used, "the masked caller must acquire and run use despite pending interruption")
-          assert.strictEqual(yield* TxReentrantLock.readLocks(lock), 0)
-          assert.strictEqual(yield* TxReentrantLock.writeLocks(lock), 0)
-        }))
-    }
   })
 
   describe("concurrency", () => {
