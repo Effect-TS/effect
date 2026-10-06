@@ -330,11 +330,13 @@ function compareHashed<A>(
   equivalent: (self: A, that: A) => boolean
 ): boolean {
   const groups = new Map<number, Array<A>>()
+  let remaining = 0
   for (const item of that) {
     const h = hashOf(item)
     const group = groups.get(h)
     if (group) group.push(item)
     else groups.set(h, [item])
+    remaining++
   }
   outer: for (const item of self) {
     const group = groups.get(hashOf(item))
@@ -343,16 +345,14 @@ function compareHashed<A>(
         if (equivalent(item, group[i])) {
           group[i] = group[group.length - 1]
           group.pop()
+          remaining--
           continue outer
         }
       }
     }
     return false
   }
-  for (const group of groups.values()) {
-    if (group.length > 0) return false
-  }
-  return true
+  return remaining === 0
 }
 
 const entryHash = (entry: readonly [unknown, unknown]): number => Hash.hash(entry[0])
