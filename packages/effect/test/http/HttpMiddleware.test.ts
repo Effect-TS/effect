@@ -410,7 +410,7 @@ describe("HttpMiddleware", () => {
         const response = HttpServerResponse.empty({ status: 404 })
         const span = yield* traceServer(
           request,
-          Effect.failCause(Cause.fromReasons([...Cause.fail("not found").reasons, ...Cause.die(response).reasons]))
+          Effect.failCause(Cause.combine(Cause.fail("not found"), Cause.die(response)))
         )
         assert(span.status._tag === "Ended")
         assert.strictEqual(span.status.exit._tag, "Success")
@@ -455,20 +455,69 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(span.attributes.get("error.type"), "500")
       }))
 
-    it.effect("normalizes unknown methods and redacts signed query values", () =>
+    it.effect.each([200, 302, 400, 404, 499, 500, 503, 599])(
+      "records returned status %s",
+      (status) =>
+        Effect.gen(function*() {
+          const request = HttpServerRequest.fromWeb(new Request("http://localhost/"))
+          const span = yield* traceServer(request, Effect.succeed(HttpServerResponse.empty({ status })))
+          assert(span.status._tag === "Ended")
+          assert.strictEqual(span.status.exit._tag, status >= 500 ? "Failure" : "Success")
+          assert.strictEqual(span.attributes.get("http.response.status_code"), status)
+          assert.strictEqual(span.attributes.get("error.type"), status >= 500 ? String(status) : undefined)
+        })
+    )
+
+    it.effect.each(["GET", "POST", "QUERY", "PURGE"])("normalizes method %s", (method) =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost/", { method }))
+        const span = yield* traceServer(request, Effect.succeed(HttpServerResponse.empty()))
+        assert.strictEqual(span.name, method === "PURGE" ? "HTTP" : method)
+        assert.strictEqual(span.attributes.get("http.request.method"), method === "PURGE" ? "_OTHER" : method)
+        assert.strictEqual(span.attributes.get("http.request.method_original"), method === "PURGE" ? method : undefined)
+      }))
+
+    it.effect("redacts signed query values without changing the request", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost/file?sig=secret&keep=1"))
+        const span = yield* traceServer(request, Effect.succeed(HttpServerResponse.empty()))
+        assert.strictEqual(span.attributes.get("url.full"), "http://localhost/file?sig=REDACTED&keep=1")
+        assert.strictEqual(span.attributes.get("url.query"), "sig=REDACTED&keep=1")
+        assert.strictEqual(request.url, "/file?sig=secret&keep=1")
+      }))
+
+    it.effect("records no headers by default", () =>
       Effect.gen(function*() {
         const request = HttpServerRequest.fromWeb(
-          new Request("https://localhost:3000/file?sig=secret&keep=1", { method: "PURGE" })
+          new Request("http://localhost/", {
+            headers: { "x-request": "request" }
+          })
         )
-        const span = yield* traceServer(request, Effect.succeed(HttpServerResponse.empty()))
-        assert.strictEqual(span.name, "HTTP")
-        assert.strictEqual(span.attributes.get("http.request.method"), "_OTHER")
-        assert.strictEqual(span.attributes.get("http.request.method_original"), "PURGE")
-        assert.strictEqual(
-          span.attributes.get("url.full"),
-          "http://localhost/file?sig=REDACTED&keep=1"
+        const span = yield* traceServer(
+          request,
+          Effect.succeed(HttpServerResponse.empty({
+            headers: { "x-response": "response" }
+          }))
         )
-        assert.strictEqual(span.attributes.get("url.query"), "sig=REDACTED&keep=1")
+        assert.strictEqual(span.attributes.get("http.request.header.x-request"), undefined)
+        assert.strictEqual(span.attributes.get("http.response.header.x-response"), undefined)
+      }))
+
+    it.effect("filters the same header independently by phase", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(
+          new Request("http://localhost/", {
+            headers: { "x-phase": "request" }
+          })
+        )
+        const span = yield* traceServer(
+          request,
+          Effect.succeed(HttpServerResponse.empty({
+            headers: { "x-phase": "response" }
+          }))
+        ).pipe(Effect.provideService(HttpMiddleware.TracerHeaderFilter, (_name, phase) => phase === "response"))
+        assert.strictEqual(span.attributes.get("http.request.header.x-phase"), undefined)
+        assert.deepStrictEqual(span.attributes.get("http.response.header.x-phase"), ["response"])
       }))
 
     it.effect("ends the span and restores the context when the app is interrupted", () =>

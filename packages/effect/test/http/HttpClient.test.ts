@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse, type HttpMethod } from "effect/http"
+import { Cause, Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -273,6 +273,32 @@ Missing key
         assert.deepStrictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), ["response"])
       }))
 
+    it.effect("records transport errors without replacing the failure", () =>
+      Effect.gen(function*() {
+        let span: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            span = new Tracer.NativeSpan(options)
+            return span
+          }
+        })
+        const request = HttpClientRequest.get("http://example.com/")
+        const error = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request, cause: "connection refused" })
+        })
+        const exit = yield* HttpClient.make(() => Effect.fail(error)).execute(request).pipe(
+          Effect.provideService(Tracer.Tracer, tracer),
+          Effect.exit
+        )
+        assert(exit._tag === "Failure")
+        assert.strictEqual(Cause.squash(exit.cause), error)
+        assert(span !== undefined && span.status._tag === "Ended")
+        assert.strictEqual(span.attributes.get("error.type"), "TransportError")
+        assert.strictEqual(span.attributes.get("http.response.status_code"), undefined)
+        assert(span.status.exit._tag === "Failure")
+        assert.strictEqual(Cause.squash(span.status.exit.cause), error)
+      }))
+
     const traceRequest = Effect.fnUntraced(function*(
       request: HttpClientRequest.HttpClientRequest,
       status = 200
@@ -292,44 +318,60 @@ Missing key
       return { span: clientSpan, response } as const
     })
 
-    it.effect("follows semantic conventions for names and server attributes", () =>
+    it.effect.each(
+      [
+        ["http://example.com/path", 80],
+        ["https://example.com/path", 443],
+        ["http://example.com:8080/path", 8080]
+      ] as const
+    )("records the server address and port for %s", ([url, port]) =>
       Effect.gen(function*() {
-        const { span } = yield* traceRequest(HttpClientRequest.get("https://example.com/path"))
-        assert.strictEqual(span.name, "GET")
-        assert.strictEqual(span.attributes.get("http.request.method"), "GET")
+        const { span } = yield* traceRequest(HttpClientRequest.get(url))
         assert.strictEqual(span.attributes.get("server.address"), "example.com")
-        assert.strictEqual(span.attributes.get("server.port"), 443)
-        assert(span.status._tag === "Ended" && span.status.exit._tag === "Success")
-
-        // Untyped callers can send methods outside the HttpMethod union.
-        const purge = "PURGE" as HttpMethod.HttpMethod
-        const custom = yield* traceRequest(HttpClientRequest.make(purge)("http://example.com:8080/"))
-        assert.strictEqual(custom.span.name, "HTTP")
-        assert.strictEqual(custom.span.attributes.get("http.request.method"), "_OTHER")
-        assert.strictEqual(custom.span.attributes.get("http.request.method_original"), "PURGE")
-        assert.strictEqual(custom.span.attributes.get("server.port"), 8080)
+        assert.strictEqual(span.attributes.get("server.port"), port)
       }))
 
-    it.effect("marks 4xx and 5xx responses as span errors", () =>
+    it.effect.each(["GET", "POST", "QUERY", "PURGE"])("normalizes method %s", (method) =>
       Effect.gen(function*() {
-        for (const status of [404, 503]) {
+        const { span } = yield* traceRequest({
+          ...HttpClientRequest.get("http://example.com/"),
+          method: method as HttpClientRequest.HttpClientRequest["method"]
+        })
+        assert.strictEqual(span.name, method === "PURGE" ? "HTTP" : method)
+        assert.strictEqual(span.attributes.get("http.request.method"), method === "PURGE" ? "_OTHER" : method)
+        assert.strictEqual(span.attributes.get("http.request.method_original"), method === "PURGE" ? method : undefined)
+      }))
+
+    it.effect.each([200, 302, 399, 400, 404, 499, 500, 503, 599])(
+      "records status %s without failing the response effect",
+      (status) =>
+        Effect.gen(function*() {
           const { response, span } = yield* traceRequest(HttpClientRequest.get("http://example.com/"), status)
           assert.strictEqual(response.status, status)
-          assert.strictEqual(span.attributes.get("error.type"), String(status))
-          assert(span.status._tag === "Ended" && span.status.exit._tag === "Failure")
-        }
-      }))
+          assert.strictEqual(span.attributes.get("http.response.status_code"), status)
+          assert.strictEqual(span.attributes.get("error.type"), status >= 400 ? String(status) : undefined)
+          assert(span.status._tag === "Ended")
+          assert.strictEqual(span.status.exit._tag, status >= 400 ? "Failure" : "Success")
+        })
+    )
 
-    it.effect("redacts credentials and signed query values", () =>
+    it.effect.each([
+      [
+        "https://user:pass@example.com/file?X-Amz-Signature=abc&keep=1",
+        "https://REDACTED:REDACTED@example.com/file?X-Amz-Signature=REDACTED&keep=1",
+        "X-Amz-Signature=REDACTED&keep=1"
+      ],
+      [
+        "https://example.com/file?sig=one&sig=two&keep=a%20b",
+        "https://example.com/file?sig=REDACTED&sig=REDACTED&keep=a%20b",
+        "sig=REDACTED&sig=REDACTED&keep=a%20b"
+      ],
+      ["https://example.com/file?keep=a%20b", "https://example.com/file?keep=a%20b", "keep=a%20b"]
+    ])("redacts sensitive URL values in %s", ([url, full, query]) =>
       Effect.gen(function*() {
-        const { span } = yield* traceRequest(
-          HttpClientRequest.get("https://user:pass@example.com/file?X-Amz-Signature=abc&keep=1")
-        )
-        assert.strictEqual(
-          span.attributes.get("url.full"),
-          "https://REDACTED:REDACTED@example.com/file?X-Amz-Signature=REDACTED&keep=1"
-        )
-        assert.strictEqual(span.attributes.get("url.query"), "X-Amz-Signature=REDACTED&keep=1")
+        const { span } = yield* traceRequest(HttpClientRequest.get(url))
+        assert.strictEqual(span.attributes.get("url.full"), full)
+        assert.strictEqual(span.attributes.get("url.query"), query)
       }))
     it.effect("strips IPv6 brackets and matches percent-encoded query keys", () =>
       Effect.gen(function*() {
