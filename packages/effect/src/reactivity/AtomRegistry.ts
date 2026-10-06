@@ -474,7 +474,7 @@ class RegistryImpl implements AtomRegistry {
       this.removeNodeTimeout(node)
     }
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
-      const encoded = this.preloadedSerializable.get(key)
+      const encoded = this.preloadedSerializable.get(key) as Schema.Json
       this.preloadedSerializable.delete(key)
       const serializable = (atom as any as Atom.Serializable<any>)[SerializableTypeId]
       let decoded: A
