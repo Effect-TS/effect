@@ -17,6 +17,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import type * as Headers from "../http/Headers.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
+import * as InternalRecord from "../internal/record.ts"
 import * as Layer from "../Layer.ts"
 import * as Logger from "../Logger.ts"
 import type * as LogLevel from "../LogLevel.ts"
@@ -202,27 +203,20 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   const eventMillis = options.date.getTime()
   const eventTime = (BigInt(eventMillis) * nanosPerMilli).toString()
 
-  const attributes = OtlpResource.entriesToAttributes(Object.entries(options.fiber.getRef(CurrentLogAnnotations)))
-  attributes.push({
-    key: "effect.fiberId",
-    value: { intValue: options.fiber.id }
-  })
+  const attributes: Record<string, unknown> = { ...options.fiber.getRef(CurrentLogAnnotations) }
+  // Generated attributes override annotations; later spans with the same label win.
+  InternalRecord.assignProperty(attributes, "effect.fiberId", options.fiber.id)
   if (!opts.excludeLogSpans) {
     for (const [label, startTime] of options.fiber.getRef(CurrentLogSpans)) {
-      attributes.push({
-        key: `effect.log_span.${label}`,
-        value: { intValue: eventMillis - startTime }
-      })
+      InternalRecord.assignProperty(attributes, `effect.log_span.${label}`, eventMillis - startTime)
     }
   }
   // exception.type/message describe the first error; the stacktrace keeps the full cause
   const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
   if (errors.length > 0) {
-    attributes.push(
-      { key: "exception.type", value: { stringValue: errors[0].name } },
-      { key: "exception.message", value: { stringValue: errors[0].message } },
-      { key: "exception.stacktrace", value: { stringValue: errors.map((error) => error.stack).join("\n") } }
-    )
+    InternalRecord.assignProperty(attributes, "exception.type", errors[0].name)
+    InternalRecord.assignProperty(attributes, "exception.message", errors[0].message)
+    InternalRecord.assignProperty(attributes, "exception.stacktrace", errors.map((error) => error.stack).join("\n"))
   }
 
   const message = Arr.ensure(options.message)
@@ -232,7 +226,7 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
     severityText: options.logLevel,
     timeUnixNano: eventTime,
     observedTimeUnixNano: observedTime,
-    attributes,
+    attributes: OtlpResource.entriesToAttributes(Object.entries(attributes)),
     body: OtlpResource.unknownToAttributeValue(message.length === 1 ? message[0] : message),
     droppedAttributesCount: 0
   }

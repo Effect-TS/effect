@@ -122,21 +122,24 @@ export const fromConfig: (
     "OTEL_RESOURCE_ATTRIBUTES"
   ).pipe(Config.withDefault(undefined))
 
+  const attributes = {
+    ...env,
+    ...options?.attributes
+  }
+  const executableName = attributes["process.executable.name"]
+
   const serviceName = options?.serviceName
     ?? options?.attributes?.["service.name"] as string | undefined
     ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_NAME"))
     ?? env?.["service.name"] as string | undefined
-    ?? "unknown_service"
+    ?? (typeof executableName === "string" && executableName.length > 0
+      ? `unknown_service:${executableName}`
+      : "unknown_service")
 
   const serviceVersion = options?.serviceVersion
     ?? options?.attributes?.["service.version"] as string | undefined
     ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_VERSION"))
     ?? env?.["service.version"] as string | undefined
-
-  const attributes = {
-    ...env,
-    ...options?.attributes
-  }
 
   delete attributes["service.name"]
   delete attributes["service.version"]
