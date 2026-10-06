@@ -603,10 +603,13 @@ describe("RpcClient", () => {
     }))
 
   describe("tracing", () => {
-    const SpanGroup = RpcGroup.make(Rpc.make("Ping", { success: Schema.String })).prefix("Echo.")
+    const SpanGroup = TestGroup.prefix("Echo.")
     type SpanRpcs = RpcGroup.Rpcs<typeof SpanGroup>
 
-    const callPing = (spanPrefix?: string) => {
+    const call = (
+      method: "Ping" | "Events",
+      options: { spanPrefix?: string; spanAttributes?: Record<string, unknown> } = {}
+    ) => {
       const spans: Array<Tracer.NativeSpan> = []
       const tracer = Tracer.make({
         span(options) {
@@ -619,38 +622,61 @@ describe("RpcClient", () => {
         // oxlint-disable-next-line prefer-const
         let client!: Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<SpanRpcs, never>>>
         const server = yield* RpcServer.makeNoSerialization(SpanGroup, {
-          spanPrefix,
+          ...options,
           onFromServer: (response) => client.write(response)
         })
         client = yield* RpcClient.makeNoSerialization(SpanGroup, {
-          spanPrefix,
+          ...options,
           supportsAck: true,
           onFromClient: ({ message }) => server.write(0, message)
         })
-        assert.strictEqual(yield* client.client["Echo.Ping"](), "pong")
+        if (method === "Ping") {
+          assert.strictEqual(yield* client.client["Echo.Ping"](), "pong")
+        } else {
+          assert.deepStrictEqual(Array.from(yield* Stream.runCollect(client.client["Echo.Events"]())), ["event"])
+        }
         return spans
       }).pipe(
-        Effect.provide(SpanGroup.toLayer({ "Echo.Ping": () => Effect.succeed("pong") })),
+        Effect.provide(SpanGroup.toLayer({
+          "Echo.Ping": () => Effect.succeed("pong"),
+          "Echo.Events": () => Stream.make("event")
+        })),
         Effect.provideService(Tracer.Tracer, tracer)
       )
     }
 
-    it.effect("follows the OpenTelemetry RPC span conventions", () =>
-      Effect.gen(function*() {
-        const spans = yield* callPing()
-        const client = spans.find((span) => span.kind === "client")
-        const server = spans.find((span) => span.kind === "server")
-        assert(client !== undefined && server !== undefined)
-        for (const span of [client, server]) {
-          assert.strictEqual(span.name, "Echo.Ping")
-          assert.strictEqual(span.attributes.get("rpc.system.name"), "effect_rpc")
-          assert.strictEqual(span.attributes.get("rpc.method"), "Echo.Ping")
-        }
-      }))
+    for (const method of ["Ping", "Events"] as const) {
+      it.effect(`follows the OpenTelemetry RPC span conventions for ${method}`, () =>
+        Effect.gen(function*() {
+          const spans = yield* call(method)
+          const client = spans.find((span) => span.kind === "client")
+          const server = spans.find((span) => span.kind === "server")
+          assert(client !== undefined && server !== undefined)
+          for (const span of [client, server]) {
+            assert.strictEqual(span.name, `Echo.${method}`)
+            assert.strictEqual(span.attributes.get("rpc.system.name"), "effect_rpc")
+            assert.strictEqual(span.attributes.get("rpc.method"), `Echo.${method}`)
+          }
+        }))
+
+      it.effect(`allows spanAttributes to override RPC defaults for ${method}`, () =>
+        Effect.gen(function*() {
+          const spans = yield* call(method, {
+            spanAttributes: { "rpc.system.name": "custom_rpc", "rpc.method": "custom_method" }
+          })
+          const client = spans.find((span) => span.kind === "client")
+          const server = spans.find((span) => span.kind === "server")
+          assert(client !== undefined && server !== undefined)
+          for (const span of [client, server]) {
+            assert.strictEqual(span.attributes.get("rpc.system.name"), "custom_rpc")
+            assert.strictEqual(span.attributes.get("rpc.method"), "custom_method")
+          }
+        }))
+    }
 
     it.effect("keeps prefixed span names when spanPrefix is set", () =>
       Effect.gen(function*() {
-        const spans = yield* callPing("Custom")
+        const spans = yield* call("Ping", { spanPrefix: "Custom" })
         const names = spans.map((span) => span.name).sort()
         assert.deepStrictEqual(names, ["Custom.Echo.Ping", "Custom.Echo.Ping"])
       }))
