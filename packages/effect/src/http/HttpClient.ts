@@ -728,7 +728,7 @@ export const make = (
             tracing.addMethodAttributes(span, request.method)
             const scheme = url.protocol.slice(0, -1)
             tracing.addServerAttributes(span, url.hostname, url.port, scheme)
-            tracing.addUrlAttributes(span, url)
+            const redactedUrl = tracing.addUrlAttributes(span, url)
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
@@ -746,7 +746,7 @@ export const make = (
                     // 5xx responses, while the response itself still succeeds.
                     if (response.status >= 400 && response.status < 600) {
                       span.attribute("error.type", String(response.status))
-                      endSpanWithStatusError(fiber, span, request, response)
+                      endSpanWithStatusError(fiber, span, request.method, redactedUrl, response)
                     }
 
                     if (scopedController) return Effect.succeed(response)
@@ -766,16 +766,20 @@ export const make = (
         )
       })), Effect.succeed as HttpClient.Preprocess<never, never>)
 
+// The span failure is only exported as telemetry, so it carries a request with
+// the redacted URL and no headers or body instead of the request that was sent.
 const endSpanWithStatusError = (
   fiber: Fiber.Fiber<unknown, unknown>,
   span: Tracer.Span,
-  request: HttpClientRequest.HttpClientRequest,
+  method: HttpMethod.HttpMethod,
+  redactedUrl: string,
   response: HttpClientResponse.HttpClientResponse
 ): void => {
   const stackTraceLimit = getStackTraceLimit()
   setStackTraceLimit(0)
   let exit: Exit.Exit<never, Error.HttpClientError>
   try {
+    const request = HttpClientRequest.make(method)(redactedUrl)
     exit = Exit.fail(new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) }))
   } finally {
     setStackTraceLimit(stackTraceLimit)

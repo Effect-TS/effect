@@ -37,6 +37,15 @@ const signedQueryParams: ReadonlySet<string> = new Set([
   "X-Goog-Signature"
 ])
 
+const decodeName = (name: string): string => {
+  if (!name.includes("%")) return name
+  try {
+    return decodeURIComponent(name)
+  } catch {
+    return name
+  }
+}
+
 /** @internal */
 export const redactQuery = (query: string): string => {
   if (query === "") return query
@@ -46,7 +55,7 @@ export const redactQuery = (query: string): string => {
     const param = params[i]
     const index = param.indexOf("=")
     const name = index === -1 ? param : param.slice(0, index)
-    if (signedQueryParams.has(name)) {
+    if (signedQueryParams.has(decodeName(name))) {
       params[i] = `${name}=REDACTED`
       redacted = true
     }
@@ -55,18 +64,17 @@ export const redactQuery = (query: string): string => {
 }
 
 /** @internal */
-export const addUrlAttributes = (span: Tracer.Span, url: URL): void => {
+export const addUrlAttributes = (span: Tracer.Span, url: URL): string => {
   const query = redactQuery(url.search.slice(1))
   const credentials = url.username !== "" || url.password !== "" ? "REDACTED:REDACTED@" : ""
-  span.attribute(
-    "url.full",
-    `${url.protocol}//${credentials}${url.host}${url.pathname}${query === "" ? "" : `?${query}`}${url.hash}`
-  )
+  const full = `${url.protocol}//${credentials}${url.host}${url.pathname}${query === "" ? "" : `?${query}`}${url.hash}`
+  span.attribute("url.full", full)
   span.attribute("url.path", url.pathname)
   if (query !== "") {
     span.attribute("url.query", query)
   }
   span.attribute("url.scheme", url.protocol.slice(0, -1))
+  return full
 }
 
 const defaultPorts: Record<string, number> = {
