@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
 
-// Provisional v1 policies; see .github/effect-bot.md before enabling the relay.
 export const isCommand = (body) => /^\/effect-bot(?:\s|$)/u.test(body)
 export const deliveryKey = (eventName, event) =>
   `${event.repository.full_name}:${eventName}:${event.comment.id}`
