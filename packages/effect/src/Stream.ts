@@ -2205,12 +2205,17 @@ export const tapSink: {
 
         const pullAndOffer = pull.pipe(
           Effect.flatMap((chunk_) => {
+            // The sink may have exited while the upstream pull was suspended.
+            if (causeSink) return Effect.failCause(causeSink)
+            if (sinkDone) return Effect.succeed(chunk_)
             chunk = chunk_
             sinkLatch.closeUnsafe()
             upstreamLatch.openUnsafe()
             return Effect.as(sinkLatch.await, chunk_)
           }),
-          Pull.catchDone(() => {
+          Pull.catchDone((): Effect.Effect<never, E2 | Cause.Done> => {
+            if (causeSink) return Effect.failCause(causeSink)
+            if (sinkDone) return Cause.done()
             streamDone = true
             sinkLatch.closeUnsafe()
             upstreamLatch.openUnsafe()
