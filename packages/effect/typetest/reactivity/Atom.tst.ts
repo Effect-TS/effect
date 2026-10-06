@@ -1,4 +1,4 @@
-import { Effect, Layer, SubscriptionRef } from "effect"
+import { Effect, Layer, Schema, SubscriptionRef } from "effect"
 import type { AsyncResult } from "effect/reactivity"
 import { Atom } from "effect/reactivity"
 import { describe, expect, it } from "tstyche"
@@ -38,6 +38,16 @@ describe("Atom", () => {
         .type.toBe<Atom.Writable<AsyncResult.AsyncResult<number, "ref-failed" | "setup-failed">, number>>()
       expect(runtime.subscriptionRef(() => ref))
         .type.toBe<Atom.Writable<AsyncResult.AsyncResult<number, "ref-failed" | "setup-failed">, number>>()
+    })
+  })
+
+  describe("serializable", () => {
+    it("encodes to and decodes from the JSON representation", () => {
+      const atom = Atom.serializable(Atom.make(1n), { key: "bigint", schema: Schema.BigInt })
+      const serializable = atom[Atom.SerializableTypeId]
+
+      expect(serializable.encode).type.toBe<(value: bigint) => Schema.Json>()
+      expect(serializable.decode).type.toBe<(value: Schema.Json) => bigint>()
     })
   })
 })
