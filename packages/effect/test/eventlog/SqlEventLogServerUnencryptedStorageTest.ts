@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Effect, Fiber, Layer, Option, Queue, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import type { StoreId } from "effect/eventlog/EventLogMessage"
 import type * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
@@ -226,6 +226,35 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
 
         const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
         assertEntries(persisted, [backlog, outer, nested, deepest, after, sentinel], 1)
+      }))
+
+    it.effect("rolls back an interrupted pre-commit body without publishing its writes", () =>
+      Effect.gen(function*() {
+        const storage = yield* makeStorage(makeOptions("interrupted_transaction"))
+        const storeId = makeStoreId("interrupted_transaction")
+        const backlog = makeEntry("Ada")
+        const rolledBack = makeEntry("Grace")
+        const sentinel = makeEntry("Margaret")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+
+        const written = yield* Deferred.make<void>()
+        const writer = yield* storage.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [rolledBack])
+          yield* Deferred.succeed(written, undefined)
+          return yield* Effect.never
+        })).pipe(Effect.forkChild)
+        yield* Deferred.await(written)
+        yield* Fiber.interrupt(writer)
+        const exit = yield* Fiber.await(writer)
+        assert.strictEqual(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause), true)
+
+        yield* storage.write(storeId, [sentinel])
+        assertEntries([yield* Queue.take(changes)], [sentinel], 2)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+        assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, sentinel], 1)
       }))
 
     it.effect("discards outer rollback rows and notifications, including successful nested writes", () =>

@@ -9,6 +9,7 @@ import {
   suite
 } from "effect-test/eventlog/SqlEventLogServerUnencryptedStorageTest"
 import { Reactivity } from "effect/reactivity"
+import * as SqlClient from "effect/sql/SqlClient"
 import { PgContainer } from "./utils.ts"
 
 suite("sql-pg", PgContainer.layerClient)
@@ -16,6 +17,69 @@ suite("sql-pg", PgContainer.layerClient)
 it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 seconds" })(
   "SqlEventLogServerUnencrypted commit visibility",
   (it) => {
+    it.effect("streams concurrent commits in sequence order even when the first SQL return is delayed", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const committed = yield* Deferred.make<void>()
+        const publish = yield* Deferred.make<void>()
+        // Decorate the public SQL boundary, not storage internals. The real
+        // transaction has committed and released its connection before we pause.
+        let pauseNext = false
+        const delayedSql: SqlClient.SqlClient = Object.assign(
+          (...args: Parameters<SqlClient.SqlClient>) => sql(...args),
+          sql,
+          {
+            withTransaction: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+              Effect.suspend(() => {
+                const pause = pauseNext
+                pauseNext = false
+                return sql.withTransaction(effect).pipe(
+                  Effect.tap(() =>
+                    pause
+                      ? Deferred.succeed(committed, undefined).pipe(Effect.andThen(Deferred.await(publish)))
+                      : Effect.void
+                  )
+                )
+              })
+          }
+        )
+        const storage = yield* makeStorage(makeOptions("concurrent_publication")).pipe(
+          Effect.provideService(SqlClient.SqlClient, delayedSql)
+        )
+        const storeId = makeStoreId("concurrent_publication")
+        const backlog = makeEntry("Ada")
+        const firstEntry = makeEntry("Grace")
+        const secondEntry = makeEntry("Margaret")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assert.strictEqual((yield* Queue.take(changes)).remoteSequence, 1)
+
+        pauseNext = true
+        const firstWriter = yield* storage.write(storeId, [firstEntry]).pipe(Effect.forkChild)
+        yield* Deferred.await(committed)
+        // Force the second COMMIT and publication before the first SQL call
+        // returns. No sleeps or scheduler timing decide the interleaving.
+        // This is a forced-interleaving reproducer: a fix that serializes entire
+        // storage transactions must also change this handshake to release the
+        // first writer before waiting for the second writer to finish.
+        yield* storage.write(storeId, [secondEntry]).pipe(
+          Effect.ensuring(Deferred.succeed(publish, undefined))
+        )
+        yield* Fiber.join(firstWriter)
+
+        const rows = yield* Queue.takeN(changes, 2)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+        const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
+        assert.deepStrictEqual(persisted.map((row) => row.remoteSequence), [1, 2, 3])
+        assert.deepStrictEqual(
+          persisted.map((row) => row.entry.idString),
+          [backlog.idString, firstEntry.idString, secondEntry.idString]
+        )
+        assert.deepStrictEqual(rows.map((row) => row.remoteSequence), [2, 3])
+        assert.deepStrictEqual(rows.map((row) => row.entry.idString), [firstEntry.idString, secondEntry.idString])
+      }))
+
     it.effect("streams a write committed after the startup backlog read exactly once", () =>
       Effect.gen(function*() {
         const storage = yield* makeStorage(makeOptions("commit_visibility"))
