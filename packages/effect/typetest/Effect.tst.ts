@@ -1440,6 +1440,25 @@ describe("Effect.withExecutionPlan", () => {
     expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
   })
 
+  it("tracks predicate errors and requirements with an unconditional fallback", () => {
+    class Dep extends Context.Service<Dep, number>()("Dep") {}
+    const predicatePlan = ExecutionPlan.make({
+      provide: Layer.empty,
+      while: () => Effect.flatMap(Dep, () => Effect.fail("predicate-failed" as const))
+    }, { provide: Layer.empty })
+    const result = Effect.withExecutionPlan(Effect.fail("operation-failed" as const), predicatePlan)
+    expect(result).type.toBe<Effect.Effect<never, "operation-failed" | "predicate-failed", Dep>>()
+  })
+
+  it("tracks layer requirements with a context fallback", () => {
+    class Dep extends Context.Service<Dep, number>()("Dep") {}
+    const layerPlan = ExecutionPlan.make({
+      provide: Layer.effect(Dep, Effect.flatMap(Dep, () => Effect.fail("layer-failed" as const)))
+    }, { provide: Context.empty() })
+    const result = Effect.withExecutionPlan(Effect.fail("operation-failed" as const), layerPlan)
+    expect(result).type.toBe<Effect.Effect<never, "operation-failed" | "layer-failed", Dep>>()
+  })
+
   it("tracks schedule errors and requirements with an unscheduled fallback", () => {
     class PolicyService extends Context.Service<PolicyService, number>()("PolicyService") {}
     const schedulePlan = ExecutionPlan.make({
