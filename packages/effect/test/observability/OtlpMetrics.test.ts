@@ -39,14 +39,6 @@ describe("OtlpMetrics", () => {
         yield* Metric.update(frequency, "a")
         yield* Metric.update(frequency, "a")
         yield* Metric.update(frequency, "b")
-        const summary = Metric.summary("repro_summary", {
-          maxAge: "1 minute",
-          maxSize: 100,
-          quantiles: [0.5]
-        })
-        yield* Metric.update(summary, 10)
-        yield* Metric.update(summary, 20)
-        yield* Metric.update(summary, 30)
         const flusher = yield* OtlpExporter.Flusher
         yield* flusher.flush
         yield* TestClock.adjust("60 seconds")
@@ -63,10 +55,6 @@ describe("OtlpMetrics", () => {
       assert.strictEqual(findFrequencyValue(second, "repro_frequency", "a"), 2)
       assert.strictEqual(findFrequencyValue(first, "repro_frequency", "b"), 1)
       assert.strictEqual(findFrequencyValue(second, "repro_frequency", "b"), 1)
-      assert.strictEqual(findMetric(first, "repro_summary")?.summary?.dataPoints[0].count, 3)
-      assert.strictEqual(findMetric(second, "repro_summary")?.summary?.dataPoints[0].count, 3)
-      assert.strictEqual(findMetric(first, "repro_summary")?.summary?.dataPoints[0].sum, 60)
-      assert.strictEqual(findMetric(second, "repro_summary")?.summary?.dataPoints[0].sum, 60)
       assert.strictEqual(
         findMetric(second, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano,
         findMetric(first, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano
@@ -249,38 +237,6 @@ describe("OtlpMetrics", () => {
         assert.strictEqual(secondA?.asInt, 3) // Cumulative: 2+1=3
         assert.strictEqual(secondB?.asInt, 3) // Cumulative: 1+2=3
       }).pipe(Effect.provide(TestLayerCumulative)))
-
-    it.effect("reports summary count and sum across export intervals", () =>
-      Effect.gen(function*() {
-        const metricName = "cumulative_summary_test"
-        const summary = Metric.summary(metricName, {
-          description: "Test summary",
-          maxAge: "1 minute",
-          maxSize: 100,
-          quantiles: [0.5, 0.9, 0.99]
-        })
-
-        // First interval: observe 10, 20, 30 (count=3, sum=60)
-        yield* Metric.update(summary, 10)
-        yield* Metric.update(summary, 20)
-        yield* Metric.update(summary, 30)
-        yield* triggerExport
-
-        // Second interval: observe 40 (cumulative count=4, sum=100)
-        yield* Metric.update(summary, 40)
-        yield* triggerExport
-
-        const requests = yield* MockHttpClient.requests
-        assert.isAtLeast(requests.length, 2)
-
-        const first = findMetric(requests[0], metricName)?.summary?.dataPoints[0]
-        assert.strictEqual(first?.count, 3)
-        assert.strictEqual(first?.sum, 60)
-
-        const second = findMetric(requests[1], metricName)?.summary?.dataPoints[0]
-        assert.strictEqual(second?.count, 4)
-        assert.strictEqual(second?.sum, 100)
-      }).pipe(Effect.provide(TestLayerCumulative)))
   })
 
   describe("delta temporality", () => {
@@ -399,86 +355,65 @@ describe("OtlpMetrics", () => {
         assert.strictEqual(secondA?.asInt, 1) // Delta: 3-2=1
         assert.strictEqual(secondB?.asInt, 2) // Delta: 3-1=2
       }).pipe(Effect.provide(TestLayerDelta)))
+  })
 
-    it.effect("reports summaries cumulatively", () =>
+  describe("Summary", () => {
+    it.effect("exports a single Summary metric with the configured quantiles", () =>
       Effect.gen(function*() {
-        const metricName = "delta_summary_test"
+        const metricName = "summary_test"
         const summary = Metric.summary(metricName, {
-          description: "Test summary",
           maxAge: "1 minute",
           maxSize: 100,
-          quantiles: [0.5, 0.9, 0.99]
+          quantiles: [0.5, 0.9]
         })
+        yield* Metric.update(summary, 10)
+        yield* Metric.update(summary, 20)
+        yield* Metric.update(summary, 30)
+        yield* triggerExport
 
+        const [request] = yield* MockHttpClient.requests
+        const metrics = request.resourceMetrics.flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))
+        assert.deepStrictEqual(metrics.map((metric) => metric.name), [metricName])
+        const point = metrics[0].summary?.dataPoints[0]
+        assert.deepStrictEqual(point?.attributes, [])
+        assert.strictEqual(point?.count, 3)
+        assert.strictEqual(point?.sum, 60)
+        assert.deepStrictEqual(point?.quantileValues, [
+          { quantile: 0.5, value: 20 },
+          { quantile: 0.9, value: 30 }
+        ])
+      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
+
+    it.effect("reports lifetime count and sum with window quantiles in delta mode", () =>
+      Effect.gen(function*() {
+        const metricName = "summary_window_test"
+        const summary = Metric.summary(metricName, {
+          maxAge: "15 seconds",
+          maxSize: 100,
+          quantiles: [0.5]
+        })
         yield* Metric.update(summary, 10)
         yield* Metric.update(summary, 20)
         yield* Metric.update(summary, 30)
         yield* triggerExport
         yield* Metric.update(summary, 40)
         yield* triggerExport
-
-        const requests = yield* MockHttpClient.requests
-        assert.isAtLeast(requests.length, 2)
-
-        // Summary has no temporality: count and sum stay cumulative in delta mode
-        const first = findMetric(requests[0], metricName)?.summary?.dataPoints[0]
-        const second = findMetric(requests[1], metricName)?.summary?.dataPoints[0]
-        assert.strictEqual(first?.count, 3)
-        assert.strictEqual(first?.sum, 60)
-        assert.strictEqual(second?.count, 4)
-        assert.strictEqual(second?.sum, 100)
-        assert.strictEqual(second?.startTimeUnixNano, first?.startTimeUnixNano)
-      }).pipe(Effect.provide(TestLayerDelta)))
-  })
-
-  describe("Summary", () => {
-    it.effect("exports quantile metrics", () =>
-      Effect.gen(function*() {
-        const metricName = "summary_quantiles_test"
-        const summary = Metric.summary(metricName, {
-          description: "Test summary",
-          maxAge: "1 minute",
-          maxSize: 100,
-          quantiles: [0.5, 0.9]
-        })
-
-        yield* Metric.update(summary, 10)
-        yield* Metric.update(summary, 20)
-        yield* Metric.update(summary, 30)
+        // Every observation is now older than maxAge
         yield* triggerExport
 
         const requests = yield* MockHttpClient.requests
-        assert.isAtLeast(requests.length, 1)
-
-        const metric = findMetric(requests[0], metricName)
-        assert.isUndefined(findMetric(requests[0], `${metricName}_quantiles`))
-        assert.isUndefined(metric?.sum)
-        const point = metric?.summary?.dataPoints[0]
-        assert.strictEqual(point?.count, 3)
-        assert.strictEqual(point?.sum, 60)
-        assert.deepStrictEqual(point?.quantileValues?.map((q) => q.quantile), [0, 0.5, 0.9, 1])
-        assert.strictEqual(point?.quantileValues?.[0].value, 10)
-        assert.strictEqual(point?.quantileValues?.[3].value, 30)
-        assert.isFalse(point?.attributes?.some((attr) => attr.key === "quantile"))
-      }).pipe(Effect.provide(TestLayerCumulative)))
-  })
-
-  describe("Summary configured extremes", () => {
-    it.effect("does not duplicate configured quantiles 0 and 1", () =>
-      Effect.gen(function*() {
-        const summary = Metric.summary("summary_extremes_test", {
-          maxAge: "1 minute",
-          maxSize: 100,
-          quantiles: [0, 0.5, 1]
-        })
-        yield* Metric.update(summary, 10)
-        yield* Metric.update(summary, 30)
-        yield* triggerExport
-
-        const [request] = yield* MockHttpClient.requests
-        const point = findMetric(request, "summary_extremes_test")?.summary?.dataPoints[0]
-        assert.deepStrictEqual(point?.quantileValues?.map((q) => q.quantile), [0, 0.5, 1])
-      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
+        const points = requests.map((request) => findMetric(request, metricName)?.summary?.dataPoints[0])
+        assert.deepStrictEqual(
+          points.map((point) => ({ count: point?.count, sum: point?.sum, quantileValues: point?.quantileValues })),
+          [
+            { count: 3, sum: 60, quantileValues: [{ quantile: 0.5, value: 20 }] },
+            { count: 4, sum: 100, quantileValues: [{ quantile: 0.5, value: 40 }] },
+            { count: 4, sum: 100, quantileValues: [] }
+          ]
+        )
+        assert.strictEqual(points[1]?.startTimeUnixNano, points[0]?.startTimeUnixNano)
+        assert.strictEqual(points[2]?.startTimeUnixNano, points[0]?.startTimeUnixNano)
+      }).pipe(Effect.provide(TestLayerDelta), Effect.provideService(Metric.MetricRegistry, new Map())))
   })
 
   describe("units", () => {
@@ -490,8 +425,6 @@ describe("OtlpMetrics", () => {
         yield* Metric.update(bytes, 10)
         const custom = Metric.gauge("unit_custom_test", { attributes: { unit: "{request}" } })
         yield* Metric.update(custom, 1)
-        const big = Metric.gauge("unit_bigint_test", { bigint: true })
-        yield* Metric.update(big, 9007199254740993n)
         yield* triggerExport
 
         const [request] = yield* MockHttpClient.requests
@@ -502,8 +435,25 @@ describe("OtlpMetrics", () => {
         assert.strictEqual(bytesMetric?.unit, "By")
         assert.deepStrictEqual(bytesMetric?.sum?.dataPoints[0].attributes.map((a) => a.key), ["route"])
         assert.strictEqual(findMetric(request, "unit_custom_test")?.unit, "{request}")
-        assert.strictEqual(findMetric(request, "unit_bigint_test")?.gauge?.dataPoints[0].asInt, "9007199254740993")
       }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
+  })
+
+  describe("bigint", () => {
+    it.effect("keeps int64 precision beyond 2^53", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter("bigint_counter_test", { bigint: true })
+        const gauge = Metric.gauge("bigint_gauge_test", { bigint: true })
+        yield* Metric.update(counter, 9007199254740993n)
+        yield* Metric.update(gauge, -9007199254740993n)
+        yield* triggerExport
+        yield* Metric.update(counter, 9007199254740993n)
+        yield* triggerExport
+
+        const [first, second] = yield* MockHttpClient.requests
+        assert.strictEqual(findMetric(first, "bigint_counter_test")?.sum?.dataPoints[0].asInt, "9007199254740993")
+        assert.strictEqual(findMetric(second, "bigint_counter_test")?.sum?.dataPoints[0].asInt, "9007199254740993")
+        assert.strictEqual(findMetric(first, "bigint_gauge_test")?.gauge?.dataPoints[0].asInt, "-9007199254740993")
+      }).pipe(Effect.provide(TestLayerDelta), Effect.provideService(Metric.MetricRegistry, new Map())))
   })
 
   describe("Gauge (no temporality)", () => {
