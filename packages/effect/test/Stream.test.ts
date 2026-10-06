@@ -1428,24 +1428,24 @@ describe("Stream", () => {
 
     it.effect("groupByKey - a group that stops early does not block the others", () =>
       Effect.gen(function*() {
-        const firsts = yield* Stream.range(1, 20).pipe(
+        const result = yield* Stream.range(1, 8).pipe(
           Stream.rechunk(1),
-          Stream.groupByKey((n) => n % 2, { bufferSize: 2 }),
-          Stream.flatMap(([, group]) => Stream.take(group, 1), { concurrency: "unbounded" }),
+          Stream.groupByKey((n) => n % 2, { bufferSize: 1 }),
+          Stream.flatMap(([key, group]) => key === 0 ? group : Stream.take(group, 1), { concurrency: "unbounded" }),
           Stream.runCollect
         )
-        assert.deepStrictEqual(firsts, [1, 2])
+        assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 4, 6, 8])
       }))
 
     it.effect("groupBy - a group that stops early does not block the others", () =>
       Effect.gen(function*() {
-        const firsts = yield* Stream.range(1, 20).pipe(
+        const result = yield* Stream.range(1, 8).pipe(
           Stream.rechunk(1),
-          Stream.groupBy((n) => Effect.succeed([n % 2, n] as const), { bufferSize: 2 }),
-          Stream.flatMap(([, group]) => Stream.take(group, 1), { concurrency: "unbounded" }),
+          Stream.groupBy((n) => Effect.succeed([n % 2, n] as const), { bufferSize: 1 }),
+          Stream.flatMap(([key, group]) => key === 0 ? group : Stream.take(group, 1), { concurrency: "unbounded" }),
           Stream.runCollect
         )
-        assert.deepStrictEqual(firsts, [1, 2])
+        assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 4, 6, 8])
       }))
   })
 
@@ -4639,14 +4639,14 @@ describe("Stream", () => {
 
     it.effect("one side stopping early does not block the other", () =>
       Effect.gen(function*() {
-        const [evens, odds] = yield* Stream.range(1, 100).pipe(
-          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n))
+        const [evens, odds] = yield* Stream.range(1, 8).pipe(
+          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n), { capacity: 1 })
         )
         const result = yield* Effect.all([
-          Stream.runCount(evens),
+          Stream.runCollect(evens),
           Stream.runCollect(Stream.take(odds, 1))
         ], { concurrency: 2 })
-        deepStrictEqual(result, [50, [1]])
+        deepStrictEqual(result, [[2, 4, 6, 8], [1]])
       }).pipe(Effect.scoped))
 
     it.effect("errors", () =>
@@ -4744,16 +4744,16 @@ describe("Stream", () => {
 
     it.effect("partitionEffect - one side stopping early does not block the other", () =>
       Effect.gen(function*() {
-        const [evens, odds] = yield* Stream.range(1, 100).pipe(
+        const [evens, odds] = yield* Stream.range(1, 8).pipe(
           Stream.partitionEffect((n) => Effect.succeed(n % 2 === 0 ? Result.succeed(n) : Result.fail(n)), {
-            capacity: 4
+            capacity: 1
           })
         )
         const result = yield* Effect.all([
-          Stream.runCount(evens),
+          Stream.runCollect(evens),
           Stream.runCollect(Stream.take(odds, 1))
         ], { concurrency: 2 })
-        deepStrictEqual(result, [50, [1]])
+        deepStrictEqual(result, [[2, 4, 6, 8], [1]])
       }).pipe(Effect.scoped))
 
     it.effect("partitionQueue - values", () =>
