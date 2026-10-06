@@ -22,9 +22,11 @@ import * as Multipart from "effect/http/Multipart"
 import * as UrlParams from "effect/http/UrlParams"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as NetAddress from "effect/net/NetAddress"
 import * as Queue from "effect/Queue"
+import * as References from "effect/References"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Socket from "effect/socket/Socket"
@@ -715,11 +717,17 @@ describe("DenoHttpServer", () => {
 
   it.effect("round trips WebSocket frames and closes cleanly", () =>
     Effect.gen(function*() {
-      yield* serveWebSocket(echoWebSocket)
+      const logged = Promise.withResolvers<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/") logged.resolve(annotations["http.status"])
+      })
+      yield* serveWebSocket(echoWebSocket).pipe(Effect.provide(Logger.layer([logger])))
       const server = yield* HttpServer.HttpServer
       const port = (server.address as NetAddress.InetAddress).port
       const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/`, (socket) => socket.send("hello"), 1)
       assert.deepStrictEqual(messages, ["hello"])
+      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("preserves eager WebSocket frames across an async boundary", () =>

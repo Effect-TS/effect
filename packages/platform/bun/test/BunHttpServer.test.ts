@@ -6,10 +6,13 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
+import * as HttpMiddleware from "effect/http/HttpMiddleware"
 import * as HttpServer from "effect/http/HttpServer"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
+import * as Logger from "effect/Logger"
 import * as NetAddress from "effect/net/NetAddress"
+import * as References from "effect/References"
 import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
@@ -47,6 +50,10 @@ const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>) =>
       if (!upgraded) {
         const headerEnd = received.indexOf("\r\n\r\n")
         if (headerEnd === -1) return
+        if (!received.subarray(0, headerEnd).toString().startsWith("HTTP/1.1 101")) {
+          resume(Effect.fail(new Error("WebSocket upgrade was refused")))
+          return
+        }
         upgraded = true
         received = received.subarray(headerEnd + 4)
         Effect.runSync(Deferred.succeed(opened, undefined))
@@ -412,6 +419,11 @@ describe("BunHttpServer", () => {
     it.effect(`closes a WebSocket with the handler's ${name} code`, () =>
       Effect.gen(function*() {
         const opened = yield* Deferred.make<void>()
+        const logged = Promise.withResolvers<unknown>()
+        const logger = Logger.make((options) => {
+          const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+          if (annotations["http.url"] === "/") logged.resolve(annotations["http.status"])
+        })
         // Force-stop Bun after the close frame; graceful stop can hang here.
         const serve = Bun.serve
         let forceStop: (() => void) | undefined
@@ -429,26 +441,30 @@ describe("BunHttpServer", () => {
         }).pipe(Effect.ensuring(Effect.sync(() => {
           Bun.serve = serve
         })))
-        yield* server.serve(Effect.gen(function*() {
-          const request = yield* HttpServerRequest.HttpServerRequest
-          const socket = yield* request.upgrade
-          const readerScope = yield* Scope.fork(yield* Effect.scope)
-          yield* socket.reader.pipe(Scope.provide(readerScope))
-          yield* Deferred.await(opened)
-          if (exit === "explicit") {
-            const writer = yield* socket.writer
-            yield* writer.write(new Socket.CloseEvent(4400, "handler closed"))
-          }
-          if (exit === "interrupt") return yield* Effect.interrupt
-          if (exit === "failure" || exit === "explicit") return yield* Effect.fail(new Error("handler failed"))
-          if (exit === "defect") return yield* Effect.die(new Error("handler defect"))
-          return HttpServerResponse.empty()
-        }))
+        yield* server.serve(
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            const readerScope = yield* Scope.fork(yield* Effect.scope)
+            yield* socket.reader.pipe(Scope.provide(readerScope))
+            yield* Deferred.await(opened)
+            if (exit === "explicit") {
+              const writer = yield* socket.writer
+              yield* writer.write(new Socket.CloseEvent(4400, "handler closed"))
+            }
+            if (exit === "interrupt") return yield* Effect.interrupt
+            if (exit === "failure" || exit === "explicit") return yield* Effect.fail(new Error("handler failed"))
+            if (exit === "defect") return yield* Effect.die(new Error("handler defect"))
+            return HttpServerResponse.empty()
+          }),
+          HttpMiddleware.logger
+        ).pipe(Effect.provide(Logger.layer([logger])))
         yield* Effect.addFinalizer(() => Effect.sync(() => forceStop?.()))
         const port = (server.address as NetAddress.InetAddress).port
         const actual = yield* readWebSocketClose(port, opened)
         forceStop?.()
         assert.strictEqual(actual, code)
+        assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
       }).pipe(Effect.timeout("5 seconds")), 10000)
   }
 
