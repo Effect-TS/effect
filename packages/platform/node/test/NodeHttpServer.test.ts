@@ -489,7 +489,7 @@ describe("HttpServer", () => {
           Tracer.Tracer,
           Tracer.make({
             span(options) {
-              assert.strictEqual(options.name, "http.client GET")
+              assert.strictEqual(options.name, "GET")
               assert.strictEqual(options.kind, "client")
               assert(options.parent._tag === "Some")
               if (options.parent.value._tag !== "Span") {
