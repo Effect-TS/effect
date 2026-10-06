@@ -353,12 +353,6 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
       _tag: "Defect",
       defect: response.error.data
     }
-  } else if (hasError && response.error && response.error._tag === "RequestDefect") {
-    return {
-      _tag: "RequestDefect",
-      requestId: response.id ?? "",
-      defect: response.error.data
-    }
   } else if (Object.hasOwn(response, "chunk") && response.chunk === true) {
     return {
       _tag: "Chunk",
@@ -505,17 +499,6 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
           undefined
       } as any
     }
-    case "RequestDefect":
-      return {
-        jsonrpc: "2.0",
-        id: response.requestId,
-        error: {
-          _tag: "RequestDefect",
-          code: 1,
-          message: "A request defect occurred",
-          data: response.defect
-        }
-      }
     case "Defect":
       return {
         jsonrpc: "2.0",
@@ -554,7 +537,7 @@ interface JsonRpcResponse {
     readonly code: number
     readonly message: string
     readonly data?: unknown
-    readonly _tag?: "Cause" | "Defect" | "RequestDefect"
+    readonly _tag?: "Cause" | "Defect"
   }
 }
 

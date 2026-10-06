@@ -947,7 +947,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
     send: (clientId, response) => {
-      if (response._tag === "Exit" || response._tag === "RequestDefect") {
+      if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
         const cancelled = requests?.get(key)?.cancelled
@@ -960,9 +960,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
           return protocol.send(clientId, response)
         }
         if (
-          response._tag === "RequestDefect" ||
-          (response.exit._tag === "Failure" &&
-            !response.exit.cause.some((failure) => failure._tag === "Fail"))
+          response.exit._tag === "Failure" &&
+          !response.exit.cause.some((failure) => failure._tag === "Fail")
         ) {
           return protocol.send(clientId, {
             _tag: "Exit",
@@ -1172,11 +1171,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
             return f(clientId, request)
           case "Pong":
           case "Exit":
-          case "RequestDefect":
           case "Chunk":
           case "ClientProtocolError":
           case "Defect": {
-            const requestId = request._tag === "Exit" || request._tag === "RequestDefect"
+            const requestId = request._tag === "Exit"
               ? requestKey(request.requestId)
               : undefined
             const session = isHttp
@@ -1189,7 +1187,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
             const reverseKey = waiting?.find((key) =>
               isHttp ? key.profile === session?.negotiatedProfile : key.clientId === clientId
             )
-            if ((request._tag === "Exit" || request._tag === "RequestDefect") && reverseKey === undefined) {
+            if (request._tag === "Exit" && reverseKey === undefined) {
               return Effect.void
             }
             if (reverseKey !== undefined && requestId !== undefined) {

@@ -12,16 +12,14 @@ import { RpcLayer, User } from "./fixtures/rpc-schemas.ts"
 describe("RpcServer", () => {
   describe("request defect isolation over HTTP", () => {
     const Ok = Rpc.make("Ok", { success: Schema.String })
-    const Missing = Rpc.make("Missing")
-    const MissingWithSchemas = Rpc.make("MissingWithSchemas", { success: Schema.Number, error: Schema.String })
     const serverGroup = RpcGroup.make(
       Ok,
       Rpc.make("Invalid", { payload: { value: Schema.String } })
     )
     const clientGroup = RpcGroup.make(
       Ok,
-      Missing,
-      MissingWithSchemas,
+      Rpc.make("Missing"),
+      Rpc.make("MissingWithSchemas", { success: Schema.Number, error: Schema.String }),
       Rpc.make("Invalid", { payload: { value: Schema.Number } })
     )
     const Server = HttpRouter.serve(
@@ -35,13 +33,47 @@ describe("RpcServer", () => {
       { disableListenLog: true, disableLogger: true }
     )
 
-    for (
-      const [name, serialization] of [
-        ["JSON", RpcSerialization.layerJson],
-        ["SchemaBinary", RpcSerialization.layerSchemaBinary()],
-        ["SchemaBinary with fingerprints", RpcSerialization.layerSchemaBinary({ fingerprintPayloads: true })]
-      ] as const
-    ) {
+    // Fingerprinted payloads require both peers to share the schema, so a
+    // mismatch is reported as a fingerprint error instead of the original
+    // diagnostic. The defect still only fails its own request.
+    const fingerprintDiagnostic = "Expected matching layout fingerprint"
+    const cases: ReadonlyArray<{
+      readonly name: string
+      readonly serialization: Layer.Layer<RpcSerialization.RpcSerialization>
+      readonly unknownTag: string | undefined
+      readonly invalidPayload: ReadonlyArray<string>
+    }> = [
+      {
+        name: "JSON",
+        serialization: RpcSerialization.layerJson,
+        unknownTag: undefined,
+        invalidPayload: ["Expected string", "at [\"value\"]"]
+      },
+      {
+        name: "SchemaBinary",
+        serialization: RpcSerialization.layerSchemaBinary(),
+        unknownTag: undefined,
+        invalidPayload: ["Missing key", "at [\"value\"]"]
+      },
+      {
+        name: "SchemaBinary with fingerprints",
+        serialization: RpcSerialization.layerSchemaBinary({ fingerprintPayloads: true }),
+        unknownTag: fingerprintDiagnostic,
+        invalidPayload: [fingerprintDiagnostic]
+      }
+    ]
+
+    const assertDie = (exit: Exit.Exit<unknown, unknown>, diagnostics: ReadonlyArray<string>) => {
+      assert(Exit.isFailure(exit))
+      assert.strictEqual(exit.cause.reasons.length, 1)
+      assert.strictEqual(exit.cause.reasons[0]._tag, "Die")
+      const diagnostic = String(Cause.squash(exit.cause))
+      for (const expected of diagnostics) {
+        assert.include(diagnostic, expected)
+      }
+    }
+
+    for (const { invalidPayload, name, serialization, unknownTag } of cases) {
       const ClientProtocol = RpcClient.layerProtocolHttp({
         url: "",
         transformClient: HttpClient.mapRequest(HttpClientRequest.appendUrl("/rpc"))
@@ -56,12 +88,12 @@ describe("RpcServer", () => {
             const client = yield* RpcClient.make(clientGroup)
             assert.strictEqual(yield* client.Ok(), "ok")
             const missing = yield* Effect.exit(client[tag]())
-            const subsequent = yield* Effect.exit(client.Ok())
-            assert.deepStrictEqual(subsequent, Exit.succeed("ok"))
-            if (!Exit.isFailure(missing)) {
-              return assert.fail(`${tag} must fail with a request defect`)
+            assert.strictEqual(yield* client.Ok(), "ok")
+            if (unknownTag === undefined) {
+              assert.deepStrictEqual(missing, Exit.die(`Unknown request tag: ${tag}`))
+            } else {
+              assertDie(missing, [unknownTag])
             }
-            assert.deepStrictEqual(missing.cause, Cause.die(`Unknown request tag: ${tag}`))
           }).pipe(Effect.provide(ClientProtocol)))
       }
 
@@ -70,20 +102,8 @@ describe("RpcServer", () => {
           const client = yield* RpcClient.make(clientGroup)
           assert.strictEqual(yield* client.Ok(), "ok")
           const invalid = yield* Effect.exit(client.Invalid({ value: 42 }))
-          const subsequent = yield* Effect.exit(client.Ok())
-          assert.deepStrictEqual(subsequent, Exit.succeed("ok"))
-          if (!Exit.isFailure(invalid)) {
-            return assert.fail("Invalid must fail with a request defect")
-          }
-          assert.strictEqual(invalid.cause.reasons.length, 1)
-          assert.strictEqual(invalid.cause.reasons[0]._tag, "Die")
-          const diagnostic = String(Cause.squash(invalid.cause))
-          if (name === "SchemaBinary with fingerprints") {
-            assert.include(diagnostic, "Expected matching layout fingerprint")
-          } else {
-            assert.include(diagnostic, name === "JSON" ? "Expected string" : "Missing key")
-            assert.include(diagnostic, "at [\"value\"]")
-          }
+          assert.strictEqual(yield* client.Ok(), "ok")
+          assertDie(invalid, invalidPayload)
         }).pipe(Effect.provide(ClientProtocol)))
     }
   })
