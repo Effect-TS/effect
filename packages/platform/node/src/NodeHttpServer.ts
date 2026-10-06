@@ -15,6 +15,7 @@
 import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -101,27 +102,62 @@ export const make = Effect.fnUntraced(function*(
   const scope = yield* Effect.scope
   const server = evaluate()
 
-  const shutdown = yield* Effect.callback<void>((resume) => {
-    if (!server.listening) {
-      return resume(Effect.void)
+  // One Deferred, not Effect.cached: timeoutOrElse interrupts the waiter, and
+  // a cached close treats that interruption as abandonment.
+  const closed = Deferred.makeUnsafe<void>()
+  let closeStarted = false
+  let draining = false
+  const pendingResponses = new Set<Http.ServerResponse>()
+  const removeServeListeners: Array<() => void> = []
+
+  const closeIfHeadersUnsent = (nodeResponse: Http.ServerResponse) => {
+    if (!nodeResponse.headersSent) {
+      nodeResponse.setHeader("Connection", "close")
     }
-    server.close((error) => {
-      if (error) {
-        resume(Effect.die(error))
+  }
+  const beginDraining = () => {
+    if (draining) {
+      return
+    }
+    draining = true
+    for (const nodeResponse of pendingResponses) {
+      closeIfHeadersUnsent(nodeResponse)
+    }
+    pendingResponses.clear()
+  }
+  const shutdown = Effect.suspend(() => {
+    if (!closeStarted) {
+      closeStarted = true
+      beginDraining()
+      if (server.listening) {
+        server.close((error) => {
+          Deferred.doneUnsafe(closed, error ? Exit.die(error) : Exit.void)
+        })
       } else {
-        resume(Effect.void)
+        Deferred.doneUnsafe(closed, Exit.void)
       }
-    })
-  }).pipe(Effect.cached)
+    }
+    return Deferred.await(closed)
+  })
 
   const preemptiveShutdown = options.disablePreemptiveShutdown ?
     Effect.void :
     Effect.timeoutOrElse(shutdown, {
       duration: options.gracefulShutdownTimeout ?? Duration.seconds(20),
-      orElse: () => Effect.void
+      orElse: () =>
+        Effect.sync(() => {
+          server.closeAllConnections()
+        }).pipe(Effect.andThen(Deferred.await(closed)))
     })
 
-  yield* Scope.addFinalizer(scope, shutdown)
+  yield* Scope.addFinalizer(
+    scope,
+    shutdown.pipe(Effect.ensuring(Effect.sync(() => {
+      for (const removeListeners of removeServeListeners) {
+        removeListeners()
+      }
+    })))
+  )
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
@@ -166,12 +202,32 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
-      yield* Scope.addFinalizerExit(serveScope, () => {
-        server.off("request", handler)
+      const onRequest = (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => {
+        if (draining) {
+          closeIfHeadersUnsent(nodeResponse)
+        } else {
+          pendingResponses.add(nodeResponse)
+          nodeResponse.once("close", () => {
+            pendingResponses.delete(nodeResponse)
+          })
+        }
+        handler(nodeRequest, nodeResponse)
+      }
+      const removeListeners = () => {
+        server.off("request", onRequest)
         server.off("upgrade", upgradeHandler)
-        return preemptiveShutdown
-      })
-      server.on("request", handler)
+      }
+      removeServeListeners.push(removeListeners)
+      // Preemptive shutdown closes the server from this finalizer. With
+      // disablePreemptiveShutdown, server.close runs on the server scope and
+      // that finalizer removes the listeners after the close completes.
+      if (!options.disablePreemptiveShutdown) {
+        yield* Scope.addFinalizerExit(
+          serveScope,
+          () => preemptiveShutdown.pipe(Effect.ensuring(Effect.sync(removeListeners)))
+        )
+      }
+      server.on("request", onRequest)
       server.on("upgrade", upgradeHandler)
     })
   })
