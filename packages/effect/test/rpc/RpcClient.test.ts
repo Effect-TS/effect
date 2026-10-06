@@ -1,8 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream, Tracer } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
+import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
@@ -601,4 +601,58 @@ describe("RpcClient", () => {
       assert.instanceOf(error, RpcClientError)
       assert.strictEqual(error.reason._tag, "SocketOpenError")
     }))
+
+  describe("tracing", () => {
+    const SpanGroup = RpcGroup.make(Rpc.make("Ping", { success: Schema.String })).prefix("Echo.")
+    type SpanRpcs = RpcGroup.Rpcs<typeof SpanGroup>
+
+    const callPing = (spanPrefix?: string) => {
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      return Effect.gen(function*() {
+        // oxlint-disable-next-line prefer-const
+        let client!: Effect.Success<ReturnType<typeof RpcClient.makeNoSerialization<SpanRpcs, never>>>
+        const server = yield* RpcServer.makeNoSerialization(SpanGroup, {
+          spanPrefix,
+          onFromServer: (response) => client.write(response)
+        })
+        client = yield* RpcClient.makeNoSerialization(SpanGroup, {
+          spanPrefix,
+          supportsAck: true,
+          onFromClient: ({ message }) => server.write(0, message)
+        })
+        assert.strictEqual(yield* client.client["Echo.Ping"](), "pong")
+        return spans
+      }).pipe(
+        Effect.provide(SpanGroup.toLayer({ "Echo.Ping": () => Effect.succeed("pong") })),
+        Effect.provideService(Tracer.Tracer, tracer)
+      )
+    }
+
+    it.effect("follows the OpenTelemetry RPC span conventions", () =>
+      Effect.gen(function*() {
+        const spans = yield* callPing()
+        const client = spans.find((span) => span.kind === "client")
+        const server = spans.find((span) => span.kind === "server")
+        assert(client !== undefined && server !== undefined)
+        for (const span of [client, server]) {
+          assert.strictEqual(span.name, "Echo.Ping")
+          assert.strictEqual(span.attributes.get("rpc.system.name"), "effect_rpc")
+          assert.strictEqual(span.attributes.get("rpc.method"), "Echo.Ping")
+        }
+      }))
+
+    it.effect("keeps prefixed span names when spanPrefix is set", () =>
+      Effect.gen(function*() {
+        const spans = yield* callPing("Custom")
+        const names = spans.map((span) => span.name).sort()
+        assert.deepStrictEqual(names, ["Custom.Echo.Ping", "Custom.Echo.Ping"])
+      }))
+  })
 })

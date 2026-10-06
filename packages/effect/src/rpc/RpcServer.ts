@@ -44,6 +44,7 @@ import type * as Types from "../Types.ts"
 import * as Transferable from "../workers/Transferable.ts"
 import type { WorkerError } from "../workers/WorkerError.ts"
 import * as WorkerRunner from "../workers/WorkerRunner.ts"
+import * as RpcTracing from "./internal/tracing.ts"
 import * as Rpc from "./Rpc.ts"
 import type * as RpcGroup from "./RpcGroup.ts"
 import type {
@@ -117,7 +118,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const enableTracing = options.disableTracing !== true
   const enableSpanPropagation = options.disableSpanPropagation !== true
   const supportsAck = options.disableClientAcks !== true
-  const spanPrefix = options.spanPrefix ?? "RpcServer"
+  const spanPrefix = options.spanPrefix
+  const spanAttributes = RpcTracing.makeSpanAttributes(options.spanAttributes)
   const concurrency = options.concurrency ?? "unbounded"
   const disableFatalDefects = options.disableFatalDefects ?? false
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Scope.Scope>()
@@ -331,9 +333,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         requestFiber.context,
         Tracer.ParentSpan
       )
-      effect = Effect.withSpan(effect, `${spanPrefix}.${request.tag}`, {
+      effect = Effect.withSpan(effect, RpcTracing.spanName(spanPrefix, request.tag), {
         captureStackTrace: false,
-        attributes: options.spanAttributes,
+        kind: "server",
+        attributes: spanAttributes(request.tag),
         parent: enableSpanPropagation && request.spanId
           ? Tracer.externalSpan({
             traceId: request.traceId!,

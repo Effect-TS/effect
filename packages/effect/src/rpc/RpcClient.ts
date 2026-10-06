@@ -43,6 +43,7 @@ import type { Span } from "../Tracer.ts"
 import * as Transferable from "../workers/Transferable.ts"
 import * as Worker from "../workers/Worker.ts"
 import type { WorkerError } from "../workers/WorkerError.ts"
+import * as RpcTracing from "./internal/tracing.ts"
 import * as Rpc from "./Rpc.ts"
 import { RpcClientDefect, RpcClientError } from "./RpcClientError.ts"
 import type * as RpcGroup from "./RpcGroup.ts"
@@ -268,7 +269,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     readonly flatten?: Flatten | undefined
   }
 ) {
-  const spanPrefix = options?.spanPrefix ?? "RpcClient"
+  const spanPrefix = options.spanPrefix
+  const spanAttributes = RpcTracing.makeSpanAttributes(options.spanAttributes)
   const supportsAck = options?.supportsAck ?? true
   const disableTracing = options?.disableTracing ?? false
   const generateRequestId = options?.generateRequestId ?? (() => requestIdCounter++ as RequestId)
@@ -336,8 +338,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             opts?.discard ?? false
           )
         return disableTracing ? onRequest(undefined) : Effect.useSpan(
-          `${spanPrefix}.${rpc._tag}`,
-          { attributes: options.spanAttributes },
+          RpcTracing.spanName(spanPrefix, rpc._tag),
+          { kind: "client", attributes: spanAttributes(rpc._tag) },
           onRequest
         )
       }
@@ -448,9 +450,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       return yield* Effect.interrupt
     }
 
-    const span = disableTracing ? undefined : yield* Effect.makeSpanScoped(`${spanPrefix}.${rpc._tag}`, {
-      attributes: options.spanAttributes
-    })
+    const span = disableTracing ? undefined : yield* Effect.makeSpanScoped(
+      RpcTracing.spanName(spanPrefix, rpc._tag),
+      { kind: "client", attributes: spanAttributes(rpc._tag) }
+    )
     const fiber = Fiber.getCurrent()!
     const id = generateRequestId()
 
