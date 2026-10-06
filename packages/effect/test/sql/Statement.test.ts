@@ -96,37 +96,43 @@ describe("Statement", () => {
       }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  for (
-    const [name, spanAttributes] of [
-      ["app", [["db.namespace", "app"], ["server.address", "db"], ["server.port", 5432], [
-        "db.system.name",
-        "postgresql"
-      ]]],
-      ["db:3306", [["server.address", "db"], ["server.port", 3306], ["db.system.name", "mysql"]]],
-      ["db", [["server.address", "db"], ["db.system.name", "mysql"]]],
-      ["sqlite", [["db.system.name", "sqlite"]]],
-      ["sql.execute", []]
-    ] satisfies Array<[string, Array<readonly [string, unknown]>]>
-  ) {
-    it.effect(
-      `names statement and stream spans ${name}`,
-      () =>
-        Effect.gen(function*() {
-          const sql = yield* makeClient(
-            Effect.gen(function*() {
-              assert.strictEqual((yield* Effect.orDie(Effect.currentSpan)).name, name)
-            }),
-            false,
-            spanAttributes
-          )
-          yield* sql`select 1`
-          yield* Stream.runDrain(sql`select 1`.stream)
-        }).pipe(
-          Effect.provideService(Statement.SpanPropagationEnabled, true),
-          Effect.provide(Reactivity.layer)
+  it.effect.each(
+    [
+      {
+        name: "app",
+        spanAttributes: [
+          ["db.namespace", "app"],
+          ["server.address", "db"],
+          ["server.port", 5432],
+          ["db.system.name", "postgresql"]
+        ]
+      },
+      {
+        name: "db:3306",
+        spanAttributes: [["server.address", "db"], ["server.port", 3306], ["db.system.name", "mysql"]]
+      },
+      { name: "db", spanAttributes: [["server.address", "db"], ["db.system.name", "mysql"]] },
+      { name: "sqlite", spanAttributes: [["db.system.name", "sqlite"]] },
+      { name: "sql.execute", spanAttributes: [] }
+    ] satisfies Array<{ name: string; spanAttributes: Array<readonly [string, unknown]> }>
+  )(
+    "names statement and stream spans $name",
+    ({ name, spanAttributes }) =>
+      Effect.gen(function*() {
+        const sql = yield* makeClient(
+          Effect.gen(function*() {
+            assert.strictEqual((yield* Effect.orDie(Effect.currentSpan)).name, name)
+          }),
+          false,
+          spanAttributes
         )
-    )
-  }
+        yield* sql`select 1`
+        yield* Stream.runDrain(sql`select 1`.stream)
+      }).pipe(
+        Effect.provideService(Statement.SpanPropagationEnabled, true),
+        Effect.provide(Reactivity.layer)
+      )
+  )
 
   it.effect("records execution methods separately from database operations", () =>
     Effect.gen(function*() {

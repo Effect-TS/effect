@@ -1275,49 +1275,32 @@ const ATTR_DB_QUERY_TEXT = "db.query.text"
 const ATTR_SQL_METHOD = "effect.sql.method"
 
 const spanNames = memoize((spanAttributes: ReadonlyArray<readonly [string, unknown]>) => {
-  let namespace: unknown
-  let address: unknown
-  let port: unknown
-  let system: unknown
-  for (const [key, value] of spanAttributes) {
-    switch (key) {
-      case "db.namespace":
-        namespace = value
-        break
-      case "server.address":
-        address = value
-        break
-      case "server.port":
-        port = value
-        break
-      case "db.system.name":
-        system = value
-        break
-    }
-  }
-  const target = isNonEmptyString(namespace)
+  const attributes = new Map(spanAttributes)
+  const namespace = attributes.get("db.namespace")
+  const address = attributes.get("server.address")
+  const port = attributes.get("server.port")
+  const system = attributes.get("db.system.name")
+  const target = typeof namespace === "string"
     ? namespace
-    : isNonEmptyString(address)
-    ? port === undefined ? address : `${address}:${port}`
+    : typeof address === "string"
+    ? (port === undefined ? address : `${address}:${port}`)
     : undefined
   return {
     target,
-    statement: target ?? (isNonEmptyString(system) ? system : "sql.execute")
+    statement: target ?? (typeof system === "string" ? system : "sql.execute")
   }
 })
 
-const isNonEmptyString = (u: unknown): u is string => typeof u === "string" && u.length > 0
-
 /**
- * Uses `db.namespace` or `server.address[:server.port]` as the target.
- * An operation prefixes the target, or stands alone without one.
- * Without an operation or target, falls back to `db.system.name`, then `sql.execute`.
+ * OpenTelemetry span name: `{operation} {target}`, `{target}`, `{operation}`,
+ * `db.system.name`, or `sql.execute`, where the target is `db.namespace` or
+ * `server.address[:server.port]`.
  *
  * @internal
  */
 export const spanName = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-  operation?: string | undefined
+  operation?: string
 ): string => {
   const names = spanNames(spanAttributes)
   if (operation === undefined) {
