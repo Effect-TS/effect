@@ -36,11 +36,8 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
   if (store !== undefined) {
     return store
   }
-  // A Suspense boundary can hydrate long after the rest of the page. While a
-  // hydrated reader is subscribed, keep serving the value it hydrated with so
-  // later boundaries match the server HTML even if the atom has changed;
-  // React then re-renders them with the live value. The server never
-  // subscribes, so server renders always read the registry.
+  // Keep the hydration snapshot while any reader is subscribed, so late
+  // boundaries match the server HTML. SSR has no subscribers and reads fresh values.
   let subscribers = 0
   let serverSnapshot: { readonly value: A } | undefined
   const newStore: AtomStore<A> = {
@@ -74,8 +71,7 @@ function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A
 
 function useSelectedStore<A, B>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>, f: (_: A) => B): B {
   const store = makeStore(registry, atom)
-  // Memoize on the source value so both snapshots return a stable result, and
-  // the hydrated value is reused when the source has not changed.
+  // Both snapshots must return the same selected value for an unchanged source.
   const select = React.useMemo(() => {
     let last: { readonly source: A; readonly value: B } | undefined
     return (source: A): B => {
@@ -142,12 +138,11 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  *
  * **Gotchas**
  *
- * During hydration, a Suspense boundary that hydrates late renders the value
- * that earlier readers of the same atom hydrated with, as long as one of them is
- * still mounted, then updates to the live value. React still reports a
- * hydration mismatch if the atom changes before any of its readers hydrate or
- * after all of them unmount, or if a derived atom is first read inside a late
- * boundary.
+ * Late Suspense boundaries hydrate with the same atom snapshot as earlier
+ * readers, then update to the live value. The snapshot lasts until all readers
+ * unsubscribe. Changes before the first reader hydrates or after the last
+ * unsubscribes can still cause mismatches, as can a derived atom first read
+ * inside a late boundary.
  *
  * @see {@link useAtom} for reading and updating a writable atom from one component
  * @see {@link useAtomRef} for reading an `AtomRef` directly
