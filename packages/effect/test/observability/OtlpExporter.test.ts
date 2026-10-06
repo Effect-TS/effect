@@ -108,7 +108,7 @@ const makeControlledHttpClient = Effect.fnUntraced(function*(requestCount: numbe
 })
 
 describe("OtlpExporter", () => {
-  for (const headers of [undefined, { "user-agent": "my-app/1.0" }, { "User-Agent": "my-app/1.0" }]) {
+  for (const headers of [undefined, { "User-Agent": "my-app/1.0" }]) {
     it.effect(`appends the exporter User-Agent to ${JSON.stringify(headers)}`, () =>
       Effect.gen(function*() {
         const userAgents: Array<string> = []

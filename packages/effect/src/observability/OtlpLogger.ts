@@ -17,7 +17,6 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import type * as Headers from "../http/Headers.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
-import * as InternalRecord from "../internal/record.ts"
 import * as Layer from "../Layer.ts"
 import * as Logger from "../Logger.ts"
 import type * as LogLevel from "../LogLevel.ts"
@@ -207,18 +206,18 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
 
   const attributes: Record<string, unknown> = { ...options.fiber.getRef(CurrentLogAnnotations) }
   // Generated attributes override annotations; outermost spans win duplicate labels.
-  InternalRecord.assignProperty(attributes, "effect.fiberId", options.fiber.id)
+  attributes["effect.fiberId"] = options.fiber.id
   if (!opts.excludeLogSpans) {
     for (const [label, startTime] of options.fiber.getRef(CurrentLogSpans)) {
-      InternalRecord.assignProperty(attributes, `effect.log_span.${label}`, eventMillis - startTime)
+      attributes[`effect.log_span.${label}`] = eventMillis - startTime
     }
   }
   // Type and message describe the first error; the stacktrace includes the full cause.
   const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
   if (errors.length > 0) {
-    InternalRecord.assignProperty(attributes, "exception.type", errors[0].name)
-    InternalRecord.assignProperty(attributes, "exception.message", errors[0].message)
-    InternalRecord.assignProperty(attributes, "exception.stacktrace", errors.map((error) => error.stack).join("\n"))
+    attributes["exception.type"] = errors[0].name
+    attributes["exception.message"] = errors[0].message
+    attributes["exception.stacktrace"] = errors.map((error) => error.stack).join("\n")
   }
 
   const message = Arr.ensure(options.message)

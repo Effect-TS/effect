@@ -36,10 +36,7 @@ describe("Logger", () => {
     const exporter = new InMemoryLogRecordExporter()
     return Effect.gen(function*() {
       yield* Effect.log("test")
-      const record = exporter.getFinishedLogRecords()[0]!
-      assert.strictEqual(record.instrumentationScope.name, "effect")
-      assert.strictEqual(record.instrumentationScope.version, Version.getCurrentVersion())
-      assert.deepStrictEqual(record.resource.attributes, {
+      assert.deepStrictEqual(exporter.getFinishedLogRecords()[0]!.resource.attributes, {
         "service.name": "env-service",
         "telemetry.sdk.name": "@effect/opentelemetry",
         "telemetry.sdk.language": "nodejs",

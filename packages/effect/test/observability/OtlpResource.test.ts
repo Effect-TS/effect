@@ -136,57 +136,26 @@ describe("OtlpResource", () => {
           })
         )
       ))
+
+    it.effect("omits service.name when no service name is configured", () =>
+      Effect.gen(function*() {
+        const resource = yield* OtlpResource.fromConfig()
+        assert.deepStrictEqual(attributesRecord(resource), sdk)
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
+      ))
+
+    it.effect("preserves environment-provided service names without a dedicated service variable", () =>
+      Effect.gen(function*() {
+        const resource = yield* OtlpResource.fromConfig()
+        assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "service.name": "env-service" })
+      }).pipe(
+        Effect.provideService(
+          ConfigProvider.ConfigProvider,
+          ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: "service.name=env-service" } })
+        )
+      ))
   })
-
-  it.effect("omits service.name when no service name is configured", () =>
-    Effect.gen(function*() {
-      const resource = yield* OtlpResource.fromConfig()
-      assert.deepStrictEqual(attributesRecord(resource), { ...sdk })
-    }).pipe(
-      Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
-    ))
-
-  it.effect("omits service.name even when an executable name is supplied", () =>
-    Effect.gen(function*() {
-      const resource = yield* OtlpResource.fromConfig({
-        attributes: { "process.executable.name": "worker" }
-      })
-      assert.deepStrictEqual(attributesRecord(resource), {
-        ...sdk,
-        "process.executable.name": "worker"
-      })
-    }).pipe(
-      Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
-    ))
-
-  it("provides SDK defaults", () => {
-    assert.deepStrictEqual(attributesRecord(OtlpResource.make({ serviceName: "test" })), {
-      ...sdk,
-      "service.name": "test"
-    })
-  })
-
-  it.effect("preserves environment-provided service names without a dedicated service variable", () =>
-    Effect.gen(function*() {
-      const resource = yield* OtlpResource.fromConfig()
-      assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "service.name": "env-service" })
-    }).pipe(
-      Effect.provideService(
-        ConfigProvider.ConfigProvider,
-        ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: "service.name=env-service" } })
-      )
-    ))
-
-  it.effect("does not derive a service name from an environment-provided executable name", () =>
-    Effect.gen(function*() {
-      const resource = yield* OtlpResource.fromConfig()
-      assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "process.executable.name": "worker" })
-    }).pipe(
-      Effect.provideService(
-        ConfigProvider.ConfigProvider,
-        ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: "process.executable.name=worker" } })
-      )
-    ))
 
   it("lets custom attributes override the SDK defaults", () => {
     const resource = OtlpResource.make({

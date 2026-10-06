@@ -49,35 +49,17 @@ export const make = (options: {
   readonly serviceName?: string | undefined
   readonly serviceVersion?: string | undefined
   readonly attributes?: Record<string, unknown> | undefined
-}): Resource => {
-  const resourceAttributes = entriesToAttributes(Object.entries({
+}): Resource => ({
+  attributes: entriesToAttributes(Object.entries({
     "telemetry.sdk.name": "effect",
     "telemetry.sdk.language": isBrowser ? "webjs" : "nodejs",
     "telemetry.sdk.version": Version.getCurrentVersion(),
-    ...options.attributes
-  }))
-  if (options.serviceName) {
-    resourceAttributes.push({
-      key: "service.name",
-      value: {
-        stringValue: options.serviceName
-      }
-    })
-  }
-  if (options.serviceVersion) {
-    resourceAttributes.push({
-      key: "service.version",
-      value: {
-        stringValue: options.serviceVersion
-      }
-    })
-  }
-
-  return {
-    attributes: resourceAttributes,
-    droppedAttributesCount: 0
-  }
-}
+    ...options.attributes,
+    ...(options.serviceName ? { "service.name": options.serviceName } : undefined),
+    ...(options.serviceVersion ? { "service.version": options.serviceVersion } : undefined)
+  })),
+  droppedAttributesCount: 0
+})
 
 /**
  * Creates an OTLP resource from explicit options and OpenTelemetry

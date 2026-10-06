@@ -195,15 +195,13 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
-  const defaultUserAgent = `OTel-OTLP-Exporter-JavaScript-Effect-${options.label}/${Version.getCurrentVersion()}`
+  const exporterUserAgent = `OTel-OTLP-Exporter-JavaScript-Effect-${options.label}/${Version.getCurrentVersion()}`
   const userHeaders = Headers.fromInput(options.headers)
+  const userAgent = userHeaders["user-agent"]
   const headers = Headers.set(
     userHeaders,
     "user-agent",
-    Option.match(Headers.get(userHeaders, "user-agent"), {
-      onNone: () => defaultUserAgent,
-      onSome: (userAgent) => `${userAgent} ${defaultUserAgent}`
-    })
+    userAgent ? `${userAgent} ${exporterUserAgent}` : exporterUserAgent
   )
 
   const request = HttpClientRequest.post(options.url, { headers })

@@ -111,7 +111,7 @@ export const make: Effect.Effect<
 
     const now = options.date.getTime()
     for (const [label, startTime] of options.fiber.getRef(References.CurrentLogSpans)) {
-      Rec.assignProperty(attributes, `effect.log_span.${label}`, now - startTime)
+      attributes[`effect.log_span.${label}`] = now - startTime
     }
 
     // Type and message describe the first error; the stacktrace includes the full cause.

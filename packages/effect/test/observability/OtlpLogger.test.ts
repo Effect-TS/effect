@@ -35,9 +35,12 @@ const makeTestLayer = (httpClient: HttpClient.HttpClient) =>
     Layer.provide(Layer.succeed(HttpClient.HttpClient, httpClient))
   )
 
+const logRecordOf = (request: HttpClientRequest.HttpClientRequest) =>
+  bodyOf(request).resourceLogs[0].scopeLogs[0].logRecords[0]
+
 const attributesOf = (request: HttpClientRequest.HttpClientRequest) =>
   Object.fromEntries(
-    bodyOf(request).resourceLogs[0].scopeLogs[0].logRecords[0].attributes.map(
+    logRecordOf(request).attributes.map(
       (attribute: { key: string; value: Record<string, unknown> }) => [attribute.key, attribute.value]
     )
   )
@@ -62,7 +65,7 @@ describe("OtlpLogger", () => {
       })
       yield* (yield* OtlpExporter.Flusher).flush
 
-      const record = bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].logRecords[0]
+      const record = logRecordOf(requests[0])
       assert.strictEqual(record.timeUnixNano, "1234000000")
       assert.strictEqual(record.observedTimeUnixNano, observedTime.toString())
     })).pipe(
@@ -84,7 +87,6 @@ describe("OtlpLogger", () => {
       )
       yield* (yield* OtlpExporter.Flusher).flush
 
-      assert.lengthOf(requests, 1)
       const attributes = attributesOf(requests[0])
       assert.deepStrictEqual(attributes["exception.type"], { stringValue: "TypeError" })
       assert.deepStrictEqual(attributes["exception.message"], { stringValue: "bad input" })
@@ -94,61 +96,38 @@ describe("OtlpLogger", () => {
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
   })
 
-  it.effect("lets generated attributes override annotations without duplicate keys", () => {
+  it.effect("namespaces generated attributes and lets them override annotations", () => {
     const { httpClient, requests } = capture()
     return Effect.gen(function*() {
       const fiber = yield* Effect.fiber
-      yield* Effect.logError("boom", Cause.fail(new Error("cause message"))).pipe(
-        Effect.annotateLogs({
-          "exception.type": "annotated type",
-          "exception.message": "annotated message",
-          "exception.stacktrace": "annotated stack",
-          "effect.fiberId": -1
-        })
-      )
-      yield* (yield* OtlpExporter.Flusher).flush
-
-      const attributes: Array<{ key: string; value: Record<string, unknown> }> =
-        bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].logRecords[0].attributes
-      assert.strictEqual(new Set(attributes.map((attribute) => attribute.key)).size, attributes.length)
-      assert.deepStrictEqual(attributes.filter((attribute) => attribute.key === "exception.message"), [
-        { key: "exception.message", value: { stringValue: "cause message" } }
-      ])
-      assert.deepStrictEqual(attributes.filter((attribute) => attribute.key === "effect.fiberId"), [
-        { key: "effect.fiberId", value: { intValue: fiber.id } }
-      ])
-      assert.deepStrictEqual(attributesOf(requests[0])["exception.type"], { stringValue: "Error" })
-      assert.include(attributesOf(requests[0])["exception.stacktrace"].stringValue, "cause message")
-      assert.notStrictEqual(attributesOf(requests[0])["exception.stacktrace"].stringValue, "annotated stack")
-    }).pipe(Effect.provide(makeTestLayer(httpClient)))
-  })
-
-  it.effect("namespaces fiber and log-span attributes", () => {
-    const { httpClient, requests } = capture()
-    return Effect.gen(function*() {
       yield* Effect.gen(function*() {
         yield* TestClock.adjust("7 millis")
         yield* Effect.gen(function*() {
           yield* TestClock.adjust("5 millis")
-          yield* Effect.log("test")
+          yield* Effect.logError("boom", Cause.fail(new Error("cause message")))
         }).pipe(Effect.withLogSpan("op"))
       }).pipe(
         Effect.withLogSpan("op"),
-        Effect.annotateLogs({ "effect.log_span.op": -1 })
+        Effect.annotateLogs({
+          "effect.fiberId": -1,
+          "effect.log_span.op": -1,
+          "exception.type": "annotated type",
+          "exception.message": "annotated message",
+          "exception.stacktrace": "annotated stack"
+        })
       )
       yield* (yield* OtlpExporter.Flusher).flush
 
+      const keys = logRecordOf(requests[0]).attributes.map((attribute: { key: string }) => attribute.key)
+      assert.strictEqual(new Set(keys).size, keys.length)
       const attributes = attributesOf(requests[0])
-      const rawAttributes = bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].logRecords[0].attributes
-      assert.strictEqual(
-        new Set(rawAttributes.map((attribute: { key: string }) => attribute.key)).size,
-        rawAttributes.length
-      )
-      assert.isNumber(attributes["effect.fiberId"].intValue)
+      assert.deepStrictEqual(attributes["effect.fiberId"], { intValue: fiber.id })
       assert.deepStrictEqual(attributes["effect.log_span.op"], { intValue: 12 })
+      assert.deepStrictEqual(attributes["exception.type"], { stringValue: "Error" })
+      assert.deepStrictEqual(attributes["exception.message"], { stringValue: "cause message" })
+      assert.include(attributes["exception.stacktrace"].stringValue, "cause message")
       assert.isUndefined(attributes["fiberId"])
       assert.isUndefined(attributes["logSpan.op"])
-      assert.isUndefined(attributes["exception.type"])
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
   })
 

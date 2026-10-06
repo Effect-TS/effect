@@ -56,6 +56,14 @@ export const layer = (config: {
     Resources.resourceFromAttributes(configToAttributes(config))
   )
 
+const sdkAttributes = (): Record<string, string> => ({
+  [OtelSemConv.ATTR_TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
+  [OtelSemConv.ATTR_TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
+    ? OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
+    : OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_WEBJS,
+  [OtelSemConv.ATTR_TELEMETRY_SDK_VERSION]: Version.getCurrentVersion()
+})
+
 /**
  * Converts resource configuration into OpenTelemetry attributes, adding service name, optional service version, and telemetry SDK metadata.
  *
@@ -99,14 +107,6 @@ export const configToAttributes = (options: {
   }
   return attributes
 }
-
-const sdkAttributes = (): Record<string, string> => ({
-  [OtelSemConv.ATTR_TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
-  [OtelSemConv.ATTR_TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
-    ? OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
-    : OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_WEBJS,
-  [OtelSemConv.ATTR_TELEMETRY_SDK_VERSION]: Version.getCurrentVersion()
-})
 
 /**
  * Creates a `Resource` layer with SDK defaults overridden by OpenTelemetry environment variables and then additional attributes.
