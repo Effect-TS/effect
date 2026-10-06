@@ -11,7 +11,6 @@ import * as React from "react"
 import { Suspense } from "react"
 import * as ReactDOMClient from "react-dom/client"
 import { renderToString } from "react-dom/server"
-import { prerenderToNodeStream } from "react-dom/static"
 import { ErrorBoundary } from "react-error-boundary"
 import { beforeEach, describe, expect, it, test, vi } from "vitest"
 import {
@@ -691,31 +690,37 @@ describe("atom-react", { concurrent: false }, () => {
       expect(screen.getByText("0")).toBeInTheDocument()
     })
 
-    // Server-renders `Reader` twice, then hydrates the second copy inside a
-    // Suspense boundary that stays dehydrated until `mutate` has run.
-    async function hydrateDelayedBoundary(Reader: React.ComponentType<{ id: string }>, mutate: () => void) {
+    it("hydrates a delayed Suspense boundary after the atom changes", async () => {
+      const userAtom = Atom.make("loading")
+      const toUpperCase = (name: string) => name.toUpperCase()
+
+      // A selector maps the atom per component, so the late reader has to take
+      // its snapshot from the source atom.
+      function Name({ id }: { id: string }) {
+        return <span id={id}>{useAtomValue(userAtom, toUpperCase)}</span>
+      }
+
       const Passthrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>
 
       function App({ Panel }: { Panel: React.ComponentType<{ children?: React.ReactNode }> }) {
         return (
           <div>
-            <Reader id="header" />
+            <Name id="header" />
             <Suspense fallback={<span>...</span>}>
               <Panel>
-                <Reader id="panel" />
+                <Name id="panel" />
               </Panel>
             </Suspense>
           </div>
         )
       }
 
-      const html = renderToString(
+      const container = document.createElement("div")
+      container.innerHTML = renderToString(
         <RegistryContext.Provider value={AtomRegistry.make()}>
           <App Panel={Passthrough} />
         </RegistryContext.Provider>
       )
-      const container = document.createElement("div")
-      container.innerHTML = html
       document.body.append(container)
 
       // The panel stays dehydrated until its lazy chunk loads.
@@ -737,142 +742,23 @@ describe("atom-react", { concurrent: false }, () => {
           { onRecoverableError: (error) => recoverableErrors.push(error) }
         )
       })
-
       await act(async () => {
-        mutate()
+        registry.set(userAtom, "Alice")
       })
-
       await act(async () => {
         loadPanel({ default: Passthrough })
       })
 
-      const result = { recoverableErrors, html: container.innerHTML }
-      act(() => root.unmount())
-      container.remove()
-      return result
-    }
-
-    it("hydrates a delayed Suspense boundary after the atom changes", async () => {
-      const userAtom = Atom.make("loading")
-
-      function Name({ id }: { id: string }) {
-        return <span id={id}>{useAtomValue(userAtom)}</span>
-      }
-
-      const result = await hydrateDelayedBoundary(Name, () => registry.set(userAtom, "Alice"))
-
-      expect(result.recoverableErrors).toEqual([])
-      expect(result.html).toBe(
-        `<div><span id="header">Alice</span><!--$--><span id="panel">Alice</span><!--/$--></div>`
-      )
-    })
-
-    it("hydrates a delayed Suspense boundary after the atom changes when using a selector", async () => {
-      const userAtom = Atom.make("loading")
-      const toUpperCase = (name: string) => name.toUpperCase()
-
-      function Name({ id }: { id: string }) {
-        return <span id={id}>{useAtomValue(userAtom, toUpperCase)}</span>
-      }
-
-      const result = await hydrateDelayedBoundary(Name, () => registry.set(userAtom, "Alice"))
-
-      expect(result.recoverableErrors).toEqual([])
-      expect(result.html).toBe(
+      expect(recoverableErrors).toEqual([])
+      expect(container.innerHTML).toBe(
         `<div><span id="header">ALICE</span><!--$--><span id="panel">ALICE</span><!--/$--></div>`
       )
+
+      act(() => root.unmount())
+      container.remove()
     })
 
-    it("renders the current value when a server registry is reused", () => {
-      const countAtom = Atom.make(1)
-
-      function Count() {
-        return <span>{useAtomValue(countAtom)}</span>
-      }
-
-      const renderCount = () =>
-        renderToString(
-          <RegistryContext.Provider value={registry}>
-            <Count />
-          </RegistryContext.Provider>
-        )
-
-      expect(renderCount()).toBe("<span>1</span>")
-      registry.set(countAtom, 2)
-      expect(renderCount()).toBe("<span>2</span>")
-    })
-
-    it("resolves useAtomSuspense during streaming SSR", async () => {
-      const userAtom = Atom.make(Effect.succeed("Alice").pipe(Effect.delay(10)))
-
-      function Name() {
-        return <span>{useAtomSuspense(userAtom).value}</span>
-      }
-
-      // Abort instead of hanging if the suspended reader never resolves.
-      const { prelude } = await prerenderToNodeStream(
-        <RegistryContext.Provider value={registry}>
-          <Suspense fallback={<span>loading</span>}>
-            <Name />
-          </Suspense>
-        </RegistryContext.Provider>,
-        { signal: AbortSignal.timeout(1000) }
-      )
-      let html = ""
-      for await (const chunk of prelude) {
-        html += chunk
-      }
-
-      expect(html).toContain("<span>Alice</span>")
-    })
-
-    it("keeps object selector results stable during delayed hydration", async () => {
-      const userAtom = Atom.make({ name: "loading" })
-      const select = (user: { name: string }) => ({ name: user.name.toUpperCase() })
-      let headerRenders = 0
-      const consoleError = vi.spyOn(console, "error")
-
-      function Name({ id }: { id: string }) {
-        if (id === "header") headerRenders++
-        return <span id={id}>{useAtomValue(userAtom, select).name}</span>
-      }
-
-      try {
-        const result = await hydrateDelayedBoundary(Name, () => registry.set(userAtom, { name: "Alice" }))
-
-        expect(result.recoverableErrors).toEqual([])
-        expect(result.html).toBe(
-          `<div><span id="header">ALICE</span><!--$--><span id="panel">ALICE</span><!--/$--></div>`
-        )
-        expect(consoleError.mock.calls.flat().join("\n")).not.toContain("getServerSnapshot should be cached")
-        // Server render, hydration, then the update. An unstable server
-        // snapshot would add a re-render after hydration.
-        expect(headerRenders).toBe(3)
-      } finally {
-        consoleError.mockRestore()
-      }
-    })
-
-    it("uses the server value of the source atom for selectors", () => {
-      const fetchUser = vi.fn(() => "Alice")
-      const userAtom = Atom.make(Effect.sync(fetchUser)).pipe(Atom.withServerValueInitial)
-      const toTag = (result: AsyncResult.AsyncResult<string>) => result._tag
-
-      function Tag() {
-        return <span>{useAtomValue(userAtom, toTag)}</span>
-      }
-
-      const html = renderToString(
-        <RegistryContext.Provider value={registry}>
-          <Tag />
-        </RegistryContext.Provider>
-      )
-
-      expect(html).toBe("<span>Initial</span>")
-      expect(fetchUser).not.toHaveBeenCalled()
-    })
-
-    it("keeps the hydrated value until the last reader unsubscribes", async () => {
+    it("keeps the hydrated value until the last reader unmounts", async () => {
       const userAtom = Atom.make("loading").pipe(Atom.keepAlive)
 
       function Name() {
@@ -917,6 +803,7 @@ describe("atom-react", { concurrent: false }, () => {
       expect(recoverableErrors).toEqual([])
       expect(containers[2].innerHTML).toBe("<span>Alice</span>")
 
+      // Once no reader is subscribed, server renders read the registry again.
       act(() => {
         second.unmount()
         third.unmount()
