@@ -315,7 +315,7 @@ export const cast: <A, B>(a: A) => B = identity as any
  * @category constructors
  * @since 2.0.0
  */
-export const constant = <A>(value: A): LazyArg<A> => () => value
+export const constant = <const A>(value: A): LazyArg<A> => () => value
 
 /**
  * Returns `true` when called.

@@ -2,6 +2,13 @@ import { Function } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Function", () => {
+  it("constant preserves argument literals", () => {
+    expect(Function.constant("other")).type.toBe<Function.LazyArg<"other">>()
+    expect(Function.constant(1)).type.toBe<Function.LazyArg<1>>()
+    expect(Function.constant(true)).type.toBe<Function.LazyArg<true>>()
+    expect(Function.constant([1, "a"])).type.toBe<Function.LazyArg<readonly [1, "a"]>>()
+  })
+
   it("memoize", () => {
     const memoized = Function.memoize((input: { readonly n: number }) => input.n)
     expect(memoized).type.toBe<(input: { readonly n: number }) => number>()
