@@ -225,11 +225,18 @@ const responseSpanExit = (
     return cause !== undefined && Cause.hasInterruptsOnly(cause) ? Exit.failCause(cause) : Exit.succeed(response)
   }
   span.attribute("error.type", String(response.status))
-  return cause !== undefined
-    ? Exit.failCause(cause)
-    : Exit.fail(
-      tracing.withoutStackTrace(() => new HttpServerError({ reason: new ResponseError({ request, response }) }))
-    )
+  if (cause !== undefined && !Cause.hasInterruptsOnly(cause)) {
+    return Exit.failCause(cause)
+  }
+  // Interrupt-only causes (such as server aborts) would export as OK, so add
+  // the response error to keep 5xx spans failed. `Cause.combine` is avoided
+  // because its structural hashing would read the request body.
+  const error = tracing.withoutStackTrace(() =>
+    new HttpServerError({ reason: new ResponseError({ request, response }) })
+  )
+  return cause === undefined
+    ? Exit.fail(error)
+    : Exit.failCause(Cause.fromReasons([...cause.reasons, Cause.makeFailReason(error)]))
 }
 
 /**
