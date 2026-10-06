@@ -333,6 +333,8 @@ export const make = <A>(
  * them. When the capacity is full, publishers suspend until space is available.
  * Pass an options object to configure both `capacity` and an optional replay
  * buffer for late subscribers.
+ * The capacity must be a positive integer or `Infinity` for unbounded storage.
+ * Invalid capacities cause the effect to die.
  *
  * **Example** (Creating a bounded PubSub)
  *
@@ -379,6 +381,8 @@ export const bounded = <A>(
  *
  * **Details**
  *
+ * The capacity must be a positive integer or `Infinity` for unbounded storage.
+ * Invalid capacities cause the effect to die.
  * For best performance use capacities that are powers of two.
  *
  * **Example** (Dropping messages when full)
@@ -426,6 +430,8 @@ export const dropping = <A>(
  *
  * **Details**
  *
+ * The capacity must be a positive integer or `Infinity` for unbounded storage.
+ * Invalid capacities cause the effect to die.
  * For best performance use capacities that are powers of two.
  *
  * **Example** (Sliding old messages when full)
@@ -519,8 +525,9 @@ export const unbounded = <A>(options?: {
  *
  * **Gotchas**
  *
- * The capacity must be greater than zero; invalid capacities throw
- * synchronously before an atomic implementation is created.
+ * The capacity must be a positive integer or `Infinity` for unbounded storage;
+ * invalid capacities throw synchronously before an atomic implementation is
+ * created.
  *
  * @see {@link make} for constructing a `PubSub` from an atomic implementation and delivery strategy
  * @see {@link makeAtomicUnbounded} for an atomic implementation without a bounded capacity
@@ -2480,7 +2487,7 @@ const makePubSubUnsafe = <A>(
 ): PubSub<A> => new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy, ended)
 
 const ensureCapacity = (capacity: number): void => {
-  if (capacity <= 0) {
+  if (capacity <= 0 || (capacity !== Infinity && !Number.isInteger(capacity))) {
     throw new Error(`Cannot construct PubSub with capacity of ${capacity}`)
   }
 }

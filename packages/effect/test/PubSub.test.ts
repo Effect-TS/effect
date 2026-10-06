@@ -462,6 +462,15 @@ describe("PubSub", () => {
       assert.deepStrictEqual(PubSub.sizeUnsafe(pubsub), 0)
     }))
 
+  for (const options of [false, true]) {
+    it.each([Number.NaN, 0.5, 1.5])(
+      `makeAtomicBounded rejects invalid capacity %s (options: ${options})`,
+      (capacity) => {
+        assert.throws(() => PubSub.makeAtomicBounded<number>(options ? { capacity } : capacity))
+      }
+    )
+  }
+
   it("normalizes low-level polling and replay counts", () => {
     const implementations = [
       PubSub.makeAtomicBounded<number>(1),
