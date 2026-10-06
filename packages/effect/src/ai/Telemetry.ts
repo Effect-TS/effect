@@ -429,14 +429,14 @@ export const addSpanAttributes = (
 }
 
 // Deprecated `gen_ai.system` values that were renamed in `gen_ai.provider.name`.
-const renamedSystems: Record<string, WellKnownProviderName> = {
-  "az.ai.inference": "azure.ai.inference",
-  "az.ai.openai": "azure.ai.openai",
-  "gemini": "gcp.gemini",
-  "vertex_ai": "gcp.vertex_ai",
-  "xai": "x_ai"
-}
-const toProviderName = (system: string): string => renamedSystems[system] ?? system
+const renamedSystems: ReadonlyMap<string, WellKnownProviderName> = new Map([
+  ["az.ai.inference", "azure.ai.inference"],
+  ["az.ai.openai", "azure.ai.openai"],
+  ["gemini", "gcp.gemini"],
+  ["vertex_ai", "gcp.vertex_ai"],
+  ["xai", "x_ai"]
+])
+const toProviderName = (system: string): string => renamedSystems.get(system) ?? system
 
 const addSpanProviderAttributes = addSpanAttributes("gen_ai.provider", String.camelToSnake)<ProviderAttributes>
 const addSpanOperationAttributes = addSpanAttributes("gen_ai.operation", String.camelToSnake)<OperationAttributes>

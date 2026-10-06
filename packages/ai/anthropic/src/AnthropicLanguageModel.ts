@@ -2833,6 +2833,8 @@ const annotateRequest = (
 }
 
 const annotateResponse = (span: Span, response: Generated.BetaMessage): void => {
+  const cacheRead = response.usage.cache_read_input_tokens ?? 0
+  const cacheWrite = response.usage.cache_creation_input_tokens ?? 0
   addGenAIAnnotations(span, {
     response: {
       id: response.id,
@@ -2840,24 +2842,11 @@ const annotateResponse = (span: Span, response: Generated.BetaMessage): void => 
       finishReasons: response.stop_reason ? [response.stop_reason] : undefined
     },
     usage: {
+      inputTokens: response.usage.input_tokens + cacheRead + cacheWrite,
       outputTokens: response.usage.output_tokens
     }
   })
-  const cacheRead = response.usage.cache_read_input_tokens ?? 0
-  const cacheWrite = response.usage.cache_creation_input_tokens ?? 0
-  annotateInputUsage(span, response.usage.input_tokens + cacheRead + cacheWrite, cacheRead, cacheWrite)
-}
-
-// `gen_ai.usage.input_tokens` must include cached tokens, so it is the total.
-const annotateInputUsage = (
-  span: Span,
-  total: number,
-  cacheRead: number | undefined,
-  cacheWrite: number | undefined
-): void => {
-  span.attribute("gen_ai.usage.input_tokens", total)
-  if (Predicate.isNotNullish(cacheRead)) span.attribute("gen_ai.usage.cache_read.input_tokens", cacheRead)
-  if (Predicate.isNotNullish(cacheWrite)) span.attribute("gen_ai.usage.cache_write.input_tokens", cacheWrite)
+  annotateCacheUsage(span, cacheRead, cacheWrite)
 }
 
 const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) => {
@@ -2875,14 +2864,19 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
         finishReasons: [part.reason]
       },
       usage: {
+        inputTokens: part.usage.inputTokens.total,
         outputTokens: part.usage.outputTokens.total
       }
     })
-    const input = part.usage.inputTokens
-    if (Predicate.isNotNullish(input.total)) {
-      annotateInputUsage(span, input.total, input.cacheRead, input.cacheWrite)
-    }
+    annotateCacheUsage(span, part.usage.inputTokens.cacheRead, part.usage.inputTokens.cacheWrite)
   }
+}
+
+// Anthropic reports cached tokens separately from `input_tokens`, so
+// `gen_ai.usage.input_tokens` is their sum and the cache counts are subsets of it.
+const annotateCacheUsage = (span: Span, cacheRead: number | undefined, cacheWrite: number | undefined): void => {
+  if (Predicate.isNotNullish(cacheRead)) span.attribute("gen_ai.usage.cache_read.input_tokens", cacheRead)
+  if (Predicate.isNotNullish(cacheWrite)) span.attribute("gen_ai.usage.cache_write.input_tokens", cacheWrite)
 }
 
 // =============================================================================
