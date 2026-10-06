@@ -490,8 +490,7 @@ export class OtelSpan implements Tracer.Span {
     // only attaches a status description to `Error`.
     if (exit._tag === "Failure") {
       if (Cause.hasInterruptsOnly(exit.cause)) {
-        this.span.setAttribute("span.label", "⚠︎ Interrupted")
-        this.span.setAttribute("status.interrupted", true)
+        this.span.setAttribute("effect.fiber.interrupted", true)
       } else {
         const errors = Cause.prettyErrors(exit.cause, {
           includeCauseInStack: true
