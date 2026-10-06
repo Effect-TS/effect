@@ -896,7 +896,6 @@ export const endUnsafe: {
 } = dual(2, <A>(self: PubSub<A>, value: A): boolean => {
   if (self.shutdownFlag.current || Option.isSome(self.ended.current)) return false
   MutableRef.set(self.ended, Option.some(value))
-  endedPubSubs.add(self.pubsub)
   if (isBackPressureStrategy(self.strategy)) {
     for (const [_, deferred, last] of MutableList.takeAll(self.strategy.publishers)) {
       if (last) Deferred.doneUnsafe(deferred, Exit.succeed(false))
@@ -1251,7 +1250,7 @@ const unsubscribe = <A>(self: Subscription<A>): Effect.Effect<void> =>
             self.subscribers.delete(self.subscription)
             self.subscription.unsubscribe()
             self.replayWindow.close()
-            onPubSubEmptySpaceUnsafe(self.strategy, self.pubsub, self.subscribers)
+            onPubSubEmptySpaceUnsafe(self)
           })
         ),
         Effect.when(self.shutdownHook.open),
@@ -1306,7 +1305,7 @@ export const take = <A>(self: Subscription<A>): Effect.Effect<A> =>
     if (message === MutableList.Empty) {
       return pollForItem(self)
     } else {
-      onPubSubEmptySpaceUnsafe(self.strategy, self.pubsub, self.subscribers)
+      onPubSubEmptySpaceUnsafe(self)
       return Effect.succeed(message)
     }
   })
@@ -1350,7 +1349,7 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
     if (value) {
       as = value.concat(as)
     }
-    onPubSubEmptySpaceUnsafe(self.strategy, self.pubsub, self.subscribers)
+    onPubSubEmptySpaceUnsafe(self)
     if (self.replayWindow.remaining > 0) {
       return Effect.succeed(self.replayWindow.takeAll().concat(as) as Arr.NonEmptyArray<A>)
     } else if (!Arr.isArrayNonEmpty(as)) {
@@ -1367,10 +1366,7 @@ const pollForItem = <A>(self: Subscription<A>) =>
       const message = self.pollers.length === 0
         ? self.subscription.poll()
         : MutableList.Empty
-      if (message !== MutableList.Empty) {
-        onPubSubEmptySpaceUnsafe(self.strategy, self.pubsub, self.subscribers)
-        return resume(Effect.succeed(message))
-      }
+      if (message !== MutableList.Empty) return resume(Effect.succeed(message))
       return resume(Effect.succeed(self.ended.current.value))
     }
     const deferred = Deferred.makeUnsafe<A>()
@@ -1445,7 +1441,7 @@ export const takeUpTo: {
     const as = self.pollers.length === 0
       ? self.subscription.pollUpTo(max)
       : []
-    onPubSubEmptySpaceUnsafe(self.strategy, self.pubsub, self.subscribers)
+    onPubSubEmptySpaceUnsafe(self)
     return replay ? Effect.succeed(replay.concat(as)) : Effect.succeed(as)
   }))
 
@@ -2479,42 +2475,22 @@ class PubSubImpl<in out A> implements PubSub<A> {
   }
 }
 
-// Only the unchanged built-in surplus handlers can bypass the end signal.
-// Subclasses and instance-level overrides may suspend independently of the
-// built-in publisher queue.
+// The built-in strategies either never suspend or suspend on `publishers`,
+// which `endUnsafe` settles directly. Any other `handleSurplus` is raced
+// against an end signal instead, so `end` interrupts it.
 const isBackPressureStrategy = <A>(strategy: PubSub.Strategy<A>): strategy is BackPressureStrategy<A> =>
-  Object.getPrototypeOf(strategy) === BackPressureStrategy.prototype &&
   strategy.handleSurplus === BackPressureStrategy.prototype.handleSurplus
 
-// Custom strategies cancel their pending elements through interruption cleanup.
+const isBuiltInStrategy = <A>(strategy: PubSub.Strategy<A>): boolean =>
+  isBackPressureStrategy(strategy) ||
+  strategy.handleSurplus === DroppingStrategy.prototype.handleSurplus ||
+  strategy.handleSurplus === SlidingStrategy.prototype.handleSurplus
+
 const endSignals = new WeakMap<PubSub<any>, Deferred.Deferred<boolean>>()
-
-// Strategy callbacks also receive the atomic PubSub without its shared ended
-// flag. Track ending here so every empty-space path stops replenishing surplus
-// immediately, even while a custom publisher is still cleaning up.
-const endedPubSubs = new WeakSet<PubSub.Atomic<any>>()
-
-const onPubSubEmptySpaceUnsafe = <A>(
-  strategy: PubSub.Strategy<A>,
-  pubsub: PubSub.Atomic<A>,
-  subscribers: PubSub.Subscribers<A>
-): void => {
-  if (!endedPubSubs.has(pubsub)) {
-    strategy.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
-  }
-}
 
 const handleSurplus = <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect<boolean> => {
   const effect = self.strategy.handleSurplus(self.pubsub, self.subscribers, elements, self.shutdownFlag, self.ended)
-  if (
-    isBackPressureStrategy(self.strategy) ||
-    (Object.getPrototypeOf(self.strategy) === DroppingStrategy.prototype &&
-      self.strategy.handleSurplus === DroppingStrategy.prototype.handleSurplus) ||
-    (Object.getPrototypeOf(self.strategy) === SlidingStrategy.prototype &&
-      self.strategy.handleSurplus === SlidingStrategy.prototype.handleSurplus)
-  ) {
-    return effect
-  }
+  if (isBuiltInStrategy(self.strategy)) return effect
   let signal = endSignals.get(self)
   if (signal === undefined) {
     signal = Deferred.makeUnsafe<boolean>()
@@ -2523,6 +2499,14 @@ const handleSurplus = <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect
   // raceFirst forks interruptible children even when the publisher is masked,
   // and waits for the losing effect's interruption cleanup before returning.
   return Effect.raceFirst(effect, Deferred.await(signal))
+}
+
+// After `end` no publisher can be admitted, so a custom strategy must not be
+// asked to fill freed space with surplus it is still cleaning up.
+const onPubSubEmptySpaceUnsafe = <A>(self: Subscription<A>): void => {
+  if (Option.isNone(self.ended.current)) {
+    self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
+  }
 }
 
 const makePubSubUnsafe = <A>(
@@ -2598,7 +2582,7 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
       if (Option.isSome(ended.current)) return resume(Effect.succeed(false))
       const deferred = Deferred.makeUnsafe<boolean>()
       this.offerUnsafe(elements, deferred)
-      onPubSubEmptySpaceUnsafe(this, pubsub, subscribers)
+      this.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
       this.completeSubscribersUnsafe(pubsub, subscribers)
       if (MutableRef.get(isShutdown)) {
         this.removeUnsafe(deferred)
@@ -2724,8 +2708,7 @@ export class DroppingStrategy<in out A> implements PubSub.Strategy<A> {
     _pubsub: PubSub.Atomic<A>,
     _subscribers: PubSub.Subscribers<A>,
     _elements: Iterable<A>,
-    _isShutdown: MutableRef.MutableRef<boolean>,
-    _ended: MutableRef.MutableRef<Option.Option<A>>
+    _isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
     return Effect.succeed(false)
   }
@@ -2881,7 +2864,7 @@ const strategyCompletePollersUnsafe = <A>(
         MutableList.prepend(pollers, poller)
       } else {
         Deferred.doneUnsafe(poller, Exit.succeed(pollResult))
-        onPubSubEmptySpaceUnsafe(strategy, pubsub, subscribers)
+        strategy.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
       }
     }
   }

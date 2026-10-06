@@ -927,15 +927,17 @@ describe("PubSub", () => {
         assert.isFalse(yield* Fiber.join(publisher))
       }))
 
-    it.effect("rejects a suspended publishAll for an overridden dropping strategy", () =>
+    it.effect("rejects a suspended publishAll for a custom strategy", () =>
       Effect.gen(function*() {
-        const base = new PubSub.BackPressureStrategy<number>()
         const pubsub = yield* PubSub.make<number>({
           atomicPubSub: () => PubSub.makeAtomicBounded(1),
           strategy: () =>
             new class extends PubSub.DroppingStrategy<number> {
-              override handleSurplus = base.handleSurplus.bind(base)
-              override onPubSubEmptySpaceUnsafe = base.onPubSubEmptySpaceUnsafe.bind(base)
+              // Suspends outside the built-in publisher queue, so only `end`
+              // can settle the publisher.
+              override handleSurplus() {
+                return Effect.never
+              }
             }()
         })
         const subscription = yield* PubSub.subscribe(pubsub)
@@ -956,7 +958,7 @@ describe("PubSub", () => {
         const cleanupStarted = yield* Latch.make()
         const finishCleanup = yield* Latch.make()
         const pubsub = yield* PubSub.make<number>({
-          atomicPubSub: () => PubSub.makeAtomicBounded(1),
+          atomicPubSub: () => PubSub.makeAtomicBounded(2),
           strategy: () =>
             new class extends PubSub.BackPressureStrategy<number> {
               override handleSurplus(...args: Parameters<PubSub.BackPressureStrategy<number>["handleSurplus"]>) {
@@ -984,7 +986,8 @@ describe("PubSub", () => {
           { startImmediately: true }
         )
         PubSub.publishUnsafe(pubsub, 1)
-        const publisher = yield* Effect.forkChild(Effect.uninterruptible(PubSub.publish(pubsub, 2)), {
+        PubSub.publishUnsafe(pubsub, 2)
+        const publisher = yield* Effect.forkChild(Effect.uninterruptible(PubSub.publish(pubsub, 3)), {
           startImmediately: true
         })
         assert.isUndefined(publisher.pollUnsafe())
@@ -992,14 +995,16 @@ describe("PubSub", () => {
         PubSub.endUnsafe(pubsub, 0)
         yield* cleanupStarted.await
         const pending = publisher.pollUnsafe()
+        // Neither the resumed take callback nor a direct take may refill the
+        // freed space with the rejected surplus while cleanup is pending.
         const first = yield* Fiber.join(taker)
         const second = yield* PubSub.take(subscription)
+        const third = yield* PubSub.take(subscription)
         yield* finishCleanup.open
 
         assert.isFalse(yield* Fiber.join(publisher))
         assert.isUndefined(pending)
-        assert.strictEqual(first, 1)
-        assert.strictEqual(second, 0)
+        assert.deepStrictEqual([first, second, third], [1, 2, 0])
       }))
 
     it.effect("shutdown still interrupts subscribers", () =>
