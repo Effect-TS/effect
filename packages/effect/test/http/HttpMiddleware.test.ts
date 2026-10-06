@@ -496,6 +496,101 @@ describe("HttpMiddleware", () => {
         )
       }))
 
+    it.effect("redacts percent-encoded signed query parameter names", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(
+          new Request("http://localhost:3000/file?%73ig=token&%53ignature=signature&%zz=kept&keep=value", {
+            headers: { host: "localhost:3000" }
+          })
+        )
+
+        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty())).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(
+          serverSpan.attributes.get("url.query"),
+          "%73ig=REDACTED&%53ignature=REDACTED&%zz=kept&keep=value"
+        )
+        assert.strictEqual(
+          serverSpan.attributes.get("url.full"),
+          "http://localhost:3000/file?%73ig=REDACTED&%53ignature=REDACTED&%zz=kept&keep=value"
+        )
+      }))
+
+    it.effect("fails the span for a 500 response from an unhandled failure", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/boom"))
+        let sentStatus: number | undefined
+
+        yield* HttpEffect.toHandled(
+          Effect.fail("boom"),
+          (_request, response) =>
+            Effect.sync(() => {
+              sentStatus = response.status
+            })
+        ).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer),
+          Effect.exit
+        )
+        yield* Effect.yieldNow
+
+        assert.strictEqual(sentStatus, 500)
+        assert(serverSpan !== undefined && serverSpan.status._tag === "Ended")
+        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 500)
+        assert.strictEqual(serverSpan.status.exit._tag, "Failure")
+      }))
+
+    it.effect("fails the span for a 499 client abort", () =>
+      Effect.gen(function*() {
+        const ended = Promise.withResolvers<Tracer.NativeSpan>()
+        const tracer = Tracer.make({
+          span(options) {
+            const span = new Tracer.NativeSpan(options)
+            span.end = (endTime, exit) => {
+              Tracer.NativeSpan.prototype.end.call(span, endTime, exit)
+              ended.resolve(span)
+            }
+            return span
+          }
+        })
+        const started = Promise.withResolvers<void>()
+        const handler = HttpEffect.toWebHandler(
+          Effect.interruptible(Effect.andThen(Effect.sync(() => started.resolve()), Effect.never))
+        )
+        const controller = new AbortController()
+        const pending = handler(
+          new Request("http://localhost/slow", { signal: controller.signal }),
+          Context.make(Tracer.Tracer, tracer)
+        )
+        yield* Effect.promise(() => started.promise)
+        controller.abort()
+        const response = yield* Effect.promise(() => pending)
+        const serverSpan = yield* Effect.promise(() => ended.promise)
+
+        assert.strictEqual(response.status, 499)
+        assert(serverSpan.status._tag === "Ended")
+        assert.strictEqual(serverSpan.status.exit._tag, "Failure")
+      }))
+
     it.effect("does not fail the span for a 4xx response from a respondable failure", () =>
       Effect.gen(function*() {
         let serverSpan: Tracer.NativeSpan | undefined

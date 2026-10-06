@@ -1,6 +1,6 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
+import { Cause, Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
 import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
@@ -241,8 +241,32 @@ Missing key
           assert(clientSpan !== undefined && clientSpan.status._tag === "Ended")
           assert.strictEqual(clientSpan.status.exit._tag === "Failure", failed)
           assert.strictEqual(clientSpan.attributes.get("http.response.status_code"), status)
+          assert.strictEqual(clientSpan.attributes.get("error.type"), failed ? String(status) : undefined)
         })
     )
+
+    it.effect("keeps URL credentials and signed query values out of failed span errors", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const { client } = yield* makeStatusClient(404)
+
+        const response = yield* client.get("https://user:secret@example.com/file?sig=token").pipe(
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert.strictEqual(response.status, 404)
+        assert(clientSpan !== undefined && clientSpan.status._tag === "Ended")
+        assert(clientSpan.status.exit._tag === "Failure")
+        const rendered = Cause.pretty(clientSpan.status.exit.cause)
+        assert.notInclude(rendered, "secret")
+        assert.notInclude(rendered, "token")
+      }))
 
     it.effect.each([
       { url: "http://example.com/", address: "example.com", port: 80 },
@@ -264,6 +288,38 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("server.address"), address)
         assert.strictEqual(clientSpan.attributes.get("server.port"), port)
+      }))
+
+    it.effect("redacts percent-encoded signed query parameter names without changing the sent URL", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        let sentUrl: string | undefined
+        const client = HttpClient.make((request, url) =>
+          Effect.sync(() => {
+            sentUrl = url.toString()
+            return HttpClientResponse.fromWeb(request, new Response(null))
+          })
+        )
+        const url = "https://example.com/file?%73ig=token&%53ignature=signature&%zz=kept&keep=value"
+
+        yield* client.get(url).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert.strictEqual(sentUrl, url)
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "%73ig=REDACTED&%53ignature=REDACTED&%zz=kept&keep=value"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "https://example.com/file?%73ig=REDACTED&%53ignature=REDACTED&%zz=kept&keep=value"
+        )
       }))
 
     it.effect("redacts URL credentials and signed query values without changing the sent URL", () =>
