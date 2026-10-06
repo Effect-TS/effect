@@ -9,6 +9,7 @@ import {
   suite
 } from "effect-test/eventlog/SqlEventLogServerUnencryptedStorageTest"
 import { Reactivity } from "effect/reactivity"
+import { PreventSchedulerYield } from "effect/Scheduler"
 import * as SqlClient from "effect/sql/SqlClient"
 import { PgContainer } from "./utils.ts"
 
@@ -25,12 +26,15 @@ it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 
         // Decorate the public SQL boundary, not storage internals. The real
         // transaction has committed and released its connection before we pause.
         let pauseNext = false
+        let observeSecond = false
+        let secondEnteredSql = false
         const delayedSql: SqlClient.SqlClient = Object.assign(
           (...args: Parameters<SqlClient.SqlClient>) => sql(...args),
           sql,
           {
             withTransaction: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
               Effect.suspend(() => {
+                if (observeSecond) secondEnteredSql = true
                 const pause = pauseNext
                 pauseNext = false
                 return sql.withTransaction(effect).pipe(
@@ -57,14 +61,28 @@ it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 
         pauseNext = true
         const firstWriter = yield* storage.write(storeId, [firstEntry]).pipe(Effect.forkChild)
         yield* Deferred.await(committed)
-        // Force the second COMMIT and publication before the first SQL call
-        // returns. No sleeps or scheduler timing decide the interleaving.
-        // This is a forced-interleaving reproducer: a fix that serializes entire
-        // storage transactions must also change this handshake to release the
-        // first writer before waiting for the second writer to finish.
-        yield* storage.write(storeId, [secondEntry]).pipe(
-          Effect.ensuring(Deferred.succeed(publish, undefined))
+        // Run writer two synchronously to its first asynchronous boundary,
+        // without a cooperative scheduler yield before it reaches SQL (or waits
+        // for a storage transaction permit). This observes only the public SQL
+        // boundary, not the implementation of any ordering lock.
+        observeSecond = true
+        const secondWriter = yield* storage.write(storeId, [secondEntry]).pipe(
+          Effect.provideService(PreventSchedulerYield, true),
+          Effect.forkChild({ startImmediately: true })
         )
+        observeSecond = false
+        if (secondEnteredSql) {
+          // An unserialized writer must commit and publish before writer one
+          // returns, making the existing reordering failure deterministic.
+          yield* Fiber.join(secondWriter).pipe(
+            Effect.ensuring(Deferred.succeed(publish, undefined))
+          )
+        } else {
+          // A serialized writer is waiting outside SQL. Let writer one publish
+          // and release its permit before waiting for writer two to complete.
+          yield* Deferred.succeed(publish, undefined)
+          yield* Fiber.join(secondWriter)
+        }
         yield* Fiber.join(firstWriter)
 
         const rows = yield* Queue.takeN(changes, 2)
