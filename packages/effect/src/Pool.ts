@@ -418,7 +418,6 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
       yield* item.finalizer
     }
   }
-  yield* semaphore.releaseAll
   if (self.state.waiters.size > 0) {
     const waiters = Array.from(self.state.waiters)
     self.state.waiters.clear()

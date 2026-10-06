@@ -47,6 +47,27 @@ describe("Pool", () => {
       strictEqual(result, 0)
     }))
 
+  it.effect("shutdown waits for borrowed items before releasing owner dependencies", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const owner = yield* Scope.make()
+      const borrower = yield* Scope.make()
+      yield* Scope.addFinalizer(owner, Effect.sync(() => events.push("owner-dependency-released")))
+      const pool = yield* Pool.make({
+        size: 1,
+        acquire: Effect.acquireRelease(
+          Effect.succeed("resource"),
+          () => Effect.sync(() => events.push("resource-released"))
+        )
+      }).pipe(Scope.provide(owner))
+      yield* Pool.get(pool).pipe(Scope.provide(borrower))
+      const closing = yield* Effect.forkChild(Scope.close(owner, Exit.void), { startImmediately: true })
+      yield* Effect.yieldNow
+      yield* Scope.close(borrower, Exit.void)
+      yield* Fiber.join(closing)
+      deepStrictEqual(events, ["resource-released", "owner-dependency-released"])
+    }))
+
   it.effect("defects don't prevent cleanup", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)
