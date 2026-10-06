@@ -270,7 +270,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   }
 ) {
   const spanPrefix = options.spanPrefix
-  const spanAttributes = RpcTracing.makeSpanAttributes(options.spanAttributes)
   const supportsAck = options?.supportsAck ?? true
   const disableTracing = options?.disableTracing ?? false
   const generateRequestId = options?.generateRequestId ?? (() => requestIdCounter++ as RequestId)
@@ -339,7 +338,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           )
         return disableTracing ? onRequest(undefined) : Effect.useSpan(
           RpcTracing.spanName(spanPrefix, rpc._tag),
-          { kind: "client", attributes: spanAttributes(rpc._tag) },
+          { kind: "client", attributes: RpcTracing.spanAttributes(rpc._tag, options.spanAttributes) },
           onRequest
         )
       }
@@ -452,7 +451,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
 
     const span = disableTracing ? undefined : yield* Effect.makeSpanScoped(
       RpcTracing.spanName(spanPrefix, rpc._tag),
-      { kind: "client", attributes: spanAttributes(rpc._tag) }
+      { kind: "client", attributes: RpcTracing.spanAttributes(rpc._tag, options.spanAttributes) }
     )
     const fiber = Fiber.getCurrent()!
     const id = generateRequestId()

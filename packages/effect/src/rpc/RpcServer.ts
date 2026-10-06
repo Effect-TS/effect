@@ -119,7 +119,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const enableSpanPropagation = options.disableSpanPropagation !== true
   const supportsAck = options.disableClientAcks !== true
   const spanPrefix = options.spanPrefix
-  const spanAttributes = RpcTracing.makeSpanAttributes(options.spanAttributes)
   const concurrency = options.concurrency ?? "unbounded"
   const disableFatalDefects = options.disableFatalDefects ?? false
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Scope.Scope>()
@@ -336,7 +335,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       effect = Effect.withSpan(effect, RpcTracing.spanName(spanPrefix, request.tag), {
         captureStackTrace: false,
         kind: "server",
-        attributes: spanAttributes(request.tag),
+        attributes: RpcTracing.spanAttributes(request.tag, options.spanAttributes),
         parent: enableSpanPropagation && request.spanId
           ? Tracer.externalSpan({
             traceId: request.traceId!,

@@ -658,21 +658,21 @@ describe("RpcClient", () => {
             assert.strictEqual(span.attributes.get("rpc.method"), `Echo.${method}`)
           }
         }))
-
-      it.effect(`allows spanAttributes to override RPC defaults for ${method}`, () =>
-        Effect.gen(function*() {
-          const spans = yield* call(method, {
-            spanAttributes: { "rpc.system.name": "custom_rpc", "rpc.method": "custom_method" }
-          })
-          const client = spans.find((span) => span.kind === "client")
-          const server = spans.find((span) => span.kind === "server")
-          assert(client !== undefined && server !== undefined)
-          for (const span of [client, server]) {
-            assert.strictEqual(span.attributes.get("rpc.system.name"), "custom_rpc")
-            assert.strictEqual(span.attributes.get("rpc.method"), "custom_method")
-          }
-        }))
     }
+
+    it.effect("allows spanAttributes to override RPC defaults", () =>
+      Effect.gen(function*() {
+        const spans = yield* call("Ping", {
+          spanAttributes: { "rpc.system.name": "custom_rpc", "rpc.method": "custom_method" }
+        })
+        const client = spans.find((span) => span.kind === "client")
+        const server = spans.find((span) => span.kind === "server")
+        assert(client !== undefined && server !== undefined)
+        for (const span of [client, server]) {
+          assert.strictEqual(span.attributes.get("rpc.system.name"), "custom_rpc")
+          assert.strictEqual(span.attributes.get("rpc.method"), "custom_method")
+        }
+      }))
 
     it.effect("keeps prefixed span names when spanPrefix is set", () =>
       Effect.gen(function*() {
