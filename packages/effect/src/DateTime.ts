@@ -32,6 +32,7 @@ const TimeZoneTypeId = Internal.TimeZoneTypeId
  * A `DateTime` represents a point in time. It can optionally have a time zone
  * associated with it.
  *
+ * @stability stable
  * @category models
  * @since 3.6.0
  */
@@ -45,6 +46,7 @@ export type DateTime = Utc | Zoned
  *
  * Use `DateTime.isUtc` to narrow a `DateTime` to this variant.
  *
+ * @stability stable
  * @category models
  * @since 3.6.0
  */
@@ -63,6 +65,7 @@ export interface Utc extends DateTime.Proto {
  * `epochMilliseconds`, while the time zone is used for wall-clock parts,
  * formatting, and zone-aware transformations.
  *
+ * @stability stable
  * @category models
  * @since 3.6.0
  */
@@ -79,6 +82,7 @@ export interface Zoned extends DateTime.Proto {
  * Companion namespace containing the public helper types used by `DateTime`
  * constructors, parts APIs, formatting, and date/time arithmetic.
  *
+ * @stability stable
  * @since 3.6.0
  */
 export declare namespace DateTime {
@@ -92,6 +96,7 @@ export declare namespace DateTime {
    * objects, epoch milliseconds, JavaScript `Date` instances, and parseable date
    * strings.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -105,6 +110,7 @@ export declare namespace DateTime {
    * When the input type is `DateTime.Zoned`, the result type is
    * `DateTime.Zoned`; otherwise the result type is `DateTime.Utc`.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -119,6 +125,7 @@ export declare namespace DateTime {
    * Includes both singular units, such as `"day"`, and plural units, such as
    * `"days"`.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -128,6 +135,7 @@ export declare namespace DateTime {
    * Singular date and time unit names used by rounding APIs such as
    * `DateTime.startOf`, `DateTime.endOf`, and `DateTime.nearest`.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -145,6 +153,7 @@ export declare namespace DateTime {
    * Plural date and time unit names used by `DateTime.PartsForMath` for
    * amount-based arithmetic.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -167,6 +176,7 @@ export declare namespace DateTime {
    * `weekDay` follows JavaScript `Date#getUTCDay` numbering (`0` for Sunday
    * through `6` for Saturday).
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -188,6 +198,7 @@ export declare namespace DateTime {
    *
    * `month` is one-based (`1` for January through `12` for December).
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -208,6 +219,7 @@ export declare namespace DateTime {
    *
    * Each field represents the number of units to add or subtract for that part.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -226,6 +238,7 @@ export declare namespace DateTime {
    * Object input representing an absolute instant as milliseconds since the Unix
    * epoch.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -241,6 +254,7 @@ export declare namespace DateTime {
    * `DateTime.makeZoned` and `DateTime.makeZonedUnsafe` use `timeZoneId` when
    * no explicit `timeZone` option is supplied.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -257,6 +271,7 @@ export declare namespace DateTime {
    * Provides the `DateTime` type identifier along with pipe and inspection
    * support.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -272,6 +287,7 @@ export declare namespace DateTime {
  *
  * A `TimeZone` is either a fixed offset from UTC or a named IANA time zone.
  *
+ * @stability stable
  * @category models
  * @since 3.6.0
  */
@@ -281,6 +297,7 @@ export type TimeZone = TimeZone.Offset | TimeZone.Named
  * Companion namespace containing the public variant and protocol types for
  * `TimeZone`.
  *
+ * @stability stable
  * @since 3.6.0
  */
 export declare namespace TimeZone {
@@ -291,6 +308,7 @@ export declare namespace TimeZone {
    *
    * Provides the `TimeZone` type identifier and inspection support.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -306,6 +324,7 @@ export declare namespace TimeZone {
    * The `offset` is measured in milliseconds from UTC. Positive offsets are
    * ahead of UTC, and negative offsets are behind UTC.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -322,6 +341,7 @@ export declare namespace TimeZone {
    * The `id` field contains the resolved time zone identifier, such as
    * `"Europe/London"` or `"America/New_York"`.
    *
+   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -398,6 +418,7 @@ export declare namespace TimeZone {
  * afterGap.pipe(Option.getOrThrow, DateTime.formatIso) // => "2025-03-09T07:30:00.000Z"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 3.18.0
  */
@@ -417,6 +438,7 @@ export type Disambiguation = "compatible" | "earlier" | "later" | "reject"
  * @see {@link isUtc} for narrowing a known `DateTime` to UTC
  * @see {@link isZoned} for narrowing a known `DateTime` to zoned
  *
+ * @stability stable
  * @category guards
  * @since 3.6.0
  */
@@ -433,6 +455,7 @@ export const isDateTime: (u: unknown) => u is DateTime = Internal.isDateTime
  * @see {@link isTimeZoneOffset} for narrowing to fixed-offset time zones
  * @see {@link isTimeZoneNamed} for narrowing to named time zones
  *
+ * @stability stable
  * @category guards
  * @since 3.6.0
  */
@@ -449,6 +472,7 @@ export const isTimeZone: (u: unknown) => u is TimeZone = Internal.isTimeZone
  * @see {@link isTimeZone} for checking either time zone variant
  * @see {@link isTimeZoneNamed} for narrowing to named time zones
  *
+ * @stability stable
  * @category guards
  * @since 3.6.0
  */
@@ -465,6 +489,7 @@ export const isTimeZoneOffset: (u: unknown) => u is TimeZone.Offset = Internal.i
  * @see {@link isTimeZone} for checking either time zone variant
  * @see {@link isTimeZoneOffset} for narrowing to fixed-offset time zones
  *
+ * @stability stable
  * @category guards
  * @since 3.6.0
  */
@@ -481,6 +506,7 @@ export const isTimeZoneNamed: (u: unknown) => u is TimeZone.Named = Internal.isT
  * @see {@link isZoned} for narrowing to zoned date-times
  * @see {@link match} for handling both UTC and zoned cases
  *
+ * @stability stable
  * @category guards
  * @since 3.6.0
  */
@@ -497,6 +523,7 @@ export const isUtc: (self: DateTime) => self is Utc = Internal.isUtc
  * @see {@link isUtc} for narrowing to UTC date-times
  * @see {@link match} for handling both UTC and zoned cases
  *
+ * @stability stable
  * @category guards
  * @since 3.6.0
  */
@@ -527,6 +554,7 @@ export const isZoned: (self: DateTime) => self is Zoned = Internal.isZoned
  * DateTime.Equivalence(utc, zoned) // => true
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 3.6.0
  */
@@ -554,6 +582,7 @@ export const Equivalence: Equ.Equivalence<DateTime> = Internal.Equivalence
  * Array.sort(dates, DateTime.Order).map(DateTime.formatIsoDateUtc) // => ["2024-01-01", "2024-02-01", "2024-03-01"]
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 3.6.0
  */
@@ -580,6 +609,7 @@ export const Order: order.Order<DateTime> = Internal.Order
  * DateTime.clamp(date, { minimum: min, maximum: max }) // => DateTime.makeUnsafe("2024-12-31")
  * ```
  *
+ * @stability stable
  * @category ordering
  * @since 3.6.0
  */
@@ -612,6 +642,7 @@ export const clamp: {
  * DateTime.fromDateUnsafe(new Date("2024-01-01T12:00:00Z")) // => DateTime.makeUnsafe("2024-01-01T12:00:00Z")
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -648,6 +679,7 @@ export const fromDateUnsafe: (date: Date) => Utc = Internal.fromDateUnsafe
  * DateTime.makeUnsafe("2024-01-01") // => DateTime.makeUnsafe("2024-01-01T00:00:00Z")
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -664,6 +696,7 @@ export const makeUnsafe: <A extends DateTime.Input>(input: A) => DateTime.Preser
  * DateTime.fromEpochSeconds(1704067200).toJSON() // => "2024-01-01T00:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -702,6 +735,7 @@ export const fromEpochSeconds: (seconds: number) => Utc = Internal.fromEpochSeco
  * DateTime.formatIsoZoned(zoned) // => "2024-06-15T15:30:00.000+01:00[Europe/London]"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -744,6 +778,7 @@ export const makeZonedUnsafe: (input: DateTime.Input, options?: {
  * result.pipe(Option.map(DateTime.formatIsoZoned)) // => Option.some("2024-06-15T15:30:00.000+01:00[Europe/London]")
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -788,6 +823,7 @@ export const makeZoned: (
  * DateTime.make("not a date") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -816,6 +852,7 @@ export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTim
  * DateTime.makeZonedFromString("invalid") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -833,6 +870,7 @@ export const makeZonedFromString: (input: string) => Option.Option<Zoned> = Inte
  * await Effect.runPromise(Effect.map(DateTime.now, DateTime.isDateTime)) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -851,6 +889,7 @@ export const now: Effect.Effect<Utc> = Internal.now
  * await Effect.runPromise(Effect.map(DateTime.nowAsDate, (now) => now instanceof Date)) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.14.0
  */
@@ -877,6 +916,7 @@ export const nowAsDate: Effect.Effect<Date> = Internal.nowAsDate
  * Number.isFinite(DateTime.toEpochMillis(DateTime.nowUnsafe())) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -912,6 +952,7 @@ export const nowUnsafe: LazyArg<Utc> = Internal.nowUnsafe
  * utc // => DateTime.makeUnsafe("2024-01-01T00:00:00Z")
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 3.13.0
  */
@@ -931,6 +972,7 @@ export const toUtc: (self: DateTime) => Utc = Internal.toUtc
  * DateTime.isZoned(zoned) // => true
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 3.6.0
  */
@@ -963,6 +1005,7 @@ export const setZone: {
  * DateTime.zoneToString(zoned.zone) // => "+03:00"
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 3.6.0
  */
@@ -1001,6 +1044,7 @@ export const setZoneOffset: {
  * // DateTime.zoneMakeNamedUnsafe("Invalid/Zone")
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1028,6 +1072,7 @@ export const zoneMakeNamedUnsafe: (zoneId: string) => TimeZone.Named = Internal.
  * DateTime.formatIsoZoned(dt) // => "2024-01-01T15:00:00.000+03:00"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -1049,6 +1094,7 @@ export const zoneMakeOffset: (offset: number) => TimeZone.Offset = Internal.zone
  * DateTime.zoneMakeNamed("Invalid/Zone") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -1076,6 +1122,7 @@ export const zoneMakeNamed: (zoneId: string) => Option.Option<TimeZone.Named> = 
  * DateTime.zoneToString((await Effect.runPromise(program)).zone) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -1098,6 +1145,7 @@ export const zoneMakeNamedEffect: (zoneId: string) => Effect.Effect<TimeZone.Nam
  * DateTime.isTimeZoneNamed(DateTime.zoneMakeLocal()) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.6.0
  */
@@ -1120,6 +1168,7 @@ export const zoneMakeLocal: () => TimeZone.Named = Internal.zoneMakeLocal
  * DateTime.zoneFromString("invalid") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category decoding
  * @since 3.6.0
  */
@@ -1137,6 +1186,7 @@ export const zoneFromString: (zone: string) => Option.Option<TimeZone> = Interna
  * DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe("Europe/London")) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category encoding
  * @since 3.6.0
  */
@@ -1157,6 +1207,7 @@ export const zoneToString: (self: TimeZone) => string = Internal.zoneToString
  * result // => Option.some("2024-01-01T00:00:00.000+00:00[Europe/London]")
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 3.6.0
  */
@@ -1186,6 +1237,7 @@ export const setZoneNamed: {
  * DateTime.zoneToString(zoned.zone) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1225,6 +1277,7 @@ export const setZoneNamedUnsafe: {
  * DateTime.distance(start, end) // => Duration.minutes(1)
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 3.6.0
  */
@@ -1247,6 +1300,7 @@ export const distance: {
  * DateTime.min(date1, date2) // => DateTime.makeUnsafe("2024-01-01")
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 3.6.0
  */
@@ -1269,6 +1323,7 @@ export const min: {
  * DateTime.max(date1, date2) // => DateTime.makeUnsafe("2024-02-01")
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 3.6.0
  */
@@ -1292,6 +1347,7 @@ export const max: {
  * DateTime.isGreaterThan(date2, date1) // => false
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 4.0.0
  */
@@ -1317,6 +1373,7 @@ export const isGreaterThan: {
  * DateTime.isGreaterThanOrEqualTo(date1, date3) // => false
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 4.0.0
  */
@@ -1340,6 +1397,7 @@ export const isGreaterThanOrEqualTo: {
  * DateTime.isLessThan(date2, date1) // => false
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 4.0.0
  */
@@ -1365,6 +1423,7 @@ export const isLessThan: {
  * DateTime.isLessThanOrEqualTo(date3, date1) // => false
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 4.0.0
  */
@@ -1388,6 +1447,7 @@ export const isLessThanOrEqualTo: {
  * DateTime.between(date, { minimum: min, maximum: max }) // => true
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 3.6.0
  */
@@ -1413,6 +1473,7 @@ export const between: {
  * await Effect.runPromise(Effect.provide(DateTime.isFuture(futureDate), TestClock.layer())) // => true
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 3.6.0
  */
@@ -1439,6 +1500,7 @@ export const isFuture: (self: DateTime) => Effect.Effect<boolean> = Internal.isF
  * DateTime.isFutureUnsafe(oneHourFromNow)
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 4.0.0
  */
@@ -1461,6 +1523,7 @@ export const isFutureUnsafe: (self: DateTime) => boolean = Internal.isFutureUnsa
  * await Effect.runPromise(Effect.provide(DateTime.isPast(pastDate), TestClock.layer())) // => true
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 3.6.0
  */
@@ -1487,6 +1550,7 @@ export const isPast: (self: DateTime) => Effect.Effect<boolean> = Internal.isPas
  * DateTime.isPastUnsafe(oneHourAgo)
  * ```
  *
+ * @stability stable
  * @category comparisons
  * @since 4.0.0
  */
@@ -1515,6 +1579,7 @@ export const isPastUnsafe: (self: DateTime) => boolean = Internal.isPastUnsafe
  * DateTime.toDateUtc(dt).toISOString() // => "2024-01-01T12:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 3.6.0
  */
@@ -1542,6 +1607,7 @@ export const toDateUtc: (self: DateTime) => Date = Internal.toDateUtc
  * DateTime.toDate(zoned).toISOString() // => "2024-01-01T12:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 3.6.0
  */
@@ -1567,6 +1633,7 @@ export const toDate: (self: DateTime) => Date = Internal.toDate
  * DateTime.zonedOffset(zoned) // => 0
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 3.6.0
  */
@@ -1591,6 +1658,7 @@ export const zonedOffset: (self: Zoned) => number = Internal.zonedOffset
  * DateTime.zonedOffsetIso(zoned) // => "+03:00"
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 3.6.0
  */
@@ -1612,6 +1680,7 @@ export const zonedOffsetIso: (self: Zoned) => string = Internal.zonedOffsetIso
  * DateTime.toEpochMillis(dt) // => 1704067200000
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 3.6.0
  */
@@ -1634,6 +1703,7 @@ export const toEpochMillis: (self: DateTime) => number = Internal.toEpochMillis
  * DateTime.toEpochSeconds(dt) // => 1704067200
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1658,6 +1728,7 @@ export const toEpochSeconds: (self: DateTime) => number = Internal.toEpochSecond
  * ) // => "2024-01-01T00:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 3.6.0
  */
@@ -1685,6 +1756,7 @@ export const removeTime: (self: DateTime) => Utc = Internal.removeTime
  * const selectedParts = [parts.year, parts.month, parts.day, parts.hour] // => [2024, 1, 1, 12]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 3.6.0
  */
@@ -1710,6 +1782,7 @@ export const toParts: (self: DateTime) => DateTime.PartsWithWeekday = Internal.t
  * const selectedParts = [parts.year, parts.month, parts.day, parts.hour] // => [2024, 1, 1, 12]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 3.6.0
  */
@@ -1731,6 +1804,7 @@ export const toPartsUtc: (self: DateTime) => DateTime.PartsWithWeekday = Interna
  * DateTime.getPartUtc(dateTime, "year") // => 2024
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 3.6.0
  */
@@ -1757,6 +1831,7 @@ export const getPartUtc: {
  * DateTime.getPart(dateTime, "year") // => 2024
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 3.6.0
  */
@@ -1787,6 +1862,7 @@ export const getPart: {
  * updated // => DateTime.makeZonedUnsafe("2025-06-15T12:00:00Z", { timeZone: "UTC" })
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 3.6.0
  */
@@ -1816,6 +1892,7 @@ export const setParts: {
  * updated // => DateTime.makeUnsafe("2025-01-01T18:00:00Z")
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 3.6.0
  */
@@ -1852,6 +1929,7 @@ export const setPartsUtc: {
  * await Effect.runPromise(Effect.provide(program, layer)) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category services
  * @since 3.11.0
  */
@@ -1874,6 +1952,7 @@ export class CurrentTimeZone extends Context.Service<CurrentTimeZone, TimeZone>(
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 3.6.0
  */
@@ -1896,6 +1975,7 @@ export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, Curr
  * }).pipe(DateTime.withCurrentZone(zone))) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category providing services
  * @since 3.6.0
  */
@@ -1918,6 +1998,7 @@ export const withCurrentZone: {
  * }).pipe(DateTime.withCurrentZoneLocal)) // => true
  * ```
  *
+ * @stability stable
  * @category providing services
  * @since 3.6.0
  */
@@ -1941,6 +2022,7 @@ export const withCurrentZoneLocal = <A, E, R>(
  * await Effect.runPromise(program) // => "+03:00"
  * ```
  *
+ * @stability stable
  * @category providing services
  * @since 3.6.0
  */
@@ -1974,6 +2056,7 @@ export const withCurrentZoneOffset: {
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category providing services
  * @since 3.6.0
  */
@@ -2007,6 +2090,7 @@ export const withCurrentZoneNamed: {
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 3.6.0
  */
@@ -2044,6 +2128,7 @@ export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Ef
  * })
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 3.6.0
  */
@@ -2087,6 +2172,7 @@ export const mutate: {
  * modified // => DateTime.makeZonedUnsafe("2024-01-01T18:00:00Z", { timeZone: "Europe/London" })
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 3.6.0
  */
@@ -2111,6 +2197,7 @@ export const mutateUtc: {
  * result // => DateTime.makeUnsafe(10)
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 3.6.0
  */
@@ -2140,6 +2227,7 @@ export const mapEpochMillis: {
  * ) // => 3600000
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 3.6.0
  */
@@ -2168,6 +2256,7 @@ export const withDate: {
  * ) // => 0
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 3.6.0
  */
@@ -2203,6 +2292,7 @@ export const withDateUtc: {
  * result2 // => "Zoned: 2024-06-15T15:30:00.000+01:00[Europe/London]"
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 3.6.0
  */
@@ -2254,6 +2344,7 @@ export const match: {
  * @see {@link add} for calendar-aware date/time part arithmetic
  * @see {@link subtractDuration} for subtracting an elapsed duration
  *
+ * @stability stable
  * @category math
  * @since 3.6.0
  */
@@ -2276,6 +2367,7 @@ export const addDuration: {
  * ) // => DateTime.makeUnsafe(-300000)
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.6.0
  */
@@ -2303,6 +2395,7 @@ export const subtractDuration: {
  * ) // => DateTime.makeUnsafe(300000)
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.6.0
  */
@@ -2325,6 +2418,7 @@ export const add: {
  * ) // => DateTime.makeUnsafe(-300000)
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.6.0
  */
@@ -2352,6 +2446,7 @@ export const subtract: {
  * ) // => DateTime.makeUnsafe("2024-01-01T00:00:00Z")
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.6.0
  */
@@ -2386,6 +2481,7 @@ export const startOf: {
  * ) // => DateTime.makeUnsafe("2024-01-01T23:59:59.999Z")
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.6.0
  */
@@ -2420,6 +2516,7 @@ export const endOf: {
  * ) // => DateTime.makeUnsafe("2024-01-02T00:00:00Z")
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.6.0
  */
@@ -2467,6 +2564,7 @@ export const nearest: {
  * }) // => "Saturday, June 15, 2024 at 3:30 PM"
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2509,6 +2607,7 @@ export const format: {
  * })
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2557,6 +2656,7 @@ export const formatLocal: {
  * })
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2614,6 +2714,7 @@ export const formatUtc: {
  * @see {@link formatUtc} for formatting with options forced to UTC
  * @see {@link formatIso} for stable ISO formatting
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2642,6 +2743,7 @@ export const formatIntl: {
  * DateTime.formatIso(zoned) // => "2024-01-01T12:30:45.123Z"
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2668,6 +2770,7 @@ export const formatIso: (self: DateTime) => string = Internal.formatIso
  * DateTime.formatIsoDate(zoned) // => "2024-01-02"
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2694,6 +2797,7 @@ export const formatIsoDate: (self: DateTime) => string = Internal.formatIsoDate
  * DateTime.formatIsoDateUtc(zoned) // => "2024-01-01"
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2721,6 +2825,7 @@ export const formatIsoDateUtc: (self: DateTime) => string = Internal.formatIsoDa
  * DateTime.formatIsoOffset(zoned) // => "2024-01-01T15:00:00.000+03:00"
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2751,6 +2856,7 @@ export const formatIsoOffset: (self: DateTime) => string = Internal.formatIsoOff
  * DateTime.formatIsoZoned(offsetZone) // => "2024-06-15T17:30:45.123+03:00"
  * ```
  *
+ * @stability stable
  * @category formatting
  * @since 3.6.0
  */
@@ -2780,6 +2886,7 @@ export const formatIsoZoned: (self: Zoned) => string = Internal.formatIsoZoned
  * await Effect.runPromise(Effect.provide(program, layer)) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 3.6.0
  */
@@ -2810,6 +2917,7 @@ export const layerCurrentZone: (resource: NoInfer<TimeZone>) => Layer.Layer<Curr
  * await Effect.runPromise(Effect.provide(program, layer)) // => "+03:00"
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 3.6.0
  */
@@ -2839,6 +2947,7 @@ export const layerCurrentZoneOffset = (offset: number): Layer.Layer<CurrentTimeZ
  * await Effect.runPromise(Effect.provide(program, layer)) // => "Europe/London"
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 3.6.0
  */
@@ -2869,6 +2978,7 @@ export const layerCurrentZoneNamed: (zoneId: string) => Layer.Layer<
  * await Effect.runPromise(Effect.provide(program, DateTime.layerCurrentZoneLocal)) // => true
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 3.6.0
  */

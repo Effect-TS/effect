@@ -23,6 +23,7 @@ import { hasProperty } from "../Predicate.ts"
  *
  * @see {@link isEncodingError} for the public guard that checks this marker
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -35,6 +36,7 @@ export const EncodingErrorTypeId = "~effect/encoding/EncodingError" as const
  *
  * Use to type the marker carried by `EncodingError` values.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -56,6 +58,7 @@ export type EncodingErrorTypeId = typeof EncodingErrorTypeId
  *
  * @see {@link isEncodingError} for checking whether a value is an EncodingError
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -93,6 +96,7 @@ export class EncodingError extends Data.TaggedError("EncodingError")<{
  * @see {@link EncodingError} for the structured error produced by failed
  * encoding and decoding operations
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */

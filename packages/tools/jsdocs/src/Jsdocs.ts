@@ -131,6 +131,13 @@ export interface ParsedModuleJSDoc {
  */
 export type JSDocStability = "stable" | "unstable" | "experimental"
 
+interface LinkContext {
+  readonly checker: ts.TypeChecker
+  readonly entry: ProgramCacheEntry
+  readonly cwd: string
+  readonly requireStability?: boolean | undefined
+}
+
 interface ParsedModuleTags {
   readonly since: string
   readonly stability: JSDocStability
@@ -1470,7 +1477,8 @@ function extractParsedInlineLinks(source: string): ReadonlyArray<ParsedInlineLin
 
 function buildTags(
   scope: DocScope,
-  tags: ReadonlyArray<JSDocTag>
+  tags: ReadonlyArray<JSDocTag>,
+  requireStability = false
 ): Result<ParsedModuleTags | ParsedDeclarationTags | ParsedNamespaceTags | ParsedMemberTags, JSDocParseError> {
   const diagnostics: Array<JSDocDiagnostic> = []
   const allowed = scope === "declaration"
@@ -1530,6 +1538,14 @@ function buildTags(
   if (stability !== undefined && stability !== "stable" && stability !== "unstable" && stability !== "experimental") {
     diagnostics.push(
       diagnostic("invalid-stability", "@stability must have the value stable, unstable, or experimental")
+    )
+  }
+  if (requireStability && scope !== "member" && stability === undefined) {
+    diagnostics.push(
+      diagnostic(
+        "missing-tag",
+        scope === "module" ? "Module JSDoc must include @stability" : "Public JSDoc must include @stability"
+      )
     )
   }
   const resolvedStability: JSDocStability = stability === "unstable" || stability === "experimental"
@@ -1798,7 +1814,7 @@ function attachSeeLinkSymbolsFromSourceFile<
   tags: T,
   sourceFile: ts.SourceFile,
   block: JSDocBlock,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ): T {
   const resolved = new Map<
     string,
@@ -1834,7 +1850,7 @@ function attachSeeLinkSymbols<T extends ParsedDeclarationTags | ParsedNamespaceT
   tags: T,
   node: ts.Node,
   block: JSDocBlock,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ): T {
   return attachSeeLinkSymbolsFromSourceFile(tags, node.getSourceFile(), block, linkContext)
 }
@@ -1888,6 +1904,7 @@ export interface JSDocConfig {
   readonly include: ReadonlyArray<string>
   readonly exclude?: ReadonlyArray<string>
   readonly output: string
+  readonly requireStability?: ReadonlyArray<string>
 }
 
 /**
@@ -1922,7 +1939,8 @@ export function computeJSDocInputHash(options: ExtractJSDocsOptions): string {
     tsconfig: options.tsconfig,
     include: options.include,
     exclude: options.exclude ?? [],
-    output: options.output
+    output: options.output,
+    requireStability: options.requireStability ?? []
   }))
 
   addInputFile(files, path.join(cwd, "jsdocs.config.json"))
@@ -2418,7 +2436,7 @@ function appendPublicSeeDiagnostics(
 function moduleSeeTags(
   file: JSDocModelFile,
   sourceFile: ts.SourceFile,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ): ReadonlyArray<JSDocApiSeeTag> {
   if (file.moduleJSDoc === undefined) return []
   const block = parseLooseJSDocBlock(file.moduleJSDoc.raw, [file.moduleJSDoc.range[0], file.moduleJSDoc.range[1]])
@@ -2704,7 +2722,7 @@ function addJSDocLinkDiagnostics(
   sourceFile: ts.SourceFile,
   block: JSDocBlock,
   diagnostics: Array<JSDocModelDiagnostic>,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ) {
   if (!hasInlineLink(block)) return
   for (const link of malformedInlineLinks(block)) {
@@ -2746,7 +2764,7 @@ function parseDocumentedTs(
   scope: DocScope,
   diagnostics: Array<JSDocModelDiagnostic>,
   required = true,
-  linkContext?: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext?: LinkContext
 ) {
   const block = getNodeJSDoc(node)
   if (block?.internal) return undefined
@@ -2761,7 +2779,7 @@ function parseDocumentedTs(
   }
   addModelDiagnostics(diagnostics, block.range, block.diagnostics)
   if (block.parsed === undefined) return undefined
-  const tags = buildTags(scope, block.parsed.tags)
+  const tags = buildTags(scope, block.parsed.tags, linkContext?.requireStability)
   if (tags._tag === "Failure") {
     addModelDiagnostics(diagnostics, block.range, tags.error.diagnostics)
     return undefined
@@ -3069,7 +3087,7 @@ function exportSpecifierSignature(
 function parseMembersFromTsType(
   type: ts.TypeNode | undefined,
   diagnostics: Array<JSDocModelDiagnostic>,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ): Array<ParsedMember> {
   if (!type) return []
   if (ts.isTypeLiteralNode(type)) return parseTsMembers(type.members, diagnostics, linkContext)
@@ -3127,7 +3145,7 @@ function memberType(member: ts.TypeElement | ts.ClassElement): ts.TypeNode | und
 function parseTsMembers(
   members: ts.NodeArray<ts.TypeElement | ts.ClassElement>,
   diagnostics: Array<JSDocModelDiagnostic>,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ): Array<ParsedMember> {
   const out: Array<ParsedMember> = []
   for (const member of members) {
@@ -3156,7 +3174,7 @@ function parseTsMembers(
 function parseDeclarationMembersTs(
   node: ts.Node,
   diagnostics: Array<JSDocModelDiagnostic>,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ): Array<ParsedMember> {
   if (ts.isInterfaceDeclaration(node)) return parseTsMembers(node.members, diagnostics, linkContext)
   if (ts.isClassDeclaration(node)) return parseTsMembers(node.members, diagnostics, linkContext)
@@ -3176,7 +3194,7 @@ function hasDeclareModifier(node: ts.Node): boolean {
 function parseNamespaceTs(
   node: ts.ModuleDeclaration,
   diagnostics: Array<JSDocModelDiagnostic>,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string },
+  linkContext: LinkContext,
   isInsideDeclare = false
 ): ParsedNamespace | undefined {
   if (!ts.isIdentifier(node.name)) return undefined
@@ -3276,15 +3294,24 @@ function sourceFileTopLevelJSDoc(sourceFile: ts.SourceFile): ParsedModuleJSDoc |
   return { raw: source.slice(range[0], range[1]), range }
 }
 
+// The leading block is not the module JSDoc when TypeScript attaches it to the
+// first declaration, as in barrels and files without imports.
+function hasLeadingStabilityTag(source: string): boolean {
+  const start = skipLeadingIgnoredTrivia(source)
+  if (!source.startsWith("/**", start)) return false
+  const end = source.indexOf("*/", start + 3)
+  return end !== -1 && /^\s*\*\s*@stability\s/m.test(source.slice(start, end))
+}
+
 function parseModuleJSDocTs(
   sourceFile: ts.SourceFile,
   moduleJSDoc: ParsedModuleJSDoc,
   diagnostics: Array<JSDocModelDiagnostic>,
-  linkContext: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
+  linkContext: LinkContext
 ): ParsedModuleJSDoc | undefined {
   const block = parseLooseJSDocBlock(moduleJSDoc.raw, [moduleJSDoc.range[0], moduleJSDoc.range[1]])
   if (block.internal) return undefined
-  const tags = buildTags("module", block.tags)
+  const tags = buildTags("module", block.tags, linkContext.requireStability)
   if (tags._tag === "Failure") addModelDiagnostics(diagnostics, block.range, tags.error.diagnostics)
   const examples = parseModuleExamples(block)
   addModelDiagnostics(diagnostics, block.range, examples.diagnostics)
@@ -3296,14 +3323,18 @@ function parseSourceFileDocs(
   cwd: string,
   sourceFile: ts.SourceFile,
   checker: ts.TypeChecker,
-  entry: ProgramCacheEntry
+  entry: ProgramCacheEntry,
+  requireStability: boolean
 ): { readonly parsed: ParsedJSDocFile; readonly diagnostics: ReadonlyArray<JSDocModelDiagnostic> } {
   const diagnostics: Array<JSDocModelDiagnostic> = []
   const declarations: Array<ParsedRootDeclaration> = []
   const namespaces: Array<ParsedNamespace> = []
-  const linkContext = { checker, entry, cwd }
+  const linkContext: LinkContext = { checker, entry, cwd, requireStability }
   const checkedFunctionOverloads = new Set<string>()
   const moduleJSDoc = sourceFileTopLevelJSDoc(sourceFile)
+  if (moduleJSDoc === undefined && requireStability && !hasLeadingStabilityTag(sourceFile.text)) {
+    diagnostics.push({ ...diagnostic("missing-tag", "Module JSDoc must include @stability"), range: [0, 0] })
+  }
   const parsedModuleJSDoc = moduleJSDoc === undefined
     ? undefined
     : parseModuleJSDocTs(sourceFile, moduleJSDoc, diagnostics, linkContext)
@@ -3433,6 +3464,7 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
     nodir: true,
     ignore: [...options.exclude ?? []]
   }).sort()
+  const requiresStability = createJSDocFileMatcher({ cwd, include: options.requireStability ?? [] })
   const modelFiles: Array<JSDocModelFile> = []
   for (const filename of files) {
     const source = fs.readFileSync(filename, "utf8")
@@ -3449,7 +3481,7 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
       })
       continue
     }
-    const result = parseSourceFileDocs(cwd, sourceFile, checker, entry)
+    const result = parseSourceFileDocs(cwd, sourceFile, checker, entry, requiresStability(filename))
     if (
       result.diagnostics.length === 0 && result.parsed.declarations.length === 0 &&
       result.parsed.namespaces.length === 0 && result.parsed.moduleJSDoc === undefined

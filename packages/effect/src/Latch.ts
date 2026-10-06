@@ -47,6 +47,7 @@ import * as internal from "./internal/effect.ts"
  * @see {@link open} for releasing current and future waiters
  * @see {@link release} for releasing only the current waiters
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -156,6 +157,7 @@ export interface Latch {
  *
  * @see {@link make} for creating a latch inside Effect code
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -191,6 +193,7 @@ export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLa
  *
  * @see {@link makeUnsafe} for synchronous allocation outside Effect code
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -211,6 +214,7 @@ export const make: (open?: boolean | undefined) => Effect.Effect<Latch> = intern
  * @see {@link openUnsafe} for a synchronous variant
  * @see {@link release} to release waiting fibers without opening the latch
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -234,6 +238,7 @@ export const open = (self: Latch): Effect.Effect<boolean> => self.open
  * @see {@link release} to release waiting fibers without opening the latch
  * @see {@link closeUnsafe} for the synchronous inverse operation
  *
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -255,6 +260,7 @@ export const openUnsafe = (self: Latch): boolean => self.openUnsafe()
  *
  * @see {@link open} for opening the latch for current and future waiters
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -285,6 +291,7 @@ export {
    * @see {@link release} for resuming current waiters without opening the latch
    * @see {@link whenOpen} for waiting before running another effect
    *
+   * @stability unstable
    * @category getters
    * @since 4.0.0
    */
@@ -307,6 +314,7 @@ export {
  * @see {@link closeUnsafe} for a synchronous variant
  * @see {@link open} for opening the latch for current and future waiters
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -331,6 +339,7 @@ export const close = (self: Latch): Effect.Effect<boolean> => self.close
  * @see {@link openUnsafe} to synchronously open the latch and release waiting
  * fibers
  *
+ * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
@@ -355,6 +364,7 @@ export const closeUnsafe = (self: Latch): boolean => self.closeUnsafe()
  * @see {@link open} for opening the latch for current and future waiters
  * @see {@link release} for resuming current waiters without opening the latch
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -377,6 +387,7 @@ export const whenOpen: {
  *
  * Use to check the state of the latch without suspending or changing its state.
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */

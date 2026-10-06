@@ -73,6 +73,7 @@ const TypeId = "~effect/FileSystem"
  * result.content // => "{\"env\": \"development\"}"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -412,6 +413,7 @@ export interface FileSystem {
  * flags // => ["r", "w", "a", "r+"]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -465,6 +467,7 @@ export type OpenFlag =
  * Effect.runSync(withCustomFs) // => "contents"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -488,6 +491,7 @@ export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Servi
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -631,6 +635,7 @@ const notFound = (method: string, path: string) =>
  * Effect.runSync(testProgram) // => "{\"test\": true}"
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -760,6 +765,7 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
  * Effect.runSync(testProgram) // => "mocked content"
  * ```
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -778,6 +784,7 @@ export const layerNoop = (fileSystem: Partial<FileSystem>): Layer.Layer<FileSyst
  * @see {@link File} for the open file handle shape that carries this marker
  * @see {@link isFile} for the public guard that checks this marker
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -800,6 +807,7 @@ export const FileTypeId = "~effect/FileSystem/File"
  * @see {@link File} for the file-handle interface narrowed by this guard
  * @see {@link FileTypeId} for the runtime marker checked by this guard
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -854,6 +862,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * result.buffer // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -879,6 +888,7 @@ export interface File {
  * Namespace containing types associated with open file handles, including file
  * descriptors, entry kinds, and stat information.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace File {
@@ -890,6 +900,7 @@ export declare namespace File {
    * Represents the different types of entries that can exist in a file system,
    * from regular files to special device files and symbolic links.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -950,6 +961,7 @@ export declare namespace File {
    * info.type === "File" // => true
    * ```
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -987,6 +999,7 @@ export declare namespace File {
  *
  * @see {@link File} for the open file handle API whose `seek` method consumes this mode
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -995,6 +1008,7 @@ export type SeekMode = "start" | "current"
 /**
  * Options for watching files or directories.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1020,6 +1034,7 @@ export interface WatchOptions {
  *
  * @see {@link FileSystem} for the service interface whose `watch` operation emits these events
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1028,6 +1043,7 @@ export type WatchEvent = WatchEvent.Create | WatchEvent.Update | WatchEvent.Remo
 /**
  * Namespace containing the concrete event shapes emitted by `FileSystem.watch`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace WatchEvent {
@@ -1039,6 +1055,7 @@ export declare namespace WatchEvent {
    * This event is triggered when a new file or directory is created
    * in the watched location.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -1055,6 +1072,7 @@ export declare namespace WatchEvent {
    * This event is triggered when an existing file or directory is
    * modified in the watched location.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -1071,6 +1089,7 @@ export declare namespace WatchEvent {
    * This event is triggered when a file or directory is deleted
    * from the watched location.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -1117,6 +1136,7 @@ export declare namespace WatchEvent {
  * Effect.runSync(withCustomBackend) // => true
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

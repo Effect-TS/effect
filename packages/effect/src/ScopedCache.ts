@@ -50,6 +50,7 @@ const TypeId = "~effect/ScopedCache"
  * @see {@link make} for creating a scoped cache with a fixed time-to-live
  * @see {@link makeWith} for creating a scoped cache with dynamic time-to-live
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -74,6 +75,7 @@ export interface ScopedCache<in out Key, in out A, in out E = never, out R = nev
  * `Closed` means the owning scope has closed and the cache can no longer
  * perform lookup operations.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -100,6 +102,7 @@ export type State<K, A, E> = {
  *
  * @see {@link State} for the open/closed cache state that stores entries by key
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -130,6 +133,7 @@ export interface Entry<A, E> {
  *
  * @see {@link make} for creating a scoped cache with one fixed time-to-live
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -192,6 +196,7 @@ export const makeWith = <
  *
  * @see {@link makeWith} for computing time-to-live from each lookup result and key
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -252,6 +257,7 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  * @see {@link getSuccess} for inspecting an already-completed successful entry
  * @see {@link refresh} for forcing a new lookup
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -385,6 +391,7 @@ const checkCapacity = <K, A, E>(
  * @see {@link get} for running the lookup on missing or expired keys
  * @see {@link getSuccess} for inspecting only already-completed successful entries
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -447,6 +454,7 @@ const getImpl = <Key, A, E, R>(
  * @see {@link get} for awaiting or starting the lookup effect
  * @see {@link getOption} for awaiting an already-cached entry without starting a lookup
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -489,6 +497,7 @@ export const getSuccess: {
  * @see {@link get} for reading or computing a cached value
  * @see {@link refresh} for replacing an entry by running the lookup function
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -542,6 +551,7 @@ export const set: {
  * @see {@link getOption} for reading an existing cached entry
  * @see {@link get} for running the lookup on missing or expired keys
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -576,6 +586,7 @@ export const has: {
  * @see {@link invalidateWhen} for invalidating only when a cached value matches a predicate
  * @see {@link invalidateAll} for removing every cached entry
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -617,6 +628,7 @@ export const invalidate: {
  *
  * @see {@link invalidate} for unconditional removal by key
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -669,6 +681,7 @@ export const invalidateWhen: {
  * @see {@link get} for reusing an unexpired entry before running the lookup
  * @see {@link invalidate} for removing an entry without recomputing it
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -727,6 +740,7 @@ export const refresh: {
  *
  * @see {@link invalidate} for removing one cached entry
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -765,6 +779,7 @@ const invalidateAllImpl = <Key, A, E>(
  * The size reflects the current number of entries stored, not the number
  * of valid entries.
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -785,6 +800,7 @@ export const size = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.Effe
  * @see {@link entries} for retrieving successful cached key-value pairs
  * @see {@link values} for retrieving only successfully cached values
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -822,6 +838,7 @@ export const keys = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.Effe
  * @see {@link entries} for retrieving successful cached key-value pairs
  * @see {@link keys} for retrieving only cached keys
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -845,6 +862,7 @@ export const values = <Key, A, E, R>(self: ScopedCache<Key, A, E, R>): Effect.Ef
  * @see {@link keys} for retrieving only cached keys
  * @see {@link values} for retrieving only cached values
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */

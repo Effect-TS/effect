@@ -89,6 +89,7 @@ import * as Semaphore from "../Semaphore.ts"
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -134,6 +135,7 @@ export interface TestClock extends Clock.Clock {
  * await Effect.runPromise(Effect.scoped(program))
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace TestClock {
@@ -162,6 +164,7 @@ export declare namespace TestClock {
    * await Effect.runPromise(Effect.scoped(program))
    * ```
    *
+   * @stability stable
    * @category options
    * @since 4.0.0
    */
@@ -178,6 +181,7 @@ export declare namespace TestClock {
    * millisecond timestamp and the sleeps scheduled to resume when the clock
    * reaches their target time.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -239,6 +243,7 @@ const millisToNanos = (millis: number): bigint => {
  * await Effect.runPromise(Effect.scoped(program))
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -431,6 +436,7 @@ export const make = Effect.fnUntraced(function*(
  * await Effect.runPromise(Effect.provide(program, customTestClockLayer)) // => 3_600_000
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 4.0.0
  */
@@ -464,6 +470,7 @@ export const layer: (options?: TestClock.Options) => Layer.Layer<TestClock> = fl
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 2.0.0
  */
@@ -502,6 +509,7 @@ export const testClockWith = <A, E, R>(
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 2.0.0
  */
@@ -539,6 +547,7 @@ export const adjust = (duration: Duration.Input): Effect.Effect<void> =>
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 2.0.0
  */
@@ -575,6 +584,7 @@ export const setTime = (timestamp: number): Effect.Effect<void> =>
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 4.0.0
  */

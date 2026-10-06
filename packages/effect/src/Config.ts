@@ -45,6 +45,7 @@ const TypeId = "~effect/Config"
  * Config.isConfig("not a config") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -67,6 +68,7 @@ export const isConfig = (u: unknown): u is Config<unknown> => Predicate.hasPrope
  * @see {@link orElse} – recover from a ConfigError
  * @see {@link withDefault} – provide a fallback when relevant input is absent
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -103,6 +105,7 @@ export class ConfigError {
  *
  * @see {@link schema} – the main way to create a Config
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -178,6 +181,7 @@ const evaluateAt = <T>(
  *
  * @see {@link mapEffect} – when the transformation can fail
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -245,6 +249,7 @@ export const map: {
  * )
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -285,6 +290,7 @@ export const flatMap: {
  *
  * @see {@link map} – when the transformation cannot fail
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -341,6 +347,7 @@ export const mapEffect: {
  *
  * @see {@link withDefault} – fallback only on semantic absence
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -398,6 +405,7 @@ export const orElse: {
  * await Effect.runPromise(dbConfig.parse(missingPort)) // => { host: "localhost", port: 5432 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -463,6 +471,7 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
  * @see {@link option} – returns `Option` instead of a default value
  * @see {@link orElse} – catches all errors, not just absent input
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -508,6 +517,7 @@ export const withDefault: {
  *
  * @see {@link withDefault} – provide a concrete fallback value instead
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -525,6 +535,7 @@ export const option = <A>(self: Config<A>): Config<Option.Option<A>> =>
  * @see {@link Config} for the config type whose parsed value is extracted
  * @see {@link Effect.Success} for extracting the success type from any `Effect`
  *
+ * @stability stable
  * @category utility types
  * @since 2.5.0
  */
@@ -545,6 +556,7 @@ export type Success<T> = [T] extends [Config<infer A>] ? A : never
  *
  * @see {@link unwrap} – construct a `Config` from a `Wrap<T>`
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -590,6 +602,7 @@ type IsPlainObject<A> = [A] extends [Record<string, any>]
  *
  * @see {@link Wrap} – the utility type accepted by this function
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -811,6 +824,7 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
  * @see {@link String} / {@link Number} / {@link Boolean} – shortcuts for
  *   single-value configs
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -869,6 +883,7 @@ const isPath = (u: unknown): u is string | Path => Predicate.isString(u) || glob
  * Use when you need to re-raise a specific config error, such as inside
  * {@link orElse}.
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -897,6 +912,7 @@ export function fail(err: SourceError | Schema.SchemaError): Config<never> {
  * Effect.runSync(host.parse(provider)) // => "localhost"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -929,6 +945,7 @@ export function succeed<T>(value: T) {
  * @see {@link NonEmptyString} – rejects empty strings
  * @see {@link schema} – for more complex types
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -950,6 +967,7 @@ export function String(name?: string) {
  *
  * @see {@link String} for allowing empty strings
  *
+ * @stability stable
  * @category constructors
  * @since 3.7.0
  */
@@ -972,6 +990,7 @@ export function NonEmptyString(name?: string) {
  * @see {@link Finite} for rejecting `NaN` and `Infinity`
  * @see {@link Int} for accepting only integers
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -993,6 +1012,7 @@ export function Number(name?: string) {
  * @see {@link Number} for accepting `NaN` and `Infinity`
  * @see {@link Int} for accepting only integers
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1014,6 +1034,7 @@ export function Finite(name?: string) {
  * @see {@link Number} for accepting any number
  * @see {@link Port} for accepting only integers in `1` through `65535`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1043,6 +1064,7 @@ export function Int(name?: string) {
  * ```
  *
  * @see {@link Literals} – accepts multiple literal values
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1073,6 +1095,7 @@ export function Literal<L extends SchemaAST.LiteralValue>(literal: L, name?: str
  *
  * @see {@link Literal} for accepting one specific literal value
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1106,6 +1129,7 @@ export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
  * ```
  *
  * @see {@link Record} for key-value input from structural records or separated strings.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1173,6 +1197,7 @@ export function Array<V extends Schema.ConstraintCodec<unknown, unknown>>(
  * ```
  *
  * @see {@link Array} for array input from structural arrays or separated strings.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1248,6 +1273,7 @@ export function Record<
  * ) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1290,6 +1316,7 @@ export function Boolean(name?: string) {
  *
  * @see {@link schema} for decoding configuration values with a custom codec
  *
+ * @stability stable
  * @category constructors
  * @since 2.5.0
  */
@@ -1305,6 +1332,7 @@ export function Duration(name?: string) {
  * Decimal symbols such as `kB` use powers of 1,000, while binary symbols such
  * as `KiB` use powers of 1,024.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1343,6 +1371,7 @@ export function ByteSize(name?: string) {
  *
  * @see {@link Int} for integer config values outside the port range
  *
+ * @stability stable
  * @category constructors
  * @since 3.16.0
  */
@@ -1380,6 +1409,7 @@ export function Port(name?: string) {
  * ) // => "Info"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1420,6 +1450,7 @@ export function LogLevel(name?: string) {
  *
  * @see {@link String} for non-secret string settings
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1462,6 +1493,7 @@ export function Redacted(name?: string) {
  *
  * @see {@link schema} for decoding configuration values with a custom codec
  *
+ * @stability stable
  * @category constructors
  * @since 3.11.0
  */
@@ -1495,6 +1527,7 @@ export function URL(name?: string) {
  * Effect.runSync(createdAt.parse(provider)).toISOString() // => "2024-01-15T00:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1550,6 +1583,7 @@ export function Date(name?: string) {
  * @see {@link all} – combine multiple configs into a struct
  * @see {@link schema} – read structured config from a schema
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */

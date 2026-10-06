@@ -40,6 +40,7 @@ const TypeId = "~effect/ManagedRuntime"
  *
  * @see {@link make} for creating managed runtimes this guard recognizes
  *
+ * @stability stable
  * @category guards
  * @since 3.9.0
  */
@@ -54,6 +55,7 @@ export const isManagedRuntime = (input: unknown): input is ManagedRuntime<unknow
  * Use to reference type-level helpers for extracting managed runtime services
  * and layer errors.
  *
+ * @stability stable
  * @since 3.4.0
  */
 export declare namespace ManagedRuntime {
@@ -65,6 +67,7 @@ export declare namespace ManagedRuntime {
    * Use to derive the service requirements provided by an existing
    * `ManagedRuntime` type.
    *
+   * @stability stable
    * @category utility types
    * @since 3.4.0
    */
@@ -78,6 +81,7 @@ export declare namespace ManagedRuntime {
    * Use to derive the layer construction error type from an existing
    * `ManagedRuntime` type.
    *
+   * @stability stable
    * @category utility types
    * @since 3.4.0
    */
@@ -107,6 +111,7 @@ export declare namespace ManagedRuntime {
  * @see {@link make} for constructing a managed runtime from a layer
  * @see {@link Layer.build} for lower-level scoped layer construction
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -280,6 +285,7 @@ export interface ManagedRuntime<in R, out ER> {
  * @see {@link Layer.MemoMap} for shared layer memoization
  * @see {@link Layer.build} for lower-level scoped layer construction
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */

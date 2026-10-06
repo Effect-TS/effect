@@ -48,6 +48,7 @@ const TypeId = "~effect/TxPubSub"
  * await Effect.runPromise(program) // => "hello"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -123,6 +124,7 @@ const makeTxPubSub = <A>(
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -161,6 +163,7 @@ export const bounded = <A = never>(capacity: number): Effect.Effect<TxPubSub<A>>
  * await Effect.runPromise(program) // => [1, 2]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -197,6 +200,7 @@ export const dropping = <A = never>(capacity: number): Effect.Effect<TxPubSub<A>
  * await Effect.runPromise(program) // => 2
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -230,6 +234,7 @@ export const sliding = <A = never>(capacity: number): Effect.Effect<TxPubSub<A>>
  * await Effect.runPromise(program) // => "msg"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -260,6 +265,7 @@ export const unbounded = <A = never>(): Effect.Effect<TxPubSub<A>> =>
  * await Effect.runPromise(program) // => 16
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -289,6 +295,7 @@ export const capacity = <A>(self: TxPubSub<A>): number => self.capacity
  * await Effect.runPromise(program) // => 2
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -319,6 +326,7 @@ export const size = <A>(self: TxPubSub<A>): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -348,6 +356,7 @@ export const isEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -369,6 +378,7 @@ export const isNonEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effe
  * await Effect.runPromise(program) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -400,6 +410,7 @@ export const isFull = <A>(self: TxPubSub<A>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -440,6 +451,7 @@ export const isShutdown = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => TxRe
  * await Effect.runPromise(program) // => [true, "hello"]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -494,6 +506,7 @@ export const publish: {
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -549,6 +562,7 @@ export const publishAll: {
  * await Effect.runPromise(program) // => ["broadcast", "broadcast"]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -573,6 +587,7 @@ export const subscribe = <A>(self: TxPubSub<A>): Effect.Effect<TxQueue.TxQueue<A
  * @see {@link subscribe} for the scoped acquire and release wrapper when no custom transaction composition is needed
  * @see {@link releaseSubscriber} to remove and shut down a queue returned by `acquireSubscriber`
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -606,6 +621,7 @@ export const acquireSubscriber = <A>(
  * @see {@link acquireSubscriber} for the matching transactional acquire step
  * @see {@link subscribe} for the scoped acquire and release wrapper
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -668,6 +684,7 @@ const makeSubscriberQueue = <A>(
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -703,6 +720,7 @@ export const shutdown = <A>(self: TxPubSub<A>): Effect.Effect<void> =>
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -729,6 +747,7 @@ export const awaitShutdown = <A>(self: TxPubSub<A>): Effect.Effect<void> =>
  * TxPubSub.isTxPubSub(someValue) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */

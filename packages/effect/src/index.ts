@@ -5,26 +5,32 @@
 
 export {
   /**
+   * @stability stable
    * @since 2.0.0
    */
   absurd,
   /**
+   * @stability stable
    * @since 2.0.0
    */
   cast,
   /**
+   * @stability stable
    * @since 2.0.0
    */
   flow,
   /**
+   * @stability stable
    * @since 2.0.0
    */
   hole,
   /**
+   * @stability stable
    * @since 2.0.0
    */
   identity,
   /**
+   * @stability stable
    * @since 2.0.0
    */
   pipe
@@ -111,7 +117,7 @@ export * as Chunk from "./Chunk.ts"
 export * as Clock from "./Clock.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as Combiner from "./Combiner.ts"
@@ -321,13 +327,13 @@ export * as Inspectable from "./Inspectable.ts"
 export * as Iterable from "./Iterable.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as JsonPatch from "./JsonPatch.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as JsonPointer from "./JsonPointer.ts"
@@ -435,7 +441,7 @@ export * as NonEmptyIterable from "./NonEmptyIterable.ts"
 export * as Number from "./Number.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as Optic from "./Optic.ts"
@@ -555,7 +561,7 @@ export * as Redactable from "./Redactable.ts"
 export * as Redacted from "./Redacted.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as Reducer from "./Reducer.ts"
@@ -633,7 +639,7 @@ export * as Schema from "./Schema.ts"
 export * as SchemaAST from "./SchemaAST.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as SchemaGetter from "./SchemaGetter.ts"
@@ -651,7 +657,7 @@ export * as SchemaIssue from "./SchemaIssue.ts"
 export * as SchemaParser from "./SchemaParser.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as SchemaRepresentation from "./SchemaRepresentation.ts"
@@ -693,7 +699,7 @@ export * as Semaphore from "./Semaphore.ts"
 export * as Sink from "./Sink.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as StandardSchema from "./StandardSchema.ts"

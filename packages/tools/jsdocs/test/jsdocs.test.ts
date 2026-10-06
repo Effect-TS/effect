@@ -56,6 +56,47 @@ export const makeValue = () => 1
   }
 }
 
+const requiredStabilityDiagnostics = (files: Record<string, string>) => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-require-stability-"))
+  try {
+    fs.mkdirSync(path.join(cwd, "src/required"), { recursive: true })
+    fs.writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext", target: "ES2022" },
+        include: ["src/**/*.ts"]
+      })
+    )
+    fs.writeFileSync(
+      path.join(cwd, "package.json"),
+      JSON.stringify({
+        name: "@effect/sample",
+        type: "module",
+        exports: { "./*": "./src/*.ts", "./required/*": "./src/required/*.ts" }
+      })
+    )
+    for (const [file, source] of Object.entries(files)) {
+      fs.writeFileSync(path.join(cwd, "src", file), source)
+    }
+    const model = extractJSDocsSync({
+      cwd,
+      tsconfig: "tsconfig.json",
+      include: ["src/**/*.ts"],
+      output: ".data/jsdocs.json",
+      requireStability: ["src/required/*.ts"]
+    })
+    return Object.fromEntries(
+      Object.keys(files).map((file) => [
+        file,
+        model.files.find((modelFile) => modelFile.file === `src/${file}`)?.diagnostics.map((item) => item.message) ??
+          []
+      ])
+    )
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true })
+  }
+}
+
 const signatureParseDiagnostics = (signature: string): ReadonlyArray<string> =>
   (ts.createSourceFile(
     "signature.ts",
@@ -107,6 +148,113 @@ describe("jsdocs", () => {
 
   it("rejects unknown stability values", () => {
     assert.deepStrictEqual(stabilityResult("@stability bogus").diagnostics, ["invalid-stability"])
+  })
+
+  it("requires @stability on modules and public declarations in configured files", () => {
+    assert.deepStrictEqual(
+      requiredStabilityDiagnostics({
+        "required/Declaration.ts": `/**
+ * Module.
+ *
+ * @stability stable
+ * @since 1.0.0
+ */
+import type {} from "node:fs"
+
+/**
+ * A value.
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const value = 1
+`,
+        "required/Namespace.ts": `/**
+ * Module.
+ *
+ * @stability unstable
+ * @since 1.0.0
+ */
+import type {} from "node:fs"
+
+/**
+ * A group.
+ *
+ * @stability unstable
+ * @category models
+ * @since 1.0.0
+ */
+export declare namespace Group {
+  /**
+   * An item.
+   *
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Item {
+    /**
+     * Members do not require a stability tag.
+     */
+    readonly id: string
+  }
+}
+`,
+        "required/Module.ts": `/**
+ * Module.
+ *
+ * @since 1.0.0
+ */
+import type {} from "node:fs"
+
+/**
+ * A value.
+ *
+ * @stability stable
+ * @category constructors
+ * @since 1.0.0
+ */
+export const value = 1
+`,
+        "required/NoImports.ts": `/**
+ * Module.
+ *
+ * @stability stable
+ * @since 1.0.0
+ */
+
+/**
+ * A value.
+ *
+ * @stability stable
+ * @category constructors
+ * @since 1.0.0
+ */
+export const value = 1
+`,
+        "Optional.ts": `/**
+ * Module.
+ *
+ * @since 1.0.0
+ */
+import type {} from "node:fs"
+
+/**
+ * A value.
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const value = 1
+`
+      }),
+      {
+        "required/Declaration.ts": ["Public JSDoc must include @stability"],
+        "required/Namespace.ts": ["Public JSDoc must include @stability"],
+        "required/Module.ts": ["Module JSDoc must include @stability"],
+        "required/NoImports.ts": [],
+        "Optional.ts": []
+      }
+    )
   })
 
   it("rejects duplicate stability tags", () => {

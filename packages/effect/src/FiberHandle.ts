@@ -52,6 +52,7 @@ const TypeId = "~effect/FiberHandle"
  * actual // => "hello"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -85,6 +86,7 @@ export interface FiberHandle<out A = unknown, out E = unknown> extends Pipeable,
  * actual // => [true, false]
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -141,6 +143,7 @@ const makeUnsafe = <A = unknown, E = unknown>(): FiberHandle<A, E> => {
  * actual // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -191,6 +194,7 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberHandle<A, E
  * actual // => [Exit.failCause(Cause.interrupt(-1)), Exit.succeed("second")]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -246,6 +250,7 @@ export const makeRuntime = <R, E = unknown, A = unknown>(): Effect.Effect<
  * actual // => "hello"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.13.0
  */
@@ -302,6 +307,7 @@ const isInternalInterruption = Filter.toPredicate(Filter.compose(
  * actual // => "hello"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -390,6 +396,7 @@ export const setUnsafe: {
  * actual // => "hello"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -453,6 +460,7 @@ export const set: {
  * actual // => [Option.none(), Option.some(true)]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -483,6 +491,7 @@ export function getUnsafe<A, E>(self: FiberHandle<A, E>): Option.Option<Fiber.Fi
  * actual // => Option.some(true)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -516,6 +525,7 @@ export function get<A, E>(self: FiberHandle<A, E>): Effect.Effect<Option.Option<
  * actual // => Option.none()
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -578,6 +588,7 @@ const constInterruptedFiber = (function() {
  * actual // => ["hello", "world"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -673,6 +684,7 @@ const runImpl = <A, E, R, XE extends E, XA extends A>(
  * actual // => 0
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -748,6 +760,7 @@ export const runtime: <A, E>(
  * actual // => "hello"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 3.13.0
  */
@@ -819,6 +832,7 @@ export const runtimePromise = <A, E>(self: FiberHandle<A, E>): <R = never>() => 
  * actual // => Exit.fail("error")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -848,6 +862,7 @@ export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>
  * actual // => Option.none()
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 3.13.0
  */

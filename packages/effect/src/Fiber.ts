@@ -66,6 +66,7 @@ const TypeId = "~effect/Fiber"
  * actual // => Exit.succeed(42)
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -120,6 +121,7 @@ export interface Fiber<out A, out E = never> extends Pipeable {
  * actual // => 42
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Fiber {
@@ -144,6 +146,7 @@ export declare namespace Fiber {
    * actual // => 1
    * ```
    *
+   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -165,6 +168,7 @@ export declare namespace Fiber {
    * The cache object is computed once per context cache root and shared by
    * every fiber running with that root, so it must be treated as immutable.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -217,6 +221,7 @@ export {
    * actual // => Exit.succeed(42)
    * ```
    *
+   * @stability stable
    * @category combinators
    * @since 2.0.0
    */
@@ -255,6 +260,7 @@ export {
  * actual // => [Exit.succeed(1), Exit.succeed(2)]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -299,6 +305,7 @@ export const awaitAll: <A extends Fiber<any, any>>(
  *
  * @see {@link await_ await} for inspecting the fiber outcome as an Exit
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -325,6 +332,7 @@ export const join: <A, E>(self: Fiber<A, E>) => Effect<A, E> = effect.fiberJoin
  *
  * @see {@link awaitAll} for collecting every fiber outcome as an Exit
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -374,6 +382,7 @@ export const joinAll: <A extends Iterable<Fiber<any, any>>>(
  * @see {@link interruptAs} for specifying the interrupting fiber ID
  * @see {@link await_ await} for observing the interrupted fiber's Exit
  *
+ * @stability stable
  * @category interruption
  * @since 2.0.0
  */
@@ -416,6 +425,7 @@ export const interrupt: <A, E>(self: Fiber<A, E>) => Effect<void> = effect.fiber
  *
  * @see {@link interrupt} for using the current fiber as the interruptor
  *
+ * @stability stable
  * @category interruption
  * @since 2.0.0
  */
@@ -467,6 +477,7 @@ export const interruptAs: {
  *
  * @see {@link interruptAllAs} for specifying the interrupting fiber ID
  *
+ * @stability stable
  * @category interruption
  * @since 2.0.0
  */
@@ -514,6 +525,7 @@ export const interruptAll: <A extends Iterable<Fiber<any, any>>>(
  *
  * @see {@link interruptAll} for using the current fiber as the interruptor
  *
+ * @stability stable
  * @category interruption
  * @since 2.0.0
  */
@@ -553,6 +565,7 @@ export const interruptAllAs: {
  * actual // => [true, false, false, false]
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -588,6 +601,7 @@ export const isFiber = (
  * actual // => true
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -612,6 +626,7 @@ export const getCurrent: () => Fiber<any, any> | undefined = effect.getCurrentFi
  *
  * @see {@link interrupt} for interrupting and waiting for completion
  *
+ * @stability stable
  * @category resource management
  * @since 4.0.0
  */

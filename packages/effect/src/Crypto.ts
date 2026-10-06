@@ -35,6 +35,7 @@ const TypeId = "~effect/Crypto"
  * const algorithm: Crypto.DigestAlgorithm = "SHA-256"
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -73,6 +74,7 @@ export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
  * await Effect.runPromise(Effect.provide(program, TestCrypto)) // => [16, 36, 16]
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -186,6 +188,7 @@ export interface Crypto {
  *
  * @see {@link make} for constructing a Crypto service from primitive operations
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -225,6 +228,7 @@ export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/C
  * await Effect.runPromise(testCrypto.randomBytes(4)) // => new Uint8Array([0, 0, 0, 0])
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

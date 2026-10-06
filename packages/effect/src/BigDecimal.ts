@@ -44,6 +44,7 @@ const TypeId = "~effect/BigDecimal"
  * d.scale // => 2
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -101,6 +102,7 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
  * BigDecimal.isBigDecimal("123.45") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -134,6 +136,7 @@ export const isBigDecimal = (u: unknown): u is BigDecimal => hasProperty(u, Type
  *
  * @see {@link fromBigInt} for constructing an integer decimal from a `bigint`
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -198,6 +201,7 @@ const one = makeNormalizedUnsafe(bigint1, 0)
  *
  * @see {@link format} for rendering normalized decimals as strings
  *
+ * @stability stable
  * @category scaling
  * @since 2.0.0
  */
@@ -247,6 +251,7 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  *
  * @see {@link round} for changing scale with configurable rounding
  *
+ * @stability stable
  * @category scaling
  * @since 2.0.0
  */
@@ -286,6 +291,7 @@ export const scale: {
  *
  * @see {@link sumAll} for summing an iterable of `BigDecimal` values
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -334,6 +340,7 @@ export const sum: {
  *
  * @see {@link sum} for adding two `BigDecimal` values
  *
+ * @stability stable
  * @category math
  * @since 3.16.0
  */
@@ -365,6 +372,7 @@ export const sumAll = (collection: Iterable<BigDecimal>): BigDecimal => {
  *
  * @see {@link multiplyAll} for multiplying an iterable of `BigDecimal` values
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -400,6 +408,7 @@ export const multiply: {
  *
  * @see {@link multiply} for multiplying two `BigDecimal` values
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -432,6 +441,7 @@ export const multiplyAll = (collection: Iterable<BigDecimal>): BigDecimal => {
  * ) // => BigDecimal.fromBigInt(-1n)
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -555,6 +565,7 @@ export const roundTerminal = (n: bigint): bigint => {
  * @see {@link divideUnsafe} for division that throws when the divisor is zero
  * @see {@link remainder} for the decimal remainder operation
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -606,6 +617,7 @@ export const divide: {
  *
  * @see {@link divide} for division that returns `Option.none` when the divisor is zero
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -685,6 +697,7 @@ const compare = (self: BigDecimal, that: BigDecimal): Ordering => {
  * BigDecimal.Order(a, c) // => 0
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -711,6 +724,7 @@ export const Order: order.Order<BigDecimal> = order.make(compare)
  * BigDecimal.isLessThan(four, three) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -740,6 +754,7 @@ export const isLessThan: {
  * BigDecimal.isLessThanOrEqualTo(four, three) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -769,6 +784,7 @@ export const isLessThanOrEqualTo: {
  * BigDecimal.isGreaterThan(four, three) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -798,6 +814,7 @@ export const isGreaterThan: {
  * BigDecimal.isGreaterThanOrEqualTo(four, three) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -830,6 +847,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * @see {@link clamp} for forcing a `BigDecimal` into an inclusive range
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -874,6 +892,7 @@ export const between: {
  *
  * @see {@link between} for checking whether a `BigDecimal` is already inside a range
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -908,6 +927,7 @@ export const clamp: {
  *
  * @see {@link max} for selecting the larger value
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -936,6 +956,7 @@ export const min: {
  *
  * @see {@link min} for selecting the smaller value
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -961,6 +982,7 @@ export const max: {
  * BigDecimal.sign(BigDecimal.fromStringUnsafe("5")) // => 1
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -983,6 +1005,7 @@ export const sign = (n: BigDecimal): Ordering => n.value === bigint0 ? 0 : n.val
  * BigDecimal.abs(BigDecimal.fromStringUnsafe("5")) // => BigDecimal.fromBigInt(5n)
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -1004,6 +1027,7 @@ export const abs = (n: BigDecimal): BigDecimal => n.value < bigint0 ? make(-n.va
  * BigDecimal.negate(BigDecimal.fromStringUnsafe("-6")) // => BigDecimal.fromBigInt(6n)
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -1038,6 +1062,7 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  * @see {@link remainderUnsafe} for remainder calculation that throws when the divisor is zero
  * @see {@link divide} for decimal quotient calculation
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -1079,6 +1104,7 @@ export const remainder: {
  *
  * @see {@link remainder} for returning `Option.none` when the divisor is zero
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -1115,6 +1141,7 @@ export const remainderUnsafe: {
  * BigDecimal.Equivalence(a, c) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -1142,6 +1169,7 @@ export const Equivalence: Equ.Equivalence<BigDecimal> = Equ.make((self, that) =>
  *
  * @see {@link Equivalence} for passing decimal equality to APIs that require an `Equivalence`
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1171,6 +1199,7 @@ export const equals: {
  *
  * @see {@link make} for constructing a decimal with an explicit scale
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1201,6 +1230,7 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  *
  * @see {@link fromNumber} for returning `Option.none` when the number is not finite
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1237,6 +1267,7 @@ export const fromNumberUnsafe = (n: number): BigDecimal => {
  * @see {@link fromNumberUnsafe} for throwing when the number is not finite
  * @see {@link fromString} for parsing decimal strings directly
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1279,6 +1310,7 @@ export const fromNumber = (n: number): Option.Option<BigDecimal> => {
  * @see {@link fromStringUnsafe} for parsing that throws on invalid input
  * @see {@link fromNumber} for converting finite JavaScript numbers
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1351,6 +1383,7 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
  *
  * @see {@link fromString} for returning `Option.none` on invalid input
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1383,6 +1416,7 @@ export const fromStringUnsafe = (s: string): BigDecimal => {
  *
  * @see {@link toExponential} for always rendering scientific notation
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -1419,6 +1453,7 @@ export const format = (n: BigDecimal): string => {
  *
  * @see {@link format} for plain decimal formatting when possible
  *
+ * @stability stable
  * @category converting
  * @since 3.11.0
  */
@@ -1460,6 +1495,7 @@ export const toExponential = (n: BigDecimal): string => {
  *
  * @see {@link format} for preserving decimal precision as text
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1482,6 +1518,7 @@ export const toNumberUnsafe = (n: BigDecimal): number => Number(format(n))
  * BigDecimal.isInteger(BigDecimal.fromStringUnsafe("1.1")) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1503,6 +1540,7 @@ export const isInteger = (n: BigDecimal): boolean => normalize(n).scale <= 0
  * BigDecimal.isZero(BigDecimal.fromStringUnsafe("1")) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1525,6 +1563,7 @@ export const isZero = (n: BigDecimal): boolean => n.value === bigint0
  * BigDecimal.isNegative(BigDecimal.fromStringUnsafe("1")) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1547,6 +1586,7 @@ export const isNegative = (n: BigDecimal): boolean => n.value < bigint0
  * BigDecimal.isPositive(BigDecimal.fromStringUnsafe("1")) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1580,6 +1620,7 @@ const isBigDecimalArgs = (args: IArguments) => isBigDecimal(args[0])
  * @see {@link floor} for fixed rounding toward negative infinity
  * @see {@link truncate} for fixed rounding toward zero
  *
+ * @stability stable
  * @category math
  * @since 3.16.0
  */
@@ -1618,6 +1659,7 @@ export type RoundingMode =
  * @see {@link floor} for fixed rounding toward negative infinity
  * @see {@link truncate} for fixed rounding toward zero
  *
+ * @stability stable
  * @category math
  * @since 3.16.0
  */
@@ -1693,6 +1735,7 @@ export const round: {
  * @see {@link ceil} for rounding toward positive infinity
  * @see {@link floor} for rounding toward negative infinity
  *
+ * @stability stable
  * @category math
  * @since 3.16.0
  */
@@ -1734,6 +1777,7 @@ export const truncate: {
  * BigDecimal.ceil(BigDecimal.fromStringUnsafe("-14.5")) // => BigDecimal.fromBigInt(-14n)
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.16.0
  */
@@ -1789,6 +1833,7 @@ export const digitAt: {
  * @see {@link truncate} for rounding toward zero
  * @see {@link round} for configurable rounding modes
  *
+ * @stability stable
  * @category math
  * @since 3.16.0
  */

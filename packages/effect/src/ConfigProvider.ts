@@ -51,6 +51,7 @@ import * as Str from "./String.ts"
  * @see {@link makeRecord} – construct a `Record` node
  * @see {@link makeArray} – construct an `Array` node
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -96,6 +97,7 @@ export type Node =
  * @see {@link makeRecord} – for object-like containers
  * @see {@link makeArray} – for array-like containers
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -134,6 +136,7 @@ export function makeValue(value: string): Node {
  * @see {@link makeValue} – for terminal leaves
  * @see {@link makeArray} – for array-like containers
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -166,6 +169,7 @@ export function makeRecord(keys: ReadonlySet<string>, value?: string): Node {
  * @see {@link makeValue} – for terminal leaves
  * @see {@link makeRecord} – for object-like containers
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -203,6 +207,7 @@ export function makeArray(length: number, value?: string): Node {
  * @see {@link ConfigProvider} – the interface whose `load` may fail with this
  *   error
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -230,6 +235,7 @@ export class SourceError extends Data.TaggedError("SourceError")<{
  * path.join(".") // => "database.replicas.0.host"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -265,6 +271,7 @@ export type Path = ReadonlyArray<string | number>
  * @see {@link make} – construct a provider from a lookup function
  * @see {@link orElse} – compose providers with fallback
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -337,6 +344,7 @@ export interface ConfigProvider extends Pipeable {
  * @see {@link layer} – install a provider as a Layer
  * @see {@link layerAdd} – add a fallback provider as a Layer
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -430,6 +438,7 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  * @see {@link fromEnv} – pre-built provider for environment variables
  * @see {@link fromUnknown} – pre-built provider for JSON objects
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -476,6 +485,7 @@ export function make(get: (path: Path) => Effect.Effect<Node | undefined, Source
  *
  * @see {@link layerAdd} – install a fallback provider via a Layer
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -529,6 +539,7 @@ export const orElse: {
  * @see {@link constantCase} – a preset that converts to `CONSTANT_CASE`
  * @see {@link nested} – for prepending a prefix instead of transforming
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -570,6 +581,7 @@ export const mapInput: {
  *
  * @see {@link mapInput} – for arbitrary path transformations
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -616,6 +628,7 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = mapInput((
  *
  * @see {@link mapInput} – for arbitrary path transformations
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -662,6 +675,7 @@ export const nested: {
  *
  * @see {@link layerAdd} – add a provider without replacing the existing one
  *
+ * @stability stable
  * @category layers
  * @since 4.0.0
  */
@@ -708,6 +722,7 @@ export const layer = <E = never, R = never>(
  * @see {@link layer} – replace the provider entirely
  * @see {@link orElse} – compose providers without layers
  *
+ * @stability stable
  * @category layers
  * @since 4.0.0
  */
@@ -775,6 +790,7 @@ export const layerAdd = <E = never, R = never>(
  * @see {@link fromEnv} – for environment variables
  * @see {@link make} – for custom backing stores
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -859,6 +875,7 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
  *
  * @see {@link fromEnv} – automatically reads the runtime environment
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -921,6 +938,7 @@ export function fromEnvRecord(
  * @see {@link fromEnvRecord} – for explicit records in restricted runtimes
  * @see {@link constantCase} – bridge camelCase keys to SCREAMING_SNAKE_CASE
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1040,6 +1058,7 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  * @see {@link fromEnvRecord} – for explicit environment records
  * @see {@link fromEnv} – for raw environment variable access
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1195,6 +1214,7 @@ function searchLast(str: string, rgx: RegExp): number {
  * @see {@link fromDotEnvContents} – parse a `.env` string directly
  * @see {@link fromEnv} – read from the runtime environment
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1266,6 +1286,7 @@ export const fromDotEnv: (options?: {
  * @see {@link fromEnv} – for environment variables
  * @see {@link fromDotEnv} – for `.env` files
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */

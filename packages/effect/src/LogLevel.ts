@@ -62,6 +62,7 @@ import * as References from "./References.ts"
  * levels // => ["Error", "Debug"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -82,6 +83,7 @@ export type LogLevel = "All" | "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "
  * @see {@link values} for the runtime list of all accepted `LogLevel` values,
  * including sentinels
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -109,6 +111,7 @@ export type Severity = "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace"
  * @see {@link Severity} for the concrete message severity type that excludes `All` and `None`
  * @see {@link Order} for comparing these levels by severity order
  *
+ * @stability stable
  * @category constants
  * @since 4.0.0
  */
@@ -136,6 +139,7 @@ export const values: ReadonlyArray<LogLevel> = ["All", "Fatal", "Error", "Warn",
  * LogLevel.Order("Info", "Info") // => 0
  * ```
  *
+ * @stability stable
  * @category ordering
  * @since 2.0.0
  */
@@ -165,6 +169,7 @@ export const Order: Ord.Order<LogLevel> = effect.LogLevelOrder
  * @see {@link Order} for severity ordering rather than exact level equality
  * @see {@link isGreaterThanOrEqualTo} for minimum-threshold checks
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -193,6 +198,7 @@ export const Equivalence: Equ.Equivalence<LogLevel> = Equ.strictEqual<LogLevel>(
  * @see {@link Order} for comparing log levels without exposing numeric keys
  * @see {@link isGreaterThanOrEqualTo} for minimum-threshold filtering
  *
+ * @stability stable
  * @category ordering
  * @since 4.0.0
  */
@@ -231,6 +237,7 @@ export const getOrdinal = (self: LogLevel): number => effect.logLevelToOrder(sel
  * isMoreSevereThanInfo("Debug") // => false
  * ```
  *
+ * @stability stable
  * @category ordering
  * @since 4.0.0
  */
@@ -264,6 +271,7 @@ export const isGreaterThan: {
  * isInfoOrAbove("Error") // => true
  * ```
  *
+ * @stability stable
  * @category ordering
  * @since 4.0.0
  */
@@ -305,6 +313,7 @@ export const isGreaterThanOrEqualTo: {
  * isLessSevereThanError("Fatal") // => false
  * ```
  *
+ * @stability stable
  * @category ordering
  * @since 4.0.0
  */
@@ -338,6 +347,7 @@ export const isLessThan: {
  * isInfoOrBelow("Debug") // => true
  * ```
  *
+ * @stability stable
  * @category ordering
  * @since 4.0.0
  */
@@ -378,6 +388,7 @@ export const isLessThanOrEqualTo: {
  * await Effect.runPromise(warnOnly) // => { debugEnabled: false, errorEnabled: true }
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */

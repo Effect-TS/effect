@@ -54,6 +54,7 @@ import * as Layer from "../Layer.ts"
  * @see {@link logLines} for reading captured `Console.log` calls
  * @see {@link errorLines} for reading captured `Console.error` calls
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -88,6 +89,7 @@ export interface TestConsole extends Console.Console {
  *
  * Use when referring to types nested under the `TestConsole` namespace.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace TestConsole {
@@ -108,6 +110,7 @@ export declare namespace TestConsole {
    * const method: TestConsole.TestConsole.Method = "log"
    * ```
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -134,6 +137,7 @@ export declare namespace TestConsole {
    * entry // => { method: "error", parameters: ["not found"] }
    * ```
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -174,6 +178,7 @@ export declare namespace TestConsole {
  *
  * @see {@link layer} for providing a `TestConsole` as a `Layer`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -251,6 +256,7 @@ export const make = Effect.gen(function*() {
  * @see {@link logLines} for reading captured `Console.log` calls directly
  * @see {@link errorLines} for reading captured `Console.error` calls directly
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -289,6 +295,7 @@ export const testConsoleWith = <A, E, R>(f: (console: TestConsole) => Effect.Eff
  * @see {@link make} for constructing the service value directly
  * @see {@link testConsoleWith} for accessing the provided test console service
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -325,6 +332,7 @@ export const layer: Layer.Layer<TestConsole> = Layer.effect(Console.Console)(mak
  * @see {@link errorLines} for reading captured `Console.error` output
  * @see {@link layer} for capturing console calls during a test
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -363,6 +371,7 @@ export const logLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = tes
  * @see {@link logLines} for reading captured `Console.log` output
  * @see {@link layer} for capturing console calls during a test
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */

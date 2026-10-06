@@ -27,6 +27,7 @@ import { EncodingError } from "./EncodingError.ts"
  * Hex.encode(bytes) // => "48656c6c6f"
  * ```
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -48,6 +49,7 @@ export const encode: (input: Uint8Array | string) => string = (input) =>
  * security-sensitive values, use the `Crypto.Crypto` service's `randomBytes`
  * method and encode the result with {@link encode}.
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -174,6 +176,7 @@ const random32 = (): string => {
  * Hex.decode("48656c6c6f") // => Result.succeed(new Uint8Array([72, 101, 108, 108, 111]))
  * ```
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -234,6 +237,7 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
  * Hex.decodeString("68656c6c6f") // => Result.succeed("hello")
  * ```
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */

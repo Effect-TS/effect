@@ -41,6 +41,7 @@ const DequeueTypeId = "~effect/Queue/Dequeue"
  * @see {@link isEnqueue} for checking values that only need write access
  * @see {@link isDequeue} for checking values that only need read access
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -65,6 +66,7 @@ export const isQueue = <A = unknown, E = unknown>(
  * @see {@link isDequeue} for checking for the read side of a queue
  * @see {@link asEnqueue} for narrowing an existing `Queue` to its write-only interface
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -85,6 +87,7 @@ export const isEnqueue = <A = unknown, E = unknown>(
  * @see {@link isEnqueue} for checking for the write side of a queue
  * @see {@link asDequeue} for narrowing an existing `Queue` to its read-only interface
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -108,6 +111,7 @@ export const isDequeue = <A = unknown, E = unknown>(
  * @see {@link asDequeue} for exposing only the read side of a `Queue`
  * @see {@link Enqueue} for the write-only queue handle returned by this conversion
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -129,6 +133,7 @@ export const asEnqueue = <A, E>(self: Queue<A, E>): Enqueue<A, E> => self
  * @see {@link asEnqueue} for narrowing a queue to its producer side
  * @see {@link Dequeue} for the consumer-side queue handle returned by this function
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -163,6 +168,7 @@ export const asDequeue: <A, E>(self: Queue<A, E>) => Dequeue<A, E> = identity
  * await Effect.runPromise(program) // => ["hello", "world", "!"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -180,6 +186,7 @@ export interface Enqueue<in A, in E = never> extends Inspectable {
  * Companion namespace containing type-level metadata for the `Enqueue`
  * write-only queue interface.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Enqueue {
@@ -192,6 +199,7 @@ export declare namespace Enqueue {
    * type `E`, because values and failures flow into the queue through this
    * handle.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -231,6 +239,7 @@ export declare namespace Enqueue {
  * await Effect.runPromise(program) // => "a"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -248,6 +257,7 @@ export interface Dequeue<out A, out E = never> extends Inspectable {
  * Companion namespace containing type-level metadata for the `Dequeue`
  * read-only queue interface.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Dequeue {
@@ -259,6 +269,7 @@ export declare namespace Dequeue {
    * `Dequeue` is covariant in both the taken value type `A` and failure type
    * `E`, because values and failures are observed through this handle.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -299,6 +310,7 @@ export declare namespace Dequeue {
  * await Effect.runPromise(program) // => ["hello", "world", "!"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -310,6 +322,7 @@ export interface Queue<in out A, in out E = never> extends Enqueue<A, E>, Dequeu
  * Companion namespace containing type-level metadata and low-level state types
  * for `Queue`.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Queue {
@@ -321,6 +334,7 @@ export declare namespace Queue {
    * A full `Queue` is invariant in both `A` and `E` because the same handle can
    * both produce and consume values and failures.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -339,6 +353,7 @@ export declare namespace Queue {
    * This is low-level metadata exposed by the queue model; most users should
    * inspect queues through the public operations.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -370,6 +385,7 @@ export declare namespace Queue {
    * remaining messages, plus a resume callback that completes the suspended
    * offer when the queue can accept more input.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -396,6 +412,7 @@ export declare namespace Queue {
    * suspended take, with `void` to retry or with a failure exit when the queue
    * is done.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -462,6 +479,7 @@ const QueueProto = {
  * await Effect.runPromise(program) // => { messages: [1, 2, 3, 4, 5], done: Cause.Done(), failed: true }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -514,6 +532,7 @@ export const make = <A, E = never>(
  * await Effect.runPromise(program) // => 2
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -551,6 +570,7 @@ export const bounded = <A, E = never>(capacity: number): Effect<Queue<A, E>> => 
  * await Effect.runPromise(program) // => [2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -587,6 +607,7 @@ export const sliding = <A, E = never>(capacity: number): Effect<Queue<A, E>> => 
  * await Effect.runPromise(program) // => [true, true, false, [1, 2]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -625,6 +646,7 @@ export const dropping = <A, E = never>(capacity: number): Effect<Queue<A, E>> =>
  * await Effect.runPromise(program) // => { size: 5, messages: ["message1", "message2", "message3", "message4", "message5"] }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -659,6 +681,7 @@ export const unbounded = <A, E = never>(): Effect<Queue<A, E>> => make()
  * await Effect.runPromise(program) // => { offered: [true, true], size: 2 }
  * ```
  *
+ * @stability stable
  * @category offering
  * @since 2.0.0
  */
@@ -711,6 +734,7 @@ export const offer: {
  * await Effect.runPromise(program) // => { offered: [true, true], size: 2 }
  * ```
  *
+ * @stability stable
  * @category offering
  * @since 4.0.0
  */
@@ -765,6 +789,7 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
  * await Effect.runPromise(program) // => [4, 5]
  * ```
  *
+ * @stability stable
  * @category offering
  * @since 2.0.0
  */
@@ -815,6 +840,7 @@ export const offerAll: {
  * await Effect.runPromise(program) // => { remaining: [4, 5], size: 3 }
  * ```
  *
+ * @stability stable
  * @category offering
  * @since 4.0.0
  */
@@ -875,6 +901,7 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
  * await Effect.runPromise(program) // => [true, Exit.fail("Something went wrong")]
  * ```
  *
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */
@@ -907,6 +934,7 @@ export const fail: {
  * await Effect.runPromise(program) // => [true, Exit.failCause(Cause.fail("Queue processing failed"))]
  * ```
  *
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */
@@ -952,6 +980,7 @@ export const failCause: {
  * await Effect.runPromise(program) // => [true, Exit.failCause(Cause.fail("Processing error"))]
  * ```
  *
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */
@@ -1012,6 +1041,7 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
  * await Effect.runPromise(program) // => [true, false, 1]
  * ```
  *
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */
@@ -1063,6 +1093,7 @@ export const end = <A, E>(self: Enqueue<A, E | Done>): Effect<boolean> => failCa
  * await Effect.runPromise(program) // => { ended: true, states: ["Closing", "Done"] }
  * ```
  *
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */
@@ -1107,6 +1138,7 @@ export const endUnsafe = <A, E>(self: Enqueue<A, E | Done>) => failCauseUnsafe(s
  * await Effect.runPromise(program) // => { interrupted: true, offerResult: false, messages: [1, 2], isDone: true }
  * ```
  *
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */
@@ -1146,6 +1178,7 @@ export const interrupt = <A, E>(self: Enqueue<A, E>): Effect<boolean> =>
  * ```
  *
  * @see {@link shutdownUnsafe} for synchronous shutdown
+ * @stability stable
  * @category completion
  * @since 2.0.0
  */
@@ -1169,6 +1202,7 @@ export const shutdown = <A, E>(self: Enqueue<A, E>): Effect<boolean> => internal
  *
  * @see {@link shutdown} for the effectful variant
  * @see {@link failCauseUnsafe} to set a failure before discarding buffered messages
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */
@@ -1218,6 +1252,7 @@ export const shutdownUnsafe = <A, E>(self: Enqueue<A, E>): boolean => {
  * await Effect.runPromise(program) // => { messages: [1, 2, 3, 4, 5], size: 0, empty: [] }
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 4.0.0
  */
@@ -1267,6 +1302,7 @@ export const clear = <A, E>(self: Dequeue<A, E>): Effect<Array<A>, Pull.ExcludeD
  * await Effect.runPromise(program) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 2.0.0
  */
@@ -1295,6 +1331,7 @@ export const takeAll = <A, E>(self: Dequeue<A, E>): Effect<Arr.NonEmptyArray<A>,
  * await Effect.runPromise(program) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 4.0.0
  */
@@ -1355,6 +1392,7 @@ export const collect = <A, E>(self: Dequeue<A, E | Done>): Effect<Array<A>, Pull
  * await Effect.runPromise(program) // => [[1, 2, 3], [4, 5], [6, 7]]
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 2.0.0
  */
@@ -1400,6 +1438,7 @@ export const takeN: {
  * await Effect.runPromise(program) // => [[1, 2, 3, 4, 5], [6, 7, 8]]
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 2.0.0
  */
@@ -1451,6 +1490,7 @@ export const takeBetween: {
  * await Effect.runPromise(program) // => [["first", "second"], Exit.fail(Cause.Done())]
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 2.0.0
  */
@@ -1490,6 +1530,7 @@ export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
  * await Effect.runPromise(program) // => [Option.none(), Option.some(42)]
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 2.0.0
  */
@@ -1529,6 +1570,7 @@ export const poll = <A, E>(self: Dequeue<A, E>): Effect<Option.Option<A>> =>
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 4.0.0
  */
@@ -1584,6 +1626,7 @@ export const peek = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
  * await Effect.runPromise(program) // => [Exit.succeed(1), Exit.succeed(2), undefined]
  * ```
  *
+ * @stability stable
  * @category taking
  * @since 4.0.0
  */
@@ -1636,6 +1679,7 @@ export const takeUnsafe = <A, E>(self: Dequeue<A, E>): Exit<A, E> | undefined =>
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category offering
  * @since 4.0.0
  */
@@ -1674,6 +1718,7 @@ export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(se
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category offering
  * @since 4.0.0
  */
@@ -1719,6 +1764,7 @@ export {
    * @see {@link interrupt} for graceful interruption after buffered messages are drained
    * @see {@link shutdown} for immediately discarding buffered messages and resuming pending operations
    *
+   * @stability stable
    * @category completion
    * @since 4.0.0
    */
@@ -1762,6 +1808,7 @@ export {
  * await Effect.runPromise(program) // => [0, 5, 5]
  * ```
  *
+ * @stability stable
  * @category sizes
  * @since 2.0.0
  */
@@ -1790,6 +1837,7 @@ export const size = <A, E>(self: Dequeue<A, E>): Effect<number> => internalEffec
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1840,6 +1888,7 @@ export const isFull = <A, E>(self: Dequeue<A, E>): Effect<boolean> => internalEf
  * await Effect.runPromise(program) // => [0, 3, 3]
  * ```
  *
+ * @stability stable
  * @category sizes
  * @since 4.0.0
  */
@@ -1873,6 +1922,7 @@ export const sizeUnsafe = <A, E>(self: Dequeue<A, E>): number => self.state._tag
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -1909,6 +1959,7 @@ export const isFullUnsafe = <A, E>(self: Dequeue<A, E>): boolean => sizeUnsafe(s
  * await Effect.runPromise(program) // => [true, Exit.fail(Cause.Done())]
  * ```
  *
+ * @stability stable
  * @category completion
  * @since 4.0.0
  */

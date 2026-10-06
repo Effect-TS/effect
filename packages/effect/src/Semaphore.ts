@@ -52,6 +52,7 @@ import type * as Option from "./Option.ts"
  * @see {@link make} for creating a semaphore inside Effect code
  * @see {@link makeUnsafe} for creating a semaphore synchronously
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -207,6 +208,7 @@ export interface Semaphore {
  * await Effect.runPromise(program) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -360,6 +362,7 @@ class SemaphoreImpl implements Semaphore {
  * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -382,6 +385,7 @@ export const make = (permits: number): Effect.Effect<Semaphore> => internal.sync
  * @see {@link make} for creating a semaphore with an initial permit count
  * @see {@link release} for returning permits without changing semaphore capacity
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -409,6 +413,7 @@ export const resize: {
  * @see {@link take} for manually acquiring permits
  * @see {@link release} for manually returning permits
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -434,6 +439,7 @@ export const withPermits: {
  * @see {@link take} for manually acquiring permits
  * @see {@link release} for manually returning permits
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -463,6 +469,7 @@ export const withPermit: {
  *
  * @see {@link withPermits} for the variant that waits until permits are available
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -496,6 +503,7 @@ export const withPermitsIfAvailable: {
  * @see {@link takeIfAvailable} for manually acquiring permits without waiting
  * @see {@link release} for returning manually acquired permits
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -523,6 +531,7 @@ export const take: {
  * @see {@link release} for returning manually acquired permits
  * @see {@link withPermitsIfAvailable} for automatic acquisition and release around an effect
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -556,6 +565,7 @@ export const takeIfAvailable: {
  * @see {@link releaseAll} for returning every currently taken permit
  * @see {@link withPermits} for automatic acquire and release around an effect
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -583,6 +593,7 @@ export const release: {
  * @see {@link release} for releasing a known permit count
  * @see {@link withPermits} for automatic acquire and release around an effect
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

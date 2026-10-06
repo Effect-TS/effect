@@ -43,6 +43,7 @@ import type { Unify } from "./Unify.ts"
  * @see {@link TaggedClass} — adds a `_tag` field
  * @see {@link Error} — yieldable error variant
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -86,6 +87,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * @see {@link TaggedError} — tagged error variant
  * @see {@link TaggedEnum} — multi-variant unions
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -137,6 +139,7 @@ export const TaggedClass = <Tag extends string>(
  * @see {@link TaggedEnum.WithGenerics} — generic tagged enums
  * @see {@link TaggedEnum.Constructor} — the constructor object type
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -173,6 +176,7 @@ type UntaggedChildren<A> = true extends ChildrenAreTagged<A>
  *   values ({@link TaggedEnum.Value})
  * - Full constructor objects ({@link TaggedEnum.Constructor})
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace TaggedEnum {
@@ -213,6 +217,7 @@ export declare namespace TaggedEnum {
    * @see {@link Kind} — apply concrete types to a `WithGenerics` definition
    * @see {@link taggedEnum} — constructors and matchers
    *
+   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -254,6 +259,7 @@ export declare namespace TaggedEnum {
    *
    * @see {@link WithGenerics} — define the generic shape
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -301,6 +307,7 @@ export declare namespace TaggedEnum {
    *
    * @see {@link Value} — extracts the full variant type (including `_tag`)
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -335,6 +342,7 @@ export declare namespace TaggedEnum {
    *
    * @see {@link Args} — extracts fields without `_tag`
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -385,6 +393,7 @@ export declare namespace TaggedEnum {
    *
    * @see {@link taggedEnum} — creates constructors and matchers
    *
+   * @stability stable
    * @category utility types
    * @since 3.1.0
    */
@@ -435,6 +444,7 @@ export declare namespace TaggedEnum {
    * The constructor returns the full variant type `A`. If no fields remain
    * after excluding `Tag` keys, the constructor argument type becomes `void`.
    *
+   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -456,6 +466,7 @@ export declare namespace TaggedEnum {
    *
    * @see {@link Constructor} — the non-generic equivalent
    *
+   * @stability stable
    * @category models
    * @since 3.2.0
    */
@@ -575,6 +586,7 @@ export declare namespace TaggedEnum {
  * @see {@link TaggedEnum.Constructor} — the returned object type
  * @see {@link TaggedEnum.WithGenerics} — generic enum support
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -707,6 +719,7 @@ function taggedMatch<
  * @see {@link TaggedError} — adds a `_tag` for `Effect.catchTag`
  * @see {@link Class} — non-error data class
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -756,6 +769,7 @@ export const Error: new<A extends Record<string, any> = {}>(
  * @see {@link Error} — without a `_tag`
  * @see {@link TaggedClass} — tagged class that is not an error
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
