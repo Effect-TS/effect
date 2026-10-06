@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
+import { dual } from "./Function.ts"
 import * as HashMap from "./HashMap.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { NodeInspectSymbol, toJson } from "./Inspectable.ts"
@@ -436,6 +437,20 @@ export const writeLock = (self: TxReentrantLock): Effect.Effect<number, never, S
   )
 
 /**
+ * Runs `effect` between `acquire` and `release`. Acquisition and `effect`
+ * inherit the caller's interruptibility, while the handoff from a successful
+ * acquisition to the release finalizer stays protected.
+ */
+const withAcquired = <A, E, R>(
+  acquire: Effect.Effect<number>,
+  effect: Effect.Effect<A, E, R>,
+  release: Effect.Effect<number>
+): Effect.Effect<A, E, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(restore(acquire), () => Effect.ensuring(restore(effect), release))
+  )
+
+/**
  * Runs the provided effect while holding a read lock. The lock is automatically
  * released after the effect completes, fails, or is interrupted.
  *
@@ -461,27 +476,11 @@ export const writeLock = (self: TxReentrantLock): Effect.Effect<number, never, S
 export const withReadLock: {
   <A, E, R>(effect: Effect.Effect<A, E, R>): (self: TxReentrantLock) => Effect.Effect<A, E, R>
   <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
-} = ((...args: Array<any>) => {
-  if (args.length === 1) {
-    const [effect] = args
-    return (self: TxReentrantLock) =>
-      Effect.uninterruptibleMask((restore) =>
-        Effect.acquireUseRelease(
-          restore(acquireRead(self)),
-          () => restore(effect),
-          () => releaseRead(self)
-        )
-      )
-  }
-  const [self, effect] = args
-  return Effect.uninterruptibleMask((restore) =>
-    Effect.acquireUseRelease(
-      restore(acquireRead(self)),
-      () => restore(effect),
-      () => releaseRead(self)
-    )
-  )
-}) as any
+} = dual(
+  2,
+  <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    withAcquired(acquireRead(self), effect, releaseRead(self))
+)
 
 /**
  * Runs the provided effect while holding a write lock. The lock is automatically
@@ -509,27 +508,11 @@ export const withReadLock: {
 export const withWriteLock: {
   <A, E, R>(effect: Effect.Effect<A, E, R>): (self: TxReentrantLock) => Effect.Effect<A, E, R>
   <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
-} = ((...args: Array<any>) => {
-  if (args.length === 1) {
-    const [effect] = args
-    return (self: TxReentrantLock) =>
-      Effect.uninterruptibleMask((restore) =>
-        Effect.acquireUseRelease(
-          restore(acquireWrite(self)),
-          () => restore(effect),
-          () => releaseWrite(self)
-        )
-      )
-  }
-  const [self, effect] = args
-  return Effect.uninterruptibleMask((restore) =>
-    Effect.acquireUseRelease(
-      restore(acquireWrite(self)),
-      () => restore(effect),
-      () => releaseWrite(self)
-    )
-  )
-}) as any
+} = dual(
+  2,
+  <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    withAcquired(acquireWrite(self), effect, releaseWrite(self))
+)
 
 /**
  * Runs an effect while holding a write lock.
