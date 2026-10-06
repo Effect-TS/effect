@@ -142,14 +142,26 @@ export const make: (options: {
       ? String(previousExportTimeNanos)
       : startTime
 
+    // Series of one metric id with different units are exported as separate metrics
+    const projected = snapshot.map((state) => {
+      const unit = toUcumUnit(state.attributes?.unit ?? state.attributes?.time_unit)
+      const identity = `${state.id}\u0000${unit}`
+      const entries = state.attributes ? exportedAttributeEntries(state.attributes) : []
+      return { unit, identity, entries, seriesKey: makeMetricKey(identity, Object.fromEntries(entries)) }
+    })
+    const seriesCounts = new Map<string, number>()
+    for (const { seriesKey } of projected) {
+      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) ?? 0) + 1)
+    }
+
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const state = snapshot[i]
-      const unit = toUcumUnit(state.attributes?.unit ?? state.attributes?.time_unit)
-      // Series of one metric id with different units are exported as separate metrics
-      const identity = `${state.id}\u0000${unit}`
-      const attributes = state.attributes
-        ? OtlpResource.entriesToAttributes(exportedAttributeEntries(state.attributes))
-        : []
+      const { unit, identity, entries, seriesKey } = projected[i]
+      // Series that differ only in unit attribute spelling keep their unit
+      // attributes, so they stay distinct after projection
+      const attributes = OtlpResource.entriesToAttributes(
+        seriesCounts.get(seriesKey)! > 1 ? Object.entries(state.attributes ?? {}) : entries
+      )
       const metricKey = makeMetricKey(state.id, state.attributes)
 
       switch (state.type) {
