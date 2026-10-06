@@ -13689,7 +13689,7 @@ export function Exit<
 /**
  * Encoded representation of an immutable Effect graph.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13697,7 +13697,7 @@ export type EncodedGraph<N, E, T extends Graph_.Kind> = Graph_.Snapshot<N, E, T>
 /**
  * Iso representation used for {@link Graph} schemas.
  *
- * @stability stable
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -13709,7 +13709,7 @@ export type GraphIso<T extends Graph_.Kind, Node extends Constraint, Edge extend
 /**
  * Type-level representation returned by {@link Graph}.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13888,7 +13888,7 @@ function graphToArbitrary<N, E, T extends Graph_.Kind>(
  * encoded.edges // => [{ index: 0, source: 0, target: 1, data: 1 }]
  * ```
  *
- * @stability stable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
