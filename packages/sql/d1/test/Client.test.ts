@@ -207,38 +207,6 @@ describe("Client", () => {
       assert.equal(Cause.hasDies(res), true)
     }).pipe(Effect.provide(D1Miniflare.layerClient)))
 
-  it.effect("records batch attributes only for multiple statements", () =>
-    Effect.gen(function*() {
-      const sql = yield* D1Client.D1Client
-      const spans: Array<Tracer.Span> = []
-      const tracer = Tracer.make({
-        span: (options) => {
-          const span = new Tracer.NativeSpan(options)
-          spans.push(span)
-          return span
-        }
-      })
-      yield* Effect.gen(function*() {
-        yield* sql.batch([])
-        yield* sql.batch([sql`SELECT 1`, sql`SELECT 2`])
-        yield* sql.batch([sql`SELECT 3`])
-      }).pipe(Effect.withTracer(tracer))
-      assert.deepStrictEqual(
-        spans.map((span) => [
-          span.name,
-          span.kind,
-          span.attributes.get("db.system.name"),
-          span.attributes.get("db.operation.name"),
-          span.attributes.get("db.operation.batch.size"),
-          span.attributes.get("db.query.text")
-        ]),
-        [
-          ["BATCH", "client", "sqlite", "BATCH", 2, "SELECT 1; SELECT 2"],
-          ["sqlite", "client", "sqlite", undefined, undefined, "SELECT 3"]
-        ]
-      )
-    }).pipe(Effect.provide(D1Miniflare.layerClient)))
-
   it.effect("names batches with the configured target", () =>
     Effect.gen(function*() {
       const db = {

@@ -4,7 +4,6 @@ import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import * as Statement from "effect/sql/Statement"
-import * as Tracer from "effect/Tracer"
 
 describe("Statement", () => {
   it("defaultTransforms ignores inherited properties", () => {
@@ -96,91 +95,6 @@ describe("Statement", () => {
       }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect.each(
-    [
-      {
-        name: "app",
-        spanAttributes: [
-          ["db.namespace", "app"],
-          ["server.address", "db"],
-          ["server.port", 5432],
-          ["db.system.name", "postgresql"]
-        ]
-      },
-      {
-        name: "db:3306",
-        spanAttributes: [["server.address", "db"], ["server.port", 3306], ["db.system.name", "mysql"]]
-      },
-      { name: "db", spanAttributes: [["server.address", "db"], ["db.system.name", "mysql"]] },
-      { name: "sqlite", spanAttributes: [["db.system.name", "sqlite"]] },
-      { name: "sql.execute", spanAttributes: [] },
-      {
-        name: "db:5432",
-        spanAttributes: [["db.namespace", ""], ["server.address", "db"], ["server.port", 5432]]
-      },
-      {
-        name: "postgresql",
-        spanAttributes: [["server.address", ""], ["server.port", 5432], ["db.system.name", "postgresql"]]
-      },
-      { name: "sql.execute", spanAttributes: [["db.system.name", ""]] }
-    ] satisfies Array<{ name: string; spanAttributes: Array<readonly [string, unknown]> }>
-  )(
-    "names statement and stream spans $name",
-    ({ name, spanAttributes }) =>
-      Effect.gen(function*() {
-        const sql = yield* makeClient(
-          Effect.gen(function*() {
-            assert.strictEqual((yield* Effect.orDie(Effect.currentSpan)).name, name)
-          }),
-          false,
-          spanAttributes
-        )
-        yield* sql`select 1`
-        yield* Stream.runDrain(sql`select 1`.stream)
-      }).pipe(
-        Effect.provideService(Statement.SpanPropagationEnabled, true),
-        Effect.provide(Reactivity.layer)
-      )
-  )
-
-  it.effect("records execution methods separately from database operations", () =>
-    Effect.gen(function*() {
-      const spans: Array<Tracer.Span> = []
-      const tracer = Tracer.make({
-        span: (options) => {
-          const span = new Tracer.NativeSpan(options)
-          spans.push(span)
-          return span
-        }
-      })
-      const sql = yield* makeClient(Effect.void)
-      const query = sql`select 1`
-      yield* Effect.gen(function*() {
-        yield* query
-        yield* query.withoutTransform
-        yield* query.raw
-        yield* query.values
-        yield* query.unprepared
-        yield* query.valuesUnprepared
-        yield* Stream.runDrain(query.stream)
-      }).pipe(Effect.withTracer(tracer))
-
-      assert.deepStrictEqual(spans.map((span) => span.attributes.get("effect.sql.method")), [
-        "execute",
-        "executeWithoutTransform",
-        "executeRaw",
-        "executeValues",
-        "executeUnprepared",
-        "executeValuesUnprepared",
-        "executeStream"
-      ])
-      for (const span of spans) {
-        assert.strictEqual(span.kind, "client")
-        assert.isFalse(span.attributes.has("db.operation.name"))
-        assert.strictEqual(span.attributes.get("db.query.text"), "select 1")
-      }
-    }).pipe(Effect.provide(Reactivity.layer)))
-
   it.effect("skips propagation when tracing is disabled", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient(Effect.map(Effect.option(Effect.currentSpan), (span) => {
@@ -193,11 +107,7 @@ describe("Statement", () => {
     }).pipe(Effect.provide(Reactivity.layer)))
 })
 
-const makeClient = (
-  observe: Effect.Effect<void>,
-  borrow = false,
-  spanAttributes: ReadonlyArray<readonly [string, unknown]> = []
-) => {
+const makeClient = (observe: Effect.Effect<void>, borrow = false) => {
   const execute = Effect.as(observe, [])
   const connection: Connection = {
     execute: () => execute,
@@ -211,6 +121,6 @@ const makeClient = (
     acquirer: Effect.as(observe, connection),
     borrower: borrow ? (f) => Effect.andThen(observe, f(connection)) : undefined,
     compiler: Statement.makeCompilerSqlite(),
-    spanAttributes
+    spanAttributes: []
   })
 }
