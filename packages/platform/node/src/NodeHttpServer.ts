@@ -166,11 +166,14 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
-      yield* Scope.addFinalizerExit(serveScope, () => {
-        server.off("request", handler)
-        server.off("upgrade", upgradeHandler)
-        return preemptiveShutdown
-      })
+      yield* Scope.addFinalizerExit(serveScope, () =>
+        Effect.ensuring(
+          preemptiveShutdown,
+          Effect.sync(() => {
+            server.off("request", handler)
+            server.off("upgrade", upgradeHandler)
+          })
+        ))
       server.on("request", handler)
       server.on("upgrade", upgradeHandler)
     })

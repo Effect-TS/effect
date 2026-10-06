@@ -748,6 +748,76 @@ describe("HttpServer", () => {
       assert.strictEqual(writeCount, 1)
     }))
 
+  it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {
+    const requestStarted = Latch.makeUnsafe()
+    const releaseResponse = Latch.makeUnsafe()
+    const firstResponse = Latch.makeUnsafe()
+    const secondResponse = Latch.makeUnsafe()
+    const server = Http.createServer()
+    server.keepAliveTimeout = 5000
+    const runtime = ManagedRuntime.make(
+      HttpServer.serve(Effect.gen(function*() {
+        yield* requestStarted.open
+        yield* releaseResponse.await
+        return HttpServerResponse.text("ok")
+      })).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, {
+          host: "127.0.0.1",
+          port: 0,
+          gracefulShutdownTimeout: "10 seconds"
+        }))
+      )
+    )
+    let socket: Net.Socket | undefined
+    let responseData = ""
+
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => runtime.context())
+      const connection = Net.connect(tcpPort(server), "127.0.0.1")
+      socket = connection
+      connection.on("data", (chunk) => {
+        responseData += chunk.toString()
+        if (responseData.includes("\r\n\r\nok")) firstResponse.openUnsafe()
+        if ((responseData.match(/HTTP\/1\.1 \d{3}/g) ?? []).length >= 2) secondResponse.openUnsafe()
+      })
+      yield* Effect.callback<void, Error>((resume) => {
+        connection.once("connect", () => resume(Effect.void))
+        connection.on("error", (error) => resume(Effect.fail(error)))
+      }).pipe(Effect.timeout("2 seconds"))
+
+      connection.write("GET /first HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* requestStarted.await.pipe(Effect.timeout("2 seconds"))
+      const disposed = runtime.dispose()
+      // Wait for server.close() to stop listening, without letting the first request finish.
+      yield* Effect.callback<void>((resume) => {
+        const timer = setInterval(() => {
+          if (!server.listening) resume(Effect.void)
+        }, 1)
+        return Effect.sync(() => clearInterval(timer))
+      }).pipe(Effect.timeout("2 seconds"))
+
+      releaseResponse.openUnsafe()
+      yield* firstResponse.await.pipe(Effect.timeout("2 seconds"))
+      assert.include(responseData, "HTTP/1.1 200")
+      connection.write("GET /second HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+      const answered = yield* secondResponse.await.pipe(Effect.timeoutOption("1 second"))
+      assert.strictEqual(
+        answered._tag,
+        "Some",
+        "the second keep-alive request must receive a response before the shutdown timeout"
+      )
+      yield* Effect.promise(() => disposed).pipe(Effect.timeout("2 seconds"))
+    }).pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          releaseResponse.openUnsafe()
+          socket?.destroy()
+          server.closeAllConnections()
+        }).pipe(Effect.andThen(Effect.promise(() => runtime.dispose())))
+      )
+    )
+  })
+
   it.live("disposes after a client aborts a handler awaiting an upstream request", () => {
     const upstreamStarted = Latch.makeUnsafe()
     const upstream = Http.createServer(() => {
