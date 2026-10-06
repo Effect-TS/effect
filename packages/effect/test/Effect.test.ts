@@ -4056,6 +4056,29 @@ describe("Effect", () => {
     })
 
     describe("retry", () => {
+      it.effect("should preserve a retry cleanup failure when a read ref changes during cleanup", () =>
+        Effect.gen(function*() {
+          const ref = TxRef.makeUnsafe(0)
+          const cleaning = yield* Deferred.make<void>()
+          const release = yield* Deferred.make<void>()
+          const transaction = yield* Effect.tx(Effect.gen(function*() {
+            if ((yield* TxRef.get(ref)) !== 0) return
+            return yield* Effect.txRetry.pipe(Effect.onExit(() =>
+              Deferred.succeed(cleaning, undefined).pipe(
+                Effect.andThen(Deferred.await(release)),
+                Effect.andThen(Effect.fail("release-error"))
+              )
+            ))
+          })).pipe(Effect.forkChild)
+
+          yield* Deferred.await(cleaning)
+          yield* Effect.tx(TxRef.set(ref, 1))
+          yield* Deferred.succeed(release, undefined)
+
+          const error = yield* Fiber.join(transaction).pipe(Effect.flip)
+          assert.strictEqual(error, "release-error")
+        }))
+
       it.effect("should rerun when a read ref changed while the transaction was suspended", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)

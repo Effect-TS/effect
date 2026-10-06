@@ -14646,8 +14646,11 @@ export const tx = <A, E, R>(
           body: constant(
             restore(effect).pipe(
               provideService(Transaction, state),
-              tapCause(() => {
+              tapCause((cause) => {
                 if (!state.retry) return void_
+                // txRetry interrupts the body; any other reason in the cause is a real failure.
+                // Roll back now so the step below fails instead of waiting or rerunning.
+                if (!internal.hasInterruptsOnly(cause)) return sync(() => clearTransaction(state))
                 return restore(awaitPendingTransaction(state))
               }),
               exit
