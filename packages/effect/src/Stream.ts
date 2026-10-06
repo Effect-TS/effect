@@ -3848,6 +3848,7 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream<any, any, any>>>(
     const latest: Array<any> = []
     const emitted = new Set<number>()
     const readyLatch = Latch.makeUnsafe()
+    const emptyLatch = Latch.makeUnsafe()
     return Channel.mergeAll(
       Channel.fromArray(
         streams.map((s, i) =>
@@ -3864,7 +3865,9 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream<any, any, any>>>(
               }
               return Effect.succeed(Arr.of(latest.slice()))
             }),
-            Channel.filter(isNotUndefined)
+            Channel.filter(isNotUndefined),
+            // An input ending without a value makes a complete tuple impossible.
+            Channel.mapDoneEffect(() => emitted.has(i) ? Effect.void : emptyLatch.open)
           )
         )
       ),
@@ -3872,7 +3875,7 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream<any, any, any>>>(
         concurrency: "unbounded",
         bufferSize: 0
       }
-    )
+    ).pipe(Channel.interruptWhen(emptyLatch.await))
   })) as any
 
 /**
