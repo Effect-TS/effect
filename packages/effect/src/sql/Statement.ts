@@ -1309,10 +1309,9 @@ const spanNames = memoize((spanAttributes: ReadonlyArray<readonly [string, unkno
 const isNonEmptyString = (u: unknown): u is string => typeof u === "string" && u.length > 0
 
 /**
- * Span name for a database client span, following the OpenTelemetry database
- * span conventions: `{operation} {target}` when an operation is given, else
- * the target (`db.namespace` or `server.address[:server.port]`), else
- * `db.system.name`, else `sql.execute`.
+ * Uses `db.namespace` or `server.address[:server.port]` as the target.
+ * An operation prefixes the target, or stands alone without one.
+ * Without an operation or target, falls back to `db.system.name`, then `sql.execute`.
  *
  * @internal
  */

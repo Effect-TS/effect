@@ -146,7 +146,6 @@ const makeBatch = (options: {
   if (statements.length === 0) {
     return Effect.succeed([] as unknown as BatchResults<Statements>)
   }
-  // a single statement is not a batch per OTel semconv, so it is named like any other statement
   const isBatch = statements.length > 1
   return Effect.useSpan(
     Statement.spanName(options.spanAttributes, isBatch ? "BATCH" : undefined),
