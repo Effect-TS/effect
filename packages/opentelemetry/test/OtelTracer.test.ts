@@ -255,10 +255,10 @@ describe("Tracer", () => {
         ["success", Exit.void],
         ["empty cause", Exit.failCause(Cause.empty)]
       ] as const
-    )("leaves %s Unset without a description", ([, exit]) =>
+    )("marks %s Ok without a description", ([, exit]) =>
       Effect.gen(function*() {
         const span = yield* exportSpan(exit)
-        assert.deepStrictEqual(span.status, { code: OtelApi.SpanStatusCode.UNSET })
+        assert.deepStrictEqual(span.status, { code: OtelApi.SpanStatusCode.OK })
         assert.deepStrictEqual(span.events, [])
         assert.isUndefined(span.attributes["effect.fiber.interrupted"])
       }))

@@ -357,10 +357,10 @@ describe("Tracer", () => {
         ["success", Exit.void],
         ["empty cause", Exit.failCause(Cause.empty)]
       ] as const
-    )("leaves %s Unset without a description", ([, exit]) =>
+    )("marks %s Ok without a description", ([, exit]) =>
       Effect.gen(function*() {
         const span = yield* exportSpan(exit)
-        deepStrictEqual(span.status, { code: 0 })
+        deepStrictEqual(span.status, { code: 1 })
         deepStrictEqual(span.events, [])
         assert.notInclude(span.attributes.map((attribute) => attribute.key), "effect.fiber.interrupted")
       }))
