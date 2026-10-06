@@ -5,4 +5,4 @@
 "@effect/platform-deno": patch
 ---
 
-Log the successful WebSocket upgrade status instead of the handler's eventual response status, including when the handler fails after upgrading.
+Report the `101` status of a successful WebSocket upgrade to server middleware such as `HttpMiddleware.logger` and `HttpMiddleware.tracer`, instead of the handler's discarded response status.

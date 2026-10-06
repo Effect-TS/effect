@@ -189,7 +189,9 @@ export const make = Effect.fnUntraced(
 
         const httpEffect = HttpEffect.toHandled(httpApp, (request, response) =>
           Effect.sync(() => {
-            ;(request as BunServerRequest).resolve(makeResponse(request, response, services, scope))
+            const bunRequest = request as BunServerRequest
+            bunRequest.resolve(makeResponse(request, response, services, scope))
+            if (bunRequest.upgraded) return upgradedResponse
           }), middleware)
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
@@ -226,6 +228,9 @@ export const make = Effect.fnUntraced(
 )
 
 const MIN_COMPRESSIBLE_SIZE = 1024
+
+// Reported to middleware in place of the handler's discarded response.
+const upgradedResponse = ServerResponse.empty({ status: 101 })
 
 const makeResponse = (
   request: ServerRequest.HttpServerRequest,
@@ -400,6 +405,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly source: Request
   public resolve: (response: Response) => void
+  public upgraded = false
   readonly url: string
   private bunServer: BunServer<WebSocketContext>
   private compressionThreshold: number
@@ -613,7 +619,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         ))
         return
       }
-      ServerRequest.setResponseStatusUnsafe(this.source, 101)
+      this.upgraded = true
       const compressionThreshold = this.compressionThreshold
       resume(Effect.map(Deferred.await(deferred), (ws) => {
         const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
