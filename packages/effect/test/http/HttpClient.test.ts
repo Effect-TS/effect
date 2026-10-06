@@ -396,6 +396,33 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("error.type"), "_OTHER")
       }))
+
+    it.effect.each(["request", "response"] as const)(
+      "ends the span when the %s header filter throws",
+      (phase) =>
+        Effect.gen(function*() {
+          let clientSpan: Tracer.NativeSpan | undefined
+          const tracer = Tracer.make({
+            span(options) {
+              clientSpan = new Tracer.NativeSpan(options)
+              return clientSpan
+            }
+          })
+          const client = HttpClient.make((request) =>
+            Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { headers: { "x-response": "1" } })))
+          )
+          const exit = yield* Effect.exit(client.get("http://example.com/", { headers: { "x-request": "1" } })).pipe(
+            Effect.provideService(Tracer.Tracer, tracer),
+            Effect.provideService(HttpClient.TracerHeaderFilter, (_name, headerPhase) => {
+              if (headerPhase === phase) throw new Error("filter")
+              return false
+            })
+          )
+          assert.strictEqual(exit._tag, "Failure")
+          assert(clientSpan !== undefined)
+          assert.strictEqual(clientSpan.status._tag, "Ended")
+        })
+    )
   })
 
   describe("followRedirects", () => {
