@@ -825,6 +825,106 @@ describe("atom-react", { concurrent: false }, () => {
 
       expect(html).toContain("<span>Alice</span>")
     })
+
+    it("keeps object selector results stable during delayed hydration", async () => {
+      const userAtom = Atom.make({ name: "loading" })
+      const select = (user: { name: string }) => ({ name: user.name.toUpperCase() })
+      let headerRenders = 0
+      const consoleError = vi.spyOn(console, "error")
+
+      function Name({ id }: { id: string }) {
+        if (id === "header") headerRenders++
+        return <span id={id}>{useAtomValue(userAtom, select).name}</span>
+      }
+
+      try {
+        const result = await hydrateDelayedBoundary(Name, () => registry.set(userAtom, { name: "Alice" }))
+
+        expect(result.recoverableErrors).toEqual([])
+        expect(result.html).toBe(
+          `<div><span id="header">ALICE</span><!--$--><span id="panel">ALICE</span><!--/$--></div>`
+        )
+        expect(consoleError.mock.calls.flat().join("\n")).not.toContain("getServerSnapshot should be cached")
+        // Server render, hydration, then the update. An unstable server
+        // snapshot would add a re-render after hydration.
+        expect(headerRenders).toBe(3)
+      } finally {
+        consoleError.mockRestore()
+      }
+    })
+
+    it("uses the server value of the source atom for selectors", () => {
+      const fetchUser = vi.fn(() => "Alice")
+      const userAtom = Atom.make(Effect.sync(fetchUser)).pipe(Atom.withServerValueInitial)
+      const toTag = (result: AsyncResult.AsyncResult<string>) => result._tag
+
+      function Tag() {
+        return <span>{useAtomValue(userAtom, toTag)}</span>
+      }
+
+      const html = renderToString(
+        <RegistryContext.Provider value={registry}>
+          <Tag />
+        </RegistryContext.Provider>
+      )
+
+      expect(html).toBe("<span>Initial</span>")
+      expect(fetchUser).not.toHaveBeenCalled()
+    })
+
+    it("keeps the hydrated value until the last reader unsubscribes", async () => {
+      const userAtom = Atom.make("loading").pipe(Atom.keepAlive)
+
+      function Name() {
+        return <span>{useAtomValue(userAtom)}</span>
+      }
+
+      const app = (
+        <RegistryContext.Provider value={registry}>
+          <Name />
+        </RegistryContext.Provider>
+      )
+      const html = renderToString(app)
+      const containers = [0, 1, 2].map(() => {
+        const container = document.createElement("div")
+        container.innerHTML = html
+        document.body.append(container)
+        return container
+      })
+      const recoverableErrors: Array<unknown> = []
+      const hydrate = (container: HTMLElement) =>
+        ReactDOMClient.hydrateRoot(container, app, {
+          onRecoverableError: (error) => recoverableErrors.push(error)
+        })
+
+      let first!: ReactDOMClient.Root
+      let second!: ReactDOMClient.Root
+      await act(async () => {
+        first = hydrate(containers[0])
+        second = hydrate(containers[1])
+      })
+      await act(async () => {
+        registry.set(userAtom, "Alice")
+      })
+
+      // The second reader keeps the snapshot locked after the first unmounts.
+      act(() => first.unmount())
+      let third!: ReactDOMClient.Root
+      await act(async () => {
+        third = hydrate(containers[2])
+      })
+
+      expect(recoverableErrors).toEqual([])
+      expect(containers[2].innerHTML).toBe("<span>Alice</span>")
+
+      act(() => {
+        second.unmount()
+        third.unmount()
+      })
+      containers.forEach((container) => container.remove())
+
+      expect(renderToString(app)).toBe("<span>Alice</span>")
+    })
   })
 
   it("should not execute Atom effects during SSR when using withServerSnapshot", () => {
