@@ -436,6 +436,27 @@ describe("OtlpMetrics", () => {
         assert.deepStrictEqual(bytesMetric?.sum?.dataPoints[0].attributes.map((a) => a.key), ["route"])
         assert.strictEqual(findMetric(request, "unit_custom_test")?.unit, "{request}")
       }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
+
+    it.effect("exports series with different units as separate metrics", () =>
+      Effect.gen(function*() {
+        yield* Metric.update(Metric.gauge("unit_split_test", { attributes: { unit: "bytes" } }), 10)
+        yield* Metric.update(Metric.gauge("unit_split_test", { attributes: { unit: "seconds" } }), 20)
+        yield* triggerExport
+
+        const [request] = yield* MockHttpClient.requests
+        const metrics = request.resourceMetrics.flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))
+        assert.deepStrictEqual(
+          metrics.map((metric) => ({
+            name: metric.name,
+            unit: metric.unit,
+            values: metric.gauge?.dataPoints.map((point) => point.asDouble)
+          })),
+          [
+            { name: "unit_split_test", unit: "By", values: [10] },
+            { name: "unit_split_test", unit: "s", values: [20] }
+          ]
+        )
+      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
   })
 
   describe("bigint", () => {
