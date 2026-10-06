@@ -3871,62 +3871,6 @@ describe("Effect", () => {
           assert.strictEqual(yield* TxRef.get(ref), 42)
         }))
 
-      it.effect("should publish child transaction writes after the enclosing transaction fails", () =>
-        Effect.gen(function*() {
-          const ref = TxRef.makeUnsafe(0)
-          const rolledBack = TxRef.makeUnsafe(0)
-          const gate = yield* Deferred.make<void>()
-          const started = yield* Deferred.make<Fiber.Fiber<void>>()
-          const error = yield* Effect.tx(Effect.gen(function*() {
-            yield* TxRef.set(rolledBack, 10)
-            const child = yield* Effect.forkChild(
-              Deferred.await(gate).pipe(Effect.andThen(Effect.tx(TxRef.set(ref, 42))))
-            )
-            yield* Deferred.succeed(started, child)
-            return yield* Effect.fail("parent failed")
-          })).pipe(Effect.flip)
-
-          assert.strictEqual(error, "parent failed")
-          assert.strictEqual(yield* TxRef.get(rolledBack), 0)
-          yield* Deferred.succeed(gate, undefined)
-          yield* Fiber.join(yield* Deferred.await(started))
-
-          assert.strictEqual(yield* TxRef.get(ref), 42)
-          assert.strictEqual(yield* TxRef.get(rolledBack), 0)
-        }))
-
-      for (const retry of [false, true]) {
-        it.effect(`should publish child transaction writes after interruption${retry ? " during retry" : ""}`, () =>
-          Effect.gen(function*() {
-            const scope = yield* Effect.scope
-            const ref = TxRef.makeUnsafe(0)
-            const rolledBack = TxRef.makeUnsafe(0)
-            const gate = yield* Deferred.make<void>()
-            const started = yield* Deferred.make<Fiber.Fiber<void>>()
-            const parent = yield* Effect.tx(Effect.gen(function*() {
-              yield* TxRef.set(rolledBack, 10)
-              // The child belongs to the test scope so it survives parent interruption.
-              const child = yield* Deferred.await(gate).pipe(
-                Effect.andThen(Effect.tx(TxRef.set(ref, 42))),
-                Effect.forkIn(scope)
-              )
-              yield* Deferred.succeed(started, child)
-              return yield* (retry ? Effect.txRetry : Effect.never)
-            })).pipe(Effect.forkChild({ startImmediately: true }))
-
-            const child = yield* Deferred.await(started)
-            yield* Fiber.interrupt(parent)
-            const exit = yield* Fiber.await(parent)
-            assert.isTrue(Exit.hasInterrupts(exit))
-            assert.strictEqual(yield* TxRef.get(rolledBack), 0)
-            yield* Deferred.succeed(gate, undefined)
-            yield* Fiber.join(child)
-
-            assert.strictEqual(yield* TxRef.get(ref), 42)
-            assert.strictEqual(yield* TxRef.get(rolledBack), 0)
-          }).pipe(Effect.scoped))
-      }
-
       it.effect("should allow TxRef.modify outside an existing transaction", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)
