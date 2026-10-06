@@ -113,7 +113,9 @@ export const make = Effect.fnUntraced(function*(
 
       const httpEffect = HttpEffect.toHandled(httpApp, (request, response) => {
         const denoRequest = request as DenoServerRequest
-        if (denoRequest.upgraded) return Effect.as(cancelResponseBody(response.body), upgradedResponse)
+        if (upgradedSources.has(denoRequest.source)) {
+          return Effect.as(cancelResponseBody(response.body), upgradedResponse)
+        }
         return Effect.flatMap(
           makeResponse(request, response, services, scope),
           (response) => Effect.sync(() => denoRequest.resolve(response))
@@ -294,7 +296,6 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   readonly url: string
   readonly websocketOptions: Deno.UpgradeWebSocketOptions | undefined
   public resolve: (response: Response) => void
-  public upgraded = false
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
 
@@ -458,7 +459,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       }),
       (upgrade) => {
         const ws = bufferedWebSocket(upgrade.socket)
-        this.upgraded = true
+        upgradedSources.add(this.source)
         this.resolve(upgrade.response)
         return Socket.fromWebSocket(
           Effect.acquireRelease(
@@ -553,6 +554,9 @@ const bufferedWebSocket = (ws: WebSocket): Socket.WebSocketLike => {
 
 // Reported to middleware in place of the handler's discarded response.
 const upgradedResponse = ServerResponse.empty({ status: 101 })
+
+// Keyed by source so request copies from `modify` share the upgrade state.
+const upgradedSources = new WeakSet<Request>()
 
 const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
   if (body._tag === "Raw" && typeof ReadableStream !== "undefined" && body.body instanceof ReadableStream) {
