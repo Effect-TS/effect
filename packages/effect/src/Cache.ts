@@ -129,6 +129,10 @@ export interface Cache<in out Key, in out A, in out E = never, out R = never> ex
  *
  * An `expiresAt` value of `undefined` means the entry does not expire.
  *
+ * Pass the current fiber to `await` when calling it from inside
+ * `Effect.withFiber`, so the waiter is counted and its cleanup registered in
+ * that same step. Without it, `await` resolves the fiber itself.
+ *
  * @see {@link Cache} for the public cache API that manages entries through
  * combinators
  *
