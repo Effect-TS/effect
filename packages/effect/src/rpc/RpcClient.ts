@@ -665,6 +665,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   const { codecFor, run, send, supportsAck, supportsTransferables } = yield* Protocol
   const rpcSchemas = makeRpcSchemas(codecFor)
   const decodeDefect = Schema.decodeSync(codecFor(Schema.Defect()))
+  const decodeRequestDefect = Schema.decodeUnknownEffect(codecFor(Schema.Defect()))
 
   type ClientEntry = {
     readonly rpc: Rpc.AnyWithProps
@@ -766,6 +767,18 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
             onFailure: (cause) => write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) })
           })
         ) as Effect.Effect<void>
+      }
+      case "RequestDefect": {
+        const requestId = RequestId(message.requestId)
+        if (!entries.has(requestId)) return Effect.void
+        entries.delete(requestId)
+        return decodeRequestDefect(message.defect).pipe(
+          Effect.orDie,
+          Effect.matchCauseEffect({
+            onSuccess: (defect) => write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.die(defect) }),
+            onFailure: (cause) => write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) })
+          })
+        )
       }
       case "Defect": {
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect as any) })
@@ -1099,7 +1112,7 @@ export const makeProtocolSocket = (options?: {
               const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
               const clientId = requestClientMap.get(requestId)
               if (clientId !== undefined) {
-                if (response._tag === "Exit") {
+                if (isTerminalResponse(response)) {
                   requestClientMap.delete(requestId)
                 }
                 return writeResponse(clientId, response)
@@ -1317,7 +1330,7 @@ export const makeProtocolWorker = (
       const backing = yield* worker.spawn<FromServerEncoded, FromClientEncoded | RpcWorker.InitialMessage.Encoded>(id)
 
       yield* backing.run((response) => {
-        if (response._tag === "Exit") {
+        if (response._tag === "Exit" || response._tag === "RequestDefect") {
           const entry = entries.get(response.requestId)
           if (entry) {
             entries.delete(response.requestId)

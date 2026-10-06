@@ -567,9 +567,7 @@ export const make: <Rpcs extends Rpc.Any>(
     supportsTransferables
   } = yield* Protocol
   const encodeDefectUnsafe = Schema.encodeSync(codecFor(Schema.Defect()))
-  const encodeUnknownRequestExit = Schema.encodeUnknownEffect(
-    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
-  )
+  const encodeRequestDefect = Schema.encodeUnknownEffect(codecFor(Schema.Defect()))
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
   const scope = yield* Scope.make()
 
@@ -698,7 +696,7 @@ export const make: <Rpcs extends Rpc.Any>(
       client.schemas.delete(requestId)
       const defect = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
       return Effect.andThen(
-        sendRequestDefect(client, requestId, schemas.encodeExit, defect),
+        sendRequestDefect(client, requestId, defect),
         server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
       )
     })
@@ -707,13 +705,12 @@ export const make: <Rpcs extends Rpc.Any>(
   const sendRequestDefect = (
     client: Client,
     requestId: RequestId,
-    encodeExit: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>,
     defect: unknown
   ) =>
     Effect.catchCause(
       Effect.flatMap(
-        encodeExit(Exit.die(defect)),
-        (exit) => send(client.id, responseEnvelope(requestId, "Exit", exit))
+        encodeRequestDefect(defect),
+        (defect) => send(client.id, { _tag: "RequestDefect", requestId, defect })
       ),
       (cause) => sendDefect(client, Cause.squash(cause))
     )
@@ -780,7 +777,7 @@ export const make: <Rpcs extends Rpc.Any>(
         }
         const rpc = group.requests.get(tag)
         if (!rpc) {
-          return sendRequestDefect(client, requestId, encodeUnknownRequestExit, `Unknown request tag: ${tag}`)
+          return sendRequestDefect(client, requestId, `Unknown request tag: ${tag}`)
         }
         const schemas = getSchemas(rpc as any)
         const decoded = schemas.decode(request.payload)
@@ -793,8 +790,7 @@ export const make: <Rpcs extends Rpc.Any>(
         return Effect.matchEffect(
           Effect.provideContext(decoded, schemas.context),
           {
-            onFailure: (error) =>
-              sendRequestDefect(client, requestId, schemas.encodeExit, SchemaIssue.defaultFormatter(error.issue)),
+            onFailure: (error) => sendRequestDefect(client, requestId, SchemaIssue.defaultFormatter(error.issue)),
             onSuccess: (payload) => writeDecodedRequest(client, requestId, schemas, request, payload)
           }
         )

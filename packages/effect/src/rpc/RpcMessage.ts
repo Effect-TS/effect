@@ -214,6 +214,7 @@ export type FromServer<A extends Rpc.Any> =
 export type FromServerEncoded =
   | ResponseChunkEncoded
   | ResponseExitEncoded
+  | ResponseRequestDefectEncoded
   | ResponseDefectEncoded
   | Pong
   | ClientProtocolError
@@ -358,6 +359,20 @@ export interface ResponseDefectEncoded {
 }
 
 /**
+ * A request-local defect encoded with `protocol.codecFor(Schema.Defect())`,
+ * independently of the RPC success and error schemas.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface ResponseRequestDefectEncoded {
+  readonly _tag: "RequestDefect"
+  readonly requestId: string | number
+  readonly defect: unknown
+}
+
+/**
  * Creates an encoded terminal response for a request whose exit is a defect.
  *
  * **Details**
@@ -494,7 +509,12 @@ export const EncodedSchema = Schema.Union([
     _tag: Schema.tag("Defect"),
     defect: Schema.Uint8Array
   }),
-  Schema.Struct({ _tag: Schema.tag("Pong") })
+  Schema.Struct({ _tag: Schema.tag("Pong") }),
+  Schema.Struct({
+    _tag: Schema.tag("RequestDefect"),
+    requestId: RequestIdSchema,
+    defect: Schema.Uint8Array
+  })
 ])
 
 /**
@@ -516,6 +536,7 @@ export const constPong: Pong = { _tag: "Pong" }
 export const isTerminalResponse = (response: FromServerEncoded): boolean => {
   switch (response._tag) {
     case "Exit":
+    case "RequestDefect":
     case "Defect":
     case "ClientProtocolError": {
       return true
