@@ -16,7 +16,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import type * as Fiber from "../Fiber.ts"
-import { constUndefined } from "../Function.ts"
+import { constUndefined, memoize } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import * as InternalRecord from "../internal/record.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -114,7 +114,7 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
 })
 
 /**
- * Parents driver spans under `sql.execute` for every client in the current scope,
+ * Parents driver spans under the statement span for every client in the current scope,
  * including acquisition and stream pulls. Defaults to `false`; ignored when tracing is disabled.
  *
  * @stability unstable
@@ -1271,8 +1271,22 @@ export const defaultTransforms = (
 
 // internal
 
-const ATTR_DB_OPERATION_NAME = "db.operation.name"
 const ATTR_DB_QUERY_TEXT = "db.query.text"
+const ATTR_SQL_METHOD = "effect.sql.method"
+
+/**
+ * Span name for SQL statements: `{db.system.name}` when present, else `sql.execute`.
+ *
+ * @internal
+ * @since 4.0.0
+ */
+export const spanName: (spanAttributes: ReadonlyArray<readonly [string, unknown]>) => string = memoize(
+  // derived once per spanAttributes array; semconv falls back to `{db.system.name}` without summary or target
+  (spanAttributes) => {
+    const system = spanAttributes.find(([key]) => key === "db.system.name")?.[1]
+    return typeof system === "string" && system.length > 0 ? system : "sql.execute"
+  }
+)
 
 interface StatementImpl<A> extends Statement<A> {
   readonly segments: ReadonlyArray<Segment>
@@ -1338,7 +1352,7 @@ const StatementProto: Omit<
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
     return Effect.useSpan(
-      "sql.execute",
+      spanName(this.spanAttributes),
       { kind: "client" },
       (span) =>
         this.withConnectionSpan(
@@ -1365,7 +1379,7 @@ const StatementProto: Omit<
       for (const [key, value] of this.spanAttributes) {
         span.attribute(key, value)
       }
-      span.attribute(ATTR_DB_OPERATION_NAME, operation)
+      span.attribute(ATTR_SQL_METHOD, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
       const execute = this.borrower === undefined
         ? Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
@@ -1395,14 +1409,14 @@ const StatementProto: Omit<
   get stream(): Stream.Stream<any, SqlError> {
     const self = this as StatementImpl<any>
     return Stream.unwrap(Effect.flatMap(
-      Effect.makeSpanScoped("sql.execute", { kind: "client" }),
+      Effect.makeSpanScoped(spanName(self.spanAttributes), { kind: "client" }),
       (span) =>
         withStatement(self, span, (statement, fiber) => {
           const [sql, params] = statement.compile()
           for (const [key, value] of self.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
+          span.attribute(ATTR_SQL_METHOD, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
           const acquire = Effect.map(self.acquirer, (_) => _.executeStream(sql, params, self.transformRows))
           return fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
@@ -1440,7 +1454,7 @@ const StatementProto: Omit<
   ...Effectable.Prototype<StatementImpl<any>>({
     label: "Statement",
     evaluate(fiber) {
-      const span = internalEffect.makeSpanUnsafe(fiber, "sql.execute", { kind: "client" })
+      const span = internalEffect.makeSpanUnsafe(fiber, spanName(this.spanAttributes), { kind: "client" })
       const clock = fiber.getRef(Clock)
       const timingEnabled = fiber.getRef(TracerTimingEnabled)
       return Effect.onExit(

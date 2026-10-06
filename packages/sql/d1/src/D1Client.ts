@@ -29,6 +29,7 @@ import * as Stream from "effect/Stream"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const ATTR_DB_OPERATION_NAME = "db.operation.name"
+const ATTR_DB_OPERATION_BATCH_SIZE = "db.operation.batch.size"
 const ATTR_DB_QUERY_TEXT = "db.query.text"
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
@@ -145,8 +146,10 @@ const makeBatch = (options: {
   if (statements.length === 0) {
     return Effect.succeed([] as unknown as BatchResults<Statements>)
   }
+  // a single statement is not a batch per OTel semconv, so it is named like any other statement
+  const isBatch = statements.length > 1
   return Effect.useSpan(
-    "sql.execute",
+    isBatch ? "BATCH" : Statement.spanName(options.spanAttributes),
     { kind: "client" },
     (span) =>
       Effect.withFiber(Effect.fnUntraced(function*(fiber) {
@@ -168,7 +171,10 @@ const makeBatch = (options: {
         for (const [key, value] of options.spanAttributes) {
           span.attribute(key, value)
         }
-        span.attribute(ATTR_DB_OPERATION_NAME, "batch")
+        if (isBatch) {
+          span.attribute(ATTR_DB_OPERATION_NAME, "BATCH")
+          span.attribute(ATTR_DB_OPERATION_BATCH_SIZE, statements.length)
+        }
         span.attribute(ATTR_DB_QUERY_TEXT, queryTexts.join("; "))
 
         // D1 batches execute on the binding directly and intentionally cannot participate in SqlClient transactions.

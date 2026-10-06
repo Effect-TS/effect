@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Option, Scope } from "effect"
+import { Cause, Context, Effect, Exit, Option, Scope, Tracer } from "effect"
 import { SqlClient, SqlError } from "effect/sql"
 
 interface StubConnection {
@@ -120,6 +120,34 @@ const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
 
 describe("SqlClient", () => {
   describe("makeWithTransaction", () => {
+    it.effect("records a client span with effect.sql.transaction.* events", () =>
+      Effect.gen(function*() {
+        const spans: Array<{ readonly name: string; readonly kind: string; readonly events: Array<string> }> = []
+        const tracer = Tracer.make({
+          span: (options) => {
+            const span = new Tracer.NativeSpan(options)
+            const record = { name: options.name, kind: options.kind, events: [] as Array<string> }
+            spans.push(record)
+            const event = span.event.bind(span)
+            span.event = (name, startTime, attributes) => {
+              record.events.push(name)
+              event(name, startTime, attributes)
+            }
+            return span
+          }
+        })
+        const harness = makeHarness()
+
+        yield* harness.withTransaction(harness.withTransaction(Effect.void)).pipe(Effect.withTracer(tracer))
+        yield* Effect.exit(harness.withTransaction(Effect.fail("boom"))).pipe(Effect.withTracer(tracer))
+
+        assert.deepStrictEqual(spans, [
+          { name: "sql.transaction", kind: "client", events: ["effect.sql.transaction.commit"] },
+          { name: "sql.transaction", kind: "client", events: ["effect.sql.transaction.savepoint"] },
+          { name: "sql.transaction", kind: "client", events: ["effect.sql.transaction.rollback"] }
+        ])
+      }))
+
     it.effect("propagates a failed begin as a typed error without rolling back", () =>
       Effect.gen(function*() {
         const beginError = sqlError("database is locked")

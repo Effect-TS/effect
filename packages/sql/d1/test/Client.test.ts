@@ -1,7 +1,7 @@
 import type { D1Result } from "@cloudflare/workers-types"
 import { D1Client } from "@effect/sql-d1"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect } from "effect"
+import { Cause, Effect, Tracer } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Statement } from "effect/sql"
 import { D1Miniflare } from "./utils.ts"
@@ -205,6 +205,34 @@ describe("Client", () => {
       const rows = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(rows, [])
       assert.equal(Cause.hasDies(res), true)
+    }).pipe(Effect.provide(D1Miniflare.layerClient)))
+
+  it.effect("names batch spans per OTel semconv", () =>
+    Effect.gen(function*() {
+      const sql = yield* D1Client.D1Client
+      const spans: Array<Tracer.Span> = []
+      const tracer = Tracer.make({
+        span: (options) => {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      yield* Effect.withTracer(
+        Effect.andThen(
+          sql.batch([sql`SELECT 1`, sql`SELECT 2`]),
+          sql.batch([sql`SELECT 3`])
+        ),
+        tracer
+      )
+      assert.deepStrictEqual(
+        spans.map((span) => [
+          span.name,
+          span.attributes.get("db.operation.name"),
+          span.attributes.get("db.operation.batch.size")
+        ]),
+        [["BATCH", "BATCH", 2], ["sqlite", undefined, undefined]]
+      )
     }).pipe(Effect.provide(D1Miniflare.layerClient)))
 
   it.effect("should defect when batching in a transaction", () =>

@@ -427,18 +427,18 @@ export const makeWithTransaction = <I, S>(options: {
                         let effect: Effect.Effect<void>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
-                            span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
+                            span.event("effect.sql.transaction.commit", clock.currentTimeNanosUnsafe())
                             const onCommitFailure = options.onCommitFailure
                             effect = Effect.orDie(options.commit(conn))
                             if (onCommitFailure) {
                               effect = Effect.onError(effect, () => Effect.orDie(onCommitFailure(conn)))
                             }
                           } else {
-                            span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
+                            span.event("effect.sql.transaction.savepoint", clock.currentTimeNanosUnsafe())
                             effect = Effect.void
                           }
                         } else {
-                          span.event("db.transaction.rollback", clock.currentTimeNanosUnsafe())
+                          span.event("effect.sql.transaction.rollback", clock.currentTimeNanosUnsafe())
                           effect = Effect.orDie(
                             id > 0
                               ? options.rollbackSavepoint(conn, id)

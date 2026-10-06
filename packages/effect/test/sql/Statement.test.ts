@@ -4,6 +4,7 @@ import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import * as Statement from "effect/sql/Statement"
+import type * as Tracer from "effect/Tracer"
 
 describe("Statement", () => {
   it("defaultTransforms ignores inherited properties", () => {
@@ -95,6 +96,39 @@ describe("Statement", () => {
       }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect("names spans after db.system.name and keeps method names out of db.operation.name", () =>
+    Effect.gen(function*() {
+      const seen: Array<Tracer.Span> = []
+      const observe = Effect.map(Effect.orDie(Effect.currentSpan), (span) => {
+        seen.push(span)
+      })
+      const named = (spanAttributes: ReadonlyArray<readonly [string, unknown]>) =>
+        makeClient(observe, false, spanAttributes)
+      const pg = yield* named([["db.system.name", "postgresql"], ["db.namespace", "app"]])
+      const mysql = yield* named([["db.system.name", "mysql"], ["server.address", "db"], ["server.port", 3306]])
+      const sqlite = yield* named([["db.system.name", "sqlite"]])
+
+      yield* Effect.gen(function*() {
+        yield* pg`select 1`
+        yield* mysql`select 1`
+        yield* sqlite`select 1`.values
+        yield* Stream.runDrain(sqlite`select 1`.stream)
+      }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
+
+      const spans = seen.filter((span, i) => seen.indexOf(span) === i)
+      assert.deepStrictEqual(spans.map((span) => span.name), ["postgresql", "mysql", "sqlite", "sqlite"])
+      assert.deepStrictEqual(spans.map((span) => span.attributes.get("effect.sql.method")), [
+        "execute",
+        "execute",
+        "executeValues",
+        "executeStream"
+      ])
+      for (const span of spans) {
+        assert.isFalse(span.attributes.has("db.operation.name"))
+        assert.strictEqual(span.attributes.get("db.query.text"), "select 1")
+      }
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect("skips propagation when tracing is disabled", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient(Effect.map(Effect.option(Effect.currentSpan), (span) => {
@@ -107,7 +141,11 @@ describe("Statement", () => {
     }).pipe(Effect.provide(Reactivity.layer)))
 })
 
-const makeClient = (observe: Effect.Effect<void>, borrow = false) => {
+const makeClient = (
+  observe: Effect.Effect<void>,
+  borrow = false,
+  spanAttributes: ReadonlyArray<readonly [string, unknown]> = []
+) => {
   const execute = Effect.as(observe, [])
   const connection: Connection = {
     execute: () => execute,
@@ -121,6 +159,6 @@ const makeClient = (observe: Effect.Effect<void>, borrow = false) => {
     acquirer: Effect.as(observe, connection),
     borrower: borrow ? (f) => Effect.andThen(observe, f(connection)) : undefined,
     compiler: Statement.makeCompilerSqlite(),
-    spanAttributes: []
+    spanAttributes
   })
 }
