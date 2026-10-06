@@ -28,11 +28,9 @@ export interface Resource {
   droppedAttributesCount: number
 }
 
-// Browser windows expose `window`, and dedicated, shared and service workers
-// expose `importScripts`; every other runtime (Node, Bun, Deno, edge) is "nodejs"
+// Detect browser windows and workers without platform-specific imports.
 const isBrowser = "window" in globalThis || "importScripts" in globalThis
 
-// SDK-provided default resource attributes (OTel resource SDK spec)
 const sdkAttributes: Record<string, string> = {
   "telemetry.sdk.name": "effect",
   "telemetry.sdk.language": isBrowser ? "webjs" : "nodejs"
@@ -43,8 +41,8 @@ const sdkAttributes: Record<string, string> = {
  *
  * **Details**
  *
- * The resource always includes `service.name` and the `telemetry.sdk.*`
- * attributes, includes `service.version` when provided, and converts custom
+ * The resource includes `service.name`, `telemetry.sdk.name`, and
+ * `telemetry.sdk.language`, includes `service.version` when provided, and converts custom
  * attributes into OTLP attribute values. Custom attributes override the SDK
  * defaults.
  *
@@ -99,7 +97,9 @@ export const make = (options: {
  * matching explicit attributes. Explicit attributes take precedence over
  * environment variables. `OTEL_SERVICE_NAME` and `OTEL_SERVICE_VERSION` take
  * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. When no
- * service name is configured, `service.name` falls back to `unknown_service`.
+ * service name is configured, `service.name` falls back to
+ * `unknown_service:<process.executable.name>` if the merged attributes contain a
+ * non-empty executable name, or `unknown_service` otherwise.
  *
  * @stability unstable
  * @category constructors

@@ -211,7 +211,7 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
       InternalRecord.assignProperty(attributes, `effect.log_span.${label}`, eventMillis - startTime)
     }
   }
-  // exception.type/message describe the first error; the stacktrace keeps the full cause
+  // Type and message describe the first error; the stacktrace includes the full cause.
   const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
   if (errors.length > 0) {
     InternalRecord.assignProperty(attributes, "exception.type", errors[0].name)

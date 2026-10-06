@@ -2,6 +2,6 @@
 "effect": patch
 ---
 
-Align the OTLP exporters with the OpenTelemetry spec. Log attributes change from `log.error` to `exception.type`/`exception.message`/`exception.stacktrace` (the stacktrace holds the full pretty cause), from `fiberId` to `effect.fiberId`, and from `logSpan.<label>` ("Nms" string) to `effect.log_span.<label>` (integer milliseconds); OTLP `timeUnixNano` is now the event time.
+Improve OpenTelemetry convention alignment for built-in OTLP logs, traces, and resources. Logs use event timestamps and unique attribute keys, with generated attributes overriding annotations. Replace `log.error` with `exception.type`, `exception.message`, and `exception.stacktrace`; rename `fiberId` to `effect.fiberId` and `logSpan.<label>` to `effect.log_span.<label>` (integer milliseconds instead of strings).
 
-The OTLP instrumentation scope name changes from the service name to `"effect"` for traces and logs, the User-Agent changes from `effect-opentelemetry-<label>/0.0.0` to `OTel-OTLP-Exporter-JavaScript-Effect-<label>` with any user-supplied User-Agent prepended, resources gain `telemetry.sdk.name` and `telemetry.sdk.language`, and a missing service name falls back to `unknown_service` instead of failing.
+Trace and log scopes use `effect` instead of the service name. Replace the placeholder User-Agent with `OTel-OTLP-Exporter-JavaScript-Effect-<label>`, preserving any user-supplied prefix. Resources default `telemetry.sdk.name` and `telemetry.sdk.language` with user overrides, and missing service names fall back to `unknown_service:<process.executable.name>` when available, or `unknown_service` otherwise.

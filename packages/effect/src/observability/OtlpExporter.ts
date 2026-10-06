@@ -194,7 +194,6 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
-  // A user-supplied user-agent is prepended to the default one (OTLP exporter spec)
   const defaultUserAgent = `OTel-OTLP-Exporter-JavaScript-Effect-${options.label}`
   const userHeaders = Headers.fromInput(options.headers)
   const headers = Headers.set(
