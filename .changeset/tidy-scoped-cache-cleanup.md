@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix ScopedCache.get leaving readers blocked when an expired entry's finalizer fails.
+Report ScopedCache finalizer failures during expiry and capacity eviction without failing reads or blocking replacement lookups.
