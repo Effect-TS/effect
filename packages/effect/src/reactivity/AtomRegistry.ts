@@ -72,10 +72,60 @@ export interface AtomRegistry {
   readonly schedulerAsync: Scheduler
   readonly getNodes: () => ReadonlyMap<Atom.Atom<any> | string, Node<any>>
   readonly get: <A>(atom: Atom.Atom<A>) => A
+  /**
+   * Returns an atom's value if the registry has it without computing the
+   * atom.
+   *
+   * **Details**
+   *
+   * The result is `Some` with the atom's current value, or with an initial
+   * value its first computation will keep. For an atom not computed yet, that
+   * includes a value given to it and held by its `initialValueTarget`. It is
+   * `None` when the atom has no such value, would need computing to produce
+   * one, or has a hydrated value waiting to be applied. It never adds the
+   * atom, computes it, or applies a hydrated value.
+   *
+   * @since 4.1.0
+   */
+  readonly peek: <A>(atom: Atom.Atom<A>) => Option.Option<A>
   readonly mount: <A>(atom: Atom.Atom<A>) => () => void
+  /**
+   * Keeps an atom in the registry, with any initial or hydrated value it
+   * holds, without computing it, until the returned function is called.
+   *
+   * **When to use**
+   *
+   * Use when a value given ahead of the first read, such as by
+   * `setInitialValue`, must survive until a later read, as in an async render.
+   * The registry removes an atom nothing reads or mounts on its next task.
+   *
+   * **Details**
+   *
+   * Unlike `mount`, it does not compute the atom. It also keeps the atoms in
+   * its `initialValueTarget` chain, where a value given to a wrapper lives.
+   * Once the atom is computed, it is kept up to date like a mounted atom while
+   * it is retained.
+   *
+   * @since 4.1.0
+   */
+  readonly retain: <A>(atom: Atom.Atom<A>) => () => void
   readonly refresh: <A>(atom: Atom.Atom<A>) => void
   readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
   readonly setSerializable: (key: string, encoded: unknown) => void
+  /**
+   * Gives an atom a starting value, as the `initialValues` option of `make`
+   * does, in a registry that already exists.
+   *
+   * **Details**
+   *
+   * The value goes to the atom's `initialValueTarget`, so a wrapper such as
+   * `Atom.withRefresh` passes it to its source. An atom that has no value yet
+   * keeps it through its first computation, which still reads and tracks its
+   * dependencies. An atom that already has a value is set to it.
+   *
+   * @since 4.1.0
+   */
+  readonly setInitialValue: <A>(atom: Atom.Atom<A>, value: A) => void
   readonly modify: <R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]) => A
   readonly update: <R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W) => void
   readonly subscribe: <A>(atom: Atom.Atom<A>, f: (_: A) => void, options?: {
@@ -376,11 +426,7 @@ class RegistryImpl implements AtomRegistry {
     }
     if (initialValues !== undefined) {
       for (const [atom, value] of initialValues) {
-        let target = atom
-        while (target.initialValueTarget) {
-          target = target.initialValueTarget
-        }
-        this.ensureNode(target).setInitialValue(value)
+        this.setInitialValue(atom, value)
       }
     }
   }
@@ -399,12 +445,35 @@ class RegistryImpl implements AtomRegistry {
     return this.ensureNode(atom).value()
   }
 
+  peek<A>(atom: Atom.Atom<A>): Option.Option<A> {
+    const key = atomKey(atom)
+    if (typeof key === "string" && this.preloadedSerializable.has(key)) {
+      return Option.none()
+    }
+    const node = this.nodes.get(key)
+    if (node !== undefined && (node.state & NodeFlags.initialized) !== 0) {
+      return node.state === NodeState.valid || node.preserveInitialValueOnBuild
+        ? Option.some(node._value)
+        : Option.none()
+    }
+    // a value given to a wrapper that has not been computed lives on its initialValueTarget
+    return atom.initialValueTarget !== undefined ? this.peek(atom.initialValueTarget) : Option.none()
+  }
+
   set<R, W>(atom: Atom.Writable<R, W>, value: W): void {
     atom.write(this.ensureNode(atom).writeContext, value)
   }
 
   setSerializable(key: string, encoded: unknown): void {
     this.preloadedSerializable.set(key, encoded)
+  }
+
+  setInitialValue<A>(atom: Atom.Atom<A>, value: A): void {
+    let target: Atom.Atom<any> = atom
+    while (target.initialValueTarget) {
+      target = target.initialValueTarget
+    }
+    this.ensureNode(target).setInitialValue(value)
   }
 
   modify<R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]): A {
@@ -448,6 +517,26 @@ class RegistryImpl implements AtomRegistry {
 
   mount<A>(atom: Atom.Atom<A>) {
     return this.subscribe(atom, constVoid, constImmediate)
+  }
+
+  retain<A>(atom: Atom.Atom<A>): () => void {
+    // a value given to a wrapper lives on its initialValueTarget, so hold those too
+    const nodes: Array<NodeImpl<any>> = []
+    let target: Atom.Atom<any> | undefined = atom
+    while (target !== undefined) {
+      nodes.push(this.ensureNode(target))
+      target = target.initialValueTarget
+    }
+    // each hold needs its own listener: the set keeps a shared one only once
+    const removes = nodes.map((node) => node.subscribe(() => {}))
+    return () => {
+      for (let i = 0; i < nodes.length; i++) {
+        removes[i]()
+        if (nodes[i].canBeRemoved) {
+          this.scheduleNodeRemoval(nodes[i])
+        }
+      }
+    }
   }
 
   atomHasTtl(atom: Atom.Atom<any>): boolean {
@@ -1181,6 +1270,22 @@ class WriteContextImpl<A> implements Atom.WriteContext<A> {
   }
   refreshSelf() {
     return this.node.invalidate()
+  }
+}
+
+// -----------------------------------------------------------------------------
+// hydration
+// -----------------------------------------------------------------------------
+
+/**
+ * Drops a value queued with `setSerializable` that no read has taken, unless
+ * the key now holds another value.
+ *
+ * @internal
+ */
+export const removeSerializable = (registry: AtomRegistry, key: string, encoded: unknown): void => {
+  if (registry instanceof RegistryImpl && registry.preloadedSerializable.get(key) === encoded) {
+    registry.preloadedSerializable.delete(key)
   }
 }
 
