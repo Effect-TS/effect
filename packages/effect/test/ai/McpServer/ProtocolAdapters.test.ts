@@ -1469,15 +1469,10 @@ describe("McpServer protocol adapters", () => {
       assert.isDefined(currentShared)
       assert.notProperty(oldShared, "title")
       assert.strictEqual(currentShared.title, "Shared tool title")
-    }))
 
-  it.effect("rejects a supported protocol header that differs from the negotiated version", () =>
-    Effect.gen(function*() {
-      const fixture = yield* makeFixture()
-      const { sessionId } = yield* initialize(fixture.post, "2025-06-18")
       const response = yield* fixture.post({ jsonrpc: "2.0", id: 2, method: "ping", params: {} }, {
         "Mcp-Protocol-Version": "2025-11-25",
-        "Mcp-Session-Id": sessionId
+        "Mcp-Session-Id": currentClient.sessionId
       })
 
       assert.strictEqual(response.status, 400)

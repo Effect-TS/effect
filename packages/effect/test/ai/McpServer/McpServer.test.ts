@@ -2439,42 +2439,37 @@ describe("McpServer", () => {
       })
     }))
 
-  for (
-    const { body, name } of [
-      { name: "ping", body: pingBody },
-      { name: "malformed JSON", body: undefined }
-    ]
-  ) {
-    it.effect(`rejects an unsupported protocol header on a ${name}`, () =>
-      Effect.gen(function*() {
-        const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
-        yield* client.initialize(initializePayload)
-
-        const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
-          HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
-          HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
-          body === undefined
-            ? HttpClientRequest.bodyText("{", "application/json")
-            : HttpClientRequest.bodyJsonUnsafe(body),
-          httpClient.execute
-        )
-
-        strictEqual(response.status, 400)
-        assert.deepInclude(yield* response.json, {
-          error: {
-            code: -32022,
-            message: "Unsupported protocol version '9999-01-01'",
-            data: { supported: ["2025-06-18"], requested: "9999-01-01" }
-          }
-        })
-        strictEqual(response.headers["access-control-allow-origin"], "*")
-      }))
-  }
-
-  it.effect("validates POST payloads with the negotiated protocol version", () =>
+  it.effect("validates supplied protocol versions on POST", () =>
     Effect.gen(function*() {
       const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
+
       yield* client.initialize(initializePayload)
+
+      const unsupportedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.bodyJsonUnsafe(pingBody),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        httpClient.execute
+      )
+      strictEqual(unsupportedResponse.status, 400)
+      assert.deepInclude(yield* unsupportedResponse.json, {
+        error: {
+          code: -32022,
+          message: "Unsupported protocol version '9999-01-01'",
+          data: { supported: ["2025-06-18"], requested: "9999-01-01" }
+        }
+      })
+      strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
+
+      const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyText("{"),
+        HttpClientRequest.setHeader("content-type", "application/json"),
+        httpClient.execute
+      )
+      strictEqual(malformedResponse.status, 400)
+      strictEqual(JSON.parse(yield* malformedResponse.text).error.code, -32022)
 
       const malformedNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2487,6 +2482,15 @@ describe("McpServer", () => {
       strictEqual(malformedNoVersionBody.id, null)
       strictEqual(malformedNoVersionBody.error.code, McpSchema.PARSE_ERROR_CODE)
 
+      const invalidRequestResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe({ hello: "world" }),
+        httpClient.execute
+      )
+      strictEqual(invalidRequestResponse.status, 400)
+      strictEqual(JSON.parse(yield* invalidRequestResponse.text).error.code, -32022)
+
       const invalidRequestNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe({ hello: "world" }),
@@ -2496,6 +2500,24 @@ describe("McpServer", () => {
       const invalidRequestNoVersionBody = JSON.parse(yield* invalidRequestNoVersionResponse.text)
       strictEqual(invalidRequestNoVersionBody.id, null)
       strictEqual(invalidRequestNoVersionBody.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+
+      const invalidInitializeResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe({ method: "initialize", id: 7 }),
+        httpClient.execute
+      )
+      strictEqual(invalidInitializeResponse.status, 400)
+      strictEqual(JSON.parse(yield* invalidInitializeResponse.text).error.code, -32022)
+
+      const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        httpClient.execute
+      )
+      strictEqual(responseOnly.status, 400)
+      strictEqual(JSON.parse(yield* responseOnly.text).error.code, -32022)
 
       const absentVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
