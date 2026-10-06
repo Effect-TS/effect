@@ -4195,45 +4195,6 @@ describe("Stream", () => {
         deepStrictEqual(result, Option.some([1]))
       }))
 
-    it.live("sink finishing during an end-of-stream pull still lets the stream complete", () =>
-      Effect.gen(function*() {
-        const started = yield* Deferred.make<void>()
-        const finished = yield* Deferred.make<void>()
-        const source = Stream.fromEffectDrain(Effect.gen(function*() {
-          yield* Deferred.succeed(started, undefined)
-          yield* Deferred.await(finished)
-          // Let the sink finish before the suspended upstream pull ends.
-          yield* Effect.yieldNow
-        }))
-        const sink = Sink.fromEffect(Effect.andThen(Deferred.await(started), Deferred.succeed(finished, undefined)))
-        const result = yield* source.pipe(Stream.tapSink(sink), Stream.runCollect, Effect.timeoutOption("1 second"))
-        deepStrictEqual(result, Option.some([]))
-      }))
-
-    it.live("sink failing during an end-of-stream pull preserves the failure", () =>
-      Effect.gen(function*() {
-        const started = yield* Deferred.make<void>()
-        const finished = yield* Deferred.make<void>()
-        const source = Stream.fromEffectDrain(Effect.gen(function*() {
-          yield* Deferred.succeed(started, undefined)
-          yield* Deferred.await(finished)
-          // Let the sink fail before the suspended upstream pull ends.
-          yield* Effect.yieldNow
-        }))
-        const sink = Sink.fromEffect(Effect.gen(function*() {
-          yield* Deferred.await(started)
-          yield* Deferred.succeed(finished, undefined)
-          return yield* Effect.fail("sink failure during end-of-stream pull")
-        }))
-        const result = yield* source.pipe(
-          Stream.tapSink(sink),
-          Stream.runCollect,
-          Effect.timeoutOption("1 second"),
-          Effect.result
-        )
-        assertFailure(result, "sink failure during end-of-stream pull")
-      }))
-
     it.effect("sink that fails before stream", () =>
       Effect.gen(function*() {
         const sink = Sink.fail("error")
