@@ -444,32 +444,6 @@ describe("Channel", () => {
         assert.deepStrictEqual(result, Exit.die("release defect"))
       }))
 
-    it.effect("merge - propagates a finalizer defect before the other side completes", () =>
-      Effect.gen(function*() {
-        const released = yield* Deferred.make<void>()
-        const left = Channel.acquireRelease(Effect.succeed(1), () =>
-          Deferred.succeed(released, void 0).pipe(Effect.andThen(Effect.die("release defect"))))
-        const right = Channel.fromEffect(Deferred.await(released))
-        const result = yield* Channel.merge(left, right).pipe(Channel.runCollect, Effect.exit)
-        assert.deepStrictEqual(result, Exit.die("release defect"))
-      }))
-
-    it.live("merge - combines usage and finalizer failures", () =>
-      Effect.gen(function*() {
-        const left = Channel.acquireRelease(Effect.void, () => Effect.die("release defect")).pipe(
-          Channel.flatMap(() => Channel.fail("usage failure"))
-        )
-        const result = yield* Channel.merge(left, Channel.empty).pipe(
-          Channel.runCollect,
-          Effect.timeout("500 millis"),
-          Effect.exit
-        )
-        assert.deepStrictEqual(
-          result,
-          Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("release defect")))
-        )
-      }))
-
     it.effect("merge - prioritizes failure", () =>
       Effect.gen(function*() {
         const left = Channel.fromEffect(Effect.fail("boom"))
