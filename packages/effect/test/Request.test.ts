@@ -744,26 +744,19 @@ describe("Request", { concurrent: false }, () => {
 
   it.effect("synchronous resolver delays include the triggering request and keep resolvers isolated", () =>
     Effect.gen(function*() {
-      const seenA: Array<Array<number>> = []
-      const seenB: Array<Array<number>> = []
-      const a = Resolver.fromFunctionBatched<GetNameById>((entries) => {
-        seenA.push(entries.map((entry) => entry.request.id))
+      const batches: Array<Array<number>> = []
+      const resolve = (entries: ReadonlyArray<Request.Entry<GetNameById>>) => {
+        batches.push(entries.map((entry) => entry.request.id))
         return entries.map((entry) => String(entry.request.id))
-      }).pipe(Resolver.setDelayEffect(Effect.void))
-      const b = Resolver.fromFunctionBatched<GetNameById>((entries) => {
-        seenB.push(entries.map((entry) => entry.request.id))
-        return entries.map((entry) => String(entry.request.id))
-      })
+      }
+      const a = Resolver.fromFunctionBatched<GetNameById>(resolve).pipe(Resolver.setDelayEffect(Effect.void))
+      const b = Resolver.fromFunctionBatched<GetNameById>(resolve)
 
-      const exitA = yield* Effect.exit(Effect.request(new GetNameById({ id: 1 }), a))
-      const exitB = yield* Effect.exit(Effect.request(new GetNameById({ id: 2 }), b))
+      const nameA = yield* Effect.request(new GetNameById({ id: 1 }), a)
+      const nameB = yield* Effect.request(new GetNameById({ id: 2 }), b)
 
-      assert.deepStrictEqual({ exitA, exitB, seenA, seenB }, {
-        exitA: Exit.succeed("1"),
-        exitB: Exit.succeed("2"),
-        seenA: [[1]],
-        seenB: [[2]]
-      })
+      assert.deepStrictEqual([nameA, nameB], ["1", "2"])
+      assert.deepStrictEqual(batches, [[1], [2]])
     }))
 
   it.effect(

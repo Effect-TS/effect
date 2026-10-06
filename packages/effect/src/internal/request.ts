@@ -75,7 +75,7 @@ interface Batch {
   readonly entries: Set<Request.Entry<any>>
   readonly delayEffect: Effect<void>
   readonly run: Effect<void, unknown>
-  fiber?: Fiber<void, unknown> | undefined
+  fiber?: Fiber<unknown, unknown> | undefined
 }
 
 const batchPool: Array<Batch> = []
@@ -168,21 +168,31 @@ const addEntry = <A extends Request.Any>(
   batch.entrySet.add(entry)
   batch.entries.add(entry)
   const collect = resolver.collectWhile(batch.entries)
-  if (!isNewBatch && collect) return entry
+  if (collect && !isNewBatch) return entry
 
-  if (!isNewBatch) batch.fiber!.interruptUnsafe(fiber.id)
-  const batchToRun = batch
-  const batchEffect = collect ? batch.delayEffect : runBatch(batch)
+  // An existing batch is still waiting on its delay; stop it and run now.
+  batch.fiber?.interruptUnsafe(fiber.id)
+  forkBatch(batch, collect ? batch.delayEffect : runBatch(batch), fiber)
+  return entry
+}
+
+// The batch fiber must be published before it runs: a synchronous resolver
+// can complete and recycle the batch before `runForkWith` returns.
+const forkBatch = (
+  batch: Batch,
+  body: Effect<void, unknown>,
+  fiber: {
+    readonly context: Context.Context<never>
+    readonly cache: { readonly scheduler: Scheduler }
+  }
+) =>
   effect.runForkWith(fiber.context)(
     withFiber((batchFiber) => {
-      // Publish the fiber before execution can complete and recycle the batch.
-      batchToRun.fiber = batchFiber as Fiber<void, unknown>
-      return batchEffect
+      batch.fiber = batchFiber
+      return body
     }),
     { scheduler: fiber.cache.scheduler }
   )
-  return entry
-}
 
 const removeEntryUnsafe = <A extends Request.Any>(
   resolver: RequestResolver<A>,
@@ -198,7 +208,7 @@ const removeEntryUnsafe = <A extends Request.Any>(
   if (!batch.entries.delete(entry)) return
   batch.entrySet.delete(entry)
 
-  let fiber: Fiber<void, unknown> | undefined
+  let fiber: Batch["fiber"]
   if (batch.entries.size === 0) {
     batchMap.delete(key)
     fiber = batch.fiber
