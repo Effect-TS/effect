@@ -13,6 +13,7 @@ import type * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
+import { type FiberImpl, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
 import * as Layer from "./Layer.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
@@ -340,7 +341,12 @@ export const make = <R, ER>(
     [Symbol.asyncDispose](): Promise<void> {
       return self.dispose()
     },
-    disposeEffect: Effect.suspend(() => {
+    disposeEffect: Effect.withFiber((fiber) => {
+      // Closing fiberScope interrupts and awaits every managed fiber. Skip the
+      // disposing fiber and its ancestors, which would otherwise await themselves.
+      for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
+        scopeRemoveFinalizerUnsafe(fiberScope, current)
+      }
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
       return Scope.close(self.scope, Exit.void)
