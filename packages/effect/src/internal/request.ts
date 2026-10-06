@@ -129,23 +129,24 @@ const addEntry = <A extends Request.Any>(
         map: batchMap,
         entrySet: new Set(),
         entries: new Set(),
-        delayEffect: effect.flatMap(
-          effect.exit(effect.suspend(() => {
+        delayEffect: effect.onExitPrimitive(
+          effect.suspend(() => {
             // Record the owning fiber before the delay runs, as it may fail synchronously.
             newBatch.fiber = effect.getCurrentFiber()!
             return newBatch.resolver.delay
-          })),
+          }),
           (exit) => {
             // An interrupted delay may finish after its batch was claimed, recycled or reused.
             if (newBatch.fiber !== effect.getCurrentFiber() || newBatch.map.get(newBatch.key) !== newBatch) {
-              return effect.void
+              return
             }
             // Release the key before notifying callers, which may enqueue a retry.
             newBatch.map.delete(newBatch.key)
             if (exit._tag === "Success") return newBatch.run
             completeBatch(newBatch, exit)
-            return effect.void
-          }
+          },
+          // Resolution must retain the delay fiber's interruptibility, not run as a masked finalizer.
+          true
         ) as Effect<void>,
         run: effect.onExit(
           effect.suspend(() =>
