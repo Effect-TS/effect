@@ -19,6 +19,7 @@ import * as RcMap from "../RcMap.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import type * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import * as SqlError from "../sql/SqlError.ts"
 import * as Stream from "../Stream.ts"
@@ -233,6 +234,7 @@ export const makeStorage = (options?: {
       idleTimeToLive: "5 minutes"
     })
 
+    const transactionSemaphore = yield* Semaphore.make(1)
     type PendingWrites = Array<readonly [storeId: string, entries: Array<RemoteEntry>]>
     const pendingWrites = Context.Service<PendingWrites>(
       `effect/eventlog/SqlEventLogServerUnencrypted/PendingWrites/${storageIdCounter++}`
@@ -242,27 +244,33 @@ export const makeStorage = (options?: {
     // Writes are buffered per transaction level and only published once the
     // outermost transaction commits. A nested transaction merges its buffer
     // into the parent on success; a rollback (including a failed COMMIT)
-    // discards it.
+    // discards it. Serialize outer transactions through publication so a later
+    // commit cannot publish first after SQL releases its row locks.
     const withTransaction = <A, E, R>(
       effect: Effect.Effect<A, E, R>
     ): Effect.Effect<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> =>
-      // Keep the transaction body interruptible, but do not allow interruption
-      // between a successful commit and its notifications.
-      Effect.uninterruptibleMask((restore) =>
-        Effect.gen(function*() {
-          const parent = yield* Effect.serviceOption(pendingWrites)
-          const writes: PendingWrites = []
-          const result = yield* sql.withTransaction(
-            Effect.provideService(restore(effect), pendingWrites, writes)
-          )
-          if (parent._tag === "Some") {
-            parent.value.push(...writes)
-          } else {
-            yield* Effect.forEach(writes, publish, { discard: true })
-          }
-          return result
-        })
-      )
+      Effect.gen(function*() {
+        const parent = yield* Effect.serviceOption(pendingWrites)
+        // Keep the transaction body interruptible, but do not allow interruption
+        // between a successful commit and its notifications.
+        const transaction = Effect.uninterruptibleMask((restore) =>
+          Effect.gen(function*() {
+            const writes: PendingWrites = []
+            const result = yield* sql.withTransaction(
+              Effect.provideService(restore(effect), pendingWrites, writes)
+            )
+            if (parent._tag === "Some") {
+              parent.value.push(...writes)
+            } else {
+              yield* Effect.forEach(writes, publish, { discard: true })
+            }
+            return result
+          })
+        )
+        // Acquire outside the mask to keep permit waits interruptible. Nested
+        // transactions already hold the permit and must not reacquire it.
+        return yield* parent._tag === "Some" ? transaction : transactionSemaphore.withPermit(transaction)
+      })
 
     const ensureStore = (storeId: string) =>
       sql.onDialectOrElse({
