@@ -253,7 +253,6 @@ export const make = Effect.fnUntraced(function*(
     ) {
       return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
     }
-    // Without the header, a session uses the protocol version negotiated at initialization.
     if (
       !isInitialize &&
       protocolVersion !== undefined &&
@@ -406,7 +405,7 @@ export const make = Effect.fnUntraced(function*(
           return reject(400, unsupportedProtocolVersion(version))
         }
         const admission = selectHttpProtocol(headers, undefined)
-        // Rejections of the session or its protocol version header do not depend on the body.
+        // Session and protocol-header errors take precedence over parse errors.
         return admission._tag === "Rejected" &&
             (admission.error === undefined || admission.error.code === PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE)
           ? reject(admission.status, admission.error)

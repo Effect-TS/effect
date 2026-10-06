@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-`McpServer.layerHttp` accepts a session request without an `MCP-Protocol-Version` header and uses the version negotiated at initialization. Rejections for an unsupported or mismatched protocol version header, a missing `MCP-Session-Id`, or an `initialize` that carries one now include a JSON-RPC error body.
+`McpServer.layerHttp` uses the negotiated protocol version when a session request omits `MCP-Protocol-Version`. Unsupported or mismatched protocol versions, missing required `MCP-Session-Id` headers, and `initialize` requests with a session header now return JSON-RPC error bodies.
