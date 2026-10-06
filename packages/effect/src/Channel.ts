@@ -6340,17 +6340,17 @@ export const mergeAll: {
               Effect.flatMap((value) => Queue.offer(queue, value)),
               Effect.forever({ disableYield: true }),
               Effect.onError(Effect.fnUntraced(function*(cause) {
-                const halt = Pull.filterDone(cause)
-                yield* Effect.exit(Scope.close(
-                  childScope,
-                  !Result.isFailure(halt) ? Exit.succeed(halt.success.value) : Exit.failCause(halt.failure)
-                ))
+                const exit = Pull.doneExitFromCause(cause)
+                const closeExit = yield* Effect.exit(Scope.close(childScope, exit))
                 if (!fibers.has(fiber)) return
+                // Publish usage and finalizer failures before releasing the
+                // permit or opening the latch, so the outer channel cannot
+                // complete ahead of them.
+                const failure = Exit.asVoidAll([exit, closeExit])
+                if (Exit.isFailure(failure)) yield* Queue.failCause(queue, failure.cause)
                 fibers.delete(fiber)
                 if (semaphore) yield* semaphore.release(1)
                 if (fibers.size === 0) yield* doneLatch.open
-                if (Result.isSuccess(halt)) return
-                return yield* Queue.failCause(queue, cause as any)
               })),
               Effect.forkChild
             )

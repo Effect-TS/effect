@@ -413,6 +413,32 @@ describe("Channel", () => {
   })
 
   describe("merging", () => {
+    for (const kind of ["mergeAll", "concurrent flatMap"] as const) {
+      const flatten = <E>(inner: Channel.Channel<number, E>) =>
+        kind === "mergeAll"
+          ? Channel.succeed(inner).pipe(Channel.mergeAll({ concurrency: 1 }))
+          : Channel.succeed(1).pipe(Channel.flatMap(() => inner, { concurrency: 2 }))
+
+      it.effect(`${kind} surfaces inner release failure after successful usage`, () =>
+        Effect.gen(function*() {
+          const inner = Channel.acquireRelease(Effect.succeed(1), () => Effect.die("release failure"))
+          const result = yield* flatten(inner).pipe(Channel.runCollect, Effect.exit)
+          assert.deepStrictEqual(result, Exit.die("release failure"))
+        }))
+
+      it.effect(`${kind} combines inner usage and release failures`, () =>
+        Effect.gen(function*() {
+          const inner = Channel.acquireRelease(Effect.succeed(1), () => Effect.die("release failure")).pipe(
+            Channel.mapEffect(() => Effect.fail("usage failure"))
+          )
+          const result = yield* flatten(inner).pipe(Channel.runCollect, Effect.exit)
+          assert.deepStrictEqual(
+            result,
+            Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("release failure")))
+          )
+        }))
+    }
+
     it.effect("merge - interrupts left side if halt strategy is set to 'right'", () =>
       Effect.gen(function*() {
         const latch = yield* Latch.make(false)
