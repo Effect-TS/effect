@@ -162,15 +162,16 @@ export declare namespace PubSub {
     /**
      * Describes how publishers should signal to subscribers that they are
      * waiting for space to become available in the `PubSub`.
-     * When supplied, `ended` must be checked before registering or publishing
-     * surplus elements.
+     *
+     * The publisher may have yielded since `publish` checked `ended`, so it
+     * must be checked again before registering or publishing the surplus.
      */
     handleSurplus(
       pubsub: Atomic<A>,
       subscribers: Subscribers<A>,
       elements: Iterable<A>,
       isShutdown: MutableRef.MutableRef<boolean>,
-      ended?: MutableRef.MutableRef<Option.Option<A>>
+      ended: MutableRef.MutableRef<Option.Option<A>>
     ): Effect.Effect<boolean>
 
     /**
@@ -2529,13 +2530,12 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
     subscribers: PubSub.Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>,
-    ended?: MutableRef.MutableRef<Option.Option<A>>
+    ended: MutableRef.MutableRef<Option.Option<A>>
   ): Effect.Effect<boolean> {
     return Effect.callback<boolean>((resume) => {
-      if (MutableRef.get(isShutdown)) return resume(Effect.interrupt)
-      // Check the lifecycle in the same callback that registers surplus, since
-      // the publisher may have yielded after its initial check.
-      if (ended && Option.isSome(ended.current)) return resume(Effect.succeed(false))
+      // The publisher may have yielded since `publish` checked `ended`, and
+      // `end` only rejects publishers that are already registered.
+      if (Option.isSome(ended.current)) return resume(Effect.succeed(false))
       const deferred = Deferred.makeUnsafe<boolean>()
       this.offerUnsafe(elements, deferred)
       this.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
@@ -2748,10 +2748,10 @@ export class SlidingStrategy<in out A> implements PubSub.Strategy<A> {
     subscribers: PubSub.Subscribers<A>,
     elements: Iterable<A>,
     _isShutdown: MutableRef.MutableRef<boolean>,
-    ended?: MutableRef.MutableRef<Option.Option<A>>
+    ended: MutableRef.MutableRef<Option.Option<A>>
   ): Effect.Effect<boolean> {
     return Effect.sync(() => {
-      if (ended && Option.isSome(ended.current)) return false
+      if (Option.isSome(ended.current)) return false
       this.slidingPublishUnsafe(pubsub, elements)
       this.completeSubscribersUnsafe(pubsub, subscribers)
       return true
