@@ -18,6 +18,7 @@ import * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import { constant, constFalse } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
@@ -199,10 +200,18 @@ export const isTracerDisabledUnsafe = (
 const responseSpanExit = (
   request: HttpServerRequest,
   response: HttpServerResponse
-): Exit.Exit<HttpServerResponse, HttpServerError> =>
-  response.status >= 500 && response.status < 600
-    ? Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
-    : Exit.succeed(response)
+): Exit.Exit<HttpServerResponse, HttpServerError> => {
+  if (!(response.status >= 500 && response.status < 600)) {
+    return Exit.succeed(response)
+  }
+  const stackTraceLimit = getStackTraceLimit()
+  setStackTraceLimit(0)
+  try {
+    return Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
+  } finally {
+    setStackTraceLimit(stackTraceLimit)
+  }
+}
 
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
