@@ -147,7 +147,6 @@ export const make = Effect.fnUntraced(
       websocket: {
         ...websocket,
         open(ws) {
-          ServerRequest.setResponseStatusUnsafe(ws.data.source, 101)
           Deferred.doneUnsafe(ws.data.deferred, Exit.succeed(ws))
         },
         message(ws, message) {
@@ -385,7 +384,6 @@ export const layerConfig = <R extends string>(
 // -----------------------------------------------------------------------------
 
 interface WebSocketContext {
-  readonly source: Request
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
   readonly buffer: Array<Uint8Array | string>
   closeError: Socket.SocketError | undefined
@@ -597,7 +595,6 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
 
       const success = this.bunServer.upgrade(this.source, {
         data: {
-          source: this.source,
           deferred,
           buffer: [],
           closeError: undefined,
@@ -616,6 +613,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         ))
         return
       }
+      ServerRequest.setResponseStatusUnsafe(this.source, 101)
       const compressionThreshold = this.compressionThreshold
       resume(Effect.map(Deferred.await(deferred), (ws) => {
         const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
