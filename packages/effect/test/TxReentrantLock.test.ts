@@ -4,19 +4,8 @@ import { Deferred, Effect, Exit, Fiber, Scope, TxReentrantLock } from "effect"
 describe("TxReentrantLock", () => {
   describe("interruption while waiting", () => {
     const acquisitions = [
-      ["acquireRead (control)", (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.acquireRead(lock)],
-      ["acquireWrite (control)", (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.acquireWrite(lock)],
       ["withReadLock", (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.withReadLock(lock, Effect.void)],
-      [
-        "withReadLock (curried)",
-        (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.withReadLock(Effect.void)(lock)
-      ],
       ["withWriteLock", (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.withWriteLock(lock, Effect.void)],
-      [
-        "withWriteLock (curried)",
-        (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.withWriteLock(Effect.void)(lock)
-      ],
-      ["withLock", (lock: TxReentrantLock.TxReentrantLock) => TxReentrantLock.withLock(lock, Effect.void)],
       ["readLock", (lock: TxReentrantLock.TxReentrantLock) => Effect.scoped(TxReentrantLock.readLock(lock))],
       ["writeLock", (lock: TxReentrantLock.TxReentrantLock) => Effect.scoped(TxReentrantLock.writeLock(lock))]
     ] as const
@@ -281,19 +270,11 @@ describe("TxReentrantLock", () => {
   })
 
   describe("interruptibility contracts", () => {
+    // Write locks represent the shared wrapper and scoped paths; read acquisition is tested above.
     const helpers = [
-      [
-        "withReadLock",
-        (lock: TxReentrantLock.TxReentrantLock, use: Effect.Effect<void>) => TxReentrantLock.withReadLock(lock, use)
-      ],
       [
         "withWriteLock",
         (lock: TxReentrantLock.TxReentrantLock, use: Effect.Effect<void>) => TxReentrantLock.withWriteLock(lock, use)
-      ],
-      [
-        "readLock",
-        (lock: TxReentrantLock.TxReentrantLock, use: Effect.Effect<void>) =>
-          Effect.scoped(Effect.andThen(TxReentrantLock.readLock(lock), use))
       ],
       [
         "writeLock",

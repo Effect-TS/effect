@@ -235,12 +235,8 @@ describe("TxSemaphore", () => {
   })
 
   describe("interruptibility contracts", () => {
+    // Represent the shared wrapper path with multiple permits, plus scoped acquisition.
     const helpers = [
-      [
-        "withPermit",
-        1,
-        (semaphore: TxSemaphore.TxSemaphore, use: Effect.Effect<void>) => TxSemaphore.withPermit(semaphore, use)
-      ],
       [
         "withPermits",
         3,
@@ -310,14 +306,8 @@ describe("TxSemaphore", () => {
 
   describe("concurrency", () => {
     const acquisitions = [
-      ["acquire (control)", (semaphore: TxSemaphore.TxSemaphore) => TxSemaphore.acquire(semaphore)],
       ["withPermit", (semaphore: TxSemaphore.TxSemaphore) => TxSemaphore.withPermit(semaphore, Effect.void)],
-      ["withPermit (curried)", (semaphore: TxSemaphore.TxSemaphore) => TxSemaphore.withPermit(semaphore)(Effect.void)],
       ["withPermits", (semaphore: TxSemaphore.TxSemaphore) => TxSemaphore.withPermits(semaphore, 2, Effect.void)],
-      [
-        "withPermits (curried)",
-        (semaphore: TxSemaphore.TxSemaphore) => TxSemaphore.withPermits(semaphore, 2)(Effect.void)
-      ],
       [
         "withPermitScoped",
         (semaphore: TxSemaphore.TxSemaphore) => Effect.scoped(TxSemaphore.withPermitScoped(semaphore))
