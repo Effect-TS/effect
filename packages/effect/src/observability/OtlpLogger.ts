@@ -216,12 +216,12 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
     }
   }
   // exception.type/message describe the first error; the stacktrace keeps the full cause
-  const error = Cause.prettyErrors(options.cause)[0]
-  if (error !== undefined) {
+  const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
+  if (errors.length > 0) {
     attributes.push(
-      { key: "exception.type", value: { stringValue: error.name } },
-      { key: "exception.message", value: { stringValue: error.message } },
-      { key: "exception.stacktrace", value: { stringValue: Cause.pretty(options.cause) } }
+      { key: "exception.type", value: { stringValue: errors[0].name } },
+      { key: "exception.message", value: { stringValue: errors[0].message } },
+      { key: "exception.stacktrace", value: { stringValue: errors.map((error) => error.stack).join("\n") } }
     )
   }
 

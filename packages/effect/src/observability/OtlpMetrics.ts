@@ -104,7 +104,7 @@ export const make: (options: {
 
   const resource = yield* OtlpResource.fromConfig(options.resource)
   const metricsScope: IInstrumentationScope = {
-    name: "effect"
+    name: OtlpResource.serviceNameUnsafe(resource)
   }
 
   const services = yield* Effect.context<never>()
