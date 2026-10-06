@@ -143,7 +143,6 @@ export declare namespace TxHashSet {
    * processFruit("apple") // => "Processing apple"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */

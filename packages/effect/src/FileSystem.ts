@@ -900,7 +900,6 @@ export declare namespace File {
    * Represents the different types of entries that can exist in a file system,
    * from regular files to special device files and symbolic links.
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -961,7 +960,6 @@ export declare namespace File {
    * info.type === "File" // => true
    * ```
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -1055,7 +1053,6 @@ export declare namespace WatchEvent {
    * This event is triggered when a new file or directory is created
    * in the watched location.
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -1072,7 +1069,6 @@ export declare namespace WatchEvent {
    * This event is triggered when an existing file or directory is
    * modified in the watched location.
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -1089,7 +1085,6 @@ export declare namespace WatchEvent {
    * This event is triggered when a file or directory is deleted
    * from the watched location.
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */

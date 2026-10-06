@@ -122,7 +122,6 @@ export declare namespace RequestResolver {
    * This marker preserves the request type accepted by the resolver for
    * Effect's type-level machinery. Users normally do not implement it directly.
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */

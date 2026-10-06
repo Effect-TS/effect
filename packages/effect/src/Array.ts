@@ -3556,7 +3556,6 @@ export declare namespace ReadonlyArray {
    * // StringArrayType is string
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -3576,7 +3575,6 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<string>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -3599,7 +3597,6 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<number>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -3627,7 +3624,6 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<boolean>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -3652,7 +3648,6 @@ export declare namespace ReadonlyArray {
    * // Flattened is Array<number>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */

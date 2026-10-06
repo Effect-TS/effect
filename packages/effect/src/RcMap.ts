@@ -122,7 +122,6 @@ export declare namespace State {
    * Use when handling an `RcMap` that can still accept operations and contains
    * stored entries.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -139,7 +138,6 @@ export declare namespace State {
    *
    * Use when handling an `RcMap` after its owning scope has closed.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -156,7 +154,6 @@ export declare namespace State {
    * Use when inspecting the stored resource, reference count, and idle lifecycle
    * metadata for a single key.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

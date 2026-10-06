@@ -158,7 +158,6 @@ export declare namespace Brand {
   /**
    * A utility type to extract a branded type from a `Constructor`.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -167,7 +166,6 @@ export declare namespace Brand {
   /**
    * A utility type to extract the unbranded value type from a brand.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -176,7 +174,6 @@ export declare namespace Brand {
   /**
    * A utility type to extract the keys of a branded type.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -185,7 +182,6 @@ export declare namespace Brand {
   /**
    * A utility type to extract the brands from a branded type.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -196,7 +192,6 @@ export declare namespace Brand {
   /**
    * A utility type that checks that all brands have the same base type.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */

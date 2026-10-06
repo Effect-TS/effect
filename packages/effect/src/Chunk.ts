@@ -1591,7 +1591,6 @@ export declare namespace Chunk {
    * type StringType = Chunk.Chunk.Infer<typeof stringChunk> // string
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1612,7 +1611,6 @@ export declare namespace Chunk {
    * type WithString2 = Chunk.Chunk.With<typeof nonEmptyChunk, string> // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1646,7 +1644,6 @@ export declare namespace Chunk {
    * > // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1683,7 +1680,6 @@ export declare namespace Chunk {
    * > // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1707,7 +1703,6 @@ export declare namespace Chunk {
    * type Flattened2 = Chunk.Chunk.Flatten<typeof nestedNonEmpty> // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */

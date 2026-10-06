@@ -164,7 +164,6 @@ export declare namespace TestClock {
    * await Effect.runPromise(Effect.scoped(program))
    * ```
    *
-   * @stability stable
    * @category options
    * @since 4.0.0
    */
@@ -181,7 +180,6 @@ export declare namespace TestClock {
    * millisecond timestamp and the sleeps scheduled to resume when the clock
    * reaches their target time.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

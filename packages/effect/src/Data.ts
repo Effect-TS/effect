@@ -217,7 +217,6 @@ export declare namespace TaggedEnum {
    * @see {@link Kind} — apply concrete types to a `WithGenerics` definition
    * @see {@link taggedEnum} — constructors and matchers
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -259,7 +258,6 @@ export declare namespace TaggedEnum {
    *
    * @see {@link WithGenerics} — define the generic shape
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -307,7 +305,6 @@ export declare namespace TaggedEnum {
    *
    * @see {@link Value} — extracts the full variant type (including `_tag`)
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -342,7 +339,6 @@ export declare namespace TaggedEnum {
    *
    * @see {@link Args} — extracts fields without `_tag`
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -393,7 +389,6 @@ export declare namespace TaggedEnum {
    *
    * @see {@link taggedEnum} — creates constructors and matchers
    *
-   * @stability stable
    * @category utility types
    * @since 3.1.0
    */
@@ -444,7 +439,6 @@ export declare namespace TaggedEnum {
    * The constructor returns the full variant type `A`. If no fields remain
    * after excluding `Tag` keys, the constructor argument type becomes `void`.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -466,7 +460,6 @@ export declare namespace TaggedEnum {
    *
    * @see {@link Constructor} — the non-generic equivalent
    *
-   * @stability stable
    * @category models
    * @since 3.2.0
    */

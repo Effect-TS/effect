@@ -95,7 +95,6 @@ export declare namespace Ref {
    * await Effect.runPromise(program) // => 43
    * ```
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */

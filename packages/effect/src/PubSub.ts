@@ -90,7 +90,6 @@ export declare namespace PubSub {
   /**
    * Low-level atomic PubSub interface that handles the core message storage and retrieval.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -109,7 +108,6 @@ export declare namespace PubSub {
   /**
    * Low-level subscription interface that handles message polling for individual subscribers.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -130,7 +128,6 @@ export declare namespace PubSub {
    * application code should use `subscribe`, `take`, and the other `PubSub`
    * operations instead of manipulating subscriber maps directly.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -142,7 +139,6 @@ export declare namespace PubSub {
   /**
    * Interface for accessing replay buffer contents for late subscribers.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -157,7 +153,6 @@ export declare namespace PubSub {
   /**
    * Strategy interface defining how PubSub handles backpressure and message distribution.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

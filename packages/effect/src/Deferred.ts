@@ -100,7 +100,6 @@ export declare namespace Deferred {
    * This interface is part of the public type structure and is not intended to
    * be constructed directly.
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */

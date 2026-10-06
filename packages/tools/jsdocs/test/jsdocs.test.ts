@@ -150,7 +150,7 @@ describe("jsdocs", () => {
     assert.deepStrictEqual(stabilityResult("@stability bogus").diagnostics, ["invalid-stability"])
   })
 
-  it("requires @stability on modules and public declarations in configured files", () => {
+  it("requires @stability on modules and importable declarations in configured files", () => {
     assert.deepStrictEqual(
       requiredStabilityDiagnostics({
         "required/Declaration.ts": `/**
@@ -180,13 +180,29 @@ import type {} from "node:fs"
 /**
  * A group.
  *
+ * @category models
+ * @since 1.0.0
+ */
+export declare namespace Group {}
+`,
+        "required/Nested.ts": `/**
+ * Module.
+ *
+ * @stability unstable
+ * @since 1.0.0
+ */
+import type {} from "node:fs"
+
+/**
+ * A group.
+ *
  * @stability unstable
  * @category models
  * @since 1.0.0
  */
 export declare namespace Group {
   /**
-   * An item.
+   * Declarations inside a namespace do not require a stability tag.
    *
    * @category models
    * @since 1.0.0
@@ -196,6 +212,23 @@ export declare namespace Group {
      * Members do not require a stability tag.
      */
     readonly id: string
+  }
+
+  /**
+   * Nested namespaces do not require a stability tag.
+   *
+   * @since 1.0.0
+   */
+  export namespace Inner {
+    /**
+     * A nested item.
+     *
+     * @category models
+     * @since 1.0.0
+     */
+    export interface Item {
+      readonly id: string
+    }
   }
 }
 `,
@@ -250,6 +283,7 @@ export const value = 1
       {
         "required/Declaration.ts": ["Public JSDoc must include @stability"],
         "required/Namespace.ts": ["Public JSDoc must include @stability"],
+        "required/Nested.ts": [],
         "required/Module.ts": ["Module JSDoc must include @stability"],
         "required/NoImports.ts": [],
         "Optional.ts": []

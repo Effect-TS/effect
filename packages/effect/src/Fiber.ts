@@ -146,7 +146,6 @@ export declare namespace Fiber {
    * actual // => 1
    * ```
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -168,7 +167,6 @@ export declare namespace Fiber {
    * The cache object is computed once per context cache root and shared by
    * every fiber running with that root, so it must be treated as immutable.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

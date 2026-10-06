@@ -2204,7 +2204,6 @@ export declare namespace Types {
    * // Result: { type: "user"; name: string }
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2247,7 +2246,6 @@ export declare namespace Types {
    * // Result: "b" | "c"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2278,7 +2276,6 @@ export declare namespace Types {
    * // Result: { name: string }
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2307,7 +2304,6 @@ export declare namespace Types {
    * // Used internally to filter out admin objects
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2385,7 +2381,6 @@ export declare namespace Types {
    * result // => "Admin: Alice"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2404,7 +2399,6 @@ export declare namespace Types {
    * literal values, and safe refinements. These are the atomic patterns that
    * can be composed into more complex matching logic.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2433,7 +2427,6 @@ export declare namespace Types {
    * match(42) // => "not string: 42"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2465,7 +2458,6 @@ export declare namespace Types {
    * match("ok") // => "string: ok"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2498,7 +2490,6 @@ export declare namespace Types {
    * match(true) // => "not string"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2529,7 +2520,6 @@ export declare namespace Types {
    * match({ type: "admin", name: "Alice" }) // => "Alice"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2567,7 +2557,6 @@ export declare namespace Types {
    * // Result: number | boolean
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2605,7 +2594,6 @@ export declare namespace Types {
    * // Result: "user" | "admin"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2638,7 +2626,6 @@ export declare namespace Types {
    * // for advanced pattern matching scenarios
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -2677,7 +2664,6 @@ export declare namespace Types {
    * //                      ^^^ s is correctly typed as string
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */

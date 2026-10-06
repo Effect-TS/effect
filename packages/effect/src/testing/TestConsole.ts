@@ -110,7 +110,6 @@ export declare namespace TestConsole {
    * const method: TestConsole.TestConsole.Method = "log"
    * ```
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -137,7 +136,6 @@ export declare namespace TestConsole {
    * entry // => { method: "error", parameters: ["not found"] }
    * ```
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */

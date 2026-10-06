@@ -249,7 +249,6 @@ export declare namespace Result {
   /**
    * Extracts the failure type `E` from `Result<A, E>`.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -257,7 +256,6 @@ export declare namespace Result {
   /**
    * Extracts the success type `A` from `Result<A, E>`.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */

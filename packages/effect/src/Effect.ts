@@ -275,7 +275,6 @@ export declare namespace All {
   /**
    * Alias for any `Effect` value accepted by `Effect.all`.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -284,7 +283,6 @@ export declare namespace All {
   /**
    * Computes the return type for `Effect.all` when collecting an iterable.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -302,7 +300,6 @@ export declare namespace All {
   /**
    * Computes the return type for `Effect.all` when collecting a tuple.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -334,7 +331,6 @@ export declare namespace All {
   /**
    * Computes the return type for `Effect.all` when collecting a record.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -356,7 +352,6 @@ export declare namespace All {
   /**
    * Detects whether `Effect.all` should discard collected values.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -368,7 +363,6 @@ export declare namespace All {
   /**
    * Detects whether `Effect.all` should collect results in `Result` mode.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -377,7 +371,6 @@ export declare namespace All {
   /**
    * Computes the return type for `Effect.all` from its input and options.
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1512,7 +1505,6 @@ export declare namespace gen {
   /**
    * Generator return type accepted by `Effect.gen`.
    *
-   * @stability stable
    * @category constructors
    * @since 4.0.0
    */
@@ -4095,7 +4087,6 @@ export declare namespace Retry {
   /**
    * Computes the result type of `Effect.retry` from the original effect and retry options.
    *
-   * @stability stable
    * @category error handling
    * @since 2.0.0
    */
@@ -4125,7 +4116,6 @@ export declare namespace Retry {
   /**
    * Options that control whether and how a failing effect is retried.
    *
-   * @stability stable
    * @category error handling
    * @since 2.0.0
    */
@@ -7692,7 +7682,6 @@ export declare namespace Repeat {
   /**
    * Computes the result type of `Effect.repeat` from the original effect and repeat options.
    *
-   * @stability stable
    * @category repetition
    * @since 2.0.0
    */
@@ -7727,7 +7716,6 @@ export declare namespace Repeat {
   /**
    * Options that control whether and how an effect is repeated.
    *
-   * @stability stable
    * @category repetition
    * @since 2.0.0
    */
@@ -9647,7 +9635,6 @@ export declare namespace fn {
    * Effect.runSync(program) // => "hello"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 3.19.0
    */
@@ -9656,7 +9643,6 @@ export declare namespace fn {
   /**
    * Type of the untraced function builder used by `Effect.fnUntraced`.
    *
-   * @stability stable
    * @category utility types
    * @since 3.11.0
    */
@@ -11245,7 +11231,6 @@ export declare namespace fn {
   /**
    * Type of the traced function builder used by `Effect.fn`.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -15043,7 +15028,6 @@ export declare namespace Effectify {
   /**
    * Converts a callback-based function type into an `Effect`-returning function type.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -15192,7 +15176,6 @@ export declare namespace Effectify {
   /**
    * Extracts the callback error type from a callback-based function type.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */

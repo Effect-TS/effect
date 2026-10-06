@@ -145,7 +145,6 @@ export declare namespace ServiceClass {
    * Runtime and type-level metadata carried by a class-style service key,
    * including its service type identifier, string key, and service shape.
    *
-   * @stability stable
    * @category services
    * @since 4.0.0
    */
@@ -391,7 +390,6 @@ export declare namespace Service {
    * services.map((service) => service.key) // => ["Logger", "Database"]
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -416,7 +414,6 @@ export declare namespace Service {
    * Database.key // => "Database"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -441,7 +438,6 @@ export declare namespace Service {
    * Database.key // => "Database"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */

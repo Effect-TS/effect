@@ -663,7 +663,6 @@ export declare namespace Invariant {
    *
    * @see {@link Invariant}
    *
-   * @stability stable
    * @category utility types
    * @since 3.9.0
    */
@@ -738,7 +737,6 @@ export declare namespace Covariant {
    *
    * @see {@link Covariant}
    *
-   * @stability stable
    * @category utility types
    * @since 3.9.0
    */
@@ -816,7 +814,6 @@ export declare namespace Contravariant {
    *
    * @see {@link Contravariant}
    *
-   * @stability stable
    * @category utility types
    * @since 3.9.0
    */

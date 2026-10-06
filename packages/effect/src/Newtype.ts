@@ -89,7 +89,6 @@ export declare namespace Newtype {
    *
    * @see {@link Newtype} — the base tagged interface
    *
-   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -102,7 +101,6 @@ export declare namespace Newtype {
    *
    * Use to inspect or constrain a newtype's key in generic code.
    *
-   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -115,7 +113,6 @@ export declare namespace Newtype {
    *
    * Use when you need to refer to the wrapped type in generic utilities.
    *
-   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
