@@ -460,6 +460,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
         const ws = bufferedWebSocket(upgrade.socket)
         this.upgraded = true
         this.resolve(upgrade.response)
+        ServerRequest.setResponseStatusUnsafe(this.source, upgrade.response.status)
         return Socket.fromWebSocket(
           Effect.acquireRelease(
             Effect.succeed(ws),

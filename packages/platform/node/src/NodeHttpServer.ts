@@ -290,6 +290,7 @@ export const makeUpgradeHandler = <
               wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
                 socket.off("close", onClose)
                 upgraded = true
+                Request.setResponseStatusUnsafe(nodeRequest, 101)
                 resume(Effect.succeed(ws))
               })
             }),

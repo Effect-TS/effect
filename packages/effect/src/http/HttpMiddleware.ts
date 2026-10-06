@@ -169,7 +169,7 @@ export const logger: <E, R>(
             Effect.annotateLogs(Effect.log(message), {
               "http.method": request.method,
               "http.url": path,
-              "http.status": response.status
+              "http.status": Request.getResponseStatusUnsafe(request.source) ?? response.status
             }),
             exit
           )
@@ -178,7 +178,7 @@ export const logger: <E, R>(
           Effect.annotateLogs(Effect.log("Sent HTTP response"), {
             "http.method": request.method,
             "http.url": path,
-            "http.status": exit.value.status
+            "http.status": Request.getResponseStatusUnsafe(request.source) ?? exit.value.status
           }),
           exit
         )
