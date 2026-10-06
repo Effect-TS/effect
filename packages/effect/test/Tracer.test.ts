@@ -60,6 +60,19 @@ describe("Tracer", () => {
   })
 
   describe("Effect.withSpan", () => {
+    it.effect("should capture only the span frame for a string failure", () =>
+      Effect.gen(function*() {
+        const cause = yield* Effect.fail("boom").pipe(
+          Effect.withSpan("test"),
+          Effect.sandbox,
+          Effect.flip
+        )
+
+        const errors = Cause.prettyErrors(cause)
+        assert.lengthOf(errors, 1)
+        assert.match(errors[0].stack!, /^Error: boom\n    at test \(.*Tracer\.test\.ts:\d+:\d+\)$/)
+      }))
+
     it.effect("should capture the stack trace", () =>
       Effect.gen(function*() {
         const error = new Error("boom")
