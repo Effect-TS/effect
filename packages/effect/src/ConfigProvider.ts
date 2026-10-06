@@ -1116,47 +1116,56 @@ function dotEnvExpand(parsed: Record<string, string>): Record<string, string> {
 
   for (const configKey of Object.keys(parsed)) {
     // resolve escape sequences
-    newParsed[configKey] = interpolate(parsed[configKey], parsed).replace(/\\\$/g, "$")
+    newParsed[configKey] = interpolate(parsed[configKey], parsed, new Set([configKey])).replace(/\\\$/g, "$")
   }
 
   return newParsed
 }
 
-function interpolate(envValue: string, parsed: Record<string, string>): string {
+function interpolate(
+  envValue: string,
+  parsed: Record<string, string>,
+  seen: ReadonlySet<string>,
+  // text from this index on is already expanded and is not scanned again
+  end = envValue.length
+): string {
   // find the last unescaped dollar sign in the
   // value so that we can evaluate it
-  const lastUnescapedDollarSignIndex = searchLast(envValue, /(?!(?<=\\))\$/g)
+  const lastUnescapedDollarSignIndex = searchLast(envValue.slice(0, end), /(?!(?<=\\))\$/g)
 
   // If we couldn't match any unescaped dollar sign
   // let's return the string as is
   if (lastUnescapedDollarSignIndex === -1) return envValue
 
-  // This is the right-most group of variables in the string
-  const rightMostGroup = envValue.slice(lastUnescapedDollarSignIndex)
-
   /**
    * This finds the inner most variable/group divided
    * by variable name and default value (if present)
    * (
-   *   (?!(?<=\\))\$        // only match dollar signs that are not escaped
+   *   \$                   // the unescaped dollar sign found above
    *   {?                   // optional opening curly brace
-   *     ([\w]+)            // match the variable name
+   *     ([\w]+)            // match the variable name (not running into expanded text)
    *     (?::-([^}\\]*))?   // match an optional default value
    *   }?                   // optional closing curly brace
    * )
    */
-  const matchGroup = /((?!(?<=\\))\${?([\w]+)(?::-([^}\\]*))?}?)/
-  const match = rightMostGroup.match(matchGroup)
+  const name = envValue.slice(lastUnescapedDollarSignIndex, end).match(/^\${?([\w]+)/)
+  const rest = name && envValue.slice(lastUnescapedDollarSignIndex + name[0].length).match(/^(?::-([^}\\]*))?}?/)
 
-  if (match !== null) {
-    const [_, group, variableName, defaultValue] = match
-    const value = Object.hasOwn(parsed, variableName) && parsed[variableName] !== ""
-      ? parsed[variableName]
-      : defaultValue ?? ""
+  if (name !== null && rest !== null) {
+    const [, variableName] = name
+    const [, defaultValue] = rest
+    // references to a variable that is already being expanded resolve like unset ones
+    const expanded = Object.hasOwn(parsed, variableName) && !seen.has(variableName)
+      ? interpolate(parsed[variableName], parsed, new Set([...seen, variableName]))
+      : ""
+    const value = expanded !== "" ? expanded : defaultValue ?? ""
 
     return interpolate(
-      envValue.replace(group, () => value),
-      parsed
+      envValue.slice(0, lastUnescapedDollarSignIndex) + value +
+        envValue.slice(lastUnescapedDollarSignIndex + name[0].length + rest[0].length),
+      parsed,
+      seen,
+      lastUnescapedDollarSignIndex
     )
   }
 

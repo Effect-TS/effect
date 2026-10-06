@@ -879,6 +879,44 @@ FROM_UNSET=\${UNSET:-fallback}
       })
       await assertMissing(provider, ["VALUE"])
     })
+
+    it("expands self and circular references to empty values", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+PATH=$PATH:/opt/bin
+A=a$B
+B=b$A
+SELF_DEFAULT=\${SELF_DEFAULT:-fallback}
+`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, ["PATH"], ConfigProvider.makeValue(":/opt/bin"))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("ab"))
+      await assertSuccess(provider, ["B"], ConfigProvider.makeValue("ba"))
+      await assertSuccess(provider, ["SELF_DEFAULT"], ConfigProvider.makeValue("fallback"))
+    })
+
+    it("does not scan expanded text again", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+USER=app
+HOME_DIR=/home/$USER
+LOG_DIR=\${HOME_DIR}_logs
+NAME=$USER\${SUFFIX:-_v1}
+ESCAPED=\\$USER/$USER
+EMPTY=
+EXPANDS_EMPTY=$EMPTY
+FROM_EXPANDS_EMPTY=\${EXPANDS_EMPTY:-fallback}
+NESTED=\${UNSET:-\${USER}}
+`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, ["LOG_DIR"], ConfigProvider.makeValue("/home/app_logs"))
+      await assertSuccess(provider, ["NAME"], ConfigProvider.makeValue("app_v1"))
+      await assertSuccess(provider, ["ESCAPED"], ConfigProvider.makeValue("$USER/app"))
+      await assertSuccess(provider, ["FROM_EXPANDS_EMPTY"], ConfigProvider.makeValue("fallback"))
+      await assertSuccess(provider, ["NESTED"], ConfigProvider.makeValue("app"))
+    })
   })
 
   describe("fromDotEnv", () => {
