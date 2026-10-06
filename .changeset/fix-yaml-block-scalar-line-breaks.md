@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Yaml.parse` dropping the last line break of a kept (`|+`, `>+`) block scalar followed by more content, and returning `"\n"` instead of `""` for an empty block scalar.
+Fix `Yaml.parse` block scalar chomping to preserve trailing line breaks with keep (`|+`, `>+`) and avoid adding line breaks to empty or unterminated scalars.
