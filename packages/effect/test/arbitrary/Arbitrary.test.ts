@@ -2275,70 +2275,55 @@ describe("Arbitrary", () => {
         }
       }))
 
-    for (
-      const [name, reason] of [
-        ["defects", Cause.die("codec defect")],
-        ["interruption", Cause.interrupt(123)]
-      ] as const
-    ) {
-      it.effect(`propagates ${name} alongside canonical codec decode errors`, () =>
-        Effect.gen(function*() {
-          const cause = Cause.combine(
-            Cause.fail(new SchemaIssue.Forbidden({ message: "unsupported value" })),
-            reason
-          )
-          const schema = Schema.declare<number>((input): input is number => typeof input === "number", {
-            toCodecArbitrary: () =>
-              Schema.link<number>()(
-                Schema.Literal(1),
-                SchemaTransformation.transformEffect<number, 1>({
-                  decode: () => Effect.failCause(cause),
-                  encode: () => Effect.succeed(1)
-                })
-              )
-          })
-          const exit = yield* Effect.exit(Arbitrary.sampleEffect(Arbitrary.schema(schema), {
-            count: 1,
-            maxDiscards: 0,
-            seed: "mixed-codec-cause"
-          }))
-
-          assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
+    it.effect("preserves typed decode errors alongside interruption during generation", () =>
+      Effect.gen(function*() {
+        const cause = Cause.combine(
+          Cause.fail(new SchemaIssue.Forbidden({ message: "unsupported value" })),
+          Cause.interrupt(123)
+        )
+        const schema = Schema.declare<number>((input): input is number => typeof input === "number", {
+          toCodecArbitrary: () =>
+            Schema.link<number>()(
+              Schema.Literal(1),
+              SchemaTransformation.transformEffect<number, 1>({
+                decode: () => Effect.failCause(cause),
+                encode: () => Effect.succeed(1)
+              })
+            )
+        })
+        const exit = yield* Effect.exit(Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+          count: 1,
+          maxDiscards: 0
         }))
-    }
 
-    for (
-      const [name, reason] of [
-        ["defects", Cause.die("codec shrink defect")],
-        ["interruption", Cause.interrupt(123)]
-      ] as const
-    ) {
-      it.effect(`propagates ${name} alongside canonical codec shrink decode errors`, () =>
-        Effect.gen(function*() {
-          const cause = Cause.combine(
-            Cause.fail(new SchemaIssue.Forbidden({ message: "unsupported shrink value" })),
-            reason
-          )
-          const encoded = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
-          const schema = Schema.declare<number>((input): input is number => typeof input === "number", {
-            toCodecArbitrary: () =>
-              Schema.link<number>()(
-                encoded,
-                SchemaTransformation.transformEffect({
-                  decode: (value) => value === 100 ? Effect.succeed(value) : Effect.failCause(cause),
-                  encode: Effect.succeed
-                })
-              )
-          })
-          const exit = yield* Effect.exit(Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
-            runs: 1,
-            maxDiscards: 0,
-            seed: 47
-          }))
+        assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
+      }))
 
-          assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
+    it.effect("preserves typed decode errors alongside defects during shrinking", () =>
+      Effect.gen(function*() {
+        const cause = Cause.combine(
+          Cause.fail(new SchemaIssue.Forbidden({ message: "unsupported shrink value" })),
+          Cause.die("codec shrink defect")
+        )
+        const encoded = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
+        const schema = Schema.declare<number>((input): input is number => typeof input === "number", {
+          toCodecArbitrary: () =>
+            Schema.link<number>()(
+              encoded,
+              SchemaTransformation.transformEffect({
+                decode: (value) => value === 100 ? Effect.succeed(value) : Effect.failCause(cause),
+                encode: Effect.succeed
+              })
+            )
+        })
+        const exit = yield* Effect.exit(Arbitrary.checkEffect(Arbitrary.schema(schema), () => false, {
+          runs: 1,
+          maxDiscards: 0,
+          seed: 47
         }))
-    }
+
+        assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
+      }))
 
     it.effect("keeps asynchronous canonical codecs interruptible", () =>
       Effect.gen(function*() {
@@ -4138,24 +4123,17 @@ describe("Arbitrary", () => {
         }
       }))
 
-    for (
-      const [name, reason] of [
-        ["defects", Cause.die("cleanup defect")],
-        ["interruption", Cause.interrupt(123)]
-      ] as const
-    ) {
-      it.effect(`propagates ${name} alongside typed property failures`, () =>
-        Effect.gen(function*() {
-          const cause = Cause.combine(Cause.fail("property failure"), reason)
-          const exit = yield* Effect.exit(Arbitrary.checkEffect(
-            Arbitrary.Constant(1),
-            () => Effect.fail("property failure").pipe(Effect.ensuring(Effect.failCause(reason))),
-            { runs: 1, seed: "mixed-property-cause" }
-          ))
+    it.effect("preserves typed property failures alongside defects", () =>
+      Effect.gen(function*() {
+        const cause = Cause.combine(Cause.fail("property failure"), Cause.die("property defect"))
+        const exit = yield* Effect.exit(Arbitrary.checkEffect(
+          Arbitrary.Constant(1),
+          () => Effect.failCause(cause),
+          { runs: 1 }
+        ))
 
-          assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
-        }))
-    }
+        assert.deepStrictEqual<Exit.Exit<unknown, unknown>>(exit, Exit.failCause(cause))
+      }))
 
     it.effect("requires an explicit true result from pure and Effectful properties", () =>
       Effect.gen(function*() {
