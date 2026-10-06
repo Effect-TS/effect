@@ -424,6 +424,29 @@ describe("Request", { concurrent: false }, () => {
       }))
   }
 
+  it.effect("withCache completes many coalesced requests for one cache entry", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      const batches: Array<number> = []
+      const resolver = yield* Resolver.make<GetNameById>((entries) =>
+        Effect.sync(() => {
+          batches.push(entries.length)
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed("Alice"))
+        })
+      ).pipe(Resolver.setDelayEffect(Deferred.await(gate)), Resolver.withCache({ capacity: 1 }))
+      const fibers = yield* Effect.forEach(
+        Array.range(1, 20_000),
+        () => Effect.request(new GetNameById({ id: 1 }), resolver).pipe(Effect.forkChild({ startImmediately: true }))
+      )
+      yield* Deferred.succeed(gate, undefined)
+      yield* Effect.yieldNow
+
+      assert.deepStrictEqual(batches, [1])
+      for (const fiber of fibers) {
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("Alice"))
+      }
+    }))
+
   it.effect("withCache still caches completed failures", () =>
     Effect.gen(function*() {
       let calls = 0

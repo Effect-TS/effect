@@ -1122,6 +1122,12 @@ export const asCache: {
     requireServicesAt: options.requireServicesAt ?? "lookup" as ServiceMode
   }) as any)
 
+interface CacheEntry<A extends Request.Any> {
+  readonly entry: Request.Entry<A>
+  exit: Request.Result<A> | undefined
+  pending: Array<Request.Entry<A>>
+}
+
 /**
  * Adds a bounded in-memory cache to a request resolver.
  *
@@ -1165,10 +1171,7 @@ export const withCache: {
 }): Effect.Effect<RequestResolver<A>> =>
   Effect.sync(() => {
     const strategy = options.strategy ?? "lru"
-    const cache = MutableHashMap.empty<A, {
-      readonly entry: Request.Entry<A>
-      exit: Request.Result<A> | undefined
-    }>()
+    const cache = MutableHashMap.empty<A, CacheEntry<A>>()
     return makeWith({
       ...self,
       runAll(entries, key) {
@@ -1186,7 +1189,7 @@ export const withCache: {
       preCheck(entry) {
         const ocached = MutableHashMap.get(cache, entry.request)
         if (ocached._tag === "None") {
-          const cached = { entry, exit: undefined as Request.Result<A> | undefined }
+          const cached: CacheEntry<A> = { entry, exit: undefined, pending: [] }
           MutableHashMap.set(cache, entry.request, cached)
           const prevComplete = entry.completeUnsafe
           entry.completeUnsafe = function(exit) {
@@ -1200,7 +1203,12 @@ export const withCache: {
             } else {
               cached.exit = exit as any
             }
+            const pending = cached.pending
+            cached.pending = []
             prevComplete(exit)
+            for (const pendingEntry of pending) {
+              pendingEntry.completeUnsafe(exit)
+            }
           }
           return true
         }
@@ -1213,11 +1221,7 @@ export const withCache: {
           entry.completeUnsafe(cached.exit as any)
         } else {
           cached.entry.uninterruptible = true
-          const prevComplete = cached.entry.completeUnsafe
-          cached.entry.completeUnsafe = function(exit) {
-            prevComplete(exit)
-            entry.completeUnsafe(exit)
-          }
+          cached.pending.push(entry)
         }
         return false
       }

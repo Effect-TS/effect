@@ -675,7 +675,7 @@ export const buildWithMemoMap: {
   scope: Scope.Scope
 ): Effect<Context.Context<ROut>, E, RIn> =>
   internalEffect.provideService(
-    internalEffect.map(self.build(memoMap, scope), Context.add(CurrentMemoMap, memoMap)),
+    internalEffect.map(internalEffect.suspend(() => self.build(memoMap, scope)), Context.add(CurrentMemoMap, memoMap)),
     CurrentMemoMap,
     memoMap
   ))

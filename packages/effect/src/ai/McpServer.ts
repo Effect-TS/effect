@@ -654,6 +654,7 @@ const cancelledResponses = new WeakMap<object, string | number>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
 interface ActiveRequest {
+  readonly requestId: RpcMessage.RequestId
   readonly prepared: McpRuntime.PreparedRequest
   readonly cancelled: boolean
 }
@@ -805,6 +806,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           payload: { requestId, reason }
         })
     })
+  let writeFromClient!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
   const handlers = yield* runtime.installHandlers({
     core: internalState.get(server)!.core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
@@ -976,8 +978,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
       }
       return protocol.send(clientId, response)
     },
-    run: (f) =>
-      protocol.run((clientId, request_) => {
+    run: (f) => {
+      writeFromClient = f
+      return protocol.run((clientId, request_) => {
         const fiber = Fiber.getCurrent()!
         const request = request_ as unknown as
           | RpcMessage.FromServerEncoded
@@ -1045,11 +1048,13 @@ const runWithRuntime = Effect.fnUntraced(function*(
               if (httpRequest !== undefined && session !== undefined) {
                 appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
                   Effect.succeed(
-                    HttpServerResponse.setHeader(
-                      res,
-                      MCP_PROTOCOL_VERSION_HEADER,
-                      session.protocol.protocolVersion
-                    )
+                    runtime.resolveRequest(clientId, headers) === undefined
+                      ? HttpServerResponse.empty({ status: 404 })
+                      : HttpServerResponse.setHeader(
+                        res,
+                        MCP_PROTOCOL_VERSION_HEADER,
+                        session.protocol.protocolVersion
+                      )
                   ))
               }
               const routedRequest = runtime.routeClientRequest(selectedProtocol, request)
@@ -1130,7 +1135,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
               }
               if (request.isNotification !== true) {
                 const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
-                requests.set(requestKey(request.id), { prepared, cancelled: false })
+                requests.set(requestKey(request.id), {
+                  requestId: RpcMessage.RequestId(request.id),
+                  prepared,
+                  cancelled: false
+                })
                 activeRequests.set(clientId, requests)
               }
               const handled = f(clientId, routedRequest)
@@ -1205,7 +1214,22 @@ const runWithRuntime = Effect.fnUntraced(function*(
           }
         }
       })
+    }
   })
+  if (isHttp) {
+    // Stop requests that can no longer receive client replies after termination.
+    yield* runtime.onSessionTerminated((binding) => {
+      const interrupts: Array<Effect.Effect<void>> = []
+      for (const [clientId, requests] of activeRequests) {
+        for (const { prepared, requestId } of requests.values()) {
+          if (prepared.binding === binding && cancelRequest(clientId, requestId)) {
+            interrupts.push(writeFromClient(clientId, { _tag: "Interrupt", requestId }))
+          }
+        }
+      }
+      return Effect.all(interrupts, { discard: true })
+    })
+  }
 
   const { notificationDelivery, notifications } = internalState.get(server)!
   yield* Effect.acquireRelease(
@@ -1526,19 +1550,28 @@ const mcpStdioSerialization = (
  * **Details**
  *
  * POST serves JSON-RPC and accepted notification-only requests return `202`.
- * Modern routing-header mismatches and unsupported protocol versions return
- * JSON-RPC errors with status `400`; unknown modern RPC methods return a
- * JSON-RPC method-not-found error with status `404`. Unsupported HTTP methods
- * return `405`. Requests carrying an `Origin` header are rejected unless the
- * exact origin appears in `allowedOrigins`; Origin-less non-browser clients
+ * Header mismatches, unsupported protocol versions, and invalid session-header
+ * usage return JSON-RPC errors with status `400`.
+ * Unknown modern RPC methods return a JSON-RPC method-not-found error with
+ * status `404`. Session requests without `MCP-Protocol-Version` use the version
+ * negotiated at initialization. Unsupported HTTP methods return `405`.
+ * Requests with an `Origin` header are rejected unless the exact origin
+ * appears in `allowedOrigins`; Origin-less non-browser clients
  * remain valid. The surrounding HTTP server remains responsible for binding
  * to an appropriate interface and installing authentication.
+ *
+ * With `allowSessionTermination`, a DELETE carrying `Mcp-Session-Id` ends that
+ * session with `204` and interrupts its in-flight requests; later requests with
+ * that id get `404`. DELETE validates the session and `MCP-Protocol-Version`
+ * headers like POST. Without the option, or when only sessionless revisions
+ * such as `v2026_07_28` are configured, DELETE returns `405`. Any caller
+ * holding a session id can end that session, so authenticate requests in the
+ * surrounding router.
  *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
- * HTTP+SSE transport, GET SSE, event resumption, session expiry, or client
- * session termination.
+ * HTTP+SSE transport, GET SSE, event resumption, or session expiry.
  *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
@@ -1558,24 +1591,10 @@ export const layerHttp = (options: {
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
+  readonly allowSessionTermination?: boolean | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
   const runtime = McpRuntime.layer(options.protocols)
-  const methodNotAllowedResponse = HttpServerResponse.empty({
-    status: 405,
-    headers: { allow: "POST" }
-  })
-  const methodNotAllowed = (request: HttpServerRequest.HttpServerRequest) =>
-    isAllowedMcpOrigin(request, options.allowedOrigins)
-      ? Effect.succeed(methodNotAllowedResponse)
-      : Effect.succeed(HttpServerResponse.empty({ status: 403 }))
-  const routes = Layer.mergeAll(
-    HttpRouter.add("GET", options.path, methodNotAllowed),
-    HttpRouter.add("PUT", options.path, methodNotAllowed),
-    HttpRouter.add("PATCH", options.path, methodNotAllowed),
-    HttpRouter.add("DELETE", options.path, methodNotAllowed),
-    HttpRouter.add("OPTIONS", options.path, methodNotAllowed)
-  )
-  return Layer.merge(layerWithRuntime(options, "http"), routes).pipe(
+  return layerWithRuntime(options, "http").pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
     Layer.provide(RpcSerialization.layerJsonRpc())
@@ -1585,6 +1604,7 @@ export const layerHttp = (options: {
 const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
+  readonly allowSessionTermination?: boolean | undefined
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
@@ -1596,6 +1616,29 @@ const layerMcpProtocolHttp = (options: {
       Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
     )
     const router = yield* HttpRouter.HttpRouter
+    const allowSessionTermination = options.allowSessionTermination === true &&
+      runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
+    const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
+    const withAllowedOrigin = (
+      handler: (request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+    ) =>
+    (request: HttpServerRequest.HttpServerRequest) =>
+      isAllowedMcpOrigin(request, options.allowedOrigins) ? handler(request) : forbidden
+    const methodNotAllowedResponse = Effect.succeed(HttpServerResponse.empty({
+      status: 405,
+      headers: { allow: allowSessionTermination ? "POST, DELETE" : "POST" }
+    }))
+    const methodNotAllowed = withAllowedOrigin(() => methodNotAllowedResponse)
+    for (const method of ["GET", "PUT", "PATCH", "OPTIONS"] as const) {
+      yield* router.add(method, options.path, methodNotAllowed)
+    }
+    yield* router.add(
+      "DELETE",
+      options.path,
+      allowSessionTermination
+        ? withAllowedOrigin((request) => runtime.terminateHttpSession(request.headers))
+        : methodNotAllowed
+    )
     yield* router.add("POST", options.path, (request) => {
       if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
         return Effect.succeed(HttpServerResponse.empty({ status: 403 }))
@@ -1809,7 +1852,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
 ) => Effect.Effect<
   void,
   never,
-  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext>
+  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
 > = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
@@ -1829,7 +1872,11 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     }
     return Context.makeUnsafe(services)
   }))
-  const services = omitRequestServices(yield* Effect.context<never>())
+  const services = omitRequestServices(
+    yield* Effect.context<
+      Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
+    >()
+  )
   const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
   // Interruption propagates; anything else is logged, reported and scrubbed.
   const internalToolError = (cause: Cause.Cause<unknown>) => {
@@ -1973,7 +2020,7 @@ export const toolkit = <Tools extends Record<string, Tool.Any>>(
 ): Layer.Layer<
   never,
   never,
-  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext>
+  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
 > =>
   Layer.effectDiscard(registerToolkit(toolkit)).pipe(
     Layer.provide(McpServer.layer)
@@ -1996,6 +2043,19 @@ export type ValidateCompletions<Completions, Keys extends string> =
       ) => any
       : never
   }
+
+/**
+ * Utility type that collects the services required by the handlers of a
+ * completion-handler record, including handlers declared as optional.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type CompletionServices<Completions> = {
+  [K in keyof Completions]-?: NonNullable<Completions[K]> extends (...args: any) => infer Ret ? Effect.Services<Ret>
+    : never
+}[keyof Completions]
 
 /**
  * Completion-handler map for a resource URI template.
@@ -2314,7 +2374,13 @@ export const registerPrompt = <
 ): Effect.Effect<
   void,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext> | McpServer
+  | Exclude<
+    | Schema.Struct.DecodingServices<Params>
+    | R
+    | CompletionServices<Completions>,
+    McpRequestContext
+  >
+  | McpServer
 > => {
   const args = Arr.empty<PromptArgument>()
   const props: Record<string, Schema.Constraint> = options.parameters ?? {}
@@ -2452,7 +2518,12 @@ export const prompt = <
 ): Layer.Layer<
   never,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext>
+  Exclude<
+    | Schema.Struct.DecodingServices<Params>
+    | R
+    | CompletionServices<Completions>,
+    McpRequestContext
+  >
 > =>
   Layer.effectDiscard(registerPrompt(options)).pipe(
     Layer.provide(McpServer.layer)

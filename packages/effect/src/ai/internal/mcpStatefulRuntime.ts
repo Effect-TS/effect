@@ -47,6 +47,7 @@ export interface StatefulRuntime {
   readonly registerConnection: (clientId: number, registration: Registration) => Binding
   readonly resolve: (clientId: number, headers: Headers.Headers) => Binding | undefined
   readonly resolveSessionId: (sessionId: string) => Binding | undefined
+  readonly terminateSession: (sessionId: string) => boolean
   readonly setLogLevel: (
     level: PublicMcpSchema.LoggingLevel,
     clientId: number,
@@ -123,6 +124,7 @@ export const make = (): StatefulRuntime => {
     },
     resolve: resolveSession,
     resolveSessionId: (sessionId) => bySessionId.get(sessionId),
+    terminateSession: (sessionId) => bySessionId.delete(sessionId),
     setLogLevel: (level, clientId, headers) =>
       Effect.sync(() => {
         const session = resolveSession(clientId, headers)

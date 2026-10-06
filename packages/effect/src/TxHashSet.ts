@@ -249,12 +249,13 @@ export const make = <Values extends ReadonlyArray<any>>(
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterable = <V>(values: Iterable<V>): Effect.Effect<TxHashSet<V>> =>
-  Effect.gen(function*() {
-    const hashSet = HashSet.fromIterable(values)
+export const fromIterable = <V>(values: Iterable<V>): Effect.Effect<TxHashSet<V>> => {
+  const hashSet = HashSet.fromIterable(values)
+  return Effect.gen(function*() {
     const ref = yield* TxRef.make(hashSet)
     return makeTxHashSet(ref)
   })
+}
 
 /**
  * Creates a TxHashSet from an existing HashSet.

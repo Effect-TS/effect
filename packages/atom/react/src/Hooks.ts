@@ -37,15 +37,27 @@ function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): 
   if (store !== undefined) {
     return store
   }
+  // Keep the hydration snapshot while any reader is subscribed, so late
+  // boundaries match the server HTML. SSR has no subscribers and reads fresh values.
+  let subscribers = 0
+  let serverSnapshot: { readonly value: A } | undefined
   const newStore: AtomStore<A> = {
     subscribe(f) {
-      return registry.subscribe(atom, f)
+      subscribers++
+      const unsubscribe = registry.subscribe(atom, f)
+      return () => {
+        subscribers--
+        unsubscribe()
+      }
     },
     snapshot() {
       return registry.get(atom)
     },
     getServerSnapshot() {
-      return Atom.getServerValue(atom, registry)
+      if (subscribers === 0 || serverSnapshot === undefined) {
+        serverSnapshot = { value: Atom.getServerValue(atom, registry) }
+      }
+      return serverSnapshot.value
     }
   }
   stores.set(atom, newStore)
@@ -56,6 +68,26 @@ function useStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): A
   const store = makeStore(registry, atom)
 
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
+}
+
+function useSelectedStore<A, B>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>, f: (_: A) => B): B {
+  const store = makeStore(registry, atom)
+  // Both snapshots must return the same selected value for an unchanged source.
+  const select = React.useMemo(() => {
+    let last: { readonly source: A; readonly value: B } | undefined
+    return (source: A): B => {
+      if (last === undefined || !Object.is(last.source, source)) {
+        last = { source, value: f(source) }
+      }
+      return last.value
+    }
+  }, [f])
+
+  return React.useSyncExternalStore(
+    store.subscribe,
+    () => select(store.snapshot()),
+    () => select(store.getServerSnapshot())
+  )
 }
 
 const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
@@ -103,8 +135,16 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  *
  * **Details**
  *
- * When a selector is provided, the hook maps the atom before subscribing so the
- * component reads the selected value from the current `RegistryContext`.
+ * When a selector is provided, the hook subscribes to the atom and applies the
+ * selector to its value from the current `RegistryContext`.
+ *
+ * **Gotchas**
+ *
+ * Late Suspense boundaries hydrate with the same atom snapshot as earlier
+ * readers, then update to the live value. The snapshot lasts until all readers
+ * unsubscribe. Changes before the first reader hydrates or after the last
+ * unsubscribes can still cause mismatches, as can a derived atom first read
+ * inside a late boundary.
  *
  * @see {@link useAtom} for reading and updating a writable atom from one component
  * @see {@link useAtomRef} for reading an `AtomRef` directly
@@ -119,8 +159,7 @@ export const useAtomValue: {
 } = <A>(atom: Atom.Atom<A>, f?: (_: A) => A): A => {
   const registry = React.useContext(RegistryContext)
   if (f) {
-    const atomB = React.useMemo(() => Atom.map(atom, f), [atom, f])
-    return useStore(registry, atomB)
+    return useSelectedStore(registry, atom, f)
   }
   return useStore(registry, atom)
 }

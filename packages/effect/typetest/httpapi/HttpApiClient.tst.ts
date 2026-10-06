@@ -595,6 +595,22 @@ describe("HttpApiClient", () => {
       expect(f({ responseMode: "response-only" })).type.toBe<
         Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
       >()
+
+      expect(f({ responseMode: hole<"decoded-only" | "response-only">() })).type.toBe<
+        Effect.Effect<
+          { readonly a: number } | HttpClientResponse.HttpClientResponse,
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+
+      expect(f({ responseMode: hole<ResponseMode>() })).type.toBe<
+        Effect.Effect<
+          | { readonly a: number }
+          | HttpClientResponse.HttpClientResponse
+          | [{ readonly a: number }, HttpClientResponse.HttpClientResponse],
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
     })
 
     it("preserves method parameters across response modes", () => {

@@ -52,19 +52,23 @@ export const makeHttpHarness = Effect.fnUntraced(function*<A, E>(
     )
 
   const post = (body: unknown, headers?: HeadersInit) => postText(JSON.stringify(body), headers)
+  const deleteSession = (headers?: HeadersInit) =>
+    Effect.promise(() => handler(new Request(MCP_ENDPOINT, { method: "DELETE", headers: headers ?? {} })))
 
   return {
     handler,
     fetch,
     post,
     postText,
+    delete: deleteSession,
     responses
   } as const
 })
 
 export const initializeHttpSession = Effect.fnUntraced(function*(
   harness: Effect.Success<ReturnType<typeof makeHttpHarness>>,
-  selectedProtocol: McpProtocol.ProtocolAdapter
+  selectedProtocol: McpProtocol.ProtocolAdapter,
+  capabilities: Record<string, unknown> = {}
 ) {
   const response = yield* harness.post({
     jsonrpc: "2.0",
@@ -72,7 +76,7 @@ export const initializeHttpSession = Effect.fnUntraced(function*(
     method: "initialize",
     params: {
       protocolVersion: selectedProtocol.protocolVersion,
-      capabilities: {},
+      capabilities,
       clientInfo: { name: "test", version: "1.0.0" }
     }
   })

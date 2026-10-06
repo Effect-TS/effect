@@ -3937,6 +3937,17 @@ describe("Stream", () => {
     })
 
     describe("zipLatest", () => {
+      for (const emptySide of ["left", "right"] as const) {
+        it.effect(`completes with no pairs when the ${emptySide} stream is empty`, () =>
+          Effect.gen(function*() {
+            const result = yield* Stream.zipLatest(
+              emptySide === "left" ? Stream.empty : Stream.succeed(1),
+              emptySide === "right" ? Stream.empty : Stream.succeed(1)
+            ).pipe(Stream.runCollect)
+            assert.deepStrictEqual(result, [])
+          }))
+      }
+
       it.effect("combines streams with latest values", () =>
         Effect.gen(function*() {
           const result = yield* Stream.zipLatest(
@@ -4179,6 +4190,22 @@ describe("Stream", () => {
         deepStrictEqual(result, [1, 1, 2, 3, 5, 8])
       }))
 
+    it.live("sink finishing during an upstream pull still lets the stream complete", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const finished = yield* Deferred.make<void>()
+        const source = Stream.fromEffect(Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          yield* Deferred.await(finished)
+          // Let the sink finish before the suspended upstream pull returns.
+          yield* Effect.yieldNow
+          return 1
+        }))
+        const sink = Sink.fromEffect(Effect.andThen(Deferred.await(started), Deferred.succeed(finished, undefined)))
+        const result = yield* source.pipe(Stream.tapSink(sink), Stream.runCollect, Effect.timeoutOption("1 second"))
+        deepStrictEqual(result, Option.some([1]))
+      }))
+
     it.effect("sink that fails before stream", () =>
       Effect.gen(function*() {
         const sink = Sink.fail("error")
@@ -4189,6 +4216,13 @@ describe("Stream", () => {
           Effect.flip
         )
         strictEqual(result, "error")
+      }))
+
+    it.effect("sink that fails after end-of-stream", () =>
+      Effect.gen(function*() {
+        const sink = Sink.collect<number>().pipe(Sink.mapEffect(() => Effect.fail("sink-end-failure")))
+        const exit = yield* Stream.make(1).pipe(Stream.tapSink(sink), Stream.runCollect, Effect.exit)
+        deepStrictEqual(exit, Exit.fail("sink-end-failure"))
       }))
 
     it.effect("does not read ahead", () =>
@@ -4802,6 +4836,13 @@ describe("Stream", () => {
         deepStrictEqual(peeled, [1, 2, 3])
         deepStrictEqual(rest, [4, 5, 6])
       }))
+
+    it.effect("keeps the sink's leftovers in the remaining stream", () =>
+      Effect.gen(function*() {
+        const [peeled, rest] = yield* Stream.peel(Stream.make(1, 2, 3, 4), Sink.take<number>(2))
+        deepStrictEqual(peeled, [1, 2])
+        deepStrictEqual(yield* Stream.runCollect(rest), [3, 4])
+      }).pipe(Effect.scoped))
 
     it.effect("peel - propagates errors", () =>
       Effect.gen(function*() {

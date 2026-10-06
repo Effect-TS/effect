@@ -510,6 +510,11 @@ class PgConnectionImpl implements PgConnection {
       }),
       destroySocket
     )
+    const socket = this.session.socket
+    socket.off("data", this.onData)
+    socket.off("error", this.onSocketError)
+    socket.off("close", this.onSocketClose)
+    this.retireHooks.clear()
   }
 
   /** Plans one execution. `cache` is `undefined` to force the unnamed path. */

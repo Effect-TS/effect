@@ -425,6 +425,91 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason._tag, "SocketReadError")
     }))
 
+  it.effect("keeps in-flight streams alive on non-pong frames without any pongs", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const frames = yield* Queue.unbounded<string>()
+      const events = yield* Queue.unbounded<string>()
+      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup, {
+        generateRequestId: () => RpcMessage.RequestId("0")
+      }).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const streamFiber = yield* client.Events().pipe(
+        Stream.runForEach((event) => Queue.offer(events, event)),
+        Effect.forkChild
+      )
+
+      yield* Deferred.await(requestSent)
+      for (const event of ["first", "second", "third"]) {
+        yield* TestClock.adjust("4 seconds")
+        assert.isUndefined(streamFiber.pollUnsafe())
+        yield* Queue.offer(frames, JSON.stringify({ _tag: "Chunk", requestId: "0", values: [event] }) + "\n")
+        assert.strictEqual(yield* Queue.take(events), event)
+      }
+      // Cross another ping tick after the third frame, still without a pong.
+      yield* TestClock.adjust("4 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+    }))
+
+  it.effect("allows a delayed pong within a custom ping timeout but fails after silence", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const frames = yield* Queue.unbounded<string>()
+      const frameRead = yield* Deferred.make<void>()
+      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(frames).pipe(
+            Effect.tap(() => Deferred.succeed(frameRead, void 0)),
+            Effect.map((frame) => [frame] as const)
+          ),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const context = yield* Layer.build(
+        RpcClient.layerProtocolSocket({
+          pingInterval: "2 seconds",
+          pingTimeout: "15 seconds",
+          retryPolicy: Schedule.spaced("1 hour")
+        }).pipe(
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Layer.succeed(Socket.Socket, socket))
+        )
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(Effect.provide(context))
+      const streamFiber = yield* client.Events().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+
+      yield* Deferred.await(requestSent)
+      // The old fixed timeout fails at 10s, before this delayed pong arrives.
+      yield* TestClock.adjust("12 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+      yield* Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n")
+      yield* Deferred.await(frameRead)
+      yield* TestClock.adjust("14 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+
+      // At 28s the next 2s tick is 16s after the last frame, beyond the 15s timeout.
+      yield* TestClock.adjust("2 seconds")
+      assert.isDefined(streamFiber.pollUnsafe())
+      const exit = yield* Fiber.join(streamFiber)
+      assert(Exit.isFailure(exit))
+      const error = Cause.squash(exit.cause)
+      assert.instanceOf(error, RpcClientError)
+      assert.strictEqual(error.reason._tag, "SocketReadError")
+    }))
+
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()

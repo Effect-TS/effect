@@ -1,11 +1,31 @@
-import type * as Cause from "../../Cause.ts"
+import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
+import * as Result from "../../Result.ts"
 import * as InternalArray from "../array.ts"
 import { done } from "../core.ts"
 
 /** @internal */
 export type ShrinkPull<A> = Effect.Effect<A, Cause.Done>
+
+/**
+ * Builds a cause handler that recovers typed failures, or propagates only
+ * defects and interruptions, preserving their original annotations.
+ *
+ * @internal
+ */
+export const onTypedFailure = <E, A, E2, R>(
+  f: (error: E) => Effect.Effect<A, E2, R>
+) =>
+(cause: Cause.Cause<E>): Effect.Effect<A, E2, R> => {
+  if (!cause.reasons.every(Cause.isFailReason)) {
+    return Effect.failCause(Cause.fromReasons<never>(cause.reasons.filter(
+      (reason): reason is Cause.Die | Cause.Interrupt => reason._tag !== "Fail"
+    )))
+  }
+  const error = Cause.findError(cause)
+  return Result.isFailure(error) ? Effect.failCause(error.failure) : f(error.success)
+}
 
 /** @internal */
 export interface Sample<out A> {
@@ -129,10 +149,13 @@ export function concatPulls<A>(pulls: ReadonlyArray<ShrinkPull<A>>): ShrinkPull<
     Effect.suspend(() =>
       index >= pulls.length
         ? done()
-        : Effect.catch(pulls[index], () => {
-          index++
-          return loop()
-        })
+        : Effect.catchCause(
+          pulls[index],
+          onTypedFailure(() => {
+            index++
+            return loop()
+          })
+        )
     )
   return loop()
 }
@@ -182,11 +205,11 @@ export function retain<A>(sample: Sample<A>): Retained<A> {
       return Effect.suspend(() => {
         if (history !== undefined && index < history.length) return Effect.succeed(history[index++])
         if (ended) return done()
-        return Effect.matchEffect(source, {
-          onFailure: () => {
+        return Effect.matchCauseEffect(source, {
+          onFailure: onTypedFailure(() => {
             ended = true
             return done()
-          },
+          }),
           onSuccess: (attempt) => {
             const item = attempt._tag === "Discarded" ? attempt : retain(attempt)
             history ??= []
@@ -288,11 +311,11 @@ function filterMapPull<A, B>(
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchEffect(current, {
-        onFailure: () => {
+      return Effect.matchCauseEffect(current, {
+        onFailure: onTypedFailure(() => {
           stack.pop()
           return loop()
-        },
+        }),
         onSuccess: (attempt) => {
           if (attempt._tag === "Discarded") return Effect.succeed<Attempt<B>>(attempt)
           const sample = attempt
@@ -318,11 +341,11 @@ function filterPull<A>(source: ShrinkPull<Attempt<A>>, predicate: (value: A) => 
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchEffect(current, {
-        onFailure: () => {
+      return Effect.matchCauseEffect(current, {
+        onFailure: onTypedFailure(() => {
           stack.pop()
           return loop()
-        },
+        }),
         onSuccess: (attempt) => {
           if (attempt._tag === "Discarded") return Effect.succeed<Attempt<A>>(attempt)
           const sample = attempt

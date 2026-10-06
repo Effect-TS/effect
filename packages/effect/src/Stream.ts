@@ -2277,16 +2277,22 @@ export const tapSink: {
 
         const pullAndOffer = pull.pipe(
           Effect.flatMap((chunk_) => {
+            // The sink may have exited while the upstream pull was suspended.
+            if (causeSink) return Effect.failCause(causeSink)
+            if (sinkDone) return Effect.succeed(chunk_)
             chunk = chunk_
             sinkLatch.closeUnsafe()
             upstreamLatch.openUnsafe()
             return Effect.as(sinkLatch.await, chunk_)
           }),
-          Pull.catchDone(() => {
+          Pull.catchDone((): Effect.Effect<never, E2 | Cause.Done> => {
+            if (causeSink) return Effect.failCause(causeSink)
+            if (sinkDone) return Cause.done()
             streamDone = true
             sinkLatch.closeUnsafe()
             upstreamLatch.openUnsafe()
-            return Effect.flatMap(sinkLatch.await, () => Cause.done())
+            return Effect.flatMap(sinkLatch.await, (): Pull.Pull<never, E2> =>
+              causeSink ? Effect.failCause(causeSink) : Cause.done())
           })
         )
 
@@ -3955,6 +3961,7 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream<any, any, any>>>(
     const latest: Array<any> = []
     const emitted = new Set<number>()
     const readyLatch = Latch.makeUnsafe()
+    const emptyLatch = Latch.makeUnsafe()
     return Channel.mergeAll(
       Channel.fromArray(
         streams.map((s, i) =>
@@ -3971,7 +3978,9 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream<any, any, any>>>(
               }
               return Effect.succeed(Arr.of(latest.slice()))
             }),
-            Channel.filter(isNotUndefined)
+            Channel.filter(isNotUndefined),
+            // An input ending without a value makes a complete tuple impossible.
+            Channel.mapDoneEffect(() => emitted.has(i) ? Effect.void : emptyLatch.open)
           )
         )
       ),
@@ -3979,7 +3988,7 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream<any, any, any>>>(
         concurrency: "unbounded",
         bufferSize: 0
       }
-    )
+    ).pipe(Channel.interruptWhen(emptyLatch.await))
   })) as any
 
 /**
@@ -4716,12 +4725,14 @@ export const peel: {
       return Effect.failCause(cause_)
     })
 
-    let stream = fromPull(Effect.succeed(pull)) as Stream<A, E>
-    const leftover = yield* run(stream, sink)
-    if (cause) return [leftover, empty]
-
-    stream = fromPull(Effect.succeed(originalPull))
-    return [leftover, stream]
+    const [result, leftover] = yield* Effect.scopedWith((scope) =>
+      sink.transform(pull as Pull.Pull<Arr.NonEmptyReadonlyArray<A>>, scope)
+    )
+    let stream: Stream<A, E> = cause ? empty : fromPull(Effect.succeed(originalPull))
+    if (leftover) {
+      stream = concat(fromArray(leftover), stream)
+    }
+    return [result, stream]
   })
 )
 

@@ -14,7 +14,7 @@ import type * as DateTime from "./DateTime.ts"
 import * as Equal from "./Equal.ts"
 import * as Equ from "./Equivalence.ts"
 import { format as formatValue } from "./Formatter.ts"
-import { constVoid, dual, pipe } from "./Function.ts"
+import { constFalse, constVoid, dual, pipe } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
 import * as dateTime from "./internal/dateTime.ts"
@@ -857,6 +857,14 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     }
   }
 
+  // Repeated wall times resolve to their first occurrence, so when the search
+  // starts in the second occurrence, matches inside that fold are in the past.
+  const isBeforeStart = reverse || utc ? constFalse : (current: Date) =>
+    dateTime.makeZonedUnsafe(current, {
+      timeZone: zoned.zone,
+      adjustForTimeZone: true
+    }).epochMilliseconds <= zoned.epochMilliseconds
+
   const result = dateTime.mutate(zoned, (current) => {
     current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
 
@@ -998,6 +1006,12 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
           adjustDst(current)
           continue
         }
+      }
+
+      if (isBeforeStart(current)) {
+        current.setUTCSeconds(current.getUTCSeconds() + 1)
+        i = -1 // skipped fold candidates do not count against the search budget
+        continue
       }
 
       return

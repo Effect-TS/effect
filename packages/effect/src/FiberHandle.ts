@@ -338,18 +338,21 @@ export const setUnsafe: {
   if (self.state._tag === "Closed") {
     fiber.interruptUnsafe(internalFiberId)
     return
-  } else if (self.state.fiber !== undefined) {
-    if (self.state.fiber === fiber) {
+  }
+
+  const previous = self.state.fiber
+  if (previous !== undefined) {
+    if (previous === fiber) {
       return
     } else if (options?.onlyIfMissing === true) {
       fiber.interruptUnsafe(internalFiberId)
       return
     }
-    self.state.fiber.interruptUnsafe(internalFiberId)
-    self.state.fiber = undefined
   }
 
+  // Install the replacement before interruption can re-enter the handle through a finalizer.
   self.state.fiber = fiber
+  previous?.interruptUnsafe(internalFiberId)
   fiber.addObserver((exit) => {
     if (self.state._tag === "Open" && fiber === self.state.fiber) {
       self.state.fiber = undefined

@@ -165,12 +165,16 @@ export declare namespace PubSub {
     /**
      * Describes how publishers should signal to subscribers that they are
      * waiting for space to become available in the `PubSub`.
+     *
+     * The publisher may have yielded since `publish` checked `ended`, so it
+     * must be checked again before registering or publishing the surplus.
      */
     handleSurplus(
       pubsub: Atomic<A>,
       subscribers: Subscribers<A>,
       elements: Iterable<A>,
-      isShutdown: MutableRef.MutableRef<boolean>
+      isShutdown: MutableRef.MutableRef<boolean>,
+      ended: MutableRef.MutableRef<Option.Option<A>>
     ): Effect.Effect<boolean>
 
     /**
@@ -339,6 +343,8 @@ export const make = <A>(
  * them. When the capacity is full, publishers suspend until space is available.
  * Pass an options object to configure both `capacity` and an optional replay
  * buffer for late subscribers.
+ * The capacity must be a positive integer or `Infinity` for unbounded storage.
+ * Invalid capacities cause the effect to die.
  *
  * **Example** (Creating a bounded PubSub)
  *
@@ -386,6 +392,8 @@ export const bounded = <A>(
  *
  * **Details**
  *
+ * The capacity must be a positive integer or `Infinity` for unbounded storage.
+ * Invalid capacities cause the effect to die.
  * For best performance use capacities that are powers of two.
  *
  * **Example** (Dropping messages when full)
@@ -434,6 +442,8 @@ export const dropping = <A>(
  *
  * **Details**
  *
+ * The capacity must be a positive integer or `Infinity` for unbounded storage.
+ * Invalid capacities cause the effect to die.
  * For best performance use capacities that are powers of two.
  *
  * **Example** (Sliding old messages when full)
@@ -529,8 +539,9 @@ export const unbounded = <A>(options?: {
  *
  * **Gotchas**
  *
- * The capacity must be greater than zero; invalid capacities throw
- * synchronously before an atomic implementation is created.
+ * The capacity must be a positive integer or `Infinity` for unbounded storage;
+ * invalid capacities throw synchronously before an atomic implementation is
+ * created.
  *
  * @see {@link make} for constructing a `PubSub` from an atomic implementation and delivery strategy
  * @see {@link makeAtomicUnbounded} for an atomic implementation without a bounded capacity
@@ -1081,7 +1092,8 @@ export const publish: {
       self.pubsub,
       self.subscribers,
       [value],
-      self.shutdownFlag
+      self.shutdownFlag,
+      self.ended
     )
   }))
 
@@ -1185,7 +1197,8 @@ export const publishAll: {
       self.pubsub,
       self.subscribers,
       surplus,
-      self.shutdownFlag
+      self.shutdownFlag,
+      self.ended
     )
   }))
 
@@ -1381,7 +1394,17 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
 const pollForItem = <A>(self: Subscription<A>) =>
   Effect.callback<A>((resume) => {
     if (self.shutdownFlag.current) return resume(Effect.interrupt)
-    if (Option.isSome(self.ended.current)) return resume(Effect.succeed(self.ended.current.value))
+    if (Option.isSome(self.ended.current)) {
+      // Messages may have been published after the empty check, before this callback ran.
+      const message = self.pollers.length === 0
+        ? self.subscription.poll()
+        : MutableList.Empty
+      if (message !== MutableList.Empty) {
+        self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
+        return resume(Effect.succeed(message))
+      }
+      return resume(Effect.succeed(self.ended.current.value))
+    }
     const deferred = Deferred.makeUnsafe<A>()
     let set = self.subscribers.get(self.subscription)
     if (!set) {
@@ -2503,7 +2526,7 @@ const makePubSubUnsafe = <A>(
 ): PubSub<A> => new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy, ended)
 
 const ensureCapacity = (capacity: number): void => {
-  if (capacity <= 0) {
+  if (capacity <= 0 || (capacity !== Infinity && !Number.isInteger(capacity))) {
     throw new Error(`Cannot construct PubSub with capacity of ${capacity}`)
   }
 }
@@ -2557,9 +2580,13 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
     pubsub: PubSub.Atomic<A>,
     subscribers: PubSub.Subscribers<A>,
     elements: Iterable<A>,
-    isShutdown: MutableRef.MutableRef<boolean>
+    isShutdown: MutableRef.MutableRef<boolean>,
+    ended: MutableRef.MutableRef<Option.Option<A>>
   ): Effect.Effect<boolean> {
     return Effect.callback<boolean>((resume) => {
+      // The publisher may have yielded since `publish` checked `ended`, and
+      // `end` only rejects publishers that are already registered.
+      if (Option.isSome(ended.current)) return resume(Effect.succeed(false))
       const deferred = Deferred.makeUnsafe<boolean>()
       this.offerUnsafe(elements, deferred)
       this.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
@@ -2773,9 +2800,11 @@ export class SlidingStrategy<in out A> implements PubSub.Strategy<A> {
     pubsub: PubSub.Atomic<A>,
     subscribers: PubSub.Subscribers<A>,
     elements: Iterable<A>,
-    _isShutdown: MutableRef.MutableRef<boolean>
+    _isShutdown: MutableRef.MutableRef<boolean>,
+    ended: MutableRef.MutableRef<Option.Option<A>>
   ): Effect.Effect<boolean> {
     return Effect.sync(() => {
+      if (Option.isSome(ended.current)) return false
       this.slidingPublishUnsafe(pubsub, elements)
       this.completeSubscribersUnsafe(pubsub, subscribers)
       return true

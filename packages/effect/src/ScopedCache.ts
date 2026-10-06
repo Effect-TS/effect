@@ -27,6 +27,7 @@ import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
+import { UnhandledLogLevel } from "./References.ts"
 import * as Scope from "./Scope.ts"
 
 const TypeId = "~effect/ScopedCache"
@@ -290,7 +291,7 @@ export const get: {
         }
         MutableHashMap.set(state.map, key, entry)
         return checkCapacity(fiber, state.map, self.capacity).pipe(
-          Option.isSome(oentry) ? effect.flatMap(() => Scope.close(oentry.value.scope, effect.exitVoid)) : identity,
+          Option.isSome(oentry) ? effect.flatMap(() => closeEvicted(oentry.value)) : identity,
           effect.flatMap(() => {
             entry.fiber = effect.forkUnsafe(
               fiber,
@@ -355,6 +356,16 @@ const hasExpired = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknow
   return fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() >= entry.expiresAt
 }
 
+// Expiry and capacity eviction report cleanup failures without failing unrelated readers.
+const closeEvicted = <A, E>(entry: Entry<A, E>): Effect.Effect<void> =>
+  effect.catchCause(Scope.close(entry.scope, effect.exitVoid), reportUnhandledError)
+
+const reportUnhandledError = <E>(cause: Cause.Cause<E>): Effect.Effect<void> =>
+  core.withFiber((fiber) => {
+    const level = fiber.getRef(UnhandledLogLevel)
+    return level ? effect.logWithLevel(level)("Unhandled error in ScopedCache finalizer", cause) : effect.void
+  })
+
 const checkCapacity = <K, A, E>(
   parent: Fiber.Fiber<unknown, unknown>,
   map: MutableHashMap.MutableHashMap<K, Entry<A, E>>,
@@ -367,7 +378,7 @@ const checkCapacity = <K, A, E>(
   const fibers = Arr.empty<Fiber.Fiber<unknown, unknown>>()
   for (const [key, entry] of map) {
     MutableHashMap.remove(map, key)
-    fibers.push(effect.forkUnsafe(parent as any, Scope.close(entry.scope, effect.exitVoid), true))
+    fibers.push(effect.forkUnsafe(parent as any, closeEvicted(entry), true))
     diff--
     if (diff === 0) break
   }
@@ -427,7 +438,7 @@ const getImpl = <Key, A, E, R>(
   } else if (hasExpired(oentry.value, fiber)) {
     MutableHashMap.remove(state.map, key)
     return effect.as(
-      Scope.close(oentry.value.scope, effect.exitVoid),
+      closeEvicted(oentry.value),
       undefined
     )
   } else if (isRead) {

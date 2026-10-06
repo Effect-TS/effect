@@ -507,6 +507,20 @@ export const releaseN: {
 })
 
 /**
+ * Runs `effect` between `acquire` and `release`. Acquisition and `effect`
+ * inherit the caller's interruptibility, while the handoff from a successful
+ * acquisition to the release finalizer stays protected.
+ */
+const withAcquired = <A, E, R>(
+  acquire: Effect.Effect<void>,
+  effect: Effect.Effect<A, E, R>,
+  release: Effect.Effect<void>
+): Effect.Effect<A, E, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(restore(acquire), () => Effect.ensuring(restore(effect), release))
+  )
+
+/**
  * Executes an effect with a single permit from the semaphore. The permit is
  * automatically acquired before execution and released afterwards, even if the
  * effect fails or is interrupted.
@@ -561,21 +575,9 @@ export const withPermit: {
   (self: TxSemaphore): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <A, E, R>(self: TxSemaphore, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
 } = ((...args: Array<any>) => {
-  if (args.length === 1) {
-    const [self] = args
-    return (effect: Effect.Effect<any, any, any>) =>
-      Effect.acquireUseRelease(
-        acquire(self),
-        () => effect,
-        () => release(self)
-      )
-  }
-  const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquire(self),
-    () => effect,
-    () => release(self)
-  )
+  const [self] = args
+  const run = <A, E, R>(effect: Effect.Effect<A, E, R>) => withAcquired(acquire(self), effect, release(self))
+  return args.length === 1 ? run : run(args[1])
 }) as any
 
 /**
@@ -636,21 +638,9 @@ export const withPermits: {
   (self: TxSemaphore, n: number): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <A, E, R>(self: TxSemaphore, n: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
 } = ((...args: Array<any>) => {
-  if (args.length === 2) {
-    const [self, n] = args
-    return (effect: Effect.Effect<any, any, any>) =>
-      Effect.acquireUseRelease(
-        acquireN(self, n),
-        () => effect,
-        () => releaseN(self, n)
-      )
-  }
-  const [self, n, effect] = args
-  return Effect.acquireUseRelease(
-    acquireN(self, n),
-    () => effect,
-    () => releaseN(self, n)
-  )
+  const [self, n] = args
+  const run = <A, E, R>(effect: Effect.Effect<A, E, R>) => withAcquired(acquireN(self, n), effect, releaseN(self, n))
+  return args.length === 2 ? run : run(args[2])
 }) as any
 
 /**
@@ -708,7 +698,8 @@ export const withPermits: {
 export const withPermitScoped = (self: TxSemaphore): Effect.Effect<void, never, Scope.Scope> =>
   Effect.acquireRelease(
     acquire(self),
-    () => release(self)
+    () => release(self),
+    { interruptible: true }
   )
 
 /**
