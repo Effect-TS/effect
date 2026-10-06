@@ -2168,18 +2168,21 @@ export const batch: (f: () => void) => void = Registry.batch
 // -----------------------------------------------------------------------------
 
 /**
- * Creates a browser-only signal atom that increments when the document becomes visible.
+ * Creates a signal atom that increments when the document becomes visible.
  *
  * **Details**
  *
  * It listens for `visibilitychange` events on `window` and removes the listener
- * when the atom is disposed.
+ * when the atom is disposed. Without `window`, it stays at `0` and adds no listener.
  *
  * @stability unstable
  * @category constants
  * @since 4.0.0
  */
 export const windowFocusSignal: Atom<number> = readable((get) => {
+  if (typeof window === "undefined") {
+    return 0
+  }
   let count = 0
   function update() {
     if (document.visibilityState === "visible") {
@@ -2219,8 +2222,8 @@ export const makeRefreshOnSignal = <_>(signal: Atom<_>) => <A extends Atom<any>>
  *
  * **Details**
  *
- * This helper is browser-only because `windowFocusSignal` depends on `window` and
- * `document.visibilityState`.
+ * Without `window`, this helper does not trigger refreshes. Source atom updates
+ * are still forwarded.
  *
  * @stability unstable
  * @category combinators

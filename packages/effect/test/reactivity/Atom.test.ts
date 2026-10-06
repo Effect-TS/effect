@@ -192,6 +192,24 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it("windowFocusSignal works when window is undefined", () => {
+    const r = AtomRegistry.make()
+    try {
+      expect(r.get(Atom.windowFocusSignal)).toEqual(0)
+    } finally {
+      r.dispose()
+    }
+  })
+
+  it("refreshOnWindowFocus works when window is undefined", () => {
+    const r = AtomRegistry.make()
+    try {
+      expect(r.get(Atom.refreshOnWindowFocus(Atom.make(1)))).toEqual(1)
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
       Atom.withLabel("count")
