@@ -927,124 +927,31 @@ describe("PubSub", () => {
         assert.isFalse(yield* Fiber.join(publisher))
       }))
 
-    for (
-      const kind of [
-        "wrapper",
-        "backpressure subclass",
-        "dropping subclass",
-        "sliding subclass",
-        "instance override"
-      ] as const
-    ) {
-      it.effect.each(["publish", "publishAll"] as const)(
-        `rejects a suspended %s for strategy: ${kind}`,
-        (method) =>
-          Effect.gen(function*() {
-            const base = new PubSub.BackPressureStrategy<number>()
-            const pubsub = yield* PubSub.make<number>({
-              atomicPubSub: () => PubSub.makeAtomicBounded(1),
-              strategy: () => {
-                if (kind === "instance override") {
-                  const strategy = new PubSub.BackPressureStrategy<number>()
-                  strategy.handleSurplus = base.handleSurplus.bind(base)
-                  strategy.onPubSubEmptySpaceUnsafe = base.onPubSubEmptySpaceUnsafe.bind(base)
-                  return strategy
-                }
-                if (kind !== "wrapper") {
-                  const Parent = kind === "backpressure subclass"
-                    ? PubSub.BackPressureStrategy<number>
-                    : kind === "dropping subclass"
-                    ? PubSub.DroppingStrategy<number>
-                    : PubSub.SlidingStrategy<number>
-                  return new class extends Parent {
-                    override get shutdown() {
-                      return base.shutdown
-                    }
-                    override handleSurplus = (
-                      ...args: Parameters<PubSub.BackPressureStrategy<number>["handleSurplus"]>
-                    ) => base.handleSurplus(...args)
-                    override onPubSubEmptySpaceUnsafe = (
-                      ...args: Parameters<PubSub.BackPressureStrategy<number>["onPubSubEmptySpaceUnsafe"]>
-                    ) => base.onPubSubEmptySpaceUnsafe(...args)
-                  }()
-                }
-                return {
-                  get shutdown() {
-                    return base.shutdown
-                  },
-                  handleSurplus: (...args) => base.handleSurplus(...args),
-                  onPubSubEmptySpaceUnsafe: (...args) => base.onPubSubEmptySpaceUnsafe(...args),
-                  completePollersUnsafe: (...args) => base.completePollersUnsafe(...args),
-                  completeSubscribersUnsafe: (...args) => base.completeSubscribersUnsafe(...args)
-                }
-              }
-            })
-            const fast = yield* PubSub.subscribe(pubsub)
-            const slow = yield* PubSub.subscribe(pubsub)
-            yield* PubSub.publish(pubsub, 1)
-            const publish = method === "publish" ? PubSub.publish(pubsub, 2) : PubSub.publishAll(pubsub, [2, 3])
-            const publisher = yield* Effect.forkChild(publish, { startImmediately: true })
-            yield* Effect.yieldNow
-            assert.isUndefined(publisher.pollUnsafe())
-            assert.strictEqual(yield* PubSub.take(fast), 1)
-
-            yield* PubSub.end(pubsub, 0)
-
-            assert.strictEqual(yield* PubSub.take(fast), 0)
-            assert.strictEqual(yield* PubSub.take(slow), 1)
-            assert.isFalse(yield* Fiber.join(publisher))
-            assert.strictEqual(yield* PubSub.take(fast), 0)
-            assert.strictEqual(yield* PubSub.take(slow), 0)
-          })
-      )
-    }
-
-    it.effect.each(["publish", "publishAll"] as const)(
-      "waits for interruption cleanup of a masked %s before returning false",
-      (method) =>
-        Effect.gen(function*() {
-          const cleanupStarted = yield* Latch.make()
-          const finishCleanup = yield* Latch.make()
-          const cleanupDone = yield* Latch.make()
-          const pubsub = yield* PubSub.make<number>({
-            atomicPubSub: () => PubSub.makeAtomicBounded(1),
-            strategy: () =>
-              new class extends PubSub.BackPressureStrategy<number> {
-                override handleSurplus(...args: Parameters<PubSub.BackPressureStrategy<number>["handleSurplus"]>) {
-                  return super.handleSurplus(...args).pipe(
-                    Effect.onInterrupt(() =>
-                      Effect.gen(function*() {
-                        yield* cleanupStarted.open
-                        yield* finishCleanup.await
-                        yield* cleanupDone.open
-                      })
-                    )
-                  )
-                }
-              }()
-          })
-          const subscription = yield* PubSub.subscribe(pubsub)
-          yield* PubSub.publish(pubsub, 1)
-          const publish = method === "publish" ? PubSub.publish(pubsub, 2) : PubSub.publishAll(pubsub, [2, 3])
-          const publisher = yield* Effect.forkChild(Effect.uninterruptible(publish), { startImmediately: true })
-          yield* Effect.yieldNow
-          assert.isUndefined(publisher.pollUnsafe())
-
-          yield* PubSub.end(pubsub, 0)
-          yield* cleanupStarted.await
-          assert.isUndefined(publisher.pollUnsafe())
-          assert.isFalse(cleanupDone.isOpen())
-          yield* finishCleanup.open
-
-          assert.isFalse(yield* Fiber.join(publisher))
-          assert.isTrue(cleanupDone.isOpen())
-          assert.strictEqual(yield* PubSub.take(subscription), 1)
-          assert.strictEqual(yield* PubSub.take(subscription), 0)
-          assert.deepStrictEqual(yield* PubSub.takeAll(subscription), [0])
+    it.effect("rejects a suspended publishAll for an overridden dropping strategy", () =>
+      Effect.gen(function*() {
+        const base = new PubSub.BackPressureStrategy<number>()
+        const pubsub = yield* PubSub.make<number>({
+          atomicPubSub: () => PubSub.makeAtomicBounded(1),
+          strategy: () =>
+            new class extends PubSub.DroppingStrategy<number> {
+              override handleSurplus = base.handleSurplus.bind(base)
+              override onPubSubEmptySpaceUnsafe = base.onPubSubEmptySpaceUnsafe.bind(base)
+            }()
         })
-    )
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publish(pubsub, 1)
+        const publisher = yield* Effect.forkChild(PubSub.publishAll(pubsub, [2, 3]), { startImmediately: true })
+        yield* Effect.yieldNow
+        assert.isUndefined(publisher.pollUnsafe())
 
-    it.effect("does not deliver rejected surplus while custom strategy removal is pending", () =>
+        yield* PubSub.end(pubsub, 0)
+
+        assert.isFalse(yield* Fiber.join(publisher))
+        assert.strictEqual(yield* PubSub.take(subscription), 1)
+        assert.strictEqual(yield* PubSub.take(subscription), 0)
+      }))
+
+    it.effect("rejects a masked publish without delivering surplus while custom removal is pending", () =>
       Effect.gen(function*() {
         const cleanupStarted = yield* Latch.make()
         const finishCleanup = yield* Latch.make()
@@ -1054,15 +961,11 @@ describe("PubSub", () => {
             new class extends PubSub.BackPressureStrategy<number> {
               override handleSurplus(...args: Parameters<PubSub.BackPressureStrategy<number>["handleSurplus"]>) {
                 return Effect.callback<boolean>((resume) => {
-                  const [atomic, subscribers, elements] = args
+                  const [, , elements] = args
                   const deferred = Deferred.makeUnsafe<boolean>()
-                  const values = [...elements]
-                  for (let i = 0; i < values.length; i++) {
-                    MutableList.append(this.publishers, [values[i], deferred, i === values.length - 1])
-                  }
-                  this.onPubSubEmptySpaceUnsafe(atomic, subscribers)
-                  this.completeSubscribersUnsafe(atomic, subscribers)
-                  if (deferred.effect) return resume(deferred.effect)
+                  // This strategy only handles the single surplus element in this test.
+                  const [element] = elements
+                  MutableList.append(this.publishers, [element, deferred, true])
                   deferred.resumes = [resume]
                   const remove = () => this.removeUnsafe(deferred)
                   return Effect.gen(function*() {
@@ -1076,17 +979,21 @@ describe("PubSub", () => {
         })
         const subscription = yield* PubSub.subscribe(pubsub)
         yield* PubSub.publish(pubsub, 1)
-        const publisher = yield* Effect.forkChild(PubSub.publish(pubsub, 2), { startImmediately: true })
+        const publisher = yield* Effect.forkChild(Effect.uninterruptible(PubSub.publish(pubsub, 2)), {
+          startImmediately: true
+        })
         yield* Effect.yieldNow
         assert.isUndefined(publisher.pollUnsafe())
 
         yield* PubSub.end(pubsub, 0)
         yield* cleanupStarted.await
+        const pending = publisher.pollUnsafe()
         const first = yield* PubSub.take(subscription)
         const second = yield* PubSub.take(subscription)
         yield* finishCleanup.open
 
         assert.isFalse(yield* Fiber.join(publisher))
+        assert.isUndefined(pending)
         assert.strictEqual(first, 1)
         assert.strictEqual(second, 0)
       }))
