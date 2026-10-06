@@ -332,8 +332,7 @@ export function formatJson(input: unknown, options?: {
         ancestors.push(current)
       }
       // Leave boxed primitives intact so JSON.stringify can unbox them natively.
-      // oxlint-disable-next-line unicorn/no-instanceof-builtins
-      if (current instanceof Number || current instanceof Boolean || current instanceof String || !hasGetter(current)) {
+      if (!hasGetter(current) || isJsonPrimitiveWrapper(current)) {
         return current
       }
       // JSON.stringify reads a getter once, then calls toJSON on the result
@@ -357,6 +356,19 @@ function hasGetter(object: object): boolean {
   for (const key of Object.getOwnPropertyNames(object)) {
     if (Object.getOwnPropertyDescriptor(object, key)?.get !== undefined) {
       return true
+    }
+  }
+  return false
+}
+
+function isJsonPrimitiveWrapper(object: object): boolean {
+  // Built-in valueOf checks internal slots across realms without calling user code.
+  for (const valueOf of [Number.prototype.valueOf, Boolean.prototype.valueOf, String.prototype.valueOf]) {
+    try {
+      Reflect.apply(valueOf, object, [])
+      return true
+    } catch {
+      // Try the next wrapper type.
     }
   }
   return false
