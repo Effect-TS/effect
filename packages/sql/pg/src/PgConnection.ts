@@ -1373,7 +1373,17 @@ class QueryMachine implements Consumer {
       return
     }
     if (this.phase === "error") {
-      if (message._tag === "ReadyForQuery") return this.complete(Effect.fail(this.failure!))
+      if (message._tag === "ReadyForQuery") {
+        // Inside a transaction block the error has aborted the transaction,
+        // so a retry of a reused statement could only fail with 25P02 and
+        // hide this error. Drop the statement now and report the original
+        // failure instead.
+        if (this.plan.stale && !this.plan.parses && message.status === "E") {
+          this.conn.prepared?.evict(this.plan.prepared!)
+          this.plan.stale = false
+        }
+        return this.complete(Effect.fail(this.failure!))
+      }
       return this.failDesync(`Unexpected ${message._tag} after ErrorResponse`)
     }
     switch (message._tag) {

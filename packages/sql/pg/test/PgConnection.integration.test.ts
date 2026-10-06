@@ -322,6 +322,23 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
         [{ a: 2 }, { a: 3 }]
       )
     }))
+  it.effect("reports a stale plan inside a transaction instead of retrying in the aborted transaction", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("CREATE TEMP TABLE stale_in_transaction (a int4)")
+      yield* connection.query("SELECT * FROM stale_in_transaction")
+      yield* connection.query("ALTER TABLE stale_in_transaction ADD COLUMN b int4")
+
+      // The stale plan aborts the transaction, so a retry could only fail with
+      // 25P02 and hide the real error.
+      yield* connection.query("BEGIN")
+      const error = yield* Effect.flip(connection.query("SELECT * FROM stale_in_transaction"))
+      yield* connection.query("ROLLBACK")
+
+      assert.propertyVal(error.reason.cause, "code", "0A000")
+      const result = yield* connection.query("SELECT * FROM stale_in_transaction")
+      assert.strictEqual(result.fields.length, 2)
+    }))
   it.effect("isolates errors between pipelined queries", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection({ multiplex: true })
