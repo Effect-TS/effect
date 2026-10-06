@@ -446,6 +446,19 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(span.attributes.get("error.type"), undefined)
       }))
 
+    it.effect("keeps the interrupt exit and records error.type for server aborts", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/abort"))
+        const interrupt = Cause.interrupt()
+        const [response, cause] = yield* HttpServerError.causeResponse(interrupt)
+        const span = yield* traceServer(request, Effect.failCause(cause))
+        assert.strictEqual(response.status, 503)
+        assert(span.status._tag === "Ended" && span.status.exit._tag === "Failure")
+        assert.deepStrictEqual(span.status.exit.cause, interrupt)
+        assert.strictEqual(span.attributes.get("http.response.status_code"), 503)
+        assert.strictEqual(span.attributes.get("error.type"), "503")
+      }))
+
     it.effect("records error.type for 5xx responses", () =>
       Effect.gen(function*() {
         const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/boom"))
@@ -484,6 +497,21 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(span.attributes.get("url.full"), "http://localhost/file?sig=REDACTED&keep=1")
         assert.strictEqual(span.attributes.get("url.query"), "sig=REDACTED&keep=1")
         assert.strictEqual(request.url, "/file?sig=secret&keep=1")
+      }))
+
+    it.effect("redacts credentials and signed query values in absolute request URLs", () =>
+      Effect.gen(function*() {
+        const url = "https://user:password@example.com/file?sig=secret&keep=1"
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost/")).modify({ url })
+        const span = yield* traceServer(request, Effect.succeed(HttpServerResponse.empty()))
+        assert.strictEqual(
+          span.attributes.get("url.full"),
+          "https://REDACTED:REDACTED@example.com/file?sig=REDACTED&keep=1"
+        )
+        assert.strictEqual(span.attributes.get("url.path"), "/file")
+        assert.strictEqual(span.attributes.get("url.scheme"), "https")
+        assert.strictEqual(span.attributes.get("url.query"), "sig=REDACTED&keep=1")
+        assert.strictEqual(request.url, url)
       }))
 
     it.effect("records no headers by default", () =>
