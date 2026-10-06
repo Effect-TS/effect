@@ -6538,9 +6538,11 @@ export const merge: {
           )
         ),
         Effect.onError((cause) =>
-          Effect.andThen(
-            Scope.close(scope, Pull.doneExitFromCause(cause)),
-            onExit(side, cause)
+          Effect.onExitPrimitive(Pull.doneExitFromCause(cause), (exit) => Scope.close(scope, exit)).pipe(
+            Effect.matchCauseEffect({
+              onFailure: (cause) => onExit(side, cause),
+              onSuccess: () => onExit(side, cause)
+            })
           )
         ),
         Effect.forkIn(forkedScope)
