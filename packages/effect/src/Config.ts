@@ -10,7 +10,6 @@
 import * as Cause from "./Cause.ts"
 import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
-import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
 import { dual, memoize } from "./Function.ts"
@@ -322,7 +321,8 @@ export const mapEffect: {
  *
  * The fallback's result replaces the original failure. If the fallback is
  * absent, an outer {@link withDefault} or {@link option} can recover it. If the
- * fallback fails, only its error propagates.
+ * fallback fails, only its error propagates. Defects and interruptions never
+ * reach the fallback; they propagate unchanged.
  *
  * **Example** (Trying another port before using a default)
  *
@@ -351,12 +351,10 @@ export const orElse: {
 } = dual(2, <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2> => {
   return make<A | A2>((provider, pathPrefix) =>
     Effect.matchCauseEffect(evaluateAt(self, provider, pathPrefix), {
+      // Only plain failures reach the fallback; defects and interruptions propagate unchanged.
       onFailure: (cause) => {
-        if (cause.reasons.some((reason) => !Cause.isFailReason(reason))) {
-          return Effect.failCause(cause)
-        }
         const error = Cause.findErrorOption(cause)
-        return Option.isSome(error)
+        return Option.isSome(error) && cause.reasons.every(Cause.isFailReason)
           ? evaluateAt(that(error.value), provider, pathPrefix)
           : Effect.failCause(cause)
       },
@@ -622,18 +620,21 @@ const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate
 
 const cursorToString = (): string => "<configuration>"
 
+// Rewrites each reason of a failure individually, so unrelated defects and
+// interruptions survive the conversion.
+const mapReasons =
+  <E, E2>(f: (reason: Cause.Reason<E>) => Cause.Reason<E2>) =>
+  <A, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E2, R> =>
+    Effect.catchCause(self, (cause) => Effect.failCause(Cause.fromReasons(cause.reasons.map(f))))
+
 const loadCursor: (
   provider: ConfigProvider.ConfigProvider,
   path: Path
 ) => Effect.Effect<ConfigCursor> = (provider, path) =>
   provider.load(path).pipe(
-    // Source errors must bypass schema issue recovery, without losing other reasons.
-    Effect.catchCause((cause) =>
-      Effect.failCause(Cause.fromReasons<never>(cause.reasons.map((reason) =>
-        Cause.isFailReason(reason)
-          ? Cause.makeDieReason(reason.error).annotate(Context.makeUnsafe(reason.annotations))
-          : reason
-      )))
+    // Source errors travel as defects so they bypass schema issue recovery; `schema` converts them back.
+    mapReasons<SourceError, never>((reason) =>
+      Cause.isFailReason(reason) ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason)) : reason
     ),
     Effect.mapEager((node) => ({ provider, path, node, toString: cursorToString }))
   )
@@ -853,14 +854,10 @@ export function schema<T>(codec: Schema.ConstraintCodec<T, unknown>, path?: stri
           })
         )
       ),
-      Effect.catchCause((cause) =>
-        Effect.failCause(
-          Cause.fromReasons(cause.reasons.map((reason) =>
-            Cause.isDieReason(reason) && isSourceError(reason.defect)
-              ? Cause.makeFailReason(new ConfigError(reason.defect)).annotate(Context.makeUnsafe(reason.annotations))
-              : reason
-          ))
-        )
+      mapReasons((reason) =>
+        Cause.isDieReason(reason) && isSourceError(reason.defect)
+          ? Cause.makeFailReason(new ConfigError(reason.defect)).annotate(Cause.reasonAnnotations(reason))
+          : reason
       )
     )
   })
