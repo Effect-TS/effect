@@ -32,7 +32,7 @@ import * as Headers from "./Headers.ts"
 import * as HttpBody from "./HttpBody.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
-import { hasBody, type HttpMethod } from "./HttpMethod.ts"
+import { hasBody } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as Multipart from "./Multipart.ts"
@@ -84,7 +84,11 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
   readonly source: object
   readonly url: string
   readonly originalUrl: string
-  readonly method: HttpMethod
+  /**
+   * The uppercase request method as received, which may be a method outside
+   * the known `HttpMethod` literals (for example `"PROPFIND"`).
+   */
+  readonly method: string
   readonly cookies: ReadonlyRecord<string, string>
 
   readonly multipart: Effect.Effect<
@@ -529,8 +533,8 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
       "remoteAddress" in options ? options.remoteAddress : this.remoteAddressOverride
     )
   }
-  get method(): HttpMethod {
-    return this.source.method.toUpperCase() as HttpMethod
+  get method(): string {
+    return this.source.method.toUpperCase()
   }
   get originalUrl() {
     return this.source.url
@@ -731,7 +735,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     )
   }
 
-  get method(): HttpMethod {
+  get method(): string {
     return this.source.method
   }
 
