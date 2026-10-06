@@ -9,6 +9,7 @@ import * as Hydration from "effect/reactivity/Hydration"
 import * as Schema from "effect/Schema"
 import * as React from "react"
 import { Suspense } from "react"
+import * as ReactDOMClient from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { ErrorBoundary } from "react-error-boundary"
 import { beforeEach, describe, expect, it, test, vi } from "vitest"
@@ -687,6 +688,74 @@ describe("atom-react", { concurrent: false }, () => {
 
       expect(getCount).toHaveBeenCalled()
       expect(screen.getByText("0")).toBeInTheDocument()
+    })
+
+    it("hydrates a delayed Suspense boundary after the atom changes", async () => {
+      const userAtom = Atom.make("loading")
+
+      function Name({ id }: { id: string }) {
+        return <span id={id}>{useAtomValue(userAtom)}</span>
+      }
+
+      const Passthrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>
+
+      function App({ Panel }: { Panel: React.ComponentType<{ children?: React.ReactNode }> }) {
+        return (
+          <div>
+            <Name id="header" />
+            <Suspense fallback={<span>...</span>}>
+              <Panel>
+                <Name id="panel" />
+              </Panel>
+            </Suspense>
+          </div>
+        )
+      }
+
+      const html = renderToString(
+        <RegistryContext.Provider value={AtomRegistry.make()}>
+          <App Panel={Passthrough} />
+        </RegistryContext.Provider>
+      )
+      const container = document.createElement("div")
+      container.innerHTML = html
+      document.body.append(container)
+
+      // The panel stays dehydrated until its lazy chunk loads.
+      let loadPanel!: (mod: { default: typeof Passthrough }) => void
+      const LazyPanel = React.lazy(() =>
+        new Promise<{ default: typeof Passthrough }>((resolve) => {
+          loadPanel = resolve
+        })
+      )
+      const recoverableErrors: Array<unknown> = []
+
+      let root!: ReactDOMClient.Root
+      await act(async () => {
+        root = ReactDOMClient.hydrateRoot(
+          container,
+          <RegistryContext.Provider value={registry}>
+            <App Panel={LazyPanel} />
+          </RegistryContext.Provider>,
+          { onRecoverableError: (error) => recoverableErrors.push(error) }
+        )
+      })
+
+      await act(async () => {
+        registry.set(userAtom, "Alice")
+      })
+
+      await act(async () => {
+        loadPanel({ default: Passthrough })
+      })
+
+      expect(recoverableErrors).toEqual([])
+      expect(container.innerHTML).toBe(
+        `<div><span id="header">Alice</span><!--$--><span id="panel">Alice</span><!--/$--></div>`
+      )
+
+      act(() => root.unmount())
+      container.remove()
     })
   })
 
