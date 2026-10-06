@@ -629,44 +629,46 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.currentOpCount = 0
     try {
       while (true) {
-        if (this._deferredInterrupt) {
-          this._deferredInterrupt = false
-          current = failCause(this._interruptedCause!) as any
-        }
-        this.currentOpCount++
-        // Refresh the cache because a primitive can replace the fiber context.
-        const cache = this.cache
-        if (
-          !yielding &&
-          !cache.preventYield &&
-          cache.scheduler.shouldYield(this as any)
-        ) {
-          yielding = true
-          const prev = current
-          current = flatMap(yieldNow, () => prev as any) as any
-        }
-        current = cache.tracerContext
-          ? cache.tracerContext(current as any, this)
-          : (current as any)[evaluate](this)
-        if (current === Yield) {
-          const yielded = this._yielded!
-          if (ExitTypeId in yielded) {
+        try {
+          if (this._deferredInterrupt) {
             this._deferredInterrupt = false
-            this._yielded = undefined
-            return yielded
-          } else if (this._deferredInterrupt) {
-            this._yielded = undefined
-            yielded()
-            continue
+            current = failCause(this._interruptedCause!) as any
           }
-          return Yield
+          this.currentOpCount++
+          // Refresh the cache because a primitive can replace the fiber context.
+          const cache = this.cache
+          if (
+            !yielding &&
+            !cache.preventYield &&
+            cache.scheduler.shouldYield(this as any)
+          ) {
+            yielding = true
+            const prev = current
+            current = flatMap(yieldNow, () => prev as any) as any
+          }
+          current = cache.tracerContext
+            ? cache.tracerContext(current as any, this)
+            : (current as any)[evaluate](this)
+          if (current === Yield) {
+            const yielded = this._yielded!
+            if (ExitTypeId in yielded) {
+              this._deferredInterrupt = false
+              this._yielded = undefined
+              return yielded
+            } else if (this._deferredInterrupt) {
+              this._yielded = undefined
+              yielded()
+              continue
+            }
+            return Yield
+          }
+        } catch (error) {
+          if (!hasProperty(current, evaluate)) {
+            return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
+          }
+          current = exitDie(error) as any
         }
       }
-    } catch (error) {
-      if (!hasProperty(current, evaluate)) {
-        return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
-      }
-      return this.runLoop(exitDie(error) as any)
     } finally {
       this._running = prevRunning
       ;(globalThis as any)[currentFiberTypeId] = prevFiber
