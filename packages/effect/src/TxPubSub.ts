@@ -562,7 +562,7 @@ export const publishAll: {
  * await Effect.runPromise(program) // => ["broadcast", "broadcast"]
  * ```
  *
- * @stability stable
+ * @stability unstable
  * @category mutations
  * @since 2.0.0
  */
@@ -587,7 +587,7 @@ export const subscribe = <A>(self: TxPubSub<A>): Effect.Effect<TxQueue.TxQueue<A
  * @see {@link subscribe} for the scoped acquire and release wrapper when no custom transaction composition is needed
  * @see {@link releaseSubscriber} to remove and shut down a queue returned by `acquireSubscriber`
  *
- * @stability stable
+ * @stability unstable
  * @category mutations
  * @since 4.0.0
  */
@@ -621,7 +621,7 @@ export const acquireSubscriber = <A>(
  * @see {@link acquireSubscriber} for the matching transactional acquire step
  * @see {@link subscribe} for the scoped acquire and release wrapper
  *
- * @stability stable
+ * @stability unstable
  * @category mutations
  * @since 4.0.0
  */

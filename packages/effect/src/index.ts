@@ -6,31 +6,37 @@
 export {
   /**
    * @stability stable
+   * @category re-exports
    * @since 2.0.0
    */
   absurd,
   /**
    * @stability stable
+   * @category re-exports
    * @since 2.0.0
    */
   cast,
   /**
    * @stability stable
+   * @category re-exports
    * @since 2.0.0
    */
   flow,
   /**
    * @stability stable
+   * @category re-exports
    * @since 2.0.0
    */
   hole,
   /**
    * @stability stable
+   * @category re-exports
    * @since 2.0.0
    */
   identity,
   /**
    * @stability stable
+   * @category re-exports
    * @since 2.0.0
    */
   pipe

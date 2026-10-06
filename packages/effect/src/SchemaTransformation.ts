@@ -1196,7 +1196,7 @@ export const durationFromMillis: Transformation<Duration.Duration, number> = tra
 /**
  * Decodes a string into a `ByteSize` and encodes it as an exact string.
  *
- * @stability stable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */
@@ -1219,7 +1219,7 @@ export const byteSizeFromString: Transformation<ByteSize.ByteSize, string> = tra
 /**
  * Decodes a non-negative bigint byte count into a `ByteSize`.
  *
- * @stability stable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */
@@ -1242,7 +1242,7 @@ export const byteSizeFromBigInt: Transformation<ByteSize.ByteSize, bigint> = tra
 /**
  * Decodes a non-negative safe-integer byte count into a `ByteSize`.
  *
- * @stability stable
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */

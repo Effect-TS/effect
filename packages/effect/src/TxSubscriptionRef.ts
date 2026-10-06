@@ -453,7 +453,7 @@ export const updateAndGet: {
  *
  * @see {@link changesStream} for subscribing through a `Stream`
  *
- * @stability stable
+ * @stability unstable
  * @category subscriptions
  * @since 3.10.0
  */

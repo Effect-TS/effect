@@ -4478,7 +4478,7 @@ export const ignoreCause: <
  * events // => ["AttemptStart:0", "AttemptFailure:0", "AttemptStart:1", "AttemptSuccess:1"]
  * ```
  *
- * @stability stable
+ * @stability unstable
  * @category error handling
  * @since 3.16.0
  */
@@ -4508,7 +4508,7 @@ export const withExecutionPlan: {
  * If the `defectsOnly` option is set to `true`, only defects (unrecoverable
  * errors) will be reported, while regular failures will be ignored.
  *
- * @stability stable
+ * @stability unstable
  * @category error handling
  * @since 4.0.0
  */
