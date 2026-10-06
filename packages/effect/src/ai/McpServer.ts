@@ -2039,6 +2039,19 @@ export type ValidateCompletions<Completions, Keys extends string> =
   }
 
 /**
+ * Utility type that collects the services required by the handlers of a
+ * completion-handler record, including handlers declared as optional.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type CompletionServices<Completions> = {
+  [K in keyof Completions]-?: NonNullable<Completions[K]> extends (...args: any) => infer Ret ? Effect.Services<Ret>
+    : never
+}[keyof Completions]
+
+/**
  * Completion-handler map for a resource URI template.
  *
  * **Details**
@@ -2355,7 +2368,13 @@ export const registerPrompt = <
 ): Effect.Effect<
   void,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext> | McpServer
+  | Exclude<
+    | Schema.Struct.DecodingServices<Params>
+    | R
+    | CompletionServices<Completions>,
+    McpRequestContext
+  >
+  | McpServer
 > => {
   const args = Arr.empty<PromptArgument>()
   const props: Record<string, Schema.Constraint> = options.parameters ?? {}
@@ -2493,7 +2512,12 @@ export const prompt = <
 ): Layer.Layer<
   never,
   never,
-  Exclude<Schema.Struct.DecodingServices<Params> | R, McpRequestContext>
+  Exclude<
+    | Schema.Struct.DecodingServices<Params>
+    | R
+    | CompletionServices<Completions>,
+    McpRequestContext
+  >
 > =>
   Layer.effectDiscard(registerPrompt(options)).pipe(
     Layer.provide(McpServer.layer)
