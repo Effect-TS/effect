@@ -4362,7 +4362,6 @@ const partitionQueueImpl = Effect.fnUntraced(
   }
 )
 
-// Streams the queue and shuts it down when the reader stops.
 const fromQueueShutdownOnEnd = <A, E>(queue: Queue.Queue<A, E>): Stream<A, Exclude<E, Cause.Done>> =>
   fromQueue(queue).pipe(ensuring(Queue.shutdown(queue)))
 
