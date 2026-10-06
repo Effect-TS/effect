@@ -795,6 +795,39 @@ describe("PubSub", () => {
     }))
 
   describe("end", () => {
+    // Yield after the empty check, before the subscriber registers its waiter.
+    it.effect("take delivers data published during waiter registration before the final message", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(
+          PubSub.take(subscription).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 3)),
+          { startImmediately: true }
+        )
+        PubSub.publishUnsafe(pubsub, 1)
+        PubSub.endUnsafe(pubsub, 0)
+
+        const first = yield* Fiber.join(fiber)
+        const last = yield* PubSub.take(subscription)
+        assert.deepStrictEqual([first, last], [1, 0])
+      }))
+
+    it.effect("takeAll delivers data published during waiter registration before the final message", () =>
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.unbounded<number>()
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const fiber = yield* Effect.forkChild(
+          PubSub.takeAll(subscription).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 3)),
+          { startImmediately: true }
+        )
+        PubSub.publishUnsafe(pubsub, 1)
+        PubSub.endUnsafe(pubsub, 0)
+
+        const first = yield* Fiber.join(fiber)
+        const last = yield* PubSub.takeAll(subscription)
+        assert.deepStrictEqual([first, last], [[1], [0]])
+      }))
+
     it.effect("delivers buffered messages before the final message and rejects later publishes", () =>
       Effect.gen(function*() {
         const pubsub = yield* PubSub.bounded<number>(4)
