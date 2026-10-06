@@ -6580,6 +6580,9 @@ export const floydWarshall: {
   const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
   const edgePaths = new Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>()
   const costs = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
+  // Reuse scratch storage; erased suffixes and completed paths clear only touched entries.
+  const positions = new Int32Array(size)
+  positions.fill(-1)
   for (let i = 0; i < size; i++) {
     const source = cache.nodeIds[i]
     const distanceRow = new Map<NodeIndex, number>()
@@ -6607,8 +6610,6 @@ export const floydWarshall: {
         const path = [source]
         const pathEdges: Array<EdgeIndex> = []
         const pathCosts: Array<E> = []
-        const positions = new Int32Array(size)
-        positions.fill(-1)
         positions[i] = 0
         const nodes = [i]
         const stack = [witnesses[i * size + j]!]
@@ -6635,6 +6636,9 @@ export const floydWarshall: {
           } else {
             stack.push(witness.right, witness.left)
           }
+        }
+        for (const node of nodes) {
+          positions[node] = -1
         }
         pathRow.set(target, path)
         edgePathRow.set(target, pathEdges)
