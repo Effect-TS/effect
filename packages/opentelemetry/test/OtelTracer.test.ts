@@ -7,6 +7,7 @@ import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-tr
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 
@@ -234,48 +235,52 @@ describe("Tracer", () => {
         assert.include(stacktrace as string, "[cause]: Error: inner cause")
       }))
 
-    it.effect("maps exits to spec span statuses", () =>
+    const exportSpan = (exit: Exit.Exit<unknown, unknown>) =>
       Effect.gen(function*() {
         const exporter = new InMemorySpanExporter()
-        const spanProcessor = new SimpleSpanProcessor(exporter)
+        return yield* Effect.gen(function*() {
+          const span = yield* Effect.makeSpan("test")
+          span.end(span.status.startTime + 1n, exit)
+          const spans = exporter.getFinishedSpans()
+          assert.lengthOf(spans, 1)
+          return spans[0]
+        }).pipe(Effect.provide(NodeSdk.layer(() => ({
+          resource: { serviceName: "test" },
+          spanProcessor: [new SimpleSpanProcessor(exporter)]
+        }))))
+      })
 
-        yield* Effect.gen(function*() {
-          yield* Effect.void.pipe(Effect.withSpan("success-span"))
-          yield* Effect.exit(Effect.interrupt.pipe(Effect.withSpan("interrupt-span")))
-          yield* Effect.exit(Effect.fail(new Error("boom")).pipe(Effect.withSpan("failure-span")))
-          yield* Effect.exit(Effect.failCause(Cause.empty).pipe(Effect.withSpan("empty-cause-span")))
-        }).pipe(
-          Effect.andThen(Effect.never), // keep the exporter alive
-          Effect.provide(NodeSdk.layer(() => ({
-            resource: {
-              serviceName: "test"
-            },
-            spanProcessor: [spanProcessor]
-          }))),
-          Effect.forkChild({ startImmediately: true })
-        )
+    it.effect.each(
+      [
+        ["success", Exit.void],
+        ["empty cause", Exit.failCause(Cause.empty)]
+      ] as const
+    )("leaves %s Unset without a description", ([, exit]) =>
+      Effect.gen(function*() {
+        const span = yield* exportSpan(exit)
+        assert.deepStrictEqual(span.status, { code: OtelApi.SpanStatusCode.UNSET })
+        assert.deepStrictEqual(span.events, [])
+        assert.isUndefined(span.attributes["effect.fiber.interrupted"])
+      }))
 
-        const spans = exporter.getFinishedSpans()
-        const byName = (name: string) => {
-          const span = spans.find((span) => span.name === name)
-          assert(span !== undefined, `missing span ${name}`)
-          return span
-        }
+    it.effect("leaves interruption Unset and records only the namespaced attribute", () =>
+      Effect.gen(function*() {
+        const span = yield* exportSpan(Exit.interrupt())
+        assert.deepStrictEqual(span.status, { code: OtelApi.SpanStatusCode.UNSET })
+        assert.deepStrictEqual(span.events, [])
+        assert.strictEqual(span.attributes["effect.fiber.interrupted"], true)
+        assert.isUndefined(span.attributes["status.interrupted"])
+        assert.isUndefined(span.attributes["span.label"])
+      }))
 
-        const success = byName("success-span")
-        assert.deepStrictEqual(success.status, { code: OtelApi.SpanStatusCode.UNSET })
-
-        const interrupted = byName("interrupt-span")
-        assert.deepStrictEqual(interrupted.status, { code: OtelApi.SpanStatusCode.UNSET })
-        assert.strictEqual(interrupted.attributes["status.interrupted"], true)
-
-        const failure = byName("failure-span")
-        assert.strictEqual(failure.status.code, OtelApi.SpanStatusCode.ERROR)
-        assert.strictEqual(failure.status.message, "boom")
-        assert.isDefined(failure.events.find((event) => event.name === "exception"))
-
-        const emptyCause = byName("empty-cause-span")
-        assert.deepStrictEqual(emptyCause.status, { code: OtelApi.SpanStatusCode.UNSET })
+    it.effect("records failure status and exception", () =>
+      Effect.gen(function*() {
+        const span = yield* exportSpan(Exit.fail(new Error("boom")))
+        assert.deepStrictEqual(span.status, { code: OtelApi.SpanStatusCode.ERROR, message: "boom" })
+        assert.lengthOf(span.events, 1)
+        assert.strictEqual(span.events[0].name, "exception")
+        assert.strictEqual(span.events[0].attributes?.["exception.type"], "Error")
+        assert.strictEqual(span.events[0].attributes?.["exception.message"], "boom")
       }))
 
     it.effect("withSpanContext", () =>
