@@ -1,5 +1,6 @@
 import { AnthropicClient, AnthropicLanguageModel, AnthropicTool } from "@effect/ai-anthropic"
 import { assert, describe, it } from "@effect/vitest"
+import { assertDefined } from "@effect/vitest/utils"
 import { Cause, Effect, Exit, Layer, Option, Redacted, Schema, Stream, Tracer } from "effect"
 import {
   type AiError,
@@ -678,8 +679,8 @@ describe("AnthropicLanguageModel", () => {
           Effect.withTracer(tracer)
         )
         const span = spans.find((span) => span.name === "LanguageModel.generateText")
-        assert.isDefined(span)
-        const attributes = span!.attributes
+        assertDefined(span)
+        const attributes = span.attributes
         assert.strictEqual(attributes.get("gen_ai.provider.name"), "anthropic")
         assert.isFalse(attributes.has("gen_ai.system"))
         assert.strictEqual(attributes.get("gen_ai.usage.input_tokens"), 60)

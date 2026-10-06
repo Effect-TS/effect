@@ -70,6 +70,26 @@ describe("LanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("uses a client span with namespaced tool attributes", () =>
+      LanguageModel.generateText({
+        prompt: "hi",
+        concurrency: 2,
+        toolkit: MyToolkit,
+        toolChoice: { oneOf: ["MyTool"] }
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.kind, "client")
+            strictEqual(span.attributes.get("effect.ai.concurrency"), 2)
+            strictEqual(span.attributes.get("effect.ai.tool_choice"), JSON.stringify({ oneOf: ["MyTool"] }))
+            strictEqual(span.attributes.has("concurrency"), false)
+            strictEqual(span.attributes.has("toolChoice"), false)
+            return []
+          }
+        }),
+        Effect.provide(MyToolkitLayer)
+      ))
+
     it.effect("does not resolve tool calls after an incomplete finish", () =>
       Effect.gen(function*() {
         const calls = yield* Ref.make(0)
