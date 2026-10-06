@@ -89,17 +89,33 @@ indented: >-
     assert.deepStrictEqual(Yaml.parse(source), { message: expected })
   })
 
-  it.each([
-    ["literal keep chomping before a sibling key", "message: |+\n  first\n\nnext: 1\n", "first\n\n"],
-    ["folded keep chomping before a sibling key", "message: >+\n  first\n\n\nnext: 1\n", "first\n\n\n"],
-    ["an empty kept literal before a sibling key", "message: |+\nnext: 1\n", ""],
-    ["an empty clipped literal before a sibling key", "message: |\nnext: 1\n", ""],
-    ["an empty clipped folded scalar before a sibling key", "message: >\n\nnext: 1\n", ""]
-  ])("handles trailing line breaks for %s", (_, source, expected) => {
-    assert.deepStrictEqual(Yaml.parse(source), { message: expected, next: 1 })
+  describe.each(["|", ">"])("block scalar chomping (%s)", (style) => {
+    it.each([
+      ["strip", "-", "  text\n\n\n", "text"],
+      ["clip", "", "  text\n\n\n", "text\n"],
+      ["keep", "+", "  text\n\n\n", "text\n\n\n"],
+      ["keep without trailing empty lines", "+", "  text\n", "text\n"],
+      ["empty clip", "", "", ""],
+      ["empty keep", "+", "", ""],
+      ["keep with only empty lines", "+", "\n\n", "\n\n"]
+    ])("applies %s before a sibling key", (_, chomp, content, expected) => {
+      assert.deepStrictEqual(Yaml.parse(`message: ${style}${chomp}\n${content}next: 1\n`), {
+        message: expected,
+        next: 1
+      })
+    })
+
+    // YAML 1.2.2 §8.1.1.2: end-of-input is not a final line break.
+    it.each([
+      ["clip without a final line break", "", "  text", "text"],
+      ["keep without a final line break", "+", "  text", "text"],
+      ["keep with trailing empty lines", "+", "  text\n\n\n", "text\n\n\n"]
+    ])("applies %s at end-of-input", (_, chomp, content, expected) => {
+      assert.deepStrictEqual(Yaml.parse(`message: ${style}${chomp}\n${content}`), { message: expected })
+    })
   })
 
-  it("parses the YAML 1.2 empty scalar chomping example", () => {
+  it("parses YAML 1.2.2 example 8.6 (empty scalar chomping)", () => {
     assert.deepStrictEqual(Yaml.parse("strip: >-\n\nclip: >\n\nkeep: |+\n\n"), {
       strip: "",
       clip: "",
