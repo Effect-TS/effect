@@ -486,8 +486,6 @@ export class OtelSpan implements Tracer.Span {
       startTime: this.status.startTime
     }
 
-    // Per the OTel spec, instrumentation leaves non-error spans `Unset` and
-    // only attaches a status description to `Error`.
     if (exit._tag === "Failure") {
       if (Cause.hasInterruptsOnly(exit.cause)) {
         this.span.setAttribute("effect.fiber.interrupted", true)

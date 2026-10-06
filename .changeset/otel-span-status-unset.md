@@ -3,4 +3,4 @@
 "@effect/opentelemetry": patch
 ---
 
-Spans that previously exported status `Ok` now export `Unset`, as the OpenTelemetry spec requires of instrumentation libraries. This covers successful, interrupted, and empty-cause spans, and a status description is now only set on `Error`.
+Leave successful, interrupt-only, and empty-cause spans `Unset` without a status description, following OpenTelemetry guidance. Failures retain `Error` status and exception events. Replace the interruption attributes `span.label` and `status.interrupted` with `effect.fiber.interrupted: true`, and omit OTLP `exception.stacktrace` when no stack exists. Consumers filtering on `Ok` or using the old interruption attributes should update their queries.

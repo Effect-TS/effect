@@ -290,8 +290,6 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
       })
     }
   }
-  // Per the OTel spec, instrumentation leaves non-error spans `Unset` and
-  // only attaches a status description to `Error`.
   let otelStatus: Status = { code: StatusCode.Unset }
 
   if (status.exit._tag === "Failure") {
