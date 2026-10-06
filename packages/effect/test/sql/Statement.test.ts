@@ -4,7 +4,7 @@ import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import * as Statement from "effect/sql/Statement"
-import type * as Tracer from "effect/Tracer"
+import * as Tracer from "effect/Tracer"
 
 describe("Statement", () => {
   it("defaultTransforms ignores inherited properties", () => {
@@ -96,34 +96,71 @@ describe("Statement", () => {
       }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect("names spans after db.system.name and keeps method names out of db.operation.name", () =>
+  for (
+    const [name, spanAttributes] of [
+      ["app", [["db.namespace", "app"], ["server.address", "db"], ["server.port", 5432], [
+        "db.system.name",
+        "postgresql"
+      ]]],
+      ["db:3306", [["server.address", "db"], ["server.port", 3306], ["db.system.name", "mysql"]]],
+      ["db", [["server.address", "db"], ["db.system.name", "mysql"]]],
+      ["sqlite", [["db.system.name", "sqlite"]]],
+      ["sql.execute", []]
+    ] satisfies Array<[string, Array<readonly [string, unknown]>]>
+  ) {
+    it.effect(
+      `names statement and stream spans ${name}`,
+      () =>
+        Effect.gen(function*() {
+          const sql = yield* makeClient(
+            Effect.gen(function*() {
+              assert.strictEqual((yield* Effect.orDie(Effect.currentSpan)).name, name)
+            }),
+            false,
+            spanAttributes
+          )
+          yield* sql`select 1`
+          yield* Stream.runDrain(sql`select 1`.stream)
+        }).pipe(
+          Effect.provideService(Statement.SpanPropagationEnabled, true),
+          Effect.provide(Reactivity.layer)
+        )
+    )
+  }
+
+  it.effect("records execution methods separately from database operations", () =>
     Effect.gen(function*() {
-      const seen: Array<Tracer.Span> = []
-      const observe = Effect.map(Effect.orDie(Effect.currentSpan), (span) => {
-        seen.push(span)
+      const spans: Array<Tracer.Span> = []
+      const tracer = Tracer.make({
+        span: (options) => {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
       })
-      const named = (spanAttributes: ReadonlyArray<readonly [string, unknown]>) =>
-        makeClient(observe, false, spanAttributes)
-      const pg = yield* named([["db.system.name", "postgresql"], ["db.namespace", "app"]])
-      const mysql = yield* named([["db.system.name", "mysql"], ["server.address", "db"], ["server.port", 3306]])
-      const sqlite = yield* named([["db.system.name", "sqlite"]])
-
+      const sql = yield* makeClient(Effect.void)
+      const query = sql`select 1`
       yield* Effect.gen(function*() {
-        yield* pg`select 1`
-        yield* mysql`select 1`
-        yield* sqlite`select 1`.values
-        yield* Stream.runDrain(sqlite`select 1`.stream)
-      }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
+        yield* query
+        yield* query.withoutTransform
+        yield* query.raw
+        yield* query.values
+        yield* query.unprepared
+        yield* query.valuesUnprepared
+        yield* Stream.runDrain(query.stream)
+      }).pipe(Effect.withTracer(tracer))
 
-      const spans = seen.filter((span, i) => seen.indexOf(span) === i)
-      assert.deepStrictEqual(spans.map((span) => span.name), ["postgresql", "mysql", "sqlite", "sqlite"])
       assert.deepStrictEqual(spans.map((span) => span.attributes.get("effect.sql.method")), [
         "execute",
-        "execute",
+        "executeWithoutTransform",
+        "executeRaw",
         "executeValues",
+        "executeUnprepared",
+        "executeValuesUnprepared",
         "executeStream"
       ])
       for (const span of spans) {
+        assert.strictEqual(span.kind, "client")
         assert.isFalse(span.attributes.has("db.operation.name"))
         assert.strictEqual(span.attributes.get("db.query.text"), "select 1")
       }

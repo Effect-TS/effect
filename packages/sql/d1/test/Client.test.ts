@@ -207,7 +207,7 @@ describe("Client", () => {
       assert.equal(Cause.hasDies(res), true)
     }).pipe(Effect.provide(D1Miniflare.layerClient)))
 
-  it.effect("names batch spans per OTel semconv", () =>
+  it.effect("records batch attributes only for multiple statements", () =>
     Effect.gen(function*() {
       const sql = yield* D1Client.D1Client
       const spans: Array<Tracer.Span> = []
@@ -218,20 +218,24 @@ describe("Client", () => {
           return span
         }
       })
-      yield* Effect.withTracer(
-        Effect.andThen(
-          sql.batch([sql`SELECT 1`, sql`SELECT 2`]),
-          sql.batch([sql`SELECT 3`])
-        ),
-        tracer
-      )
+      yield* Effect.gen(function*() {
+        yield* sql.batch([])
+        yield* sql.batch([sql`SELECT 1`, sql`SELECT 2`])
+        yield* sql.batch([sql`SELECT 3`])
+      }).pipe(Effect.withTracer(tracer))
       assert.deepStrictEqual(
         spans.map((span) => [
           span.name,
+          span.kind,
+          span.attributes.get("db.system.name"),
           span.attributes.get("db.operation.name"),
-          span.attributes.get("db.operation.batch.size")
+          span.attributes.get("db.operation.batch.size"),
+          span.attributes.get("db.query.text")
         ]),
-        [["BATCH", "BATCH", 2], ["sqlite", undefined, undefined]]
+        [
+          ["BATCH", "client", "sqlite", "BATCH", 2, "SELECT 1; SELECT 2"],
+          ["sqlite", "client", "sqlite", undefined, undefined, "SELECT 3"]
+        ]
       )
     }).pipe(Effect.provide(D1Miniflare.layerClient)))
 
