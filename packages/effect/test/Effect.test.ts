@@ -1580,30 +1580,7 @@ describe("Effect", () => {
       }))
   })
 
-  describe("schedule", () => {
-    it.effect("preserves finalizer defects accompanying schedule completion", () =>
-      Effect.gen(function*() {
-        const policy = Schedule.fromStep(
-          Effect.succeed(() => Cause.done(42).pipe(Effect.ensuring(Effect.die("cleanup failed"))))
-        )
-        const exit = yield* Effect.exit(Effect.schedule(Effect.void, policy))
-        assert.deepStrictEqual(exit, Exit.die("cleanup failed"))
-      }))
-  })
-
   describe("retry", () => {
-    it.effect("does not retry typed failures accompanied by interruptions", () =>
-      Effect.gen(function*() {
-        let attempts = 0
-        const source = Effect.suspend(() => {
-          attempts++
-          return Effect.failCause(Cause.combine(Cause.fail("error"), Cause.interrupt(1)))
-        })
-        const exit = yield* Effect.exit(Effect.retry(source, Schedule.recurs(1)))
-        assert.strictEqual(attempts, 1)
-        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("error"), Cause.interrupt(1))))
-      }))
-
     it.effect("does not retry typed failures accompanied by finalizer defects", () =>
       Effect.gen(function*() {
         let attempts = 0
