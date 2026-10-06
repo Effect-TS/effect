@@ -16,7 +16,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import type * as Fiber from "../Fiber.ts"
-import { constUndefined, memoize } from "../Function.ts"
+import { constUndefined } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
 import * as InternalRecord from "../internal/record.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -1270,24 +1270,27 @@ export const defaultTransforms = (
 }
 
 /**
- * Builds an OpenTelemetry database span name from client span attributes:
- * `{operation} {target}`, `{target}`, `{operation}`, `db.system.name`, or
- * `sql.execute`, where the target is `db.namespace` or
- * `server.address[:server.port]`. Empty attribute values are ignored.
+ * Returns the span name for statements run by a client with the given span
+ * attributes, following the OpenTelemetry database span conventions:
+ * `db.namespace`, then `server.address[:server.port]`, then `db.system.name`,
+ * falling back to `sql.execute`.
  *
  * @stability unstable
  * @category tracing
  * @since 4.0.1
  */
-export const makeSpanName = (
-  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-  operation?: string
-): string => {
-  const names = spanNames(spanAttributes)
-  if (operation === undefined) {
-    return names.statement
+export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string => {
+  const namespace = spanAttribute(spanAttributes, "db.namespace")
+  if (isNonEmptyString(namespace)) {
+    return namespace
   }
-  return names.target === undefined ? operation : `${operation} ${names.target}`
+  const address = spanAttribute(spanAttributes, "server.address")
+  if (isNonEmptyString(address)) {
+    const port = spanAttribute(spanAttributes, "server.port")
+    return port === undefined ? address : `${address}:${port}`
+  }
+  const system = spanAttribute(spanAttributes, "db.system.name")
+  return isNonEmptyString(system) ? system : "sql.execute"
 }
 
 // internal
@@ -1295,22 +1298,15 @@ export const makeSpanName = (
 const ATTR_DB_QUERY_TEXT = "db.query.text"
 const ATTR_SQL_METHOD = "effect.sql.method"
 
-const spanNames = memoize((spanAttributes: ReadonlyArray<readonly [string, unknown]>) => {
-  const attributes = new Map(spanAttributes)
-  const namespace = attributes.get("db.namespace")
-  const address = attributes.get("server.address")
-  const port = attributes.get("server.port")
-  const system = attributes.get("db.system.name")
-  const target = isNonEmptyString(namespace)
-    ? namespace
-    : isNonEmptyString(address)
-    ? (port === undefined ? address : `${address}:${port}`)
-    : undefined
-  return {
-    target,
-    statement: target ?? (isNonEmptyString(system) ? system : "sql.execute")
+// the last value wins, matching the order the attributes are applied to spans
+const spanAttribute = (spanAttributes: ReadonlyArray<readonly [string, unknown]>, key: string): unknown => {
+  for (let i = spanAttributes.length - 1; i >= 0; i--) {
+    if (spanAttributes[i][0] === key) {
+      return spanAttributes[i][1]
+    }
   }
-})
+  return undefined
+}
 
 const isNonEmptyString = (u: unknown): u is string => typeof u === "string" && u.length > 0
 
@@ -1378,7 +1374,7 @@ const StatementProto: Omit<
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
     return Effect.useSpan(
-      makeSpanName(this.spanAttributes),
+      spanName(this.spanAttributes),
       { kind: "client" },
       (span) =>
         this.withConnectionSpan(
@@ -1435,7 +1431,7 @@ const StatementProto: Omit<
   get stream(): Stream.Stream<any, SqlError> {
     const self = this as StatementImpl<any>
     return Stream.unwrap(Effect.flatMap(
-      Effect.makeSpanScoped(makeSpanName(self.spanAttributes), { kind: "client" }),
+      Effect.makeSpanScoped(spanName(self.spanAttributes), { kind: "client" }),
       (span) =>
         withStatement(self, span, (statement, fiber) => {
           const [sql, params] = statement.compile()
@@ -1480,7 +1476,7 @@ const StatementProto: Omit<
   ...Effectable.Prototype<StatementImpl<any>>({
     label: "Statement",
     evaluate(fiber) {
-      const span = internalEffect.makeSpanUnsafe(fiber, makeSpanName(this.spanAttributes), { kind: "client" })
+      const span = internalEffect.makeSpanUnsafe(fiber, spanName(this.spanAttributes), { kind: "client" })
       const clock = fiber.getRef(Clock)
       const timingEnabled = fiber.getRef(TracerTimingEnabled)
       return Effect.onExit(
