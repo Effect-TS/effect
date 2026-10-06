@@ -13,6 +13,13 @@ import { TestClock } from "effect/testing"
 
 describe("Sink", () => {
   describe("constructors", () => {
+    it.effect("make uses the pipeline success value as the sink result", () =>
+      Effect.gen(function*() {
+        const sink = Sink.make<number>()(Stream.runSum)
+        const exit = yield* Effect.exit(Stream.run(Stream.make(1, 2, 3), sink))
+        assertExitSuccess(exit, 6)
+      }))
+
     it.effect("fromWritableStream - aborts instead of closing on upstream failure", () =>
       Effect.gen(function*() {
         const error = new Error("upstream failed")

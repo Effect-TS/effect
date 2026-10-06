@@ -356,7 +356,7 @@ export const make = <In>(): make.Constructor<In> => (...fns: []) =>
     pipe(
       internalStream.fromChannel(Channel.fromPull(Effect.succeed(upstream))),
       ...fns as any as [() => Effect.Effect<any>],
-      Effect.flatMap((a) => Cause.done<End<any>>([a])),
+      Effect.map((a) => [a] as End<any>),
       Scope.provide(scope)
     )
   )
