@@ -10884,7 +10884,7 @@ export const BigDecimalFromString: BigDecimalFromString = BigDecimalString.pipe(
 /**
  * Type-level representation of {@link ByteSize}.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -10900,7 +10900,7 @@ export interface ByteSize extends declare<ByteSize_.ByteSize> {
  * beyond JavaScript's safe-integer range. The StringTree codec uses the
  * human-readable byte-size syntax exposed by {@link ByteSizeFromString}.
  *
- * @stability stable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -10936,7 +10936,7 @@ const ByteSizeString = String.annotate({ expected: "a string that will be decode
 /**
  * Type-level representation of {@link ByteSizeFromString}.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -10969,7 +10969,7 @@ export interface ByteSizeFromString extends decodeTo<ByteSize, String> {
  * A unit is required. Signs, exponent notation, digit separators, and ambiguous
  * unit spellings such as `KB`, `mb`, `Mb`, or `b` are rejected.
  *
- * @stability stable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -10979,7 +10979,7 @@ export const ByteSizeFromString: ByteSizeFromString = ByteSizeString.pipe(
 /**
  * Type-level representation of {@link ByteSizeFromBigInt}.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -10989,7 +10989,7 @@ export interface ByteSizeFromBigInt extends decodeTo<ByteSize, BigInt> {
 /**
  * Schema that decodes non-negative bigint byte counts.
  *
- * @stability stable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -10999,7 +10999,7 @@ export const ByteSizeFromBigInt: ByteSizeFromBigInt = BigInt.pipe(
 /**
  * Type-level representation of {@link ByteSizeFromNumber}.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -11013,7 +11013,7 @@ export interface ByteSizeFromNumber extends decodeTo<ByteSize, Number> {
  *
  * Encoding fails when the byte count exceeds `Number.MAX_SAFE_INTEGER`.
  *
- * @stability stable
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */

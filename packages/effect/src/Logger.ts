@@ -1138,7 +1138,7 @@ export const layer = <
  * writes // => ["Application started"]
  * ```
  *
- * @stability stable
+ * @stability unstable
  * @category logging
  * @since 4.0.0
  */

@@ -6,6 +6,7 @@
 export {
   /**
    * @stability unstable
+   * @category re-exports
    * @since 4.0.0
    */
   TYPES as MssqlTypes

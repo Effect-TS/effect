@@ -1214,7 +1214,7 @@ function searchLast(str: string, rgx: RegExp): number {
  * @see {@link fromDotEnvContents} – parse a `.env` string directly
  * @see {@link fromEnv} – read from the runtime environment
  *
- * @stability stable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1286,7 +1286,7 @@ export const fromDotEnv: (options?: {
  * @see {@link fromEnv} – for environment variables
  * @see {@link fromDotEnv} – for `.env` files
  *
- * @stability stable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

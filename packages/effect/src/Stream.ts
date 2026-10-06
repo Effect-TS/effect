@@ -6435,7 +6435,7 @@ const retryWithoutReset = <A, E, R, X, E2, R2>(
  * await Effect.runPromise(program)
  * ```
  *
- * @stability stable
+ * @stability unstable
  * @category error handling
  * @since 3.16.0
  */
@@ -6619,7 +6619,7 @@ export const take: {
  * await Effect.runPromise(program) // => [[1, 2]]
  * ```
  *
- * @stability stable
+ * @stability unstable
  * @category filtering
  * @since 4.0.0
  */
