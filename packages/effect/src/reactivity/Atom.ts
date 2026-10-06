@@ -2173,8 +2173,7 @@ export const batch: (f: () => void) => void = Registry.batch
  * **Details**
  *
  * It listens for `visibilitychange` events on `window` and removes the listener
- * when the atom is disposed. When `window` is undefined, such as during server
- * rendering, it stays at `0` and adds no listener.
+ * when the atom is disposed. Without `window`, it stays at `0` and adds no listener.
  *
  * @stability unstable
  * @category constants
@@ -2223,9 +2222,8 @@ export const makeRefreshOnSignal = <_>(signal: Atom<_>) => <A extends Atom<any>>
  *
  * **Details**
  *
- * The atom refreshes when the document becomes visible. When `window` is
- * undefined, such as during server rendering, it returns the source atom's value
- * and never refreshes.
+ * Without `window`, this helper does not trigger refreshes. Source atom updates
+ * are still forwarded.
  *
  * @stability unstable
  * @category combinators
