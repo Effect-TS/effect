@@ -6531,18 +6531,11 @@ export const merge: {
           )
         ),
         Effect.onError((cause) =>
-          Effect.flatMap(
-            Effect.exit(Scope.close(scope, Pull.doneExitFromCause(cause))),
-            (exit) =>
-              onExit(
-                side,
-                Exit.isFailure(exit)
-                  ? Cause.combine(
-                    Cause.fromReasons(cause.reasons.filter((reason) => !Pull.isDoneFailure(reason))),
-                    exit.cause
-                  )
-                  : cause
-              )
+          Effect.onExitPrimitive(Pull.doneExitFromCause(cause), (exit) => Scope.close(scope, exit)).pipe(
+            Effect.matchCauseEffect({
+              onFailure: (cause) => onExit(side, cause),
+              onSuccess: () => onExit(side, cause)
+            })
           )
         ),
         Effect.forkIn(forkedScope)
