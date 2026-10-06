@@ -896,7 +896,11 @@ export const endUnsafe: {
 } = dual(2, <A>(self: PubSub<A>, value: A): boolean => {
   if (self.shutdownFlag.current || Option.isSome(self.ended.current)) return false
   MutableRef.set(self.ended, Option.some(value))
-  if (isBackPressureStrategy(self.strategy)) {
+  // Custom handlers must be interrupted through the end signal so their cleanup runs.
+  if (
+    self.strategy instanceof BackPressureStrategy &&
+    self.strategy.handleSurplus === BackPressureStrategy.prototype.handleSurplus
+  ) {
     for (const [_, deferred, last] of MutableList.takeAll(self.strategy.publishers)) {
       if (last) Deferred.doneUnsafe(deferred, Exit.succeed(false))
     }
@@ -2478,11 +2482,9 @@ class PubSubImpl<in out A> implements PubSub<A> {
 // The built-in strategies either never suspend or suspend on `publishers`,
 // which `endUnsafe` settles directly. Any other `handleSurplus` is raced
 // against an end signal instead, so `end` interrupts it.
-const isBackPressureStrategy = <A>(strategy: PubSub.Strategy<A>): strategy is BackPressureStrategy<A> =>
-  strategy.handleSurplus === BackPressureStrategy.prototype.handleSurplus
-
 const isBuiltInStrategy = <A>(strategy: PubSub.Strategy<A>): boolean =>
-  isBackPressureStrategy(strategy) ||
+  (strategy instanceof BackPressureStrategy &&
+    strategy.handleSurplus === BackPressureStrategy.prototype.handleSurplus) ||
   strategy.handleSurplus === DroppingStrategy.prototype.handleSurplus ||
   strategy.handleSurplus === SlidingStrategy.prototype.handleSurplus
 
