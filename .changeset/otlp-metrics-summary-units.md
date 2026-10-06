@@ -2,4 +2,8 @@
 "effect": patch
 ---
 
-OtlpMetrics now exports each summary as a single OTLP Summary metric named `<id>`, replacing the `<id>_quantiles`, `<id>_count` and `<id>_sum` Sum metrics. Count and sum are lifetime totals, quantile values are the configured quantiles over the sliding window, and summaries are cumulative regardless of the configured temporality. The `unit` / `time_unit` attributes become the metric unit, mapped to UCUM (for example `milliseconds` to `ms`), and are no longer exported as data point attributes. Bigint values beyond 2^53 keep their precision.
+Export summaries as a single OTLP Summary metric named `<id>` instead of `<id>_quantiles`, `<id>_count` and `<id>_sum`. Count and sum remain cumulative regardless of temporality; only configured quantiles with observations in the sliding window are exported. Update queries that use the old metric names.
+
+Normalize common `unit` / `time_unit` values to UCUM and remove those attributes from data points, except where retaining them prevents distinct series from colliding. Series with different normalized units export as separate metrics.
+
+Preserve counter and gauge bigint precision outside the safe integer range with decimal strings in OTLP/JSON.

@@ -142,7 +142,6 @@ export const make: (options: {
       ? String(previousExportTimeNanos)
       : startTime
 
-    // Series of one metric id with different units are exported as separate metrics
     const projected = snapshot.map((state) => {
       const unit = toUcumUnit(state.attributes?.unit ?? state.attributes?.time_unit)
       const identity = `${state.id}\u0000${unit}`
@@ -157,8 +156,7 @@ export const make: (options: {
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const state = snapshot[i]
       const { unit, identity, entries, seriesKey } = projected[i]
-      // Series that differ only in unit attribute spelling keep their unit
-      // attributes, so they stay distinct after projection
+      // Retain original unit attributes when projection would collapse distinct series.
       const attributes = OtlpResource.entriesToAttributes(
         seriesCounts.get(seriesKey)! > 1 ? Object.entries(state.attributes ?? {}) : entries
       )
@@ -360,8 +358,7 @@ export const make: (options: {
           break
         }
         case "Summary": {
-          // Count and sum are lifetime totals; quantiles come from the sliding
-          // window and are omitted once it has no observations
+          // Count and sum are lifetime totals; quantiles reflect the current window.
           const quantileValues: Array<IValueAtQuantile> = []
           for (const [quantile, value] of state.state.quantiles) {
             if (value !== undefined) quantileValues.push({ quantile, value })
@@ -521,7 +518,7 @@ const makeMetricKey = (id: string, attributes: Metric.Metric.AttributeSet | unde
   return `${id}:${JSON.stringify(sortedEntries)}`
 }
 
-/** Keeps int64 precision: JSON numbers above 2^53 are sent as decimal strings */
+/** Preserves bigint precision outside the safe integer range using decimal strings. */
 const bigintToInt64 = (value: bigint): number | string => {
   const asNumber = Number(value)
   return Number.isSafeInteger(asNumber) ? asNumber : value.toString()
@@ -537,10 +534,8 @@ const ucumUnits = new Map([
   ["bytes", "By"]
 ])
 
-/** Maps a `unit` / `time_unit` attribute to a UCUM unit string */
 const toUcumUnit = (unit: string | undefined): string => unit === undefined ? "1" : ucumUnits.get(unit) ?? unit
 
-/** The unit attributes become the metric unit, not data point dimensions */
 const exportedAttributeEntries = (attributes: Metric.Metric.AttributeSet) =>
   Object.entries(attributes).filter(([key]) => key !== "unit" && key !== "time_unit")
 
