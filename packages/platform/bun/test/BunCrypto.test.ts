@@ -159,4 +159,4 @@ it.effect("matches HMAC SHA vectors and byte-oriented PBKDF2 with sliced inputs"
     assert.deepStrictEqual(salt, encode("salt"))
   }).pipe(Effect.provide(BunCrypto.layer)))
 
-cryptoTests(BunCrypto.layer, true)
+cryptoTests(BunCrypto.layer, true, true)

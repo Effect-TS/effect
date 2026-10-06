@@ -3,6 +3,7 @@ import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as PlatformError from "effect/PlatformError"
+import * as NativeCrypto from "node:crypto"
 import {
   constants,
   createCipheriv,
@@ -28,8 +29,211 @@ const hex = (data: Uint8Array): string => Array.from(data, (byte) => byte.toStri
 const hashes = ["SHA-1", "SHA-256", "SHA-384", "SHA-512"] as const
 const nativeHash = (hash: Crypto.HmacAlgorithm): string => hash.replace("-", "").toLowerCase()
 
-export const cryptoTests = (layer: Layer.Layer<Crypto.Crypto>, md5: boolean): void => {
+const supportsNativeArgon2 = (): boolean => {
+  if (typeof NativeCrypto.argon2Sync !== "function") return false
+  try {
+    NativeCrypto.argon2Sync("argon2id", {
+      message: new Uint8Array(),
+      nonce: new Uint8Array(8),
+      memory: 8,
+      passes: 1,
+      parallelism: 1,
+      tagLength: 4
+    })
+    return true
+  } catch (cause) {
+    // Some runtimes export an Argon2 stub even when their crypto engine omits it.
+    if ((cause as { code?: string }).code === "ERR_CRYPTO_ARGON2_NOT_SUPPORTED") return false
+    throw cause
+  }
+}
+
+export const cryptoTests = (layer: Layer.Layer<Crypto.Crypto>, md5: boolean, nativeExtras = false): void => {
   describe("native cryptography contracts", () => {
+    it.effect("matches RFC 5869 HKDF and native outputs for every SHA hash", () =>
+      Effect.gen(function*() {
+        const bytes = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"))
+        // RFC 5869 Appendix A.1.
+        const key = slice(new Uint8Array(22).fill(0x0b))
+        const salt = slice(bytes("000102030405060708090a0b0c"))
+        const info = slice(bytes("f0f1f2f3f4f5f6f7f8f9"))
+        assert.strictEqual(
+          hex(yield* Crypto.hkdf("SHA-256", key, salt, info, 42)),
+          "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+        )
+        for (const hash of hashes) {
+          const maximum = 255 * { "SHA-1": 20, "SHA-256": 32, "SHA-384": 48, "SHA-512": 64 }[hash]
+          const empty = new Uint8Array()
+          assert.deepStrictEqual(
+            yield* Crypto.hkdf(hash, empty, empty, empty, 42),
+            new Uint8Array(NativeCrypto.hkdfSync(nativeHash(hash), empty, empty, empty, 42))
+          )
+          for (const length of [1, 42, maximum]) {
+            const expected = new Uint8Array(
+              NativeCrypto.hkdfSync(nativeHash(hash), key, new Uint8Array(), new Uint8Array(), length)
+            )
+            assert.deepStrictEqual(yield* Crypto.hkdf(hash, key, new Uint8Array(), new Uint8Array(), length), expected)
+          }
+          for (const length of [0, -1, 0.5, Infinity, maximum + 1]) {
+            const error = yield* Effect.flip(Crypto.hkdf(hash, key, salt, info, length))
+            assert.strictEqual(error.reason._tag, "BadArgument")
+          }
+        }
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("derives the RFC 9106 Argon2id vector or reports native unavailability", () =>
+      Effect.gen(function*() {
+        // RFC 9106 section 5.3, including secret and associated data.
+        const options: Crypto.Argon2idOptions = {
+          password: slice(new Uint8Array(32).fill(1)),
+          salt: slice(new Uint8Array(16).fill(2)),
+          secret: slice(new Uint8Array(8).fill(3)),
+          associatedData: slice(new Uint8Array(12).fill(4)),
+          memoryKiB: 32,
+          passes: 3,
+          parallelism: 4,
+          length: 32
+        }
+        if (nativeExtras && supportsNativeArgon2()) {
+          assert.strictEqual(
+            hex(yield* Crypto.argon2id(options)),
+            "0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659"
+          )
+          assert.deepStrictEqual(options.password, new Uint8Array(32).fill(1))
+          assert.deepStrictEqual(options.secret, new Uint8Array(8).fill(3))
+        } else {
+          const error = yield* Effect.flip(Crypto.argon2id(options))
+          assert.strictEqual(error.reason.method, "argon2id")
+        }
+        for (
+          const invalid of [
+            { memoryKiB: 31 },
+            { memoryKiB: 2 ** 32 },
+            { passes: 0 },
+            { parallelism: 0 },
+            { parallelism: 2 ** 24 },
+            { length: 3 },
+            { salt: new Uint8Array(7) }
+          ]
+        ) {
+          const error = yield* Effect.flip(Crypto.argon2id({ ...options, ...invalid }))
+          assert.strictEqual(error.reason._tag, "BadArgument")
+        }
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("matches the XChaCha draft vector and authenticates all inputs", () =>
+      Effect.gen(function*() {
+        // draft-irtf-cfrg-xchacha-03, Appendix A.3.1.
+        const bytes = (hex: string) => slice(Uint8Array.from(Buffer.from(hex, "hex")))
+        const options: Crypto.XChaCha20Poly1305Options = {
+          key: bytes("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"),
+          nonce: bytes("404142434445464748494a4b4c4d4e4f5051525354555657"),
+          additionalData: bytes("50515253c0c1c2c3c4c5c6c7"),
+          data: encode(
+            "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
+          )
+        }
+        if (nativeExtras && getCiphers().includes("chacha20-poly1305")) {
+          const encrypted = yield* Crypto.xchacha20poly1305Encrypt(options)
+          assert.strictEqual(
+            hex(encrypted),
+            "bd6d179d3e83d43b9576579493c0e939572a1700252bfaccbed2902c21396cbb731c7f1b0b4aa6440bf3a82f4eda7e39ae64c6708c54c216cb96b72e1213b4522f8c9ba40db5d945b11b69b982c1bb9e3f3fac2bc369488f76b2383565d3fff921f9664c97637da9768812f615c68b13b52ec0875924c1c7987947deafd8780acf49"
+          )
+          assert.deepStrictEqual(
+            yield* Crypto.xchacha20poly1305Decrypt({ ...options, data: slice(encrypted) }),
+            options.data
+          )
+          const altered = encrypted.slice()
+          altered[altered.length - 1] ^= 1
+          for (
+            const invalid of [
+              { data: altered },
+              { nonce: new Uint8Array(24) },
+              { additionalData: Uint8Array.of(1) },
+              { key: new Uint8Array(32) },
+              { data: new Uint8Array(15) }
+            ]
+          ) {
+            const error = yield* Effect.flip(
+              Crypto.xchacha20poly1305Decrypt({ ...options, data: encrypted, ...invalid })
+            )
+            assert.strictEqual(error.reason.method, "xchacha20poly1305Decrypt")
+          }
+          for (const size of [0, 1, 63, 64, 65, 4097]) {
+            const data = slice(new Uint8Array(size).fill(42))
+            const nonce = yield* Crypto.randomBytes(24)
+            const ciphertext = yield* Crypto.xchacha20poly1305Encrypt({ ...options, nonce, data })
+            assert.deepStrictEqual(
+              yield* Crypto.xchacha20poly1305Decrypt({ ...options, nonce, data: ciphertext }),
+              data
+            )
+          }
+        } else {
+          for (
+            const operation of [Crypto.xchacha20poly1305Encrypt(options), Crypto.xchacha20poly1305Decrypt(options)]
+          ) {
+            const error = yield* Effect.flip(operation)
+            assert.strictEqual(error.reason.module, "Crypto")
+          }
+        }
+        for (const invalid of [{ key: new Uint8Array(31) }, { nonce: new Uint8Array(23) }]) {
+          const error = yield* Effect.flip(Crypto.xchacha20poly1305Encrypt({ ...options, ...invalid }))
+          assert.strictEqual(error.reason._tag, "BadArgument")
+        }
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("converts JWK material to native secret, public, and private keys", () =>
+      Effect.gen(function*() {
+        for (
+          const algorithm of [
+            { name: "AES-GCM", length: 256 },
+            { name: "HMAC", hash: "SHA-256" }
+          ] as const
+        ) {
+          const key = yield* Crypto.generateSecretKey(algorithm, { extractable: true })
+          const jwk = yield* Crypto.exportJwk(key)
+          assert.strictEqual(jwk.kty, "oct")
+          const imported = yield* Crypto.importJwk(jwk, algorithm, { extractable: true })
+          assert.deepStrictEqual(yield* Crypto.exportKey("raw", imported), yield* Crypto.exportKey("raw", key))
+          const opaque = yield* Crypto.importJwk(jwk, algorithm)
+          const forbidden = yield* Effect.flip(Crypto.exportJwk(opaque))
+          assert.strictEqual(forbidden.reason.method, "exportJwk")
+        }
+        for (
+          const algorithm of [
+            { name: "RSA-PSS", hash: "SHA-256" },
+            { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            { name: "ECDSA", namedCurve: "P-256" },
+            { name: "Ed25519" }
+          ] as const
+        ) {
+          const pair = yield* Crypto.generateKeyPair(algorithm, { extractable: true })
+          for (const [key, format] of [[pair.publicKey, "spki"], [pair.privateKey, "pkcs8"]] as const) {
+            const jwk = yield* Crypto.exportJwk(key)
+            const imported = yield* Crypto.importJwk(jwk, algorithm, { extractable: true })
+            assert.deepStrictEqual(yield* Crypto.exportKey(format, imported), yield* Crypto.exportKey(format, key))
+            const blocked = yield* Effect.flip(
+              Crypto.importJwk({ ...jwk, ext: false }, algorithm, { extractable: true })
+            )
+            assert.strictEqual(blocked.reason.method, "importJwk")
+          }
+        }
+        const key = yield* Crypto.generateSecretKey({ name: "HMAC", hash: "SHA-256" }, { extractable: true })
+        const jwk = yield* Crypto.exportJwk(key)
+        const verifier = yield* Crypto.importJwk({ ...jwk, key_ops: ["verify"] }, { name: "HMAC", hash: "SHA-256" }, {
+          usages: ["verify"]
+        })
+        const data = Uint8Array.of(1, 2, 3)
+        const signature = yield* Crypto.sign({ name: "HMAC" }, key, data)
+        assert.strictEqual(yield* Crypto.verify({ name: "HMAC" }, verifier, signature, data), true)
+        assert.strictEqual((yield* Effect.flip(Crypto.sign({ name: "HMAC" }, verifier, data))).reason.method, "sign")
+        for (const invalid of [{ ...jwk, alg: "HS512" }, { kty: "oct", k: "not-base64url!" }]) {
+          const error = yield* Effect.flip(Crypto.importJwk(invalid, { name: "HMAC", hash: "SHA-256" }))
+          assert.strictEqual(error.reason.method, "importJwk")
+        }
+      }).pipe(Effect.provide(layer)))
+
     it.effect("matches every digest for empty and sliced binary inputs", () =>
       Effect.gen(function*() {
         const algorithms: ReadonlyArray<Crypto.DigestAlgorithm> = md5 ? ["MD5", ...hashes] : hashes
@@ -261,6 +465,7 @@ export const cryptoTests = (layer: Layer.Layer<Crypto.Crypto>, md5: boolean): vo
       Effect.gen(function*() {
         const cases: ReadonlyArray<readonly [Crypto.KeyPairAlgorithm, Crypto.SigningOptions, string | null]> = [
           [{ name: "RSA-PSS", hash: "SHA-256" }, { name: "RSA-PSS" }, "sha256"],
+          [{ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, { name: "RSASSA-PKCS1-v1_5" }, "sha256"],
           [{ name: "ECDSA", namedCurve: "P-256" }, { name: "ECDSA", hash: "SHA-256" }, "sha256"],
           [{ name: "ECDSA", namedCurve: "P-384" }, { name: "ECDSA", hash: "SHA-384" }, "sha384"],
           [{ name: "ECDSA", namedCurve: "P-521" }, { name: "ECDSA", hash: "SHA-512" }, "sha512"],

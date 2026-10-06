@@ -97,6 +97,53 @@ it.effect("owns HMAC data and PBKDF2 salt before importing a key", () =>
     }
   }))
 
+it.effect("snapshots HKDF bytes and JWK components while native key import is pending", () =>
+  Effect.gen(function*() {
+    for (const operation of ["hkdf", "importJwk"] as const) {
+      const imported = yield* Deferred.make<() => void>()
+      const crypto = Object.create(globalThis.crypto, {
+        subtle: {
+          value: {
+            importKey: (...args: Parameters<typeof webcrypto.subtle.importKey>) =>
+              new Promise((resolve, reject) => {
+                Deferred.doneUnsafe(
+                  imported,
+                  Effect.succeed(() => webcrypto.subtle.importKey(...args).then(resolve, reject))
+                )
+              }),
+            deriveBits: webcrypto.subtle.deriveBits.bind(webcrypto.subtle),
+            exportKey: webcrypto.subtle.exportKey.bind(webcrypto.subtle)
+          }
+        }
+      })
+      const key = new Uint8Array(22).fill(0x0b)
+      const salt = Uint8Array.from(Buffer.from("000102030405060708090a0b0c", "hex"))
+      const info = Uint8Array.from(Buffer.from("f0f1f2f3f4f5f6f7f8f9", "hex"))
+      const usages: Array<Crypto.KeyUsage> = ["encrypt"]
+      const jwk = { kty: "oct", k: "AAAAAAAAAAAAAAAAAAAAAA", key_ops: usages }
+      const program = operation === "hkdf"
+        ? Crypto.hkdf("SHA-256", key, salt, info, 42)
+        : Crypto.importJwk(jwk, { name: "AES-GCM", length: 128 }, { extractable: true, usages: ["encrypt"] }).pipe(
+          Effect.flatMap((key) => Crypto.exportKey("raw", key))
+        )
+      const fiber = yield* Effect.forkChild(program.pipe(Effect.provide(layerWith(crypto))))
+      const release = yield* Deferred.await(imported)
+      key.fill(0)
+      salt.fill(0)
+      info.fill(0)
+      usages[0] = "decrypt"
+      jwk.k = "invalid!"
+      release()
+      const result = yield* Fiber.join(fiber)
+      assert.strictEqual(
+        Buffer.from(result).toString("hex"),
+        operation === "hkdf"
+          ? "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+          : "00000000000000000000000000000000"
+      )
+    }
+  }))
+
 const getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
   if (array instanceof Uint8Array) {
     for (let i = 0; i < array.length; i++) {

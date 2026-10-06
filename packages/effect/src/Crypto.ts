@@ -5,7 +5,7 @@
  * platform's cryptography APIs. This module defines the service interface and a
  * constructor from platform cryptographic primitives. The service provides
  * secure random bytes and numbers, UUIDv4 and UUIDv7 generation, shuffling, and
- * message digests, message authentication codes, password key derivation,
+ * message digests, message authentication codes, password and HKDF key derivation,
  * key management, authenticated encryption, and signing and verification.
  *
  * @stability unstable
@@ -71,6 +71,89 @@ export interface RsaOaepOptions {
 }
 
 /**
+ * Parameters for Argon2id version 19 password derivation.
+ *
+ * **Details**
+ *
+ * Memory is measured in KiB and must be at least eight times parallelism.
+ * The salt must contain at least eight bytes and the output at least four.
+ * Secret and associated data are optional inputs to the derivation.
+ * Callers choose password-strength policy and bound concurrent derivations.
+ *
+ * @category models
+ * @since 4.1.0
+ */
+export interface Argon2idOptions {
+  readonly password: Uint8Array
+  readonly salt: Uint8Array
+  readonly memoryKiB: number
+  readonly passes: number
+  readonly parallelism: number
+  readonly length: number
+  readonly secret?: Uint8Array | undefined
+  readonly associatedData?: Uint8Array | undefined
+}
+
+/**
+ * Inputs for XChaCha20-Poly1305 authenticated encryption and decryption.
+ *
+ * **Details**
+ *
+ * Uses a 32-byte key, a 24-byte nonce, and a 16-byte tag appended to ciphertext.
+ * `data` is plaintext for encryption and ciphertext with its tag for decryption.
+ *
+ * **Gotchas**
+ *
+ * Never reuse a nonce with the same key. Backend support is runtime-dependent.
+ *
+ * @category models
+ * @since 4.1.0
+ */
+export interface XChaCha20Poly1305Options {
+  readonly key: Uint8Array
+  readonly nonce: Uint8Array
+  readonly data: Uint8Array
+  readonly additionalData?: Uint8Array | undefined
+}
+
+/**
+ * JSON Web Key material accepted by native key parsers.
+ *
+ * **Details**
+ *
+ * RSA integers and EC, OKP, and symmetric key components use base64url strings.
+ * Import binds the material to a separately selected cryptographic algorithm.
+ * Application key selection and JOSE header policy belong to the caller.
+ *
+ * **Gotchas**
+ *
+ * `d`, RSA private components, and `k` contain unencrypted secret material.
+ *
+ * @category models
+ * @since 4.1.0
+ */
+export interface Jwk {
+  readonly kty: string
+  readonly alg?: string | undefined
+  readonly crv?: string | undefined
+  readonly d?: string | undefined
+  readonly dp?: string | undefined
+  readonly dq?: string | undefined
+  readonly e?: string | undefined
+  readonly ext?: boolean | undefined
+  readonly k?: string | undefined
+  readonly key_ops?: ReadonlyArray<KeyUsage> | undefined
+  readonly kid?: string | undefined
+  readonly n?: string | undefined
+  readonly p?: string | undefined
+  readonly q?: string | undefined
+  readonly qi?: string | undefined
+  readonly use?: string | undefined
+  readonly x?: string | undefined
+  readonly y?: string | undefined
+}
+
+/**
  * Elliptic curves supported for ECDSA keys.
  *
  * @category models
@@ -99,14 +182,14 @@ export type SecretKeyAlgorithm =
  * **Details**
  *
  * RSA generation defaults to a 2048-bit modulus and exponent 65537. RSA
- * keys bind the selected hash to subsequent OAEP or PSS operations.
+ * keys bind the selected hash to subsequent encryption or signature operations.
  *
  * @category models
  * @since 4.1.0
  */
 export type KeyPairAlgorithm =
   | {
-    readonly name: "RSA-OAEP" | "RSA-PSS"
+    readonly name: "RSA-OAEP" | "RSA-PSS" | "RSASSA-PKCS1-v1_5"
     readonly hash: HmacAlgorithm
     readonly modulusLength?: number | undefined
     readonly publicExponent?: Uint8Array | undefined
@@ -154,11 +237,12 @@ export interface KeyOptions {
  * **Gotchas**
  *
  * Keys belong to their native backend. Key material is available only through
- * `exportKey` when the key is extractable. Metadata does not contain the key
+ * `exportKey` or `exportJwk` when the key is extractable. Metadata does not contain the key
  * material, and changing it cannot grant additional usages.
  *
  * @see {@link importKey}
  * @see {@link exportKey}
+ * @see {@link exportJwk}
  *
  * @category models
  * @since 4.1.0
@@ -221,19 +305,19 @@ export type CipherOptions =
   | { readonly name: "RSA-OAEP"; readonly label?: Uint8Array | undefined }
 
 /**
- * Parameters for HMAC, RSA-PSS, ECDSA, or Ed25519 signatures.
+ * Parameters for HMAC, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, or Ed25519 signatures.
  *
  * **Details**
  *
  * RSA-PSS salt lengths are measured in bytes and default to the key hash's
  * output size. ECDSA signatures use the fixed-width IEEE P1363 `r || s` format.
- * HMAC and RSA-PSS use the hash bound to their key. Ed25519 uses no external hash.
+ * HMAC and RSA signatures use the hash bound to their key. Ed25519 uses no external hash.
  *
  * @category models
  * @since 4.1.0
  */
 export type SigningOptions =
-  | { readonly name: "HMAC" | "Ed25519" }
+  | { readonly name: "HMAC" | "Ed25519" | "RSASSA-PKCS1-v1_5" }
   | { readonly name: "ECDSA"; readonly hash: HmacAlgorithm }
   | { readonly name: "RSA-PSS"; readonly saltLength?: number | undefined }
 
@@ -328,6 +412,42 @@ export interface Crypto {
    * Encrypts data with an RSA public key using OAEP padding.
    */
   rsaOaepEncrypt(options: RsaOaepOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Derives a key using HKDF with a selected SHA hash and length in bytes.
+   */
+  hkdf(
+    algorithm: HmacAlgorithm,
+    key: Uint8Array,
+    salt: Uint8Array,
+    info: Uint8Array,
+    length: number
+  ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Derives a password key using Argon2id version 19.
+   */
+  argon2id(options: Argon2idOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Encrypts plaintext with XChaCha20-Poly1305 and appends its authentication tag.
+   */
+  xchacha20poly1305Encrypt(options: XChaCha20Poly1305Options): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Authenticates and decrypts XChaCha20-Poly1305 ciphertext.
+   */
+  xchacha20poly1305Decrypt(options: XChaCha20Poly1305Options): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Imports JSON Web Key material into the native backend.
+   */
+  importJwk(jwk: Jwk, algorithm: KeyAlgorithm, options?: KeyOptions): Effect.Effect<Key, PlatformError.PlatformError>
+
+  /**
+   * Exports an extractable key as JSON Web Key material.
+   */
+  exportJwk(key: Key): Effect.Effect<Jwk, PlatformError.PlatformError>
 
   /**
    * Generates a symmetric key with the specified exportability and usages.
@@ -712,6 +832,128 @@ export const rsaOaepEncrypt = (
   Effect.flatMap(Crypto, (crypto) => crypto.rsaOaepEncrypt(options))
 
 /**
+ * Derives key bytes using HKDF with a selected SHA hash.
+ *
+ * **Details**
+ *
+ * The length is measured in bytes and must be between one and 255 times the hash
+ * output size. Salt and info may be empty.
+ *
+ * @category hashing
+ * @since 4.1.0
+ */
+export const hkdf = (
+  algorithm: HmacAlgorithm,
+  key: Uint8Array,
+  salt: Uint8Array,
+  info: Uint8Array,
+  length: number
+): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.hkdf(algorithm, key, salt, info, length))
+
+/**
+ * Derives a password key using Argon2id version 19.
+ *
+ * **Details**
+ *
+ * Backend support depends on the runtime. Node's provider waits for native work
+ * to complete on interruption, so an enclosing concurrency permit remains held
+ * until the native job finishes. Callers must bound memory, work factors, and
+ * concurrent derivations.
+ *
+ * @category hashing
+ * @since 4.1.0
+ */
+export const argon2id = (options: Argon2idOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.argon2id(options))
+
+/**
+ * Encrypts plaintext with XChaCha20-Poly1305 using the Crypto service.
+ *
+ * **Details**
+ *
+ * Requires a 32-byte key and a unique 24-byte nonce. The output includes a
+ * 16-byte authentication tag. Unsupported backends fail with `PlatformError`.
+ *
+ * @category encryption
+ * @since 4.1.0
+ */
+export const xchacha20poly1305Encrypt = (
+  options: XChaCha20Poly1305Options
+): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.xchacha20poly1305Encrypt(options))
+
+/**
+ * Authenticates and decrypts XChaCha20-Poly1305 ciphertext.
+ *
+ * **Details**
+ *
+ * The nonce and additional data must match encryption. Authentication failures
+ * return `PlatformError` without returning plaintext.
+ *
+ * @category encryption
+ * @since 4.1.0
+ */
+export const xchacha20poly1305Decrypt = (
+  options: XChaCha20Poly1305Options
+): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.xchacha20poly1305Decrypt(options))
+
+/**
+ * Imports JSON Web Key material using the Crypto service.
+ *
+ * **Details**
+ *
+ * The native parser enforces key material, algorithm, `key_ops`, and `ext`
+ * restrictions. Secret and private keys default to non-extractable. Public keys
+ * default to extractable unless `ext` is false.
+ *
+ * **Example** (Converting a public JWK to SPKI)
+ *
+ * ```ts import.meta.vitest
+ * import { Crypto, Effect } from "effect"
+ *
+ * const service = Crypto.make({
+ *   ...Crypto.makeSubtle(globalThis.crypto.subtle),
+ *   randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+ * })
+ * const program = Effect.gen(function*() {
+ *   const pair = yield* Crypto.generateKeyPair({ name: "Ed25519" })
+ *   const jwk = yield* Crypto.exportJwk(pair.publicKey)
+ *   const key = yield* Crypto.importJwk(jwk, { name: "Ed25519" })
+ *   const spki = yield* Crypto.exportKey("spki", key)
+ *   return spki.length
+ * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provideService(Crypto.Crypto, service))) // => 44
+ * ```
+ *
+ * @category key management
+ * @since 4.1.0
+ */
+export const importJwk = (
+  jwk: Jwk,
+  algorithm: KeyAlgorithm,
+  options?: KeyOptions
+): Effect.Effect<Key, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.importJwk(jwk, algorithm, options))
+
+/**
+ * Exports an extractable key as JSON Web Key material.
+ *
+ * **Details**
+ *
+ * Secret and private components are unencrypted. Native exports describe key
+ * material and cryptographic restrictions; application metadata such as `kid`
+ * is not preserved.
+ *
+ * @category key management
+ * @since 4.1.0
+ */
+export const exportJwk = (key: Key): Effect.Effect<Jwk, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.exportJwk(key))
+
+/**
  * Generates an AES-GCM or HMAC key using the Crypto service.
  *
  * **Details**
@@ -822,7 +1064,7 @@ export const decrypt = (
   Effect.flatMap(Crypto, (crypto) => crypto.decrypt(options, key, data))
 
 /**
- * Computes an HMAC or signs data with RSA-PSS, ECDSA, or Ed25519 using the
+ * Computes an HMAC or signs data with RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, or Ed25519 using the
  * Crypto service.
  *
  * **Details**
@@ -841,7 +1083,7 @@ export const sign = (
   Effect.flatMap(Crypto, (crypto) => crypto.sign(options, key, data))
 
 /**
- * Verifies an HMAC, RSA-PSS, ECDSA, or Ed25519 signature using the Crypto service.
+ * Verifies an HMAC, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, or Ed25519 signature using the Crypto service.
  *
  * **Details**
  *
@@ -905,6 +1147,12 @@ export const make = (
       algorithm: DigestAlgorithm,
       data: Uint8Array
     ) => Effect.Effect<Uint8Array, PlatformError.PlatformError>
+    readonly hkdf: Crypto["hkdf"]
+    readonly argon2id: Crypto["argon2id"]
+    readonly xchacha20poly1305Encrypt: Crypto["xchacha20poly1305Encrypt"]
+    readonly xchacha20poly1305Decrypt: Crypto["xchacha20poly1305Decrypt"]
+    readonly importJwk: Crypto["importJwk"]
+    readonly exportJwk: Crypto["exportJwk"]
     readonly hmac: Crypto["hmac"]
     readonly pbkdf2: Crypto["pbkdf2"]
     readonly rsaOaepEncrypt: Crypto["rsaOaepEncrypt"]
@@ -988,6 +1236,47 @@ export const make = (
     nextIntUnsafe,
     digest: impl.digest,
     hmac: impl.hmac,
+    importJwk: impl.importJwk,
+    exportJwk: impl.exportJwk,
+    hkdf: (algorithm, key, salt, info, length) => {
+      if (!Number.isSafeInteger(length) || length <= 0 || length > 255 * hashLengths[algorithm]) {
+        return Effect.fail(
+          PlatformError.badArgument({
+            module: "Crypto",
+            method: "hkdf",
+            description: "length must be between 1 and 255 times the hash output size"
+          })
+        )
+      }
+      return impl.hkdf(algorithm, key, salt, info, length)
+    },
+    argon2id: (options) => {
+      const uint32 = (n: number) => Number.isSafeInteger(n) && n > 0 && n <= 0xffff_ffff
+      if (
+        !uint32(options.memoryKiB) || !uint32(options.passes) || !uint32(options.parallelism) ||
+        options.parallelism > 0xff_ffff || options.memoryKiB < 8 * options.parallelism || !uint32(options.length) ||
+        options.length < 4 || options.salt.length < 8
+      ) {
+        return Effect.fail(
+          PlatformError.badArgument({
+            module: "Crypto",
+            method: "argon2id",
+            description: "invalid Argon2id memory, passes, parallelism, output length, or salt"
+          })
+        )
+      }
+      return impl.argon2id(options)
+    },
+    xchacha20poly1305Encrypt: (options) =>
+      Effect.flatMap(
+        validateXChaCha("xchacha20poly1305Encrypt", options),
+        () => impl.xchacha20poly1305Encrypt(options)
+      ),
+    xchacha20poly1305Decrypt: (options) =>
+      Effect.flatMap(
+        validateXChaCha("xchacha20poly1305Decrypt", options),
+        () => impl.xchacha20poly1305Decrypt(options)
+      ),
     rsaOaepEncrypt: impl.rsaOaepEncrypt,
     generateSecretKey: impl.generateSecretKey,
     generateKeyPair: impl.generateKeyPair,
@@ -1056,6 +1345,20 @@ const validateSize = (method: string, size: number): Effect.Effect<number, Platf
       description: "size must be a non-negative safe integer"
     }))
 
+const validateXChaCha = (
+  method: string,
+  options: XChaCha20Poly1305Options
+): Effect.Effect<void, PlatformError.PlatformError> =>
+  options.key.length === 32 && options.nonce.length === 24
+    ? Effect.void
+    : Effect.fail(
+      PlatformError.badArgument({
+        module: "Crypto",
+        method,
+        description: "XChaCha20-Poly1305 requires a 32-byte key and a 24-byte nonce"
+      })
+    )
+
 const nativeKeys = new WeakMap<SubtleCrypto, WeakMap<Key, CryptoKey>>()
 const hashLengths: Record<HmacAlgorithm, number> = { "SHA-1": 20, "SHA-256": 32, "SHA-384": 48, "SHA-512": 64 }
 
@@ -1072,7 +1375,8 @@ const hashLengths: Record<HmacAlgorithm, number> = { "SHA-1": 20, "SHA-256": 32,
  *
  * This constructor does not read a global cryptography API. Supply secure
  * `randomBytes` separately to `make`. Runtime adapters can override individual
- * operations, including MD5 digests unavailable in SubtleCrypto.
+ * operations, including MD5 digests. Argon2id and XChaCha20-Poly1305 require
+ * platform overrides; their default implementations fail with PlatformError.
  *
  * **Gotchas**
  *
@@ -1141,6 +1445,7 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         break
       case "RSA-OAEP":
       case "RSA-PSS":
+      case "RSASSA-PKCS1-v1_5":
         algorithm = {
           name: native.name,
           hash: native.hash.name as HmacAlgorithm,
@@ -1189,7 +1494,8 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         } as HmacKeyGenParams
       }
       case "RSA-OAEP":
-      case "RSA-PSS": {
+      case "RSA-PSS":
+      case "RSASSA-PKCS1-v1_5": {
         const modulusLength = algorithm.modulusLength ?? 2048
         if (
           generating &&
@@ -1254,6 +1560,75 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
   }
 
   return {
+    hkdf: (algorithm, key, salt, info, length) =>
+      run("hkdf", async () => {
+        const ownedKey = new Uint8Array(key)
+        const ownedSalt = new Uint8Array(salt)
+        const ownedInfo = new Uint8Array(info)
+        const handle = await subtle.importKey("raw", ownedKey, "HKDF", false, ["deriveBits"])
+        return new Uint8Array(
+          await subtle.deriveBits(
+            { name: "HKDF", hash: algorithm, salt: ownedSalt, info: ownedInfo },
+            handle,
+            length * 8
+          )
+        )
+      }),
+    argon2id: () =>
+      Effect.fail(
+        PlatformError.systemError({
+          module: "Crypto",
+          method: "argon2id",
+          _tag: "Unknown",
+          description: "Argon2id is unavailable in this backend"
+        })
+      ),
+    xchacha20poly1305Encrypt: () =>
+      Effect.fail(
+        PlatformError.systemError({
+          module: "Crypto",
+          method: "xchacha20poly1305Encrypt",
+          _tag: "Unknown",
+          description: "XChaCha20-Poly1305 is unavailable in this backend"
+        })
+      ),
+    xchacha20poly1305Decrypt: () =>
+      Effect.fail(
+        PlatformError.systemError({
+          module: "Crypto",
+          method: "xchacha20poly1305Decrypt",
+          _tag: "Unknown",
+          description: "XChaCha20-Poly1305 is unavailable in this backend"
+        })
+      ),
+    importJwk: (jwk, algorithm, options) =>
+      run("importJwk", async () => {
+        for (const component of [jwk.k, jwk.n, jwk.e, jwk.d, jwk.p, jwk.q, jwk.dp, jwk.dq, jwk.qi, jwk.x, jwk.y]) {
+          if (
+            component !== undefined &&
+            (typeof component !== "string" || !/^[A-Za-z0-9_-]+$/.test(component) || component.length % 4 === 1)
+          ) {
+            return badArgument("importJwk", "JWK components must be non-empty base64url strings")
+          }
+        }
+        const type = jwk.kty === "oct" ? "secret" : jwk.d === undefined ? "public" : "private"
+        const snapshot = {
+          ...jwk,
+          ...(jwk.key_ops === undefined ? {} : { key_ops: Array.from(jwk.key_ops) })
+        } as JsonWebKey
+        const handle = await subtle.importKey(
+          "jwk",
+          snapshot,
+          algorithmParams("importJwk", algorithm, false),
+          options?.extractable ?? (type === "public" && jwk.ext !== false),
+          Array.from(options?.usages ?? usagesFor(algorithm, type))
+        )
+        if (algorithm.name === "AES-GCM" && (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length) {
+          return badArgument("importJwk", "AES key length does not match the requested algorithm")
+        }
+        return wrap(handle)
+      }),
+    exportJwk: (key) => run("exportJwk", async () => await subtle.exportKey("jwk", getKey("exportJwk", key)) as Jwk),
     digest: (algorithm, data) =>
       run("digest", async () => new Uint8Array(await subtle.digest(algorithm, new Uint8Array(data)))),
     hmac: (algorithm, key, data) =>

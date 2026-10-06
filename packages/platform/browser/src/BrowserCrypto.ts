@@ -42,8 +42,9 @@ export const WebCrypto = Context.Reference<Crypto>("@effect/platform-browser/Cry
  * **Details**
  *
  * Random bytes are produced with `crypto.getRandomValues`. SHA digests, HMAC,
- * PBKDF2, AES-GCM, RSA-OAEP, RSA-PSS, ECDSA, Ed25519, and key management use
- * `crypto.subtle`. MD5 is unsupported and fails with `PlatformError`.
+ * HKDF, PBKDF2, AES-GCM, RSA-OAEP, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, Ed25519,
+ * and key management use `crypto.subtle`. MD5, Argon2id, and XChaCha20-Poly1305
+ * are unsupported and fail with `PlatformError`.
  *
  * **Gotchas**
  *

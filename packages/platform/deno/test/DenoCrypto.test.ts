@@ -296,4 +296,4 @@ it.effect("preserves synchronous and asynchronous primitive failures as platform
     }
   }))
 
-cryptoTests(DenoCrypto.layer, true)
+cryptoTests(DenoCrypto.layer, true, true)
