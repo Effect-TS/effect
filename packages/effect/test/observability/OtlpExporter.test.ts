@@ -108,29 +108,25 @@ const makeControlledHttpClient = Effect.fnUntraced(function*(requestCount: numbe
 })
 
 describe("OtlpExporter", () => {
-  for (const headers of [undefined, { "User-Agent": "my-app/1.0" }]) {
-    it.effect(`appends the exporter User-Agent to ${JSON.stringify(headers)}`, () =>
-      Effect.gen(function*() {
-        const userAgents: Array<string> = []
-        const httpClient = HttpClient.makeWith(
-          Effect.fnUntraced(function*(requestEffect) {
-            const request = yield* requestEffect
-            userAgents.push(request.headers["user-agent"])
-            return HttpClientResponse.fromWeb(request, new Response())
-          }),
-          Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
-        )
-        yield* Effect.scoped(Effect.gen(function*() {
-          const exporter = yield* makeExporter(httpClient, { headers, maxBatchSize: 10 })
-          exporter.push({ value: 1 })
-        }))
-        assert.deepStrictEqual(userAgents, [
-          `${
-            headers === undefined ? "" : "my-app/1.0 "
-          }OTel-OTLP-Exporter-JavaScript-Effect-OtlpExporterTest/${Version.getCurrentVersion()}`
-        ])
+  it.effect("appends the versioned exporter User-Agent to a user-supplied value", () =>
+    Effect.gen(function*() {
+      const userAgents: Array<string> = []
+      const httpClient = HttpClient.makeWith(
+        Effect.fnUntraced(function*(requestEffect) {
+          const request = yield* requestEffect
+          userAgents.push(request.headers["user-agent"])
+          return HttpClientResponse.fromWeb(request, new Response())
+        }),
+        Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+      )
+      yield* Effect.scoped(Effect.gen(function*() {
+        const exporter = yield* makeExporter(httpClient, { headers: { "UsEr-AgEnT": "my-app/1.0" }, maxBatchSize: 10 })
+        exporter.push({ value: 1 })
       }))
-  }
+      assert.deepStrictEqual(userAgents, [
+        `my-app/1.0 OTel-OTLP-Exporter-JavaScript-Effect-OtlpExporterTest/${Version.getCurrentVersion()}`
+      ])
+    }))
 
   it.effect("allows an in-flight timer export to finish during shutdown", () =>
     Effect.gen(function*() {

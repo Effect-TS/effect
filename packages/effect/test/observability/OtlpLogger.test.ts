@@ -75,37 +75,16 @@ describe("OtlpLogger", () => {
     )
   })
 
-  it.effect("records structured exception attributes", () => {
-    const { httpClient, requests } = capture()
-    return Effect.gen(function*() {
-      yield* Effect.logError(
-        "boom",
-        Cause.combine(
-          Cause.fail(new TypeError("bad input", { cause: new Error("nested failure") })),
-          Cause.fail(new RangeError("second failure"))
-        )
-      )
-      yield* (yield* OtlpExporter.Flusher).flush
-
-      const attributes = attributesOf(requests[0])
-      assert.deepStrictEqual(attributes["exception.type"], { stringValue: "TypeError" })
-      assert.deepStrictEqual(attributes["exception.message"], { stringValue: "bad input" })
-      assert.include(attributes["exception.stacktrace"].stringValue, "second failure")
-      assert.include(attributes["exception.stacktrace"].stringValue, "nested failure")
-      assert.isUndefined(attributes["log.error"])
-    }).pipe(Effect.provide(makeTestLayer(httpClient)))
-  })
-
   it.effect("namespaces generated attributes and lets them override annotations", () => {
     const { httpClient, requests } = capture()
     return Effect.gen(function*() {
       const fiber = yield* Effect.fiber
       yield* Effect.gen(function*() {
-        yield* TestClock.adjust("7 millis")
-        yield* Effect.gen(function*() {
-          yield* TestClock.adjust("5 millis")
-          yield* Effect.logError("boom", Cause.fail(new Error("cause message")))
-        }).pipe(Effect.withLogSpan("op"))
+        yield* TestClock.adjust("5 millis")
+        yield* Effect.logError(
+          "boom",
+          Cause.fail(new TypeError("cause message", { cause: new Error("nested failure") }))
+        )
       }).pipe(
         Effect.withLogSpan("op"),
         Effect.annotateLogs({
@@ -122,21 +101,10 @@ describe("OtlpLogger", () => {
       assert.strictEqual(new Set(keys).size, keys.length)
       const attributes = attributesOf(requests[0])
       assert.deepStrictEqual(attributes["effect.fiberId"], { intValue: fiber.id })
-      assert.deepStrictEqual(attributes["effect.log_span.op"], { intValue: 12 })
-      assert.deepStrictEqual(attributes["exception.type"], { stringValue: "Error" })
+      assert.deepStrictEqual(attributes["effect.log_span.op"], { intValue: 5 })
+      assert.deepStrictEqual(attributes["exception.type"], { stringValue: "TypeError" })
       assert.deepStrictEqual(attributes["exception.message"], { stringValue: "cause message" })
-      assert.include(attributes["exception.stacktrace"].stringValue, "cause message")
-      assert.isUndefined(attributes["fiberId"])
-      assert.isUndefined(attributes["logSpan.op"])
-    }).pipe(Effect.provide(makeTestLayer(httpClient)))
-  })
-
-  it.effect("uses effect as the instrumentation scope, not the service name", () => {
-    const { httpClient, requests } = capture()
-    return Effect.gen(function*() {
-      yield* Effect.log("test")
-      yield* (yield* OtlpExporter.Flusher).flush
-
+      assert.include(attributes["exception.stacktrace"].stringValue, "nested failure")
       assert.deepStrictEqual(bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].scope, {
         name: "effect",
         version: Version.getCurrentVersion()

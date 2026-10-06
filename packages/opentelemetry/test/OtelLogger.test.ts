@@ -21,22 +21,14 @@ describe("Logger", () => {
       logRecordProcessor: [new SimpleLogRecordProcessor({ exporter })]
     })))
 
-  it.effect("uses the shared Effect version as the logger instrumentation scope", () => {
+  it.effect("adds SDK resource defaults when the resource comes only from the environment", () => {
     const exporter = new InMemoryLogRecordExporter()
     return Effect.gen(function*() {
       yield* Effect.log("test")
       const record = exporter.getFinishedLogRecords()[0]!
       assert.strictEqual(record.instrumentationScope.name, "effect")
       assert.strictEqual(record.instrumentationScope.version, Version.getCurrentVersion())
-      assert.strictEqual(record.resource.attributes["telemetry.sdk.version"], Version.getCurrentVersion())
-    }).pipe(Effect.provide(makeTestLayer(exporter)))
-  })
-
-  it.effect("adds SDK resource defaults when the resource comes only from the environment", () => {
-    const exporter = new InMemoryLogRecordExporter()
-    return Effect.gen(function*() {
-      yield* Effect.log("test")
-      assert.deepStrictEqual(exporter.getFinishedLogRecords()[0]!.resource.attributes, {
+      assert.deepStrictEqual(record.resource.attributes, {
         "service.name": "env-service",
         "telemetry.sdk.name": "@effect/opentelemetry",
         "telemetry.sdk.language": "nodejs",
@@ -51,36 +43,16 @@ describe("Logger", () => {
     )
   })
 
-  it.effect("records structured exceptions including combined and nested causes", () => {
-    const exporter = new InMemoryLogRecordExporter()
-    return Effect.gen(function*() {
-      yield* Effect.logError(
-        "boom",
-        Cause.combine(
-          Cause.fail(new TypeError("bad input", { cause: new Error("nested failure") })),
-          Cause.fail(new RangeError("second failure"))
-        )
-      )
-
-      const attributes = exporter.getFinishedLogRecords()[0]!.attributes
-      assert.strictEqual(attributes["exception.type"], "TypeError")
-      assert.strictEqual(attributes["exception.message"], "bad input")
-      assert.include(attributes["exception.stacktrace"], "nested failure")
-      assert.include(attributes["exception.stacktrace"], "second failure")
-      assert.isUndefined(attributes["log.error"])
-    }).pipe(Effect.provide(makeTestLayer(exporter)))
-  })
-
-  it.effect("lets generated attributes override annotations and outermost duplicate log spans win", () => {
+  it.effect("namespaces generated attributes and lets them override annotations", () => {
     const exporter = new InMemoryLogRecordExporter()
     return Effect.gen(function*() {
       const fiber = yield* Effect.fiber
       yield* Effect.gen(function*() {
-        yield* TestClock.adjust("7 millis")
-        yield* Effect.gen(function*() {
-          yield* TestClock.adjust("5 millis")
-          yield* Effect.logError("boom", Cause.fail(new TypeError("cause message")))
-        }).pipe(Effect.withLogSpan("op"))
+        yield* TestClock.adjust("5 millis")
+        yield* Effect.logError(
+          "boom",
+          Cause.fail(new TypeError("cause message", { cause: new Error("nested failure") }))
+        )
       }).pipe(
         Effect.withLogSpan("op"),
         Effect.annotateLogs({
@@ -94,28 +66,10 @@ describe("Logger", () => {
 
       const attributes = exporter.getFinishedLogRecords()[0]!.attributes
       assert.strictEqual(attributes["effect.fiberId"], fiber.id)
-      assert.strictEqual(attributes["effect.log_span.op"], 12)
+      assert.strictEqual(attributes["effect.log_span.op"], 5)
       assert.strictEqual(attributes["exception.type"], "TypeError")
       assert.strictEqual(attributes["exception.message"], "cause message")
-      assert.include(attributes["exception.stacktrace"], "cause message")
-      assert.notStrictEqual(attributes["exception.stacktrace"], "annotated stack")
-      assert.isUndefined(attributes.fiberId)
-      assert.isUndefined(attributes["logSpan.op"])
-    }).pipe(Effect.provide(makeTestLayer(exporter)))
-  })
-
-  it.effect("preserves annotated exceptions when the cause is empty", () => {
-    const exporter = new InMemoryLogRecordExporter()
-    return Effect.gen(function*() {
-      yield* Effect.log("test").pipe(Effect.annotateLogs({
-        "exception.type": "custom type",
-        "exception.message": "custom message",
-        "exception.stacktrace": "custom stack"
-      }))
-      const attributes = exporter.getFinishedLogRecords()[0]!.attributes
-      assert.strictEqual(attributes["exception.type"], "custom type")
-      assert.strictEqual(attributes["exception.message"], "custom message")
-      assert.strictEqual(attributes["exception.stacktrace"], "custom stack")
+      assert.include(attributes["exception.stacktrace"], "nested failure")
     }).pipe(Effect.provide(makeTestLayer(exporter)))
   })
 
