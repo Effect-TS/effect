@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
 
@@ -6,7 +7,7 @@ export const deliveryKey = (eventName, event) =>
   `${event.repository.full_name}:${eventName}:${event.comment.id}`
 
 export async function relayComment(options) {
-  const { eventName, event, githubToken, webhookUrl } = options
+  const { eventName, event, githubToken, webhookUrl, webhookSecret } = options
   const fetch = options.fetch ?? globalThis.fetch
   const matches = options.isCommand ?? isCommand
   const keyFor = options.deliveryKey ?? deliveryKey
@@ -23,7 +24,9 @@ export async function relayComment(options) {
     !Number.isSafeInteger(number) || number <= 0 ||
     !Number.isSafeInteger(comment.id) || comment.id <= 0 ||
     typeof comment.html_url !== "string") throw new Error("Malformed comment event")
-  if (!githubToken || !webhookUrl) throw new Error("Missing relay configuration")
+  if (!githubToken || !webhookUrl || typeof webhookSecret !== "string" || !webhookSecret) {
+    throw new Error("Missing relay configuration")
+  }
   const endpoint = new URL(webhookUrl)
   if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password) {
     throw new Error("Webhook must be an HTTPS URL without credentials")
@@ -59,6 +62,7 @@ export async function relayComment(options) {
     author
   }
   const body = JSON.stringify(payload)
+  const signature = `sha256=${createHmac("sha256", webhookSecret).update(body, "utf8").digest("hex")}`
   const key = keyFor(eventName, event)
   if (typeof key !== "string" || !key || /[\r\n]/u.test(key)) throw new Error("Invalid delivery key")
   const response = await request(webhookUrl, {
@@ -66,7 +70,8 @@ export async function relayComment(options) {
     headers: {
       "Content-Type": "application/json",
       "X-GitHub-Event": eventName,
-      "X-GitHub-Delivery": key
+      "X-GitHub-Delivery": key,
+      "X-Hub-Signature-256": signature
     },
     body
   })
@@ -98,9 +103,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const result = await relayComment({
       eventName: process.env.GITHUB_EVENT_NAME, event,
       githubToken: process.env.GITHUB_TOKEN,
-      webhookUrl: process.env.MULTICA_EFFECT_BOT_WEBHOOK_URL
+      webhookUrl: process.env.MULTICA_EFFECT_BOT_WEBHOOK_URL,
+      webhookSecret: process.env.MULTICA_EFFECT_BOT_WEBHOOK_SECRET
     })
-    // Never log the body, credentials, endpoint, or raw remote errors.
+    // Never log the body, credentials, signature, endpoint, or raw remote errors.
     console.log(`Effect bot relay: ${result.status}${result.reactionFailed ? " (reaction failed)" : ""}`)
     if (["ignored", "skipped"].includes(result.status)) process.exitCode = 1
   } catch {

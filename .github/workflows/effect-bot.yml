@@ -36,3 +36,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MULTICA_EFFECT_BOT_WEBHOOK_URL: ${{ secrets.MULTICA_EFFECT_BOT_WEBHOOK_URL }}
+          MULTICA_EFFECT_BOT_WEBHOOK_SECRET: ${{ secrets.MULTICA_EFFECT_BOT_WEBHOOK_SECRET }}
