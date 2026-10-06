@@ -2622,7 +2622,8 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
  * **Details**
  *
  * The key identifies the atom in dehydrated state, and the encode/decode
- * functions convert between the atom value and its JSON encoding.
+ * functions convert between the atom value and its JSON representation, as
+ * produced by the schema's JSON codec (`Schema.toCodecJson`).
  *
  * @stability unstable
  * @category models
