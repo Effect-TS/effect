@@ -71,7 +71,16 @@ const responseStatuses = new WeakMap<object, number>()
 
 /**
  * Records a status already sent by the transport, such as a successful upgrade.
- * @internal
+ *
+ * **When to use**
+ *
+ * Use in HTTP server adapters after committing a response outside the normal
+ * response path. Pass the request's `source` so modified request views share
+ * the status used by request logging.
+ *
+ * @stability unstable
+ * @category utilities
+ * @since 4.0.0
  */
 export const setResponseStatusUnsafe = (source: object, status: number): void => {
   responseStatuses.set(source, status)
