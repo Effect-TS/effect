@@ -730,6 +730,31 @@ describe("DenoHttpServer", () => {
       assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
+  it.effect("logs status 101 for a WebSocket upgraded through a prefixed route", () =>
+    Effect.gen(function*() {
+      const logged = Promise.withResolvers<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") logged.resolve(annotations["http.status"])
+      })
+      yield* HttpRouter.use((router) =>
+        router.prefixed("/ws").add(
+          "GET",
+          "/",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            yield* echoWebSocket(yield* request.upgrade)
+            return HttpServerResponse.empty()
+          })
+        )
+      ).pipe(HttpRouter.serve, Layer.provide(Logger.layer([logger])), Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/ws`, (socket) => socket.send("hello"), 1)
+      assert.deepStrictEqual(messages, ["hello"])
+      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
   it.effect("preserves eager WebSocket frames across an async boundary", () =>
     Effect.gen(function*() {
       yield* serveWebSocket((socket) =>

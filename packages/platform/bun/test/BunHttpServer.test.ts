@@ -7,6 +7,7 @@ import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServer from "effect/http/HttpServer"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
@@ -24,7 +25,7 @@ import { join } from "node:path"
 const fetchText = (url: string) =>
   Effect.promise(() => fetch(url, { headers: { connection: "close" } }).then((response) => response.text()))
 
-const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>) =>
+const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>, path = "/") =>
   Effect.callback<number, Error>((resume) => {
     const socket = Net.createConnection({ host: "127.0.0.1", port })
     let received = Buffer.alloc(0)
@@ -35,7 +36,7 @@ const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>) =>
     })
     socket.on("connect", () =>
       socket.write([
-        "GET / HTTP/1.1",
+        `GET ${path} HTTP/1.1`,
         "Host: 127.0.0.1:" + port,
         "Connection: Upgrade",
         "Upgrade: websocket",
@@ -65,6 +66,27 @@ const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>) =>
     })
     return Effect.sync(() => socket.destroy())
   })
+
+// Force-stop Bun after the close frame; graceful stop can hang here.
+const makeForceStoppableServer = Effect.gen(function*() {
+  const serve = Bun.serve
+  let forceStop: (() => void) | undefined
+  Bun.serve = ((options: Parameters<typeof Bun.serve>[0]) => {
+    const bunServer = serve(options)
+    forceStop = () => {
+      bunServer.stop(true)
+    }
+    return bunServer
+  }) as typeof Bun.serve
+  const server = yield* BunHttpServer.make({
+    hostname: "127.0.0.1",
+    port: 0,
+    gracefulShutdownTimeout: "100 millis"
+  }).pipe(Effect.ensuring(Effect.sync(() => {
+    Bun.serve = serve
+  })))
+  return { server, forceStop: () => forceStop?.() }
+})
 
 interface WebSocketFrame {
   readonly opcode: number
@@ -424,23 +446,7 @@ describe("BunHttpServer", () => {
           const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
           if (annotations["http.url"] === "/") logged.resolve(annotations["http.status"])
         })
-        // Force-stop Bun after the close frame; graceful stop can hang here.
-        const serve = Bun.serve
-        let forceStop: (() => void) | undefined
-        Bun.serve = ((options: Parameters<typeof Bun.serve>[0]) => {
-          const bunServer = serve(options)
-          forceStop = () => {
-            bunServer.stop(true)
-          }
-          return bunServer
-        }) as typeof Bun.serve
-        const server = yield* BunHttpServer.make({
-          hostname: "127.0.0.1",
-          port: 0,
-          gracefulShutdownTimeout: "100 millis"
-        }).pipe(Effect.ensuring(Effect.sync(() => {
-          Bun.serve = serve
-        })))
+        const { forceStop, server } = yield* makeForceStoppableServer
         yield* server.serve(
           Effect.gen(function*() {
             const request = yield* HttpServerRequest.HttpServerRequest
@@ -459,14 +465,46 @@ describe("BunHttpServer", () => {
           }),
           HttpMiddleware.logger
         ).pipe(Effect.provide(Logger.layer([logger])))
-        yield* Effect.addFinalizer(() => Effect.sync(() => forceStop?.()))
+        yield* Effect.addFinalizer(() => Effect.sync(forceStop))
         const port = (server.address as NetAddress.InetAddress).port
         const actual = yield* readWebSocketClose(port, opened)
-        forceStop?.()
+        forceStop()
         assert.strictEqual(actual, code)
         if (exit === "success") assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
       }).pipe(Effect.timeout("5 seconds")), 10000)
   }
+
+  it.effect("logs status 101 for a WebSocket upgraded through a prefixed route", () =>
+    Effect.gen(function*() {
+      const opened = yield* Deferred.make<void>()
+      const logged = Promise.withResolvers<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") logged.resolve(annotations["http.status"])
+      })
+      const app = yield* HttpRouter.toHttpEffect(HttpRouter.use((router) =>
+        router.prefixed("/ws").add(
+          "GET",
+          "/",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            const readerScope = yield* Scope.fork(yield* Effect.scope)
+            yield* socket.reader.pipe(Scope.provide(readerScope))
+            yield* Deferred.await(opened)
+            return HttpServerResponse.empty()
+          })
+        )
+      ))
+      const { forceStop, server } = yield* makeForceStoppableServer
+      yield* server.serve(app, HttpMiddleware.logger).pipe(Effect.provide(Logger.layer([logger])))
+      yield* Effect.addFinalizer(() => Effect.sync(forceStop))
+      const port = (server.address as NetAddress.InetAddress).port
+      const actual = yield* readWebSocketClose(port, opened, "/ws")
+      forceStop()
+      assert.strictEqual(actual, 1000)
+      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+    }).pipe(Effect.timeout("5 seconds")), 10000)
 
   it.effect("fails a concurrent reader waiting behind a closed reader", () =>
     Effect.gen(function*() {
