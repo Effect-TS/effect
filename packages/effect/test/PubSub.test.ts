@@ -951,7 +951,7 @@ describe("PubSub", () => {
         assert.strictEqual(yield* PubSub.take(subscription), 0)
       }))
 
-    it.effect("rejects a masked publish without delivering surplus while custom removal is pending", () =>
+    it.effect("rejects a masked publish while custom removal and take registration are pending", () =>
       Effect.gen(function*() {
         const cleanupStarted = yield* Latch.make()
         const finishCleanup = yield* Latch.make()
@@ -978,17 +978,21 @@ describe("PubSub", () => {
             }()
         })
         const subscription = yield* PubSub.subscribe(pubsub)
-        yield* PubSub.publish(pubsub, 1)
+        // Yield after the empty check, before the take callback runs.
+        const taker = yield* Effect.forkChild(
+          PubSub.take(subscription).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 3)),
+          { startImmediately: true }
+        )
+        PubSub.publishUnsafe(pubsub, 1)
         const publisher = yield* Effect.forkChild(Effect.uninterruptible(PubSub.publish(pubsub, 2)), {
           startImmediately: true
         })
-        yield* Effect.yieldNow
         assert.isUndefined(publisher.pollUnsafe())
 
-        yield* PubSub.end(pubsub, 0)
+        PubSub.endUnsafe(pubsub, 0)
         yield* cleanupStarted.await
         const pending = publisher.pollUnsafe()
-        const first = yield* PubSub.take(subscription)
+        const first = yield* Fiber.join(taker)
         const second = yield* PubSub.take(subscription)
         yield* finishCleanup.open
 
