@@ -1,4 +1,5 @@
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arbitrary from "effect/Arbitrary"
@@ -25,6 +26,7 @@ export * from "vitest"
 export type API = V.TestAPI<{}>
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export namespace Vitest {
@@ -188,16 +190,19 @@ export namespace Vitest {
 }
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export const addEqualityTesters: () => void = internal.addEqualityTesters
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export const effect: Vitest.Tester<Scope.Scope> = internal.effect
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export const live: Vitest.Tester<Scope.Scope> = internal.live
@@ -210,6 +215,7 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * Anonymous layers always inherit the enclosing suite's concurrency.
  * Use `ctx.expect` in concurrent tests for test-local snapshots and assertion counts.
  *
+ * @stability unstable
  * @since 4.0.0
  *
  * ```ts
@@ -260,6 +266,7 @@ export const layer: <R, E>(
 } = internal.layer
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export const flakyTest: <A, E, R>(
@@ -268,6 +275,7 @@ export const flakyTest: <A, E, R>(
 ) => Effect.Effect<A, never, R> = internal.flakyTest
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export const prop: Vitest.Methods["prop"] = internal.prop
@@ -277,6 +285,7 @@ export const prop: Vitest.Methods["prop"] = internal.prop
  */
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export const it: Vitest.Methods = internal.it
@@ -312,12 +321,14 @@ export const it: Vitest.Methods = internal.it
  *   }))
  * ```
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export const makeMethods: <ExtraContext>(it: V.TestAPI<ExtraContext>) => Vitest.Methods<never, ExtraContext> =
   internal.makeMethods
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export const describeWrapped: (name: string, f: (it: Vitest.Methods) => void) => V.SuiteCollector =

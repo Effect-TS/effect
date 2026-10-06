@@ -6,6 +6,7 @@
  * It also provides Bun WebSocket layers using `globalThis.WebSocket`, including
  * a constructor layer and a `Socket.Socket` layer for a WebSocket URL.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Duration from "effect/Duration"
@@ -23,6 +24,7 @@ export * from "@effect/platform-node-shared/NodeSocket"
  * Provides a `Socket.WebSocketConstructor` backed by Bun's global
  * `WebSocket` implementation.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -40,6 +42,7 @@ export const layerWebSocketConstructor: Layer.Layer<
  * `WebSocket` constructor, honoring protocol, open-timeout, and
  * high-water-mark options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

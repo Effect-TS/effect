@@ -9,6 +9,7 @@
  * typed headers, remote address lookup, stream access, and text, JSON,
  * URL-encoded, and array-buffer body readers.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -35,6 +36,7 @@ import * as NodeStream from "./NodeStream.ts"
  * The adapter exposes headers, remote address, stream access, and cached body
  * decoders. Subclasses provide the error mapping for unknown Node errors.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

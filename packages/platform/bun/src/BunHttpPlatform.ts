@@ -7,6 +7,7 @@
  * provides the Bun file-system layer and ETag generator required by
  * `HttpPlatform`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
@@ -60,6 +61,7 @@ const make: Effect.Effect<
 /**
  * Layer that provides the Bun `HttpPlatform`, including file responses backed by `Bun.file`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

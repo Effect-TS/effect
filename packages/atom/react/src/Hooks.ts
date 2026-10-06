@@ -4,6 +4,7 @@
  * `AsyncResult` atoms with React Suspense, and expose helpers for reading and
  * deriving `AtomRef` values.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 "use client"
@@ -72,6 +73,7 @@ const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Ato
  * Each atom is initialized at most once for a given registry by this hook, so
  * later calls for the same atom in that registry are ignored.
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -107,6 +109,7 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  * @see {@link useAtom} for reading and updating a writable atom from one component
  * @see {@link useAtomRef} for reading an `AtomRef` directly
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -179,6 +182,7 @@ const flattenExit = <A, E>(exit: Exit.Exit<A, E>): A => {
  * @see {@link useAtomSet} for mounting a writable atom while returning a setter
  * @see {@link useAtomRefresh} for mounting an atom while returning a refresh callback
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -203,6 +207,7 @@ export const useAtomMount = <A>(atom: Atom.Atom<A>): void => {
  *
  * @see {@link useAtom} for reading and updating the same writable atom
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -244,6 +249,7 @@ export const useAtomSet = <
  *
  * @see {@link useAtomMount} for mounting an atom without returning a refresh callback
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -267,6 +273,7 @@ export const useAtomRefresh = <A>(atom: Atom.Atom<A>): () => void => {
  * @see {@link useAtomValue} for subscribing to an atom without a setter
  * @see {@link useAtomSet} for updating a writable atom without subscribing to its value
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -365,6 +372,7 @@ function atomResultOrSuspend<A, E>(
  *
  * @see {@link useAtomValue} for reading the raw `AsyncResult` value without Suspense
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -400,6 +408,7 @@ export const useAtomSuspense = <A, E, const IncludeFailure extends boolean = fal
  *
  * @see {@link useAtomValue} for reading an atom value during render instead of running a callback
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -431,6 +440,7 @@ export const useAtomSubscribe = <A>(
  * @see {@link useAtomValue} for reading an `Atom` from the current registry
  * @see {@link useAtomRefPropValue} for reading a property ref value
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -456,6 +466,7 @@ export const useAtomRef = <A>(ref: AtomRef.ReadonlyRef<A>): A => {
  * @see {@link useAtomRef} for subscribing to an atom ref value
  * @see {@link useAtomRefPropValue} for subscribing directly to a property value
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */
@@ -480,6 +491,7 @@ export const useAtomRefProp = <A, K extends keyof A>(ref: AtomRef.AtomRef<A>, pr
  * @see {@link useAtomRefProp} for returning the property ref directly
  * @see {@link useAtomRef} for subscribing to a whole atom ref value
  *
+ * @stability unstable
  * @category hooks
  * @since 4.0.0
  */

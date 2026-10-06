@@ -1,6 +1,7 @@
 /**
  * Native Deno implementation of the Effect `HttpServer`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "effect/Config"
@@ -51,6 +52,7 @@ import * as DenoServices from "./DenoServices.ts"
  * WebSocket settings that apply to every upgrade; `protocol` therefore cannot
  * vary per request.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -61,6 +63,7 @@ export type ServeOptions =
 /**
  * Creates a scoped native Deno HTTP server.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -207,6 +210,7 @@ const makeResponse = Effect.fnUntraced(function*(
 /**
  * Provides only the native Deno HTTP server.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -224,6 +228,7 @@ export const layerServer: (
 /**
  * Provides Deno HTTP platform services and the standard Deno service set.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -236,6 +241,7 @@ export const layerHttpServices: Layer.Layer<HttpPlatform | Etag.Generator | Deno
 /**
  * Provides a native Deno HTTP server together with Deno HTTP services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -251,6 +257,7 @@ export const layer = (
 /**
  * Starts a Deno HTTP server on an ephemeral loopback port for tests.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -266,6 +273,7 @@ export const layerTest: Layer.Layer<
 /**
  * Creates the Deno HTTP server and support-services layer from configurable options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

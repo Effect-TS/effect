@@ -16,7 +16,7 @@
   ],
   "output": ".data/jsdocs.json",
   "requireStability": [
-    "packages/effect/src/*.ts",
-    "packages/effect/src/**/*.ts"
+    "packages/**/src/*.ts",
+    "packages/**/src/**/*.ts"
   ]
 }

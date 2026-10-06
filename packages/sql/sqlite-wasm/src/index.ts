@@ -1,4 +1,5 @@
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as OpfsWorker from "./OpfsWorker.ts"

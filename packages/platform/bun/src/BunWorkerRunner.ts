@@ -7,6 +7,7 @@
  * responses through the worker `postMessage` channel, and closes when the
  * parent sends the close message.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -27,6 +28,7 @@ declare const self: MessagePort
  * routing parent messages to the registered handler and sending responses back
  * through the worker port.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

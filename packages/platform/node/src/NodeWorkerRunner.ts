@@ -8,6 +8,7 @@
  * `WorkerRunner`, sends replies over the same channel, and closes when the
  * parent sends the close message.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -26,6 +27,7 @@ import * as WorkerThreads from "node:worker_threads"
  * thread or child process, routing parent messages to the registered handler
  * and sending responses back through the parent channel.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

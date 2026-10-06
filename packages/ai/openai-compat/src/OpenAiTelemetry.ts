@@ -4,6 +4,7 @@
  * telemetry attributes and adds request and response metadata under the
  * `gen_ai.openai.*` OpenTelemetry namespaces.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Telemetry from "effect/ai/Telemetry"
@@ -22,6 +23,7 @@ import type { Simplify } from "effect/Types"
  * conventions:
  * https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -35,6 +37,7 @@ export type OpenAiTelemetryAttributes = Simplify<
  * All telemetry attributes which are part of the GenAI specification,
  * including the OpenAI-specific attributes.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -44,6 +47,7 @@ export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & Respon
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.openai.request`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -62,6 +66,7 @@ export interface RequestAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.openai.response`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -86,6 +91,7 @@ export interface ResponseAttributes {
  * If one of them applies, then the respective value **MUST** be used;
  * otherwise, a custom value **MAY** be used.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -100,6 +106,7 @@ export type WellKnownResponseFormat = "json_object" | "json_schema" | "text"
  * If one of them applies, then the respective value **MUST** be used;
  * otherwise, a custom value **MAY** be used.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -109,6 +116,7 @@ export type WellKnownServiceTier = "auto" | "default"
  * Options accepted by `addGenAIAnnotations`, combining standard GenAI telemetry
  * attributes with optional OpenAI-compatible request and response attributes.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -145,6 +153,7 @@ const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("gen_ai.openai.r
  *
  * Mutates the supplied `Span` in place.
  *
+ * @stability unstable
  * @category tracing
  * @since 4.0.0
  */
