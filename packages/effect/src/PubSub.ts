@@ -2505,7 +2505,7 @@ const onPubSubEmptySpaceUnsafe = <A>(
 }
 
 const handleSurplus = <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect<boolean> => {
-  const effect = self.strategy.handleSurplus(self.pubsub, self.subscribers, elements, self.shutdownFlag)
+  const effect = self.strategy.handleSurplus(self.pubsub, self.subscribers, elements, self.shutdownFlag, self.ended)
   if (
     isBackPressureStrategy(self.strategy) ||
     (Object.getPrototypeOf(self.strategy) === DroppingStrategy.prototype &&
@@ -2724,7 +2724,8 @@ export class DroppingStrategy<in out A> implements PubSub.Strategy<A> {
     _pubsub: PubSub.Atomic<A>,
     _subscribers: PubSub.Subscribers<A>,
     _elements: Iterable<A>,
-    _isShutdown: MutableRef.MutableRef<boolean>
+    _isShutdown: MutableRef.MutableRef<boolean>,
+    _ended: MutableRef.MutableRef<Option.Option<A>>
   ): Effect.Effect<boolean> {
     return Effect.succeed(false)
   }
