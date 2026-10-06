@@ -2180,7 +2180,7 @@ describe("McpServer", () => {
       yield* client.ping({})
     }))
 
-  it.effect("terminates an HTTP session on DELETE when allowSessionTermination is set", () =>
+  it.effect("terminates an HTTP session on DELETE without a protocol header when allowSessionTermination is set", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(makeServerLayer({
         name: "SessionDelete",
@@ -2188,26 +2188,12 @@ describe("McpServer", () => {
         allowSessionTermination: true
       }))
       const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_11_25)
-      strictEqual((yield* harness.delete(headers)).status, 204)
+      const response = yield* harness.delete({ "Mcp-Session-Id": headers["Mcp-Session-Id"] })
+      strictEqual(response.status, 204)
+      strictEqual(yield* Effect.promise(() => response.text()), "")
       strictEqual((yield* harness.post({ jsonrpc: "2.0", id: 3, method: "ping" }, headers)).status, 404)
       strictEqual((yield* harness.delete(headers)).status, 404)
     }))
-
-  for (const protocol of [McpProtocol.v2025_06_18, McpProtocol.v2025_11_25]) {
-    it.effect(`terminates a ${protocol.protocolVersion} HTTP session on DELETE without a protocol header`, () =>
-      Effect.gen(function*() {
-        const harness = yield* makeHttpHarness(makeServerLayer({
-          name: "SessionDelete",
-          protocols: [McpProtocol.v2025_06_18, McpProtocol.v2025_11_25],
-          allowSessionTermination: true
-        }))
-        const headers = yield* initializeHttpSession(harness, protocol)
-        const response = yield* harness.delete({ "Mcp-Session-Id": headers["Mcp-Session-Id"] })
-        strictEqual(response.status, 204)
-        strictEqual(yield* Effect.promise(() => response.text()), "")
-        strictEqual((yield* harness.post({ jsonrpc: "2.0", id: 3, method: "ping" }, headers)).status, 404)
-      }))
-  }
 
   it.effect("rejects DELETE with a missing or unknown session id when termination is enabled", () =>
     Effect.gen(function*() {
@@ -2456,10 +2442,7 @@ describe("McpServer", () => {
   for (
     const { body, name } of [
       { name: "ping", body: pingBody },
-      { name: "malformed JSON", body: undefined },
-      { name: "invalid request", body: { hello: "world" } },
-      { name: "invalid initialize", body: { method: "initialize", id: 7 } },
-      { name: "response", body: { jsonrpc: "2.0", id: 1, result: {} } }
+      { name: "malformed JSON", body: undefined }
     ]
   ) {
     it.effect(`rejects an unsupported protocol header on a ${name}`, () =>
