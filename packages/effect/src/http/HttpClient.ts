@@ -1742,7 +1742,8 @@ const responseRegistry = (() => {
     }
   }
 
-  const timers = new Map<HttpClientResponse.HttpClientResponse, any>()
+  // Weak keys, so the registry never keeps an unread response alive
+  const timers = new WeakMap<HttpClientResponse.HttpClientResponse, any>()
   return {
     register(response: HttpClientResponse.HttpClientResponse, controller: AbortController) {
       timers.set(response, setTimeout(() => controller.abort(), 5000))
