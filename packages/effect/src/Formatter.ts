@@ -318,11 +318,6 @@ export function formatJson(input: unknown, options?: {
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }
-      // JSON.stringify unboxes these by internal slot, which a proxy loses.
-      // Check after redaction and leave native coercion to JSON.stringify.
-      if (isJsonPrimitiveWrapper(redacted)) {
-        return redacted
-      }
       const current = redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")
         ? { ...redacted, name: redacted.name, message: redacted.message }
         : redacted
@@ -336,14 +331,17 @@ export function formatJson(input: unknown, options?: {
       if (current !== redacted) {
         ancestors.push(current)
       }
-      // Redact accessor results on the same read JSON.stringify uses, before
-      // it can call toJSON. Re-reading a getter in the replacer could return
-      // a different value or repeat side effects. Data properties stay intact.
+      if (!hasGetter(current)) {
+        return current
+      }
+      // JSON.stringify reads a getter once, then calls toJSON on the result
+      // before the replacer sees it. Intercept that read to redact the value
+      // first, instead of re-reading the getter in the replacer, which could
+      // repeat side effects or return a different value.
       const serialized = new Proxy(current, {
         get(target, key) {
-          const descriptor = Object.getOwnPropertyDescriptor(target, key)
           const value = Reflect.get(target, key, target)
-          return descriptor && !("value" in descriptor) ? redact(value) : value
+          return Object.getOwnPropertyDescriptor(target, key)?.get !== undefined ? redact(value) : value
         }
       })
       ancestors.push(serialized)
@@ -353,17 +351,10 @@ export function formatJson(input: unknown, options?: {
   ) ?? "null"
 }
 
-const jsonPrimitiveValueOf = [Number.prototype.valueOf, Boolean.prototype.valueOf, String.prototype.valueOf]
-
-function isJsonPrimitiveWrapper(value: object): boolean {
-  for (const valueOf of jsonPrimitiveValueOf) {
-    try {
-      // Intrinsics check internal slots without calling user-defined valueOf
-      // or trusting the prototype chain or Symbol.toStringTag.
-      Reflect.apply(valueOf, value, [])
+function hasGetter(object: object): boolean {
+  for (const key of Object.keys(object)) {
+    if (Object.getOwnPropertyDescriptor(object, key)?.get !== undefined) {
       return true
-    } catch {
-      // Not a wrapper of this type.
     }
   }
   return false
