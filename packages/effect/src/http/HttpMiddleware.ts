@@ -195,6 +195,15 @@ export const isTracerDisabledUnsafe = (
   request: HttpServerRequest
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
+// OpenTelemetry requires failed server spans for 5xx responses.
+const responseSpanExit = (
+  request: HttpServerRequest,
+  response: HttpServerResponse
+): Exit.Exit<HttpServerResponse, HttpServerError> =>
+  response.status >= 500 && response.status < 600
+    ? Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
+    : Exit.succeed(response)
+
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
@@ -220,27 +229,21 @@ export const tracer: <E, R>(
     internalEffect.onExitUnsafe<HttpServerResponse, unknown>(fiber, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
-      if (
-        Exit.isSuccess(exit) && (exit.value.status < 500 || exit.value.status >= 600) &&
-        (!span.sampled || fiber.getRef(Tracer) === nativeTracer)
-      ) {
-        span.end(endTime, exit)
+      if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
+        span.end(endTime, responseSpanExit(request, exit.value))
         return undefined
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       fiber.currentDispatcher.scheduleTask(() => {
         let response: HttpServerResponse
-        let spanExit = exit
+        let spanExit: Exit.Exit<HttpServerResponse, unknown>
         if (Exit.isFailure(exit)) {
           const [failureResponse, cause] = causeResponseStripped(exit.cause)
           response = failureResponse
-          spanExit = Option.isSome(cause) ? Exit.failCause(cause.value) : Exit.succeed(response)
+          spanExit = Option.isSome(cause) ? Exit.failCause(cause.value) : responseSpanExit(request, response)
         } else {
           response = exit.value
-        }
-        // OpenTelemetry requires failed server spans for 5xx responses.
-        if (Exit.isSuccess(spanExit) && response.status >= 500 && response.status < 600) {
-          spanExit = Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
+          spanExit = responseSpanExit(request, response)
         }
         if (span.sampled) {
           span.attribute("http.request.method", request.method)
