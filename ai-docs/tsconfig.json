@@ -16,7 +16,8 @@
         "namespaceImportPackages": [],
         "diagnosticSeverity": {
           "floatingEffect": "off",
-          "preferSchemaOverJson": "off"
+          "preferSchemaOverJson": "off",
+          "unstableApiUsage": "off"
         }
       }
     ]
