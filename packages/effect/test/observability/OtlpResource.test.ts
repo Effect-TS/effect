@@ -144,9 +144,23 @@ describe("OtlpResource", () => {
       Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
     ))
 
+  it("provides SDK defaults", () => {
+    assert.deepStrictEqual(attributesRecord(OtlpResource.make({ serviceName: "test" })), {
+      ...sdk,
+      "service.name": "test"
+    })
+  })
+
   it("lets custom attributes override the SDK defaults", () => {
-    const resource = OtlpResource.make({ serviceName: "svc", attributes: { "telemetry.sdk.name": "custom" } })
-    assert.strictEqual(attributesRecord(resource)["telemetry.sdk.name"], "custom")
+    const resource = OtlpResource.make({
+      serviceName: "test",
+      attributes: { "telemetry.sdk.name": "custom", "telemetry.sdk.language": "webjs" }
+    })
+    assert.deepStrictEqual(attributesRecord(resource), {
+      "service.name": "test",
+      "telemetry.sdk.name": "custom",
+      "telemetry.sdk.language": "webjs"
+    })
   })
 
   describe("unknownToAttributeValue", () => {
