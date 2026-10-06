@@ -179,9 +179,15 @@ export const useAtomInitialValues = (initialValues: Iterable<readonly [Atom.Atom
  *
  * During hydration, readers in a Suspense boundary that hydrates later use the
  * value that earlier readers of the same atom hydrated with, then update to the
- * live value. If the atom changes before any reader of it has hydrated, or a
- * derived atom is first read inside a later boundary, the client value can
- * still differ from the server HTML and React reports a hydration mismatch.
+ * live value. This only holds while at least one of those earlier readers stays
+ * mounted. Once the last one unmounts, later boundaries read the live value
+ * again.
+ *
+ * The client value can still differ from the server HTML, and React reports a
+ * hydration mismatch, if the atom changes before any reader of it has
+ * hydrated, if it changes and every earlier reader unmounts before a later
+ * boundary hydrates, or if a derived atom is first read inside a later
+ * boundary.
  *
  * @see {@link useAtom} for reading and updating a writable atom from one component
  * @see {@link useAtomRef} for reading an `AtomRef` directly
