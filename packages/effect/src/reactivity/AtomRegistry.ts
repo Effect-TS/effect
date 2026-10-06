@@ -72,6 +72,22 @@ export interface AtomRegistry {
   readonly schedulerAsync: Scheduler
   readonly getNodes: () => ReadonlyMap<Atom.Atom<any> | string, Node<any>>
   readonly get: <A>(atom: Atom.Atom<A>) => A
+  /**
+   * Returns an atom's value if the registry has it without computing the
+   * atom.
+   *
+   * **Details**
+   *
+   * The result is `Some` with the atom's current value, or with an initial
+   * value its first computation will keep. For an atom not computed yet, that
+   * includes a value given to it and held by its `initialValueTarget`. It is
+   * `None` when the atom has no such value, would need computing to produce
+   * one, or has a hydrated value waiting to be applied. It never adds the
+   * atom, computes it, or applies a hydrated value.
+   *
+   * @since 4.1.0
+   */
+  readonly peek: <A>(atom: Atom.Atom<A>) => Option.Option<A>
   readonly mount: <A>(atom: Atom.Atom<A>) => () => void
   /**
    * Keeps an atom in the registry, with any initial or hydrated value it
@@ -427,6 +443,21 @@ class RegistryImpl implements AtomRegistry {
 
   get<A>(atom: Atom.Atom<A>): A {
     return this.ensureNode(atom).value()
+  }
+
+  peek<A>(atom: Atom.Atom<A>): Option.Option<A> {
+    const key = atomKey(atom)
+    if (typeof key === "string" && this.preloadedSerializable.has(key)) {
+      return Option.none()
+    }
+    const node = this.nodes.get(key)
+    if (node !== undefined && (node.state & NodeFlags.initialized) !== 0) {
+      return node.state === NodeState.valid || node.preserveInitialValueOnBuild
+        ? Option.some(node._value)
+        : Option.none()
+    }
+    // a value given to a wrapper that has not been computed lives on its initialValueTarget
+    return atom.initialValueTarget !== undefined ? this.peek(atom.initialValueTarget) : Option.none()
   }
 
   set<R, W>(atom: Atom.Writable<R, W>, value: W): void {

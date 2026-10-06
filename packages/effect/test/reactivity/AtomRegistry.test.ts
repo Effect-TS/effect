@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
-import { Atom, AtomRegistry } from "effect/reactivity"
+import { Effect, Option, Schema } from "effect"
+import { Atom, AtomRegistry, Hydration } from "effect/reactivity"
 
 describe("AtomRegistry", () => {
   describe("setInitialValue", () => {
@@ -117,6 +117,86 @@ describe("AtomRegistry", () => {
 
       assert.strictEqual(r.get(wrapped), 10)
       release()
+      r.dispose()
+    })
+  })
+
+  describe("peek", () => {
+    it("returns None for an atom not in the registry, without adding it", () => {
+      const state = Atom.make(0)
+      const r = AtomRegistry.make()
+
+      assert.isTrue(Option.isNone(r.peek(state)))
+      assert.isFalse(r.getNodes().has(state))
+    })
+
+    it("returns an initial value without computing the atom", () => {
+      let computed = 0
+      const state = Atom.make(() => {
+        computed++
+        return 0
+      })
+      const r = AtomRegistry.make({ initialValues: [Atom.initialValue(state, 10)] })
+
+      assert.deepStrictEqual(r.peek(state), Option.some(10))
+      assert.strictEqual(computed, 0)
+    })
+
+    it("returns a value given to a wrapper that has not been computed", () => {
+      let computed = 0
+      const source = Atom.make(() => {
+        computed++
+        return 1
+      })
+      const wrapped = source.pipe(Atom.withReactivity(["key"]))
+      const r = AtomRegistry.make()
+      r.setInitialValue(wrapped, 10)
+
+      assert.deepStrictEqual(r.peek(wrapped), Option.some(10))
+      assert.strictEqual(computed, 0)
+    })
+
+    it("returns the current value of a computed atom", () => {
+      const state = Atom.make(1)
+      const r = AtomRegistry.make()
+      r.mount(state)
+
+      assert.deepStrictEqual(r.peek(state), Option.some(1))
+      r.set(state, 2)
+      assert.deepStrictEqual(r.peek(state), Option.some(2))
+      r.dispose()
+    })
+
+    it("returns None when the atom needs computing", () => {
+      const source = Atom.make(1)
+      const mapped = Atom.map(source, (n) => n + 1)
+      const r = AtomRegistry.make()
+      const release = r.retain(source)
+
+      assert.isTrue(Option.isNone(r.peek(source)))
+
+      assert.strictEqual(r.get(mapped), 2)
+      r.set(source, 2)
+      assert.isTrue(Option.isNone(r.peek(mapped)))
+      assert.strictEqual(r.get(mapped), 3)
+      release()
+      r.dispose()
+    })
+
+    it("returns None while a hydrated value waits to be applied", () => {
+      const state = Atom.make(0).pipe(Atom.serializable({ key: "peeked", schema: Schema.Number }))
+      const r = AtomRegistry.make()
+      r.mount(state)
+      Hydration.hydrate(r, [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "peeked",
+        value: 10,
+        dehydratedAt: 0
+      }] as Array<Hydration.DehydratedAtomValue>)
+
+      assert.isTrue(Option.isNone(r.peek(state)))
+      assert.strictEqual(r.get(state), 10)
+      assert.deepStrictEqual(r.peek(state), Option.some(10))
       r.dispose()
     })
   })
