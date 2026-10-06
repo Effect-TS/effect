@@ -665,12 +665,12 @@ const Proto = {
   )
 }
 
-const startSpan = (
+const setRequestAttributes = (
   fiber: Fiber.Fiber<unknown, unknown>,
+  span: Tracer.Span,
   request: HttpClientRequest.HttpClientRequest,
   url: URL
-): Tracer.Span => {
-  const span = internalEffect.makeSpanUnsafe(fiber, fiber.getRef(SpanNameGenerator)(request), { kind: "client" })
+): void => {
   tracing.setMethodAttributes(span, request.method)
   const hostname = url.hostname
   span.attribute("server.address", hostname.startsWith("[") ? hostname.slice(1, -1) : hostname)
@@ -684,7 +684,6 @@ const startSpan = (
     fiber.getRef(TracerHeaderFilter),
     fiber.getRef(Headers.CurrentRedactedNames)
   )
-  return span
 }
 
 // Client spans fail for 4xx and 5xx responses, while the caller still receives
@@ -696,35 +695,38 @@ const endSpan = (
   exit: Exit.Exit<HttpClientResponse.HttpClientResponse, unknown>
 ): void => {
   let spanExit: Exit.Exit<unknown, unknown> = exit
-  if (Exit.isSuccess(exit)) {
-    const response = exit.value
-    span.attribute("http.response.status_code", response.status)
-    tracing.setHeaderAttributes(
-      span,
-      "response",
-      response.headers,
-      fiber.getRef(TracerHeaderFilter),
-      fiber.getRef(Headers.CurrentRedactedNames)
-    )
-    if (response.status >= 400) {
-      span.attribute("error.type", String(response.status))
-      spanExit = Exit.fail(
-        tracing.withoutStackTrace(() =>
-          new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) })
+  try {
+    if (Exit.isSuccess(exit)) {
+      const response = exit.value
+      span.attribute("http.response.status_code", response.status)
+      if (response.status >= 400) {
+        span.attribute("error.type", String(response.status))
+        spanExit = Exit.fail(
+          tracing.withoutStackTrace(() =>
+            new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) })
+          )
         )
+      }
+      tracing.setHeaderAttributes(
+        span,
+        "response",
+        response.headers,
+        fiber.getRef(TracerHeaderFilter),
+        fiber.getRef(Headers.CurrentRedactedNames)
+      )
+    } else if (!Cause.hasInterruptsOnly(exit.cause)) {
+      const error = Cause.findErrorOption(exit.cause)
+      span.attribute(
+        "error.type",
+        Option.isSome(error) && Error.isHttpClientError(error.value) ? error.value.reason._tag : "_OTHER"
       )
     }
-  } else if (!Cause.hasInterruptsOnly(exit.cause)) {
-    const error = Cause.findErrorOption(exit.cause)
-    span.attribute(
-      "error.type",
-      Option.isSome(error) && Error.isHttpClientError(error.value) ? error.value.reason._tag : "_OTHER"
+  } finally {
+    span.end(
+      fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
+      spanExit
     )
   }
-  span.end(
-    fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
-    spanExit
-  )
 }
 
 /**
@@ -769,28 +771,34 @@ export const make = (
           return f(request, url, controller.signal, fiber as any)
         }
         return Effect.uninterruptibleMask((restore) => {
-          const span = tracerDisabled ? undefined : startSpan(fiber, request, url)
-          if (span !== undefined && fiber.getRef(TracerPropagationEnabled)) {
-            request = HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
-          }
-          const effect = restore(f(request, url, controller.signal, fiber as any))
-          return Effect.matchCauseEffect(
-            span === undefined ? effect : Effect.withParentSpan(effect, span, { captureStackTrace: false }),
-            {
+          const run = (request: HttpClientRequest.HttpClientRequest) =>
+            Effect.matchCauseEffect(restore(f(request, url, controller.signal, fiber as any)), {
               onSuccess(response) {
-                if (span !== undefined) endSpan(fiber, span, request, Exit.succeed(response))
                 if (scopedController) return Effect.succeed(response)
                 responseRegistry.register(response, controller)
                 return Effect.succeed(new InterruptibleResponse(response, controller))
               },
               onFailure(cause) {
-                if (span !== undefined) endSpan(fiber, span, request, Exit.failCause(cause))
                 if (!scopedController && Cause.hasInterrupts(cause)) {
                   controller.abort()
                 }
                 return Effect.failCause(cause)
               }
-            }
+            })
+          if (tracerDisabled) return run(request)
+          const span = internalEffect.makeSpanUnsafe(fiber, fiber.getRef(SpanNameGenerator)(request), {
+            kind: "client"
+          })
+          // Instrumentation runs inside `onExit`, so the span ends even if it throws.
+          return Effect.onExit(
+            Effect.suspend(() => {
+              setRequestAttributes(fiber, span, request, url)
+              if (fiber.getRef(TracerPropagationEnabled)) {
+                request = HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
+              }
+              return Effect.withParentSpan(run(request), span, { captureStackTrace: false })
+            }),
+            (exit) => Effect.sync(() => endSpan(fiber, span, request, exit))
           )
         })
       })), Effect.succeed as HttpClient.Preprocess<never, never>)
