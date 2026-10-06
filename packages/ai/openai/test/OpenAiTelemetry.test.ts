@@ -29,4 +29,18 @@ describe("OpenAiTelemetry", () => {
       "openai.response.system_fingerprint": "fp_1"
     })
   })
+
+  it("omits gen_ai.output.type for unknown response formats", () => {
+    const span = new Tracer.NativeSpan({
+      name: "test",
+      parent: Option.none(),
+      annotations: Context.empty(),
+      links: [],
+      startTime: 0n,
+      kind: "client",
+      sampled: true
+    })
+    OpenAiTelemetry.addGenAIAnnotations(span, { openai: { request: { responseFormat: "custom" } } })
+    assert.isFalse(span.attributes.has("gen_ai.output.type"))
+  })
 })

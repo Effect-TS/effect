@@ -29,7 +29,7 @@ export type OpenAiTelemetryAttributes = Simplify<
   & Telemetry.GenAITelemetryAttributes
   & Telemetry.AttributesWithPrefix<Omit<RequestAttributes, "responseFormat">, "openai.request">
   & Telemetry.AttributesWithPrefix<ResponseAttributes, "openai.response">
-  & { readonly "gen_ai.output.type"?: string | null | undefined }
+  & { readonly "gen_ai.output.type"?: "text" | "json" | "image" | "speech" | (string & {}) | null | undefined }
 >
 
 /**
@@ -159,9 +159,12 @@ export const addGenAIAnnotations: {
     if (options.openai.request != null) {
       const { responseFormat, ...request } = options.openai.request
       addOpenAiRequestAttributes(span, request)
-      if (responseFormat != null) {
-        span.attribute("gen_ai.output.type", responseFormat === "text" ? "text" : "json")
-      }
+      const outputType = responseFormat === "text"
+        ? "text"
+        : responseFormat === "json_object" || responseFormat === "json_schema"
+        ? "json"
+        : undefined
+      if (outputType !== undefined) span.attribute("gen_ai.output.type", outputType)
     }
     if (options.openai.response != null) {
       addOpenAiResponseAttributes(span, options.openai.response)

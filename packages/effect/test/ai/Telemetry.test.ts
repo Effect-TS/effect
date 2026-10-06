@@ -33,6 +33,28 @@ describe("Telemetry", () => {
       assert.strictEqual(span.attributes.get("gen_ai.provider.name"), "openai")
       assert.isFalse(span.attributes.has("gen_ai.system"))
     })
+
+    it("prefers provider.name over the deprecated system option", () => {
+      const span = makeSpan()
+      Telemetry.addGenAIAnnotations(span, { provider: { name: "anthropic" }, system: "openai" })
+      assert.strictEqual(span.attributes.get("gen_ai.provider.name"), "anthropic")
+    })
+
+    it("renames deprecated system values to current provider names", () => {
+      const cases = [
+        ["az.ai.openai", "azure.ai.openai"],
+        ["az.ai.inference", "azure.ai.inference"],
+        ["gemini", "gcp.gemini"],
+        ["vertex_ai", "gcp.vertex_ai"],
+        ["xai", "x_ai"],
+        ["cohere", "cohere"]
+      ] as const
+      for (const [system, expected] of cases) {
+        const span = makeSpan()
+        Telemetry.addGenAIAnnotations(span, { system })
+        assert.strictEqual(span.attributes.get("gen_ai.provider.name"), expected)
+      }
+    })
   })
 
   describe("LanguageModel spans", () => {

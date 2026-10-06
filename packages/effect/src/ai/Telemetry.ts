@@ -27,14 +27,13 @@ import type * as Response from "./Response.ts"
  *
  * These attributes follow the OpenTelemetry generative AI semantic
  * conventions:
- * https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/
+ * https://github.com/open-telemetry/semantic-conventions-genai
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
 export type GenAITelemetryAttributes = Struct.Simplify<
-  & AttributesWithPrefix<BaseAttributes, "gen_ai">
   & AttributesWithPrefix<ProviderAttributes, "gen_ai.provider">
   & AttributesWithPrefix<OperationAttributes, "gen_ai.operation">
   & AttributesWithPrefix<TokenAttributes, "gen_ai.token">
@@ -84,7 +83,7 @@ export interface BaseAttributes {
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.0.2
  */
 export interface ProviderAttributes {
   /**
@@ -234,7 +233,7 @@ export type WellKnownOperationName = "chat" | "embeddings" | "text_completion"
  *
  * @stability unstable
  * @category models
- * @since 4.0.0
+ * @since 4.0.2
  */
 export type WellKnownProviderName =
   | "anthropic"
@@ -429,6 +428,16 @@ export const addSpanAttributes = (
   }
 }
 
+// Deprecated `gen_ai.system` values that were renamed in `gen_ai.provider.name`.
+const renamedSystems: Record<string, WellKnownProviderName> = {
+  "az.ai.inference": "azure.ai.inference",
+  "az.ai.openai": "azure.ai.openai",
+  "gemini": "gcp.gemini",
+  "vertex_ai": "gcp.vertex_ai",
+  "xai": "x_ai"
+}
+const toProviderName = (system: string): string => renamedSystems[system] ?? system
+
 const addSpanProviderAttributes = addSpanAttributes("gen_ai.provider", String.camelToSnake)<ProviderAttributes>
 const addSpanOperationAttributes = addSpanAttributes("gen_ai.operation", String.camelToSnake)<OperationAttributes>
 const addSpanRequestAttributes = addSpanAttributes("gen_ai.request", String.camelToSnake)<RequestAttributes>
@@ -480,6 +489,8 @@ const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToS
 export type GenAITelemetryAttributeOptions = BaseAttributes & {
   /**
    * Provider attributes, written as `gen_ai.provider.name`.
+   *
+   * @since 4.0.2
    */
   readonly provider?: ProviderAttributes | undefined
   /**
@@ -549,7 +560,10 @@ export const addGenAIAnnotations: {
   (options: GenAITelemetryAttributeOptions): (span: Span) => void
   (span: Span, options: GenAITelemetryAttributeOptions): void
 } = dual(2, (span: Span, options: GenAITelemetryAttributeOptions) => {
-  addSpanProviderAttributes(span, { name: options.provider?.name ?? options.system })
+  addSpanProviderAttributes(span, {
+    name: options.provider?.name ??
+      (Predicate.isNotNullish(options.system) ? toProviderName(options.system) : undefined)
+  })
   if (Predicate.isNotNullish(options.operation)) addSpanOperationAttributes(span, options.operation)
   if (Predicate.isNotNullish(options.request)) addSpanRequestAttributes(span, options.request)
   if (Predicate.isNotNullish(options.response)) addSpanResponseAttributes(span, options.response)

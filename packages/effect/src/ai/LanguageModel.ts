@@ -930,7 +930,7 @@ export const make: (params: {
       {
         kind: "client",
         attributes: {
-          objectName,
+          "effect.ai.object_name": objectName,
           ...toolSpanAttributes(options)
         }
       },
@@ -2482,11 +2482,10 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
     : Effect.succeed(toolkit as unknown as Toolkit.WithHandler<Tools>)) as any
 
 // Span attribute values must be primitives, so object tool choices are JSON-encoded.
+// `effect.ai.concurrency` is written once the default is resolved.
 const toolSpanAttributes = (options: {
-  readonly concurrency?: Concurrency | undefined
   readonly toolChoice?: ToolChoice<any> | undefined
 }): Record<string, unknown> => ({
-  "effect.ai.concurrency": options.concurrency,
   "effect.ai.tool_choice": typeof options.toolChoice === "object"
     ? JSON.stringify(options.toolChoice)
     : options.toolChoice
