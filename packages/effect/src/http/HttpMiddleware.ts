@@ -135,8 +135,7 @@ export const layerTracerDisabledForUrls = (
  *
  * **Details**
  *
- * Defaults to the request method, or `HTTP` for methods not defined by the
- * OpenTelemetry HTTP semantic conventions.
+ * Defaults to the request method unchanged.
  *
  * @stability unstable
  * @category services
@@ -144,7 +143,7 @@ export const layerTracerDisabledForUrls = (
  */
 export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) => string>(
   "@effect/platform/HttpMiddleware/SpanNameGenerator",
-  { defaultValue: () => (request) => tracing.spanName(request.method) }
+  { defaultValue: () => (request) => request.method }
 )
 
 /**
@@ -288,7 +287,7 @@ export const tracer: <E, R>(
           spanExit = responseSpanExit(request, response)
         }
         if (span.sampled) {
-          tracing.addMethodAttributes(span, request.method)
+          span.attribute("http.request.method", request.method)
           if (request.url.startsWith("/")) {
             const host = request.headers.host ?? "localhost"
             const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"

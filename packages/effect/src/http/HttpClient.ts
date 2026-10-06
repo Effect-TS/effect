@@ -725,7 +725,7 @@ export const make = (
           fiber.getRef(SpanNameGenerator)(request),
           { kind: "client" },
           (span) => {
-            tracing.addMethodAttributes(span, request.method)
+            span.attribute("http.request.method", request.method)
             const scheme = url.protocol.slice(0, -1)
             tracing.addServerAttributes(span, url.hostname, url.port, scheme)
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
@@ -1715,8 +1715,7 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/
  *
  * **Details**
  *
- * Defaults to the request method, or `HTTP` for methods not defined by the
- * OpenTelemetry HTTP semantic conventions.
+ * Defaults to the request method unchanged.
  *
  * @stability unstable
  * @category services
@@ -1725,7 +1724,7 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/
 export const SpanNameGenerator = Context.Reference<
   (request: HttpClientRequest.HttpClientRequest) => string
 >("effect/http/HttpClient/SpanNameGenerator", {
-  defaultValue: () => (request) => tracing.spanName(request.method)
+  defaultValue: () => (request) => request.method
 })
 
 /**

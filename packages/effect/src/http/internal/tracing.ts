@@ -1,33 +1,6 @@
 import type * as Tracer from "../../Tracer.ts"
 import * as Headers from "../Headers.ts"
 
-// Methods defined by the OpenTelemetry HTTP semantic conventions.
-const knownMethods: ReadonlySet<string> = new Set([
-  "CONNECT",
-  "DELETE",
-  "GET",
-  "HEAD",
-  "OPTIONS",
-  "PATCH",
-  "POST",
-  "PUT",
-  "QUERY",
-  "TRACE"
-])
-
-/** @internal */
-export const spanName = (method: string): string => knownMethods.has(method) ? method : "HTTP"
-
-/** @internal */
-export const addMethodAttributes = (span: Tracer.Span, method: string): void => {
-  if (knownMethods.has(method)) {
-    span.attribute("http.request.method", method)
-  } else {
-    span.attribute("http.request.method", "_OTHER")
-    span.attribute("http.request.method_original", method)
-  }
-}
-
 const decodeName = (name: string): string => {
   if (!name.includes("%")) return name
   try {
