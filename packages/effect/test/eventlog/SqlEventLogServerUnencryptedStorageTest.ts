@@ -5,7 +5,7 @@ import type { StoreId } from "effect/eventlog/EventLogMessage"
 import type * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
 import * as SqlEventLogServerUnencrypted from "effect/eventlog/SqlEventLogServerUnencrypted"
 import { Reactivity } from "effect/reactivity"
-import type * as SqlClient from "effect/sql/SqlClient"
+import * as SqlClient from "effect/sql/SqlClient"
 
 let nextNamespace = 0
 
@@ -226,6 +226,63 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
 
         const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
         assertEntries(persisted, [backlog, outer, nested, deepest, after, sentinel], 1)
+      }))
+
+    it.effect("streams concurrent sibling transactions in sequence order exactly once", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const completed = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        let pauseNext = false
+        // Pause at the public SQL boundary after the real savepoint succeeds
+        // and releases its permit, but before storage sees the successful return.
+        const delayedSql: SqlClient.SqlClient = Object.assign(
+          (...args: Parameters<SqlClient.SqlClient>) => sql(...args),
+          sql,
+          {
+            withTransaction: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+              Effect.suspend(() => {
+                const pause = pauseNext
+                pauseNext = false
+                return sql.withTransaction(effect).pipe(
+                  Effect.tap(() =>
+                    pause
+                      ? Deferred.succeed(completed, undefined).pipe(Effect.andThen(Deferred.await(release)))
+                      : Effect.void
+                  )
+                )
+              })
+          }
+        )
+        const storage = yield* makeStorage(makeOptions("sibling_ordering")).pipe(
+          Effect.provideService(SqlClient.SqlClient, delayedSql)
+        )
+        const storeId = makeStoreId("sibling_ordering")
+        const backlog = makeEntry("Ada")
+        const first = makeEntry("Grace")
+        const second = makeEntry("Margaret")
+        const sentinel = makeEntry("Linus")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+
+        yield* storage.withTransaction(Effect.gen(function*() {
+          pauseNext = true
+          const writer = yield* storage.write(storeId, [first]).pipe(Effect.forkChild)
+          yield* Deferred.await(completed)
+          yield* storage.write(storeId, [second]).pipe(
+            Effect.ensuring(Deferred.succeed(release, undefined))
+          )
+          yield* Fiber.join(writer)
+        }))
+        yield* storage.write(storeId, [sentinel])
+        const rows = yield* Queue.takeN(changes, 3)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+        // Check persistence first to distinguish publication reordering from
+        // incorrect sequence allocation or a lost database write.
+        assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, first, second, sentinel], 1)
+        assertEntries(rows, [first, second, sentinel], 2)
       }))
 
     it.effect("rolls back an interrupted pre-commit body without publishing its writes", () =>
