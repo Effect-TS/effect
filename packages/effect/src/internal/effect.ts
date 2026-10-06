@@ -5711,9 +5711,8 @@ export const fiberRunIn: {
     self.interruptUnsafe(self.id)
     return self
   }
-  const key = {}
-  scopeAddFinalizerUnsafe(scope, key, () => fiberInterrupt(self))
-  self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
+  scopeAddFinalizerUnsafe(scope, self, () => fiberInterrupt(self))
+  self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, self))
   return self
 })
 

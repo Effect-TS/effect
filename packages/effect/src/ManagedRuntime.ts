@@ -13,7 +13,7 @@ import type * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
-import { type FiberImpl, scopeAddFinalizerUnsafe, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
+import { type FiberImpl, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
 import * as Layer from "./Layer.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
@@ -294,15 +294,7 @@ export const make = <R, ER>(
   const layerScope = Scope.forkUnsafe(scope, "sequential")
   const fiberScope = Scope.forkUnsafe(scope, "parallel")
   const defaultRunOptions: Effect.RunOptions = {
-    onFiberStart: (fiber) => {
-      if (fiber.pollUnsafe()) return
-      if (fiberScope.state._tag === "Closed") {
-        fiber.interruptUnsafe(fiber.id)
-        return
-      }
-      scopeAddFinalizerUnsafe(fiberScope, fiber, () => Fiber.interrupt(fiber))
-      fiber.addObserver(() => scopeRemoveFinalizerUnsafe(fiberScope, fiber))
-    }
+    onFiberStart: Fiber.runIn(fiberScope)
   }
   const mergeRunOptions = <O extends Effect.RunOptions>(options?: O): O =>
     options
@@ -350,12 +342,10 @@ export const make = <R, ER>(
       return self.dispose()
     },
     disposeEffect: Effect.withFiber((fiber) => {
-      // A structured ancestor awaits its children on exit, so awaiting it here
-      // would also await the disposing fiber. Detached fibers have no parent.
-      let current: FiberImpl<unknown, unknown> | undefined = fiber as FiberImpl<unknown, unknown>
-      while (current) {
+      // Closing fiberScope interrupts and awaits every managed fiber. Skip the
+      // disposing fiber and its ancestors, which would otherwise await themselves.
+      for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
         scopeRemoveFinalizerUnsafe(fiberScope, current)
-        current = current._parent
       }
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
