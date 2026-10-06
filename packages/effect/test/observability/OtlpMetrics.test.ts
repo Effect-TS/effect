@@ -457,6 +457,24 @@ describe("OtlpMetrics", () => {
           ]
         )
       }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
+
+    it.effect("keeps unit attributes on series that would otherwise collide", () =>
+      Effect.gen(function*() {
+        yield* Metric.update(Metric.gauge("unit_alias_test", { attributes: { unit: "milliseconds" } }), 10)
+        yield* Metric.update(Metric.gauge("unit_alias_test", { attributes: { unit: "ms" } }), 20)
+        yield* triggerExport
+
+        const [request] = yield* MockHttpClient.requests
+        const metric = findMetric(request, "unit_alias_test")
+        assert.strictEqual(metric?.unit, "ms")
+        assert.deepStrictEqual(
+          metric?.gauge?.dataPoints.map((point) => ({ attributes: point.attributes, value: point.asDouble })),
+          [
+            { attributes: [{ key: "unit", value: { stringValue: "milliseconds" } }], value: 10 },
+            { attributes: [{ key: "unit", value: { stringValue: "ms" } }], value: 20 }
+          ]
+        )
+      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
   })
 
   describe("bigint", () => {
