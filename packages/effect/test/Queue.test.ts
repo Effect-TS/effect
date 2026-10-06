@@ -177,7 +177,7 @@ describe("Queue", () => {
         }))
     }
 
-    it.effect(`resuming ${method} can shut down the queue without defecting the consumer`, () =>
+    it.effect(`resuming ${method} can shut down the queue with another blocked producer`, () =>
       Effect.gen(function*() {
         const queue = yield* Queue.bounded<number>(1)
         yield* Queue.offer(queue, 0)
@@ -189,11 +189,15 @@ describe("Queue", () => {
           }),
           { startImmediately: true }
         )
+        const pending = yield* Effect.forkChild(Queue.offer(queue, 2), { startImmediately: true })
+        assert.isUndefined(producer.pollUnsafe(), "first producer must be suspended")
+        assert.isUndefined(pending.pollUnsafe(), "second producer must be suspended")
 
         const exit = yield* Effect.exit(Queue.take(queue))
         yield* Fiber.join(producer)
+        const offered = yield* Fiber.join(pending)
 
-        assert.deepStrictEqual(exit, Exit.succeed(0))
+        assert.deepStrictEqual({ exit, offered }, { exit: Exit.succeed(0), offered: false })
       }))
 
     it.effect(`resuming ${method} does not overfill the queue with reentrant offers`, () =>
