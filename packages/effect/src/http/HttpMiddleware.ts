@@ -153,7 +153,8 @@ export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) 
  * **Details**
  *
  * Header capture is opt-in: the default filter records no headers. Captured
- * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`.
+ * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`,
+ * and the same list redacts matching URL query parameter values.
  *
  * @stability unstable
  * @category services
@@ -293,7 +294,9 @@ export const tracer: <E, R>(
             const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
             const queryIndex = request.url.indexOf("?")
             const path = queryIndex === -1 ? request.url : request.url.slice(0, queryIndex)
-            const query = queryIndex === -1 ? "" : tracing.redactQuery(request.url.slice(queryIndex + 1))
+            const query = queryIndex === -1
+              ? ""
+              : tracing.redactQuery(request.url.slice(queryIndex + 1), redactedHeaderNames)
             span.attribute("url.full", `${protocol}://${host}${path}${query === "" ? "" : `?${query}`}`)
             span.attribute("url.path", path)
             if (query !== "") {
@@ -306,7 +309,7 @@ export const tracer: <E, R>(
           } else {
             const url = Request.toURL(request)
             if (Option.isSome(url)) {
-              tracing.addUrlAttributes(span, url.value)
+              tracing.addUrlAttributes(span, url.value, redactedHeaderNames)
               tracing.addServerAttributes(span, url.value.hostname, url.value.port, url.value.protocol.slice(0, -1))
             }
           }

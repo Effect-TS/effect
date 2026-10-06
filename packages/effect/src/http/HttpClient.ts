@@ -728,8 +728,8 @@ export const make = (
             tracing.addMethodAttributes(span, request.method)
             const scheme = url.protocol.slice(0, -1)
             tracing.addServerAttributes(span, url.hostname, url.port, scheme)
-            const redactedUrl = tracing.addUrlAttributes(span, url)
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+            const redactedUrl = tracing.addUrlAttributes(span, url, redactedHeaderNames)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
             request = fiber.getRef(TracerPropagationEnabled)
@@ -1686,7 +1686,8 @@ export const TracerDisabledWhen = Context.Reference<
  * **Details**
  *
  * Header capture is opt-in: the default filter records no headers. Captured
- * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`.
+ * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`,
+ * and the same list redacts matching URL query parameter values.
  *
  * @stability unstable
  * @category services

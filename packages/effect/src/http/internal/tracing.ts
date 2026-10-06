@@ -28,15 +28,6 @@ export const addMethodAttributes = (span: Tracer.Span, method: string): void => 
   }
 }
 
-// Query parameters whose values are redacted by the OpenTelemetry URL
-// semantic conventions.
-const signedQueryParams: ReadonlySet<string> = new Set([
-  "AWSAccessKeyId",
-  "Signature",
-  "sig",
-  "X-Goog-Signature"
-])
-
 const decodeName = (name: string): string => {
   if (!name.includes("%")) return name
   try {
@@ -47,7 +38,7 @@ const decodeName = (name: string): string => {
 }
 
 /** @internal */
-export const redactQuery = (query: string): string => {
+export const redactQuery = (query: string, redactedNames: ReadonlyArray<string | RegExp>): string => {
   if (query === "") return query
   const params = query.split("&")
   let redacted = false
@@ -55,7 +46,7 @@ export const redactQuery = (query: string): string => {
     const param = params[i]
     const index = param.indexOf("=")
     const name = index === -1 ? param : param.slice(0, index)
-    if (signedQueryParams.has(decodeName(name))) {
+    if (Headers.isRedactedName(decodeName(name), redactedNames)) {
       params[i] = `${name}=REDACTED`
       redacted = true
     }
@@ -64,8 +55,12 @@ export const redactQuery = (query: string): string => {
 }
 
 /** @internal */
-export const addUrlAttributes = (span: Tracer.Span, url: URL): string => {
-  const query = redactQuery(url.search.slice(1))
+export const addUrlAttributes = (
+  span: Tracer.Span,
+  url: URL,
+  redactedNames: ReadonlyArray<string | RegExp>
+): string => {
+  const query = redactQuery(url.search.slice(1), redactedNames)
   const credentials = url.username !== "" || url.password !== "" ? "REDACTED:REDACTED@" : ""
   const full = `${url.protocol}//${credentials}${url.host}${url.pathname}${query === "" ? "" : `?${query}`}${url.hash}`
   span.attribute("url.full", full)

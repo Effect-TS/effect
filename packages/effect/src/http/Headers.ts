@@ -424,7 +424,14 @@ export const isRedactedName = (
  *
  * **Details**
  *
- * Defaults include `authorization`, `cookie`, `set-cookie`, and `x-api-key`.
+ * Defaults include `authorization`, `cookie`, `set-cookie`, and `x-api-key`,
+ * plus the signed URL query parameters `AWSAccessKeyId`, `Signature`, `sig`,
+ * and `X-Goog-Signature` from the OpenTelemetry semantic conventions. HTTP
+ * tracing spans also use this list to redact URL query parameter values.
+ * String entries match names case-insensitively.
+ *
+ * Providing a new list replaces the defaults. To keep them, append to the
+ * current list with `Effect.updateService` instead.
  *
  * @stability unstable
  * @category services
@@ -437,6 +444,10 @@ export const CurrentRedactedNames = Context.Reference<
     "authorization",
     "cookie",
     "set-cookie",
-    "x-api-key"
+    "x-api-key",
+    "AWSAccessKeyId",
+    "Signature",
+    "sig",
+    "X-Goog-Signature"
   ]
 })
