@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve finalizer defects in Effect repeat and schedule completion, and avoid retrying failures containing defects or interruptions.
+Fix `Effect.repeat`, `Effect.schedule` and `Effect.retry` dropping defects and interruptions from mixed failure causes.

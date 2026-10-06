@@ -10,6 +10,12 @@ import { internalCall } from "../Utils.ts"
 import * as core from "./core.ts"
 import * as effect from "./effect.ts"
 
+// Hands a typed failure to the schedule only when the cause carries nothing
+// else, so defects and interruptions propagate instead of being retried or
+// dropped.
+const findErrorOnly = <E>(cause: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
+  cause.reasons.every(core.isFailReason) ? effect.findError(cause) : Result.fail(cause as Cause.Cause<never>)
+
 /** @internal */
 export const repeatOrElse: {
   <R2, A, B, E, E2, E3, R3>(
@@ -30,29 +36,22 @@ export const repeatOrElse: {
 ): Effect<B, E3, R | R2 | R3> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
-    return effect.catchCause(
-      effect.forever(
-        effect.tap(
-          effect.flatMap(effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)), step),
-          (meta_) =>
-            effect.sync(() => {
-              meta = meta_
-            })
+    return effect.catchCauseFilter(
+      Pull.catchDone(
+        effect.forever(
+          effect.tap(
+            effect.flatMap(effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)), step),
+            (meta_) =>
+              effect.sync(() => {
+                meta = meta_
+              })
+          ),
+          { disableYield: true }
         ),
-        { disableYield: true }
+        (out) => effect.succeed(out as B)
       ),
-      (cause) => {
-        const done = Pull.filterDone(cause)
-        if (Result.isSuccess(done)) return effect.succeed(done.success.value as B)
-        const remaining = done.failure
-        if (effect.hasDies(remaining) || effect.hasInterrupts(remaining)) {
-          return effect.failCause(remaining as Cause.Cause<never>)
-        }
-        const error = effect.findError(remaining)
-        return Result.isFailure(error)
-          ? effect.failCause(error.failure)
-          : orElse(error.success, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
-      }
+      findErrorOnly,
+      (error) => orElse(error, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
     )
   }))
 
@@ -77,10 +76,7 @@ export const retryOrElse: {
     let lastError!: E
     const loop: Effect<A, E1 | Cause.Done<A1>, R | R1> = effect.catchCauseFilter(
       effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)),
-      (cause) =>
-        effect.hasDies(cause) || effect.hasInterrupts(cause)
-          ? Result.fail(cause as Cause.Cause<never>)
-          : effect.findError(cause),
+      findErrorOnly,
       (error) => {
         lastError = error
         return effect.flatMap(step(error), (meta_) => {
