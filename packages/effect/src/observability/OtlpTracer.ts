@@ -290,10 +290,11 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
       })
     }
   }
-  let otelStatus: Status = { code: StatusCode.Unset }
+  let otelStatus: Status = { code: StatusCode.Ok }
 
   if (status.exit._tag === "Failure") {
     if (Cause.hasInterruptsOnly(status.exit.cause)) {
+      otelStatus = { code: StatusCode.Unset }
       attributes.push({
         key: "effect.fiber.interrupted",
         value: { boolValue: true }
