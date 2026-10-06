@@ -567,8 +567,7 @@ export const make: <Rpcs extends Rpc.Any>(
     supportsTransferables
   } = yield* Protocol
   const encodeDefectUnsafe = Schema.encodeSync(codecFor(Schema.Defect()))
-  // Exits for requests whose tag is unknown have no RPC schema to encode with,
-  // so they use a defect-only exit schema.
+  // Unknown tags have no RPC schema, so use a defect-only exit schema.
   const encodeUnknownRequestExit: Schemas["encodeExit"] = Schema.encodeUnknownEffect(
     codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
   ) as any
@@ -706,8 +705,6 @@ export const make: <Rpcs extends Rpc.Any>(
     })
   }
 
-  // A request-level defect is sent as a complete encoded exit, so the exit hole
-  // of the envelope is filled by the protocol codec like any other exit.
   const sendRequestDefect = (
     client: Client,
     requestId: RequestId,
