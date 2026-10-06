@@ -5,6 +5,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { SeverityNumber } from "@opentelemetry/api-logs"
 import { InMemoryLogRecordExporter, type LogRecordProcessor, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
+import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -145,6 +146,27 @@ describe("Logger", () => {
         assert.strictEqual(log.attributes.traceId, span.spanContext().traceId)
         assert.strictEqual(log.attributes.spanId, span.spanContext().spanId)
       }).pipe(Effect.provide(TracingLayer))
+    })
+
+    it.effect("records errors and Effect metadata with semantic conventions", () => {
+      const logExporter = new InMemoryLogRecordExporter()
+      const LogLayer = NodeSdk.layer(Effect.sync(() => ({
+        resource: { serviceName: "test" },
+        logRecordProcessor: [new SimpleLogRecordProcessor({ exporter: logExporter })]
+      })))
+
+      return Effect.gen(function*() {
+        const cause = Cause.combine(Cause.fail(new TypeError("first")), Cause.fail(new RangeError("second")))
+        yield* Effect.logError("boom", cause).pipe(Effect.withLogSpan("op"))
+
+        const attributes = logExporter.getFinishedLogRecords()[0]!.attributes
+        assert.strictEqual(attributes["exception.type"], "TypeError")
+        assert.strictEqual(attributes["exception.message"], "first")
+        assert.include(attributes["exception.stacktrace"], "second")
+        assert.isNumber(attributes["effect.fiberId"])
+        assert.isNumber(attributes["effect.log_span.op"])
+        assert.isUndefined(attributes.fiberId)
+      }).pipe(Effect.provide(LogLayer))
     })
   })
 

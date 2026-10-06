@@ -194,12 +194,17 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
-  let headers = Headers.fromRecordUnsafe({
-    "user-agent": `effect-opentelemetry-${options.label}/0.0.0`
-  })
-  if (options.headers) {
-    headers = Headers.merge(Headers.fromInput(options.headers), headers)
-  }
+  // A user-supplied user-agent is prepended to the default one (OTLP exporter spec)
+  const defaultUserAgent = `OTel-OTLP-Exporter-JavaScript-Effect-${options.label}`
+  const userHeaders = Headers.fromInput(options.headers)
+  const headers = Headers.set(
+    userHeaders,
+    "user-agent",
+    Option.match(Headers.get(userHeaders, "user-agent"), {
+      onNone: () => defaultUserAgent,
+      onSome: (userAgent) => `${userAgent} ${defaultUserAgent}`
+    })
+  )
 
   const request = HttpClientRequest.post(options.url, { headers })
   let buffer: Array<any> = []

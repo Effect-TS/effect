@@ -64,7 +64,7 @@ export const make: (
   const serialization = yield* OtlpSerialization
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const scope: IInstrumentationScope = {
-    name: OtlpResource.serviceNameUnsafe(otelResource)
+    name: "effect"
   }
 
   const exporter = yield* Exporter.make({
@@ -192,32 +192,37 @@ export interface LogsData {
 
 // internal
 
+const nanosPerMilli = BigInt(1_000_000)
+
 const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   readonly excludeLogSpans: boolean
   readonly clock: Clock
 }): ILogRecord => {
-  const now = opts.clock.currentTimeNanosUnsafe()
-  const nanosString = now.toString()
-  const nowMillis = options.date.getTime()
+  const observedTime = opts.clock.currentTimeNanosUnsafe().toString()
+  const eventMillis = options.date.getTime()
+  const eventTime = (BigInt(eventMillis) * nanosPerMilli).toString()
 
   const attributes = OtlpResource.entriesToAttributes(Object.entries(options.fiber.getRef(CurrentLogAnnotations)))
   attributes.push({
-    key: "fiberId",
+    key: "effect.fiberId",
     value: { intValue: options.fiber.id }
   })
   if (!opts.excludeLogSpans) {
     for (const [label, startTime] of options.fiber.getRef(CurrentLogSpans)) {
       attributes.push({
-        key: `logSpan.${label}`,
-        value: { stringValue: `${nowMillis - startTime}ms` }
+        key: `effect.log_span.${label}`,
+        value: { intValue: eventMillis - startTime }
       })
     }
   }
-  if (options.cause.reasons.length > 0) {
-    attributes.push({
-      key: "log.error",
-      value: { stringValue: Cause.pretty(options.cause) }
-    })
+  // exception.type/message describe the first error; the stacktrace keeps the full cause
+  const error = Cause.prettyErrors(options.cause)[0]
+  if (error !== undefined) {
+    attributes.push(
+      { key: "exception.type", value: { stringValue: error.name } },
+      { key: "exception.message", value: { stringValue: error.message } },
+      { key: "exception.stacktrace", value: { stringValue: Cause.pretty(options.cause) } }
+    )
   }
 
   const message = Arr.ensure(options.message)
@@ -225,8 +230,8 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   const logRecord: ILogRecord = {
     severityNumber: logLevelToSeverityNumber(options.logLevel),
     severityText: options.logLevel,
-    timeUnixNano: nanosString,
-    observedTimeUnixNano: nanosString,
+    timeUnixNano: eventTime,
+    observedTimeUnixNano: observedTime,
     attributes,
     body: OtlpResource.unknownToAttributeValue(message.length === 1 ? message[0] : message),
     droppedAttributesCount: 0

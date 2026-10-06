@@ -5,6 +5,11 @@ import { OtlpResource } from "effect/observability"
 const attributesRecord = (resource: OtlpResource.Resource): Record<string, string | null | undefined> =>
   Object.fromEntries(resource.attributes.map((attribute) => [attribute.key, attribute.value.stringValue]))
 
+const sdk = {
+  "telemetry.sdk.name": "effect",
+  "telemetry.sdk.language": "nodejs"
+}
+
 describe("OtlpResource", () => {
   describe("fromConfig", () => {
     it.effect("decodes percent-encoded OTEL_RESOURCE_ATTRIBUTES", () =>
@@ -41,6 +46,7 @@ describe("OtlpResource", () => {
         })
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "custom.attribute": "explicit",
           "service.name": "explicit-service",
           "service.version": "explicit-version"
@@ -69,6 +75,7 @@ describe("OtlpResource", () => {
         })
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "custom.attribute": "explicit",
           "service.name": "explicit-attribute-service",
           "service.version": "explicit-attribute-version"
@@ -92,6 +99,7 @@ describe("OtlpResource", () => {
         const resource = yield* OtlpResource.fromConfig()
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "service.name": "env-service",
           "service.version": "env-version"
         })
@@ -115,6 +123,7 @@ describe("OtlpResource", () => {
         })
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "service.name": "explicit-service"
         })
       }).pipe(
@@ -125,6 +134,19 @@ describe("OtlpResource", () => {
           })
         )
       ))
+  })
+
+  it.effect("falls back to unknown_service when no service name is configured", () =>
+    Effect.gen(function*() {
+      const resource = yield* OtlpResource.fromConfig()
+      assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "service.name": "unknown_service" })
+    }).pipe(
+      Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
+    ))
+
+  it("lets custom attributes override the SDK defaults", () => {
+    const resource = OtlpResource.make({ serviceName: "svc", attributes: { "telemetry.sdk.name": "custom" } })
+    assert.strictEqual(attributesRecord(resource)["telemetry.sdk.name"], "custom")
   })
 
   describe("unknownToAttributeValue", () => {

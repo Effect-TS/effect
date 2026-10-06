@@ -28,13 +28,25 @@ export interface Resource {
   droppedAttributesCount: number
 }
 
+// Browser windows expose `window`, and dedicated, shared and service workers
+// expose `importScripts`; every other runtime (Node, Bun, Deno, edge) is "nodejs"
+const isBrowser = "window" in globalThis || "importScripts" in globalThis
+
+// SDK-provided default resource attributes (OTel resource SDK spec)
+const sdkAttributes: Record<string, string> = {
+  "telemetry.sdk.name": "effect",
+  "telemetry.sdk.language": isBrowser ? "webjs" : "nodejs"
+}
+
 /**
  * Creates an OTLP resource from service metadata and additional attributes.
  *
  * **Details**
  *
- * The resource always includes `service.name`, includes `service.version` when
- * provided, and converts custom attributes into OTLP attribute values.
+ * The resource always includes `service.name` and the `telemetry.sdk.*`
+ * attributes, includes `service.version` when provided, and converts custom
+ * attributes into OTLP attribute values. Custom attributes override the SDK
+ * defaults.
  *
  * @stability unstable
  * @category constructors
@@ -45,9 +57,10 @@ export const make = (options: {
   readonly serviceVersion?: string | undefined
   readonly attributes?: Record<string, unknown> | undefined
 }): Resource => {
-  const resourceAttributes = options.attributes
-    ? entriesToAttributes(Object.entries(options.attributes))
-    : []
+  const resourceAttributes = entriesToAttributes(Object.entries({
+    ...sdkAttributes,
+    ...options.attributes
+  }))
   resourceAttributes.push({
     key: "service.name",
     value: {
@@ -85,8 +98,8 @@ export const make = (options: {
  * Explicit `serviceName` and `serviceVersion` options take precedence over
  * matching explicit attributes. Explicit attributes take precedence over
  * environment variables. `OTEL_SERVICE_NAME` and `OTEL_SERVICE_VERSION` take
- * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. Missing
- * required configuration is converted to a defect.
+ * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. When no
+ * service name is configured, `service.name` falls back to `unknown_service`.
  *
  * @stability unstable
  * @category constructors
@@ -113,7 +126,7 @@ export const fromConfig: (
     ?? options?.attributes?.["service.name"] as string | undefined
     ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_NAME"))
     ?? env?.["service.name"] as string | undefined
-    ?? (yield* Config.String("OTEL_SERVICE_NAME"))
+    ?? "unknown_service"
 
   const serviceVersion = options?.serviceVersion
     ?? options?.attributes?.["service.version"] as string | undefined

@@ -67,7 +67,7 @@ export const make: (
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const serialization = yield* OtlpSerialization
   const scope: Scope = {
-    name: OtlpResource.serviceNameUnsafe(otelResource)
+    name: "effect"
   }
 
   const exporter = yield* Exporter.make({

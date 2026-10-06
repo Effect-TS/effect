@@ -14,6 +14,7 @@ import { SeverityNumber } from "@opentelemetry/api-logs"
 import * as Otel from "@opentelemetry/sdk-logs"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Arr from "effect/Array"
+import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
@@ -92,7 +93,7 @@ export const make: Effect.Effect<
 
   return Logger.make((options) => {
     const attributes: Record<string, any> = {
-      fiberId: options.fiber.id
+      "effect.fiberId": options.fiber.id
     }
 
     for (const [key, value] of Object.entries(options.fiber.getRef(References.CurrentLogAnnotations))) {
@@ -108,7 +109,15 @@ export const make: Effect.Effect<
 
     const now = options.date.getTime()
     for (const [label, startTime] of options.fiber.getRef(References.CurrentLogSpans)) {
-      attributes[`logSpan.${label}`] = `${now - startTime}ms`
+      attributes[`effect.log_span.${label}`] = now - startTime
+    }
+
+    // exception.type/message describe the first error; the stacktrace keeps the full cause
+    const error = Cause.prettyErrors(options.cause)[0]
+    if (error !== undefined) {
+      attributes["exception.type"] = error.name
+      attributes["exception.message"] = error.message
+      attributes["exception.stacktrace"] = Cause.pretty(options.cause)
     }
 
     const message = Arr.ensure(options.message).map(unknownToAttributeValue)
