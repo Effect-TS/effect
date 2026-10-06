@@ -37,22 +37,15 @@ describe("RpcServer", () => {
     // mismatch is reported as a fingerprint error instead of the original
     // diagnostic. The defect still only fails its own request.
     const fingerprintDiagnostic = "Expected matching layout fingerprint"
-    const cases: ReadonlyArray<{
-      readonly name: string
-      readonly serialization: Layer.Layer<RpcSerialization.RpcSerialization>
-      readonly unknownTag: string | undefined
-      readonly invalidPayload: ReadonlyArray<string>
-    }> = [
+    const cases = [
       {
         name: "JSON",
         serialization: RpcSerialization.layerJson,
-        unknownTag: undefined,
         invalidPayload: ["Expected string", "at [\"value\"]"]
       },
       {
         name: "SchemaBinary",
         serialization: RpcSerialization.layerSchemaBinary(),
-        unknownTag: undefined,
         invalidPayload: ["Missing key", "at [\"value\"]"]
       },
       {
