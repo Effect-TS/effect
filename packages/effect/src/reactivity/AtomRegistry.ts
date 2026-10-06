@@ -73,6 +73,26 @@ export interface AtomRegistry {
   readonly getNodes: () => ReadonlyMap<Atom.Atom<any> | string, Node<any>>
   readonly get: <A>(atom: Atom.Atom<A>) => A
   readonly mount: <A>(atom: Atom.Atom<A>) => () => void
+  /**
+   * Keeps an atom in the registry, with any initial or hydrated value it
+   * holds, without computing it, until the returned function is called.
+   *
+   * **When to use**
+   *
+   * Use when a value given ahead of the first read, such as by
+   * `setInitialValue`, must survive until a later read, as in an async render.
+   * The registry removes an atom nothing reads or mounts on its next task.
+   *
+   * **Details**
+   *
+   * Unlike `mount`, it does not compute the atom. It also keeps the atoms in
+   * its `initialValueTarget` chain, where a value given to a wrapper lives.
+   * Once the atom is computed, it is kept up to date like a mounted atom while
+   * it is retained.
+   *
+   * @since 4.1.0
+   */
+  readonly retain: <A>(atom: Atom.Atom<A>) => () => void
   readonly refresh: <A>(atom: Atom.Atom<A>) => void
   readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
   readonly setSerializable: (key: string, encoded: unknown) => void
@@ -466,6 +486,26 @@ class RegistryImpl implements AtomRegistry {
 
   mount<A>(atom: Atom.Atom<A>) {
     return this.subscribe(atom, constVoid, constImmediate)
+  }
+
+  retain<A>(atom: Atom.Atom<A>): () => void {
+    // a value given to a wrapper lives on its initialValueTarget, so hold those too
+    const nodes: Array<NodeImpl<any>> = []
+    let target: Atom.Atom<any> | undefined = atom
+    while (target !== undefined) {
+      nodes.push(this.ensureNode(target))
+      target = target.initialValueTarget
+    }
+    // each hold needs its own listener: the set keeps a shared one only once
+    const removes = nodes.map((node) => node.subscribe(() => {}))
+    return () => {
+      for (let i = 0; i < nodes.length; i++) {
+        removes[i]()
+        if (nodes[i].canBeRemoved) {
+          this.scheduleNodeRemoval(nodes[i])
+        }
+      }
+    }
   }
 
   atomHasTtl(atom: Atom.Atom<any>): boolean {
