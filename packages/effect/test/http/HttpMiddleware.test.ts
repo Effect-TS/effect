@@ -446,7 +446,7 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(span.attributes.get("error.type"), undefined)
       }))
 
-    it.effect("keeps the interrupt exit and records error.type for server aborts", () =>
+    it.effect("fails the span and records error.type for server aborts", () =>
       Effect.gen(function*() {
         const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/abort"))
         const interrupt = Cause.interrupt()
@@ -454,7 +454,14 @@ describe("HttpMiddleware", () => {
         const span = yield* traceServer(request, Effect.failCause(cause))
         assert.strictEqual(response.status, 503)
         assert(span.status._tag === "Ended" && span.status.exit._tag === "Failure")
-        assert.deepStrictEqual(span.status.exit.cause, interrupt)
+        const spanCause = span.status.exit.cause
+        assert.isFalse(Cause.hasInterruptsOnly(spanCause))
+        assert.isTrue(Cause.hasInterrupts(spanCause))
+        assert.isTrue(spanCause.reasons.some((reason) =>
+          Cause.isFailReason(reason) &&
+          HttpServerError.isHttpServerError(reason.error) &&
+          reason.error.reason._tag === "ResponseError"
+        ))
         assert.strictEqual(span.attributes.get("http.response.status_code"), 503)
         assert.strictEqual(span.attributes.get("error.type"), "503")
       }))
