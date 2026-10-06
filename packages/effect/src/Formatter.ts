@@ -331,7 +331,9 @@ export function formatJson(input: unknown, options?: {
       if (current !== redacted) {
         ancestors.push(current)
       }
-      if (!hasGetter(current)) {
+      // Leave boxed primitives intact so JSON.stringify can unbox them natively.
+      // oxlint-disable-next-line unicorn/no-instanceof-builtins
+      if (current instanceof Number || current instanceof Boolean || current instanceof String || !hasGetter(current)) {
         return current
       }
       // JSON.stringify reads a getter once, then calls toJSON on the result
@@ -352,7 +354,7 @@ export function formatJson(input: unknown, options?: {
 }
 
 function hasGetter(object: object): boolean {
-  for (const key of Object.keys(object)) {
+  for (const key of Object.getOwnPropertyNames(object)) {
     if (Object.getOwnPropertyDescriptor(object, key)?.get !== undefined) {
       return true
     }
