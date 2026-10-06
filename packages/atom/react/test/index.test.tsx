@@ -694,8 +694,7 @@ describe("atom-react", { concurrent: false }, () => {
       const userAtom = Atom.make("loading")
       const toUpperCase = (name: string) => name.toUpperCase()
 
-      // A selector maps the atom per component, so the late reader has to take
-      // its snapshot from the source atom.
+      // Reading through a selector also covers the selector's server snapshot.
       function Name({ id }: { id: string }) {
         return <span id={id}>{useAtomValue(userAtom, toUpperCase)}</span>
       }
