@@ -357,29 +357,46 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), "<redacted>")
       }))
 
-    it.effect("skips attributes for unsampled spans", () =>
-      Effect.gen(function*() {
-        let serverSpan: Tracer.NativeSpan | undefined
-        const tracer = Tracer.make({
-          span(options) {
-            serverSpan = new Tracer.NativeSpan(options)
-            return serverSpan
-          }
+    it.effect.each([204, 500, 600])(
+      "records the span outcome without attributes for unsampled %d responses",
+      (status) =>
+        Effect.gen(function*() {
+          let serverSpan: Tracer.NativeSpan | undefined
+          const tracer = Tracer.make({
+            span(options) {
+              serverSpan = new Tracer.NativeSpan(options)
+              return serverSpan
+            }
+          })
+          const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/unsampled"))
+          const response = HttpServerResponse.empty({ status })
+
+          const exit = yield* Effect.exit(
+            HttpMiddleware.tracer(Effect.succeed(response)).pipe(
+              Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+              Effect.provideService(Tracer.MinimumTraceLevel, "Fatal"),
+              Effect.provideService(Tracer.Tracer, tracer)
+            )
+          )
+          yield* Effect.yieldNow
+
+          assert.deepStrictEqual(exit, Exit.succeed(response))
+          assert(serverSpan !== undefined)
+          assert.strictEqual(serverSpan.sampled, false)
+          assert.strictEqual(serverSpan.attributes.size, 0)
+          assert(serverSpan.status._tag === "Ended")
+          assert.deepStrictEqual(
+            serverSpan.status.exit,
+            status === 500
+              ? Exit.fail(
+                new HttpServerError.HttpServerError({
+                  reason: new HttpServerError.ResponseError({ request, response })
+                })
+              )
+              : Exit.succeed(response)
+          )
         })
-        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/unsampled"))
-
-        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty({ status: 204 }))).pipe(
-          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
-          Effect.provideService(Tracer.MinimumTraceLevel, "Fatal"),
-          Effect.provideService(Tracer.Tracer, tracer)
-        )
-        yield* Effect.yieldNow
-
-        assert(serverSpan !== undefined)
-        assert.strictEqual(serverSpan.sampled, false)
-        assert.strictEqual(serverSpan.attributes.size, 0)
-        assert.strictEqual(serverSpan.status._tag, "Ended")
-      }))
+    )
 
     it.effect("ends the span and restores the context when the app is interrupted", () =>
       Effect.gen(function*() {
@@ -488,7 +505,39 @@ describe("HttpMiddleware", () => {
         })
     )
 
-    it.effect.each([103, 200, 302, 404, 499])(
+    it.effect.each([500, 600])(
+      "records the span outcome with the native tracer for %d responses",
+      (status) =>
+        Effect.gen(function*() {
+          let serverSpan: Tracer.Span | undefined
+          const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/native"))
+          const response = HttpServerResponse.empty({ status })
+
+          const exit = yield* Effect.exit(
+            HttpMiddleware.tracer(Effect.gen(function*() {
+              serverSpan = yield* Effect.currentSpan
+              return response
+            })).pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, request))
+          )
+          yield* Effect.yieldNow
+
+          assert.deepStrictEqual(exit, Exit.succeed(response))
+          assert(serverSpan !== undefined)
+          assert(serverSpan.status._tag === "Ended")
+          assert.deepStrictEqual(
+            serverSpan.status.exit,
+            status === 500
+              ? Exit.fail(
+                new HttpServerError.HttpServerError({
+                  reason: new HttpServerError.ResponseError({ request, response })
+                })
+              )
+              : Exit.succeed(response)
+          )
+        })
+    )
+
+    it.effect.each([103, 200, 302, 404, 499, 600])(
       "keeps the span successful for a %d response",
       (status) =>
         Effect.gen(function*() {
