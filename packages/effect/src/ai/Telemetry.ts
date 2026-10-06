@@ -35,6 +35,7 @@ import type * as Response from "./Response.ts"
  */
 export type GenAITelemetryAttributes = Struct.Simplify<
   & AttributesWithPrefix<BaseAttributes, "gen_ai">
+  & AttributesWithPrefix<ProviderAttributes, "gen_ai.provider">
   & AttributesWithPrefix<OperationAttributes, "gen_ai.operation">
   & AttributesWithPrefix<TokenAttributes, "gen_ai.token">
   & AttributesWithPrefix<UsageAttributes, "gen_ai.usage">
@@ -69,8 +70,28 @@ export interface BaseAttributes {
   /**
    * The Generative AI product as identified by the client or server
    * instrumentation.
+   *
+   * @deprecated `gen_ai.system` was replaced by `gen_ai.provider.name`. Use
+   * `provider.name` instead. A value passed here is written as
+   * `gen_ai.provider.name`.
    */
   readonly system?: (string & {}) | WellKnownSystem | null | undefined
+}
+
+/**
+ * Telemetry attributes which are part of the GenAI specification and are
+ * namespaced by `gen_ai.provider`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface ProviderAttributes {
+  /**
+   * The Generative AI provider as identified by the client or server
+   * instrumentation, written as `gen_ai.provider.name`.
+   */
+  readonly name?: (string & {}) | WellKnownProviderName | null | undefined
 }
 
 /**
@@ -203,7 +224,8 @@ export interface ResponseAttributes {
 export type WellKnownOperationName = "chat" | "embeddings" | "text_completion"
 
 /**
- * The `gen_ai.system` attribute has the following list of well-known values.
+ * The `gen_ai.provider.name` attribute has the following list of well-known
+ * values.
  *
  * **Details**
  *
@@ -212,6 +234,38 @@ export type WellKnownOperationName = "chat" | "embeddings" | "text_completion"
  *
  * @stability unstable
  * @category models
+ * @since 4.0.0
+ */
+export type WellKnownProviderName =
+  | "anthropic"
+  | "aws.bedrock"
+  | "azure.ai.inference"
+  | "azure.ai.openai"
+  | "cohere"
+  | "deepseek"
+  | "gcp.gemini"
+  | "gcp.gen_ai"
+  | "gcp.vertex_ai"
+  | "groq"
+  | "ibm.watsonx.ai"
+  | "mistral_ai"
+  | "moonshot_ai"
+  | "openai"
+  | "perplexity"
+  | "x_ai"
+
+/**
+ * The deprecated `gen_ai.system` attribute had the following list of
+ * well-known values.
+ *
+ * **Details**
+ *
+ * If one of them applies, then the respective value **MUST** be used;
+ * otherwise, a custom value **MAY** be used.
+ *
+ * @stability unstable
+ * @category models
+ * @deprecated Use `WellKnownProviderName`, the values of `gen_ai.provider.name`.
  * @since 4.0.0
  */
 export type WellKnownSystem =
@@ -375,7 +429,7 @@ export const addSpanAttributes = (
   }
 }
 
-const addSpanBaseAttributes = addSpanAttributes("gen_ai", String.camelToSnake)<BaseAttributes>
+const addSpanProviderAttributes = addSpanAttributes("gen_ai.provider", String.camelToSnake)<ProviderAttributes>
 const addSpanOperationAttributes = addSpanAttributes("gen_ai.operation", String.camelToSnake)<OperationAttributes>
 const addSpanRequestAttributes = addSpanAttributes("gen_ai.request", String.camelToSnake)<RequestAttributes>
 const addSpanResponseAttributes = addSpanAttributes("gen_ai.response", String.camelToSnake)<ResponseAttributes>
@@ -396,7 +450,7 @@ const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToS
  * import type { Telemetry } from "effect/ai"
  *
  * const telemetryOptions: Telemetry.GenAITelemetryAttributeOptions = {
- *   system: "openai",
+ *   provider: { name: "openai" },
  *   operation: {
  *     name: "chat"
  *   },
@@ -416,7 +470,7 @@ const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToS
  *   }
  * }
  *
- * const result = [telemetryOptions.system, telemetryOptions.usage?.inputTokens] // => ["openai", 50]
+ * const result = [telemetryOptions.provider?.name, telemetryOptions.usage?.inputTokens] // => ["openai", 50]
  * ```
  *
  * @stability unstable
@@ -424,6 +478,10 @@ const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToS
  * @since 4.0.0
  */
 export type GenAITelemetryAttributeOptions = BaseAttributes & {
+  /**
+   * Provider attributes, written as `gen_ai.provider.name`.
+   */
+  readonly provider?: ProviderAttributes | undefined
   /**
    * Operation-specific attributes (e.g., operation name).
    */
@@ -473,7 +531,7 @@ export type GenAITelemetryAttributeOptions = BaseAttributes & {
  *   const span = yield* Effect.currentSpan
  *
  *   Telemetry.addGenAIAnnotations(span, {
- *     system: "openai",
+ *     provider: { name: "openai" },
  *     request: { model: "gpt-4", temperature: 0.7 },
  *     usage: { inputTokens: 100, outputTokens: 50 }
  *   })
@@ -491,7 +549,7 @@ export const addGenAIAnnotations: {
   (options: GenAITelemetryAttributeOptions): (span: Span) => void
   (span: Span, options: GenAITelemetryAttributeOptions): void
 } = dual(2, (span: Span, options: GenAITelemetryAttributeOptions) => {
-  addSpanBaseAttributes(span, { system: options.system })
+  addSpanProviderAttributes(span, { name: options.provider?.name ?? options.system })
   if (Predicate.isNotNullish(options.operation)) addSpanOperationAttributes(span, options.operation)
   if (Predicate.isNotNullish(options.request)) addSpanRequestAttributes(span, options.request)
   if (Predicate.isNotNullish(options.response)) addSpanResponseAttributes(span, options.response)

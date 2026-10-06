@@ -2827,7 +2827,7 @@ const annotateRequest = (
   request: typeof OpenAiSchema.CreateResponse.Encoded
 ): void => {
   addGenAIAnnotations(span, {
-    system: "openai",
+    provider: { name: "openai" },
     operation: { name: "chat" },
     request: {
       model: request.model as string,

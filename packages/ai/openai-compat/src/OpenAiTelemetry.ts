@@ -2,7 +2,7 @@
  * The `OpenAiTelemetry` module defines OpenAI-compatible telemetry attributes
  * and a helper for adding them to a tracing span. It keeps the standard GenAI
  * telemetry attributes and adds request and response metadata under the
- * `gen_ai.openai.*` OpenTelemetry namespaces.
+ * `openai.*` OpenTelemetry namespaces.
  *
  * @since 4.0.0
  */
@@ -27,8 +27,9 @@ import type { Simplify } from "effect/Types"
  */
 export type OpenAiTelemetryAttributes = Simplify<
   & Telemetry.GenAITelemetryAttributes
-  & Telemetry.AttributesWithPrefix<RequestAttributes, "gen_ai.openai.request">
-  & Telemetry.AttributesWithPrefix<ResponseAttributes, "gen_ai.openai.response">
+  & Telemetry.AttributesWithPrefix<Omit<RequestAttributes, "responseFormat">, "openai.request">
+  & Telemetry.AttributesWithPrefix<ResponseAttributes, "openai.response">
+  & { readonly "gen_ai.output.type"?: string | null | undefined }
 >
 
 /**
@@ -42,14 +43,15 @@ export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & Respon
 
 /**
  * Telemetry attributes which are part of the GenAI specification and are
- * namespaced by `gen_ai.openai.request`.
+ * namespaced by `openai.request`.
  *
  * @category models
  * @since 4.0.0
  */
 export interface RequestAttributes {
   /**
-   * The response format that is requested.
+   * The response format that is requested. Written as `gen_ai.output.type`
+   * (`json_object` and `json_schema` map to `json`).
    */
   readonly responseFormat?: (string & {}) | WellKnownResponseFormat | null | undefined
   /**
@@ -60,7 +62,7 @@ export interface RequestAttributes {
 
 /**
  * Telemetry attributes which are part of the GenAI specification and are
- * namespaced by `gen_ai.openai.response`.
+ * namespaced by `openai.response`.
  *
  * @category models
  * @since 4.0.0
@@ -78,7 +80,7 @@ export interface ResponseAttributes {
 }
 
 /**
- * The `gen_ai.openai.request.response_format` attribute has a list of
+ * The OpenAI request `response_format` type has a list of
  * well-known values.
  *
  * **Details**
@@ -92,7 +94,7 @@ export interface ResponseAttributes {
 export type WellKnownResponseFormat = "json_object" | "json_schema" | "text"
 
 /**
- * The `gen_ai.openai.request.service_tier` attribute has a list of
+ * The `openai.request.service_tier` attribute has a list of
  * well-known values.
  *
  * **Details**
@@ -119,10 +121,10 @@ export type OpenAiTelemetryAttributeOptions = Telemetry.GenAITelemetryAttributeO
   } | undefined
 }
 
-const addOpenAiRequestAttributes = Telemetry.addSpanAttributes("gen_ai.openai.request", String.camelToSnake)<
+const addOpenAiRequestAttributes = Telemetry.addSpanAttributes("openai.request", String.camelToSnake)<
   RequestAttributes
 >
-const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("gen_ai.openai.response", String.camelToSnake)<
+const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("openai.response", String.camelToSnake)<
   ResponseAttributes
 >
 
@@ -138,8 +140,8 @@ const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("gen_ai.openai.r
  * **Details**
  *
  * Standard GenAI attributes are applied first. When OpenAI request or response
- * metadata is present, it is written under `gen_ai.openai.request.*` and
- * `gen_ai.openai.response.*` attributes.
+ * metadata is present, it is written under `openai.request.*` and
+ * `openai.response.*` attributes.
  *
  * **Gotchas**
  *
@@ -155,7 +157,11 @@ export const addGenAIAnnotations: {
   Telemetry.addGenAIAnnotations(span, options)
   if (options.openai != null) {
     if (options.openai.request != null) {
-      addOpenAiRequestAttributes(span, options.openai.request)
+      const { responseFormat, ...request } = options.openai.request
+      addOpenAiRequestAttributes(span, request)
+      if (responseFormat != null) {
+        span.attribute("gen_ai.output.type", responseFormat === "text" ? "text" : "json")
+      }
     }
     if (options.openai.response != null) {
       addOpenAiResponseAttributes(span, options.openai.response)
