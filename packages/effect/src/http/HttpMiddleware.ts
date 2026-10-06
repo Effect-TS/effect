@@ -238,8 +238,7 @@ export const tracer: <E, R>(
         } else {
           response = exit.value
         }
-        // OpenTelemetry HTTP semantic conventions: a 5xx response marks a server
-        // span as an error, even when the handler rendered it as a response.
+        // OpenTelemetry requires failed server spans for 5xx responses.
         if (Exit.isSuccess(spanExit) && response.status >= 500 && response.status < 600) {
           spanExit = Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
         }
