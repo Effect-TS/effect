@@ -748,14 +748,7 @@ export const make = (
             if (port !== undefined) {
               span.attribute("server.port", port)
             }
-            const query = url.search.slice(1)
-            const redactedQuery = query === "" ? query : tracing.redactQuery(query)
-            span.attribute("url.full", tracing.redactUrl(url, redactedQuery))
-            span.attribute("url.path", url.pathname)
-            span.attribute("url.scheme", url.protocol.slice(0, -1))
-            if (redactedQuery !== "") {
-              span.attribute("url.query", redactedQuery)
-            }
+            tracing.setUrlAttributes(span, url)
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             const isRedacted = (name: string) => Headers.isRedactedName(name, redactedHeaderNames)

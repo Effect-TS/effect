@@ -213,19 +213,23 @@ export const isTracerDisabledUnsafe = (
   request: HttpServerRequest
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
-// OpenTelemetry requires failed server spans for 5xx responses.
+// OpenTelemetry fails server spans only for 5xx responses. Interrupts (such as
+// client aborts) keep their interrupt exit.
 const responseSpanExit = (
   span: Span,
   request: HttpServerRequest,
-  response: HttpServerResponse
-): Exit.Exit<HttpServerResponse, HttpServerError> => {
+  response: HttpServerResponse,
+  cause?: Cause.Cause<unknown>
+): Exit.Exit<HttpServerResponse, unknown> => {
   if (!(response.status >= 500 && response.status < 600)) {
-    return Exit.succeed(response)
+    return cause !== undefined && Cause.hasInterruptsOnly(cause) ? Exit.failCause(cause) : Exit.succeed(response)
   }
   span.attribute("error.type", String(response.status))
-  return Exit.fail(
-    tracing.withoutStackTrace(() => new HttpServerError({ reason: new ResponseError({ request, response }) }))
-  )
+  return cause !== undefined
+    ? Exit.failCause(cause)
+    : Exit.fail(
+      tracing.withoutStackTrace(() => new HttpServerError({ reason: new ResponseError({ request, response }) }))
+    )
 }
 
 /**
@@ -265,16 +269,7 @@ export const tracer: <E, R>(
         if (Exit.isFailure(exit)) {
           const [failureResponse, cause] = causeResponseStripped(exit.cause)
           response = failureResponse
-          // OpenTelemetry leaves server spans unset for responses below 500,
-          // but interrupts (such as client aborts) keep their interrupt exit.
-          if (Option.isSome(cause) && (response.status >= 500 || Cause.hasInterruptsOnly(cause.value))) {
-            if (response.status >= 500) {
-              span.attribute("error.type", String(response.status))
-            }
-            spanExit = Exit.failCause(cause.value)
-          } else {
-            spanExit = responseSpanExit(span, request, response)
-          }
+          spanExit = responseSpanExit(span, request, response, Option.getOrUndefined(cause))
         } else {
           response = exit.value
           spanExit = responseSpanExit(span, request, response)
@@ -301,14 +296,7 @@ export const tracer: <E, R>(
           } else {
             const url = Request.toURL(request)
             if (Option.isSome(url)) {
-              const query = url.value.search.slice(1)
-              const redactedQuery = query === "" ? query : tracing.redactQuery(query)
-              span.attribute("url.full", tracing.redactUrl(url.value, redactedQuery))
-              span.attribute("url.path", url.value.pathname)
-              if (redactedQuery !== "") {
-                span.attribute("url.query", redactedQuery)
-              }
-              span.attribute("url.scheme", url.value.protocol.slice(0, -1))
+              tracing.setUrlAttributes(span, url.value)
             }
           }
           if (request.headers["user-agent"] !== undefined) {

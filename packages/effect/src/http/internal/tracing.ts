@@ -16,14 +16,11 @@ const knownMethods: ReadonlySet<string> = new Set([
 ])
 
 /** @internal */
-export const isKnownMethod = (method: string): boolean => knownMethods.has(method)
-
-/** @internal */
-export const spanNameMethod = (method: string): string => isKnownMethod(method) ? method : "HTTP"
+export const spanNameMethod = (method: string): string => knownMethods.has(method) ? method : "HTTP"
 
 /** @internal */
 export const setMethodAttributes = (span: Tracer.Span, method: string): void => {
-  if (isKnownMethod(method)) {
+  if (knownMethods.has(method)) {
     span.attribute("http.request.method", method)
   } else {
     span.attribute("http.request.method", "_OTHER")
@@ -72,21 +69,28 @@ const decodeQueryKey = (key: string): string => {
 }
 
 /** @internal */
-export const redactUrl = (url: URL, redactedQuery: string): string => {
+export const setUrlAttributes = (span: Tracer.Span, url: URL): void => {
   const query = url.search.slice(1)
+  const redactedQuery = redactQuery(query)
   const hasCredentials = url.username !== "" || url.password !== ""
-  if (!hasCredentials && redactedQuery === query) {
-    return url.toString()
+  if (hasCredentials || redactedQuery !== query) {
+    const redacted = new URL(url)
+    if (hasCredentials) {
+      redacted.username = "REDACTED"
+      redacted.password = "REDACTED"
+    }
+    if (redactedQuery !== query) {
+      redacted.search = redactedQuery
+    }
+    span.attribute("url.full", redacted.toString())
+  } else {
+    span.attribute("url.full", url.toString())
   }
-  const copy = new URL(url.toString())
-  if (hasCredentials) {
-    copy.username = "REDACTED"
-    copy.password = "REDACTED"
+  span.attribute("url.path", url.pathname)
+  span.attribute("url.scheme", url.protocol.slice(0, -1))
+  if (redactedQuery !== "") {
+    span.attribute("url.query", redactedQuery)
   }
-  if (redactedQuery !== query) {
-    copy.search = redactedQuery
-  }
-  return copy.toString()
 }
 
 /** @internal */
