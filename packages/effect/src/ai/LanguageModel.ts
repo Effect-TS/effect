@@ -2472,7 +2472,6 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
     ? toolkit
     : Effect.succeed(toolkit as unknown as Toolkit.WithHandler<Tools>)) as any
 
-// Span attribute values must be primitives, so object tool choices are JSON-encoded.
 const annotateToolOptions = (
   span: Span,
   toolChoice: ToolChoice<any>,

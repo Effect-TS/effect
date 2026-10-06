@@ -262,9 +262,9 @@ export type WellKnownProviderName =
  * If one of them applies, then the respective value **MUST** be used;
  * otherwise, a custom value **MAY** be used.
  *
+ * @deprecated Use `WellKnownProviderName`, the values of `gen_ai.provider.name`.
  * @stability unstable
  * @category models
- * @deprecated Use `WellKnownProviderName`, the values of `gen_ai.provider.name`.
  * @since 4.0.0
  */
 export type WellKnownSystem =
@@ -428,7 +428,6 @@ export const addSpanAttributes = (
   }
 }
 
-// Deprecated `gen_ai.system` values that were renamed in `gen_ai.provider.name`.
 const renamedSystems: ReadonlyMap<string, WellKnownProviderName> = new Map([
   ["az.ai.inference", "azure.ai.inference"],
   ["az.ai.openai", "azure.ai.openai"],

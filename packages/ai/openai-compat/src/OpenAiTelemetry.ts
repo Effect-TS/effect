@@ -1,8 +1,8 @@
 /**
  * The `OpenAiTelemetry` module defines OpenAI-compatible telemetry attributes
  * and a helper for adding them to a tracing span. It keeps the standard GenAI
- * telemetry attributes and adds request and response metadata under the
- * `openai.*` OpenTelemetry namespaces.
+ * telemetry attributes and adds service tier and system fingerprint under
+ * `openai.*`. Response format is written as `gen_ai.output.type`.
  *
  * @since 4.0.0
  */
@@ -42,8 +42,8 @@ export type OpenAiTelemetryAttributes = Simplify<
 export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & ResponseAttributes
 
 /**
- * Telemetry attributes which are part of the GenAI specification and are
- * namespaced by `openai.request`.
+ * OpenAI request metadata, written under `openai.request.*` except for
+ * response format, which maps to `gen_ai.output.type`.
  *
  * @category models
  * @since 4.0.0
@@ -139,9 +139,9 @@ const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("openai.response
  *
  * **Details**
  *
- * Standard GenAI attributes are applied first. When OpenAI request or response
- * metadata is present, it is written under `openai.request.*` and
- * `openai.response.*` attributes.
+ * Standard GenAI attributes are applied first. OpenAI metadata is written under
+ * `openai.request.*` and `openai.response.*`, except for response format, which
+ * maps to `gen_ai.output.type`.
  *
  * **Gotchas**
  *

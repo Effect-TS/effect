@@ -2872,8 +2872,7 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
   }
 }
 
-// Anthropic reports cached tokens separately from `input_tokens`, so
-// `gen_ai.usage.input_tokens` is their sum and the cache counts are subsets of it.
+// Cache counts are included in `gen_ai.usage.input_tokens`.
 const annotateCacheUsage = (span: Span, cacheRead: number | undefined, cacheWrite: number | undefined): void => {
   if (Predicate.isNotNullish(cacheRead)) span.attribute("gen_ai.usage.cache_read.input_tokens", cacheRead)
   if (Predicate.isNotNullish(cacheWrite)) span.attribute("gen_ai.usage.cache_write.input_tokens", cacheWrite)
