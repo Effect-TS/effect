@@ -261,7 +261,7 @@ export * as FiberSet from "./FiberSet.ts"
 export * as FileSystem from "./FileSystem.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as Filter from "./Filter.ts"
@@ -345,7 +345,7 @@ export * as JsonPointer from "./JsonPointer.ts"
 export * as JsonSchema from "./JsonSchema.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as Latch from "./Latch.ts"
@@ -513,7 +513,7 @@ export * as PrimaryKey from "./PrimaryKey.ts"
 export * as PubSub from "./PubSub.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as Pull from "./Pull.ts"
@@ -687,7 +687,7 @@ export * as ScopedCache from "./ScopedCache.ts"
 export * as ScopedRef from "./ScopedRef.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as Semaphore from "./Semaphore.ts"
@@ -849,7 +849,7 @@ export * as TxSubscriptionRef from "./TxSubscriptionRef.ts"
 export * as Types from "./Types.ts"
 
 /**
- * @stability unstable
+ * @stability stable
  * @since 4.0.0
  */
 export * as UndefinedOr from "./UndefinedOr.ts"
