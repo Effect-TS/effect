@@ -18,15 +18,18 @@ import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constant, constFalse, constTrue, dual, flow, identity } from "../Function.ts"
 import * as Inspectable from "../Inspectable.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as RateLimiter from "../persistence/RateLimiter.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Ref from "../Ref.ts"
+import * as References from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import type * as Scope from "../Scope.ts"
@@ -42,6 +45,7 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
+import * as tracing from "./internal/tracing.ts"
 import * as Url from "./Url.ts"
 
 const TypeId = "~effect/http/HttpClient"
@@ -661,6 +665,29 @@ const Proto = {
   )
 }
 
+// OpenTelemetry marks client spans as failed for 4xx and 5xx responses. The
+// response still succeeds for the caller, only the span ends with an error.
+const endSpanWithStatusError = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  span: Tracer.Span,
+  request: HttpClientRequest.HttpClientRequest,
+  response: HttpClientResponse.HttpClientResponse
+): void => {
+  span.attribute("error.type", String(response.status))
+  const stackTraceLimit = getStackTraceLimit()
+  setStackTraceLimit(0)
+  let error: Error.HttpClientError
+  try {
+    error = new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) })
+  } finally {
+    setStackTraceLimit(stackTraceLimit)
+  }
+  span.end(
+    fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
+    Exit.fail(error)
+  )
+}
+
 /**
  * Constructs an `HttpClient` from a low-level request runner.
  *
@@ -721,27 +748,23 @@ export const make = (
           fiber.getRef(SpanNameGenerator)(request),
           { kind: "client" },
           (span) => {
-            span.attribute("http.request.method", request.method)
-            span.attribute("server.address", url.origin)
-            if (url.port !== "") {
-              span.attribute("server.port", +url.port)
+            tracing.setMethodAttributes(span, request.method)
+            span.attribute("server.address", url.hostname)
+            const port = url.port !== "" ? +url.port : tracing.defaultPort(url.protocol)
+            if (port !== undefined) {
+              span.attribute("server.port", port)
             }
-            span.attribute("url.full", url.toString())
+            span.attribute("url.full", tracing.redactUrl(url))
             span.attribute("url.path", url.pathname)
             span.attribute("url.scheme", url.protocol.slice(0, -1))
             const query = url.search.slice(1)
             if (query !== "") {
-              span.attribute("url.query", query)
+              span.attribute("url.query", tracing.redactQuery(query))
             }
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
-            for (const name in request.headers) {
-              if (!headerFilter(name, "request")) continue
-              span.attribute(
-                `http.request.header.${name}`,
-                Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : request.headers[name]
-              )
-            }
+            const isRedacted = (name: string) => Headers.isRedactedName(name, redactedHeaderNames)
+            tracing.setHeaderAttributes(span, "request", request.headers, headerFilter, isRedacted)
             request = fiber.getRef(TracerPropagationEnabled)
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
@@ -751,12 +774,9 @@ export const make = (
                 Effect.matchCauseEffect({
                   onSuccess: (response) => {
                     span.attribute("http.response.status_code", response.status)
-                    for (const name in response.headers) {
-                      if (!headerFilter(name, "response")) continue
-                      span.attribute(
-                        `http.response.header.${name}`,
-                        Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : response.headers[name]
-                      )
+                    tracing.setHeaderAttributes(span, "response", response.headers, headerFilter, isRedacted)
+                    if (response.status >= 400) {
+                      endSpanWithStatusError(fiber, span, request, response)
                     }
 
                     if (scopedController) return Effect.succeed(response)
@@ -764,6 +784,10 @@ export const make = (
                     return Effect.succeed(new InterruptibleResponse(response, controller))
                   },
                   onFailure(cause) {
+                    const error = Cause.findErrorOption(cause)
+                    if (Option.isSome(error) && Error.isHttpClientError(error.value)) {
+                      span.attribute("error.type", error.value.reason._tag)
+                    }
                     if (!scopedController && Cause.hasInterrupts(cause)) {
                       controller.abort()
                     }
@@ -1669,6 +1693,10 @@ export const TracerDisabledWhen = Context.Reference<
 /**
  * Context reference for filtering request and response headers added to client spans.
  *
+ * **Details**
+ *
+ * Header attributes are opt-in, so no headers are recorded by default.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -1676,7 +1704,7 @@ export const TracerDisabledWhen = Context.Reference<
 export const TracerHeaderFilter = Context.Reference<
   (headerName: string, phase: "request" | "response") => boolean
 >("effect/http/HttpClient/TracerHeaderFilter", {
-  defaultValue: () => constTrue
+  defaultValue: () => constFalse
 })
 
 /**
@@ -1700,7 +1728,7 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/
 export const SpanNameGenerator = Context.Reference<
   (request: HttpClientRequest.HttpClientRequest) => string
 >("effect/http/HttpClient/SpanNameGenerator", {
-  defaultValue: () => (request) => `http.client ${request.method}`
+  defaultValue: () => (request) => tracing.spanNameMethod(request.method)
 })
 
 /**

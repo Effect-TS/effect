@@ -172,7 +172,7 @@ Missing key
     }))
 
   describe("tracer", () => {
-    it.effect("includes request and response headers by default", () =>
+    it.effect("records no headers by default", () =>
       Effect.gen(function*() {
         let clientSpan: Tracer.NativeSpan | undefined
         const tracer = Tracer.make({
@@ -197,8 +197,8 @@ Missing key
         }).pipe(Effect.provideService(Tracer.Tracer, tracer))
 
         assert(clientSpan !== undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), "request")
-        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), "response")
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), undefined)
       }))
 
     it.effect("filters request and response header span attributes", () =>
@@ -236,9 +236,9 @@ Missing key
 
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-drop"), undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-keep"), "keep")
+        assert.deepStrictEqual(clientSpan.attributes.get("http.request.header.x-request-keep"), ["keep"])
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-drop"), undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-keep"), "keep")
+        assert.deepStrictEqual(clientSpan.attributes.get("http.response.header.x-response-keep"), ["keep"])
       }))
 
     it.effect("filters the same header name independently by phase", () =>
@@ -270,7 +270,67 @@ Missing key
 
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
+        assert.deepStrictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), ["response"])
+      }))
+    const traceRequest = Effect.fnUntraced(function*(
+      request: HttpClientRequest.HttpClientRequest,
+      status = 200
+    ) {
+      let clientSpan: Tracer.NativeSpan | undefined
+      const tracer = Tracer.make({
+        span(options) {
+          clientSpan = new Tracer.NativeSpan(options)
+          return clientSpan
+        }
+      })
+      const client = HttpClient.make((request) =>
+        Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status })))
+      )
+      const response = yield* client.execute(request).pipe(Effect.provideService(Tracer.Tracer, tracer))
+      assert(clientSpan !== undefined)
+      return { span: clientSpan, response } as const
+    })
+
+    it.effect("follows semantic conventions for names and server attributes", () =>
+      Effect.gen(function*() {
+        const { span } = yield* traceRequest(HttpClientRequest.get("https://example.com/path"))
+        assert.strictEqual(span.name, "GET")
+        assert.strictEqual(span.attributes.get("http.request.method"), "GET")
+        assert.strictEqual(span.attributes.get("server.address"), "example.com")
+        assert.strictEqual(span.attributes.get("server.port"), 443)
+        assert(span.status._tag === "Ended" && span.status.exit._tag === "Success")
+
+        const custom = yield* traceRequest(
+          HttpClientRequest.make("GET")("http://example.com:8080/").pipe(
+            (request) => ({ ...request, method: "PURGE" }) as HttpClientRequest.HttpClientRequest
+          )
+        )
+        assert.strictEqual(custom.span.name, "HTTP")
+        assert.strictEqual(custom.span.attributes.get("http.request.method"), "_OTHER")
+        assert.strictEqual(custom.span.attributes.get("http.request.method_original"), "PURGE")
+        assert.strictEqual(custom.span.attributes.get("server.port"), 8080)
+      }))
+
+    it.effect("marks 4xx and 5xx responses as span errors", () =>
+      Effect.gen(function*() {
+        for (const status of [404, 503]) {
+          const { response, span } = yield* traceRequest(HttpClientRequest.get("http://example.com/"), status)
+          assert.strictEqual(response.status, status)
+          assert.strictEqual(span.attributes.get("error.type"), String(status))
+          assert(span.status._tag === "Ended" && span.status.exit._tag === "Failure")
+        }
+      }))
+
+    it.effect("redacts credentials and signed query values", () =>
+      Effect.gen(function*() {
+        const { span } = yield* traceRequest(
+          HttpClientRequest.get("https://user:pass@example.com/file?X-Amz-Signature=abc&keep=1")
+        )
+        assert.strictEqual(
+          span.attributes.get("url.full"),
+          "https://REDACTED:REDACTED@example.com/file?X-Amz-Signature=REDACTED&keep=1"
+        )
+        assert.strictEqual(span.attributes.get("url.query"), "X-Amz-Signature=REDACTED&keep=1")
       }))
   })
 

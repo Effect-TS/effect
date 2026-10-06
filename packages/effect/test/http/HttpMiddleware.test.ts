@@ -340,21 +340,24 @@ describe("HttpMiddleware", () => {
         yield* HttpMiddleware.tracer(Effect.succeed(response)).pipe(
           Effect.provideService(HttpServerRequest.HttpServerRequest, request),
           Effect.provideService(Headers.CurrentRedactedNames, ["x-request-secret", "x-response-secret"]),
+          Effect.provideService(HttpMiddleware.TracerHeaderFilter, (name) => name.startsWith("x-")),
           Effect.provideService(Tracer.Tracer, tracer)
         )
         yield* Effect.yieldNow
 
         assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.name, "POST")
         assert.strictEqual(serverSpan.sampled, true)
         assert.strictEqual(serverSpan.attributes.get("http.request.method"), "POST")
         assert.strictEqual(serverSpan.attributes.get("url.path"), "/todos/1")
         assert.strictEqual(serverSpan.attributes.get("url.query"), "foo=bar")
         assert.strictEqual(serverSpan.attributes.get("user_agent.original"), "test-agent")
-        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), "request")
-        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request-secret"), "<redacted>")
+        assert.strictEqual(serverSpan.attributes.get("http.request.header.user-agent"), undefined)
+        assert.deepStrictEqual(serverSpan.attributes.get("http.request.header.x-request"), ["request"])
+        assert.deepStrictEqual(serverSpan.attributes.get("http.request.header.x-request-secret"), ["<redacted>"])
         assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 201)
-        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), "response")
-        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), "<redacted>")
+        assert.deepStrictEqual(serverSpan.attributes.get("http.response.header.x-response"), ["response"])
+        assert.deepStrictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), ["<redacted>"])
       }))
 
     it.effect("skips attributes for unsampled spans", () =>
@@ -379,6 +382,65 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.sampled, false)
         assert.strictEqual(serverSpan.attributes.size, 0)
         assert.strictEqual(serverSpan.status._tag, "Ended")
+      }))
+
+    const traceServer = Effect.fnUntraced(function*(
+      request: HttpServerRequest.HttpServerRequest,
+      app: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown, HttpServerRequest.HttpServerRequest>
+    ) {
+      let serverSpan: Tracer.NativeSpan | undefined
+      const tracer = Tracer.make({
+        span(options) {
+          serverSpan = new Tracer.NativeSpan(options)
+          return serverSpan
+        }
+      })
+      yield* Effect.exit(HttpMiddleware.tracer(app)).pipe(
+        Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+        Effect.provideService(Tracer.Tracer, tracer)
+      )
+      yield* Effect.yieldNow
+      assert(serverSpan !== undefined && serverSpan.status._tag === "Ended")
+      return serverSpan
+    })
+
+    it.effect("leaves the span status unset for a typed failure rendered as 4xx", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/missing"))
+        const response = HttpServerResponse.empty({ status: 404 })
+        const span = yield* traceServer(
+          request,
+          Effect.failCause(Cause.fromReasons([...Cause.fail("not found").reasons, ...Cause.die(response).reasons]))
+        )
+        assert(span.status._tag === "Ended")
+        assert.strictEqual(span.status.exit._tag, "Success")
+        assert.strictEqual(span.attributes.get("http.response.status_code"), 404)
+        assert.strictEqual(span.attributes.get("error.type"), undefined)
+      }))
+
+    it.effect("records error.type for 5xx responses", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/boom"))
+        const span = yield* traceServer(request, Effect.fail("boom"))
+        assert(span.status._tag === "Ended")
+        assert.strictEqual(span.status.exit._tag, "Failure")
+        assert.strictEqual(span.attributes.get("error.type"), "500")
+      }))
+
+    it.effect("normalizes unknown methods and redacts signed query values", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(
+          new Request("https://localhost:3000/file?sig=secret&keep=1", { method: "PURGE" })
+        )
+        const span = yield* traceServer(request, Effect.succeed(HttpServerResponse.empty()))
+        assert.strictEqual(span.name, "HTTP")
+        assert.strictEqual(span.attributes.get("http.request.method"), "_OTHER")
+        assert.strictEqual(span.attributes.get("http.request.method_original"), "PURGE")
+        assert.strictEqual(
+          span.attributes.get("url.full"),
+          "http://localhost/file?sig=REDACTED&keep=1"
+        )
+        assert.strictEqual(span.attributes.get("url.query"), "sig=REDACTED&keep=1")
       }))
 
     it.effect("ends the span and restores the context when the app is interrupted", () =>
