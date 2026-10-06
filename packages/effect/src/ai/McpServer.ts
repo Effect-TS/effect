@@ -1852,7 +1852,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
 ) => Effect.Effect<
   void,
   never,
-  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext>
+  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
 > = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
@@ -1872,7 +1872,11 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     }
     return Context.makeUnsafe(services)
   }))
-  const services = omitRequestServices(yield* Effect.context<never>())
+  const services = omitRequestServices(
+    yield* Effect.context<
+      Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
+    >()
+  )
   const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
   // Interruption propagates; anything else is logged, reported and scrubbed.
   const internalToolError = (cause: Cause.Cause<unknown>) => {
@@ -2016,7 +2020,7 @@ export const toolkit = <Tools extends Record<string, Tool.Any>>(
 ): Layer.Layer<
   never,
   never,
-  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools>, McpRequestContext>
+  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
 > =>
   Layer.effectDiscard(registerToolkit(toolkit)).pipe(
     Layer.provide(McpServer.layer)

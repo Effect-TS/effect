@@ -1,8 +1,9 @@
-import { McpProtocol, McpSchema, McpServer } from "effect/ai"
+import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as HttpClient from "effect/http/HttpClient"
 import type * as Layer from "effect/Layer"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcGroup from "effect/rpc/RpcGroup"
@@ -140,6 +141,16 @@ describe("McpServer", () => {
       expect<Effect.Error<typeof run>>().type.toBe<Cause.IllegalArgumentError>()
       expect<Layer.Error<typeof layer>>().type.toBe<Cause.IllegalArgumentError>()
     })
+  })
+
+  it("should retain toolkit handler services in both registration APIs", () => {
+    const toolkit = Toolkit.make(Tool.make("http", { dependencies: [HttpClient.HttpClient] }))
+    const registered = McpServer.registerToolkit(toolkit)
+    const layer = McpServer.toolkit(toolkit)
+    type Requirements = Tool.HandlersFor<typeof toolkit.tools> | HttpClient.HttpClient
+
+    expect<Effect.Services<typeof registered>>().type.toBe<McpServer.McpServer | Requirements>()
+    expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
   })
 
   describe("prompts", () => {
