@@ -2181,10 +2181,10 @@ export const batch: (f: () => void) => void = Registry.batch
  * @since 4.0.0
  */
 export const windowFocusSignal: Atom<number> = readable((get) => {
-  let count = 0
   if (typeof window === "undefined") {
-    return count
+    return 0
   }
+  let count = 0
   function update() {
     if (document.visibilityState === "visible") {
       get.setSelf(++count)
