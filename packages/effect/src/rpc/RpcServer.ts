@@ -1184,7 +1184,10 @@ export const makeProtocolWithHttpEffect: (
       })
     }
 
-    const initialChunk = yield* Queue.takeAll(queue) as any as Effect.Effect<NonEmptyReadonlyArray<Uint8Array>>
+    const initialChunk = yield* Pull.catchDone(
+      Queue.takeAll(queue as Queue.Dequeue<Uint8Array, Cause.Done>),
+      () => Effect.succeed([])
+    )
     if (queue.state._tag === "Done") {
       return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk), {
         contentType: serialization.contentType

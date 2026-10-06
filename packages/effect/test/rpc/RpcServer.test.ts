@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
-import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
@@ -48,6 +48,33 @@ const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
 })
 
 describe("RpcServer", () => {
+  for (
+    const [name, serialization] of [
+      ["ndjson", RpcSerialization.layerNdjson],
+      ["ndJsonRpc", RpcSerialization.layerNdJsonRpc()],
+      ["schemaBinary", RpcSerialization.layerSchemaBinary()]
+    ] as const
+  ) {
+    it.effect(`returns HTTP 200 with an empty body for an empty ${name} POST`, () =>
+      Effect.gen(function*() {
+        const group = RpcGroup.make(Rpc.make("ping", { success: Schema.String }))
+        const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ ping: () => Effect.succeed("pong") }),
+            serialization
+          ))
+        )
+        const handler = HttpEffect.toWebHandler(httpEffect)
+        const response = yield* Effect.promise(() =>
+          handler(new Request("http://test/rpc", { method: "POST", body: "" }))
+        )
+        const body = yield* Effect.promise(() => response.text())
+
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(body, "")
+      }))
+  }
+
   it.effect("should drain the response when stdin ends during request startup", () =>
     Effect.gen(function*() {
       const started = yield* Deferred.make<void>()
