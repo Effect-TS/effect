@@ -28,7 +28,14 @@ const stabilityResult = (tag: string) => {
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), "export * as Foo from \"./Foo.ts\"\n")
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -390,7 +397,14 @@ export const value = 1
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -411,7 +425,11 @@ export const makeValue = () => 1
     }
     const model = extractJSDocsSync(options)
     assert.strictEqual(model.version, 3)
-    assert.strictEqual(model.files.length, 1)
+    assert.deepStrictEqual(model.files.map((file) => file.file), ["src/Foo.ts", "src/index.ts"])
+    const index = model.files.find((file) => file.file === "src/index.ts")
+    assert.deepStrictEqual(index?.diagnostics, [])
+    assert.strictEqual(index?.namespaces[0]?.name, "Foo")
+    assert.strictEqual(model.apis.some((api) => api.apiFqn === "@effect/sample.Foo"), true)
     assert.strictEqual(model.files[0]?.declarations[0]?.name, "makeValue")
     assert.strictEqual(model.apis[0]?.apiFqn, "@effect/sample/Foo.makeValue")
     assert.deepStrictEqual(model.apis[0]?.importGuidance, {
@@ -452,7 +470,14 @@ export const makeValue = () => 1
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -498,7 +523,14 @@ export const makeValue = () => 1
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/External.ts"),
       `/**
@@ -827,7 +859,14 @@ export { _try as try }`
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -886,7 +925,14 @@ export const makeValue = () => 1
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -927,7 +973,14 @@ export const makeValue = () => 1
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(path.join(cwd, "src/Schema.ts"), `export {}\n`)
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
@@ -975,7 +1028,14 @@ export const makeValue = () => 1
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -1033,7 +1093,14 @@ export const makeValue = () => 1
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -1096,7 +1163,19 @@ export const useHidden = () => undefined
     )
     fs.writeFileSync(
       path.join(cwd, "src/index.ts"),
-      `export * as Eq from "./Eq.ts"\nexport * as Ordering from "./Ordering.ts"\nexport * as Reducer from "./Reducer.ts"\n`
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Eq from "./Eq.ts"\n/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Ordering from "./Ordering.ts"\n/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Reducer from "./Reducer.ts"\n`
     )
     fs.writeFileSync(
       path.join(cwd, "src/Reducer.ts"),
@@ -1176,7 +1255,14 @@ export const makeReducer = () => Reducer
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -1237,7 +1323,15 @@ export const useHidden = () => Hidden
     )
     fs.writeFileSync(
       path.join(cwd, "src/index.ts"),
-      `export * as Bar from "./Bar.ts"\nexport * as Foo from "./Foo.ts"\n`
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Bar from "./Bar.ts"\n/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
     )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
@@ -1318,7 +1412,14 @@ export const useTarget = () => Foo.Target
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
@@ -1388,7 +1489,14 @@ export const Tuple = Array
         exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
       })
     )
-    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    fs.writeFileSync(
+      path.join(cwd, "src/index.ts"),
+      `/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as Foo from "./Foo.ts"\n`
+    )
     fs.writeFileSync(
       path.join(cwd, "src/Imported.ts"),
       `/**
