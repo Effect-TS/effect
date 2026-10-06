@@ -2,6 +2,7 @@ import { assert, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, Option, Queue, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import type { StoreId } from "effect/eventlog/EventLogMessage"
+import type * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
 import * as SqlEventLogServerUnencrypted from "effect/eventlog/SqlEventLogServerUnencrypted"
 import { Reactivity } from "effect/reactivity"
 import type * as SqlClient from "effect/sql/SqlClient"
@@ -10,7 +11,7 @@ let nextNamespace = 0
 
 const uniqueNamespace = (prefix: string) => `${prefix}_${++nextNamespace}`
 
-const makeOptions = (prefix: string) => {
+export const makeOptions = (prefix: string) => {
   const namespace = uniqueNamespace(prefix)
   return {
     entryTablePrefix: `effect_events_${namespace}`,
@@ -19,9 +20,9 @@ const makeOptions = (prefix: string) => {
   }
 }
 
-const makeStoreId = (prefix: string) => `${uniqueNamespace(prefix)}_store` as StoreId
+export const makeStoreId = (prefix: string) => `${uniqueNamespace(prefix)}_store` as StoreId
 
-const makeEntry = (
+export const makeEntry = (
   name: string,
   options: {
     readonly id?: EventJournal.EntryId | undefined
@@ -35,7 +36,7 @@ const makeEntry = (
     payload: new TextEncoder().encode(name)
   }, { disableChecks: true })
 
-const makeStorage = (options: {
+export const makeStorage = (options: {
   readonly entryTablePrefix?: string
   readonly remoteIdTable?: string
   readonly insertBatchSize?: number
@@ -43,6 +44,20 @@ const makeStorage = (options: {
   SqlEventLogServerUnencrypted.makeStorage(options).pipe(
     Effect.orDie
   )
+
+export const openChanges = (storage: EventLogServerUnencrypted.Storage["Service"], storeId: StoreId) =>
+  storage.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
+    Stream.toQueue({ capacity: "unbounded" })
+  )
+
+const assertEntries = (
+  rows: ReadonlyArray<EventJournal.RemoteEntry>,
+  expected: ReadonlyArray<EventJournal.Entry>,
+  startSequence: number
+) => {
+  assert.deepStrictEqual(rows.map((row) => row.remoteSequence), expected.map((_, index) => startSequence + index))
+  assert.deepStrictEqual(rows.map((row) => row.entry.idString), expected.map((entry) => entry.idString))
+}
 
 export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unknown>) =>
   it.layer(
@@ -71,13 +86,7 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
 
         yield* storage.write(storeId, [entryA, entryB])
 
-        const changes = yield* storage.changes({
-          storeId,
-          startSequence: 0,
-          compactors: new Map()
-        }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
+        const changes = yield* openChanges(storage, storeId)
         const replayed = yield* Queue.takeAll(changes)
 
         assert.deepStrictEqual(replayed.map((entry) => entry.remoteSequence), [1, 2])
@@ -104,14 +113,7 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
 
           yield* storage.write(storeId, [backlogEntry])
 
-          const changesFiber = yield* storage.changes({
-            storeId,
-            startSequence: 0,
-            compactors: new Map()
-          }).pipe(
-            Stream.toQueue({ capacity: "unbounded" }),
-            Effect.forkChild
-          )
+          const changesFiber = yield* openChanges(storage, storeId).pipe(Effect.forkChild)
           yield* storage.write(storeId, [racedEntry])
           const changes = yield* Fiber.join(changesFiber)
 
@@ -146,13 +148,7 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         yield* storage.write(storeA, [entryA1])
         yield* storage.write(storeB, [entryB1])
 
-        const changesA = yield* storage.changes({
-          storeId: storeA,
-          startSequence: 0,
-          compactors: new Map()
-        }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
+        const changesA = yield* openChanges(storage, storeA)
         const backlogA = yield* Queue.takeAll(changesA)
         assert.deepStrictEqual(backlogA.map((entry) => entry.entry.idString), [entryA1.idString])
 
@@ -169,8 +165,7 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
 
     it.effect("commits outer writes but discards a caught nested rollback and its notifications", () =>
       Effect.gen(function*() {
-        const options = makeOptions("nested_rollback")
-        const storage = yield* makeStorage(options)
+        const storage = yield* makeStorage(makeOptions("nested_rollback"))
         const storeId = makeStoreId("nested_rollback")
         const backlog = makeEntry("Ada")
         const before = makeEntry("Grace")
@@ -178,10 +173,8 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         const after = makeEntry("Linus")
         const sentinel = makeEntry("Barbara")
         yield* storage.write(storeId, [backlog])
-        const changes = yield* storage.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
-        assert.strictEqual((yield* Queue.take(changes)).entry.idString, backlog.idString)
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
 
         yield* storage.withTransaction(Effect.gen(function*() {
           yield* storage.write(storeId, [before])
@@ -192,35 +185,20 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
           assert.strictEqual(error, "nested rollback")
           yield* storage.write(storeId, [after])
         }))
+        // The sentinel makes a leaked rollback notification fail by identity,
+        // rather than relying on a sleep to prove that no notification arrived.
         yield* storage.write(storeId, [sentinel])
-        const live = [yield* Queue.take(changes), yield* Queue.take(changes), yield* Queue.take(changes)]
-        assert.deepStrictEqual(live.map((row) => row.remoteSequence), [2, 3, 4])
-        assert.deepStrictEqual(live.map((row) => row.entry.idString), [
-          before.idString,
-          after.idString,
-          sentinel.idString
-        ])
+        assertEntries(yield* Queue.takeN(changes, 3), [before, after, sentinel], 2)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
 
-        const reopened = yield* makeStorage(options)
-        const replay = yield* reopened.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
-        const persisted = yield* Queue.takeAll(replay)
-        assert.deepStrictEqual(persisted.map((row) => row.remoteSequence), [1, 2, 3, 4])
-        assert.deepStrictEqual(persisted.map((row) => row.entry.idString), [
-          backlog.idString,
-          before.idString,
-          after.idString,
-          sentinel.idString
-        ])
+        const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
+        assertEntries(persisted, [backlog, before, after, sentinel], 1)
       }))
 
     it.effect("persists and streams multiple successful transaction levels in write order exactly once", () =>
       Effect.gen(function*() {
-        const options = makeOptions("multiple_nesting")
-        const storage = yield* makeStorage(options)
+        const storage = yield* makeStorage(makeOptions("multiple_nesting"))
         const storeId = makeStoreId("multiple_nesting")
         const backlog = makeEntry("Ada")
         const outer = makeEntry("Grace")
@@ -229,10 +207,8 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         const after = makeEntry("Barbara")
         const sentinel = makeEntry("Donald")
         yield* storage.write(storeId, [backlog])
-        const changes = yield* storage.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
-        assert.strictEqual((yield* Queue.take(changes)).entry.idString, backlog.idString)
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
 
         yield* storage.withTransaction(Effect.gen(function*() {
           yield* storage.write(storeId, [outer])
@@ -244,48 +220,25 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         }))
         // If a nesting level loses its buffer, the sentinel exposes the gap.
         yield* storage.write(storeId, [sentinel])
-        const live = yield* Effect.forEach([0, 1, 2, 3, 4], () => Queue.take(changes))
-        assert.deepStrictEqual(live.map((row) => row.remoteSequence), [2, 3, 4, 5, 6])
-        assert.deepStrictEqual(live.map((row) => row.entry.idString), [
-          outer.idString,
-          nested.idString,
-          deepest.idString,
-          after.idString,
-          sentinel.idString
-        ])
+        assertEntries(yield* Queue.takeN(changes, 5), [outer, nested, deepest, after, sentinel], 2)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
 
-        const reopened = yield* makeStorage(options)
-        const replay = yield* reopened.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
-        const persisted = yield* Queue.takeAll(replay)
-        assert.deepStrictEqual(persisted.map((row) => row.remoteSequence), [1, 2, 3, 4, 5, 6])
-        assert.deepStrictEqual(persisted.map((row) => row.entry.idString), [
-          backlog.idString,
-          outer.idString,
-          nested.idString,
-          deepest.idString,
-          after.idString,
-          sentinel.idString
-        ])
+        const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
+        assertEntries(persisted, [backlog, outer, nested, deepest, after, sentinel], 1)
       }))
 
     it.effect("discards outer rollback rows and notifications, including successful nested writes", () =>
       Effect.gen(function*() {
-        const options = makeOptions("outer_rollback")
-        const storage = yield* makeStorage(options)
+        const storage = yield* makeStorage(makeOptions("outer_rollback"))
         const storeId = makeStoreId("outer_rollback")
         const backlog = makeEntry("Ada")
         const rolledBack = makeEntry("Grace")
         const nested = makeEntry("Margaret")
         const sentinel = makeEntry("Linus")
         yield* storage.write(storeId, [backlog])
-        const changes = yield* storage.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
-        assert.strictEqual((yield* Queue.take(changes)).entry.idString, backlog.idString)
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
 
         const error = yield* storage.withTransaction(Effect.gen(function*() {
           yield* storage.write(storeId, [rolledBack])
@@ -294,21 +247,12 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         })).pipe(Effect.flip)
         assert.strictEqual(error, "rollback")
 
-        // The sentinel makes a leaked rollback notification fail by identity,
-        // rather than relying on a sleep to prove that no notification arrived.
         yield* storage.write(storeId, [sentinel])
-        const live = yield* Queue.take(changes)
-        assert.strictEqual(live.remoteSequence, 2)
-        assert.strictEqual(live.entry.idString, sentinel.idString)
+        assertEntries([yield* Queue.take(changes)], [sentinel], 2)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
 
-        const reopened = yield* makeStorage(options)
-        const replay = yield* reopened.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
-          Stream.toQueue({ capacity: "unbounded" })
-        )
-        const persisted = yield* Queue.takeAll(replay)
-        assert.deepStrictEqual(persisted.map((row) => row.remoteSequence), [1, 2])
-        assert.deepStrictEqual(persisted.map((row) => row.entry.idString), [backlog.idString, sentinel.idString])
+        const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
+        assertEntries(persisted, [backlog, sentinel], 1)
       }))
   })

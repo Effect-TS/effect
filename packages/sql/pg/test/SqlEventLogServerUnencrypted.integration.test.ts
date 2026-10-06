@@ -1,34 +1,25 @@
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Layer, Option, Queue, Stream } from "effect"
-import * as SqlEventLogServerUnencryptedStorageTest from "effect-test/eventlog/SqlEventLogServerUnencryptedStorageTest"
-import * as EventJournal from "effect/eventlog/EventJournal"
-import type { StoreId } from "effect/eventlog/EventLogMessage"
-import * as SqlEventLogServerUnencrypted from "effect/eventlog/SqlEventLogServerUnencrypted"
+import { Deferred, Effect, Fiber, Layer, Option, Queue } from "effect"
+import {
+  makeEntry,
+  makeOptions,
+  makeStorage,
+  makeStoreId,
+  openChanges,
+  suite
+} from "effect-test/eventlog/SqlEventLogServerUnencryptedStorageTest"
 import { Reactivity } from "effect/reactivity"
 import { PgContainer } from "./utils.ts"
 
-SqlEventLogServerUnencryptedStorageTest.suite(
-  "sql-pg",
-  PgContainer.layerClient
-)
+suite("sql-pg", PgContainer.layerClient)
 
 it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 seconds" })(
   "SqlEventLogServerUnencrypted commit visibility",
   (it) => {
     it.effect("streams a write committed after the startup backlog read exactly once", () =>
       Effect.gen(function*() {
-        const storage = yield* SqlEventLogServerUnencrypted.makeStorage({
-          entryTablePrefix: "effect_events_commit_visibility",
-          remoteIdTable: "effect_remote_id_commit_visibility"
-        })
-        const storeId = "commit_visibility_store" as StoreId
-        const makeEntry = (name: string) =>
-          new EventJournal.Entry({
-            id: EventJournal.makeEntryIdUnsafe(),
-            event: "UserNameSet",
-            primaryKey: "user-1",
-            payload: new TextEncoder().encode(name)
-          }, { disableChecks: true })
+        const storage = yield* makeStorage(makeOptions("commit_visibility"))
+        const storeId = makeStoreId("commit_visibility")
         const backlogEntry = makeEntry("Ada")
         const racedEntry = makeEntry("Grace")
         const liveEntry = makeEntry("Margaret")
@@ -45,11 +36,7 @@ it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 
 
         // Start between the write and its commit. Reading the backlog row proves
         // the subscription and the independent snapshot read have completed.
-        const changes = yield* storage.changes({
-          storeId,
-          startSequence: 0,
-          compactors: new Map()
-        }).pipe(Stream.toQueue({ capacity: "unbounded" }))
+        const changes = yield* openChanges(storage, storeId)
         const first = yield* Queue.take(changes)
         assert.strictEqual(first.entry.idString, backlogEntry.idString)
 

@@ -25,7 +25,7 @@ import * as Stream from "../Stream.ts"
 import { Entry, EntryId, makeRemoteIdUnsafe, RemoteEntry, type RemoteId } from "./EventJournal.ts"
 import * as EventLogServerUnencrypted from "./EventLogServerUnencrypted.ts"
 
-let transactionId = 0
+let storageIdCounter = 0
 
 /**
  * Creates unencrypted event-log server `Storage` backed by SQL.
@@ -233,10 +233,16 @@ export const makeStorage = (options?: {
       idleTimeToLive: "5 minutes"
     })
 
-    type PendingWrites = Array<readonly [string, Array<RemoteEntry>]>
+    type PendingWrites = Array<readonly [storeId: string, entries: Array<RemoteEntry>]>
     const pendingWrites = Context.Service<PendingWrites>(
-      `effect/eventlog/SqlEventLogServerUnencrypted/PendingWrites/${transactionId++}`
+      `effect/eventlog/SqlEventLogServerUnencrypted/PendingWrites/${storageIdCounter++}`
     )
+    const publish = ([storeId, entries]: PendingWrites[number]) =>
+      Effect.scoped(Effect.flatMap(RcMap.get(pubsubs, storeId), (pubsub) => PubSub.publishAll(pubsub, entries)))
+    // Writes are buffered per transaction level and only published once the
+    // outermost transaction commits. A nested transaction merges its buffer
+    // into the parent on success; a rollback (including a failed COMMIT)
+    // discards it.
     const withTransaction = <A, E, R>(
       effect: Effect.Effect<A, E, R>
     ): Effect.Effect<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> =>
@@ -249,19 +255,10 @@ export const makeStorage = (options?: {
           const result = yield* sql.withTransaction(
             Effect.provideService(restore(effect), pendingWrites, writes)
           )
-          // A released savepoint is not a commit. Only merge successful nested
-          // writes; a rollback (including a failed COMMIT) discards this buffer.
           if (parent._tag === "Some") {
-            for (const write of writes) {
-              parent.value.push(write)
-            }
+            parent.value.push(...writes)
           } else {
-            yield* Effect.scoped(Effect.gen(function*() {
-              for (const [storeId, entries] of writes) {
-                const pubsub = yield* RcMap.get(pubsubs, storeId)
-                yield* PubSub.publishAll(pubsub, entries)
-              }
-            }))
+            yield* Effect.forEach(writes, publish, { discard: true })
           }
           return result
         })
