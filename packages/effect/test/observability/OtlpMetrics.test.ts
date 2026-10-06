@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Context, Deferred, Effect, Fiber, Layer, Metric, Predicate, Ref } from "effect"
+import { Array, Context, Deferred, Duration, Effect, Fiber, Layer, Metric, Predicate, Ref } from "effect"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
 import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/observability"
 import { TestClock } from "effect/testing"
@@ -63,10 +63,10 @@ describe("OtlpMetrics", () => {
       assert.strictEqual(findFrequencyValue(second, "repro_frequency", "a"), 2)
       assert.strictEqual(findFrequencyValue(first, "repro_frequency", "b"), 1)
       assert.strictEqual(findFrequencyValue(second, "repro_frequency", "b"), 1)
-      assert.strictEqual(findMetric(first, "repro_summary_count")?.sum?.dataPoints[0].asInt, 3)
-      assert.strictEqual(findMetric(second, "repro_summary_count")?.sum?.dataPoints[0].asInt, 3)
-      assert.strictEqual(findMetric(first, "repro_summary_sum")?.sum?.dataPoints[0].asDouble, 60)
-      assert.strictEqual(findMetric(second, "repro_summary_sum")?.sum?.dataPoints[0].asDouble, 60)
+      assert.strictEqual(findMetric(first, "repro_summary")?.summary?.dataPoints[0].count, 3)
+      assert.strictEqual(findMetric(second, "repro_summary")?.summary?.dataPoints[0].count, 3)
+      assert.strictEqual(findMetric(first, "repro_summary")?.summary?.dataPoints[0].sum, 60)
+      assert.strictEqual(findMetric(second, "repro_summary")?.summary?.dataPoints[0].sum, 60)
       assert.strictEqual(
         findMetric(second, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano,
         findMetric(first, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano
@@ -273,19 +273,13 @@ describe("OtlpMetrics", () => {
         const requests = yield* MockHttpClient.requests
         assert.isAtLeast(requests.length, 2)
 
-        // First export - check count and sum metrics
-        const firstCount = findMetric(requests[0], `${metricName}_count`)
-        assert.strictEqual(firstCount?.sum?.dataPoints[0].asInt, 3)
+        const first = findMetric(requests[0], metricName)?.summary?.dataPoints[0]
+        assert.strictEqual(first?.count, 3)
+        assert.strictEqual(first?.sum, 60)
 
-        const firstSum = findMetric(requests[0], `${metricName}_sum`)
-        assert.strictEqual(firstSum?.sum?.dataPoints[0].asDouble, 60)
-
-        // Second export should report cumulative values
-        const secondCount = findMetric(requests[1], `${metricName}_count`)
-        assert.strictEqual(secondCount?.sum?.dataPoints[0].asInt, 4)
-
-        const secondSum = findMetric(requests[1], `${metricName}_sum`)
-        assert.strictEqual(secondSum?.sum?.dataPoints[0].asDouble, 100)
+        const second = findMetric(requests[1], metricName)?.summary?.dataPoints[0]
+        assert.strictEqual(second?.count, 4)
+        assert.strictEqual(second?.sum, 100)
       }).pipe(Effect.provide(TestLayerCumulative)))
   })
 
@@ -406,7 +400,7 @@ describe("OtlpMetrics", () => {
         assert.strictEqual(secondB?.asInt, 2) // Delta: 3-1=2
       }).pipe(Effect.provide(TestLayerDelta)))
 
-    it.effect("reports summary count and sum deltas across export intervals", () =>
+    it.effect("reports summaries cumulatively", () =>
       Effect.gen(function*() {
         const metricName = "delta_summary_test"
         const summary = Metric.summary(metricName, {
@@ -416,32 +410,24 @@ describe("OtlpMetrics", () => {
           quantiles: [0.5, 0.9, 0.99]
         })
 
-        // First interval: observe 10, 20, 30 (count=3, sum=60)
         yield* Metric.update(summary, 10)
         yield* Metric.update(summary, 20)
         yield* Metric.update(summary, 30)
         yield* triggerExport
-
-        // Second interval: observe 40 (delta count=1, delta sum=40)
         yield* Metric.update(summary, 40)
         yield* triggerExport
 
         const requests = yield* MockHttpClient.requests
         assert.isAtLeast(requests.length, 2)
 
-        // First export
-        const firstCount = findMetric(requests[0], `${metricName}_count`)
-        assert.strictEqual(firstCount?.sum?.dataPoints[0].asInt, 3)
-
-        const firstSum = findMetric(requests[0], `${metricName}_sum`)
-        assert.strictEqual(firstSum?.sum?.dataPoints[0].asDouble, 60)
-
-        // Second export should report delta values
-        const secondCount = findMetric(requests[1], `${metricName}_count`)
-        assert.strictEqual(secondCount?.sum?.dataPoints[0].asInt, 1) // Delta: 4-3=1
-
-        const secondSum = findMetric(requests[1], `${metricName}_sum`)
-        assert.strictEqual(secondSum?.sum?.dataPoints[0].asDouble, 40) // Delta: 100-60=40
+        // Summary has no temporality: count and sum stay cumulative in delta mode
+        const first = findMetric(requests[0], metricName)?.summary?.dataPoints[0]
+        const second = findMetric(requests[1], metricName)?.summary?.dataPoints[0]
+        assert.strictEqual(first?.count, 3)
+        assert.strictEqual(first?.sum, 60)
+        assert.strictEqual(second?.count, 4)
+        assert.strictEqual(second?.sum, 100)
+        assert.strictEqual(second?.startTimeUnixNano, first?.startTimeUnixNano)
       }).pipe(Effect.provide(TestLayerDelta)))
   })
 
@@ -464,33 +450,60 @@ describe("OtlpMetrics", () => {
         const requests = yield* MockHttpClient.requests
         assert.isAtLeast(requests.length, 1)
 
-        // Check that quantiles metric exists
-        const quantilesMetric = findMetric(requests[0], `${metricName}_quantiles`)
-        assert.isDefined(quantilesMetric)
-        assert.isDefined(quantilesMetric?.sum)
-
-        // Should have data points for min, max, and each quantile (0.5, 0.9)
-        const dataPoints = quantilesMetric?.sum?.dataPoints ?? []
-        assert.isAtLeast(dataPoints.length, 4) // min, 0.5, 0.9, max
-
-        // Find min and max quantile data points
-        const minPoint = dataPoints.find((dp) =>
-          dp.attributes.some((attr) =>
-            attr.key === "quantile" &&
-            Predicate.hasProperty(attr.value, "stringValue") &&
-            attr.value.stringValue === "min"
-          )
-        )
-        const maxPoint = dataPoints.find((dp) =>
-          dp.attributes.some((attr) =>
-            attr.key === "quantile" &&
-            Predicate.hasProperty(attr.value, "stringValue") &&
-            attr.value.stringValue === "max"
-          )
-        )
-        assert.strictEqual(minPoint?.asDouble, 10)
-        assert.strictEqual(maxPoint?.asDouble, 30)
+        const metric = findMetric(requests[0], metricName)
+        assert.isUndefined(findMetric(requests[0], `${metricName}_quantiles`))
+        assert.isUndefined(metric?.sum)
+        const point = metric?.summary?.dataPoints[0]
+        assert.strictEqual(point?.count, 3)
+        assert.strictEqual(point?.sum, 60)
+        assert.deepStrictEqual(point?.quantileValues?.map((q) => q.quantile), [0, 0.5, 0.9, 1])
+        assert.strictEqual(point?.quantileValues?.[0].value, 10)
+        assert.strictEqual(point?.quantileValues?.[3].value, 30)
+        assert.isFalse(point?.attributes?.some((attr) => attr.key === "quantile"))
       }).pipe(Effect.provide(TestLayerCumulative)))
+  })
+
+  describe("Summary configured extremes", () => {
+    it.effect("does not duplicate configured quantiles 0 and 1", () =>
+      Effect.gen(function*() {
+        const summary = Metric.summary("summary_extremes_test", {
+          maxAge: "1 minute",
+          maxSize: 100,
+          quantiles: [0, 0.5, 1]
+        })
+        yield* Metric.update(summary, 10)
+        yield* Metric.update(summary, 30)
+        yield* triggerExport
+
+        const [request] = yield* MockHttpClient.requests
+        const point = findMetric(request, "summary_extremes_test")?.summary?.dataPoints[0]
+        assert.deepStrictEqual(point?.quantileValues?.map((q) => q.quantile), [0, 0.5, 1])
+      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
+  })
+
+  describe("units", () => {
+    it.effect("maps unit attributes to UCUM and drops them from dimensions", () =>
+      Effect.gen(function*() {
+        const timer = Metric.timer("unit_timer_test", { boundaries: [10, 100] })
+        yield* Metric.update(timer, Duration.millis(5))
+        const bytes = Metric.counter("unit_bytes_test", { attributes: { unit: "bytes", route: "/a" } })
+        yield* Metric.update(bytes, 10)
+        const custom = Metric.gauge("unit_custom_test", { attributes: { unit: "{request}" } })
+        yield* Metric.update(custom, 1)
+        const big = Metric.gauge("unit_bigint_test", { bigint: true })
+        yield* Metric.update(big, 9007199254740993n)
+        yield* triggerExport
+
+        const [request] = yield* MockHttpClient.requests
+        const timerMetric = findMetric(request, "unit_timer_test")
+        assert.strictEqual(timerMetric?.unit, "ms")
+        assert.deepStrictEqual(timerMetric?.histogram?.dataPoints[0].attributes, [])
+        const bytesMetric = findMetric(request, "unit_bytes_test")
+        assert.strictEqual(bytesMetric?.unit, "By")
+        assert.deepStrictEqual(bytesMetric?.sum?.dataPoints[0].attributes.map((a) => a.key), ["route"])
+        assert.strictEqual(findMetric(request, "unit_custom_test")?.unit, "{request}")
+        assert.strictEqual(findMetric(request, "unit_bigint_test")?.gauge?.dataPoints[0].asInt, "9007199254740993")
+      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
   })
 
   describe("Gauge (no temporality)", () => {
@@ -554,6 +567,18 @@ interface OtlpMetric {
     readonly dataPoints: Array<OtlpHistogramDataPoint>
     readonly aggregationTemporality: number
   } | undefined
+  readonly summary?: {
+    readonly dataPoints: Array<OtlpSummaryDataPoint>
+  } | undefined
+}
+
+interface OtlpSummaryDataPoint {
+  readonly attributes?: Array<{ key: string; value: unknown }>
+  readonly startTimeUnixNano?: string | undefined
+  readonly timeUnixNano?: string | undefined
+  readonly count?: number | undefined
+  readonly sum?: number | undefined
+  readonly quantileValues?: Array<{ quantile: number; value: number }> | undefined
 }
 
 interface OtlpNumberDataPoint {
@@ -561,7 +586,7 @@ interface OtlpNumberDataPoint {
   readonly startTimeUnixNano?: string | undefined
   readonly timeUnixNano?: string | undefined
   readonly asDouble?: number | undefined
-  readonly asInt?: number | undefined
+  readonly asInt?: number | string | undefined
 }
 
 interface OtlpHistogramDataPoint {
