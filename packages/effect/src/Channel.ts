@@ -591,8 +591,10 @@ export const acquireUseRelease = <A, E, R, OutElem, OutErr, OutDone, InElem, InE
         Option.isSome(option)
           ? release(option.value, exit as any)
           : Effect.void)
-      const value = yield* Effect.uninterruptible(acquire)
-      option = Option.some(value)
+      const value = yield* Effect.uninterruptible(Effect.map(acquire, (value) => {
+        option = Option.some(value)
+        return value
+      }))
       return yield* toTransform(use(value))(upstream, scope)
     })
   )
