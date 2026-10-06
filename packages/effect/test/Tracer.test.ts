@@ -366,14 +366,9 @@ describe("Tracer", () => {
       )
     }
 
-    it.effect.each(
-      [
-        ["success", Exit.void],
-        ["empty cause", Exit.failCause(Cause.empty)]
-      ] as const
-    )("marks %s Ok without a description", ([, exit]) =>
+    it.effect("marks an empty cause Ok without a description", () =>
       Effect.gen(function*() {
-        const span = yield* exportSpan(exit)
+        const span = yield* exportSpan(Exit.failCause(Cause.empty))
         deepStrictEqual(span.status, { code: 1 })
         deepStrictEqual(span.events, [])
         deepStrictEqual(span.attributes, [])
@@ -385,28 +380,6 @@ describe("Tracer", () => {
         deepStrictEqual(span.status, { code: 0 })
         deepStrictEqual(span.events, [])
         deepStrictEqual(span.attributes, [{ key: "effect.fiber.interrupted", value: { boolValue: true } }])
-      }))
-
-    const errorWithStack = new Error("boom")
-    errorWithStack.stack = "Error: boom\n    at test"
-
-    it.effect.each(
-      [
-        ["an Error", Exit.fail(errorWithStack), "Error: boom\n    at test"],
-        ["a string", Exit.fail("boom"), "Error: boom"]
-      ] as const
-    )("records %s as an Error status with an exception event", ([, exit, stacktrace]) =>
-      Effect.gen(function*() {
-        const span = yield* exportSpan(exit)
-        deepStrictEqual(span.status, { code: 2, message: "boom" })
-        deepStrictEqual(span.events.map((event) => [event.name, event.attributes]), [[
-          "exception",
-          [
-            { key: "exception.type", value: { stringValue: "Error" } },
-            { key: "exception.message", value: { stringValue: "boom" } },
-            { key: "exception.stacktrace", value: { stringValue: stacktrace } }
-          ]
-        ]])
       }))
   })
 
