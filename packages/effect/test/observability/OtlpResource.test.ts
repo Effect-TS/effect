@@ -144,6 +144,20 @@ describe("OtlpResource", () => {
       Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
     ))
 
+  it.effect("uses the supplied executable name in the service name fallback", () =>
+    Effect.gen(function*() {
+      const resource = yield* OtlpResource.fromConfig({
+        attributes: { "process.executable.name": "worker" }
+      })
+      assert.deepStrictEqual(attributesRecord(resource), {
+        ...sdk,
+        "process.executable.name": "worker",
+        "service.name": "unknown_service:worker"
+      })
+    }).pipe(
+      Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
+    ))
+
   it("provides SDK defaults", () => {
     assert.deepStrictEqual(attributesRecord(OtlpResource.make({ serviceName: "test" })), {
       ...sdk,

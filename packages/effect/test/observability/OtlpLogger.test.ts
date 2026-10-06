@@ -76,7 +76,10 @@ describe("OtlpLogger", () => {
     return Effect.gen(function*() {
       yield* Effect.logError(
         "boom",
-        Cause.combine(Cause.fail(new TypeError("bad input")), Cause.fail(new RangeError("second failure")))
+        Cause.combine(
+          Cause.fail(new TypeError("bad input", { cause: new Error("nested failure") })),
+          Cause.fail(new RangeError("second failure"))
+        )
       )
       yield* (yield* OtlpExporter.Flusher).flush
 
@@ -85,7 +88,29 @@ describe("OtlpLogger", () => {
       assert.deepStrictEqual(attributes["exception.type"], { stringValue: "TypeError" })
       assert.deepStrictEqual(attributes["exception.message"], { stringValue: "bad input" })
       assert.include(attributes["exception.stacktrace"].stringValue, "second failure")
+      assert.include(attributes["exception.stacktrace"].stringValue, "nested failure")
       assert.isUndefined(attributes["log.error"])
+    }).pipe(Effect.provide(makeTestLayer(httpClient)))
+  })
+
+  it.effect("lets generated attributes override annotations without duplicate keys", () => {
+    const { httpClient, requests } = capture()
+    return Effect.gen(function*() {
+      const fiber = yield* Effect.fiber
+      yield* Effect.logError("boom", Cause.fail(new Error("cause message"))).pipe(
+        Effect.annotateLogs({ "exception.message": "annotated message", "effect.fiberId": -1 })
+      )
+      yield* (yield* OtlpExporter.Flusher).flush
+
+      const attributes: Array<{ key: string; value: Record<string, unknown> }> =
+        bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].logRecords[0].attributes
+      assert.strictEqual(new Set(attributes.map((attribute) => attribute.key)).size, attributes.length)
+      assert.deepStrictEqual(attributes.filter((attribute) => attribute.key === "exception.message"), [
+        { key: "exception.message", value: { stringValue: "cause message" } }
+      ])
+      assert.deepStrictEqual(attributes.filter((attribute) => attribute.key === "effect.fiberId"), [
+        { key: "effect.fiberId", value: { intValue: fiber.id } }
+      ])
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
   })
 
