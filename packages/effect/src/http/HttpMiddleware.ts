@@ -18,6 +18,7 @@ import * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import { constant, constFalse } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
@@ -26,7 +27,7 @@ import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
-import { causeResponseStripped, ClientAbort } from "./HttpServerError.ts"
+import { causeResponseStripped, ClientAbort, HttpServerError, ResponseError } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import * as Response from "./HttpServerResponse.ts"
@@ -195,6 +196,23 @@ export const isTracerDisabledUnsafe = (
   request: HttpServerRequest
 ): boolean => !fiber.cache.tracerEnabled || fiber.getRef(TracerDisabledWhen)(request)
 
+// OpenTelemetry requires failed server spans for 5xx responses.
+const responseSpanExit = (
+  request: HttpServerRequest,
+  response: HttpServerResponse
+): Exit.Exit<HttpServerResponse, HttpServerError> => {
+  if (!(response.status >= 500 && response.status < 600)) {
+    return Exit.succeed(response)
+  }
+  const stackTraceLimit = getStackTraceLimit()
+  setStackTraceLimit(0)
+  try {
+    return Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
+  } finally {
+    setStackTraceLimit(stackTraceLimit)
+  }
+}
+
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
@@ -221,19 +239,20 @@ export const tracer: <E, R>(
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, exit)
+        span.end(endTime, responseSpanExit(request, exit.value))
         return undefined
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       fiber.currentDispatcher.scheduleTask(() => {
         let response: HttpServerResponse
-        let spanExit = exit
+        let spanExit: Exit.Exit<HttpServerResponse, unknown>
         if (Exit.isFailure(exit)) {
           const [failureResponse, cause] = causeResponseStripped(exit.cause)
           response = failureResponse
-          spanExit = Option.isSome(cause) ? Exit.failCause(cause.value) : Exit.succeed(response)
+          spanExit = Option.isSome(cause) ? Exit.failCause(cause.value) : responseSpanExit(request, response)
         } else {
           response = exit.value
+          spanExit = responseSpanExit(request, response)
         }
         if (span.sampled) {
           span.attribute("http.request.method", request.method)
