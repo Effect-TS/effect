@@ -99,7 +99,6 @@ export const make: Effect.Effect<
       Rec.assignProperty(attributes, key, unknownToAttributeValue(value))
     }
 
-    // Generated attributes override annotations; outermost spans win duplicate labels.
     attributes["effect.fiberId"] = options.fiber.id
 
     const span = Context.getOrUndefined(options.fiber.context, Tracer.ParentSpan)
@@ -110,11 +109,11 @@ export const make: Effect.Effect<
     }
 
     const now = options.date.getTime()
+    // Outermost spans win duplicate labels.
     for (const [label, startTime] of options.fiber.getRef(References.CurrentLogSpans)) {
       attributes[`effect.log_span.${label}`] = now - startTime
     }
 
-    // Type and message describe the first error; the stacktrace includes the full cause.
     const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
     if (errors.length > 0) {
       attributes["exception.type"] = errors[0].name

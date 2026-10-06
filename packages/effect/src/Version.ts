@@ -1,9 +1,5 @@
 /**
- * The release version of the `effect` package.
- *
- * Telemetry integrations use it to identify Effect, for example in OTLP
- * `User-Agent` headers, `telemetry.sdk.version` resource attributes and
- * instrumentation scope versions.
+ * The `effect` package version used in telemetry headers, resources, and scopes.
  *
  * @since 4.0.2
  */
@@ -16,8 +12,7 @@ let currentVersion: string = version
  *
  * **Details**
  *
- * Defaults to the published release version. Returns the value passed to
- * `setCurrentVersion` after an override.
+ * Defaults to the release version unless overridden by `setCurrentVersion`.
  *
  * @category getters
  * @since 4.0.2
@@ -29,9 +24,8 @@ export const getCurrentVersion = (): string => currentVersion
  *
  * **Gotchas**
  *
- * The override is global to this copy of the module. Telemetry layers read the
- * version when they are built, so overriding it later does not change
- * telemetry that has already been configured.
+ * Applies to this copy of the module. Existing telemetry layers retain the
+ * version they read when built.
  *
  * @category setters
  * @since 4.0.2

@@ -36,10 +36,9 @@ const isBrowser = "window" in globalThis || "importScripts" in globalThis
  *
  * **Details**
  *
- * The resource includes `telemetry.sdk.name`, `telemetry.sdk.language`, and
- * `telemetry.sdk.version`, includes `service.name` and `service.version` when
- * provided, and converts custom attributes into OTLP attribute values. Custom
- * attributes override the SDK defaults.
+ * Adds `telemetry.sdk.*` defaults and converts custom attributes to OTLP values.
+ * Custom attributes override SDK defaults; service options override matching
+ * attributes. Omitted service options add no service attributes.
  *
  * @stability unstable
  * @category constructors

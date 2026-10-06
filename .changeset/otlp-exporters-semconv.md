@@ -3,6 +3,6 @@
 "@effect/opentelemetry": patch
 ---
 
-Align built-in OTLP and `@effect/opentelemetry` logs, traces, and resources with OpenTelemetry conventions. Add public `effect/Version` getters and setters backed by the release version. Include that version in exporter User-Agent headers, SDK resource defaults, and `effect` log/trace scopes while preserving user-supplied headers and SDK attributes. Built-in resources no longer require a service name or add a fallback; environment-only OpenTelemetry resources now include SDK defaults.
+Align OTLP and `@effect/opentelemetry` logs, traces, and resources with OpenTelemetry conventions. Use the release version in exporter User-Agent headers, SDK resource defaults, and `effect` instrumentation scopes; expose version getters and setters in `effect/Version`. Preserve custom headers and SDK attributes. OTLP resources no longer require a service name; environment-only OpenTelemetry resources include SDK defaults.
 
-Logs distinguish event and observed timestamps, emit structured `exception.*` attributes, and use numeric `effect.fiberId` and `effect.log_span.<label>` attributes. Generated attributes override annotations, and outermost spans win duplicate labels. OpenTelemetry tracer layers no longer require a `Resource`. Metrics are unchanged.
+Logs separate event and observed timestamps, add structured `exception.*` attributes, and use numeric `effect.fiberId` and `effect.log_span.<label>` attributes. Generated attributes override annotations; outermost spans win duplicate labels. OpenTelemetry tracer layers no longer require a `Resource`. Metrics are unchanged.

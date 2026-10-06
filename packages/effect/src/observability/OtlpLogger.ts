@@ -205,14 +205,13 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   const eventTime = (BigInt(eventMillis) * nanosPerMilli).toString()
 
   const attributes: Record<string, unknown> = { ...options.fiber.getRef(CurrentLogAnnotations) }
-  // Generated attributes override annotations; outermost spans win duplicate labels.
   attributes["effect.fiberId"] = options.fiber.id
   if (!opts.excludeLogSpans) {
+    // Outermost spans win duplicate labels.
     for (const [label, startTime] of options.fiber.getRef(CurrentLogSpans)) {
       attributes[`effect.log_span.${label}`] = eventMillis - startTime
     }
   }
-  // Type and message describe the first error; the stacktrace includes the full cause.
   const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
   if (errors.length > 0) {
     attributes["exception.type"] = errors[0].name

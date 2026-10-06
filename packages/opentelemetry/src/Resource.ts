@@ -65,7 +65,7 @@ const sdkAttributes = (): Record<string, string> => ({
 })
 
 /**
- * Converts resource configuration into OpenTelemetry attributes, adding service name, optional service version, and telemetry SDK metadata.
+ * Converts service metadata into OpenTelemetry attributes with SDK defaults.
  *
  * **When to use**
  *
@@ -75,15 +75,8 @@ const sdkAttributes = (): Record<string, string> => ({
  *
  * **Details**
  *
- * The returned record adds `telemetry.sdk.name`, `telemetry.sdk.language`, and
- * `telemetry.sdk.version` defaults, then copies `attributes`, then sets
- * `service.name`. `service.version` is set only when `serviceVersion` is provided.
- *
- * **Gotchas**
- *
- * Custom `telemetry.sdk.*` values override the defaults. The service options
- * override the corresponding attributes. An empty `serviceVersion` is treated
- * as absent.
+ * Custom attributes override `telemetry.sdk.*` defaults. Service options override
+ * matching attributes. An empty `serviceVersion` is treated as absent.
  *
  * @see {@link layer} for creating a `Resource` layer from explicit metadata
  * @see {@link layerFromEnv} for merging attributes with OpenTelemetry environment variables
@@ -109,7 +102,8 @@ export const configToAttributes = (options: {
 }
 
 /**
- * Creates a `Resource` layer with SDK defaults overridden by OpenTelemetry environment variables and then additional attributes.
+ * Creates a `Resource` layer from SDK defaults, then environment variables,
+ * then additional attributes (later values take precedence).
  *
  * @stability unstable
  * @category layers
