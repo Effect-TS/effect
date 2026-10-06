@@ -7,6 +7,7 @@ import { InMemoryLogRecordExporter, type LogRecordProcessor, SimpleLogRecordProc
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
+import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as References from "effect/References"
@@ -29,6 +30,28 @@ describe("Logger", () => {
       assert.strictEqual(record.instrumentationScope.version, Version.getCurrentVersion())
       assert.strictEqual(record.resource.attributes["telemetry.sdk.version"], Version.getCurrentVersion())
     }).pipe(Effect.provide(makeTestLayer(exporter)))
+  })
+
+  it.effect("adds SDK resource defaults when the resource comes only from the environment", () => {
+    const exporter = new InMemoryLogRecordExporter()
+    return Effect.gen(function*() {
+      yield* Effect.log("test")
+      const record = exporter.getFinishedLogRecords()[0]!
+      assert.strictEqual(record.instrumentationScope.name, "effect")
+      assert.strictEqual(record.instrumentationScope.version, Version.getCurrentVersion())
+      assert.deepStrictEqual(record.resource.attributes, {
+        "service.name": "env-service",
+        "telemetry.sdk.name": "@effect/opentelemetry",
+        "telemetry.sdk.language": "nodejs",
+        "telemetry.sdk.version": Version.getCurrentVersion()
+      })
+    }).pipe(
+      Effect.provide(NodeSdk.layer(() => ({ logRecordProcessor: [new SimpleLogRecordProcessor({ exporter })] }))),
+      Effect.provideService(
+        ConfigProvider.ConfigProvider,
+        ConfigProvider.fromEnv({ env: { OTEL_SERVICE_NAME: "env-service" } })
+      )
+    )
   })
 
   it.effect("records structured exceptions including combined and nested causes", () => {
