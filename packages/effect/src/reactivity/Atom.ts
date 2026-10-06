@@ -2388,7 +2388,8 @@ function updateSearchParams() {
     }
   }
   searchParamState.updates.clear()
-  const newUrl = `${window.location.pathname}?${searchParams.toString()}`
+  const search = searchParams.toString()
+  const newUrl = `${window.location.pathname}${search.length > 0 ? `?${search}` : ""}${window.location.hash}`
   window.history.pushState({}, "", newUrl)
   searchParamState.updating = false
 }
