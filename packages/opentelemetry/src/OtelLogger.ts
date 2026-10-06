@@ -99,7 +99,7 @@ export const make: Effect.Effect<
       Rec.assignProperty(attributes, key, unknownToAttributeValue(value))
     }
 
-    // Generated attributes override annotations; later spans with the same label win.
+    // Generated attributes override annotations; outermost spans win duplicate labels.
     attributes["effect.fiberId"] = options.fiber.id
 
     const span = Context.getOrUndefined(options.fiber.context, Tracer.ParentSpan)

@@ -29,7 +29,6 @@ export interface Resource {
   droppedAttributesCount: number
 }
 
-// Detect browser windows and workers without platform-specific imports.
 const isBrowser = "window" in globalThis || "importScripts" in globalThis
 
 /**

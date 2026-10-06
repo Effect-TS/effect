@@ -206,7 +206,7 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   const eventTime = (BigInt(eventMillis) * nanosPerMilli).toString()
 
   const attributes: Record<string, unknown> = { ...options.fiber.getRef(CurrentLogAnnotations) }
-  // Generated attributes override annotations; later spans with the same label win.
+  // Generated attributes override annotations; outermost spans win duplicate labels.
   InternalRecord.assignProperty(attributes, "effect.fiberId", options.fiber.id)
   if (!opts.excludeLogSpans) {
     for (const [label, startTime] of options.fiber.getRef(CurrentLogSpans)) {
