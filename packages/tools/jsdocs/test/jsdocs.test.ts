@@ -1,4 +1,4 @@
-import { computeJSDocInputHash, extractJSDocsSync, parseJSDoc } from "@effect/jsdocs"
+import { computeJSDocInputHash, extractJSDocsSync, loadJSDocConfig, parseJSDoc } from "@effect/jsdocs"
 import { assert, describe, it } from "@effect/vitest"
 import * as fs from "node:fs"
 import * as os from "node:os"
@@ -218,6 +218,92 @@ export declare namespace Group {
     assert.deepStrictEqual(missingStabilityDiagnostics({ "Module.ts": "" }, "Has no stability tag."), {
       "Module.ts": ["Module JSDoc must include @stability"]
     })
+  })
+
+  it("requires @stability on namespace re-exports", () => {
+    assert.deepStrictEqual(
+      missingStabilityDiagnostics({
+        "Missing.ts": `/**
+ * Re-exports a module.
+ *
+ * @category exports
+ * @since 1.0.0
+ */
+export * as Target from "./Target.ts"
+`,
+        "Tagged.ts": `/**
+ * Re-exports a module.
+ *
+ * @stability stable
+ * @category exports
+ * @since 1.0.0
+ */
+export * as Target from "./Target.ts"
+`,
+        "Target.ts": `/**
+ * A value.
+ *
+ * @stability stable
+ * @category constructors
+ * @since 1.0.0
+ */
+export const value = 1
+`
+      }),
+      {
+        "Missing.ts": ["Public JSDoc must include @stability"],
+        "Tagged.ts": [],
+        "Target.ts": []
+      }
+    )
+  })
+
+  it("checks hand-maintained public index exports with the repository JSDoc config", () => {
+    const config = loadJSDocConfig(path.resolve(import.meta.dirname, "../../../.."))
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-public-index-"))
+    try {
+      const packageRoot = path.join(cwd, "packages/atom/vue")
+      fs.mkdirSync(path.join(packageRoot, "src"), { recursive: true })
+      fs.writeFileSync(
+        path.join(cwd, config.tsconfig),
+        JSON.stringify({
+          compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext", target: "ES2022" },
+          include: ["packages/**/src/**/*.ts"]
+        })
+      )
+      fs.writeFileSync(
+        path.join(packageRoot, "package.json"),
+        JSON.stringify({ name: "@effect/atom-vue", type: "module", exports: { ".": "./src/index.ts" } })
+      )
+      fs.writeFileSync(
+        path.join(packageRoot, "src/index.ts"),
+        `/**
+ * Public entry point.
+ *
+ * @stability unstable
+ * @since 1.0.0
+ */
+import type {} from "node:fs"
+
+/**
+ * A directly importable value.
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const value = 1
+`
+      )
+      const model = extractJSDocsSync({ ...config, cwd })
+      assert.deepStrictEqual(
+        model.files.find((file) => file.file === "packages/atom/vue/src/index.ts")?.diagnostics
+          .filter((diagnostic) => diagnostic.code === "missing-tag")
+          .map((diagnostic) => diagnostic.message),
+        ["Public JSDoc must include @stability"]
+      )
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true })
+    }
   })
 
   it("rejects duplicate stability tags", () => {
