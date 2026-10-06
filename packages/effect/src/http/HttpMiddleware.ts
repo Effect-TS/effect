@@ -220,7 +220,10 @@ export const tracer: <E, R>(
     internalEffect.onExitUnsafe<HttpServerResponse, unknown>(fiber, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
-      if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
+      if (
+        Exit.isSuccess(exit) && (exit.value.status < 500 || exit.value.status >= 600) &&
+        (!span.sampled || fiber.getRef(Tracer) === nativeTracer)
+      ) {
         span.end(endTime, exit)
         return undefined
       }
@@ -237,7 +240,7 @@ export const tracer: <E, R>(
         }
         // OpenTelemetry HTTP semantic conventions: a 5xx response marks a server
         // span as an error, even when the handler rendered it as a response.
-        if (Exit.isSuccess(spanExit) && response.status >= 500) {
+        if (Exit.isSuccess(spanExit) && response.status >= 500 && response.status < 600) {
           spanExit = Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
         }
         if (span.sampled) {
