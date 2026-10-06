@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve cleanup failures during transaction retries and allow interrupted retry waiters to terminate.
+Preserve failures raised while a transaction is retrying instead of rerunning the transaction.
