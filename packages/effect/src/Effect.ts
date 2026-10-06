@@ -14659,22 +14659,19 @@ export const tx = <A, E, R>(
             }
             if (Exit.isSuccess(exit)) {
               commitTransaction(fiber, state)
-            } else {
-              clearTransaction(state)
             }
+            clearTransaction(state)
+            completedTransactions.add(state)
             result = exit
           }
         }),
         () => result!
       )
-    ).pipe(ensuring(sync(() => {
-      completedTransactions.add(state)
-      clearTransaction(state)
-    })))
+    )
   })
 
-// Track boundary lifetime without changing the publicly constructible service.
-// Retry resets keep the boundary active; only finalization marks it completed.
+// Child fibers inherit the boundary's state, so mark it completed once the
+// boundary finishes and let later `tx` calls start a fresh boundary.
 const completedTransactions = new WeakSet<Transaction["Service"]>()
 
 const isTransactionConsistent = (state: Transaction["Service"]) => {
