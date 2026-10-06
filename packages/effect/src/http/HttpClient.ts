@@ -22,7 +22,6 @@ import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constant, constFalse, constTrue, dual, flow, identity } from "../Function.ts"
 import * as Inspectable from "../Inspectable.ts"
-import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as RateLimiter from "../persistence/RateLimiter.ts"
@@ -674,14 +673,9 @@ const endSpanWithStatusError = (
   response: HttpClientResponse.HttpClientResponse
 ): void => {
   span.attribute("error.type", String(response.status))
-  const stackTraceLimit = getStackTraceLimit()
-  setStackTraceLimit(0)
-  let error: Error.HttpClientError
-  try {
-    error = new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) })
-  } finally {
-    setStackTraceLimit(stackTraceLimit)
-  }
+  const error = tracing.withoutStackTrace(() =>
+    new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) })
+  )
   span.end(
     fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
     Exit.fail(error)
@@ -749,17 +743,18 @@ export const make = (
           { kind: "client" },
           (span) => {
             tracing.setMethodAttributes(span, request.method)
-            span.attribute("server.address", url.hostname)
+            span.attribute("server.address", tracing.serverAddress(url))
             const port = url.port !== "" ? +url.port : tracing.defaultPort(url.protocol)
             if (port !== undefined) {
               span.attribute("server.port", port)
             }
-            span.attribute("url.full", tracing.redactUrl(url))
+            const query = url.search.slice(1)
+            const redactedQuery = query === "" ? query : tracing.redactQuery(query)
+            span.attribute("url.full", tracing.redactUrl(url, redactedQuery))
             span.attribute("url.path", url.pathname)
             span.attribute("url.scheme", url.protocol.slice(0, -1))
-            const query = url.search.slice(1)
-            if (query !== "") {
-              span.attribute("url.query", tracing.redactQuery(query))
+            if (redactedQuery !== "") {
+              span.attribute("url.query", redactedQuery)
             }
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
@@ -787,6 +782,8 @@ export const make = (
                     const error = Cause.findErrorOption(cause)
                     if (Option.isSome(error) && Error.isHttpClientError(error.value)) {
                       span.attribute("error.type", error.value.reason._tag)
+                    } else if (!Cause.hasInterruptsOnly(cause)) {
+                      span.attribute("error.type", "_OTHER")
                     }
                     if (!scopedController && Cause.hasInterrupts(cause)) {
                       controller.abort()

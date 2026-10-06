@@ -1,3 +1,4 @@
+import { getStackTraceLimit, setStackTraceLimit } from "../../internal/stackTraceLimit.ts"
 import type * as Tracer from "../../Tracer.ts"
 
 // HTTP methods known to the OpenTelemetry HTTP semantic conventions.
@@ -30,7 +31,11 @@ export const setMethodAttributes = (span: Tracer.Span, method: string): void => 
   }
 }
 
-// Query parameters whose values the semantic conventions ask to redact.
+/**
+ * Query parameters whose values are redacted. The semantic conventions list
+ * `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`; the `X-Amz-*`
+ * keys extend that list to cover AWS SigV4 presigned URLs.
+ */
 const sensitiveQueryKeys: ReadonlySet<string> = new Set([
   "AWSAccessKeyId",
   "Signature",
@@ -47,8 +52,9 @@ export const redactQuery = (query: string): string => {
   const parts = query.split("&")
   for (let i = 0; i < parts.length; i++) {
     const index = parts[i].indexOf("=")
-    const key = index === -1 ? parts[i] : parts[i].slice(0, index)
-    if (index !== -1 && sensitiveQueryKeys.has(key)) {
+    if (index === -1) continue
+    const key = parts[i].slice(0, index)
+    if (sensitiveQueryKeys.has(decodeQueryKey(key))) {
       parts[i] = `${key}=REDACTED`
       redacted = true
     }
@@ -56,10 +62,18 @@ export const redactQuery = (query: string): string => {
   return redacted ? parts.join("&") : query
 }
 
+const decodeQueryKey = (key: string): string => {
+  if (!key.includes("%") && !key.includes("+")) return key
+  try {
+    return decodeURIComponent(key.replace(/\+/g, " "))
+  } catch {
+    return key
+  }
+}
+
 /** @internal */
-export const redactUrl = (url: URL): string => {
+export const redactUrl = (url: URL, redactedQuery: string): string => {
   const query = url.search.slice(1)
-  const redactedQuery = query === "" ? query : redactQuery(query)
   const hasCredentials = url.username !== "" || url.password !== ""
   if (!hasCredentials && redactedQuery === query) {
     return url.toString()
@@ -100,5 +114,25 @@ export const setHeaderAttributes = (
   for (const name in headers) {
     if (!filter(name, phase)) continue
     span.attribute(`http.${phase}.header.${name}`, [isRedacted(name) ? "<redacted>" : headers[name]])
+  }
+}
+
+/** @internal */
+export const serverAddress = (url: URL): string =>
+  url.hostname.startsWith("[") && url.hostname.endsWith("]") ? url.hostname.slice(1, -1) : url.hostname
+
+/**
+ * Builds an error without capturing a stack trace, for span exits that only
+ * describe a response status.
+ *
+ * @internal
+ */
+export const withoutStackTrace = <A>(f: () => A): A => {
+  const stackTraceLimit = getStackTraceLimit()
+  setStackTraceLimit(0)
+  try {
+    return f()
+  } finally {
+    setStackTraceLimit(stackTraceLimit)
   }
 }

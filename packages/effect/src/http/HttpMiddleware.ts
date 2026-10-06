@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -18,7 +19,6 @@ import * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import { constant, constFalse } from "../Function.ts"
 import * as internalEffect from "../internal/effect.ts"
-import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type { Predicate } from "../Predicate.ts"
@@ -150,7 +150,7 @@ export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) 
  *
  * @stability unstable
  * @category services
- * @since 4.0.0
+ * @since 4.0.2
  */
 export const TracerHeaderFilter = Context.Reference<(headerName: string, phase: "request" | "response") => boolean>(
   "effect/http/HttpMiddleware/TracerHeaderFilter",
@@ -223,13 +223,9 @@ const responseSpanExit = (
     return Exit.succeed(response)
   }
   span.attribute("error.type", String(response.status))
-  const stackTraceLimit = getStackTraceLimit()
-  setStackTraceLimit(0)
-  try {
-    return Exit.fail(new HttpServerError({ reason: new ResponseError({ request, response }) }))
-  } finally {
-    setStackTraceLimit(stackTraceLimit)
-  }
+  return Exit.fail(
+    tracing.withoutStackTrace(() => new HttpServerError({ reason: new ResponseError({ request, response }) }))
+  )
 }
 
 /**
@@ -269,9 +265,12 @@ export const tracer: <E, R>(
         if (Exit.isFailure(exit)) {
           const [failureResponse, cause] = causeResponseStripped(exit.cause)
           response = failureResponse
-          // OpenTelemetry leaves server spans unset for responses below 500.
-          if (Option.isSome(cause) && response.status >= 500) {
-            span.attribute("error.type", String(response.status))
+          // OpenTelemetry leaves server spans unset for responses below 500,
+          // but interrupts (such as client aborts) keep their interrupt exit.
+          if (Option.isSome(cause) && (response.status >= 500 || Cause.hasInterruptsOnly(cause.value))) {
+            if (response.status >= 500) {
+              span.attribute("error.type", String(response.status))
+            }
             spanExit = Exit.failCause(cause.value)
           } else {
             spanExit = responseSpanExit(span, request, response)
@@ -302,11 +301,12 @@ export const tracer: <E, R>(
           } else {
             const url = Request.toURL(request)
             if (Option.isSome(url)) {
-              span.attribute("url.full", tracing.redactUrl(url.value))
-              span.attribute("url.path", url.value.pathname)
               const query = url.value.search.slice(1)
-              if (query !== "") {
-                span.attribute("url.query", tracing.redactQuery(query))
+              const redactedQuery = query === "" ? query : tracing.redactQuery(query)
+              span.attribute("url.full", tracing.redactUrl(url.value, redactedQuery))
+              span.attribute("url.path", url.value.pathname)
+              if (redactedQuery !== "") {
+                span.attribute("url.query", redactedQuery)
               }
               span.attribute("url.scheme", url.value.protocol.slice(0, -1))
             }

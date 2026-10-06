@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse, type HttpMethod } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -272,6 +272,7 @@ Missing key
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
         assert.deepStrictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), ["response"])
       }))
+
     const traceRequest = Effect.fnUntraced(function*(
       request: HttpClientRequest.HttpClientRequest,
       status = 200
@@ -300,11 +301,9 @@ Missing key
         assert.strictEqual(span.attributes.get("server.port"), 443)
         assert(span.status._tag === "Ended" && span.status.exit._tag === "Success")
 
-        const custom = yield* traceRequest(
-          HttpClientRequest.make("GET")("http://example.com:8080/").pipe(
-            (request) => ({ ...request, method: "PURGE" }) as HttpClientRequest.HttpClientRequest
-          )
-        )
+        // Untyped callers can send methods outside the HttpMethod union.
+        const purge = "PURGE" as HttpMethod.HttpMethod
+        const custom = yield* traceRequest(HttpClientRequest.make(purge)("http://example.com:8080/"))
         assert.strictEqual(custom.span.name, "HTTP")
         assert.strictEqual(custom.span.attributes.get("http.request.method"), "_OTHER")
         assert.strictEqual(custom.span.attributes.get("http.request.method_original"), "PURGE")
@@ -331,6 +330,29 @@ Missing key
           "https://REDACTED:REDACTED@example.com/file?X-Amz-Signature=REDACTED&keep=1"
         )
         assert.strictEqual(span.attributes.get("url.query"), "X-Amz-Signature=REDACTED&keep=1")
+      }))
+    it.effect("strips IPv6 brackets and matches percent-encoded query keys", () =>
+      Effect.gen(function*() {
+        const { span } = yield* traceRequest(
+          HttpClientRequest.get("http://[::1]:8080/file?X%2DAmz%2DSignature=abc&%E0=1")
+        )
+        assert.strictEqual(span.attributes.get("server.address"), "::1")
+        assert.strictEqual(span.attributes.get("url.query"), "X%2DAmz%2DSignature=REDACTED&%E0=1")
+      }))
+
+    it.effect("sets error.type to _OTHER for unknown failures", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make(() => Effect.die("boom"))
+        yield* Effect.exit(client.get("http://example.com/")).pipe(Effect.provideService(Tracer.Tracer, tracer))
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("error.type"), "_OTHER")
       }))
   })
 

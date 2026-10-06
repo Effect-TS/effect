@@ -234,6 +234,32 @@ describe("Tracer", () => {
         assert.include(stacktrace as string, "[cause]: Error: inner cause")
       }))
 
+    it.effect("keeps homogeneous primitive array attributes", () =>
+      Effect.gen(function*() {
+        const exporter = new InMemorySpanExporter()
+        const spanProcessor = new SimpleSpanProcessor(exporter)
+
+        yield* Effect.void.pipe(
+          Effect.withSpan("array-span", {
+            attributes: { strings: ["a", "b"], numbers: [1, 2], mixed: ["a", 1] }
+          }),
+          Effect.andThen(Effect.never), // keep the exporter alive
+          Effect.provide(NodeSdk.layer(() => ({
+            resource: {
+              serviceName: "test"
+            },
+            spanProcessor: [spanProcessor]
+          }))),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        const spanData = exporter.getFinishedSpans()[0]
+        assert(spanData !== undefined)
+        assert.deepStrictEqual(spanData.attributes.strings, ["a", "b"])
+        assert.deepStrictEqual(spanData.attributes.numbers, [1, 2])
+        assert.isString(spanData.attributes.mixed)
+      }))
+
     it.effect("withSpanContext", () =>
       Effect.gen(function*() {
         const effect = Effect.gen(function*() {

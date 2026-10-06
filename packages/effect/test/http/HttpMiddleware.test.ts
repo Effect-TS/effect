@@ -418,6 +418,34 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(span.attributes.get("error.type"), undefined)
       }))
 
+    it.effect("leaves the span status unset for a defect rendered as 4xx", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/bad"))
+        const response = HttpServerResponse.empty({ status: 400 })
+        const span = yield* traceServer(
+          request,
+          Effect.failCause(Cause.fromReasons([...Cause.die("bad input").reasons, ...Cause.die(response).reasons]))
+        )
+        assert(span.status._tag === "Ended")
+        assert.strictEqual(span.status.exit._tag, "Success")
+        assert.strictEqual(span.attributes.get("error.type"), undefined)
+      }))
+
+    it.effect("keeps the interrupt exit for client aborts", () =>
+      Effect.gen(function*() {
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/abort"))
+        const interrupt = Cause.annotate(Cause.interrupt(), HttpServerError.ClientAbort.annotation)
+        const response = HttpServerResponse.empty({ status: 499 })
+        const span = yield* traceServer(
+          request,
+          Effect.failCause(Cause.fromReasons([...interrupt.reasons, ...Cause.die(response).reasons]))
+        )
+        assert(span.status._tag === "Ended" && span.status.exit._tag === "Failure")
+        assert.isTrue(Cause.hasInterruptsOnly(span.status.exit.cause))
+        assert.strictEqual(span.attributes.get("http.response.status_code"), 499)
+        assert.strictEqual(span.attributes.get("error.type"), undefined)
+      }))
+
     it.effect("records error.type for 5xx responses", () =>
       Effect.gen(function*() {
         const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/boom"))
