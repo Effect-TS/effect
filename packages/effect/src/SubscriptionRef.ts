@@ -70,7 +70,6 @@ export declare namespace SubscriptionRef {
    * Type-level variance marker for the value type carried by a
    * `SubscriptionRef`.
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */

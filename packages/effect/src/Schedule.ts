@@ -130,7 +130,6 @@ export declare namespace Schedule {
    * Schedule.isSchedule(schedule) // => true
    * ```
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -147,7 +146,6 @@ export declare namespace Schedule {
    * This interface exists for TypeScript inference and assignability. Users
    * normally do not construct or inspect it directly.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

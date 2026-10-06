@@ -111,7 +111,6 @@ export declare namespace HashMap {
    * HashMap.get(updated, "a") // => Option.some(2)
    * ```
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -139,7 +138,6 @@ export declare namespace HashMap {
    * getUserById("alice") // => Option.some({ name: "Alice", age: 30 })
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -172,7 +170,6 @@ export declare namespace HashMap {
    * processUser({ name: "Alice", age: 30, active: true }) // => "Alice (active)"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -205,7 +202,6 @@ export declare namespace HashMap {
    * descriptions // => ["book: $29 (education)", "laptop: $999 (electronics)"]
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 3.9.0
    */

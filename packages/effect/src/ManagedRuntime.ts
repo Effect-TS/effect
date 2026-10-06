@@ -67,7 +67,6 @@ export declare namespace ManagedRuntime {
    * Use to derive the service requirements provided by an existing
    * `ManagedRuntime` type.
    *
-   * @stability stable
    * @category utility types
    * @since 3.4.0
    */
@@ -81,7 +80,6 @@ export declare namespace ManagedRuntime {
    * Use to derive the layer construction error type from an existing
    * `ManagedRuntime` type.
    *
-   * @stability stable
    * @category utility types
    * @since 3.4.0
    */

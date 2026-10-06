@@ -95,7 +95,6 @@ export declare namespace Redacted {
    * This interface records the covariant value type carried by a `Redacted`
    * value and is not normally referenced directly by users.
    *
-   * @stability stable
    * @category models
    * @since 3.3.0
    */
@@ -127,7 +126,6 @@ export declare namespace Redacted {
    * rotate({ token: "secret" }) // => { token: "secret:rotated" }
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 3.3.0
    */

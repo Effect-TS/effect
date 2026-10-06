@@ -76,7 +76,6 @@ export declare namespace MutableList {
    * bucket.next === undefined // => true
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

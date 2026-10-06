@@ -179,7 +179,6 @@ export declare namespace Path {
    * result.formatted // => "/home/user/newfile.ts"
    * ```
    *
-   * @stability unstable
    * @category models
    * @since 4.0.0
    */

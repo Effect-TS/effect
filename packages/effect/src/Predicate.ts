@@ -177,7 +177,6 @@ export declare namespace Predicate {
    *
    * @see {@link Predicate.Any}
    * @see {@link Refinement.In}
-   * @stability stable
    * @category utility types
    * @since 3.6.0
    */
@@ -206,7 +205,6 @@ export declare namespace Predicate {
    * ```
    *
    * @see {@link Predicate.In}
-   * @stability stable
    * @category utility types
    * @since 3.6.0
    */
@@ -269,7 +267,6 @@ export declare namespace Refinement {
    *
    * @see {@link Refinement.Out}
    * @see {@link Predicate.In}
-   * @stability stable
    * @category utility types
    * @since 3.6.0
    */
@@ -300,7 +297,6 @@ export declare namespace Refinement {
    * ```
    *
    * @see {@link Refinement.In}
-   * @stability stable
    * @category utility types
    * @since 3.6.0
    */
@@ -330,7 +326,6 @@ export declare namespace Refinement {
    *
    * @see {@link Refinement.In}
    * @see {@link Refinement.Out}
-   * @stability stable
    * @category utility types
    * @since 3.6.0
    */

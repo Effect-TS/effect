@@ -199,7 +199,6 @@ export declare namespace Enqueue {
    * type `E`, because values and failures flow into the queue through this
    * handle.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -269,7 +268,6 @@ export declare namespace Dequeue {
    * `Dequeue` is covariant in both the taken value type `A` and failure type
    * `E`, because values and failures are observed through this handle.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -334,7 +332,6 @@ export declare namespace Queue {
    * A full `Queue` is invariant in both `A` and `E` because the same handle can
    * both produce and consume values and failures.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -353,7 +350,6 @@ export declare namespace Queue {
    * This is low-level metadata exposed by the queue model; most users should
    * inspect queues through the public operations.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -385,7 +381,6 @@ export declare namespace Queue {
    * remaining messages, plus a resume callback that completes the suspended
    * offer when the queue can accept more input.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -412,7 +407,6 @@ export declare namespace Queue {
    * suspended take, with `void` to retry or with a failure exit when the queue
    * is done.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

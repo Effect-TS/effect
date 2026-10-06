@@ -96,7 +96,6 @@ export declare namespace DateTime {
    * objects, epoch milliseconds, JavaScript `Date` instances, and parseable date
    * strings.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -110,7 +109,6 @@ export declare namespace DateTime {
    * When the input type is `DateTime.Zoned`, the result type is
    * `DateTime.Zoned`; otherwise the result type is `DateTime.Utc`.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -125,7 +123,6 @@ export declare namespace DateTime {
    * Includes both singular units, such as `"day"`, and plural units, such as
    * `"days"`.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -135,7 +132,6 @@ export declare namespace DateTime {
    * Singular date and time unit names used by rounding APIs such as
    * `DateTime.startOf`, `DateTime.endOf`, and `DateTime.nearest`.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -153,7 +149,6 @@ export declare namespace DateTime {
    * Plural date and time unit names used by `DateTime.PartsForMath` for
    * amount-based arithmetic.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -176,7 +171,6 @@ export declare namespace DateTime {
    * `weekDay` follows JavaScript `Date#getUTCDay` numbering (`0` for Sunday
    * through `6` for Saturday).
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -198,7 +192,6 @@ export declare namespace DateTime {
    *
    * `month` is one-based (`1` for January through `12` for December).
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -219,7 +212,6 @@ export declare namespace DateTime {
    *
    * Each field represents the number of units to add or subtract for that part.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -238,7 +230,6 @@ export declare namespace DateTime {
    * Object input representing an absolute instant as milliseconds since the Unix
    * epoch.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -254,7 +245,6 @@ export declare namespace DateTime {
    * `DateTime.makeZoned` and `DateTime.makeZonedUnsafe` use `timeZoneId` when
    * no explicit `timeZone` option is supplied.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -271,7 +261,6 @@ export declare namespace DateTime {
    * Provides the `DateTime` type identifier along with pipe and inspection
    * support.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -308,7 +297,6 @@ export declare namespace TimeZone {
    *
    * Provides the `TimeZone` type identifier and inspection support.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -324,7 +312,6 @@ export declare namespace TimeZone {
    * The `offset` is measured in milliseconds from UTC. Positive offsets are
    * ahead of UTC, and negative offsets are behind UTC.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */
@@ -341,7 +328,6 @@ export declare namespace TimeZone {
    * The `id` field contains the resolved time zone identifier, such as
    * `"Europe/London"` or `"America/New_York"`.
    *
-   * @stability stable
    * @category models
    * @since 3.6.0
    */

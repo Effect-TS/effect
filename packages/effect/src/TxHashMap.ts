@@ -155,7 +155,6 @@ export declare namespace TxHashMap {
    * await Effect.runPromise(program) // => Option.some({ name: "Alice", age: 30 })
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -190,7 +189,6 @@ export declare namespace TxHashMap {
    * await Effect.runPromise(program) // => Option.some("electronics: $999")
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -227,7 +225,6 @@ export declare namespace TxHashMap {
    * await Effect.runPromise(program) // => ["api_url=https://api.example.com", "retries=3", "timeout=5000"]
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */

@@ -221,7 +221,6 @@ export declare namespace make {
    * `while` predicate for retry decisions, or attach a `Schedule` for retry
    * timing.
    *
-   * @stability unstable
    * @category models
    * @since 3.16.0
    */
@@ -236,7 +235,6 @@ export declare namespace make {
    * Computes the intersection of services provided by a list of execution-plan
    * steps.
    *
-   * @stability unstable
    * @category utility types
    * @since 3.16.1
    */
@@ -254,7 +252,6 @@ export declare namespace make {
   /**
    * Computes the intersection of services provided by a list of execution plans.
    *
-   * @stability unstable
    * @category utility types
    * @since 3.16.1
    */
@@ -267,7 +264,6 @@ export declare namespace make {
    * Computes the input type consumed by the `while` predicates and schedules in
    * a list of execution-plan steps.
    *
-   * @stability unstable
    * @category utility types
    * @since 3.16.0
    */
@@ -285,7 +281,6 @@ export declare namespace make {
   /**
    * Computes the combined input type consumed by a list of execution plans.
    *
-   * @stability unstable
    * @category utility types
    * @since 3.16.0
    */

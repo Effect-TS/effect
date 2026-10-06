@@ -49,7 +49,6 @@ export declare namespace ToJsonSchema {
   /**
    * Input for a check compiler.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -97,7 +96,6 @@ export declare namespace ToJsonSchema {
    * document.schema.anyOf // => [{ type: "string", maxLength: 1 }, { type: "string", enum: ["😀"] }]
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -120,7 +118,6 @@ export declare namespace ToJsonSchema {
    *
    * @see {@link CheckOutput} for exact and approximate results
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -137,7 +134,6 @@ export declare namespace Generation {
   /**
    * Input for declaration code generation.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -148,7 +144,6 @@ export declare namespace Generation {
   /**
    * Output of declaration code generation.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -161,7 +156,6 @@ export declare namespace Generation {
   /**
    * Declaration code generator.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -170,7 +164,6 @@ export declare namespace Generation {
   /**
    * Input for check code generation.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -181,7 +174,6 @@ export declare namespace Generation {
   /**
    * Output of check code generation.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -193,7 +185,6 @@ export declare namespace Generation {
   /**
    * Check code generator.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

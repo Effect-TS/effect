@@ -83,7 +83,6 @@ export declare namespace Exit {
    *
    * Every Exit is also an Effect, so you can yield it in `Effect.gen`.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

@@ -1540,7 +1540,7 @@ function buildTags(
       diagnostic("invalid-stability", "@stability must have the value stable, unstable, or experimental")
     )
   }
-  if (requireStability && scope !== "member" && stability === undefined) {
+  if (requireStability && stability === undefined) {
     diagnostics.push(
       diagnostic(
         "missing-tag",
@@ -2779,7 +2779,10 @@ function parseDocumentedTs(
   }
   addModelDiagnostics(diagnostics, block.range, block.diagnostics)
   if (block.parsed === undefined) return undefined
-  const tags = buildTags(scope, block.parsed.tags, linkContext?.requireStability)
+  // Only names that can be imported directly require @stability.
+  const requireStability = linkContext?.requireStability === true &&
+    (scope === "declaration" || (scope === "namespace" && ts.isSourceFile(node.parent)))
+  const tags = buildTags(scope, block.parsed.tags, requireStability)
   if (tags._tag === "Failure") {
     addModelDiagnostics(diagnostics, block.range, tags.error.diagnostics)
     return undefined

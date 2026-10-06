@@ -92,10 +92,11 @@ non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability stable`
 `@since`. Its examples and links follow the declaration contracts.
 
 Files matched by `requireStability` in `jsdocs.config.json` (all of
-`packages/effect/src`) must tag the module and every public declaration, export
-specifier, namespace, and namespace declaration with `@stability`. Members stay
-optional. A declaration takes its module's stability unless it differs, and a
-namespace declaration takes its namespace's stability.
+`packages/effect/src`) must tag the module and everything that can be imported
+by name with `@stability`: root declarations, export specifiers, and
+namespaces. Declarations inside namespaces and members are reached through an
+import and stay optional. A declaration takes its module's stability unless it
+differs.
 
 A module is `@stability stable` only when it existed as a stable `effect`
 module in 3.x, directly or through the v3-to-v4 import map. New modules, modules

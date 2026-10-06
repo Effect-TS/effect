@@ -98,7 +98,6 @@ export declare namespace ReadonlyRecord {
    * symbol
    * ```
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -124,7 +123,6 @@ export declare namespace ReadonlyRecord {
    * "a" satisfies Example2
    * ```
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -141,7 +139,6 @@ export declare namespace ReadonlyRecord {
    * produce every possible key. Open `string` and `symbol` key types retain their
    * record index signatures.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */

@@ -987,7 +987,6 @@ export declare namespace Metric {
    * const actual = types // => ["Counter", "Gauge", "Frequency", "Histogram", "Summary"]
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -1063,7 +1062,6 @@ export declare namespace Metric {
    * sameAttributes // => [{ service: "api", environment: "production", version: "1.2.3" }, { service: "api", environment: "production", version: "1.2.3" }]
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -1141,7 +1139,6 @@ export declare namespace Metric {
    * const validation = [result.attributes.isValid, result.attributes.totalKeys] // => [true, 9]
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -1194,7 +1191,6 @@ export declare namespace Metric {
    * metricIds // => ["requests:Counter", "bytes:Counter", "status_codes:Frequency", "cpu_usage:Gauge", "response_time:Histogram"]
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -1258,7 +1254,6 @@ export declare namespace Metric {
    * values // => [10, 85.5, 1]
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -1304,7 +1299,6 @@ export declare namespace Metric {
    * const state = result // => { currentCount: 6, isIncremental: false }
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -1370,7 +1364,6 @@ export declare namespace Metric {
    * const types = [result.counter.type, result.gauge.type, result.frequency.type] // => ["Counter", "Gauge", "Frequency"]
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -1443,7 +1436,6 @@ export declare namespace Metric {
    * const counts = [result.counter?.count, result.histogram?.observations] // => [25, 2]
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -1520,7 +1512,6 @@ export declare namespace Metric {
    * const types = result.metricTypes // => ["Counter", "Gauge", "Frequency", "Histogram", "Summary"]
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

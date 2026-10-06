@@ -192,7 +192,6 @@ export declare namespace Graph {
   /**
    * Type-level variance marker for immutable graphs.
    *
-   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
@@ -242,7 +241,6 @@ export declare namespace MutableGraph {
   /**
    * Type-level variance marker for scoped mutable graphs.
    *
-   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */

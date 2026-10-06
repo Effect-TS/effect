@@ -151,7 +151,6 @@ export declare namespace Sink {
    * covariant. The input type `In` is contravariant because values flow into
    * the sink.
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -167,7 +166,6 @@ export declare namespace Sink {
    * `_A`, `_L`, `_E`, and `_R` are covariant markers. `_In` is a
    * contravariant marker.
    *
-   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -392,7 +390,6 @@ export declare namespace make {
    * final pipeline step must return an `Effect`, whose success value becomes
    * the sink result.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

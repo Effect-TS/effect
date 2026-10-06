@@ -194,7 +194,6 @@ export declare namespace Option {
    * const witness: MyType = "value"
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 2.0.0
    */

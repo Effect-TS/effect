@@ -102,7 +102,6 @@ export declare namespace RcRef {
    * `RcRef`. It is used by Effect's type machinery and is not normally
    * referenced directly by users.
    *
-   * @stability stable
    * @category models
    * @since 3.5.0
    */

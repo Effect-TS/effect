@@ -250,7 +250,6 @@ export declare namespace Cause {
    * type E = Cause.Cause.Error<Cause.Cause<string>>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -266,7 +265,6 @@ export declare namespace Cause {
    * - `annotations` — tracing metadata attached by the runtime
    * - `annotate()` — returns a copy with additional annotations
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -299,7 +297,6 @@ export declare namespace Reason {
    * type E = Cause.Reason.Error<Cause.Reason<string>>
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -1351,7 +1348,6 @@ export declare namespace Done {
    * Extracts the value type `A` from a `Done<A>` that may be nested in an
    * error union.
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -1360,7 +1356,6 @@ export declare namespace Done {
   /**
    * Filters a type union to only keep `Done` members.
    *
-   * @stability stable
    * @category filtering
    * @since 4.0.0
    */

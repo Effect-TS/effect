@@ -119,7 +119,6 @@ export declare namespace State {
    * scope.state._tag // => "Empty"
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -150,7 +149,6 @@ export declare namespace State {
    * state.finalizer !== undefined // => true
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -182,7 +180,6 @@ export declare namespace State {
    * Effect.runSync(program) // => Exit.succeed("Done")
    * ```
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */

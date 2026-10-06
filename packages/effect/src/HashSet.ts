@@ -101,7 +101,6 @@ export declare namespace HashSet {
    * processNumber(3) // => 6
    * ```
    *
-   * @stability stable
    * @category utility types
    * @since 4.0.0
    */

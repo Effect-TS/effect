@@ -76,7 +76,6 @@ export declare namespace TxEnqueue {
   /**
    * Variance annotation interface for TxEnqueue contravariance.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -96,7 +95,6 @@ export declare namespace TxDequeue {
   /**
    * Variance annotation interface for TxDequeue covariance.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -116,7 +114,6 @@ export declare namespace TxQueue {
   /**
    * Variance annotation interface for TxQueue invariance.
    *
-   * @stability stable
    * @category models
    * @since 4.0.0
    */
