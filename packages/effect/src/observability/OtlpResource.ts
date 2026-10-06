@@ -76,8 +76,8 @@ export const make = (options: {
  * Explicit `serviceName` and `serviceVersion` options take precedence over
  * matching explicit attributes. Explicit attributes take precedence over
  * environment variables. `OTEL_SERVICE_NAME` and `OTEL_SERVICE_VERSION` take
- * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. When no
- * service name is configured, the resource has no `service.name` attribute.
+ * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. Missing
+ * required configuration is converted to a defect.
  *
  * @stability unstable
  * @category constructors
@@ -104,6 +104,7 @@ export const fromConfig: (
     ?? options?.attributes?.["service.name"] as string | undefined
     ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_NAME"))
     ?? env?.["service.name"] as string | undefined
+    ?? (yield* Config.String("OTEL_SERVICE_NAME"))
 
   const serviceVersion = options?.serviceVersion
     ?? options?.attributes?.["service.version"] as string | undefined
