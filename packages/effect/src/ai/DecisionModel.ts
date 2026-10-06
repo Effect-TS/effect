@@ -68,28 +68,21 @@ export class DecisionUsage extends Schema.Class<DecisionUsage>(
 export interface DecideOptions<Input extends Schema.Constraint> {
   readonly input: Input["Type"]
   /**
-   * Images the decisions are about. A model whose provider cannot read images
-   * fails with `AiError.InvalidUserInputError` rather than answer without them.
+   * Images to include with the input.
    */
   readonly images?: ReadonlyArray<Image> | undefined
 }
 
 /**
- * An image the decisions are about, given to the provider beside the encoded
- * input. `data` follows `Prompt.FilePart`: base64 data, a byte array, or a URL.
+ * An image sent to the provider with the encoded input.
+ * `data` is a base64 string, a byte array, or a URL.
  *
  * @stability unstable
  * @category models
  * @since 4.0.1
  */
 export interface Image {
-  /**
-   * MIME type of the image (e.g. "image/png").
-   */
   readonly mediaType: string
-  /**
-   * Image data as a base64 string, a byte array, or a URL.
-   */
   readonly data: string | Uint8Array | URL
 }
 
@@ -110,8 +103,8 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
 /**
  * Provider input options for a decision request.
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
- * All `decisions` must be answered in one call. `images` is present only when
- * the caller passed some and the model was made with `supportsImages`.
+ * All `decisions` must be answered in one call.
+ * `images` is omitted when no images are supplied.
  *
  * @stability unstable
  * @category options
@@ -351,9 +344,8 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  *
  * **Details**
  *
- * Images reach the provider only when `supportsImages` is `true`; otherwise a
- * call that passes images fails with `AiError.InvalidUserInputError`, so a
- * text-only model never answers about an image it did not see.
+ * Set `supportsImages: true` to accept images. Otherwise, nonempty image input
+ * fails with `AiError.InvalidUserInputError`.
  *
  * Providers that round each probability to `probabilityPrecision` decimal
  * places may return distributions whose sum drifts from 1 by up to half a unit
