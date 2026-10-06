@@ -1269,6 +1269,27 @@ export const defaultTransforms = (
   } as const
 }
 
+/**
+ * Builds an OpenTelemetry database span name from client span attributes:
+ * `{operation} {target}`, `{target}`, `{operation}`, `db.system.name`, or
+ * `sql.execute`, where the target is `db.namespace` or
+ * `server.address[:server.port]`. Empty attribute values are ignored.
+ *
+ * @stability unstable
+ * @category tracing
+ * @since 4.0.1
+ */
+export const makeSpanName = (
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+  operation?: string
+): string => {
+  const names = spanNames(spanAttributes)
+  if (operation === undefined) {
+    return names.statement
+  }
+  return names.target === undefined ? operation : `${operation} ${names.target}`
+}
+
 // internal
 
 const ATTR_DB_QUERY_TEXT = "db.query.text"
@@ -1280,34 +1301,18 @@ const spanNames = memoize((spanAttributes: ReadonlyArray<readonly [string, unkno
   const address = attributes.get("server.address")
   const port = attributes.get("server.port")
   const system = attributes.get("db.system.name")
-  const target = typeof namespace === "string"
+  const target = isNonEmptyString(namespace)
     ? namespace
-    : typeof address === "string"
+    : isNonEmptyString(address)
     ? (port === undefined ? address : `${address}:${port}`)
     : undefined
   return {
     target,
-    statement: target ?? (typeof system === "string" ? system : "sql.execute")
+    statement: target ?? (isNonEmptyString(system) ? system : "sql.execute")
   }
 })
 
-/**
- * OpenTelemetry span name: `{operation} {target}`, `{target}`, `{operation}`,
- * `db.system.name`, or `sql.execute`, where the target is `db.namespace` or
- * `server.address[:server.port]`.
- *
- * @internal
- */
-export const spanName = (
-  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-  operation?: string
-): string => {
-  const names = spanNames(spanAttributes)
-  if (operation === undefined) {
-    return names.statement
-  }
-  return names.target === undefined ? operation : `${operation} ${names.target}`
-}
+const isNonEmptyString = (u: unknown): u is string => typeof u === "string" && u.length > 0
 
 interface StatementImpl<A> extends Statement<A> {
   readonly segments: ReadonlyArray<Segment>
@@ -1373,7 +1378,7 @@ const StatementProto: Omit<
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
     return Effect.useSpan(
-      spanName(this.spanAttributes),
+      makeSpanName(this.spanAttributes),
       { kind: "client" },
       (span) =>
         this.withConnectionSpan(
@@ -1430,7 +1435,7 @@ const StatementProto: Omit<
   get stream(): Stream.Stream<any, SqlError> {
     const self = this as StatementImpl<any>
     return Stream.unwrap(Effect.flatMap(
-      Effect.makeSpanScoped(spanName(self.spanAttributes), { kind: "client" }),
+      Effect.makeSpanScoped(makeSpanName(self.spanAttributes), { kind: "client" }),
       (span) =>
         withStatement(self, span, (statement, fiber) => {
           const [sql, params] = statement.compile()
@@ -1475,7 +1480,7 @@ const StatementProto: Omit<
   ...Effectable.Prototype<StatementImpl<any>>({
     label: "Statement",
     evaluate(fiber) {
-      const span = internalEffect.makeSpanUnsafe(fiber, spanName(this.spanAttributes), { kind: "client" })
+      const span = internalEffect.makeSpanUnsafe(fiber, makeSpanName(this.spanAttributes), { kind: "client" })
       const clock = fiber.getRef(Clock)
       const timingEnabled = fiber.getRef(TracerTimingEnabled)
       return Effect.onExit(

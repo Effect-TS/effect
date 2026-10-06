@@ -148,7 +148,7 @@ const makeBatch = (options: {
   }
   const isBatch = statements.length > 1
   return Effect.useSpan(
-    Statement.spanName(options.spanAttributes, isBatch ? "BATCH" : undefined),
+    Statement.makeSpanName(options.spanAttributes, isBatch ? "BATCH" : undefined),
     { kind: "client" },
     (span) =>
       Effect.withFiber(Effect.fnUntraced(function*(fiber) {
