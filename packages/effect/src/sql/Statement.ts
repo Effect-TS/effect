@@ -1270,16 +1270,15 @@ export const defaultTransforms = (
 }
 
 /**
- * Returns the span name for statements run by a client with the given span
- * attributes, following the OpenTelemetry database span conventions:
- * `db.namespace`, then `server.address[:server.port]`, then `db.system.name`,
- * falling back to `sql.execute`.
+ * Returns the OpenTelemetry database span target for a client with the given
+ * span attributes: `db.namespace`, then `server.address[:server.port]`, or
+ * `undefined` when neither is set.
  *
  * @stability unstable
  * @category tracing
  * @since 4.0.1
  */
-export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string => {
+export const spanTarget = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string | undefined => {
   const namespace = spanAttribute(spanAttributes, "db.namespace")
   if (isNonEmptyString(namespace)) {
     return namespace
@@ -1288,6 +1287,23 @@ export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown
   if (isNonEmptyString(address)) {
     const port = spanAttribute(spanAttributes, "server.port")
     return port === undefined ? address : `${address}:${port}`
+  }
+  return undefined
+}
+
+/**
+ * Returns the span name for statements run by a client with the given span
+ * attributes, following the OpenTelemetry database span conventions: the
+ * {@link spanTarget}, then `db.system.name`, falling back to `sql.execute`.
+ *
+ * @stability unstable
+ * @category tracing
+ * @since 4.0.1
+ */
+export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string => {
+  const target = spanTarget(spanAttributes)
+  if (target !== undefined) {
+    return target
   }
   const system = spanAttribute(spanAttributes, "db.system.name")
   return isNonEmptyString(system) ? system : "sql.execute"

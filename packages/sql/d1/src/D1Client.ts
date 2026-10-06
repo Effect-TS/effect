@@ -134,6 +134,11 @@ interface StatementWithTransformRows extends Statement.Statement<any> {
   readonly transformRows: TransformRows | undefined
 }
 
+const batchSpanName = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string => {
+  const target = Statement.spanTarget(spanAttributes)
+  return target === undefined ? "BATCH" : `BATCH ${target}`
+}
+
 const makeBatch = (options: {
   readonly db: D1Database
   readonly prepareCache: Cache.Cache<string, D1PreparedStatement, SqlError>
@@ -148,7 +153,7 @@ const makeBatch = (options: {
   }
   const isBatch = statements.length > 1
   return Effect.useSpan(
-    isBatch ? "BATCH" : Statement.spanName(options.spanAttributes),
+    isBatch ? batchSpanName(options.spanAttributes) : Statement.spanName(options.spanAttributes),
     { kind: "client" },
     (span) =>
       Effect.withFiber(Effect.fnUntraced(function*(fiber) {
