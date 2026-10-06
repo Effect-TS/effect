@@ -166,4 +166,149 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         assert.strictEqual(nextA.remoteSequence, 2)
         assert.strictEqual(nextA.entry.idString, entryA2.idString)
       }))
+
+    it.effect("commits outer writes but discards a caught nested rollback and its notifications", () =>
+      Effect.gen(function*() {
+        const options = makeOptions("nested_rollback")
+        const storage = yield* makeStorage(options)
+        const storeId = makeStoreId("nested_rollback")
+        const backlog = makeEntry("Ada")
+        const before = makeEntry("Grace")
+        const rolledBack = makeEntry("Margaret")
+        const after = makeEntry("Linus")
+        const sentinel = makeEntry("Barbara")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* storage.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
+          Stream.toQueue({ capacity: "unbounded" })
+        )
+        assert.strictEqual((yield* Queue.take(changes)).entry.idString, backlog.idString)
+
+        yield* storage.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [before])
+          const error = yield* storage.withTransaction(Effect.gen(function*() {
+            yield* storage.write(storeId, [rolledBack])
+            return yield* Effect.fail("nested rollback")
+          })).pipe(Effect.flip)
+          assert.strictEqual(error, "nested rollback")
+          yield* storage.write(storeId, [after])
+        }))
+        yield* storage.write(storeId, [sentinel])
+        const live = [yield* Queue.take(changes), yield* Queue.take(changes), yield* Queue.take(changes)]
+        assert.deepStrictEqual(live.map((row) => row.remoteSequence), [2, 3, 4])
+        assert.deepStrictEqual(live.map((row) => row.entry.idString), [
+          before.idString,
+          after.idString,
+          sentinel.idString
+        ])
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+
+        const reopened = yield* makeStorage(options)
+        const replay = yield* reopened.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
+          Stream.toQueue({ capacity: "unbounded" })
+        )
+        const persisted = yield* Queue.takeAll(replay)
+        assert.deepStrictEqual(persisted.map((row) => row.remoteSequence), [1, 2, 3, 4])
+        assert.deepStrictEqual(persisted.map((row) => row.entry.idString), [
+          backlog.idString,
+          before.idString,
+          after.idString,
+          sentinel.idString
+        ])
+      }))
+
+    it.effect("persists and streams multiple successful transaction levels in write order exactly once", () =>
+      Effect.gen(function*() {
+        const options = makeOptions("multiple_nesting")
+        const storage = yield* makeStorage(options)
+        const storeId = makeStoreId("multiple_nesting")
+        const backlog = makeEntry("Ada")
+        const outer = makeEntry("Grace")
+        const nested = makeEntry("Margaret")
+        const deepest = makeEntry("Linus")
+        const after = makeEntry("Barbara")
+        const sentinel = makeEntry("Donald")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* storage.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
+          Stream.toQueue({ capacity: "unbounded" })
+        )
+        assert.strictEqual((yield* Queue.take(changes)).entry.idString, backlog.idString)
+
+        yield* storage.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [outer])
+          yield* storage.withTransaction(Effect.gen(function*() {
+            yield* storage.write(storeId, [nested])
+            yield* storage.withTransaction(storage.write(storeId, [deepest]))
+          }))
+          yield* storage.write(storeId, [after])
+        }))
+        // If a nesting level loses its buffer, the sentinel exposes the gap.
+        yield* storage.write(storeId, [sentinel])
+        const live = yield* Effect.forEach([0, 1, 2, 3, 4], () => Queue.take(changes))
+        assert.deepStrictEqual(live.map((row) => row.remoteSequence), [2, 3, 4, 5, 6])
+        assert.deepStrictEqual(live.map((row) => row.entry.idString), [
+          outer.idString,
+          nested.idString,
+          deepest.idString,
+          after.idString,
+          sentinel.idString
+        ])
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+
+        const reopened = yield* makeStorage(options)
+        const replay = yield* reopened.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
+          Stream.toQueue({ capacity: "unbounded" })
+        )
+        const persisted = yield* Queue.takeAll(replay)
+        assert.deepStrictEqual(persisted.map((row) => row.remoteSequence), [1, 2, 3, 4, 5, 6])
+        assert.deepStrictEqual(persisted.map((row) => row.entry.idString), [
+          backlog.idString,
+          outer.idString,
+          nested.idString,
+          deepest.idString,
+          after.idString,
+          sentinel.idString
+        ])
+      }))
+
+    it.effect("discards outer rollback rows and notifications, including successful nested writes", () =>
+      Effect.gen(function*() {
+        const options = makeOptions("outer_rollback")
+        const storage = yield* makeStorage(options)
+        const storeId = makeStoreId("outer_rollback")
+        const backlog = makeEntry("Ada")
+        const rolledBack = makeEntry("Grace")
+        const nested = makeEntry("Margaret")
+        const sentinel = makeEntry("Linus")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* storage.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
+          Stream.toQueue({ capacity: "unbounded" })
+        )
+        assert.strictEqual((yield* Queue.take(changes)).entry.idString, backlog.idString)
+
+        const error = yield* storage.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [rolledBack])
+          yield* storage.withTransaction(storage.write(storeId, [nested]))
+          return yield* Effect.fail("rollback")
+        })).pipe(Effect.flip)
+        assert.strictEqual(error, "rollback")
+
+        // The sentinel makes a leaked rollback notification fail by identity,
+        // rather than relying on a sleep to prove that no notification arrived.
+        yield* storage.write(storeId, [sentinel])
+        const live = yield* Queue.take(changes)
+        assert.strictEqual(live.remoteSequence, 2)
+        assert.strictEqual(live.entry.idString, sentinel.idString)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+
+        const reopened = yield* makeStorage(options)
+        const replay = yield* reopened.changes({ storeId, startSequence: 0, compactors: new Map() }).pipe(
+          Stream.toQueue({ capacity: "unbounded" })
+        )
+        const persisted = yield* Queue.takeAll(replay)
+        assert.deepStrictEqual(persisted.map((row) => row.remoteSequence), [1, 2])
+        assert.deepStrictEqual(persisted.map((row) => row.entry.idString), [backlog.idString, sentinel.idString])
+      }))
   })
