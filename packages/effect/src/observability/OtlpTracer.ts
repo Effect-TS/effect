@@ -295,53 +295,44 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
   if (status.exit._tag === "Success") {
     otelStatus = { code: StatusCode.Ok }
   } else if (Cause.hasInterruptsOnly(status.exit.cause)) {
-    otelStatus = {
-      code: StatusCode.Ok,
-      message: "Interrupted"
-    }
+    otelStatus = { code: StatusCode.Unset }
     attributes.push({
-      key: "span.label",
-      value: { stringValue: "⚠︎ Interrupted" }
-    }, {
-      key: "status.interrupted",
+      key: "effect.fiber.interrupted",
       value: { boolValue: true }
     })
   } else {
     const errors = Cause.prettyErrors(status.exit.cause, {
       includeCauseInStack: true
     })
-    otelStatus = {
-      code: StatusCode.Error
-    }
-    if (errors.length > 0) {
-      otelStatus.message = errors[0].message
-      for (const error of errors) {
-        events.push({
-          name: "exception",
-          timeUnixNano: String(status.endTime),
-          droppedAttributesCount: 0,
-          attributes: [
-            {
-              "key": "exception.type",
-              "value": {
-                "stringValue": error.name
-              }
-            },
-            {
-              "key": "exception.message",
-              "value": {
-                "stringValue": error.message
-              }
-            },
-            {
-              "key": "exception.stacktrace",
-              "value": {
-                "stringValue": error.stack ?? "No stack trace available"
-              }
+    otelStatus = errors.length > 0
+      ? { code: StatusCode.Error, message: errors[0].message }
+      : { code: StatusCode.Ok }
+    for (const error of errors) {
+      events.push({
+        name: "exception",
+        timeUnixNano: String(status.endTime),
+        droppedAttributesCount: 0,
+        attributes: [
+          {
+            "key": "exception.type",
+            "value": {
+              "stringValue": error.name
             }
-          ]
-        })
-      }
+          },
+          {
+            "key": "exception.message",
+            "value": {
+              "stringValue": error.message
+            }
+          },
+          {
+            "key": "exception.stacktrace",
+            "value": {
+              "stringValue": error.stack ?? "No stack trace available"
+            }
+          }
+        ]
+      })
     }
   }
 

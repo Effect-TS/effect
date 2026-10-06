@@ -7,6 +7,7 @@ import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-tr
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 
@@ -233,6 +234,22 @@ describe("Tracer", () => {
         assert.isString(stacktrace)
         assert.include(stacktrace as string, "[cause]: Error: inner cause")
       }))
+
+    it.effect("leaves interruption Unset with effect.fiber.interrupted", () => {
+      const exporter = new InMemorySpanExporter()
+      return Effect.gen(function*() {
+        const span = yield* Effect.makeSpan("test")
+        span.end(span.status.startTime + 1n, Exit.interrupt())
+        const spans = exporter.getFinishedSpans()
+        assert.lengthOf(spans, 1)
+        assert.deepStrictEqual(spans[0].status, { code: OtelApi.SpanStatusCode.UNSET })
+        assert.deepStrictEqual(spans[0].events, [])
+        assert.deepStrictEqual(spans[0].attributes, { "effect.fiber.interrupted": true })
+      }).pipe(Effect.provide(NodeSdk.layer(() => ({
+        resource: { serviceName: "test" },
+        spanProcessor: [new SimpleSpanProcessor(exporter)]
+      }))))
+    })
 
     it.effect("withSpanContext", () =>
       Effect.gen(function*() {

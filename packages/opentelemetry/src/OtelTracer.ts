@@ -490,12 +490,7 @@ export class OtelSpan implements Tracer.Span {
       this.span.setStatus({ code: Otel.SpanStatusCode.OK })
     } else {
       if (Cause.hasInterruptsOnly(exit.cause)) {
-        this.span.setStatus({
-          code: Otel.SpanStatusCode.OK,
-          message: Cause.pretty(exit.cause)
-        })
-        this.span.setAttribute("span.label", "⚠︎ Interrupted")
-        this.span.setAttribute("status.interrupted", true)
+        this.span.setAttribute("effect.fiber.interrupted", true)
       } else {
         const errors = Cause.prettyErrors(exit.cause, {
           includeCauseInStack: true
@@ -509,7 +504,6 @@ export class OtelSpan implements Tracer.Span {
             message: errors[0].message
           })
         } else {
-          // empty cause means no error
           this.span.setStatus({ code: Otel.SpanStatusCode.OK })
         }
       }
