@@ -1274,6 +1274,22 @@ class WriteContextImpl<A> implements Atom.WriteContext<A> {
 }
 
 // -----------------------------------------------------------------------------
+// hydration
+// -----------------------------------------------------------------------------
+
+/**
+ * Drops a value queued with `setSerializable` that no read has taken, unless
+ * the key now holds another value.
+ *
+ * @internal
+ */
+export const removeSerializable = (registry: AtomRegistry, key: string, encoded: unknown): void => {
+  if (registry instanceof RegistryImpl && registry.preloadedSerializable.get(key) === encoded) {
+    registry.preloadedSerializable.delete(key)
+  }
+}
+
+// -----------------------------------------------------------------------------
 // batching
 // -----------------------------------------------------------------------------
 

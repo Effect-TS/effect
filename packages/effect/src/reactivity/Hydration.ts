@@ -14,7 +14,7 @@
 import * as Schema from "../Schema.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 import * as Atom from "./Atom.ts"
-import type * as AtomRegistry from "./AtomRegistry.ts"
+import * as AtomRegistry from "./AtomRegistry.ts"
 
 /**
  * Marker interface for entries in a dehydrated atom registry state.
@@ -132,7 +132,8 @@ export const dehydrate = (
 export const toValues = (state: ReadonlyArray<DehydratedAtom>): Array<DehydratedAtomValue> => state as any
 
 /**
- * Applies dehydrated atom state to a registry.
+ * Applies dehydrated atom state to a registry, and returns a function that
+ * drops what no read has taken.
  *
  * **When to use**
  *
@@ -145,6 +146,16 @@ export const toValues = (state: ReadonlyArray<DehydratedAtom>): Array<Dehydrated
  * `resultPromise` update the matching registry node, or preload the resolved value,
  * when the promise resolves.
  *
+ * Calling the returned function drops the values this call preloaded that no
+ * read has taken yet, and ignores its promises that resolve later. A key that
+ * has since been given another value keeps it.
+ *
+ * **Gotchas**
+ *
+ * A preloaded value waits in the registry until its atom is read. In a
+ * registry that outlives the hydrated state, such as one shared between server
+ * requests, call the returned function when that state no longer applies.
+ *
  * @stability unstable
  * @category hydration
  * @since 4.0.0
@@ -152,15 +163,18 @@ export const toValues = (state: ReadonlyArray<DehydratedAtom>): Array<Dehydrated
 export const hydrate = (
   registry: AtomRegistry.AtomRegistry,
   dehydratedState: Iterable<DehydratedAtom>
-): void => {
+): () => void => {
+  let disposed = false
+  const preloaded: Array<readonly [key: string, encoded: unknown]> = []
   for (const datom of (dehydratedState as Iterable<DehydratedAtomValue>)) {
     registry.setSerializable(datom.key, datom.value)
+    preloaded.push([datom.key, datom.value])
 
     // If there's a resultPromise, it means this was in Initial state when dehydrated
     // and we should wait for it to resolve to a non-Initial state, then update the registry
     if (!datom.resultPromise) continue
     datom.resultPromise.then((resolvedValue) => {
-      if (resolvedValue === Skipped) return
+      if (disposed || resolvedValue === Skipped) return
       // Try to update the existing node directly instead of using setSerializable
       const nodes = registry.getNodes()
       const node = nodes.get(datom.key)
@@ -174,7 +188,14 @@ export const hydrate = (
       } else {
         // Fallback to setSerializable if node doesn't exist yet
         registry.setSerializable(datom.key, resolvedValue)
+        preloaded.push([datom.key, resolvedValue])
       }
     })
+  }
+  return () => {
+    disposed = true
+    for (const [key, encoded] of preloaded) {
+      AtomRegistry.removeSerializable(registry, key, encoded)
+    }
   }
 }
