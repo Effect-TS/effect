@@ -245,7 +245,9 @@ export const makeStorage = (options?: {
     // outermost transaction commits. A nested transaction merges its buffer
     // into the parent on success; a rollback (including a failed COMMIT)
     // discards it. Serialize outer transactions through publication so a later
-    // commit cannot publish first after SQL releases its row locks.
+    // commit cannot publish first after SQL releases its row locks. Successful
+    // sibling transactions can merge out of order, so sort all surviving
+    // entries per store before publishing the outer buffer.
     const withTransaction = <A, E, R>(
       effect: Effect.Effect<A, E, R>
     ): Effect.Effect<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> =>
@@ -262,7 +264,19 @@ export const makeStorage = (options?: {
             if (parent._tag === "Some") {
               parent.value.push(...writes)
             } else {
-              yield* Effect.forEach(writes, publish, { discard: true })
+              const stores = new Map<string, Array<RemoteEntry>>()
+              for (const [storeId, entries] of writes) {
+                const existing = stores.get(storeId)
+                if (existing === undefined) {
+                  stores.set(storeId, [...entries])
+                } else {
+                  existing.push(...entries)
+                }
+              }
+              for (const entries of stores.values()) {
+                entries.sort((a, b) => a.remoteSequence - b.remoteSequence)
+              }
+              yield* Effect.forEach(stores, publish, { discard: true })
             }
             return result
           })
