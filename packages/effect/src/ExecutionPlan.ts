@@ -173,15 +173,8 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
 ): ExecutionPlan<{
   provides: make.StepProvides<Steps>
   input: make.StepInput<Steps>
-  error:
-    | (Steps[number]["provide"] extends Context.Context<infer _P> | Layer.Layer<infer _P, infer E, infer _R> ? E
-      : never)
-    | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never)
-    | Schedule.Error<StepSchedule<Steps[number]>>
-  requirements:
-    | (Steps[number]["provide"] extends Layer.Layer<infer _A, infer _E, infer R> ? R : never)
-    | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer R> ? R : never)
-    | Schedule.Env<StepSchedule<Steps[number]>>
+  error: make.StepError<Steps[number]>
+  requirements: make.StepRequirements<Steps[number]>
 }> =>
   makeProto(steps.map((options, i) => {
     if (options.attempts !== undefined && options.attempts < 1) {
@@ -200,8 +193,6 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
       provide: options.provide
     }
   }) as any)
-
-type StepSchedule<Step> = Step extends { readonly schedule?: infer S } ? S : never
 
 /**
  * Namespace containing type helpers used by `ExecutionPlan.make`.
@@ -227,6 +218,28 @@ export declare namespace make {
     readonly while?: ((input: any) => boolean | Effect.Effect<boolean, any, any>) | undefined
     readonly schedule?: Schedule.Schedule<any, any, any, any> | undefined
   }
+
+  /**
+   * Computes the errors from a step's layer, predicate, and schedule.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type StepError<Step> =
+    | (Step extends { readonly provide: Layer.Layer<infer _A, infer E, infer _R> } ? E : never)
+    | (Step extends { readonly while?: (input: any) => infer Result } ? Effect.Error<Result> : never)
+    | (Step extends { readonly schedule?: infer S } ? Schedule.Error<S> : never)
+
+  /**
+   * Computes the services required by a step's layer, predicate, and schedule.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type StepRequirements<Step> =
+    | (Step extends { readonly provide: Layer.Layer<infer _A, infer _E, infer R> } ? R : never)
+    | (Step extends { readonly while?: (input: any) => infer Result } ? Effect.Services<Result> : never)
+    | (Step extends { readonly schedule?: infer S } ? Schedule.Env<S> : never)
 
   /**
    * Computes the intersection of services provided by a list of execution-plan
