@@ -30,7 +30,7 @@ Choose the bump from current release policy:
   `major` for breaks.
 - A break confined to APIs tagged `@stability unstable` is `minor`. A break
   confined to APIs tagged `@stability experimental` is `patch`. APIs tagged
-  `@stability stable` or without a stability tag follow strict semver.
+  `@stability stable` follow strict semver.
 - Use `major` only when a maintainer has approved a major release.
 - The release queue retargets PRs with `minor` changesets to `v4/next-minor`
   and PRs with `major` changesets to `v4/next-major`. Choose the level the
