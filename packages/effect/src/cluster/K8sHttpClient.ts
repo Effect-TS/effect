@@ -55,12 +55,16 @@ export const layer: Layer.Layer<
   K8sHttpClient,
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const token = yield* fs.readFileString("/var/run/secrets/kubernetes.io/serviceaccount/token").pipe(
-      Effect.option
-    )
     return (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest(HttpClientRequest.prependUrl("https://kubernetes.default.svc/api")),
-      token._tag === "Some" ? HttpClient.mapRequest(HttpClientRequest.bearerToken(token.value.trim())) : identity,
+      HttpClient.mapRequestEffect((request) =>
+        fs.readFileString("/var/run/secrets/kubernetes.io/serviceaccount/token").pipe(
+          Effect.option,
+          Effect.map((token) =>
+            token._tag === "Some" ? HttpClientRequest.bearerToken(request, token.value.trim()) : request
+          )
+        )
+      ),
       HttpClient.filterStatusOk,
       HttpClient.retryTransient({
         schedule: Schedule.spaced(5000)
