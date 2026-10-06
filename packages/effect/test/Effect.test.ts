@@ -1470,6 +1470,15 @@ describe("Effect", () => {
   }
 
   describe("repeat", () => {
+    it.effect("preserves finalizer defects accompanying schedule completion", () =>
+      Effect.gen(function*() {
+        const policy = Schedule.fromStep(
+          Effect.succeed(() => Cause.done(42).pipe(Effect.ensuring(Effect.die("cleanup failed"))))
+        )
+        const exit = yield* Effect.exit(Effect.repeat(Effect.void, policy))
+        assert.deepStrictEqual(exit, Exit.die("cleanup failed"))
+      }))
+
     it.effect("is interruptible", () =>
       Effect.gen(function*() {
         const fiber = yield* Effect.void.pipe(
@@ -1599,6 +1608,18 @@ describe("Effect", () => {
   })
 
   describe("retry", () => {
+    it.effect("does not retry typed failures accompanied by finalizer defects", () =>
+      Effect.gen(function*() {
+        let attempts = 0
+        const source = Effect.suspend(() => {
+          attempts++
+          return Effect.fail("error").pipe(Effect.ensuring(Effect.die("cleanup failed")))
+        })
+        const exit = yield* Effect.exit(Effect.retry(source, Schedule.recurs(1)))
+        assert.strictEqual(attempts, 1)
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("error"), Cause.die("cleanup failed"))))
+      }))
+
     it.live("nothing on success", () =>
       Effect.gen(function*() {
         let count = 0
