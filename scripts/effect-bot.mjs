@@ -10,18 +10,12 @@ export async function relayComment(options) {
   const fetch = options.fetch ?? globalThis.fetch
   const matches = options.isCommand ?? isCommand
   const keyFor = options.deliveryKey ?? deliveryKey
-  if (!(["issue_comment", "pull_request_review_comment"].includes(eventName)) ||
+  if (eventName !== "issue_comment" ||
     event?.action !== "created" || typeof event.comment?.body !== "string" ||
     !matches(event.comment.body)) return { status: "ignored" }
 
-  const review = eventName === "pull_request_review_comment"
   const repo = event.repository?.full_name
-  // Deleted/unknown head repos and fork inline reviews are unsupported, even
-  // if the runner happens to have secrets. PR conversation comments are safe.
-  if (review && (!repo || event.pull_request?.head?.repo?.full_name !== repo)) {
-    return { status: "unsupported_fork_review" }
-  }
-  const number = review ? event.pull_request?.number : event.issue?.number
+  const number = event.issue?.number
   const comment = event.comment
   const author = comment.user?.login
   if (typeof repo !== "string" || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(repo) ||
@@ -58,12 +52,11 @@ export async function relayComment(options) {
     action: "created",
     repo,
     number,
-    isPullRequest: review || Boolean(event.issue?.pull_request),
+    isPullRequest: Boolean(event.issue?.pull_request),
     commentId: comment.id,
     commentUrl: comment.html_url,
     body: comment.body,
-    author,
-    ...(review ? { path: comment.path, line: comment.line ?? comment.original_line ?? null } : {})
+    author
   }
   const body = JSON.stringify(payload)
   const key = keyFor(eventName, event)
@@ -85,8 +78,7 @@ export async function relayComment(options) {
   if ((result.status === "accepted" || result.status === "duplicate") &&
     typeof result.run_id === "string" && result.run_id.length > 0) {
     try {
-      const kind = review ? "pulls" : "issues"
-      const reaction = await request(`${githubBase}/${kind}/comments/${comment.id}/reactions`, {
+      const reaction = await request(`${githubBase}/issues/comments/${comment.id}/reactions`, {
         method: "POST", headers: githubHeaders, body: JSON.stringify({ content: "eyes" })
       })
       if (!reaction.ok) throw new Error("Reaction HTTP error")
