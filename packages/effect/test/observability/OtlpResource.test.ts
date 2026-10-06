@@ -157,21 +157,25 @@ describe("OtlpResource", () => {
       ))
   })
 
-  it("lets custom attributes override the SDK defaults", () => {
+  it("lets custom attributes override SDK defaults and service options override attributes", () => {
     const resource = OtlpResource.make({
       serviceName: "test",
+      serviceVersion: "1.0.0",
       attributes: {
         "telemetry.sdk.name": "custom",
         "telemetry.sdk.language": "webjs",
-        "telemetry.sdk.version": "custom-version"
+        "telemetry.sdk.version": "custom-version",
+        "service.name": "attribute-service",
+        "service.version": "attribute-version"
       }
     })
-    assert.deepStrictEqual(attributesRecord(resource), {
-      "service.name": "test",
-      "telemetry.sdk.name": "custom",
-      "telemetry.sdk.language": "webjs",
-      "telemetry.sdk.version": "custom-version"
-    })
+    assert.deepStrictEqual(resource.attributes, [
+      { key: "telemetry.sdk.name", value: { stringValue: "custom" } },
+      { key: "telemetry.sdk.language", value: { stringValue: "webjs" } },
+      { key: "telemetry.sdk.version", value: { stringValue: "custom-version" } },
+      { key: "service.name", value: { stringValue: "test" } },
+      { key: "service.version", value: { stringValue: "1.0.0" } }
+    ])
   })
 
   describe("unknownToAttributeValue", () => {
