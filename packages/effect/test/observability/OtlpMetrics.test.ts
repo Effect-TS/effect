@@ -669,7 +669,7 @@ const findMetric = (request: OtlpExportRequest, name: string): OtlpMetric | unde
   return undefined
 }
 
-const findFrequencyValue = (request: OtlpExportRequest, name: string, key: string): number | undefined =>
+const findFrequencyValue = (request: OtlpExportRequest, name: string, key: string): number | string | undefined =>
   findMetric(request, name)?.sum?.dataPoints.find((dataPoint) =>
     dataPoint.attributes.some((attribute) =>
       attribute.key === "key" &&
