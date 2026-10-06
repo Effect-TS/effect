@@ -22,109 +22,112 @@ interface AtomStore<A> {
   readonly subscribe: (f: () => void) => () => void
   readonly snapshot: () => A
   readonly getServerSnapshot: () => A
-  readonly lockServerSnapshot: () => () => void
 }
 
-interface StoreSelector<A> {
-  readonly source: Atom.Atom<any>
-  readonly f: (_: any) => A
+interface LockableStore<A> extends AtomStore<A> {
+  /** Keeps `getServerSnapshot` returning the same value until released. */
+  readonly lock: () => () => void
 }
 
 const storeRegistry = new WeakMap<AtomRegistry.AtomRegistry, WeakMap<Atom.Atom<any>, AtomStore<any>>>()
 
-function makeStore<A>(
+function getStore<S extends AtomStore<any>>(
   registry: AtomRegistry.AtomRegistry,
-  atom: Atom.Atom<A>,
-  selector?: StoreSelector<A>
-): AtomStore<A> {
+  atom: Atom.Atom<any>,
+  make: () => S
+): S {
   let stores = storeRegistry.get(registry)
   if (stores === undefined) {
     stores = new WeakMap()
     storeRegistry.set(registry, stores)
   }
-  const store = stores.get(atom)
-  if (store !== undefined) {
-    return store
+  let store = stores.get(atom)
+  if (store === undefined) {
+    store = make()
+    stores.set(atom, store)
   }
-
-  // React reads the server snapshot for every Suspense boundary it hydrates,
-  // and a boundary can hydrate long after the rest of the page. While a
-  // hydrated reader is subscribed, keep returning the value it hydrated with,
-  // so later boundaries match the server HTML even if the atom has changed.
-  // React then re-renders them with the live value. The server never
-  // subscribes, so server renders always read the registry.
-  //
-  // This cannot help when the atom changes before its first reader hydrates,
-  // since no reader has locked a snapshot yet. Covering that would need the
-  // server's values, which only exist for atoms passed through Hydration.
-  let serverSnapshot: { readonly value: A } | undefined
-  let locks = 0
-  let readServerValue = () => Atom.getServerValue(atom, registry)
-  let sourceStore: AtomStore<unknown> | undefined
-
-  // Selector atoms are created per component, so a late reader's selector
-  // has no snapshot of its own yet. Derive it from the source atom's snapshot.
-  if (selector !== undefined) {
-    const { f, source } = selector
-    const store = makeStore(registry, source)
-    const hasServerValue = Atom.ServerValueTypeId in source
-    let mapped: { readonly source: unknown; readonly value: A } | undefined
-    sourceStore = store
-    readServerValue = () => {
-      const sourceValue = store.getServerSnapshot()
-      // Reuse the registry's mapped value while the source is unchanged, so
-      // hydration does not re-render readers whose selector returns objects.
-      if (!hasServerValue && Object.is(sourceValue, registry.get(source))) {
-        return registry.get(atom)
-      }
-      if (mapped === undefined || !Object.is(mapped.source, sourceValue)) {
-        mapped = { source: sourceValue, value: f(sourceValue) }
-      }
-      return mapped.value
-    }
-  }
-
-  const newStore: AtomStore<A> = {
-    subscribe(f) {
-      const unlock = newStore.lockServerSnapshot()
-      const unsubscribe = registry.subscribe(atom, f)
-      return () => {
-        unsubscribe()
-        unlock()
-      }
-    },
-    snapshot() {
-      return registry.get(atom)
-    },
-    getServerSnapshot() {
-      if (locks === 0 || serverSnapshot === undefined) {
-        serverSnapshot = { value: readServerValue() }
-      }
-      return serverSnapshot.value
-    },
-    lockServerSnapshot() {
-      locks++
-      const unlockSource = sourceStore?.lockServerSnapshot()
-      let unlocked = false
-      return () => {
-        if (unlocked) return
-        unlocked = true
-        locks--
-        unlockSource?.()
-      }
-    }
-  }
-  stores.set(atom, newStore)
-  return newStore
+  return store as S
 }
 
-function useStore<A>(
-  registry: AtomRegistry.AtomRegistry,
-  atom: Atom.Atom<A>,
-  selector?: StoreSelector<A>
-): A {
-  const store = makeStore(registry, atom, selector)
+function makeStore<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): LockableStore<A> {
+  return getStore(registry, atom, () => {
+    // A Suspense boundary can hydrate long after the rest of the page. While a
+    // hydrated reader is subscribed, keep serving the value it hydrated with so
+    // later boundaries match the server HTML even if the atom has changed;
+    // React then re-renders them with the live value. The server never
+    // subscribes, so server renders always read the registry.
+    //
+    // An atom that changes before its first reader hydrates still mismatches:
+    // nothing has locked a snapshot yet, and the server's value is unknown.
+    let serverSnapshot: { readonly value: A } | undefined
+    let locks = 0
+    const store: LockableStore<A> = {
+      subscribe(f) {
+        const unlock = store.lock()
+        const unsubscribe = registry.subscribe(atom, f)
+        return () => {
+          unsubscribe()
+          unlock()
+        }
+      },
+      snapshot: () => registry.get(atom),
+      getServerSnapshot() {
+        if (locks === 0 || serverSnapshot === undefined) {
+          serverSnapshot = { value: Atom.getServerValue(atom, registry) }
+        }
+        return serverSnapshot.value
+      },
+      lock() {
+        locks++
+        return () => {
+          locks--
+        }
+      }
+    }
+    return store
+  })
+}
 
+// `useAtomValue(source, f)` maps the atom per component, so a late reader's
+// mapped atom has no hydrated snapshot of its own. Derive it from the source
+// atom's snapshot instead, and lock the source while the reader is subscribed.
+function makeSelectorStore<A, B>(
+  registry: AtomRegistry.AtomRegistry,
+  atom: Atom.Atom<B>,
+  source: Atom.Atom<A>,
+  f: (_: A) => B
+): AtomStore<B> {
+  return getStore(registry, atom, () => {
+    const sourceStore = makeStore(registry, source)
+    const hasServerValue = Atom.ServerValueTypeId in source
+    let mapped: { readonly source: A; readonly value: B } | undefined
+    return {
+      subscribe(f) {
+        const unlock = sourceStore.lock()
+        const unsubscribe = registry.subscribe(atom, f)
+        return () => {
+          unsubscribe()
+          unlock()
+        }
+      },
+      snapshot: () => registry.get(atom),
+      getServerSnapshot() {
+        const sourceValue = sourceStore.getServerSnapshot()
+        // While the source snapshot is live, the registry already holds the
+        // mapped value; reusing it keeps the identity React compares against.
+        if (!hasServerValue && Object.is(sourceValue, registry.get(source))) {
+          return registry.get(atom)
+        }
+        if (mapped === undefined || !Object.is(mapped.source, sourceValue)) {
+          mapped = { source: sourceValue, value: f(sourceValue) }
+        }
+        return mapped.value
+      }
+    }
+  })
+}
+
+function useStore<A>(store: AtomStore<A>): A {
   return React.useSyncExternalStore(store.subscribe, store.snapshot, store.getServerSnapshot)
 }
 
@@ -202,9 +205,9 @@ export const useAtomValue: {
   const registry = React.useContext(RegistryContext)
   if (f) {
     const atomB = React.useMemo(() => Atom.map(atom, f), [atom, f])
-    return useStore(registry, atomB, { source: atom, f })
+    return useStore(makeSelectorStore(registry, atomB, atom, f))
   }
-  return useStore(registry, atom)
+  return useStore(makeStore(registry, atom))
 }
 
 function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: Atom.Atom<A>): void {
@@ -372,7 +375,7 @@ export const useAtom = <R, W, const Mode extends "value" | "promise" | "promiseE
 ] => {
   const registry = React.useContext(RegistryContext)
   return [
-    useStore(registry, atom),
+    useStore(makeStore(registry, atom)),
     setAtom(registry, atom, options)
   ] as const
 }
@@ -422,7 +425,7 @@ function atomResultOrSuspend<A, E>(
   atom: Atom.Atom<AsyncResult.AsyncResult<A, E>>,
   suspendOnWaiting: boolean
 ) {
-  const value = useStore(registry, atom)
+  const value = useStore(makeStore(registry, atom))
   if (value._tag === "Initial" || (suspendOnWaiting && value.waiting)) {
     throw atomToPromise(registry, atom, suspendOnWaiting)
   }
