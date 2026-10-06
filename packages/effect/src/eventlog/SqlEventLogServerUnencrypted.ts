@@ -241,20 +241,14 @@ export const makeStorage = (options?: {
     )
     const publish = ([storeId, entries]: PendingWrites[number]) =>
       Effect.scoped(Effect.flatMap(RcMap.get(pubsubs, storeId), (pubsub) => PubSub.publishAll(pubsub, entries)))
-    // Writes are buffered per transaction level and only published once the
-    // outermost transaction commits. A nested transaction merges its buffer
-    // into the parent on success; a rollback (including a failed COMMIT)
-    // discards it. Serialize outer transactions through publication so a later
-    // commit cannot publish first after SQL releases its row locks. Successful
-    // sibling transactions can merge out of order, so sort all surviving
-    // entries per store before publishing the outer buffer.
+    // Merge nested buffers on success; publish only after the outer commit.
+    // Hold the outer permit through publication to prevent later commits from overtaking it.
     const withTransaction = <A, E, R>(
       effect: Effect.Effect<A, E, R>
     ): Effect.Effect<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> =>
       Effect.gen(function*() {
         const parent = yield* Effect.serviceOption(pendingWrites)
-        // Keep the transaction body interruptible, but do not allow interruption
-        // between a successful commit and its notifications.
+        // Allow body interruption, but mask commit through publication.
         const transaction = Effect.uninterruptibleMask((restore) =>
           Effect.gen(function*() {
             const writes: PendingWrites = []
@@ -273,6 +267,7 @@ export const makeStorage = (options?: {
                   existing.push(...entries)
                 }
               }
+              // Sibling buffers may merge out of sequence order.
               for (const entries of stores.values()) {
                 entries.sort((a, b) => a.remoteSequence - b.remoteSequence)
               }
@@ -281,8 +276,7 @@ export const makeStorage = (options?: {
             return result
           })
         )
-        // Acquire outside the mask to keep permit waits interruptible. Nested
-        // transactions already hold the permit and must not reacquire it.
+        // Wait interruptibly; nested transactions reuse the outer permit.
         return yield* parent._tag === "Some" ? transaction : transactionSemaphore.withPermit(transaction)
       })
 

@@ -23,8 +23,7 @@ it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 
         const sql = yield* SqlClient.SqlClient
         const committed = yield* Deferred.make<void>()
         const publish = yield* Deferred.make<void>()
-        // Decorate the public SQL boundary, not storage internals. The real
-        // transaction has committed and released its connection before we pause.
+        // Pause after SQL commits and releases its connection, before storage publishes.
         let pauseNext = false
         let observeSecond = false
         let secondEnteredSql = false
@@ -61,10 +60,7 @@ it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 
         pauseNext = true
         const firstWriter = yield* storage.write(storeId, [firstEntry]).pipe(Effect.forkChild)
         yield* Deferred.await(committed)
-        // Run writer two synchronously to its first asynchronous boundary,
-        // without a cooperative scheduler yield before it reaches SQL (or waits
-        // for a storage transaction permit). This observes only the public SQL
-        // boundary, not the implementation of any ordering lock.
+        // Run writer two until it enters SQL or waits for the storage permit.
         observeSecond = true
         const secondWriter = yield* storage.write(storeId, [secondEntry]).pipe(
           Effect.provideService(PreventSchedulerYield, true),
@@ -72,14 +68,12 @@ it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 
         )
         observeSecond = false
         if (secondEnteredSql) {
-          // An unserialized writer must commit and publish before writer one
-          // returns, making the existing reordering failure deterministic.
+          // Without serialization, force writer two to publish first.
           yield* Fiber.join(secondWriter).pipe(
             Effect.ensuring(Deferred.succeed(publish, undefined))
           )
         } else {
-          // A serialized writer is waiting outside SQL. Let writer one publish
-          // and release its permit before waiting for writer two to complete.
+          // Release writer one so writer two can acquire the permit.
           yield* Deferred.succeed(publish, undefined)
           yield* Fiber.join(secondWriter)
         }
@@ -116,15 +110,14 @@ it.layer(Layer.merge(Reactivity.layer, PgContainer.layerClient), { timeout: "30 
         })).pipe(Effect.forkChild)
         yield* Deferred.await(written)
 
-        // Start between the write and its commit. Reading the backlog row proves
-        // the subscription and the independent snapshot read have completed.
+        // Read the backlog before commit to establish the subscription and snapshot.
         const changes = yield* openChanges(storage, storeId)
         const first = yield* Queue.take(changes)
         assert.strictEqual(first.entry.idString, backlogEntry.idString)
 
         yield* Deferred.succeed(commit, undefined)
         yield* Fiber.join(writer)
-        // A later write makes a missed row fail as [1, 3], rather than timing out.
+        // A later write exposes a missed row as [1, 3] instead of a timeout.
         yield* storage.write(storeId, [liveEntry])
         const second = yield* Queue.take(changes)
         assert.deepStrictEqual([first.remoteSequence, second.remoteSequence], [1, 2])

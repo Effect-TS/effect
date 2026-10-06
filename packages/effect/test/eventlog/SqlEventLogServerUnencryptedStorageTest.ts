@@ -185,8 +185,7 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
           assert.strictEqual(error, "nested rollback")
           yield* storage.write(storeId, [after])
         }))
-        // The sentinel makes a leaked rollback notification fail by identity,
-        // rather than relying on a sleep to prove that no notification arrived.
+        // The sentinel exposes leaked notifications without sleeps.
         yield* storage.write(storeId, [sentinel])
         assertEntries(yield* Queue.takeN(changes, 3), [before, after, sentinel], 2)
         yield* Effect.yieldNow
@@ -218,7 +217,6 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
           }))
           yield* storage.write(storeId, [after])
         }))
-        // If a nesting level loses its buffer, the sentinel exposes the gap.
         yield* storage.write(storeId, [sentinel])
         assertEntries(yield* Queue.takeN(changes, 5), [outer, nested, deepest, after, sentinel], 2)
         yield* Effect.yieldNow
@@ -234,8 +232,7 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         const completed = yield* Deferred.make<void>()
         const release = yield* Deferred.make<void>()
         let pauseNext = false
-        // Pause at the public SQL boundary after the real savepoint succeeds
-        // and releases its permit, but before storage sees the successful return.
+        // Pause after savepoint completion releases the SQL permit, before storage merges the buffer.
         const delayedSql: SqlClient.SqlClient = Object.assign(
           (...args: Parameters<SqlClient.SqlClient>) => sql(...args),
           sql,
@@ -279,8 +276,6 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         const rows = yield* Queue.takeN(changes, 3)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
-        // Check persistence first to distinguish publication reordering from
-        // incorrect sequence allocation or a lost database write.
         assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, first, second, sentinel], 1)
         assertEntries(rows, [first, second, sentinel], 2)
       }))
