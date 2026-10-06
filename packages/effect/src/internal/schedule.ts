@@ -10,9 +10,6 @@ import { internalCall } from "../Utils.ts"
 import * as core from "./core.ts"
 import * as effect from "./effect.ts"
 
-// Hands a typed failure to the schedule only when the cause carries nothing
-// else, so defects and interruptions propagate instead of being retried or
-// dropped.
 const findErrorOnly = <E>(cause: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
   cause.reasons.every(core.isFailReason) ? effect.findError(cause) : Result.fail(cause as Cause.Cause<never>)
 
