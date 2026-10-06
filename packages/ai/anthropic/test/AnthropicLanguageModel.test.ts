@@ -750,7 +750,6 @@ describe("AnthropicLanguageModel", () => {
         assertDefined(span)
         const attributes = span.attributes
         assert.strictEqual(attributes.get("gen_ai.provider.name"), "anthropic")
-        assert.isFalse(attributes.has("gen_ai.system"))
         assert.strictEqual(attributes.get("gen_ai.usage.input_tokens"), 60)
         assert.strictEqual(attributes.get("gen_ai.usage.cache_read.input_tokens"), 30)
         assert.strictEqual(attributes.get("gen_ai.usage.cache_write.input_tokens"), 20)

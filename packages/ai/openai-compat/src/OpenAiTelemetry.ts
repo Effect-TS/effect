@@ -2,7 +2,7 @@
  * The `OpenAiTelemetry` module defines OpenAI-compatible telemetry attributes
  * and a helper for adding them to a tracing span. It keeps the standard GenAI
  * telemetry attributes and adds service tier and system fingerprint under
- * `openai.*`. Response format is written as `gen_ai.output.type`.
+ * `openai.*`.
  *
  * @since 4.0.0
  */
@@ -27,33 +27,17 @@ import type { Simplify } from "effect/Types"
  */
 export type OpenAiTelemetryAttributes = Simplify<
   & Telemetry.GenAITelemetryAttributes
-  & Telemetry.AttributesWithPrefix<Omit<RequestAttributes, "responseFormat">, "openai.request">
+  & Telemetry.AttributesWithPrefix<RequestAttributes, "openai.request">
   & Telemetry.AttributesWithPrefix<ResponseAttributes, "openai.response">
-  & { readonly "gen_ai.output.type"?: "text" | "json" | "image" | "speech" | (string & {}) | null | undefined }
 >
 
 /**
- * All telemetry attributes which are part of the GenAI specification,
- * including the OpenAI-specific attributes.
- *
- * @category models
- * @since 4.0.0
- */
-export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & ResponseAttributes
-
-/**
- * OpenAI request metadata, written under `openai.request.*` except for
- * response format, which maps to `gen_ai.output.type`.
+ * OpenAI request metadata, written under `openai.request.*`.
  *
  * @category models
  * @since 4.0.0
  */
 export interface RequestAttributes {
-  /**
-   * The response format that is requested. Written as `gen_ai.output.type`
-   * (`json_object` and `json_schema` map to `json`).
-   */
-  readonly responseFormat?: (string & {}) | WellKnownResponseFormat | null | undefined
   /**
    * The service tier requested. May be a specific tier, `default`, or `auto`.
    */
@@ -78,20 +62,6 @@ export interface ResponseAttributes {
    */
   readonly systemFingerprint?: string | null | undefined
 }
-
-/**
- * The OpenAI request `response_format` type has a list of
- * well-known values.
- *
- * **Details**
- *
- * If one of them applies, then the respective value **MUST** be used;
- * otherwise, a custom value **MAY** be used.
- *
- * @category models
- * @since 4.0.0
- */
-export type WellKnownResponseFormat = "json_object" | "json_schema" | "text"
 
 /**
  * The `openai.request.service_tier` attribute has a list of
@@ -140,8 +110,7 @@ const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("openai.response
  * **Details**
  *
  * Standard GenAI attributes are applied first. OpenAI metadata is written under
- * `openai.request.*` and `openai.response.*`, except for response format, which
- * maps to `gen_ai.output.type`.
+ * `openai.request.*` and `openai.response.*`.
  *
  * **Gotchas**
  *
@@ -157,14 +126,7 @@ export const addGenAIAnnotations: {
   Telemetry.addGenAIAnnotations(span, options)
   if (options.openai != null) {
     if (options.openai.request != null) {
-      const { responseFormat, ...request } = options.openai.request
-      addOpenAiRequestAttributes(span, request)
-      const outputType = responseFormat === "text"
-        ? "text"
-        : responseFormat === "json_object" || responseFormat === "json_schema"
-        ? "json"
-        : undefined
-      if (outputType !== undefined) span.attribute("gen_ai.output.type", outputType)
+      addOpenAiRequestAttributes(span, options.openai.request)
     }
     if (options.openai.response != null) {
       addOpenAiResponseAttributes(span, options.openai.response)

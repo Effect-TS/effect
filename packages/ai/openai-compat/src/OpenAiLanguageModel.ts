@@ -1363,7 +1363,6 @@ const annotateRequest = (
     },
     openai: {
       request: {
-        responseFormat: request.response_format?.type,
         serviceTier: request.service_tier as string | undefined
       }
     }

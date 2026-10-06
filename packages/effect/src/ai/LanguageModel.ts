@@ -1070,7 +1070,7 @@ export const make: (params: {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
     const concurrency = options.concurrency ?? "unbounded"
-    annotateToolOptions(providerOptions.span, toolChoice, concurrency)
+    annotateRequestOptions(providerOptions, toolChoice, concurrency)
 
     const generateWithNonIncrementalFallback = () => {
       const requestOptions: ProviderOptions = {
@@ -1323,7 +1323,7 @@ export const make: (params: {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
     const concurrency = options.concurrency ?? "unbounded"
-    annotateToolOptions(providerOptions.span, toolChoice, concurrency)
+    annotateRequestOptions(providerOptions, toolChoice, concurrency)
 
     const streamWithNonIncrementalFallback = () => {
       const requestOptions: ProviderOptions = {
@@ -2472,11 +2472,12 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
     ? toolkit
     : Effect.succeed(toolkit as unknown as Toolkit.WithHandler<Tools>)) as any
 
-const annotateToolOptions = (
-  span: Span,
+const annotateRequestOptions = (
+  { responseFormat, span }: ProviderOptions,
   toolChoice: ToolChoice<any>,
   concurrency: Concurrency
 ): void => {
+  span.attribute("gen_ai.output.type", responseFormat.type)
   span.attribute("effect.ai.tool_choice", typeof toolChoice === "string" ? toolChoice : JSON.stringify(toolChoice))
   span.attribute("effect.ai.concurrency", concurrency)
 }
