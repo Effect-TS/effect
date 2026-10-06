@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Scheduler, Tracer } from "effect"
 import { HttpBody, HttpClient, HttpClientResponse } from "effect/http"
-import { OtlpExporter, OtlpSerialization, OtlpTracer } from "effect/observability"
+import { OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
 import type { Span } from "effect/Tracer"
 
@@ -328,29 +328,30 @@ describe("Tracer", () => {
   })
 
   describe("OtlpTracer span status", () => {
-    const exportSpan = (exit: Exit.Exit<unknown, unknown>) =>
-      Effect.gen(function*() {
-        const exported: Array<OtlpTracer.TraceData> = []
-        const layer = makeOtlpTracerLayer(Layer.succeed(OtlpSerialization.OtlpSerialization, {
-          traces: (data) => {
-            exported.push(data)
-            return HttpBody.empty
-          },
-          metrics: () => HttpBody.empty,
-          logs: () => HttpBody.empty
-        }))
-        yield* Effect.gen(function*() {
-          const span = yield* Effect.makeSpan("test")
-          span.end(span.status.startTime + 1n, exit)
-          const flusher = yield* OtlpExporter.Flusher
-          yield* flusher.flush
-        }).pipe(Effect.provide(layer))
-        const spans = exported.flatMap((data) =>
-          data.resourceSpans.flatMap((resource) => resource.scopeSpans.flatMap((scope) => scope.spans))
-        )
-        assert.lengthOf(spans, 1)
-        return spans[0]
-      })
+    const exportSpan = (exit: Exit.Exit<unknown, unknown>) => {
+      const exported: Array<OtlpTracer.TraceData> = []
+      const layer = makeOtlpTracerLayer(Layer.succeed(OtlpSerialization.OtlpSerialization, {
+        traces: (data) => {
+          exported.push(data)
+          return HttpBody.empty
+        },
+        metrics: () => HttpBody.empty,
+        logs: () => HttpBody.empty
+      }))
+      return Effect.gen(function*() {
+        const span = yield* Effect.makeSpan("test")
+        span.end(span.status.startTime + 1n, exit)
+      }).pipe(
+        Effect.provide(layer),
+        Effect.map(() => {
+          const spans = exported.flatMap((data) =>
+            data.resourceSpans.flatMap((resource) => resource.scopeSpans.flatMap((scope) => scope.spans))
+          )
+          assert.lengthOf(spans, 1)
+          return spans[0]
+        })
+      )
+    }
 
     it.effect.each(
       [
@@ -362,42 +363,37 @@ describe("Tracer", () => {
         const span = yield* exportSpan(exit)
         deepStrictEqual(span.status, { code: 1 })
         deepStrictEqual(span.events, [])
-        assert.notInclude(span.attributes.map((attribute) => attribute.key), "effect.fiber.interrupted")
+        deepStrictEqual(span.attributes, [])
       }))
 
-    it.effect("leaves interruption Unset and records only the namespaced attribute", () =>
+    it.effect("leaves interruption Unset with effect.fiber.interrupted", () =>
       Effect.gen(function*() {
         const span = yield* exportSpan(Exit.interrupt())
         deepStrictEqual(span.status, { code: 0 })
         deepStrictEqual(span.events, [])
-        assert.deepInclude(span.attributes, { key: "effect.fiber.interrupted", value: { boolValue: true } })
-        assert.notInclude(span.attributes.map((attribute) => attribute.key), "status.interrupted")
-        assert.notInclude(span.attributes.map((attribute) => attribute.key), "span.label")
+        deepStrictEqual(span.attributes, [{ key: "effect.fiber.interrupted", value: { boolValue: true } }])
       }))
 
-    it.effect.each([true, false])("records errors with stack present: %s", (hasStack) =>
+    const errorWithStack = new Error("boom")
+    errorWithStack.stack = "Error: boom\n    at test"
+
+    it.effect.each(
+      [
+        ["an Error", Exit.fail(errorWithStack), "Error: boom\n    at test"],
+        ["a string", Exit.fail("boom"), "Error: boom"]
+      ] as const
+    )("records %s as an Error status with an exception event", ([, exit, stacktrace]) =>
       Effect.gen(function*() {
-        const error = new Error("boom")
-        if (hasStack) {
-          error.stack = "Error: boom\n    at test"
-        } else {
-          delete error.stack
-        }
-        const span = yield* exportSpan(Exit.fail(error))
+        const span = yield* exportSpan(exit)
         deepStrictEqual(span.status, { code: 2, message: "boom" })
-        assert.lengthOf(span.events, 1)
-        const event = span.events[0]
-        strictEqual(event.name, "exception")
-        assert.deepInclude(event.attributes, { key: "exception.type", value: { stringValue: "Error" } })
-        assert.deepInclude(event.attributes, { key: "exception.message", value: { stringValue: "boom" } })
-        if (hasStack) {
-          assert.deepInclude(event.attributes, {
-            key: "exception.stacktrace",
-            value: { stringValue: "Error: boom\n    at test" }
-          })
-        } else {
-          assert.notInclude(event.attributes.map((attribute) => attribute.key), "exception.stacktrace")
-        }
+        deepStrictEqual(span.events.map((event) => [event.name, event.attributes]), [[
+          "exception",
+          [
+            { key: "exception.type", value: { stringValue: "Error" } },
+            { key: "exception.message", value: { stringValue: "boom" } },
+            { key: "exception.stacktrace", value: { stringValue: stacktrace } }
+          ]
+        ]])
       }))
   })
 

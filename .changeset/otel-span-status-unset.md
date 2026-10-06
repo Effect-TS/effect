@@ -3,4 +3,6 @@
 "@effect/opentelemetry": patch
 ---
 
-Leave interrupt-only spans `Unset` without a status description and replace `span.label` and `status.interrupted` with `effect.fiber.interrupted: true`. Successful and empty-cause spans retain `Ok`; failures retain `Error` status and exception events. Omit OTLP `exception.stacktrace` when no stack exists. Consumers using the old interruption attributes or filtering interrupted spans by `Ok` should update their queries.
+Leave interrupt-only spans `Unset` with an `effect.fiber.interrupted: true` attribute instead of `Ok` with an "Interrupted" description and the `span.label` / `status.interrupted` attributes. Successful spans keep `Ok`; failures keep `Error` and their exception events.
+
+`Cause.prettyErrors` no longer captures an internal stack frame for non-object failures such as `Effect.fail("boom")`; the stack is now the message plus the span frame, when available. This affects the `exception.stacktrace` exported by both tracers and the output of `Cause.pretty`.

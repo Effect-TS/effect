@@ -345,6 +345,8 @@ export const causePrettyError = (
     error = new globalThis.Error(
       !original ? `Unknown error: ${original}` : kind === "string" ? original as any : formatJson(original)
     )
+    const stack = `${error.name}: ${error.message}`
+    error.stack = annotations ? addStackAnnotations(stack, annotations) : stack
   }
   return error
 }

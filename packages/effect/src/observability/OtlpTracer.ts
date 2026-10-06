@@ -290,56 +290,49 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
       })
     }
   }
-  let otelStatus: Status = { code: StatusCode.Ok }
+  let otelStatus: Status
 
-  if (status.exit._tag === "Failure") {
-    if (Cause.hasInterruptsOnly(status.exit.cause)) {
-      otelStatus = { code: StatusCode.Unset }
-      attributes.push({
-        key: "effect.fiber.interrupted",
-        value: { boolValue: true }
-      })
-    } else {
-      const errors = Cause.prettyErrors(status.exit.cause, {
-        includeCauseInStack: true
-      })
-      if (errors.length > 0) {
-        otelStatus = {
-          code: StatusCode.Error,
-          message: errors[0].message
-        }
-        const reasons = status.exit.cause.reasons.filter((reason) => reason._tag !== "Interrupt")
-        for (let i = 0; i < errors.length; i++) {
-          const error = errors[i]
-          const reason = reasons[i]
-          const original = reason._tag === "Fail" ? reason.error : reason.defect
-          const attributes: Array<KeyValue> = [
-            {
-              key: "exception.type",
-              value: { stringValue: error.name }
-            },
-            {
-              key: "exception.message",
-              value: { stringValue: error.message }
+  if (status.exit._tag === "Success") {
+    otelStatus = { code: StatusCode.Ok }
+  } else if (Cause.hasInterruptsOnly(status.exit.cause)) {
+    otelStatus = { code: StatusCode.Unset }
+    attributes.push({
+      key: "effect.fiber.interrupted",
+      value: { boolValue: true }
+    })
+  } else {
+    const errors = Cause.prettyErrors(status.exit.cause, {
+      includeCauseInStack: true
+    })
+    otelStatus = errors.length > 0
+      ? { code: StatusCode.Error, message: errors[0].message }
+      : { code: StatusCode.Ok }
+    for (const error of errors) {
+      events.push({
+        name: "exception",
+        timeUnixNano: String(status.endTime),
+        droppedAttributesCount: 0,
+        attributes: [
+          {
+            "key": "exception.type",
+            "value": {
+              "stringValue": error.name
             }
-          ]
-          if (
-            typeof original === "object" && original !== null && "stack" in original &&
-            typeof original.stack === "string" && error.stack !== undefined
-          ) {
-            attributes.push({
-              key: "exception.stacktrace",
-              value: { stringValue: error.stack }
-            })
+          },
+          {
+            "key": "exception.message",
+            "value": {
+              "stringValue": error.message
+            }
+          },
+          {
+            "key": "exception.stacktrace",
+            "value": {
+              "stringValue": error.stack ?? "No stack trace available"
+            }
           }
-          events.push({
-            name: "exception",
-            timeUnixNano: String(status.endTime),
-            droppedAttributesCount: 0,
-            attributes
-          })
-        }
-      }
+        ]
+      })
     }
   }
 
