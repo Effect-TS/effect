@@ -211,33 +211,19 @@ describe("Atom", { concurrent: false }, () => {
   })
 
   it("searchParam keeps the hash and omits an empty query", async () => {
-    const previousWindow = (globalThis as any).window
     const r = AtomRegistry.make()
-    const location = {
-      pathname: "/path",
-      search: "?q=1",
-      hash: "#section"
-    }
+    const location = new URL("http://localhost/path?q=1#section")
     const urls: Array<string> = []
-    Object.defineProperty(globalThis, "window", {
-      value: {
-        location,
-        history: {
-          pushState: (_state: unknown, _title: string, url: string) => {
-            urls.push(url)
-            const next = new URL(url, "http://localhost")
-            location.pathname = next.pathname
-            location.search = next.search
-            location.hash = next.hash
-          }
-        },
-        addEventListener: () => {
-        },
-        removeEventListener: () => {
+    vitest.stubGlobal("window", {
+      location,
+      history: {
+        pushState: (_state: unknown, _title: string, url: string) => {
+          urls.push(url)
+          location.href = new URL(url, location).href
         }
       },
-      configurable: true,
-      writable: true
+      addEventListener: () => {},
+      removeEventListener: () => {}
     })
 
     try {
@@ -249,15 +235,7 @@ describe("Atom", { concurrent: false }, () => {
       expect(urls).toEqual(["/path?q=2#section", "/path#section"])
     } finally {
       r.dispose()
-      if (typeof previousWindow === "undefined") {
-        delete (globalThis as any).window
-      } else {
-        Object.defineProperty(globalThis, "window", {
-          value: previousWindow,
-          configurable: true,
-          writable: true
-        })
-      }
+      vitest.unstubAllGlobals()
     }
   })
 
