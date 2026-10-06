@@ -91,17 +91,18 @@ non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability stable`
 `@stability unstable`, or `@stability experimental`, then required stable-semver
 `@since`. Its examples and links follow the declaration contracts.
 
-Files matched by `requireStability` in `jsdocs.config.json` (all of
-`packages/effect/src`) must tag the module and everything that can be imported
+Files matched by `requireStability` in `jsdocs.config.json` (every package
+source file) must tag the module and everything that can be imported
 by name with `@stability`: root declarations, export specifiers, and
 namespaces. Declarations inside namespaces and members are reached through an
 import and stay optional. A declaration takes its module's stability unless it
 differs.
 
-A module is `@stability stable` only when it existed as a stable `effect`
-module in 3.x, directly or through the v3-to-v4 import map. New modules, modules
-that came from 0.x packages, and modules that were `@experimental` in 3.x are
-`@stability unstable`.
+In `effect`, modules that existed as stable modules in 3.x, directly or through
+the v3-to-v4 import map, are `@stability stable`. Other modules default to
+`@stability unstable` until a maintainer marks them stable. Every module in the
+other packages starts as `@stability unstable` and is marked stable
+selectively.
 
 Inline `{@link Symbol}` targets must resolve to TypeScript symbols; use normal
 Markdown links for URLs. Prefer code formatting when navigation does not help a

@@ -1,4 +1,5 @@
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -53,18 +54,21 @@ export * as AtomHttpApi from "effect/reactivity/AtomHttpApi"
 export * as AtomRpc from "effect/reactivity/AtomRpc"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category symbols
  */
 export const registryKey = Symbol.for("@effect/atom-vue/registryKey") as InjectionKey<AtomRegistry.AtomRegistry>
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category constants
  */
 export const defaultRegistry: AtomRegistry.AtomRegistry = AtomRegistry.make()
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category accessors
  */
@@ -85,6 +89,7 @@ const useAtomValueRef = <A extends Atom.Atom<any>>(atom: () => A) => {
 }
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category composables
  */
@@ -108,6 +113,7 @@ export const useAtom = <R, W, Mode extends "value" | "promise" | "promiseExit" =
 }
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category composables
  */
@@ -162,6 +168,7 @@ function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>
 }
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category composables
  */
@@ -201,6 +208,7 @@ export const useAtomSet = <
 }
 
 /**
+ * @stability unstable
  * @since 4.0.0
  * @category composables
  */
