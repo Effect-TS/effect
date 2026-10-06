@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Option } from "effect"
+import { ByteSize, Effect, Exit, Option, Scope } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
@@ -748,76 +748,6 @@ describe("HttpServer", () => {
       assert.strictEqual(writeCount, 1)
     }))
 
-  it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {
-    const requestStarted = Latch.makeUnsafe()
-    const releaseResponse = Latch.makeUnsafe()
-    const firstResponse = Latch.makeUnsafe()
-    const secondResponse = Latch.makeUnsafe()
-    const server = Http.createServer()
-    server.keepAliveTimeout = 5000
-    const runtime = ManagedRuntime.make(
-      HttpServer.serve(Effect.gen(function*() {
-        yield* requestStarted.open
-        yield* releaseResponse.await
-        return HttpServerResponse.text("ok")
-      })).pipe(
-        Layer.provide(NodeHttpServer.layer(() => server, {
-          host: "127.0.0.1",
-          port: 0,
-          gracefulShutdownTimeout: "10 seconds"
-        }))
-      )
-    )
-    let socket: Net.Socket | undefined
-    let responseData = ""
-
-    return Effect.gen(function*() {
-      yield* Effect.promise(() => runtime.context())
-      const connection = Net.connect(tcpPort(server), "127.0.0.1")
-      socket = connection
-      connection.on("data", (chunk) => {
-        responseData += chunk.toString()
-        if (responseData.includes("\r\n\r\nok")) firstResponse.openUnsafe()
-        if ((responseData.match(/HTTP\/1\.1 \d{3}/g) ?? []).length >= 2) secondResponse.openUnsafe()
-      })
-      yield* Effect.callback<void, Error>((resume) => {
-        connection.once("connect", () => resume(Effect.void))
-        connection.on("error", (error) => resume(Effect.fail(error)))
-      }).pipe(Effect.timeout("2 seconds"))
-
-      connection.write("GET /first HTTP/1.1\r\nHost: localhost\r\n\r\n")
-      yield* requestStarted.await.pipe(Effect.timeout("2 seconds"))
-      const disposed = runtime.dispose()
-      // Wait for server.close() to stop listening, without letting the first request finish.
-      yield* Effect.callback<void>((resume) => {
-        const timer = setInterval(() => {
-          if (!server.listening) resume(Effect.void)
-        }, 1)
-        return Effect.sync(() => clearInterval(timer))
-      }).pipe(Effect.timeout("2 seconds"))
-
-      releaseResponse.openUnsafe()
-      yield* firstResponse.await.pipe(Effect.timeout("2 seconds"))
-      assert.include(responseData, "HTTP/1.1 200")
-      connection.write("GET /second HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
-      const answered = yield* secondResponse.await.pipe(Effect.timeoutOption("1 second"))
-      assert.strictEqual(
-        answered._tag,
-        "Some",
-        "the second keep-alive request must receive a response before the shutdown timeout"
-      )
-      yield* Effect.promise(() => disposed).pipe(Effect.timeout("2 seconds"))
-    }).pipe(
-      Effect.ensuring(
-        Effect.sync(() => {
-          releaseResponse.openUnsafe()
-          socket?.destroy()
-          server.closeAllConnections()
-        }).pipe(Effect.andThen(Effect.promise(() => runtime.dispose())))
-      )
-    )
-  })
-
   it.live("disposes after a client aborts a handler awaiting an upstream request", () => {
     const upstreamStarted = Latch.makeUnsafe()
     const upstream = Http.createServer(() => {
@@ -890,6 +820,384 @@ describe("HttpServer", () => {
         )
       )
     )
+  })
+
+  it.live("replaces a stopped application without preemptive shutdown", () =>
+    Effect.gen(function*() {
+      const nodeServer = Http.createServer()
+      const server = yield* NodeHttpServer.make(() => nodeServer, {
+        host: "127.0.0.1",
+        port: 0,
+        disablePreemptiveShutdown: true
+      })
+      const firstScope = yield* Scope.make()
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("old"))).pipe(Scope.provide(firstScope))
+      yield* Scope.close(firstScope, Exit.void)
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("new")))
+      const body = yield* Effect.promise(async () => {
+        const response = await fetch(`http://127.0.0.1:${tcpPort(nodeServer)}/`, {
+          headers: { Connection: "close" }
+        })
+        return response.text()
+      })
+      assert.strictEqual(body, "new")
+    }).pipe(Effect.scoped))
+
+  it.live("answers or ends an in-flight keep-alive request during shutdown", () => {
+    const requestStarted = Latch.makeUnsafe()
+    const releaseResponse = Latch.makeUnsafe()
+    const server = Http.createServer()
+    server.keepAliveTimeout = 10_000
+    const runtime = ManagedRuntime.make(
+      HttpServer.serve(Effect.gen(function*() {
+        yield* requestStarted.open
+        yield* releaseResponse.await
+        return HttpServerResponse.text("ok")
+      })).pipe(Layer.provide(NodeHttpServer.layer(() => server, {
+        host: "127.0.0.1",
+        port: 0,
+        gracefulShutdownTimeout: "10 seconds"
+      })))
+    )
+    let socket: Net.Socket | undefined
+
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => runtime.context())
+      yield* Effect.callback<void>((resume) => {
+        if (server.listening) {
+          resume(Effect.void)
+        } else {
+          server.once("listening", () => resume(Effect.void))
+        }
+      })
+
+      let text = ""
+      let ended = false
+      const firstResponse = Latch.makeUnsafe()
+      const settled = Latch.makeUnsafe()
+      socket = Net.connect(tcpPort(server), "127.0.0.1")
+      socket.on("error", () => {})
+      socket.on("data", (chunk) => {
+        text += chunk.toString()
+        if (text.includes("HTTP/1.1 200")) {
+          firstResponse.openUnsafe()
+        }
+        if ((text.match(/HTTP\/1\.1 /g) ?? []).length >= 2) {
+          settled.openUnsafe()
+        }
+      })
+      socket.on("close", () => {
+        ended = true
+        settled.openUnsafe()
+      })
+      yield* Effect.callback<void>((resume) => {
+        socket!.once("connect", () => resume(Effect.void))
+      })
+      socket.write("GET /a HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* requestStarted.await
+
+      const disposed = runtime.dispose()
+      while (server.listening) {
+        yield* Effect.sleep("1 millis")
+      }
+      releaseResponse.openUnsafe()
+      yield* firstResponse.await.pipe(Effect.timeout("1 second"))
+      assert.strictEqual(text.includes("HTTP/1.1 200"), true)
+      if (!ended) {
+        socket.write("GET /b HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      }
+      yield* settled.await.pipe(Effect.timeout("1 second"))
+      yield* Effect.promise(() => disposed).pipe(Effect.timeout("1 second"))
+    }).pipe(Effect.ensuring(
+      Effect.sync(() => {
+        socket?.destroy()
+      }).pipe(
+        Effect.andThen(Effect.promise(() => runtime.dispose())),
+        Effect.timeoutOrElse({ duration: "2 seconds", orElse: () => Effect.void })
+      )
+    ))
+  })
+
+  it.live("closes promptly despite application keep-alive headers during shutdown", () => {
+    const requestStarted = Latch.makeUnsafe()
+    const releaseResponse = Latch.makeUnsafe()
+    const server = Http.createServer()
+    server.keepAliveTimeout = 10_000
+    const runtime = ManagedRuntime.make(
+      HttpServer.serve(Effect.gen(function*() {
+        yield* requestStarted.open
+        yield* releaseResponse.await
+        return HttpServerResponse.text("ok", { headers: { Connection: "keep-alive" } })
+      })).pipe(Layer.provide(NodeHttpServer.layer(() => server, {
+        host: "127.0.0.1",
+        port: 0,
+        gracefulShutdownTimeout: "10 seconds"
+      })))
+    )
+    let socket: Net.Socket | undefined
+
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => runtime.context())
+      yield* Effect.callback<void>((resume) => {
+        if (server.listening) {
+          resume(Effect.void)
+        } else {
+          server.once("listening", () => resume(Effect.void))
+        }
+      })
+
+      let text = ""
+      const firstResponse = Latch.makeUnsafe()
+      const closed = Latch.makeUnsafe()
+      socket = Net.connect(tcpPort(server), "127.0.0.1")
+      socket.on("error", () => {})
+      socket.on("data", (chunk) => {
+        text += chunk.toString()
+        if (text.includes("HTTP/1.1 200")) {
+          firstResponse.openUnsafe()
+        }
+      })
+      socket.on("close", () => {
+        closed.openUnsafe()
+      })
+      yield* Effect.callback<void>((resume) => {
+        socket!.once("connect", () => resume(Effect.void))
+      })
+      socket.write("GET /a HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* requestStarted.await
+
+      const disposed = runtime.dispose()
+      while (server.listening) {
+        yield* Effect.sleep("1 millis")
+      }
+      releaseResponse.openUnsafe()
+      yield* firstResponse.await.pipe(Effect.timeout("1 second"))
+      const promptlyClosed = yield* closed.await.pipe(Effect.timeoutOption("1 second"))
+      assert.strictEqual(promptlyClosed._tag, "Some")
+      assert.match(text, /\r\nconnection: close\r\n/i)
+      assert.strictEqual(text.split("\r\n\r\n")[1], "ok")
+      yield* Effect.promise(() => disposed).pipe(Effect.timeout("1 second"))
+    }).pipe(Effect.ensuring(
+      Effect.sync(() => {
+        socket?.destroy()
+      }).pipe(
+        Effect.andThen(Effect.promise(() => runtime.dispose())),
+        Effect.timeoutOrElse({ duration: "2 seconds", orElse: () => Effect.void })
+      )
+    ))
+  })
+
+  it.live("closes a reused keep-alive connection during shutdown", () => {
+    const requestStarted = Latch.makeUnsafe()
+    const releaseResponse = Latch.makeUnsafe()
+    const server = Http.createServer()
+    server.keepAliveTimeout = 10_000
+    const runtime = ManagedRuntime.make(
+      HttpServer.serve(Effect.gen(function*() {
+        yield* requestStarted.open
+        yield* releaseResponse.await
+        return HttpServerResponse.text("ok")
+      })).pipe(Layer.provide(NodeHttpServer.layer(() => server, {
+        host: "127.0.0.1",
+        port: 0,
+        gracefulShutdownTimeout: "10 seconds"
+      })))
+    )
+    let socket: Net.Socket | undefined
+
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => runtime.context())
+      yield* Effect.callback<void>((resume) => {
+        if (server.listening) {
+          resume(Effect.void)
+        } else {
+          server.once("listening", () => resume(Effect.void))
+        }
+      })
+
+      let text = ""
+      let ended = false
+      const firstResponse = Latch.makeUnsafe()
+      const settled = Latch.makeUnsafe()
+      const note = () => {
+        if (ended || /connection:\s*close/i.test(text)) {
+          settled.openUnsafe()
+        }
+      }
+      socket = Net.connect(tcpPort(server), "127.0.0.1")
+      socket.on("error", () => {})
+      socket.on("data", (chunk) => {
+        text += chunk.toString()
+        if (text.includes("HTTP/1.1 200")) {
+          firstResponse.openUnsafe()
+        }
+        note()
+      })
+      socket.on("close", () => {
+        ended = true
+        note()
+      })
+      yield* Effect.callback<void>((resume) => {
+        socket!.once("connect", () => resume(Effect.void))
+      })
+      socket.write("GET /a HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* requestStarted.await
+
+      const startedAt = Date.now()
+      const disposed = runtime.dispose()
+      while (server.listening) {
+        yield* Effect.sleep("1 millis")
+      }
+      releaseResponse.openUnsafe()
+      yield* firstResponse.await.pipe(Effect.timeout("1 second"))
+      socket.write("GET /b HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* settled.await.pipe(Effect.timeout("1 second"))
+      yield* Effect.promise(() => disposed).pipe(Effect.timeout("1 second"))
+      assert.strictEqual(Date.now() - startedAt < 1_000, true)
+    }).pipe(Effect.ensuring(
+      Effect.sync(() => {
+        socket?.destroy()
+      }).pipe(
+        Effect.andThen(Effect.promise(() => runtime.dispose())),
+        Effect.timeoutOrElse({ duration: "2 seconds", orElse: () => Effect.void })
+      )
+    ))
+  })
+
+  it.live("destroys a stuck connection when graceful shutdown times out", () => {
+    const requestStarted = Latch.makeUnsafe()
+    const releaseResponse = Latch.makeUnsafe()
+    const server = Http.createServer()
+    server.keepAliveTimeout = 10_000
+    const runtime = ManagedRuntime.make(
+      HttpServer.serve(Effect.gen(function*() {
+        yield* requestStarted.open
+        // toHandled stays uninterruptible; only this wait can be interrupted.
+        yield* Effect.interruptible(releaseResponse.await)
+        return HttpServerResponse.text("ok")
+      })).pipe(Layer.provide(NodeHttpServer.layer(() => server, {
+        host: "127.0.0.1",
+        port: 0,
+        gracefulShutdownTimeout: "300 millis"
+      })))
+    )
+    let socket: Net.Socket | undefined
+
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => runtime.context())
+      yield* Effect.callback<void>((resume) => {
+        if (server.listening) {
+          resume(Effect.void)
+        } else {
+          server.once("listening", () => resume(Effect.void))
+        }
+      })
+
+      let ended = false
+      const closed = Latch.makeUnsafe()
+      socket = Net.connect(tcpPort(server), "127.0.0.1")
+      socket.on("error", () => {})
+      socket.on("close", () => {
+        ended = true
+        closed.openUnsafe()
+      })
+      yield* Effect.callback<void>((resume) => {
+        socket!.once("connect", () => resume(Effect.void))
+      })
+      socket.write("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* requestStarted.await
+
+      const startedAt = Date.now()
+      const disposed = runtime.dispose()
+      yield* closed.await.pipe(Effect.timeout("2 seconds"))
+      yield* Effect.promise(() => disposed).pipe(Effect.timeout("2 seconds"))
+      const elapsed = Date.now() - startedAt
+      assert.strictEqual(ended, true)
+      assert.strictEqual(elapsed >= 200, true)
+      assert.strictEqual(elapsed < 2_000, true)
+    }).pipe(Effect.ensuring(
+      Effect.sync(() => {
+        socket?.destroy()
+      }).pipe(
+        Effect.andThen(Effect.promise(() => runtime.dispose())),
+        Effect.timeoutOrElse({ duration: "2 seconds", orElse: () => Effect.void })
+      )
+    ))
+  })
+
+  it.live("answers or closes keep-alive requests without preemptive shutdown", () => {
+    const requestStarted = Latch.makeUnsafe()
+    const releaseResponse = Latch.makeUnsafe()
+    const server = Http.createServer()
+    server.keepAliveTimeout = 10_000
+    const runtime = ManagedRuntime.make(
+      HttpServer.serve(Effect.gen(function*() {
+        yield* requestStarted.open
+        yield* releaseResponse.await
+        return HttpServerResponse.text("ok")
+      })).pipe(Layer.provide(NodeHttpServer.layer(() => server, {
+        host: "127.0.0.1",
+        port: 0,
+        disablePreemptiveShutdown: true,
+        gracefulShutdownTimeout: "10 seconds"
+      })))
+    )
+    let socket: Net.Socket | undefined
+
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => runtime.context())
+      yield* Effect.callback<void>((resume) => {
+        if (server.listening) {
+          resume(Effect.void)
+        } else {
+          server.once("listening", () => resume(Effect.void))
+        }
+      })
+
+      let text = ""
+      let ended = false
+      const firstResponse = Latch.makeUnsafe()
+      const settled = Latch.makeUnsafe()
+      socket = Net.connect(tcpPort(server), "127.0.0.1")
+      socket.on("error", () => {})
+      socket.on("data", (chunk) => {
+        text += chunk.toString()
+        if (text.includes("HTTP/1.1 200")) {
+          firstResponse.openUnsafe()
+        }
+        if (ended || (text.match(/HTTP\/1\.1 /g) ?? []).length >= 2 || /connection:\s*close/i.test(text)) {
+          settled.openUnsafe()
+        }
+      })
+      socket.on("close", () => {
+        ended = true
+        settled.openUnsafe()
+      })
+      yield* Effect.callback<void>((resume) => {
+        socket!.once("connect", () => resume(Effect.void))
+      })
+      socket.write("GET /a HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* requestStarted.await
+
+      const startedAt = Date.now()
+      const disposed = runtime.dispose()
+      releaseResponse.openUnsafe()
+      yield* firstResponse.await.pipe(Effect.timeout("1 second"))
+      assert.strictEqual(text.includes("HTTP/1.1 200"), true)
+      if (!ended) {
+        socket.write("GET /b HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      }
+      yield* settled.await.pipe(Effect.timeout("1 second"))
+      yield* Effect.promise(() => disposed).pipe(Effect.timeout("1 second"))
+      assert.strictEqual(Date.now() - startedAt < 1_000, true)
+    }).pipe(Effect.ensuring(
+      Effect.sync(() => {
+        socket?.destroy()
+      }).pipe(
+        Effect.andThen(Effect.promise(() => runtime.dispose())),
+        Effect.timeoutOrElse({ duration: "2 seconds", orElse: () => Effect.void })
+      )
+    ))
   })
 
   describe("HttpServerRespondable", () => {
