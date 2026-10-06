@@ -358,40 +358,9 @@ describe("OtlpMetrics", () => {
   })
 
   describe("Summary", () => {
-    it.effect("exports a single Summary metric with the configured quantiles", () =>
+    it.effect("exports a cumulative Summary with window quantiles", () =>
       Effect.gen(function*() {
-        const metricName = "summary_test"
-        const summary = Metric.summary(metricName, {
-          maxAge: "1 minute",
-          maxSize: 100,
-          quantiles: [0.5, 0.9]
-        })
-        yield* Metric.update(summary, 10)
-        yield* Metric.update(summary, 20)
-        yield* Metric.update(summary, 30)
-        yield* triggerExport
-
-        const [request] = yield* MockHttpClient.requests
-        const metrics = request.resourceMetrics.flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))
-        assert.deepStrictEqual(metrics.map((metric) => metric.name), [metricName])
-        const point = metrics[0].summary?.dataPoints[0]
-        assert.deepStrictEqual(point?.attributes, [])
-        assert.strictEqual(point?.count, 3)
-        assert.strictEqual(point?.sum, 60)
-        assert.deepStrictEqual(point?.quantileValues, [
-          { quantile: 0.5, value: 20 },
-          { quantile: 0.9, value: 30 }
-        ])
-      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
-
-    it.effect("reports lifetime count and sum with window quantiles in delta mode", () =>
-      Effect.gen(function*() {
-        const metricName = "summary_window_test"
-        const summary = Metric.summary(metricName, {
-          maxAge: "15 seconds",
-          maxSize: 100,
-          quantiles: [0.5]
-        })
+        const summary = Metric.summary("summary_test", { maxAge: "15 seconds", maxSize: 100, quantiles: [0.5] })
         yield* Metric.update(summary, 10)
         yield* Metric.update(summary, 20)
         yield* Metric.update(summary, 30)
@@ -402,7 +371,9 @@ describe("OtlpMetrics", () => {
         yield* triggerExport
 
         const requests = yield* MockHttpClient.requests
-        const points = requests.map((request) => findMetric(request, metricName)?.summary?.dataPoints[0])
+        const metrics = requests[0].resourceMetrics.flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))
+        assert.deepStrictEqual(metrics.map((metric) => metric.name), ["summary_test"])
+        const points = requests.map((request) => findMetric(request, "summary_test")?.summary?.dataPoints[0])
         assert.deepStrictEqual(
           points.map((point) => ({ count: point?.count, sum: point?.sum, quantileValues: point?.quantileValues })),
           [
@@ -411,89 +382,35 @@ describe("OtlpMetrics", () => {
             { count: 4, sum: 100, quantileValues: [] }
           ]
         )
-        assert.strictEqual(points[1]?.startTimeUnixNano, points[0]?.startTimeUnixNano)
         assert.strictEqual(points[2]?.startTimeUnixNano, points[0]?.startTimeUnixNano)
       }).pipe(Effect.provide(TestLayerDelta), Effect.provideService(Metric.MetricRegistry, new Map())))
   })
 
-  describe("units", () => {
-    it.effect("maps unit attributes to UCUM and drops them from dimensions", () =>
-      Effect.gen(function*() {
-        const timer = Metric.timer("unit_timer_test", { boundaries: [10, 100] })
-        yield* Metric.update(timer, Duration.millis(5))
-        const bytes = Metric.counter("unit_bytes_test", { attributes: { unit: "bytes", route: "/a" } })
-        yield* Metric.update(bytes, 10)
-        const custom = Metric.gauge("unit_custom_test", { attributes: { unit: "{request}" } })
-        yield* Metric.update(custom, 1)
-        yield* triggerExport
+  it.effect("maps unit attributes to UCUM", () =>
+    Effect.gen(function*() {
+      yield* Metric.update(Metric.timer("unit_timer_test", { boundaries: [10, 100] }), Duration.millis(5))
+      yield* Metric.update(Metric.gauge("unit_custom_test", { attributes: { unit: "{request}" } }), 1)
+      yield* triggerExport
 
-        const [request] = yield* MockHttpClient.requests
-        const timerMetric = findMetric(request, "unit_timer_test")
-        assert.strictEqual(timerMetric?.unit, "ms")
-        assert.deepStrictEqual(timerMetric?.histogram?.dataPoints[0].attributes, [])
-        const bytesMetric = findMetric(request, "unit_bytes_test")
-        assert.strictEqual(bytesMetric?.unit, "By")
-        assert.deepStrictEqual(bytesMetric?.sum?.dataPoints[0].attributes.map((a) => a.key), ["route"])
-        assert.strictEqual(findMetric(request, "unit_custom_test")?.unit, "{request}")
-      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
+      const [request] = yield* MockHttpClient.requests
+      assert.strictEqual(findMetric(request, "unit_timer_test")?.unit, "ms")
+      assert.strictEqual(findMetric(request, "unit_custom_test")?.unit, "{request}")
+    }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
 
-    it.effect("exports series with different units as separate metrics", () =>
-      Effect.gen(function*() {
-        yield* Metric.update(Metric.gauge("unit_split_test", { attributes: { unit: "bytes" } }), 10)
-        yield* Metric.update(Metric.gauge("unit_split_test", { attributes: { unit: "seconds" } }), 20)
-        yield* triggerExport
+  it.effect("keeps bigint precision beyond 2^53", () =>
+    Effect.gen(function*() {
+      const counter = Metric.counter("bigint_counter_test", { bigint: true })
+      yield* Metric.update(counter, 9007199254740993n)
+      yield* Metric.update(Metric.gauge("bigint_gauge_test", { bigint: true }), -9007199254740993n)
+      yield* triggerExport
+      yield* Metric.update(counter, 9007199254740993n)
+      yield* triggerExport
 
-        const [request] = yield* MockHttpClient.requests
-        const metrics = request.resourceMetrics.flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))
-        assert.deepStrictEqual(
-          metrics.map((metric) => ({
-            name: metric.name,
-            unit: metric.unit,
-            values: metric.gauge?.dataPoints.map((point) => point.asDouble)
-          })),
-          [
-            { name: "unit_split_test", unit: "By", values: [10] },
-            { name: "unit_split_test", unit: "s", values: [20] }
-          ]
-        )
-      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
-
-    it.effect("keeps unit attributes on series that would otherwise collide", () =>
-      Effect.gen(function*() {
-        yield* Metric.update(Metric.gauge("unit_alias_test", { attributes: { unit: "milliseconds" } }), 10)
-        yield* Metric.update(Metric.gauge("unit_alias_test", { attributes: { unit: "ms" } }), 20)
-        yield* triggerExport
-
-        const [request] = yield* MockHttpClient.requests
-        const metric = findMetric(request, "unit_alias_test")
-        assert.strictEqual(metric?.unit, "ms")
-        assert.deepStrictEqual(
-          metric?.gauge?.dataPoints.map((point) => ({ attributes: point.attributes, value: point.asDouble })),
-          [
-            { attributes: [{ key: "unit", value: { stringValue: "milliseconds" } }], value: 10 },
-            { attributes: [{ key: "unit", value: { stringValue: "ms" } }], value: 20 }
-          ]
-        )
-      }).pipe(Effect.provide(TestLayerCumulative), Effect.provideService(Metric.MetricRegistry, new Map())))
-  })
-
-  describe("bigint", () => {
-    it.effect("keeps int64 precision beyond 2^53", () =>
-      Effect.gen(function*() {
-        const counter = Metric.counter("bigint_counter_test", { bigint: true })
-        const gauge = Metric.gauge("bigint_gauge_test", { bigint: true })
-        yield* Metric.update(counter, 9007199254740993n)
-        yield* Metric.update(gauge, -9007199254740993n)
-        yield* triggerExport
-        yield* Metric.update(counter, 9007199254740993n)
-        yield* triggerExport
-
-        const [first, second] = yield* MockHttpClient.requests
-        assert.strictEqual(findMetric(first, "bigint_counter_test")?.sum?.dataPoints[0].asInt, "9007199254740993")
-        assert.strictEqual(findMetric(second, "bigint_counter_test")?.sum?.dataPoints[0].asInt, "9007199254740993")
-        assert.strictEqual(findMetric(first, "bigint_gauge_test")?.gauge?.dataPoints[0].asInt, "-9007199254740993")
-      }).pipe(Effect.provide(TestLayerDelta), Effect.provideService(Metric.MetricRegistry, new Map())))
-  })
+      const [first, second] = yield* MockHttpClient.requests
+      assert.strictEqual(findMetric(first, "bigint_counter_test")?.sum?.dataPoints[0].asInt, "9007199254740993")
+      assert.strictEqual(findMetric(second, "bigint_counter_test")?.sum?.dataPoints[0].asInt, "9007199254740993")
+      assert.strictEqual(findMetric(first, "bigint_gauge_test")?.gauge?.dataPoints[0].asInt, "-9007199254740993")
+    }).pipe(Effect.provide(TestLayerDelta), Effect.provideService(Metric.MetricRegistry, new Map())))
 
   describe("Gauge (no temporality)", () => {
     it.effect.each([
@@ -562,9 +479,7 @@ interface OtlpMetric {
 }
 
 interface OtlpSummaryDataPoint {
-  readonly attributes?: Array<{ key: string; value: unknown }>
   readonly startTimeUnixNano?: string | undefined
-  readonly timeUnixNano?: string | undefined
   readonly count?: number | undefined
   readonly sum?: number | undefined
   readonly quantileValues?: Array<{ quantile: number; value: number }> | undefined

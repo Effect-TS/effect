@@ -39,7 +39,7 @@ import { OtlpSerialization } from "./OtlpSerialization.ts"
  *
  * `"delta"` reports changes since the last export. Each interval is independent with no dependency on previous measurements.
  *
- * Summaries are always exported as cumulative OTLP Summary metrics, regardless of this setting.
+ * Summaries are always cumulative, regardless of this setting.
  *
  * **Example** (Configuring aggregation temporality)
  *
@@ -128,10 +128,10 @@ export const make: (options: {
     const nextHistogramState = new Map(previousHistogramState)
     const nextFrequencyState = new Map(previousFrequencyState)
     const metricData: Array<IMetric> = []
-    const metricDataByIdentity = new Map<string, IMetric>()
-    const addMetricData = (identity: string, data: IMetric) => {
+    const metricDataByName = new Map<string, IMetric>()
+    const addMetricData = (data: IMetric) => {
       metricData.push(data)
-      metricDataByIdentity.set(identity, data)
+      metricDataByName.set(data.name, data)
     }
 
     const isDelta = temporality === "delta"
@@ -142,24 +142,10 @@ export const make: (options: {
       ? String(previousExportTimeNanos)
       : startTime
 
-    const projected = snapshot.map((state) => {
-      const unit = toUcumUnit(state.attributes?.unit ?? state.attributes?.time_unit)
-      const identity = `${state.id}\u0000${unit}`
-      const entries = state.attributes ? exportedAttributeEntries(state.attributes) : []
-      return { unit, identity, entries, seriesKey: makeMetricKey(identity, Object.fromEntries(entries)) }
-    })
-    const seriesCounts = new Map<string, number>()
-    for (const { seriesKey } of projected) {
-      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) ?? 0) + 1)
-    }
-
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const state = snapshot[i]
-      const { unit, identity, entries, seriesKey } = projected[i]
-      // Retain original unit attributes when projection would collapse distinct series.
-      const attributes = OtlpResource.entriesToAttributes(
-        seriesCounts.get(seriesKey)! > 1 ? Object.entries(state.attributes ?? {}) : entries
-      )
+      const unit = toUcumUnit(state.attributes?.unit ?? state.attributes?.time_unit)
+      const attributes = state.attributes ? OtlpResource.entriesToAttributes(Object.entries(state.attributes)) : []
       const metricKey = makeMetricKey(state.id, state.attributes)
 
       switch (state.type) {
@@ -199,10 +185,10 @@ export const make: (options: {
           } else {
             dataPoint.asDouble = reportValue
           }
-          if (metricDataByIdentity.has(identity)) {
-            metricDataByIdentity.get(identity)!.sum!.dataPoints.push(dataPoint)
+          if (metricDataByName.has(state.id)) {
+            metricDataByName.get(state.id)!.sum!.dataPoints.push(dataPoint)
           } else {
-            addMetricData(identity, {
+            addMetricData({
               name: state.id,
               description: state.description!,
               unit,
@@ -227,10 +213,10 @@ export const make: (options: {
           } else {
             dataPoint.asDouble = state.state.value
           }
-          if (metricDataByIdentity.has(identity)) {
-            metricDataByIdentity.get(identity)!.gauge!.dataPoints.push(dataPoint)
+          if (metricDataByName.has(state.id)) {
+            metricDataByName.get(state.id)!.gauge!.dataPoints.push(dataPoint)
           } else {
-            addMetricData(identity, {
+            addMetricData({
               name: state.id,
               description: state.description!,
               unit,
@@ -298,10 +284,10 @@ export const make: (options: {
             explicitBounds: currentBuckets.boundaries
           }
 
-          if (metricDataByIdentity.has(identity)) {
-            metricDataByIdentity.get(identity)!.histogram!.dataPoints.push(dataPoint)
+          if (metricDataByName.has(state.id)) {
+            metricDataByName.get(state.id)!.histogram!.dataPoints.push(dataPoint)
           } else {
-            addMetricData(identity, {
+            addMetricData({
               name: state.id,
               description: state.description!,
               unit,
@@ -341,10 +327,10 @@ export const make: (options: {
             nextFrequencyState.set(metricKey, currentOccurrences)
           }
 
-          if (metricDataByIdentity.has(identity)) {
-            metricDataByIdentity.get(identity)!.sum!.dataPoints.push(...dataPoints)
+          if (metricDataByName.has(state.id)) {
+            metricDataByName.get(state.id)!.sum!.dataPoints.push(...dataPoints)
           } else {
-            addMetricData(identity, {
+            addMetricData({
               name: state.id,
               description: state.description!,
               unit,
@@ -358,25 +344,21 @@ export const make: (options: {
           break
         }
         case "Summary": {
-          // Count and sum are lifetime totals; quantiles reflect the current window.
-          const quantileValues: Array<IValueAtQuantile> = []
-          for (const [quantile, value] of state.state.quantiles) {
-            if (value !== undefined) quantileValues.push({ quantile, value })
-          }
-
+          // Count and sum are lifetime totals, so summaries are always cumulative
           const dataPoint: ISummaryDataPoint = {
             attributes,
             startTimeUnixNano: startTime,
             timeUnixNano: nowTime,
             count: state.state.count,
             sum: state.state.sum,
-            quantileValues
+            quantileValues: state.state.quantiles.flatMap(([quantile, value]) =>
+              value === undefined ? [] : [{ quantile, value }]
+            )
           }
-
-          if (metricDataByIdentity.has(identity)) {
-            metricDataByIdentity.get(identity)!.summary!.dataPoints.push(dataPoint)
+          if (metricDataByName.has(state.id)) {
+            metricDataByName.get(state.id)!.summary!.dataPoints.push(dataPoint)
           } else {
-            addMetricData(identity, {
+            addMetricData({
               name: state.id,
               description: state.description!,
               unit,
@@ -518,26 +500,19 @@ const makeMetricKey = (id: string, attributes: Metric.Metric.AttributeSet | unde
   return `${id}:${JSON.stringify(sortedEntries)}`
 }
 
-/** Preserves bigint precision outside the safe integer range using decimal strings. */
-const bigintToInt64 = (value: bigint): number | string => {
-  const asNumber = Number(value)
-  return Number.isSafeInteger(asNumber) ? asNumber : value.toString()
-}
-
 const ucumUnits = new Map([
   ["nanoseconds", "ns"],
   ["microseconds", "us"],
   ["milliseconds", "ms"],
   ["seconds", "s"],
-  ["minutes", "min"],
-  ["hours", "h"],
   ["bytes", "By"]
 ])
 
 const toUcumUnit = (unit: string | undefined): string => unit === undefined ? "1" : ucumUnits.get(unit) ?? unit
 
-const exportedAttributeEntries = (attributes: Metric.Metric.AttributeSet) =>
-  Object.entries(attributes).filter(([key]) => key !== "unit" && key !== "time_unit")
+/** OTLP/JSON accepts int64 as a decimal string, which keeps values beyond 2^53 exact */
+const bigintToInt64 = (value: bigint): number | string =>
+  Number.isSafeInteger(Number(value)) ? Number(value) : value.toString()
 
 /** Previous state for histogram delta computation */
 interface PreviousHistogramState {
