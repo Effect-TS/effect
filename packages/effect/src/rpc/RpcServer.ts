@@ -567,6 +567,10 @@ export const make: <Rpcs extends Rpc.Any>(
     supportsTransferables
   } = yield* Protocol
   const encodeDefectUnsafe = Schema.encodeSync(codecFor(Schema.Defect()))
+  // Unknown tags have no RPC schema, so use a defect-only exit schema.
+  const encodeUnknownRequestExit: Schemas["encodeExit"] = Schema.encodeUnknownEffect(
+    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
+  ) as any
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
   const scope = yield* Scope.make()
 
@@ -632,7 +636,6 @@ export const make: <Rpcs extends Rpc.Any>(
       u: NonEmptyReadonlyArray<unknown>
     ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
     readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
-    readonly encodeDefect: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>
     readonly context: Context.Context<never>
     readonly collector?: Transferable.Collector["Service"] | undefined
   }
@@ -651,7 +654,6 @@ export const make: <Rpcs extends Rpc.Any>(
           )
         ) as any,
         encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any,
-        encodeDefect: Schema.encodeUnknownEffect(codecFor(rpc.defectSchema)) as any,
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -697,7 +699,7 @@ export const make: <Rpcs extends Rpc.Any>(
       client.schemas.delete(requestId)
       const defect = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
       return Effect.andThen(
-        sendRequestDefect(client, requestId, schemas.encodeDefect, defect),
+        sendRequestDefect(client, requestId, schemas.encodeExit, defect),
         server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
       )
     })
@@ -706,22 +708,14 @@ export const make: <Rpcs extends Rpc.Any>(
   const sendRequestDefect = (
     client: Client,
     requestId: RequestId,
-    encodeDefect: (u: unknown) => Effect.Effect<unknown, Schema.SchemaError>,
+    encodeExit: Schemas["encodeExit"],
     defect: unknown
   ) =>
     Effect.catchCause(
-      Effect.flatMap(encodeDefect(defect), (encodedDefect) =>
-        send(client.id, {
-          _tag: "Exit",
-          requestId,
-          exit: {
-            _tag: "Failure",
-            cause: [{
-              _tag: "Die",
-              defect: encodedDefect
-            }]
-          }
-        })),
+      Effect.flatMap(
+        encodeExit(Exit.die(defect)),
+        (exit) => send(client.id, responseEnvelope(requestId, "Exit", exit))
+      ),
       (cause) => sendDefect(client, Cause.squash(cause))
     )
 
@@ -787,7 +781,7 @@ export const make: <Rpcs extends Rpc.Any>(
         }
         const rpc = group.requests.get(tag)
         if (!rpc) {
-          return sendRequestDefect(client, requestId, (defect) => Effect.succeed(defect), `Unknown request tag: ${tag}`)
+          return sendRequestDefect(client, requestId, encodeUnknownRequestExit, `Unknown request tag: ${tag}`)
         }
         const schemas = getSchemas(rpc as any)
         const decoded = schemas.decode(request.payload)
@@ -801,7 +795,7 @@ export const make: <Rpcs extends Rpc.Any>(
           Effect.provideContext(decoded, schemas.context),
           {
             onFailure: (error) =>
-              sendRequestDefect(client, requestId, schemas.encodeDefect, SchemaIssue.defaultFormatter(error.issue)),
+              sendRequestDefect(client, requestId, schemas.encodeExit, SchemaIssue.defaultFormatter(error.issue)),
             onSuccess: (payload) => writeDecodedRequest(client, requestId, schemas, request, payload)
           }
         )
