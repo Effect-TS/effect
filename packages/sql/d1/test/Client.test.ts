@@ -239,6 +239,28 @@ describe("Client", () => {
       )
     }).pipe(Effect.provide(D1Miniflare.layerClient)))
 
+  it.effect("names batches with the configured target", () =>
+    Effect.gen(function*() {
+      const db = {
+        prepare: () => ({ bind: () => ({}) }),
+        batch: async (statements: Array<unknown>) => statements.map(() => ({ results: [] }))
+      } as any
+      const sql = yield* D1Client.make({ db, spanAttributes: { "db.namespace": "app" } })
+      const spans: Array<Tracer.Span> = []
+      const tracer = Tracer.make({
+        span: (options) => {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      yield* sql.batch([sql`SELECT 1`, sql`SELECT 2`]).pipe(Effect.withTracer(tracer))
+      assert.deepStrictEqual(spans.map((span) => span.name), ["BATCH app"])
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
   it.effect("should defect when batching in a transaction", () =>
     Effect.gen(function*() {
       const sql = yield* D1Client.D1Client
