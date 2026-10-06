@@ -692,11 +692,12 @@ describe("atom-react", { concurrent: false }, () => {
 
     it("hydrates a delayed Suspense boundary after the atom changes", async () => {
       const userAtom = Atom.make("loading")
-      const toUpperCase = (name: string) => name.toUpperCase()
 
       // Reading through a selector also covers the selector's server snapshot.
+      // It is inline and returns a new object, so its result must be memoized.
       function Name({ id }: { id: string }) {
-        return <span id={id}>{useAtomValue(userAtom, toUpperCase)}</span>
+        const user = useAtomValue(userAtom, (name) => ({ name: name.toUpperCase() }))
+        return <span id={id}>{user.name}</span>
       }
 
       const Passthrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>
