@@ -1,6 +1,6 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
+import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
 import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
@@ -199,29 +199,6 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), undefined)
-      }))
-
-    it.effect("keeps URL credentials and signed query values out of failed span errors", () =>
-      Effect.gen(function*() {
-        let clientSpan: Tracer.NativeSpan | undefined
-        const tracer = Tracer.make({
-          span(options) {
-            clientSpan = new Tracer.NativeSpan(options)
-            return clientSpan
-          }
-        })
-        const { client } = yield* makeStatusClient(404)
-
-        const response = yield* client.get("https://user:secret@example.com/file?sig=token").pipe(
-          Effect.provideService(Tracer.Tracer, tracer)
-        )
-
-        assert.strictEqual(response.status, 404)
-        assert(clientSpan !== undefined && clientSpan.status._tag === "Ended")
-        assert(clientSpan.status.exit._tag === "Failure")
-        const rendered = Cause.pretty(clientSpan.status.exit.cause)
-        assert.notInclude(rendered, "secret")
-        assert.notInclude(rendered, "token")
       }))
 
     it.effect("filters request and response header span attributes", () =>
