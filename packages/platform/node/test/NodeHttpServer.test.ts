@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Option } from "effect"
+import { ByteSize, Effect, Exit, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
@@ -983,6 +983,97 @@ describe("HttpServer", () => {
       )
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("logs and traces status 101 after an upgraded WebSocket closes", () =>
+    Effect.gen(function*() {
+      const logged = yield* Deferred.make<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") {
+          Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+        }
+      })
+      const traced = yield* Deferred.make<unknown>()
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          if (options.kind === "server") {
+            span.end = (endTime, exit) => {
+              Tracer.NativeSpan.prototype.end.call(span, endTime, exit)
+              Deferred.doneUnsafe(traced, Effect.succeed(span.attributes.get("http.response.status_code")))
+            }
+          }
+          return span
+        }
+      })
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(Logger.layer([logger])),
+        Layer.provide(Layer.succeed(Tracer.Tracer)(tracer)),
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const handshakeStatus = yield* Effect.callback<number | undefined, Error>((resume) => {
+        const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
+        let status: number | undefined
+        ws.on("upgrade", (response) => {
+          status = response.statusCode
+        })
+        ws.on("open", () => ws.close(1000))
+        ws.on("close", () => resume(Effect.succeed(status)))
+        ws.on("error", (error) => resume(Effect.fail(error)))
+        return Effect.sync(() => ws.close())
+      })
+      assert.strictEqual(handshakeStatus, 101)
+      assert.strictEqual(yield* Deferred.await(logged), 101)
+      assert.strictEqual(yield* Deferred.await(traced), 101)
+    }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
+
+  for (const failHandler of [false, true]) {
+    it.effect(
+      `logs the fallback status when an upgrade fails and the handler ${failHandler ? "fails" : "recovers"}`,
+      () =>
+        Effect.gen(function*() {
+          const logged = yield* Deferred.make<unknown>()
+          const logger = Logger.make((options) => {
+            const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+            if (annotations["http.url"] === "/ws") {
+              Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+            }
+          })
+          yield* HttpRouter.add(
+            "GET",
+            "/ws",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              const result = yield* Effect.exit(request.upgrade)
+              assert.isTrue(Exit.isFailure(result))
+              if (failHandler) return yield* Effect.fail(new Error("upgrade failed"))
+              return HttpServerResponse.empty({ status: 426 })
+            })
+          ).pipe(
+            (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+            Layer.provide(Logger.layer([logger])),
+            Layer.build
+          )
+          // An ordinary HTTP request has no upgrade transport, so acquisition fails.
+          const response = yield* HttpClient.get("/ws")
+          assert.strictEqual(response.status, failHandler ? 500 : 426)
+          assert.strictEqual(yield* Deferred.await(logged), response.status)
+        }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)),
+      10000
+    )
+  }
 
   it.effect("websocket options are forwarded to the WebSocketServer", () =>
     Effect.gen(function*() {
