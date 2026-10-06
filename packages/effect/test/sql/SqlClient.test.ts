@@ -201,40 +201,38 @@ describe("SqlClient", () => {
         ])
       }))
 
-    // Preserve both errors without deciding whether the commit must also become
-    // a defect when cleanup fails. That recovery policy needs a separate decision.
-    it.effect("retains the commit error and cleanup defect before closing the connection", () =>
-      Effect.gen(function*() {
-        const commitError = sqlError("commit rejected")
-        const cleanupError = sqlError("cleanup rejected")
-        const harness = makeHarness({
-          commit: () => Effect.fail(commitError),
-          onCommitFailure: () => Effect.fail(cleanupError)
-        })
+    for (const recovery of ["none", "catchTag", "catch"] as const) {
+      it.effect(
+        `keeps both commit and cleanup errors as defects with ${recovery} recovery`,
+        () =>
+          Effect.gen(function*() {
+            const commitError = sqlError("commit rejected")
+            const cleanupError = sqlError("cleanup rejected")
+            const harness = makeHarness({
+              commit: () => Effect.fail(commitError),
+              onCommitFailure: () => Effect.fail(cleanupError)
+            })
 
-        const exit = yield* Effect.exit(harness.withTransaction(Effect.void))
+            const transaction = harness.withTransaction(Effect.void)
+            const exit = yield* Effect.exit(
+              recovery === "catchTag" ?
+                transaction.pipe(Effect.catchTag("SqlError", () => Effect.void)) :
+                recovery === "catch" ?
+                transaction.pipe(Effect.catch(() => Effect.void)) :
+                transaction
+            )
 
-        assert.isTrue(Exit.isFailure(exit))
-        if (Exit.isFailure(exit)) {
-          assert.isTrue(exit.cause.reasons.some((reason) =>
-            Cause.isFailReason(reason) ?
-              reason.error === commitError :
-              Cause.isDieReason(reason) && reason.defect === commitError
-          ))
-          assert.isTrue(
-            exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === cleanupError)
-          )
-          assert.match(Cause.pretty(exit.cause), /commit rejected/)
-          assert.match(Cause.pretty(exit.cause), /cleanup rejected/)
-        }
-        assert.deepStrictEqual(harness.calls, [
-          "acquireConnection",
-          "begin",
-          "commit",
-          "onCommitFailure",
-          "closeConnection"
-        ])
-      }))
+            assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.die(commitError), Cause.die(cleanupError))))
+            assert.deepStrictEqual(harness.calls, [
+              "acquireConnection",
+              "begin",
+              "commit",
+              "onCommitFailure",
+              "closeConnection"
+            ])
+          })
+      )
+    }
 
     it.effect("propagates a failed begin as a typed error without rolling back", () =>
       Effect.gen(function*() {
