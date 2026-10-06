@@ -10,6 +10,71 @@ import { e2eSuite, UsersClient } from "./fixtures/rpc-e2e.ts"
 import { RpcLayer, User } from "./fixtures/rpc-schemas.ts"
 
 describe("RpcServer", () => {
+  describe("request defect isolation over HTTP", () => {
+    const Ok = Rpc.make("Ok", { success: Schema.String })
+    const Missing = Rpc.make("Missing")
+    const serverGroup = RpcGroup.make(
+      Ok,
+      Rpc.make("Invalid", { payload: { value: Schema.String } })
+    )
+    const clientGroup = RpcGroup.make(
+      Ok,
+      Missing,
+      Rpc.make("Invalid", { payload: { value: Schema.Number } })
+    )
+    const Server = HttpRouter.serve(
+      RpcServer.layer(serverGroup).pipe(
+        Layer.provide(serverGroup.toLayer({
+          Ok: () => Effect.succeed("ok"),
+          Invalid: () => Effect.void
+        })),
+        Layer.provideMerge(RpcServer.layerProtocolHttp({ path: "/rpc" }))
+      ),
+      { disableListenLog: true, disableLogger: true }
+    )
+
+    for (
+      const [name, serialization] of [
+        ["JSON", RpcSerialization.layerJson],
+        ["SchemaBinary", RpcSerialization.layerSchemaBinary()]
+      ] as const
+    ) {
+      const ClientProtocol = RpcClient.layerProtocolHttp({
+        url: "",
+        transformClient: HttpClient.mapRequest(HttpClientRequest.appendUrl("/rpc"))
+      }).pipe(
+        Layer.provideMerge(Server),
+        Layer.provide([NodeHttpServer.layerTest, serialization])
+      )
+
+      it.effect(`${name}: an unknown tag fails only its request and the client remains reusable`, () =>
+        Effect.gen(function*() {
+          const client = yield* RpcClient.make(clientGroup)
+          assert.strictEqual(yield* client.Ok(), "ok")
+          const missing = yield* Effect.exit(client.Missing())
+          const subsequent = yield* Effect.exit(client.Ok())
+          assert.deepStrictEqual(subsequent, Exit.succeed("ok"))
+          if (!Exit.isFailure(missing)) {
+            return assert.fail("Missing must fail with a request defect")
+          }
+          assert.deepStrictEqual(missing.cause, Cause.die("Unknown request tag: Missing"))
+        }).pipe(Effect.provide(ClientProtocol)))
+
+      it.effect(`${name}: an invalid payload fails only its request and the client remains reusable`, () =>
+        Effect.gen(function*() {
+          const client = yield* RpcClient.make(clientGroup)
+          assert.strictEqual(yield* client.Ok(), "ok")
+          const invalid = yield* Effect.exit(client.Invalid({ value: 42 }))
+          const subsequent = yield* Effect.exit(client.Ok())
+          assert.deepStrictEqual(subsequent, Exit.succeed("ok"))
+          if (!Exit.isFailure(invalid)) {
+            return assert.fail("Invalid must fail with a request defect")
+          }
+          assert.include(String(Cause.squash(invalid.cause)), "Expected string")
+        }).pipe(Effect.provide(ClientProtocol)))
+    }
+  })
+
   // http ndjson
   const HttpProtocol = RpcServer.layerProtocolHttp({ path: "/rpc" })
   const HttpNdjsonServer = HttpRouter.serve(
