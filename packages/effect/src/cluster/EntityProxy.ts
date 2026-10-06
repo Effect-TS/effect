@@ -106,7 +106,8 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
   infer _Success,
   infer _Error,
   infer _Middleware,
-  infer _Requires
+  infer _Requires,
+  infer _Annotations
 > ?
     | Rpc.Rpc<
       `${Prefix}.${_Tag}`,
@@ -124,7 +125,10 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
         | typeof EntityNotAssignedToRunner["Encoded"],
         _Error["DecodingServices"],
         _Error["EncodingServices"]
-      >
+      >,
+      never,
+      never,
+      _Annotations
     >
     | Rpc.Rpc<
       `${Prefix}.${_Tag}Discard`,
@@ -137,7 +141,10 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
         typeof MailboxFull,
         typeof AlreadyProcessingMessage,
         typeof PersistenceError
-      ]>
+      ]>,
+      never,
+      never,
+      _Annotations
     >
   : never
 

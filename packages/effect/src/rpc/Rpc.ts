@@ -79,7 +79,8 @@ export interface Rpc<
   out Success extends Schema.Top = Schema.Void,
   out Error extends Schema.Top = Schema.Never,
   out Middleware extends RpcMiddleware.AnyService = never,
-  out Requires = never
+  out Requires = never,
+  in Annotations = never
 > extends Pipeable {
   new(_: never): {}
 
@@ -90,7 +91,7 @@ export interface Rpc<
   readonly successSchema: Success
   readonly errorSchema: Error
   readonly defectSchema: Schema.Top
-  readonly annotations: Context.Context<never>
+  readonly annotations: Context.Context<Annotations>
   readonly middlewares: ReadonlySet<Middleware>
   readonly "~requires": Requires
 
@@ -103,7 +104,8 @@ export interface Rpc<
     S,
     Error,
     Middleware,
-    Requires
+    Requires,
+    Annotations
   >
 
   /**
@@ -115,7 +117,8 @@ export interface Rpc<
     Success,
     E,
     Middleware,
-    Requires
+    Requires,
+    Annotations
   >
 
   /**
@@ -129,7 +132,8 @@ export interface Rpc<
     Success,
     Error,
     Middleware,
-    Requires
+    Requires,
+    Annotations
   >
 
   /**
@@ -141,7 +145,8 @@ export interface Rpc<
     Success,
     Error,
     Middleware | M,
-    RpcMiddleware.ApplyServices<M["Identifier"], Requires>
+    RpcMiddleware.ApplyServices<M["Identifier"], Requires>,
+    Annotations
   >
 
   /**
@@ -153,7 +158,8 @@ export interface Rpc<
     Success,
     Error,
     Middleware,
-    Requires
+    Requires,
+    Annotations
   >
 
   /**
@@ -162,14 +168,14 @@ export interface Rpc<
   annotate<I, S>(
     tag: Context.Key<I, S>,
     value: NoInfer<S>
-  ): Rpc<Tag, Payload, Success, Error, Middleware, Requires>
+  ): Rpc<Tag, Payload, Success, Error, Middleware, Requires, Annotations | I>
 
   /**
    * Merge the annotations of the rpc with the provided annotations.
    */
   annotateMerge<I>(
     annotations: Context.Context<I>
-  ): Rpc<Tag, Payload, Success, Error, Middleware, Requires>
+  ): Rpc<Tag, Payload, Success, Error, Middleware, Requires, Annotations | I>
 }
 
 /**
@@ -593,14 +599,16 @@ export type AddError<R extends Any, Error extends Schema.Top> = R extends Rpc<
   infer _Success,
   infer _Error,
   infer _Middleware,
-  infer _Requires
+  infer _Requires,
+  infer _Annotations
 > ? Rpc<
     _Tag,
     _Payload,
     _Success,
     _Error | Error,
     _Middleware,
-    _Requires
+    _Requires,
+    _Annotations
   > :
   never
 
@@ -618,16 +626,28 @@ export type AddMiddleware<R extends Any, Middleware extends RpcMiddleware.AnySer
   infer _Success,
   infer _Error,
   infer _Middleware,
-  infer _Requires
+  infer _Requires,
+  infer _Annotations
 > ? Rpc<
     _Tag,
     _Payload,
     _Success,
     _Error,
     _Middleware | Middleware,
-    RpcMiddleware.ApplyServices<Middleware["Identifier"], _Requires>
+    RpcMiddleware.ApplyServices<Middleware["Identifier"], _Requires>,
+    _Annotations
   > :
   never
+
+/**
+ * Extracts the identifiers of the annotation keys that an `Rpc` type carries.
+ * A key made with `Context.Reference` contributes nothing.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type Annotations<R> = R extends { readonly annotations: Context.Context<infer A> } ? A : never
 
 /**
  * Converts an RPC definition into the corresponding `Handler` type.
@@ -803,14 +823,16 @@ export type Prefixed<Rpcs extends Any, Prefix extends string> = Rpcs extends Rpc
   infer _Success,
   infer _Error,
   infer _Middleware,
-  infer _Requires
+  infer _Requires,
+  infer _Annotations
 > ? Rpc<
     `${Prefix}${_Tag}`,
     _Payload,
     _Success,
     _Error,
     _Middleware,
-    _Requires
+    _Requires,
+    _Annotations
   >
   : never
 
