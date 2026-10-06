@@ -4360,6 +4360,14 @@ export const partitionQueue: {
   )
 )
 
+const fromQueueShutdownOnEnd = <A, E>(queue: Queue.Dequeue<A, E>): Stream<A, Exclude<E, Cause.Done>> =>
+  fromChannel(Channel.fromTransform((_, scope) =>
+    Effect.as(
+      Scope.addFinalizer(scope, Queue.shutdown(queue as Queue.Queue<A, E>)),
+      Queue.takeAll(queue)
+    )
+  ))
+
 /**
  * Splits a stream with an effectful `Filter`, returning scoped streams for
  * filter successes and failures.
@@ -4432,7 +4440,7 @@ export const partitionEffect: {
         (result) => result,
         options
       ),
-      ([passes, fails]) => [fromQueue(passes), fromQueue(fails)] as const
+      ([passes, fails]) => [fromQueueShutdownOnEnd(passes), fromQueueShutdownOnEnd(fails)] as const
     )
 )
 
@@ -4508,7 +4516,7 @@ export const partition: {
   > =>
     Effect.map(
       partitionQueue(self, filter, { capacity: options?.capacity ?? 16 }),
-      ([passes, fails]) => [fromQueue(passes), fromQueue(fails)] as const
+      ([passes, fails]) => [fromQueueShutdownOnEnd(passes), fromQueueShutdownOnEnd(fails)] as const
     )
 )
 
@@ -8597,7 +8605,7 @@ const groupByImpl = <A, E, R, K, V, E2, R2>(
             Queue.make<V, Cause.Done>({ capacity: options?.bufferSize ?? 4096 }).pipe(
               Effect.tap((queue) => {
                 MutableHashMap.set(queueMap, key, queue)
-                return Queue.offer(out, [key, fromQueue(queue)])
+                return Queue.offer(out, [key, fromQueueShutdownOnEnd(queue)])
               })
             ),
             (queue) => {
