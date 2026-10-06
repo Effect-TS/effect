@@ -13,6 +13,7 @@ import {
   SchemaParser
 } from "effect"
 import { format, formatJson } from "effect/Formatter"
+import { runInNewContext } from "node:vm"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "./utils/assert.ts"
 
 class SensitiveData implements Redactable.Redactable {
@@ -341,13 +342,17 @@ describe("Formatter", () => {
     it.each([
       ["Number", Object(42), `42`],
       ["Boolean", Object(false), `false`],
-      ["String", Object("abc"), `"abc"`]
+      ["String", Object("abc"), `"abc"`],
+      ["cross-realm Number", runInNewContext("new Number(42)"), `42`],
+      ["cross-realm Boolean", runInNewContext("new Boolean(false)"), `false`],
+      ["cross-realm String", runInNewContext("new String(\"abc\")"), `"abc"`]
     ])("should serialize boxed %s values", (_, value, expected) => {
       strictEqual(formatJson(value), expected)
       strictEqual(formatJson({ value }), `{"value":${expected}}`)
       // JSON.stringify unboxes wrappers and ignores their own properties
       Object.defineProperty(value, "extra", { get: () => 1, enumerable: true })
       strictEqual(formatJson(value), expected)
+      strictEqual(formatJson({ value }), `{"value":${expected}}`)
     })
 
     it("should stringify BigInt values", () => {
