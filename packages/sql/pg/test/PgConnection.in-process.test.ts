@@ -1,6 +1,7 @@
 import { PgConnection } from "@effect/sql-pg"
+import { connectionInternals } from "@effect/sql-pg/internal/connection"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Redacted } from "effect"
+import { Effect, Exit, Fiber, Redacted, Scope } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
@@ -210,6 +211,75 @@ const withUnixServer = (
   )
 
 describe("PgConnection in-process server", () => {
+  it.effect.each([false, true])(
+    "releases listeners and retirement hooks after scope closure (fatal=%s)",
+    (fatal) =>
+      Effect.gen(function*() {
+        const writes: Array<Buffer> = []
+        const socket = yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            const socket: Duplex = new Duplex({
+              read() {},
+              write(chunk: Buffer, _encoding, callback) {
+                writes.push(Buffer.from(chunk))
+                if (writes.length === 1) {
+                  queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+                }
+                callback()
+              },
+              // Keep graceful shutdown pending to model a transport retained after release.
+              final() {}
+            })
+            return socket
+          }),
+          (socket) =>
+            Effect.sync(() => {
+              socket.destroy()
+            })
+        )
+        const scope = yield* Scope.make()
+        const connection = yield* PgConnection.make({
+          username: "test",
+          stream: () => socket
+        }).pipe(Scope.provide(scope))
+        const sink = socket.listeners("error").filter((listener) => listener.name === "ignoreError")
+        assert.lengthOf(sink, 1)
+        const owned = (["data", "error", "close"] as const).map((event) => ({
+          event,
+          listeners: socket.listeners(event).filter((listener) => !sink.includes(listener))
+        }))
+        for (const { listeners } of owned) assert.lengthOf(listeners, 1)
+        const external = () => {}
+        for (const { event } of owned) socket.on(event, external)
+        const { retireHooks } = connectionInternals(connection)
+        let retired = 0
+        retireHooks.add(() => {
+          retired++
+        })
+        if (fatal) socket.emit("error", new Error("connection failed"))
+
+        yield* Scope.close(scope, Exit.void)
+
+        for (const { event, listeners } of owned) {
+          for (const listener of listeners) assert.notInclude(socket.listeners(event), listener)
+          assert.include(socket.listeners(event), external)
+        }
+        assert.deepStrictEqual(socket.listeners("error"), [...sink, external])
+        assert.strictEqual(retireHooks.size, 0)
+        assert.strictEqual(retired, fatal ? 1 : 0)
+        assert.doesNotThrow(() => socket.emit("error", new Error("late error after release")))
+        if (!fatal) {
+          assert.strictEqual(writes.at(-1)?.toString("hex"), "5800000004")
+          assert.isFalse(socket.destroyed)
+          assert.isFalse(socket.writableFinished)
+        }
+
+        yield* Scope.close(scope, Exit.void)
+        assert.deepStrictEqual(socket.listeners("error"), [...sink, external])
+        assert.strictEqual(retireHooks.size, 0)
+      })
+  )
+
   it.live("forwards startup defaults and lets explicit fields override URL values", () =>
     Effect.scoped(Effect.gen(function*() {
       let parameters: ReadonlyMap<string, string> | undefined
