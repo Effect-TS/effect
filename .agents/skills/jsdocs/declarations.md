@@ -54,7 +54,7 @@ Declaration tags appear in this order:
 2. `@default`
 3. `@see`
 4. `@stability stable`, `@stability unstable`, or `@stability experimental`
-   (when applicable)
+   (required on roots and root namespaces)
 5. `@category`
 6. `@since`
 
@@ -69,8 +69,7 @@ Declaration tags appear in this order:
 - Use `@stability unstable` when an API may receive breaking changes in minor
   releases, or `@stability experimental` when it may receive breaking changes
   across patch versions. `@stability stable` marks an API that follows strict
-  semver; outside `requireStability` files, declarations may leave the tag out
-  in that case.
+  semver.
 - Tag any API that exposes a third-party dependency `@stability unstable`: an
   accessor to the underlying client or instance, options typed as the
   dependency's options, constructors that accept its instances, re-exports of
@@ -87,16 +86,14 @@ fences.
 When present, the first top-level JSDoc is the module block unless TypeScript
 attaches it to a non-import first declaration. An `@internal` module is omitted.
 Module prose does not use the declaration template. Its tags are optional
-non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability stable`,
-`@stability unstable`, or `@stability experimental`, then required stable-semver
-`@since`. Its examples and links follow the declaration contracts.
+non-empty `@deprecated`, repeated non-empty `@see`, required `@stability`, then
+required stable-semver `@since`. Its examples and links follow the declaration
+contracts.
 
-Files matched by `requireStability` in `jsdocs.config.json` (every package
-source file) must tag the module and everything that can be imported
-by name with `@stability`: root declarations, export specifiers, and
-namespaces. Declarations inside namespaces and members are reached through an
-import and stay optional. A declaration takes its module's stability unless it
-differs.
+The module and everything that can be imported by name require `@stability`:
+root declarations, export specifiers, and namespaces. Declarations inside
+namespaces and members are reached through an import and stay optional. A
+declaration takes its module's stability unless it differs.
 
 In `effect`, modules that existed as stable modules in 3.x, directly or through
 the v3-to-v4 import map, are `@stability stable`. Other modules default to

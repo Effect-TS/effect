@@ -56,10 +56,10 @@ export const makeValue = () => 1
   }
 }
 
-const requiredStabilityDiagnostics = (files: Record<string, string>) => {
+const missingStabilityDiagnostics = (files: Record<string, string>, moduleStability = "@stability stable") => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-require-stability-"))
   try {
-    fs.mkdirSync(path.join(cwd, "src/required"), { recursive: true })
+    fs.mkdirSync(path.join(cwd, "src"))
     fs.writeFileSync(
       path.join(cwd, "tsconfig.json"),
       JSON.stringify({
@@ -69,22 +69,23 @@ const requiredStabilityDiagnostics = (files: Record<string, string>) => {
     )
     fs.writeFileSync(
       path.join(cwd, "package.json"),
-      JSON.stringify({
-        name: "@effect/sample",
-        type: "module",
-        exports: { "./*": "./src/*.ts", "./required/*": "./src/required/*.ts" }
-      })
+      JSON.stringify({ name: "@effect/sample", type: "module", exports: { "./*": "./src/*.ts" } })
     )
     for (const [file, source] of Object.entries(files)) {
-      fs.writeFileSync(path.join(cwd, "src", file), source)
+      fs.writeFileSync(
+        path.join(cwd, "src", file),
+        `/**
+ * Module.
+ *
+ * ${moduleStability}
+ * @since 1.0.0
+ */
+import type {} from "node:fs"
+
+${source}`
+      )
     }
-    const model = extractJSDocsSync({
-      cwd,
-      tsconfig: "tsconfig.json",
-      include: ["src/**/*.ts"],
-      output: ".data/jsdocs.json",
-      requireStability: ["src/required/*.ts"]
-    })
+    const model = extractJSDocsSync({ cwd, tsconfig: "tsconfig.json", include: ["src/**/*.ts"], output: "out.json" })
     return Object.fromEntries(
       Object.keys(files).map((file) => [
         file,
@@ -150,18 +151,10 @@ describe("jsdocs", () => {
     assert.deepStrictEqual(stabilityResult("@stability bogus").diagnostics, ["invalid-stability"])
   })
 
-  it("requires @stability on modules and importable declarations in configured files", () => {
+  it("requires @stability on directly importable declarations", () => {
     assert.deepStrictEqual(
-      requiredStabilityDiagnostics({
-        "required/Declaration.ts": `/**
- * Module.
- *
- * @stability stable
- * @since 1.0.0
- */
-import type {} from "node:fs"
-
-/**
+      missingStabilityDiagnostics({
+        "Declaration.ts": `/**
  * A value.
  *
  * @category constructors
@@ -169,15 +162,19 @@ import type {} from "node:fs"
  */
 export const value = 1
 `,
-        "required/Namespace.ts": `/**
- * Module.
- *
- * @stability unstable
- * @since 1.0.0
- */
-import type {} from "node:fs"
+        "Specifier.ts": `const value = 1
 
-/**
+export {
+  /**
+   * A value.
+   *
+   * @category constructors
+   * @since 1.0.0
+   */
+  value
+}
+`,
+        "Namespace.ts": `/**
  * A group.
  *
  * @category models
@@ -185,18 +182,10 @@ import type {} from "node:fs"
  */
 export declare namespace Group {}
 `,
-        "required/Nested.ts": `/**
- * Module.
- *
- * @stability unstable
- * @since 1.0.0
- */
-import type {} from "node:fs"
-
-/**
+        "Nested.ts": `/**
  * A group.
  *
- * @stability unstable
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -213,82 +202,22 @@ export declare namespace Group {
      */
     readonly id: string
   }
-
-  /**
-   * Nested namespaces do not require a stability tag.
-   *
-   * @since 1.0.0
-   */
-  export namespace Inner {
-    /**
-     * A nested item.
-     *
-     * @category models
-     * @since 1.0.0
-     */
-    export interface Item {
-      readonly id: string
-    }
-  }
 }
-`,
-        "required/Module.ts": `/**
- * Module.
- *
- * @since 1.0.0
- */
-import type {} from "node:fs"
-
-/**
- * A value.
- *
- * @stability stable
- * @category constructors
- * @since 1.0.0
- */
-export const value = 1
-`,
-        "required/NoImports.ts": `/**
- * Module.
- *
- * @stability stable
- * @since 1.0.0
- */
-
-/**
- * A value.
- *
- * @stability stable
- * @category constructors
- * @since 1.0.0
- */
-export const value = 1
-`,
-        "Optional.ts": `/**
- * Module.
- *
- * @since 1.0.0
- */
-import type {} from "node:fs"
-
-/**
- * A value.
- *
- * @category constructors
- * @since 1.0.0
- */
-export const value = 1
 `
       }),
       {
-        "required/Declaration.ts": ["Public JSDoc must include @stability"],
-        "required/Namespace.ts": ["Public JSDoc must include @stability"],
-        "required/Nested.ts": [],
-        "required/Module.ts": ["Module JSDoc must include @stability"],
-        "required/NoImports.ts": [],
-        "Optional.ts": []
+        "Declaration.ts": ["Public JSDoc must include @stability"],
+        "Specifier.ts": ["Public JSDoc must include @stability"],
+        "Namespace.ts": ["Public JSDoc must include @stability"],
+        "Nested.ts": []
       }
     )
+  })
+
+  it("requires @stability on module JSDoc", () => {
+    assert.deepStrictEqual(missingStabilityDiagnostics({ "Module.ts": "" }, "Has no stability tag."), {
+      "Module.ts": ["Module JSDoc must include @stability"]
+    })
   })
 
   it("rejects duplicate stability tags", () => {
@@ -298,7 +227,7 @@ export const value = 1
   })
 
   it("rejects legacy unstable tags", () => {
-    assert.deepStrictEqual(stabilityResult("@unstable").diagnostics, ["forbidden-tag"])
+    assert.deepStrictEqual(stabilityResult("@unstable").diagnostics, ["forbidden-tag", "missing-tag"])
   })
 
   it("accepts doctest metadata on TypeScript fences", () => {
@@ -381,6 +310,7 @@ export const value = 1
       `/**
  * Creates a value.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -442,6 +372,7 @@ export const makeValue = () => 1
       `/**
  * Creates a value.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -487,6 +418,7 @@ export const makeValue = () => 1
       `/**
  * External value type.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -497,6 +429,7 @@ export interface External {
 /**
  * Makes an external value.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -508,6 +441,7 @@ export const makeExternal = (value: string): External => ({ value })
       `/**
  * Parses a value.
  *
+ * @stability stable
  * @category parsing
  * @since 1.0.0
  */
@@ -520,6 +454,7 @@ export function parse(value: string | number) {
 /**
  * Converts a value.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -531,6 +466,7 @@ export {
   /**
    * Negates a value.
    *
+   * @stability stable
    * @category constructors
    * @since 1.0.0
    */
@@ -541,6 +477,7 @@ export {
   /**
    * Makes an external value.
    *
+   * @stability stable
    * @category constructors
    * @since 1.0.0
    */
@@ -553,6 +490,7 @@ export {
   /**
    * Attempts a value.
    *
+   * @stability stable
    * @category constructors
    * @since 1.0.0
    */
@@ -562,6 +500,7 @@ export {
 /**
  * Handles many overloads.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -585,6 +524,7 @@ export function many(value: number) {
 /**
  * Runs a value through a transform chain.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -656,6 +596,7 @@ interface Ctor<A extends Box<any>> {
 /**
  * Builds a boxed constructor.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -668,6 +609,7 @@ export function boxed<A extends Box<any>>(
 /**
  * Handles distinct overload modes.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -688,6 +630,7 @@ export function modes(...args: Array<any>) {
 /**
  * Service for sample values.
  *
+ * @stability stable
  * @category services
  * @since 1.0.0
  */
@@ -704,6 +647,7 @@ export class Service {
 /**
  * Default count.
  *
+ * @stability stable
  * @category constants
  * @since 1.0.0
  */
@@ -712,6 +656,7 @@ export const count = 1
 /**
  * Sample value type.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -812,6 +757,7 @@ export { _try as try }`
  * \`\`\`
  *
  * @see {@link makeValue}
+ * @stability stable
  * @since 1.0.0
  */
 import type { Buffer } from "node:buffer"
@@ -819,6 +765,7 @@ import type { Buffer } from "node:buffer"
 /**
  * Creates a value.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -859,6 +806,7 @@ export const makeValue = () => 1
       `/**
  * Creates a value.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -900,6 +848,7 @@ export const makeValue = () => 1
       `/**
  * Creates a value with the {@link Schema} module.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -951,6 +900,7 @@ export const makeValue = () => 1
  * \`\`\`
  *
  * @see {@link Hidden}
+ * @stability stable
  */
 import type { Buffer } from "node:buffer"
 
@@ -959,6 +909,7 @@ class Hidden {}
 /**
  * Creates a value.
  *
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -1002,6 +953,7 @@ export const makeValue = () => 1
       `/**
  * A documented container.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -1014,6 +966,7 @@ export interface Box {
  * Uses the hidden member.
  *
  * @see {@link Box.hidden}
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -1064,6 +1017,7 @@ export const useHidden = () => undefined
       `/**
  * A reusable reducer.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -1080,6 +1034,7 @@ export interface Reducer {
       `/**
  * Ordering reducer value.
  *
+ * @stability stable
  * @category constants
  * @since 1.0.0
  */
@@ -1094,6 +1049,7 @@ export const Reducer = "ordering"
  * Creates an equivalence reducer.
  *
  * @see {@link Reducer}
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -1140,6 +1096,7 @@ export const makeReducer = () => Reducer
       `/**
  * Private helper.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -1149,6 +1106,7 @@ class Hidden {}
  * Uses a hidden helper.
  *
  * @see {@link Hidden}
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -1200,6 +1158,7 @@ export const useHidden = () => Hidden
       `/**
  * Target value.
  *
+ * @stability stable
  * @category constants
  * @since 1.0.0
  */
@@ -1214,6 +1173,7 @@ export const Target = "target"
  * const value = "broken"
  * \`\`\`
  *
+ * @stability stable
  * @category constants
  * @since 1.0.0
  */
@@ -1228,6 +1188,7 @@ export const Broken = "broken"
  * Uses the target value.
  *
  * @see {@link Foo.Target} for the target value
+ * @stability stable
  * @category constants
  * @since 1.0.0
  */
@@ -1275,6 +1236,7 @@ export const useTarget = () => Foo.Target
     fs.writeFileSync(
       path.join(cwd, "src/Foo.ts"),
       `/**
+ * @stability stable
  * @since 1.0.0
  */
 const Array_ = "array"
@@ -1283,6 +1245,7 @@ export {
   /**
    * Public array helper.
    *
+   * @stability stable
    * @category constructors
    * @since 1.0.0
    */
@@ -1294,6 +1257,7 @@ export {
  *
  * @see {@link Array_}
  * @see {@link Array}
+ * @stability stable
  * @category constructors
  * @since 1.0.0
  */
@@ -1344,6 +1308,7 @@ export const Tuple = Array
       `/**
  * Imported marker.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -1365,6 +1330,7 @@ import type { Marker } from "./Imported.ts"
 /**
  * A boxed value.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
@@ -1418,6 +1384,7 @@ export declare namespace Group {
 /**
  * Groups stable types.
  *
+ * @stability stable
  * @category models
  * @since 1.0.0
  */
