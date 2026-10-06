@@ -489,6 +489,38 @@ describe("Cache", () => {
           assert.strictEqual(lookups, 1)
         }))
 
+      it.effect("interrupting a get as its lookup starts abandons the entry", () =>
+        Effect.gen(function*() {
+          const started = yield* Deferred.make<void>()
+          let calls = 0
+          let interrupted = false
+          const cache = yield* Cache.makeWith(
+            (_key: string) =>
+              Effect.suspend(() => {
+                if (++calls > 1) return Effect.succeed("ok")
+                return Deferred.succeed(started, undefined).pipe(
+                  Effect.andThen(Effect.never),
+                  Effect.onInterrupt(() =>
+                    Effect.sync(() => {
+                      interrupted = true
+                    })
+                  )
+                )
+              }),
+            { capacity: 4, timeToLive: (exit) => Exit.isSuccess(exit) ? Duration.infinity : Duration.zero }
+          )
+
+          const getter = yield* Cache.get(cache, "key").pipe(Effect.forkChild)
+          yield* Deferred.await(started)
+          // Do not yield here: interruption must race with the lookup starting.
+          yield* Fiber.interrupt(getter)
+
+          assert.strictEqual(yield* Cache.size(cache), 0)
+          assert.isTrue(interrupted)
+          assert.strictEqual(yield* Cache.get(cache, "key"), "ok")
+          assert.strictEqual(calls, 2)
+        }))
+
       it.effect("concurrent access - interrupting the last consumer interrupts the lookup", () =>
         Effect.gen(function*() {
           let lookupCount = 0
