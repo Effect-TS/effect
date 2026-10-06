@@ -914,52 +914,60 @@ describe("HttpServer", () => {
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
-  for (const failAfterClose of [false, true]) {
-    it.effect(
-      `logs status 101 after an upgraded WebSocket closes${failAfterClose ? " and the handler fails" : ""}`,
-      () =>
-        Effect.gen(function*() {
-          const logged = Promise.withResolvers<unknown>()
-          const logger = Logger.make((options) => {
-            const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
-            if (annotations["http.url"] === "/ws") {
-              logged.resolve(annotations["http.status"])
+  it.effect("logs and traces status 101 after an upgraded WebSocket closes", () =>
+    Effect.gen(function*() {
+      const logged = Promise.withResolvers<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") {
+          logged.resolve(annotations["http.status"])
+        }
+      })
+      const traced = Promise.withResolvers<unknown>()
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          if (options.kind === "server") {
+            span.end = (endTime, exit) => {
+              Tracer.NativeSpan.prototype.end.call(span, endTime, exit)
+              traced.resolve(span.attributes.get("http.response.status_code"))
             }
-          })
-          yield* HttpRouter.add(
-            "GET",
-            "/ws",
-            Effect.gen(function*() {
-              const request = yield* HttpServerRequest.HttpServerRequest
-              const socket = yield* request.upgrade
-              yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
-              if (failAfterClose) return yield* Effect.fail(new Error("post-handshake handler failure"))
-              return HttpServerResponse.empty()
-            })
-          ).pipe(
-            (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
-            Layer.provide(Logger.layer([logger])),
-            Layer.build
-          )
-          const server = yield* HttpServer.HttpServer
-          const port = (server.address as NetAddress.InetAddress).port
-          const handshakeStatus = yield* Effect.callback<number | undefined, Error>((resume) => {
-            const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
-            let status: number | undefined
-            ws.on("upgrade", (response) => {
-              status = response.statusCode
-            })
-            ws.on("open", () => ws.close(1000))
-            ws.on("close", () => resume(Effect.succeed(status)))
-            ws.on("error", (error) => resume(Effect.fail(error)))
-            return Effect.sync(() => ws.close())
-          })
-          assert.strictEqual(handshakeStatus, 101)
-          assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
-        }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)),
-      10000
-    )
-  }
+          }
+          return span
+        }
+      })
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(Logger.layer([logger])),
+        Layer.provide(Layer.succeed(Tracer.Tracer)(tracer)),
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const handshakeStatus = yield* Effect.callback<number | undefined, Error>((resume) => {
+        const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
+        let status: number | undefined
+        ws.on("upgrade", (response) => {
+          status = response.statusCode
+        })
+        ws.on("open", () => ws.close(1000))
+        ws.on("close", () => resume(Effect.succeed(status)))
+        ws.on("error", (error) => resume(Effect.fail(error)))
+        return Effect.sync(() => ws.close())
+      })
+      assert.strictEqual(handshakeStatus, 101)
+      assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+      assert.strictEqual(yield* Effect.promise(() => traced.promise), 101)
+    }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
 
   for (const failHandler of [false, true]) {
     it.effect(

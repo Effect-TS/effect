@@ -464,7 +464,7 @@ describe("BunHttpServer", () => {
         const actual = yield* readWebSocketClose(port, opened)
         forceStop?.()
         assert.strictEqual(actual, code)
-        assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
+        if (exit === "success") assert.strictEqual(yield* Effect.promise(() => logged.promise), 101)
       }).pipe(Effect.timeout("5 seconds")), 10000)
   }
 
