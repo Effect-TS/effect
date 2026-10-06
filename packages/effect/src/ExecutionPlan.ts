@@ -20,7 +20,7 @@ import * as Layer from "./Layer.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
-import type * as Schedule from "./Schedule.ts"
+import * as Schedule from "./Schedule.ts"
 
 /**
  * String literal type used as the runtime type identifier for `ExecutionPlan`
@@ -104,7 +104,9 @@ export interface ExecutionPlan<
     readonly while?:
       | ((input: Config["input"]) => Effect.Effect<boolean, Config["error"], Config["requirements"]>)
       | undefined
-    readonly schedule?: Schedule.Schedule<any, Config["input"], Config["requirements"]> | undefined
+    readonly schedule?:
+      | Schedule.Schedule<any, Config["input"], Config["error"], Config["requirements"]>
+      | undefined
   }>
 
   /**
@@ -129,8 +131,8 @@ export interface ExecutionPlan<
  *
  * `provides` tracks services supplied by plan steps, `input` tracks the error
  * input consumed by schedules and `while` predicates, `error` tracks failures
- * from plan layers or predicates, and `requirements` tracks services needed to
- * build or run the plan.
+ * from plan layers, predicates, or schedules, and `requirements` tracks
+ * services needed to build or run the plan.
  *
  * @category models
  * @since 4.0.0
@@ -171,14 +173,8 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
 ): ExecutionPlan<{
   provides: make.StepProvides<Steps>
   input: make.StepInput<Steps>
-  error:
-    | (Steps[number]["provide"] extends Context.Context<infer _P> | Layer.Layer<infer _P, infer E, infer _R> ? E
-      : never)
-    | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never)
-  requirements:
-    | (Steps[number]["provide"] extends Layer.Layer<infer _A, infer _E, infer R> ? R : never)
-    | (Steps[number]["while"] extends (input: infer _I) => Effect.Effect<infer _A, infer _E, infer R> ? R : never)
-    | (Steps[number]["schedule"] extends Schedule.Schedule<infer _O, infer _I, infer R> ? R : never)
+  error: make.StepError<Steps[number]>
+  requirements: make.StepRequirements<Steps[number]>
 }> =>
   makeProto(steps.map((options, i) => {
     if (options.attempts !== undefined && options.attempts < 1) {
@@ -220,8 +216,30 @@ export declare namespace make {
     readonly provide: Context.Context<any> | Context.Context<never> | Layer.Any
     readonly attempts?: number | undefined
     readonly while?: ((input: any) => boolean | Effect.Effect<boolean, any, any>) | undefined
-    readonly schedule?: Schedule.Schedule<any, any, any> | undefined
+    readonly schedule?: Schedule.Schedule<any, any, any, any> | undefined
   }
+
+  /**
+   * Computes the errors from a step's layer, predicate, and schedule.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type StepError<Step> =
+    | (Step extends { readonly provide: Layer.Layer<infer _A, infer E, infer _R> } ? E : never)
+    | (Step extends { readonly while?: (input: any) => infer Result } ? Effect.Error<Result> : never)
+    | (Step extends { readonly schedule?: infer S } ? Schedule.Error<S> : never)
+
+  /**
+   * Computes the services required by a step's layer, predicate, and schedule.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type StepRequirements<Step> =
+    | (Step extends { readonly provide: Layer.Layer<infer _A, infer _E, infer R> } ? R : never)
+    | (Step extends { readonly while?: (input: any) => infer Result } ? Effect.Services<Result> : never)
+    | (Step extends { readonly schedule?: infer S } ? Schedule.Env<S> : never)
 
   /**
    * Computes the intersection of services provided by a list of execution-plan
@@ -265,7 +283,7 @@ export declare namespace make {
       & Out
       & (
         & (Step extends { readonly while: (input: infer I) => infer _ } ? I : unknown)
-        & (Step extends { readonly schedule: Schedule.Schedule<infer _O, infer I, infer _R> } ? I : unknown)
+        & (Step extends { readonly schedule: Schedule.Schedule<infer _O, infer I, infer _E, infer _R> } ? I : unknown)
       )
     > :
     Out
@@ -291,6 +309,17 @@ const Proto: Omit<ExecutionPlan<any>, "steps"> = {
         ...step,
         while: step.while
           ? (input: any) => effect.provideContext(step.while!(input), context)
+          : undefined,
+        schedule: step.schedule
+          ? Schedule.fromStep(
+            effect.provideContext(
+              effect.map(
+                Schedule.toStep(step.schedule),
+                (next) => (now: number, input: any) => effect.provideContext(next(now, input), context)
+              ),
+              context
+            )
+          )
           : undefined,
         provide: Layer.isLayer(step.provide)
           ? Layer.provide(step.provide, Layer.succeedContext(context))
