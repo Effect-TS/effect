@@ -3,6 +3,7 @@ import { Clock, ConfigProvider, Deferred, type Duration, Effect, Exit, Fiber, La
 import { type Headers, HttpBody, HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
 import { OtlpExporter, OtlpLogger, OtlpMetrics, OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
+import * as Version from "effect/Version"
 
 const makeHttpClient = Effect.fnUntraced(function*(retryAfter: string | undefined) {
   const attempts = yield* Ref.make(0)
@@ -124,7 +125,9 @@ describe("OtlpExporter", () => {
           exporter.push({ value: 1 })
         }))
         assert.deepStrictEqual(userAgents, [
-          `${headers === undefined ? "" : "my-app/1.0 "}OTel-OTLP-Exporter-JavaScript-Effect-OtlpExporterTest`
+          `${
+            headers === undefined ? "" : "my-app/1.0 "
+          }OTel-OTLP-Exporter-JavaScript-Effect-OtlpExporterTest/${Version.getCurrentVersion()}`
         ])
       }))
   }

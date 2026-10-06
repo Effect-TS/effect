@@ -9,6 +9,7 @@ import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
+import * as Version from "effect/Version"
 
 const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
   resource: {
@@ -22,6 +23,20 @@ const contextManager = new AsyncHooksContextManager()
 OtelApi.context.setGlobalContextManager(contextManager)
 
 describe("Tracer", () => {
+  it.effect("uses the shared Effect version as the tracer instrumentation scope", () => {
+    const exporter = new InMemorySpanExporter()
+    const layer = NodeSdk.layer(Effect.sync(() => ({
+      resource: { serviceName: "test", serviceVersion: "service-version" },
+      spanProcessor: [new SimpleSpanProcessor(exporter)]
+    })))
+    return Effect.gen(function*() {
+      yield* Effect.void.pipe(Effect.withSpan("test"))
+      const scope = exporter.getFinishedSpans()[0]!.instrumentationScope
+      assert.strictEqual(scope.name, "effect")
+      assert.strictEqual(scope.version, Version.getCurrentVersion())
+    }).pipe(Effect.provide(layer))
+  })
+
   describe("provided", () => {
     it.effect("withSpan", () =>
       Effect.gen(function*() {

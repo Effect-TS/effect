@@ -4,6 +4,7 @@ import { HttpClient, HttpClientResponse } from "effect/http"
 import type { HttpClientError, HttpClientRequest } from "effect/http"
 import { OtlpExporter, OtlpLogger, OtlpSerialization } from "effect/observability"
 import { TestClock } from "effect/testing"
+import * as Version from "effect/Version"
 
 const capture = () => {
   const requests: Array<HttpClientRequest.HttpClientRequest> = []
@@ -26,7 +27,7 @@ const bodyOf = (request: HttpClientRequest.HttpClientRequest) => {
 const makeTestLayer = (httpClient: HttpClient.HttpClient) =>
   OtlpLogger.layer({
     url: "http://localhost:4318/v1/logs",
-    resource: { serviceName: "test" },
+    resource: { serviceName: "test", serviceVersion: "service-version" },
     exportInterval: "1 hour",
     mergeWithExisting: false
   }).pipe(
@@ -98,7 +99,12 @@ describe("OtlpLogger", () => {
     return Effect.gen(function*() {
       const fiber = yield* Effect.fiber
       yield* Effect.logError("boom", Cause.fail(new Error("cause message"))).pipe(
-        Effect.annotateLogs({ "exception.message": "annotated message", "effect.fiberId": -1 })
+        Effect.annotateLogs({
+          "exception.type": "annotated type",
+          "exception.message": "annotated message",
+          "exception.stacktrace": "annotated stack",
+          "effect.fiberId": -1
+        })
       )
       yield* (yield* OtlpExporter.Flusher).flush
 
@@ -111,6 +117,9 @@ describe("OtlpLogger", () => {
       assert.deepStrictEqual(attributes.filter((attribute) => attribute.key === "effect.fiberId"), [
         { key: "effect.fiberId", value: { intValue: fiber.id } }
       ])
+      assert.deepStrictEqual(attributesOf(requests[0])["exception.type"], { stringValue: "Error" })
+      assert.include(attributesOf(requests[0])["exception.stacktrace"].stringValue, "cause message")
+      assert.notStrictEqual(attributesOf(requests[0])["exception.stacktrace"].stringValue, "annotated stack")
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
   })
 
@@ -118,12 +127,23 @@ describe("OtlpLogger", () => {
     const { httpClient, requests } = capture()
     return Effect.gen(function*() {
       yield* Effect.gen(function*() {
-        yield* TestClock.adjust("12 millis")
-        yield* Effect.log("test")
-      }).pipe(Effect.withLogSpan("op"))
+        yield* TestClock.adjust("7 millis")
+        yield* Effect.gen(function*() {
+          yield* TestClock.adjust("5 millis")
+          yield* Effect.log("test")
+        }).pipe(Effect.withLogSpan("op"))
+      }).pipe(
+        Effect.withLogSpan("op"),
+        Effect.annotateLogs({ "effect.log_span.op": -1 })
+      )
       yield* (yield* OtlpExporter.Flusher).flush
 
       const attributes = attributesOf(requests[0])
+      const rawAttributes = bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].logRecords[0].attributes
+      assert.strictEqual(
+        new Set(rawAttributes.map((attribute: { key: string }) => attribute.key)).size,
+        rawAttributes.length
+      )
       assert.isNumber(attributes["effect.fiberId"].intValue)
       assert.deepStrictEqual(attributes["effect.log_span.op"], { intValue: 12 })
       assert.isUndefined(attributes["fiberId"])
@@ -138,7 +158,10 @@ describe("OtlpLogger", () => {
       yield* Effect.log("test")
       yield* (yield* OtlpExporter.Flusher).flush
 
-      assert.strictEqual(bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].scope.name, "effect")
+      assert.deepStrictEqual(bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].scope, {
+        name: "effect",
+        version: Version.getCurrentVersion()
+      })
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
   })
 })

@@ -1,13 +1,15 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ConfigProvider, Effect } from "effect"
 import { OtlpResource } from "effect/observability"
+import * as Version from "effect/Version"
 
 const attributesRecord = (resource: OtlpResource.Resource): Record<string, string | null | undefined> =>
   Object.fromEntries(resource.attributes.map((attribute) => [attribute.key, attribute.value.stringValue]))
 
 const sdk = {
   "telemetry.sdk.name": "effect",
-  "telemetry.sdk.language": "nodejs"
+  "telemetry.sdk.language": "nodejs",
+  "telemetry.sdk.version": Version.getCurrentVersion()
 }
 
 describe("OtlpResource", () => {
@@ -136,23 +138,22 @@ describe("OtlpResource", () => {
       ))
   })
 
-  it.effect("falls back to unknown_service when no service name is configured", () =>
+  it.effect("omits service.name when no service name is configured", () =>
     Effect.gen(function*() {
       const resource = yield* OtlpResource.fromConfig()
-      assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "service.name": "unknown_service" })
+      assert.deepStrictEqual(attributesRecord(resource), { ...sdk })
     }).pipe(
       Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
     ))
 
-  it.effect("uses the supplied executable name in the service name fallback", () =>
+  it.effect("omits service.name even when an executable name is supplied", () =>
     Effect.gen(function*() {
       const resource = yield* OtlpResource.fromConfig({
         attributes: { "process.executable.name": "worker" }
       })
       assert.deepStrictEqual(attributesRecord(resource), {
         ...sdk,
-        "process.executable.name": "worker",
-        "service.name": "unknown_service:worker"
+        "process.executable.name": "worker"
       })
     }).pipe(
       Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
@@ -165,15 +166,42 @@ describe("OtlpResource", () => {
     })
   })
 
+  it.effect("preserves environment-provided service names without a dedicated service variable", () =>
+    Effect.gen(function*() {
+      const resource = yield* OtlpResource.fromConfig()
+      assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "service.name": "env-service" })
+    }).pipe(
+      Effect.provideService(
+        ConfigProvider.ConfigProvider,
+        ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: "service.name=env-service" } })
+      )
+    ))
+
+  it.effect("does not derive a service name from an environment-provided executable name", () =>
+    Effect.gen(function*() {
+      const resource = yield* OtlpResource.fromConfig()
+      assert.deepStrictEqual(attributesRecord(resource), { ...sdk, "process.executable.name": "worker" })
+    }).pipe(
+      Effect.provideService(
+        ConfigProvider.ConfigProvider,
+        ConfigProvider.fromEnv({ env: { OTEL_RESOURCE_ATTRIBUTES: "process.executable.name=worker" } })
+      )
+    ))
+
   it("lets custom attributes override the SDK defaults", () => {
     const resource = OtlpResource.make({
       serviceName: "test",
-      attributes: { "telemetry.sdk.name": "custom", "telemetry.sdk.language": "webjs" }
+      attributes: {
+        "telemetry.sdk.name": "custom",
+        "telemetry.sdk.language": "webjs",
+        "telemetry.sdk.version": "custom-version"
+      }
     })
     assert.deepStrictEqual(attributesRecord(resource), {
       "service.name": "test",
       "telemetry.sdk.name": "custom",
-      "telemetry.sdk.language": "webjs"
+      "telemetry.sdk.language": "webjs",
+      "telemetry.sdk.version": "custom-version"
     })
   })
 
