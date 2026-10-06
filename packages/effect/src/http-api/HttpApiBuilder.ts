@@ -746,7 +746,12 @@ function buildPayloadDecoders(
 ): Map<string, PayloadDecoder> {
   const result = new Map<string, PayloadDecoder>()
   payloadMap.forEach(({ encoding, schemas }, contentType) => {
-    const decode = Schema.decodeUnknownEffect(Schema.Union(schemas), options)
+    const schema = Schema.Union(schemas)
+    // Form fields and query params carry a one-element array as a bare value.
+    const decode = Schema.decodeUnknownEffect(
+      encoding._tag === "FormUrlEncoded" ? Schema.toCodecArrayFromSingle(schema) : schema,
+      options
+    )
     if (encoding._tag === "Multipart") {
       result.set(contentType, { _tag: "Multipart", mode: encoding.mode, limits: encoding.limits, decode })
     } else {
