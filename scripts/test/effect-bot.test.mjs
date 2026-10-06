@@ -1,8 +1,9 @@
 import assert from "node:assert/strict"
 import { createHmac } from "node:crypto"
+import { readFile } from "node:fs/promises"
 import { test } from "node:test"
 
-// Intentionally absent until the implementation run; each test reports its failure.
+// HTTP is mocked; workflow checks below are static regression tripwires.
 const loadRelay = async () => (await import("../effect-bot.mjs")).relayComment
 const command = "/effect-bot investigate"
 const event = (overrides = {}) => ({
@@ -195,4 +196,130 @@ test("webhook failure never reacts; reaction failure never retries delivery", as
   const admitted = harness({ reactionError: true })
   assert.equal((await relay(admitted.options)).status, "accepted")
   assert.equal(admitted.posts().length, 1)
+})
+
+
+test("fork and unknown-head inline reviews fail closed before any network request", async () => {
+  const relay = await loadRelay()
+  for (const head of [
+    { repo: { full_name: "outside/fork" } },
+    { repo: null },
+    {},
+    undefined
+  ]) {
+    const h = harness({
+      eventName: "pull_request_review_comment",
+      event: event({ issue: undefined, pull_request: { number: 42, head } }),
+      githubToken: "", webhookUrl: "", secret: ""
+    })
+    assert.equal((await relay(h.options)).status, "unsupported_fork_review")
+    assert.deepEqual(h.calls, [])
+  }
+  // Fork PR conversation comments still use the trusted issue_comment path.
+  const conversation = harness({ event: event({
+    issue: { number: 42, pull_request: {} },
+    pull_request: { head: { repo: { full_name: "outside/fork" } } }
+  }) })
+  assert.equal((await relay(conversation.options)).status, "accepted")
+  assert.equal(conversation.posts().length, 1)
+})
+
+test("current provisional production command defaults (not approved policy)", async () => {
+  const relay = await loadRelay()
+  for (const [body, admitted] of [
+    ["/effect-bot", true],
+    ["/effect-bot investigate", true],
+    ["/effect-bot\trequest", true],
+    ["/effect-bot\nrequest", true],
+    [" /effect-bot request", false],
+    ["/Effect-Bot request", false],
+    ["/effect-bot-extra", false],
+    ["ordinary /effect-bot request", false]
+  ]) {
+    const h = harness({ event: event({ comment: { ...event().comment, body } }), isCommand: undefined })
+    const result = await relay(h.options)
+    assert.equal(result.status, admitted ? "accepted" : "ignored", JSON.stringify(body))
+    assert.equal(h.posts().length, admitted ? 1 : 0)
+    if (!admitted) assert.deepEqual(h.calls, [])
+  }
+})
+
+test("current provisional production delivery keys are stable and event/repo scoped", async () => {
+  const relay = await loadRelay()
+  const keys = []
+  for (const [repo, eventName, id, attempt] of [
+    ["Effect-TS/effect", "issue_comment", 123, 1],
+    ["Effect-TS/effect", "issue_comment", 123, 2],
+    ["Effect-TS/effect", "pull_request_review_comment", 123, 1],
+    ["Effect-TS/effect", "issue_comment", 124, 1],
+    ["other/repo", "issue_comment", 123, 1]
+  ]) {
+    const input = event({
+      repository: { full_name: repo },
+      comment: { ...event().comment, id },
+      workflow_run_id: attempt, workflow_run_attempt: attempt,
+      ...(eventName === "pull_request_review_comment"
+        ? { issue: undefined, pull_request: { number: 42, head: { repo: { full_name: repo } } } }
+        : {})
+    })
+    const h = harness({ eventName, event: input, deliveryKey: undefined })
+    await relay(h.options)
+    keys.push(new Headers(h.posts()[0].headers).get("X-GitHub-Delivery"))
+  }
+  assert.deepEqual(keys, [
+    "Effect-TS/effect:issue_comment:123",
+    "Effect-TS/effect:issue_comment:123",
+    "Effect-TS/effect:pull_request_review_comment:123",
+    "Effect-TS/effect:issue_comment:124",
+    "other/repo:issue_comment:123"
+  ])
+})
+
+test("current provisional custom-role default rejects permission fallback", async () => {
+  const relay = await loadRelay()
+  for (const role of ["custom-maintainer", "Admin", "", null, undefined]) {
+    const h = harness()
+    const fetch = h.options.fetch
+    h.options.fetch = async (url, init) => {
+      const response = await fetch(url, init)
+      return String(url).endsWith("/permission")
+        ? Response.json({ role_name: role, permission: "admin" })
+        : response
+    }
+    assert.equal((await relay(h.options)).status, "rejected")
+    assert.equal(h.calls.length, 1)
+    assert.equal(h.posts().length, 0)
+  }
+})
+
+test("workflow locks trusted checkout and literal shell command (static guard, not live validation)", async () => {
+  const workflow = await readFile(new URL("../../.github/workflows/effect-bot.yml", import.meta.url), "utf8")
+  // Deliberately strict allowlist: any new step must receive security review.
+  // Ignore only comments/blank lines, not executable YAML or expressions.
+  const executable = workflow.split("\n")
+    .map((line) => line.replace(/\s+#.*$/u, ""))
+    .filter((line) => line.trim() && !line.trimStart().startsWith("#"))
+    .join("\n")
+  const steps = executable.slice(executable.indexOf("    steps:"))
+  assert.equal(steps, [
+    "    steps:",
+    "      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+    "        with:",
+    "          repository: Effect-TS/effect",
+    "          ref: ${{ github.event.repository.default_branch }}",
+    "          persist-credentials: false",
+    "          sparse-checkout: scripts/effect-bot.mjs",
+    "          sparse-checkout-cone-mode: false",
+    "      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+    "        with:",
+    "          node-version: 24",
+    "      - name: Relay maintainer command",
+    "        run: node scripts/effect-bot.mjs",
+    "        env:",
+    "          GITHUB_TOKEN: ${{ github.token }}",
+    "          MULTICA_EFFECT_BOT_WEBHOOK_URL: ${{ secrets.MULTICA_EFFECT_BOT_WEBHOOK_URL }}",
+    "          MULTICA_EFFECT_BOT_WEBHOOK_SECRET: ${{ secrets.MULTICA_EFFECT_BOT_WEBHOOK_SECRET }}"
+  ].join("\n"))
+  assert.match(executable, /github\.event_name != 'pull_request_review_comment' \|\|\s+github\.event\.pull_request\.head\.repo\.full_name == github\.repository/u)
+  assert.match(executable, /permissions: \{\}/u)
 })
