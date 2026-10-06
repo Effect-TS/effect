@@ -1,8 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Scheduler, Tracer } from "effect"
-import { HttpClient, HttpClientResponse } from "effect/http"
-import { OtlpSerialization, OtlpTracer } from "effect/observability"
+import { HttpBody, HttpClient, HttpClientResponse } from "effect/http"
+import { OtlpExporter, OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
 import type { Span } from "effect/Tracer"
 
@@ -13,18 +13,21 @@ const getParent = (span: Tracer.Span): Tracer.AnySpan => {
   return span.parent.value
 }
 
-const otlpTracerLayer = OtlpTracer.layer({
-  url: "http://localhost:4318/v1/traces",
-  resource: {
-    serviceName: "test-service"
-  }
-}).pipe(
-  Layer.provide(OtlpSerialization.layerJson),
-  Layer.provide(Layer.succeed(
-    HttpClient.HttpClient,
-    HttpClient.make((request) => Effect.succeed(HttpClientResponse.fromWeb(request, new Response())))
-  ))
-)
+const makeOtlpTracerLayer = (serialization: Layer.Layer<OtlpSerialization.OtlpSerialization>) =>
+  OtlpTracer.layer({
+    url: "http://localhost:4318/v1/traces",
+    resource: {
+      serviceName: "test-service"
+    }
+  }).pipe(
+    Layer.provide(serialization),
+    Layer.provide(Layer.succeed(
+      HttpClient.HttpClient,
+      HttpClient.make((request) => Effect.succeed(HttpClientResponse.fromWeb(request, new Response())))
+    ))
+  )
+
+const otlpTracerLayer = makeOtlpTracerLayer(OtlpSerialization.layerJson)
 
 const makeRootAndChildSpans = Effect.gen(function*() {
   const root = yield* Effect.withSpan(Effect.currentSpan, "root")
@@ -322,6 +325,62 @@ describe("Tracer", () => {
         }
       }).pipe(Effect.tap(() => Effect.sync(() => assert.isAbove(checked, 0, "the outer finalizer never ran"))))
     })
+  })
+
+  describe("OtlpTracer span status", () => {
+    it.effect("maps exits to spec span statuses", () =>
+      Effect.gen(function*() {
+        const exported: Array<OtlpTracer.TraceData> = []
+        const layer = makeOtlpTracerLayer(Layer.succeed(OtlpSerialization.OtlpSerialization, {
+          traces: (data) => {
+            exported.push(data)
+            return HttpBody.empty
+          },
+          metrics: () => HttpBody.empty,
+          logs: () => HttpBody.empty
+        }))
+
+        yield* Effect.gen(function*() {
+          yield* Effect.void.pipe(Effect.withSpan("success-span"))
+          yield* Effect.exit(Effect.interrupt.pipe(Effect.withSpan("interrupt-span")))
+          yield* Effect.exit(Effect.fail(new Error("boom")).pipe(Effect.withSpan("failure-span")))
+          yield* Effect.exit(Effect.failCause(Cause.empty).pipe(Effect.withSpan("empty-cause-span")))
+          const flusher = yield* OtlpExporter.Flusher
+          yield* flusher.flush
+        }).pipe(Effect.provide(layer))
+
+        const spans = exported.flatMap((data) =>
+          data.resourceSpans.flatMap((resource) => resource.scopeSpans.flatMap((scope) => scope.spans))
+        )
+        const byName = (name: string) => {
+          const span = spans.find((span) => span.name === name)
+          assert(span !== undefined, `missing span ${name}`)
+          return span
+        }
+        const attributeKeys = (attributes: ReadonlyArray<{ readonly key: string }>) =>
+          attributes.map((attribute) => attribute.key)
+
+        // OTLP status codes: 0 = Unset, 2 = Error
+        const success = byName("success-span")
+        deepStrictEqual(success.status, { code: 0 })
+        assert.notInclude(attributeKeys(success.attributes), "status.interrupted")
+
+        const interrupted = byName("interrupt-span")
+        deepStrictEqual(interrupted.status, { code: 0 })
+        assert.deepInclude(interrupted.attributes, {
+          key: "status.interrupted",
+          value: { boolValue: true }
+        })
+
+        const failure = byName("failure-span")
+        deepStrictEqual(failure.status, { code: 2, message: "boom" })
+        const exception = failure.events.find((event) => event.name === "exception")
+        assert(exception !== undefined)
+        assert.includeMembers(attributeKeys(exception.attributes), ["exception.type", "exception.message"])
+
+        const emptyCause = byName("empty-cause-span")
+        deepStrictEqual(emptyCause.status, { code: 0 })
+      }))
   })
 
   describe("Effect.useSpanScoped", () => {

@@ -290,15 +290,13 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
       })
     }
   }
-  let otelStatus: Status
+  // Per the OTel spec, instrumentation leaves non-error spans `Unset` and
+  // only attaches a status description to `Error`.
+  let otelStatus: Status = { code: StatusCode.Unset }
 
   if (status.exit._tag === "Success") {
-    otelStatus = { code: StatusCode.Ok }
+    // success stays Unset
   } else if (Cause.hasInterruptsOnly(status.exit.cause)) {
-    otelStatus = {
-      code: StatusCode.Ok,
-      message: "Interrupted"
-    }
     attributes.push({
       key: "span.label",
       value: { stringValue: "⚠︎ Interrupted" }
@@ -310,11 +308,11 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
     const errors = Cause.prettyErrors(status.exit.cause, {
       includeCauseInStack: true
     })
-    otelStatus = {
-      code: StatusCode.Error
-    }
     if (errors.length > 0) {
-      otelStatus.message = errors[0].message
+      otelStatus = {
+        code: StatusCode.Error,
+        message: errors[0].message
+      }
       for (const error of errors) {
         events.push({
           name: "exception",

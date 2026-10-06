@@ -234,6 +234,50 @@ describe("Tracer", () => {
         assert.include(stacktrace as string, "[cause]: Error: inner cause")
       }))
 
+    it.effect("maps exits to spec span statuses", () =>
+      Effect.gen(function*() {
+        const exporter = new InMemorySpanExporter()
+        const spanProcessor = new SimpleSpanProcessor(exporter)
+
+        yield* Effect.gen(function*() {
+          yield* Effect.void.pipe(Effect.withSpan("success-span"))
+          yield* Effect.exit(Effect.interrupt.pipe(Effect.withSpan("interrupt-span")))
+          yield* Effect.exit(Effect.fail(new Error("boom")).pipe(Effect.withSpan("failure-span")))
+          yield* Effect.exit(Effect.failCause(Cause.empty).pipe(Effect.withSpan("empty-cause-span")))
+        }).pipe(
+          Effect.andThen(Effect.never), // keep the exporter alive
+          Effect.provide(NodeSdk.layer(() => ({
+            resource: {
+              serviceName: "test"
+            },
+            spanProcessor: [spanProcessor]
+          }))),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        const spans = exporter.getFinishedSpans()
+        const byName = (name: string) => {
+          const span = spans.find((span) => span.name === name)
+          assert(span !== undefined, `missing span ${name}`)
+          return span
+        }
+
+        const success = byName("success-span")
+        assert.deepStrictEqual(success.status, { code: OtelApi.SpanStatusCode.UNSET })
+
+        const interrupted = byName("interrupt-span")
+        assert.deepStrictEqual(interrupted.status, { code: OtelApi.SpanStatusCode.UNSET })
+        assert.strictEqual(interrupted.attributes["status.interrupted"], true)
+
+        const failure = byName("failure-span")
+        assert.strictEqual(failure.status.code, OtelApi.SpanStatusCode.ERROR)
+        assert.strictEqual(failure.status.message, "boom")
+        assert.isDefined(failure.events.find((event) => event.name === "exception"))
+
+        const emptyCause = byName("empty-cause-span")
+        assert.deepStrictEqual(emptyCause.status, { code: OtelApi.SpanStatusCode.UNSET })
+      }))
+
     it.effect("withSpanContext", () =>
       Effect.gen(function*() {
         const effect = Effect.gen(function*() {

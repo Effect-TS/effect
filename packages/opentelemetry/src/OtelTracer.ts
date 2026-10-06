@@ -486,14 +486,10 @@ export class OtelSpan implements Tracer.Span {
       startTime: this.status.startTime
     }
 
-    if (exit._tag === "Success") {
-      this.span.setStatus({ code: Otel.SpanStatusCode.OK })
-    } else {
+    // Per the OTel spec, instrumentation leaves non-error spans `Unset` and
+    // only attaches a status description to `Error`.
+    if (exit._tag === "Failure") {
       if (Cause.hasInterruptsOnly(exit.cause)) {
-        this.span.setStatus({
-          code: Otel.SpanStatusCode.OK,
-          message: Cause.pretty(exit.cause)
-        })
         this.span.setAttribute("span.label", "⚠︎ Interrupted")
         this.span.setAttribute("status.interrupted", true)
       } else {
@@ -508,9 +504,6 @@ export class OtelSpan implements Tracer.Span {
             code: Otel.SpanStatusCode.ERROR,
             message: errors[0].message
           })
-        } else {
-          // empty cause means no error
-          this.span.setStatus({ code: Otel.SpanStatusCode.OK })
         }
       }
     }
