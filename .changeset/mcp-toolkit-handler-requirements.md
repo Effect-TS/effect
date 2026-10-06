@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve tool handler and schema service requirements in MCP toolkit registration so missing dependencies produce compile-time errors.
+Fix MCP toolkit registration to require tool handler and schema services.
