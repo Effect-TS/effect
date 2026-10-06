@@ -113,7 +113,16 @@ describe("Statement", () => {
       },
       { name: "db", spanAttributes: [["server.address", "db"], ["db.system.name", "mysql"]] },
       { name: "sqlite", spanAttributes: [["db.system.name", "sqlite"]] },
-      { name: "sql.execute", spanAttributes: [] }
+      { name: "sql.execute", spanAttributes: [] },
+      {
+        name: "db:5432",
+        spanAttributes: [["db.namespace", ""], ["server.address", "db"], ["server.port", 5432]]
+      },
+      {
+        name: "postgresql",
+        spanAttributes: [["server.address", ""], ["server.port", 5432], ["db.system.name", "postgresql"]]
+      },
+      { name: "sql.execute", spanAttributes: [["db.system.name", ""]] }
     ] satisfies Array<{ name: string; spanAttributes: Array<readonly [string, unknown]> }>
   )(
     "names statement and stream spans $name",
