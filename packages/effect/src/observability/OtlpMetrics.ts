@@ -347,19 +347,11 @@ export const make: (options: {
           break
         }
         case "Summary": {
-          // Count, sum, min and max are cumulative since the metric was created;
-          // configured quantiles reflect the maxAge/maxSize sliding window. Lifetime
-          // min/max become quantiles 0 and 1 unless those are already configured.
-          const quantiles = state.state.quantiles
+          // Count and sum are lifetime totals; quantiles come from the sliding
+          // window and are omitted once it has no observations
           const quantileValues: Array<IValueAtQuantile> = []
-          if (state.state.count > 0 && !quantiles.some(([q]) => q === 0)) {
-            quantileValues.push({ quantile: 0, value: state.state.min })
-          }
-          for (const [quantile, value] of quantiles) {
+          for (const [quantile, value] of state.state.quantiles) {
             if (value !== undefined) quantileValues.push({ quantile, value })
-          }
-          if (state.state.count > 0 && !quantiles.some(([q]) => q === 1)) {
-            quantileValues.push({ quantile: 1, value: state.state.max })
           }
 
           const dataPoint: ISummaryDataPoint = {
@@ -522,18 +514,18 @@ const bigintToInt64 = (value: bigint): number | string => {
   return Number.isSafeInteger(asNumber) ? asNumber : value.toString()
 }
 
-const ucumUnits: Record<string, string> = {
-  nanoseconds: "ns",
-  microseconds: "us",
-  milliseconds: "ms",
-  seconds: "s",
-  minutes: "min",
-  hours: "h",
-  bytes: "By"
-}
+const ucumUnits = new Map([
+  ["nanoseconds", "ns"],
+  ["microseconds", "us"],
+  ["milliseconds", "ms"],
+  ["seconds", "s"],
+  ["minutes", "min"],
+  ["hours", "h"],
+  ["bytes", "By"]
+])
 
 /** Maps a `unit` / `time_unit` attribute to a UCUM unit string */
-const toUcumUnit = (unit: string | undefined): string => unit === undefined ? "1" : ucumUnits[unit] ?? unit
+const toUcumUnit = (unit: string | undefined): string => unit === undefined ? "1" : ucumUnits.get(unit) ?? unit
 
 /** The unit attributes become the metric unit, not data point dimensions */
 const exportedAttributeEntries = (attributes: Metric.Metric.AttributeSet) =>
