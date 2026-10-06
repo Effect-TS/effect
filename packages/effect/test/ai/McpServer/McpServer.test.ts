@@ -2180,7 +2180,7 @@ describe("McpServer", () => {
       yield* client.ping({})
     }))
 
-  it.effect("terminates an HTTP session on DELETE when allowSessionTermination is set", () =>
+  it.effect("terminates an HTTP session on DELETE without a protocol header when allowSessionTermination is set", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(makeServerLayer({
         name: "SessionDelete",
@@ -2188,7 +2188,9 @@ describe("McpServer", () => {
         allowSessionTermination: true
       }))
       const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_11_25)
-      strictEqual((yield* harness.delete(headers)).status, 204)
+      const response = yield* harness.delete({ "Mcp-Session-Id": headers["Mcp-Session-Id"] })
+      strictEqual(response.status, 204)
+      strictEqual(yield* Effect.promise(() => response.text()), "")
       strictEqual((yield* harness.post({ jsonrpc: "2.0", id: 3, method: "ping" }, headers)).status, 404)
       strictEqual((yield* harness.delete(headers)).status, 404)
     }))
@@ -2450,7 +2452,13 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(unsupportedResponse.status, 400)
-      strictEqual(yield* unsupportedResponse.text, "")
+      assert.deepInclude(yield* unsupportedResponse.json, {
+        error: {
+          code: -32022,
+          message: "Unsupported protocol version '9999-01-01'",
+          data: { supported: ["2025-06-18"], requested: "9999-01-01" }
+        }
+      })
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
       const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
@@ -2461,7 +2469,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(malformedResponse.status, 400)
-      strictEqual(yield* malformedResponse.text, "")
+      strictEqual(JSON.parse(yield* malformedResponse.text).error.code, -32022)
 
       const malformedNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2481,7 +2489,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(invalidRequestResponse.status, 400)
-      strictEqual(yield* invalidRequestResponse.text, "")
+      strictEqual(JSON.parse(yield* invalidRequestResponse.text).error.code, -32022)
 
       const invalidRequestNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2500,7 +2508,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(invalidInitializeResponse.status, 400)
-      strictEqual(yield* invalidInitializeResponse.text, "")
+      strictEqual(JSON.parse(yield* invalidInitializeResponse.text).error.code, -32022)
 
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
@@ -2509,7 +2517,7 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(responseOnly.status, 400)
-      strictEqual(yield* responseOnly.text, "")
+      strictEqual(JSON.parse(yield* responseOnly.text).error.code, -32022)
 
       const absentVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
