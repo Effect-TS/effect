@@ -1274,19 +1274,58 @@ export const defaultTransforms = (
 const ATTR_DB_QUERY_TEXT = "db.query.text"
 const ATTR_SQL_METHOD = "effect.sql.method"
 
+const spanNames = memoize((spanAttributes: ReadonlyArray<readonly [string, unknown]>) => {
+  let namespace: unknown
+  let address: unknown
+  let port: unknown
+  let system: unknown
+  for (const [key, value] of spanAttributes) {
+    switch (key) {
+      case "db.namespace":
+        namespace = value
+        break
+      case "server.address":
+        address = value
+        break
+      case "server.port":
+        port = value
+        break
+      case "db.system.name":
+        system = value
+        break
+    }
+  }
+  const target = isNonEmptyString(namespace)
+    ? namespace
+    : isNonEmptyString(address)
+    ? port === undefined ? address : `${address}:${port}`
+    : undefined
+  return {
+    target,
+    statement: target ?? (isNonEmptyString(system) ? system : "sql.execute")
+  }
+})
+
+const isNonEmptyString = (u: unknown): u is string => typeof u === "string" && u.length > 0
+
 /**
- * Span name for SQL statements: `{db.system.name}` when present, else `sql.execute`.
+ * Span name for a database client span, following the OpenTelemetry database
+ * span conventions: `{operation} {target}` when an operation is given, else
+ * the target (`db.namespace` or `server.address[:server.port]`), else
+ * `db.system.name`, else `sql.execute`.
  *
  * @internal
- * @since 4.0.0
  */
-export const spanName: (spanAttributes: ReadonlyArray<readonly [string, unknown]>) => string = memoize(
-  // derived once per spanAttributes array; semconv falls back to `{db.system.name}` without summary or target
-  (spanAttributes) => {
-    const system = spanAttributes.find(([key]) => key === "db.system.name")?.[1]
-    return typeof system === "string" && system.length > 0 ? system : "sql.execute"
+export const spanName = (
+  spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+  operation?: string | undefined
+): string => {
+  const names = spanNames(spanAttributes)
+  if (operation === undefined) {
+    return names.statement
   }
-)
+  return names.target === undefined ? operation : `${operation} ${names.target}`
+}
 
 interface StatementImpl<A> extends Statement<A> {
   readonly segments: ReadonlyArray<Segment>

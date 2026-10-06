@@ -149,7 +149,7 @@ const makeBatch = (options: {
   // a single statement is not a batch per OTel semconv, so it is named like any other statement
   const isBatch = statements.length > 1
   return Effect.useSpan(
-    isBatch ? "BATCH" : Statement.spanName(options.spanAttributes),
+    Statement.spanName(options.spanAttributes, isBatch ? "BATCH" : undefined),
     { kind: "client" },
     (span) =>
       Effect.withFiber(Effect.fnUntraced(function*(fiber) {
