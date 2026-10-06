@@ -1593,6 +1593,31 @@ describe("Array", () => {
     deepStrictEqual(reducer.initialValue, [])
   })
 
+  it("makeReducerConcat does not share mutable empty results between calls or reducers", () => {
+    const reducer = Arr.makeReducerConcat<number>()
+    const xs = reducer.combineAll([])
+    try {
+      xs.push(99)
+      deepStrictEqual(reducer.combineAll([]), [])
+      deepStrictEqual(reducer.combineAll([[1]]), [1])
+      deepStrictEqual(Arr.makeReducerConcat<string>().combineAll([["ok"]]), ["ok"])
+    } finally {
+      // Restore the mutated result so a failing regression does not affect other tests.
+      xs.length = 0
+    }
+  })
+
+  it("getReadonlyReducerConcat isolates identities and empty results", () => {
+    const reducer = Arr.getReadonlyReducerConcat<number>()
+    const first = reducer.combineAll([])
+    const second = reducer.combineAll([])
+    strictEqual(reducer.initialValue === Arr.getReadonlyReducerConcat<number>().initialValue, false)
+    strictEqual(reducer.initialValue === Arr.makeReducerConcat<number>().initialValue, false)
+    strictEqual(first === second, false)
+    strictEqual(first === reducer.initialValue, false)
+    strictEqual(second === reducer.initialValue, false)
+  })
+
   it("allocate", () => {
     deepStrictEqual(Arr.allocate(0).length, 0)
     deepStrictEqual(Arr.allocate(Number.NaN).length, 0)
