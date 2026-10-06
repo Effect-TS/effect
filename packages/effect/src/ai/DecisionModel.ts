@@ -390,13 +390,9 @@ export const make = (params: {
             })
           ),
           Effect.flatMap((state) => {
-            const images = options.images
-            if (images === undefined || images.length === 0) {
-              return params.decide({ state, decisions: definition.decisions })
-            }
-            return params.supportsImages
-              ? params.decide({ state, decisions: definition.decisions, images })
-              : Effect.fail(
+            const images = options.images?.length ? options.images : undefined
+            if (images !== undefined && params.supportsImages !== true) {
+              return Effect.fail(
                 AiError.make({
                   module: "DecisionModel",
                   method: "decide",
@@ -405,6 +401,12 @@ export const make = (params: {
                   })
                 })
               )
+            }
+            return params.decide({
+              state,
+              decisions: definition.decisions,
+              ...(images === undefined ? undefined : { images })
+            })
           }),
           Effect.flatMap((response) =>
             Effect.map(
