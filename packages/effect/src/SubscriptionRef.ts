@@ -32,6 +32,7 @@ const TypeId = "~effect/SubscriptionRef"
  * Use to observe the current value and subsequent updates as a
  * stream.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -49,6 +50,7 @@ export interface SubscriptionRef<in out A> extends SubscriptionRef.Variance<A>, 
  * Use to narrow an unknown value before calling `SubscriptionRef` operations
  * that require a subscription reference.
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -60,6 +62,7 @@ export const isSubscriptionRef: (u: unknown) => u is SubscriptionRef<unknown> = 
  * The `SubscriptionRef` namespace containing type definitions associated with
  * subscription references.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace SubscriptionRef {
@@ -67,6 +70,7 @@ export declare namespace SubscriptionRef {
    * Type-level variance marker for the value type carried by a
    * `SubscriptionRef`.
    *
+   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -106,6 +110,7 @@ const Proto = {
  * @see {@link changes} for streaming the current value and subsequent updates
  * @see {@link set} for replacing the value and notifying subscribers
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -155,6 +160,7 @@ export const make = <A>(value: A): Effect.Effect<SubscriptionRef<A>> =>
  * await Effect.runPromise(program) // => [0, 1, 2]
  * ```
  *
+ * @stability stable
  * @category subscriptions
  * @since 4.0.0
  */
@@ -188,6 +194,7 @@ export const changes = <A>(self: SubscriptionRef<A>): Stream.Stream<A> => Stream
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -210,6 +217,7 @@ export const getUnsafe = <A>(self: SubscriptionRef<A>): A => self.value
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -235,6 +243,7 @@ export const get = <A>(self: SubscriptionRef<A>): Effect.Effect<A> => Effect.syn
  * await Effect.runPromise(program) // => [10, 20]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -273,6 +282,7 @@ const setUnsafe = <A>(self: SubscriptionRef<A>, value: A) => {
  * await Effect.runPromise(program) // => [10, 20]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -310,6 +320,7 @@ export const getAndUpdate: {
  * await Effect.runPromise(program) // => [10, 15]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -361,6 +372,7 @@ export const getAndUpdateEffect: {
  * await Effect.runPromise(program) // => [10, 20]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -414,6 +426,7 @@ export const getAndUpdateSome: {
  * await Effect.runPromise(program) // => [10, 13]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -461,6 +474,7 @@ export const getAndUpdateSomeEffect: {
  * await Effect.runPromise(program) // => ["Old value was 10", 20]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -501,6 +515,7 @@ export const modify: {
  * await Effect.runPromise(program) // => ["Doubled from 10", 20]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -557,6 +572,7 @@ export const modifyEffect: {
  * await Effect.runPromise(program) // => ["Updated", 20]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -617,6 +633,7 @@ export const modifySome: {
  * await Effect.runPromise(program) // => ["Updated", 15]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -660,6 +677,7 @@ export const modifySomeEffect: {
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -689,6 +707,7 @@ export const set: {
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -721,6 +740,7 @@ export const setAndGet: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -753,6 +773,7 @@ export const update: {
  * await Effect.runPromise(program) // => 15
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -785,6 +806,7 @@ export const updateEffect: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -820,6 +842,7 @@ export const updateAndGet: {
  * await Effect.runPromise(program) // => 15
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -861,6 +884,7 @@ export const updateAndGetEffect: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -910,6 +934,7 @@ export const updateSome: {
  * await Effect.runPromise(program) // => 13
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -963,6 +988,7 @@ export const updateSomeEffect: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -1012,6 +1038,7 @@ export const updateSomeAndGet: {
  * await Effect.runPromise(program) // => 13
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */

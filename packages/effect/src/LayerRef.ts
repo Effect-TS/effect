@@ -38,6 +38,7 @@ const TypeId = "~effect/LayerRef"
  * @see {@link make} for constructing a `LayerRef` from a layer
  * @see {@link Service} for defining a `LayerRef` as a service class
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -128,6 +129,7 @@ export interface LayerRef<in out I, in out E = never> {
  *
  * @see {@link Service} for defining a reusable service class around a `LayerRef`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -209,6 +211,7 @@ export const make = Effect.fnUntraced(
  *
  * @see {@link Service} for creating concrete `LayerRef` service classes
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -302,6 +305,7 @@ export interface TagClass<
  *
  * @see {@link make} for creating a `LayerRef` value without defining a service class
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

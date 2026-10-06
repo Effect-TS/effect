@@ -50,6 +50,7 @@ import { hasProperty } from "./Predicate.ts"
  *
  * @see {@link Equal} — the interface that uses this symbol
  * @see {@link isEqual} — type guard for `Equal` implementors
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -104,6 +105,7 @@ export const symbol = "~effect/Equal"
  * @see {@link symbol} — the property key used by the equality method
  * @see {@link equals} — the main comparison function
  * @see {@link isEqual} — type guard for `Equal` implementors
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -168,6 +170,7 @@ export interface Equal extends Hash.Hash {
  * @see {@link Equal} — the interface for custom equality
  * @see {@link isEqual} — check whether a value implements `Equal`
  * @see {@link asEquivalence} — wrap `equals` as an `Equivalence`
+ * @stability stable
  * @category equality
  * @since 2.0.0
  */
@@ -414,6 +417,7 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
  *
  * @see {@link Equal} — the interface being checked
  * @see {@link symbol} — the property key that signals `Equal` support
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -442,6 +446,7 @@ export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
  * ```
  *
  * @see {@link equals} — the underlying comparison function
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -484,6 +489,7 @@ export const asEquivalence: <A>() => Equivalence<A> = () => equals
  * @see {@link byReferenceUnsafe} — same effect without a proxy (mutates the
  *   original)
  * @see {@link equals} — the comparison function affected by this opt-out
+ * @stability stable
  * @category equality
  * @since 4.0.0
  */
@@ -527,6 +533,7 @@ export const byReference = <T extends object>(obj: T): T => byReferenceUnsafe(ne
  *
  * @see {@link byReference} — safer alternative that creates a proxy
  * @see {@link equals} — the comparison function affected by this opt-out
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */

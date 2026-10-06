@@ -22,6 +22,7 @@
  * combines patches, and applies a patch to an old value to produce an updated
  * value.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */

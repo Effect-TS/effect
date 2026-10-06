@@ -47,6 +47,7 @@ const TypeId = "~effect/Chunk"
  * Chunk.toArray(chunk) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -74,6 +75,7 @@ export interface Chunk<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspec
  * Chunk.lastNonEmpty(nonEmptyChunk) // => 3
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -92,6 +94,7 @@ export interface NonEmptyChunk<out A> extends Chunk<A>, NonEmptyIterable<A> {}
  * // Equivalent to: Chunk<number>
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -166,6 +169,7 @@ const emptyArray: ReadonlyArray<never> = []
  * eq(chunk1, chunk3) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -285,6 +289,7 @@ const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
  * Chunk.isChunk("string") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -306,6 +311,7 @@ const _empty = makeChunk<never>({ _tag: "IEmpty" })
  * Chunk.size(Chunk.empty()) // => 0
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -322,6 +328,7 @@ export const empty: <A = never>() => Chunk<A> = () => _empty
  * Chunk.toArray(Chunk.make(1, 2, 3, 4)) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -339,6 +346,7 @@ export const make = <As extends readonly [any, ...Array<any>]>(...as: As): NonEm
  * Chunk.toArray(Chunk.of("hello")) // => ["hello"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -355,6 +363,7 @@ export const of = <A>(a: A): NonEmptyChunk<A> => makeChunk({ _tag: "ISingleton",
  * Chunk.toArray(Chunk.fromIterable([1, 2, 3])) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -404,6 +413,7 @@ const toArray_ = <A>(self: Chunk<A>): Array<A> => toReadonlyArray(self).slice()
  * Chunk.toArray(Chunk.empty<number>()) // => []
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -455,6 +465,7 @@ const toReadonlyArray_ = <A>(self: Chunk<A>): ReadonlyArray<A> => {
  * Chunk.toReadonlyArray(Chunk.empty<number>()) // => []
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -500,6 +511,7 @@ const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
  * Chunk.toArray(Chunk.reverse(chunk)) // => [3, 2, 1]
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -524,6 +536,7 @@ export const reverse: <S extends Chunk<any>>(self: S) => Chunk.With<S, Chunk.Inf
  * chunk.pipe(Chunk.get(2)) // => Option.some("c")
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -562,6 +575,7 @@ export const get: {
  * Chunk.toArray(chunk) // => [999, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -593,6 +607,7 @@ export const fromArrayUnsafe = <A>(self: ReadonlyArray<A>): Chunk<A> =>
  * Chunk.isNonEmpty(chunk) // => true
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -625,6 +640,7 @@ export const fromNonEmptyArrayUnsafe = <A>(self: NonEmptyReadonlyArray<A>): NonE
  * Option.isNone(Chunk.get(chunk, 10)) // => true
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -684,6 +700,7 @@ export const getUnsafe: {
  * @see {@link prepend} for adding one element before the existing elements
  * @see {@link appendAll} for appending all elements from another chunk
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -708,6 +725,7 @@ export const append: {
  * Chunk.toArray(Chunk.prepend(emptyChunk, "first")) // => ["first"]
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -729,6 +747,7 @@ export const prepend: {
  * Chunk.toArray(Chunk.take(chunk, 3)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -787,6 +806,7 @@ export const take: {
  * Chunk.toArray(Chunk.drop(chunk, 2)) // => [3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -844,6 +864,7 @@ export const drop: {
  * Chunk.toArray(Chunk.dropRight(chunk, 2)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -867,6 +888,7 @@ export const dropRight: {
  * Chunk.toArray(Chunk.dropWhile(chunk, (n) => n < 3)) // => [3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -898,6 +920,7 @@ export const dropWhile: {
  * ) // => ["a", "b", 1, 2]
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -933,6 +956,7 @@ export const prependAll: {
  * @see {@link prependAll} for concatenating chunks in the opposite order
  * @see {@link append} for adding a single element to the end
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -1007,6 +1031,7 @@ export const appendAll: {
  * Chunk.toArray(evenIndexNumbers) // => [1]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1046,6 +1071,7 @@ export const filterMap: {
  * Chunk.toArray(numbers) // => [42, 100]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1079,6 +1105,7 @@ export const filter: {
  * })) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1110,6 +1137,7 @@ export const filterMapWhile: {
  * Chunk.toArray(Chunk.compact(chunk)) // => [1, 3]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1148,6 +1176,7 @@ export const compact = <A>(self: Chunk<Option<A>>): Chunk<A> => {
  * Chunk.toArray(indexed) // => [1, 3, 5]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1201,6 +1230,7 @@ export const flatMap: {
  * indexed // => ["Index 0: 1", "Index 1: 2", "Index 2: 3", "Index 3: 4"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1233,6 +1263,7 @@ export const forEach: {
  * Chunk.toArray(Chunk.flatten(withEmpty)) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1274,6 +1305,7 @@ export const flatten: <S extends Chunk<Chunk<any>>>(self: S) => Chunk.Flatten<S>
  *
  * @see {@link split} for splitting into a target number of chunks instead of a fixed chunk size
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -1324,6 +1356,7 @@ export const chunksOf: {
  * Chunk.toArray(Chunk.intersection(chunk3, chunk4)) // => []
  * ```
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -1348,6 +1381,7 @@ export const intersection: {
  * Chunk.isEmpty(Chunk.make(1, 2, 3)) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1365,6 +1399,7 @@ export const isEmpty = <A>(self: Chunk<A>): boolean => self.length === 0
  * Chunk.isNonEmpty(Chunk.make(1, 2, 3)) // => true
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -1382,6 +1417,7 @@ export const isNonEmpty = <A>(self: Chunk<A>): self is NonEmptyChunk<A> => self.
  * Chunk.head(Chunk.make(1, 2, 3)) // => Option.some(1)
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1414,6 +1450,7 @@ export const head: <A>(self: Chunk<A>) => Option<A> = get(0)
  * Option.isNone(Chunk.head(Chunk.empty())) // => true
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1437,6 +1474,7 @@ export const headUnsafe = <A>(self: Chunk<A>): A => getUnsafe(self, 0)
  * // Chunk.headNonEmpty(Chunk.empty()) // TypeScript error
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1454,6 +1492,7 @@ export const headNonEmpty: <A>(self: NonEmptyChunk<A>) => A = headUnsafe
  * Chunk.last(Chunk.make(1, 2, 3)) // => Option.some(3)
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1486,6 +1525,7 @@ export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
  * Option.isNone(Chunk.last(Chunk.empty())) // => true
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1509,6 +1549,7 @@ export const lastUnsafe = <A>(self: Chunk<A>): A => getUnsafe(self, self.length 
  * // Chunk.lastNonEmpty(Chunk.empty()) // TypeScript error
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 3.4.0
  */
@@ -1531,6 +1572,7 @@ export const lastNonEmpty: <A>(self: NonEmptyChunk<A>) => A = lastUnsafe
  * type WithString = Chunk.Chunk.With<typeof nonEmptyChunk, string> // Chunk.NonEmptyChunk<string>
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Chunk {
@@ -1549,6 +1591,7 @@ export declare namespace Chunk {
    * type StringType = Chunk.Chunk.Infer<typeof stringChunk> // string
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1569,6 +1612,7 @@ export declare namespace Chunk {
    * type WithString2 = Chunk.Chunk.With<typeof nonEmptyChunk, string> // Chunk.NonEmptyChunk<string>
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1602,6 +1646,7 @@ export declare namespace Chunk {
    * > // Chunk.NonEmptyChunk<string>
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1638,6 +1683,7 @@ export declare namespace Chunk {
    * > // Chunk.NonEmptyChunk<string>
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1661,6 +1707,7 @@ export declare namespace Chunk {
    * type Flattened2 = Chunk.Chunk.Flatten<typeof nestedNonEmpty> // Chunk.NonEmptyChunk<string>
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 2.0.0
    */
@@ -1681,6 +1728,7 @@ export declare namespace Chunk {
  * Chunk.toArray(Chunk.map(Chunk.make(1, 2), (n) => n + 1)) // => [2, 3]
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -1720,6 +1768,7 @@ export const map: {
  * Chunk.toArray(indexed) // => ["0: hello", "1: world", "2: effect"]
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -1751,6 +1800,7 @@ export const mapAccum: {
  * Chunk.toArray(fails) // => ["negative:-2"]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1806,6 +1856,7 @@ export const partition: {
  * Chunk.toArray(noErrors) // => []
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1826,6 +1877,7 @@ export const separate = <A, B>(self: Chunk<Result<B, A>>): [Chunk<B>, Chunk<A>] 
  * Chunk.size(Chunk.make(1, 2, 3)) // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1850,6 +1902,7 @@ export const size = <A>(self: Chunk<A>): number => self.length
  * Chunk.toArray(Chunk.sort(words, Order.String)) // => ["apple", "banana", "cherry"]
  * ```
  *
+ * @stability stable
  * @category sorting
  * @since 2.0.0
  */
@@ -1888,6 +1941,7 @@ export const sort: {
  * Chunk.toArray(Chunk.sortWith(words, (word) => word.length, Order.Number)) // => ["a", "ab", "abc"]
  * ```
  *
+ * @stability stable
  * @category sorting
  * @since 2.0.0
  */
@@ -1923,6 +1977,7 @@ export const sortWith: {
  * Chunk.toArray(empty2) // => []
  * ```
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -1960,6 +2015,7 @@ export const splitAt: {
  * // while the second part may be empty
  * ```
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2001,6 +2057,7 @@ export const splitNonEmptyAt: {
  * Chunk.toArray(chunks3).map(Chunk.toArray) // => [[1, 2, 3, 4, 5, 6, 7, 8, 9]]
  * ```
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2034,6 +2091,7 @@ export const split: {
  * Chunk.toArray(allFromFirst) // => [1, 2, 3, 4, 5, 6]
  * ```
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2069,6 +2127,7 @@ export const splitWhere: {
  * Chunk.tail(Chunk.empty<number>()) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -2092,6 +2151,7 @@ export const tail = <A>(self: Chunk<A>): O.Option<Chunk<A>> => self.length > 0 ?
  * // Chunk.tailNonEmpty(Chunk.empty()) // TypeScript error
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -2116,6 +2176,7 @@ export const tailNonEmpty = <A>(self: NonEmptyChunk<A>): Chunk<A> => drop(self, 
  * Chunk.toArray(Chunk.takeRight(chunk, 0)) // => []
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -2146,6 +2207,7 @@ export const takeRight: {
  * Chunk.toArray(Chunk.takeWhile(small, (n) => n < 10)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -2184,6 +2246,7 @@ export const takeWhile: {
  * Chunk.toArray(Chunk.union(withDupes1, withDupes2)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -2216,6 +2279,7 @@ export const union: {
  * Chunk.toArray(Chunk.dedupe(unique)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category deduplication
  * @since 2.0.0
  */
@@ -2237,6 +2301,7 @@ export const dedupe = <A>(self: Chunk<A>): Chunk<A> => fromArrayUnsafe(RA.dedupe
  * Chunk.toArray(Chunk.dedupeAdjacent(mixed)) // => ["a", "b", "a"]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -2270,6 +2335,7 @@ export const dedupeAdjacent = <A>(self: Chunk<A>): Chunk<A> => fromArrayUnsafe(R
  * Chunk.toArray(emptyStrs) // => []
  * ```
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2296,6 +2362,7 @@ export const unzip = <A, B>(self: Chunk<readonly [A, B]>): [Chunk<A>, Chunk<B>] 
  * Chunk.toArray(Chunk.zipWith(short, long, (n, l) => [n, l])) // => [[1, "a"], [2, "b"]]
  * ```
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -2326,6 +2393,7 @@ export const zipWith: {
  * Chunk.toArray(Chunk.zip(short, long)) // => [[1, "a"], [2, "b"]]
  * ```
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -2355,6 +2423,7 @@ export const zip: {
  * Chunk.toArray(Chunk.remove(chunk, 10)) // => ["a", "b", "c", "d"]
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2385,6 +2454,7 @@ export const remove: {
  * chunk.pipe(Chunk.modify(-1, (n) => n * 10)) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2416,6 +2486,7 @@ export const modify: {
  * chunk.pipe(Chunk.replace(-1, "Z")) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2440,6 +2511,7 @@ export const replace: {
  * Chunk.toArray(Chunk.makeBy(5, (i) => i * 2)) // => [0, 2, 4, 6, 8]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2465,6 +2537,7 @@ export const makeBy: {
  * Chunk.toArray(Chunk.range(1, 5)) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2496,6 +2569,7 @@ export const range = (start: number, end: number): NonEmptyChunk<number> =>
  * Chunk.contains(Chunk.empty<number>(), 1) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -2530,6 +2604,7 @@ export const contains: {
  * containsCaseInsensitive(words, "grape") // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -2564,6 +2639,7 @@ export const containsWith: <A>(
  * firstString // => Option.some("hello")
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -2592,6 +2668,7 @@ export const findFirst: {
  * Chunk.findFirstIndex(chunk, (n) => n % 2 === 0) // => Option.some(1)
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -2621,6 +2698,7 @@ export const findFirstIndex: {
  * Chunk.findLast(chunk, (n) => n % 2 === 0) // => Option.some(4)
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -2649,6 +2727,7 @@ export const findLast: {
  * Chunk.findLastIndex(chunk, (n) => n % 2 === 0) // => Option.some(3)
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -2682,6 +2761,7 @@ export const findLastIndex: {
  * }
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -2723,6 +2803,7 @@ export const every: {
  * Chunk.some(words, (word) => word.includes("ban")) // => true
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -2763,6 +2844,7 @@ export const some: {
  * Chunk.join(Chunk.make("hello"), ", ") // => "hello"
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -2790,6 +2872,7 @@ export const join: {
  * Chunk.reduce(chunk, -Infinity, (acc, n) => Math.max(acc, n)) // => 5
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -2821,6 +2904,7 @@ export const reduce: {
  * Chunk.reduceRight(chunk, 0, (acc, n) => n - acc) // => -2
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -2856,6 +2940,7 @@ export const reduceRight: {
  * Chunk.toArray(caseInsensitive(words1, words2)) // => ["Banana", "Cherry"]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 3.2.0
  */
@@ -2891,6 +2976,7 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
  * Chunk.toArray(Chunk.difference(chunk1, Chunk.empty<number>())) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 3.2.0
  */

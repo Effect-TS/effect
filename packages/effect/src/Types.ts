@@ -51,6 +51,7 @@ type TupleOf_<T, N extends number, R extends Array<unknown>> = `${N}` extends `-
  *
  * @see {@link TupleOfAtLeast}
  *
+ * @stability stable
  * @category utility types
  * @since 3.3.0
  */
@@ -84,6 +85,7 @@ export type TupleOf<N extends number, T> = N extends N ? number extends N ? Arra
  *
  * @see {@link TupleOf}
  *
+ * @stability stable
  * @category utility types
  * @since 3.3.0
  */
@@ -119,6 +121,7 @@ export type TupleOfAtLeast<N extends number, T> = [...TupleOf<N, T>, ...Array<T>
  * @see {@link ExtractTag}
  * @see {@link ExcludeTag}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -155,6 +158,7 @@ export type Tags<E> = E extends { readonly _tag: string } ? E["_tag"] : never
  * @see {@link ExtractTag}
  * @see {@link Tags}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -190,6 +194,7 @@ export type ExcludeTag<E, K extends string> = Exclude<E, { readonly _tag: K }>
  * @see {@link ExcludeTag}
  * @see {@link Tags}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -224,6 +229,7 @@ export type ExtractTag<E, K extends string> = E extends { readonly _tag: infer T
  *
  * @see {@link IsUnion}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -257,6 +263,7 @@ export type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) ext
  * @see {@link MergeLeft}
  * @see {@link MergeRight}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -289,6 +296,7 @@ export type Simplify<A> = {
  *
  * @see {@link EqualsWith}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -319,6 +327,7 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
  *
  * @see {@link Equals}
  *
+ * @stability stable
  * @category utility types
  * @since 3.15.0
  */
@@ -346,6 +355,7 @@ export type EqualsWith<A, B, Y, N> = (<T>() => T extends A ? 1 : 2) extends (<T>
  * type No = Types.Has<{ a: number }, "b" | "c"> // false
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -382,6 +392,7 @@ export type Has<A, Key extends string> = (Key extends infer K ? K extends keyof 
  * @see {@link MergeRight}
  * @see {@link Simplify}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -416,6 +427,7 @@ export type MergeLeft<Source, Target> = MergeRight<Target, Source>
  * @see {@link MergeLeft}
  * @see {@link Simplify}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -449,6 +461,7 @@ export type MergeRight<Target, Source> = Simplify<
  * const unbounded: Types.Concurrency = "unbounded"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -490,6 +503,7 @@ export type Concurrency = number | "unbounded"
  *
  * @see {@link DeepMutable}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -538,6 +552,7 @@ type DeepMutableIsOpaque<T> = Extract<keyof T, symbol> extends never
  *
  * @see {@link Mutable}
  *
+ * @stability stable
  * @category utility types
  * @since 3.1.0
  */
@@ -574,6 +589,7 @@ export type DeepMutable<T> = T extends ReadonlyMap<infer K, infer V> ? Map<DeepM
  * const result = withDefault<"a" | "b">("a", "b")
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -610,6 +626,7 @@ export type NoInfer<A> = [A][A extends any ? 0 : never]
  * @see {@link Covariant}
  * @see {@link Contravariant}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -622,6 +639,7 @@ export type Invariant<A> = (_: A) => A
  *
  * Use when referring to type-level helpers nested under `Invariant`.
  *
+ * @stability stable
  * @since 3.9.0
  */
 export declare namespace Invariant {
@@ -645,6 +663,7 @@ export declare namespace Invariant {
    *
    * @see {@link Invariant}
    *
+   * @stability stable
    * @category utility types
    * @since 3.9.0
    */
@@ -682,6 +701,7 @@ export declare namespace Invariant {
  * @see {@link Contravariant}
  * @see {@link Invariant}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -694,6 +714,7 @@ export type Covariant<A> = (_: never) => A
  *
  * Use when referring to type-level helpers nested under `Covariant`.
  *
+ * @stability stable
  * @since 3.9.0
  */
 export declare namespace Covariant {
@@ -717,6 +738,7 @@ export declare namespace Covariant {
    *
    * @see {@link Covariant}
    *
+   * @stability stable
    * @category utility types
    * @since 3.9.0
    */
@@ -757,6 +779,7 @@ export declare namespace Covariant {
  * @see {@link Covariant}
  * @see {@link Invariant}
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -769,6 +792,7 @@ export type Contravariant<A> = (_: A) => void
  *
  * Use when referring to type-level helpers nested under `Contravariant`.
  *
+ * @stability stable
  * @since 3.9.0
  */
 export declare namespace Contravariant {
@@ -792,6 +816,7 @@ export declare namespace Contravariant {
    *
    * @see {@link Contravariant}
    *
+   * @stability stable
    * @category utility types
    * @since 3.9.0
    */
@@ -806,6 +831,7 @@ export declare namespace Contravariant {
  *
  * Use to erase an empty object type from an API result or parameter position.
  *
+ * @stability stable
  * @category utility types
  * @since 3.19.20
  */
@@ -833,6 +859,7 @@ export type VoidIfEmpty<S> = keyof S extends never ? void : S
  * const witness: Result = "value"
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -863,6 +890,7 @@ export type NotFunction<T> = T extends Function ? never : T
  * const accepted: Types.NoExcessProperties<Expected, Expected> = { a: 1, b: "value" }
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 3.9.0
  */
@@ -883,6 +911,7 @@ export type NoExcessProperties<T, U> = T & Readonly<Record<Exclude<keyof U, keyo
  *
  * @see {@link unhandled}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -905,6 +934,7 @@ export interface unassigned {
  *
  * @see {@link unassigned}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -937,6 +967,7 @@ export interface unhandled {
  *
  * @see {@link UnionToIntersection}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -973,6 +1004,7 @@ export type IsUnion<T> = [T] extends [UnionToIntersection<T>] ? false : true
  * @see {@link ExtractReason}
  * @see {@link ExcludeReason}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1009,6 +1041,7 @@ export type ReasonOf<E> = E extends { readonly reason: infer R } ? R : never
  * @see {@link ReasonOf}
  * @see {@link ExtractReason}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1047,6 +1080,7 @@ export type ReasonTags<E> = E extends { readonly reason: { readonly _tag: string
  * @see {@link ReasonOf}
  * @see {@link ReasonTags}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1090,6 +1124,7 @@ export type ExtractReason<E, K extends string> = E extends { readonly reason: in
  * @see {@link ReasonOf}
  * @see {@link ReasonTags}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1134,6 +1169,7 @@ export type NarrowReason<E, K extends string> = E extends { readonly reason: inf
  * @see {@link ReasonOf}
  * @see {@link ReasonTags}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1174,6 +1210,7 @@ export type OmitReason<E, K extends string> = E extends { readonly reason: infer
  * @see {@link ReasonOf}
  * @see {@link ReasonTags}
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1192,6 +1229,7 @@ type WithoutIndexSignature_<T> = {
 /**
  * Extracts the keys of required properties from a type.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */

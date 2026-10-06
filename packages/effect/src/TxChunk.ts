@@ -67,6 +67,7 @@ const TypeId = "~effect/TxChunk"
  * await Effect.runPromise(program) // => [[1, 2, 3, 4], [0, 1, 2, 3, 4, 5]]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -119,6 +120,7 @@ const TxChunkProto = {
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -155,6 +157,7 @@ export const make = <A>(initial: Chunk.Chunk<A>): Effect.Effect<TxChunk<A>> =>
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -196,6 +199,7 @@ export const empty = <A = never>(): Effect.Effect<TxChunk<A>> =>
  * await Effect.runPromise(program) // => [[1, 2, 3, 4, 5], [0, 1, 2, 3, 4, 5, 6]]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -221,6 +225,7 @@ export const fromIterable = <A>(iterable: Iterable<A>): Effect.Effect<TxChunk<A>
  * Chunk.toArray(await Effect.runPromise(TxChunk.get(txChunk))) // => [1, 2, 3]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -245,6 +250,7 @@ export const makeUnsafe = <A>(ref: TxRef.TxRef<Chunk.Chunk<A>>): TxChunk<A> => {
  * TxChunk.isTxChunk(Chunk.empty()) // => false
  * ```
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -279,6 +285,7 @@ export const isTxChunk = (u: unknown): u is TxChunk<unknown> => hasProperty(u, T
  * await Effect.runPromise(program) // => [3, [1, 2, 3, 4]]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -324,6 +331,7 @@ export const modify: {
  * await Effect.runPromise(program) // => [3, 2, 1]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -357,6 +365,7 @@ export const update: {
  * await Effect.runPromise(program) // => [[1, 2, 3], 3]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -389,6 +398,7 @@ export const get = <A>(self: TxChunk<A>): Effect.Effect<Chunk.Chunk<A>> => TxRef
  * await Effect.runPromise(program) // => [10, 20, 30, 40]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -426,6 +436,7 @@ export const set: {
  * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -463,6 +474,7 @@ export const append: {
  * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -497,6 +509,7 @@ export const prepend: {
  * await Effect.runPromise(program) // => [5, 6]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -525,6 +538,7 @@ export const size = <A>(self: TxChunk<A>): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -553,6 +567,7 @@ export const isEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -585,6 +600,7 @@ export const isNonEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -622,6 +638,7 @@ export const take: {
  * await Effect.runPromise(program) // => [3, 4, 5]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -659,6 +676,7 @@ export const drop: {
  * await Effect.runPromise(program) // => [3, 4, 5]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -698,6 +716,7 @@ export const slice: {
  * await Effect.runPromise(program) // => [2, 4, 6, 8]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -735,6 +754,7 @@ export const map: {
  * await Effect.runPromise(program) // => [2, 4, 6]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -776,6 +796,7 @@ export const filter: {
  * await Effect.runPromise(program) // => [1, 2, 3, 4, 5, 6]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -815,6 +836,7 @@ export const appendAll: {
  * await Effect.runPromise(program) // => [1, 2, 3, 4, 5, 6]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -857,6 +879,7 @@ export const prependAll: {
  * await Effect.runPromise(program) // => [[1, 2, 3, 4, 5, 6], [4, 5, 6]]
  * ```
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

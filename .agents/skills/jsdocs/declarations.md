@@ -69,7 +69,8 @@ Declaration tags appear in this order:
 - Use `@stability unstable` when an API may receive breaking changes in minor
   releases, or `@stability experimental` when it may receive breaking changes
   across patch versions. `@stability stable` marks an API that follows strict
-  semver; declarations may leave the tag out in that case.
+  semver; outside `requireStability` files, declarations may leave the tag out
+  in that case.
 - Tag any API that exposes a third-party dependency `@stability unstable`: an
   accessor to the underlying client or instance, options typed as the
   dependency's options, constructors that accept its instances, re-exports of
@@ -90,10 +91,15 @@ non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability stable`
 `@stability unstable`, or `@stability experimental`, then required stable-semver
 `@since`. Its examples and links follow the declaration contracts.
 
-Every module in `packages/effect` declares its stability explicitly. A module is
-`@stability stable` only when it existed as a stable `effect` module in 3.x,
-directly or through the v3-to-v4 import map. New modules, modules that came from
-0.x packages, and modules that were `@experimental` in 3.x are
+Files matched by `requireStability` in `jsdocs.config.json` (all of
+`packages/effect/src`) must tag the module and every public declaration, export
+specifier, namespace, and namespace declaration with `@stability`. Members stay
+optional. A declaration takes its module's stability unless it differs, and a
+namespace declaration takes its namespace's stability.
+
+A module is `@stability stable` only when it existed as a stable `effect`
+module in 3.x, directly or through the v3-to-v4 import map. New modules, modules
+that came from 0.x packages, and modules that were `@experimental` in 3.x are
 `@stability unstable`.
 
 Inline `{@link Symbol}` targets must resolve to TypeScript symbols; use normal

@@ -32,6 +32,7 @@ import * as predicate from "./Predicate.ts"
  * pattern.test("goodbye") // => false
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -53,6 +54,7 @@ export const RegExp = globalThis.RegExp
  * RegExp.isRegExp("a") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 3.9.0
  */
@@ -73,6 +75,7 @@ export const isRegExp: (input: unknown) => input is RegExp = predicate.isRegExp
  * RegExp.escape("a*b") // => "a\\*b"
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */

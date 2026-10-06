@@ -19,6 +19,7 @@ import * as InternalGetter from "./SchemaGetter.ts"
 /**
  * Open persistence identity carried by declarations and opaque checks.
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -30,6 +31,7 @@ export interface RepresentationAnnotation {
 /**
  * Open persistence identity and schema dependencies carried by opaque checks.
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -40,12 +42,14 @@ export interface CheckRepresentationAnnotation<S> extends RepresentationAnnotati
 /**
  * Input and output contracts for JSON Schema compiler annotations.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace ToJsonSchema {
   /**
    * Input for a check compiler.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -93,6 +97,7 @@ export declare namespace ToJsonSchema {
    * document.schema.anyOf // => [{ type: "string", maxLength: 1 }, { type: "string", enum: ["😀"] }]
    * ```
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -115,6 +120,7 @@ export declare namespace ToJsonSchema {
    *
    * @see {@link CheckOutput} for exact and approximate results
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -124,12 +130,14 @@ export declare namespace ToJsonSchema {
 /**
  * Input and output contracts for code generation annotations.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace Generation {
   /**
    * Input for declaration code generation.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -140,6 +148,7 @@ export declare namespace Generation {
   /**
    * Output of declaration code generation.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -152,6 +161,7 @@ export declare namespace Generation {
   /**
    * Declaration code generator.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -160,6 +170,7 @@ export declare namespace Generation {
   /**
    * Input for check code generation.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -170,6 +181,7 @@ export declare namespace Generation {
   /**
    * Output of check code generation.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -181,6 +193,7 @@ export declare namespace Generation {
   /**
    * Check code generator.
    *
+   * @stability stable
    * @category models
    * @since 4.0.0
    */
@@ -190,6 +203,7 @@ export declare namespace Generation {
 /**
  * A custom opaque declaration.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -204,6 +218,7 @@ export interface Declaration {
 /**
  * A lazily resolved representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -217,6 +232,7 @@ export interface Suspend {
 /**
  * A named reference.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -234,6 +250,7 @@ interface Keyword<Tag extends string> {
 /**
  * The null keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -241,6 +258,7 @@ export interface Null extends Keyword<"Null"> {}
 /**
  * The undefined keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -248,6 +266,7 @@ export interface Undefined extends Keyword<"Undefined"> {}
 /**
  * The void keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -255,6 +274,7 @@ export interface Void extends Keyword<"Void"> {}
 /**
  * The never keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -262,6 +282,7 @@ export interface Never extends Keyword<"Never"> {}
 /**
  * The unknown keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -269,6 +290,7 @@ export interface Unknown extends Keyword<"Unknown"> {}
 /**
  * The any keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -277,6 +299,7 @@ export interface Any extends Keyword<"Any"> {}
 /**
  * A string representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -285,6 +308,7 @@ export interface String extends Keyword<"String"> {}
 /**
  * A number representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -292,6 +316,7 @@ export interface Number extends Keyword<"Number"> {}
 /**
  * A boolean representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -299,6 +324,7 @@ export interface Boolean extends Keyword<"Boolean"> {}
 /**
  * A bigint representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -306,6 +332,7 @@ export interface BigInt extends Keyword<"BigInt"> {}
 /**
  * A symbol representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -319,6 +346,7 @@ export interface Symbol extends Keyword<"Symbol"> {}
  * The live representation stores the native literal value. Persistent codecs
  * add an explicit type discriminator when encoding it.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -334,6 +362,7 @@ export interface Literal extends Keyword<"Literal"> {
  * Globally registered symbols have an exact JSON string representation. Local
  * symbols have no JSON representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -344,6 +373,7 @@ export interface UniqueSymbol extends Keyword<"UniqueSymbol"> {
 /**
  * The object keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -357,6 +387,7 @@ export interface ObjectKeyword extends Keyword<"ObjectKeyword"> {}
  * Enum members are stored as native string or finite number values. Persistent
  * codecs add an explicit type discriminator when encoding them.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -367,6 +398,7 @@ export interface Enum extends Keyword<"Enum"> {
 /**
  * A template literal representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -377,6 +409,7 @@ export interface TemplateLiteral extends Keyword<"TemplateLiteral"> {
 /**
  * A tuple element.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -389,6 +422,7 @@ export interface Element {
 /**
  * An array or tuple representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -410,6 +444,7 @@ export interface Arrays extends Keyword<"Arrays"> {
  * Local symbols can be represented while the schema is live, but persistent
  * codecs reject them because they cannot be reconstructed by identity.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -424,6 +459,7 @@ export interface PropertySignature {
 /**
  * An index signature.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -435,6 +471,7 @@ export interface IndexSignature {
 /**
  * An object representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -446,6 +483,7 @@ export interface Objects extends Keyword<"Objects"> {
 /**
  * A union representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -457,6 +495,7 @@ export interface Union extends Keyword<"Union"> {
 /**
  * The structural schema representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -487,6 +526,7 @@ export type Representation =
 /**
  * A structural check.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -495,6 +535,7 @@ export type Check = Filter | FilterGroup
 /**
  * An opaque leaf check.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -508,6 +549,7 @@ export interface Filter {
 /**
  * A non-empty group of checks.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -521,6 +563,7 @@ export interface FilterGroup {
 /**
  * Named representation definitions.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -531,6 +574,7 @@ export interface References {
 /**
  * A single representation and its definitions.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -542,6 +586,7 @@ export interface Document {
 /**
  * Multiple representations sharing definitions.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -553,6 +598,7 @@ export interface MultiDocument {
 /**
  * Reviver for a declaration.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -569,6 +615,7 @@ export interface DeclarationReviver<P> {
 /**
  * Reviver for a leaf check.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -585,6 +632,7 @@ export interface FilterReviver<P> {
 /**
  * Reviver for a check group.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -601,6 +649,7 @@ export interface FilterGroupReviver<P> {
 /**
  * A check reviver.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -609,6 +658,7 @@ export type CheckReviver<P> = FilterReviver<P> | FilterGroupReviver<P>
 /**
  * A typed reviver.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -617,6 +667,7 @@ export type Reviver<P> = DeclarationReviver<P> | CheckReviver<P>
 /**
  * A reviver erased only at collection boundaries.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -625,6 +676,7 @@ export type AnyReviver = Reviver<any>
 /**
  * Creates a declaration reviver while inferring its payload type from `payloadSchema`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -637,6 +689,7 @@ export const makeReviverDeclaration: <P>(
 /**
  * Creates a filter reviver while inferring its payload type from `payloadSchema`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -649,6 +702,7 @@ export const makeReviverFilter: <P>(
 /**
  * Creates a filter group reviver while inferring its payload type from `payloadSchema`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -729,6 +783,7 @@ const RedactedRepresentationPayload: Schema.Decoder<RedactedRepresentationPayloa
  *
  * @see {@link Schema.isTrimmed} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -747,6 +802,7 @@ export const isTrimmedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isPattern} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -768,6 +824,7 @@ export const isPatternReviver: FilterReviver<{
  *
  * @see {@link Schema.isStringFinite} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -786,6 +843,7 @@ export const isStringFiniteReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isStringBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -804,6 +862,7 @@ export const isStringBigIntReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isStringSymbol} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -822,6 +881,7 @@ export const isStringSymbolReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isUUID} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -842,6 +902,7 @@ export const isUUIDReviver: FilterReviver<{
  *
  * @see {@link Schema.isGUID} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -860,6 +921,7 @@ export const isGUIDReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isULID} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -878,6 +940,7 @@ export const isULIDReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isBase64} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -896,6 +959,7 @@ export const isBase64Reviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isBase64Url} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -914,6 +978,7 @@ export const isBase64UrlReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isStartingWith} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -934,6 +999,7 @@ export const isStartingWithReviver: FilterReviver<{
  *
  * @see {@link Schema.isEndingWith} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -954,6 +1020,7 @@ export const isEndingWithReviver: FilterReviver<{
  *
  * @see {@link Schema.isIncluding} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -974,6 +1041,7 @@ export const isIncludingReviver: FilterReviver<{
  *
  * @see {@link Schema.isUppercased} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -992,6 +1060,7 @@ export const isUppercasedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isLowercased} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1010,6 +1079,7 @@ export const isLowercasedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isCapitalized} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1028,6 +1098,7 @@ export const isCapitalizedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isUncapitalized} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1046,6 +1117,7 @@ export const isUncapitalizedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isFinite} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1064,6 +1136,7 @@ export const isFiniteReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isGreaterThan} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1084,6 +1157,7 @@ export const isGreaterThanReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanOrEqualTo} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1104,6 +1178,7 @@ export const isGreaterThanOrEqualToReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThan} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1124,6 +1199,7 @@ export const isLessThanReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanOrEqualTo} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1144,6 +1220,7 @@ export const isLessThanOrEqualToReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetween} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1172,6 +1249,7 @@ export const isBetweenReviver: FilterReviver<{
  *
  * @see {@link Schema.isMultipleOf} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1192,6 +1270,7 @@ export const isMultipleOfReviver: FilterReviver<{
  *
  * @see {@link Schema.isInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1210,6 +1289,7 @@ export const isIntReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isMinLength} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1230,6 +1310,7 @@ export const isMinLengthReviver: FilterReviver<{
  *
  * @see {@link Schema.isMaxLength} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1250,6 +1331,7 @@ export const isMaxLengthReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetweenLength} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1266,6 +1348,7 @@ export const isBetweenLengthReviver: FilterReviver<{
  * Reviver for persisted `isMinCodePoints` checks.
  *
  * @see {@link Schema.isMinCodePoints} for creating the corresponding check
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1281,6 +1364,7 @@ export const isMinCodePointsReviver: FilterReviver<{
  * Reviver for persisted `isMaxCodePoints` checks.
  *
  * @see {@link Schema.isMaxCodePoints} for creating the corresponding check
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1296,6 +1380,7 @@ export const isMaxCodePointsReviver: FilterReviver<{
  * Reviver for persisted `isBetweenCodePoints` checks.
  *
  * @see {@link Schema.isBetweenCodePoints} for creating the corresponding check
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1317,6 +1402,7 @@ export const isBetweenCodePointsReviver: FilterReviver<{
  *
  * @see {@link Schema.isMinSize} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1337,6 +1423,7 @@ export const isMinSizeReviver: FilterReviver<{
  *
  * @see {@link Schema.isMaxSize} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1357,6 +1444,7 @@ export const isMaxSizeReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetweenSize} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1378,6 +1466,7 @@ export const isBetweenSizeReviver: FilterReviver<{
  *
  * @see {@link Schema.isMinProperties} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1398,6 +1487,7 @@ export const isMinPropertiesReviver: FilterReviver<{
  *
  * @see {@link Schema.isMaxProperties} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1418,6 +1508,7 @@ export const isMaxPropertiesReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetweenProperties} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1439,6 +1530,7 @@ export const isBetweenPropertiesReviver: FilterReviver<{
  *
  * @see {@link Schema.isPropertyNames} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1457,6 +1549,7 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isUnique} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1474,6 +1567,7 @@ export const isUniqueReviver: FilterReviver<null> = makeReviverFilter(
  * Use when reconstructing documents that may contain checks created by {@link Schema.isUniqueKey}.
  *
  * @see {@link Schema.isUniqueKey} for creating the corresponding check
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1492,6 +1586,7 @@ export const isUniqueKeyReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.Option} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1513,6 +1608,7 @@ export const OptionReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.Result} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1534,6 +1630,7 @@ export const ResultReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.Redacted} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1555,6 +1652,7 @@ export const RedactedReviver: DeclarationReviver<RedactedRepresentationPayload> 
  *
  * @see {@link Schema.CauseReason} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1576,6 +1674,7 @@ export const CauseReasonReviver: DeclarationReviver<null> = makeReviverDeclarati
  *
  * @see {@link Schema.Cause} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1597,6 +1696,7 @@ export const CauseReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.ErrorInstance} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1618,6 +1718,7 @@ export const ErrorInstanceReviver: DeclarationReviver<ErrorRepresentationPayload
  *
  * @see {@link Schema.Exit} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1639,6 +1740,7 @@ export const ExitReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.ReadonlyMap} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1654,6 +1756,7 @@ export const ReadonlyMapReviver: DeclarationReviver<null> = makeReviverDeclarati
 /**
  * Reviver for persisted {@link Schema.Graph} declarations.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1675,6 +1778,7 @@ export const GraphReviver: DeclarationReviver<"directed" | "undirected"> = makeR
  *
  * @see {@link Schema.HashMap} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1696,6 +1800,7 @@ export const HashMapReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.ReadonlySet} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1717,6 +1822,7 @@ export const ReadonlySetReviver: DeclarationReviver<null> = makeReviverDeclarati
  *
  * @see {@link Schema.HashSet} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1738,6 +1844,7 @@ export const HashSetReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.Chunk} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1759,6 +1866,7 @@ export const ChunkReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.RegExp} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1776,6 +1884,7 @@ export const RegExpReviver: DeclarationReviver<null> = makeFixedDeclarationReviv
  *
  * @see {@link Schema.URL} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1790,6 +1899,7 @@ export const URLReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
  *
  * @see {@link Schema.Date} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1804,6 +1914,7 @@ export const DateReviver: DeclarationReviver<null> = makeFixedDeclarationReviver
  *
  * @see {@link Schema.Duration} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1815,6 +1926,7 @@ export const DurationReviver: DeclarationReviver<null> = makeFixedDeclarationRev
 /**
  * Reviver for persisted {@link Schema.ByteSize} declarations.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1832,6 +1944,7 @@ export const ByteSizeReviver: DeclarationReviver<null> = makeFixedDeclarationRev
  *
  * @see {@link Schema.BigDecimal} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1849,6 +1962,7 @@ export const BigDecimalReviver: DeclarationReviver<null> = makeFixedDeclarationR
  *
  * @see {@link Schema.File} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1863,6 +1977,7 @@ export const FileReviver: DeclarationReviver<null> = makeFixedDeclarationReviver
  *
  * @see {@link Schema.FormData} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1880,6 +1995,7 @@ export const FormDataReviver: DeclarationReviver<null> = makeFixedDeclarationRev
  *
  * @see {@link Schema.URLSearchParams} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1897,6 +2013,7 @@ export const URLSearchParamsReviver: DeclarationReviver<null> = makeFixedDeclara
  *
  * @see {@link Schema.Uint8Array} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1914,6 +2031,7 @@ export const Uint8ArrayReviver: DeclarationReviver<null> = makeFixedDeclarationR
  *
  * @see {@link Schema.DateTimeUtc} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1931,6 +2049,7 @@ export const DateTimeUtcReviver: DeclarationReviver<null> = makeFixedDeclaration
  *
  * @see {@link Schema.TimeZoneOffset} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1948,6 +2067,7 @@ export const TimeZoneOffsetReviver: DeclarationReviver<null> = makeFixedDeclarat
  *
  * @see {@link Schema.TimeZoneNamed} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1965,6 +2085,7 @@ export const TimeZoneNamedReviver: DeclarationReviver<null> = makeFixedDeclarati
  *
  * @see {@link Schema.TimeZone} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1982,6 +2103,7 @@ export const TimeZoneReviver: DeclarationReviver<null> = makeFixedDeclarationRev
  *
  * @see {@link Schema.DateTimeZoned} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1999,6 +2121,7 @@ export const DateTimeZonedReviver: DeclarationReviver<null> = makeFixedDeclarati
  *
  * @see {@link Schema.isGreaterThanDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2019,6 +2142,7 @@ export const isGreaterThanDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanOrEqualToDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2039,6 +2163,7 @@ export const isGreaterThanOrEqualToDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2059,6 +2184,7 @@ export const isLessThanDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanOrEqualToDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2079,6 +2205,7 @@ export const isLessThanOrEqualToDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetweenDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2107,6 +2234,7 @@ export const isBetweenDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2127,6 +2255,7 @@ export const isGreaterThanBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanOrEqualToBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2147,6 +2276,7 @@ export const isGreaterThanOrEqualToBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2167,6 +2297,7 @@ export const isLessThanBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanOrEqualToBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2187,6 +2318,7 @@ export const isLessThanOrEqualToBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetweenBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2215,6 +2347,7 @@ export const isBetweenBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.Json} for the corresponding immutable JSON schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -2229,6 +2362,7 @@ export const JsonReviver: DeclarationReviver<null> = makeFixedDeclarationReviver
  *
  * @see {@link Schema.MutableJson} for the corresponding mutable JSON schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -2285,6 +2419,7 @@ const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
  * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
  * through unchanged.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2301,6 +2436,7 @@ export interface FromJsonSchemaOptions {
 /**
  * Runtime and TypeScript source generated for one schema.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2312,6 +2448,7 @@ export interface Code {
 /**
  * Creates generated runtime and TypeScript source strings for a schema.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2320,6 +2457,7 @@ export const makeCode: (runtime: string, Type: string) => Code = InternalToCodeD
 /**
  * Auxiliary source artifact emitted while generating schema code.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2342,6 +2480,7 @@ export type Artifact =
 /**
  * Generated schema code together with named references and auxiliary artifacts.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2360,6 +2499,7 @@ export interface CodeDocument {
 /**
  * Information supplied to a reference policy for one representation candidate.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2394,6 +2534,7 @@ export interface ReferencePolicyInput {
  *
  * @see {@link ToRepresentationOptions} for configuring representation generation
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2402,6 +2543,7 @@ export type ReferencePolicy = (input: ReferencePolicyInput) => string | undefine
 /**
  * Options for generating schema representations.
  *
+ * @stability stable
  * @category configuration
  * @since 4.0.0
  */
@@ -2439,6 +2581,7 @@ export interface ToRepresentationOptions {
  *
  * @see {@link toRepresentations} for multiple roots sharing one reference table
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2460,6 +2603,7 @@ export function toRepresentation(ast: SchemaAST.AST, options?: ToRepresentationO
  *
  * @see {@link toRepresentation} for a single AST root
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2477,6 +2621,7 @@ export function toRepresentations(
  *
  * Use when an API such as `toCodeDocument` requires a `MultiDocument`.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2527,6 +2672,7 @@ export function toMultiDocument(document: Document): MultiDocument {
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2562,6 +2708,7 @@ export function toJsonSchemaDocument(
  *
  * @see {@link toJsonSchemaDocument} for a single root
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2583,6 +2730,7 @@ export function toJsonSchemaMultiDocument(
  *
  * Opaque declarations and leaf checks require `toCode` callbacks. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2813,6 +2961,7 @@ const decodeMultiDocument = Schema.decodeSync(MultiDocumentFromJson)
  * @see {@link toRepresentation} for constructing the live document
  * @see {@link toJsonMultiDocument} for documents with multiple roots
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2834,6 +2983,7 @@ export function toJson(document: Document): Schema.Json {
  * @see {@link toRepresentations} for constructing the live multi-document
  * @see {@link toJson} for a single-root document
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2856,6 +3006,7 @@ export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
  * @see {@link fromRepresentation} for reconstructing a runtime schema
  * @see {@link fromJsonMultiDocument} for multiple roots sharing references
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -2878,6 +3029,7 @@ export function fromJson(input: Schema.Json): Document {
  * @see {@link fromRepresentations} for reconstructing runtime schemas
  * @see {@link fromJson} for a single root
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -2913,6 +3065,7 @@ export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
  * @see {@link fromJson} for decoding a persisted document
  * @see {@link fromRepresentations} for multiple roots sharing references
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2937,6 +3090,7 @@ export function fromRepresentation(
  * @see {@link fromJsonMultiDocument} for decoding a persisted multi-document
  * @see {@link fromRepresentation} for a single root
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2998,6 +3152,7 @@ export function fromRepresentations(
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
  * @see {@link toRepresentation} for converting the result to a representation document
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -3041,6 +3196,7 @@ export function fromJsonSchemaDocument(
  * @see {@link fromJsonSchemaDocument} for a single root
  * @see {@link toRepresentations} for converting the returned schema ASTs to a representation document
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */

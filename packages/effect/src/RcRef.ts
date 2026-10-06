@@ -62,6 +62,7 @@ const TypeId = "~effect/RcRef"
  * await Effect.runPromise(Effect.scoped(program)) // => [true, ["closed Connected to postgres://localhost"]]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 3.5.0
  */
@@ -83,6 +84,7 @@ export interface RcRef<out A, out E = never> extends Pipeable {
  *
  * ```
  *
+ * @stability stable
  * @since 3.5.0
  */
 export declare namespace RcRef {
@@ -100,6 +102,7 @@ export declare namespace RcRef {
    * `RcRef`. It is used by Effect's type machinery and is not normally
    * referenced directly by users.
    *
+   * @stability stable
    * @category models
    * @since 3.5.0
    */
@@ -152,6 +155,7 @@ export declare namespace RcRef {
  * events // => ["released foo"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.5.0
  */
@@ -215,6 +219,7 @@ export const make: <A, E, R>(
  * await Effect.runPromise(Effect.scoped(program)) // => [true, ["released shared resource"]]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 3.5.0
  */
@@ -239,6 +244,7 @@ export const get: <A, E>(self: RcRef<A, E>) => Effect.Effect<A, E, Scope> = inte
  *
  * @see {@link get} for acquiring the current cached resource or the fresh resource after invalidation
  *
+ * @stability stable
  * @category combinators
  * @since 3.19.6
  */

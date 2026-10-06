@@ -106,6 +106,7 @@ const TypeId = "~effect/Cache"
  * actual // => "User-123"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -137,6 +138,7 @@ export interface Cache<in out Key, in out A, in out E = never, out R = never> ex
  * @see {@link Cache} for the public cache API that manages entries through
  * combinators
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -189,6 +191,7 @@ export interface Entry<A, E> {
  * ```
  *
  * @see {@link make} for a simpler cache constructor with a fixed time-to-live for all entries
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -287,6 +290,7 @@ export const makeWith = <
  * actual // => [{ name: "Ada", email: "ada@example.com" }, { name: "Ada", email: "ada@example.com" }, true]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -419,6 +423,7 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  * actual // => { results: [5, 5, 5], lookupCount: 1 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -625,6 +630,7 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  * actual // => [Option.some(42), 42]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -672,6 +678,7 @@ const getImpl = <Key, A, E, R>(
  * @see {@link get} for triggering or awaiting the cache lookup
  * @see {@link getOption} for reading an existing entry as an optional effect
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -797,6 +804,7 @@ export const getSuccess: {
  * actual // => [2, 2, false, true]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -917,6 +925,7 @@ export const set: {
  * actual // => ["apple: true", "banana: true", "cherry: false", "date: false"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -978,6 +987,7 @@ export const has: {
  * actual // => { beforeInvalidation: true, afterInvalidation: false, lookupCount: 2 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1051,6 +1061,7 @@ export const invalidate: {
  * actual // => [true, false, false, true, false, false]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1178,6 +1189,7 @@ export const invalidateWhen: {
  * actual // => ["value-for-newKey", true]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1265,6 +1277,7 @@ export const refresh: {
  * actual // => [3, true, 0, false, false, false]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1311,6 +1324,7 @@ export const invalidateAll = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.E
  * actual // => [0, 2, 1]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1346,6 +1360,7 @@ export const size = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<num
  * actual // => ["cache", "hello", "world"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1390,6 +1405,7 @@ export const keys = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<Ite
  * actual // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1408,6 +1424,7 @@ export const values = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<I
  * @see {@link keys} for retrieving only cached keys
  * @see {@link values} for retrieving only cached values
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */

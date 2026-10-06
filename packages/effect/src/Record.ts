@@ -42,6 +42,7 @@ import type { NoInfer } from "./Types.ts"
  * user // => { name: "John", age: 30 }
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -68,6 +69,7 @@ export type ReadonlyRecord<in out K extends string | symbol, out A> = {
  * "b" satisfies CommonKeys
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace ReadonlyRecord {
@@ -96,6 +98,7 @@ export declare namespace ReadonlyRecord {
    * symbol
    * ```
    *
+   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -121,6 +124,7 @@ export declare namespace ReadonlyRecord {
    * "a" satisfies Example2
    * ```
    *
+   * @stability stable
    * @category models
    * @since 2.0.0
    */
@@ -137,6 +141,7 @@ export declare namespace ReadonlyRecord {
    * produce every possible key. Open `string` and `symbol` key types retain their
    * record index signatures.
    *
+   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -168,6 +173,7 @@ export declare namespace ReadonlyRecord {
  * defaults // => { port: 3000, retries: 3 }
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -191,6 +197,7 @@ export interface ReadonlyRecordTypeLambda<K extends string = string> extends Typ
  * Record.set(emptyRecord, "count", 42) // => { count: 42 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -211,6 +218,7 @@ export const empty = <K extends string | symbol = never, V = never>(): Record<
  * Record.isEmptyRecord({ a: 3 }) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -229,6 +237,7 @@ export const isEmptyRecord = <K extends string, A>(self: Record<K, A>): self is 
  * Record.isEmptyReadonlyRecord({ a: 3 }) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -248,6 +257,7 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
  * Record.fromIterableWith([1, 2, 3, 4], (a) => [String(a), a * 2]) // => { "1": 2, "2": 4, "3": 6, "4": 8 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -293,6 +303,7 @@ export const fromIterableWith: {
  * ) // => { "1": { id: "1", name: "name1" }, "2": { id: "2", name: "name2" } }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -328,6 +339,7 @@ export const fromIterableBy: {
  * Record.fromEntries([["a", 1], ["b", 2]]) // => { a: 1, b: 2 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -347,6 +359,7 @@ export const fromEntries: <Entry extends readonly [string | symbol, any]>(
  * Record.collect(x, (key, n) => [key, n]) // => [["a", 1], ["b", 2], ["c", 3]]
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -376,6 +389,7 @@ export const collect: {
  * Record.toEntries(x) // => [["a", 1], ["b", 2], ["c", 3]]
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -395,6 +409,7 @@ export const toEntries: <K extends string, A>(self: ReadonlyRecord<K, A>) => Arr
  * Record.size({ a: "a", b: 1, c: true }) // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -412,6 +427,7 @@ export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number =>
  * Record.has(Record.empty<string>(), "c") // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -445,6 +461,7 @@ export const has: {
  * R.get(person, "email") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -474,6 +491,7 @@ export const get: {
  * Record.modify(input, "b", f) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -517,6 +535,7 @@ export const modify: {
  * Record.replace(Record.empty<string>(), "a", 10) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -559,6 +578,7 @@ export const replace: {
  * Record.remove({ a: 1, b: 2 }, "a") // => { b: 2 }
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -593,6 +613,7 @@ export const remove: {
  * Record.pop(input, "c") // => Option.none()
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -627,6 +648,7 @@ export const pop: {
  * Record.map({ a: 3, b: 5 }, g) // => { a: "A-3", b: "B-5" }
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -655,6 +677,7 @@ export const map: {
  * Record.mapKeys({ a: 3, b: 5 }, (key) => key.toUpperCase()) // => { A: 3, B: 5 }
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -692,6 +715,7 @@ export const mapKeys: {
  * Record.mapEntries({ a: 3, b: 5 }, (a, key) => [key.toUpperCase(), a + 1]) // => { A: 4, B: 6 }
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -732,6 +756,7 @@ export const mapEntries: {
  * Record.filterMap(x, f) // => { c: 6 }
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -772,6 +797,7 @@ export const filterMap: {
  * Record.filter(x, (n) => n > 2) // => { c: 3, d: 4 }
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -818,6 +844,7 @@ export const filter: {
  * Record.getSomes({ a: Option.some(1), b: Option.none(), c: Option.some(2) }) // => { a: 1, c: 2 }
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -852,6 +879,7 @@ export const getSomes: <K extends string, A>(
  * }) // => { b: "err" }
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -885,6 +913,7 @@ export const getFailures = <K extends string, A, E>(
  * }) // => { a: 1, c: 2 }
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -921,6 +950,7 @@ export const getSuccesses = <K extends string, A, E>(
  * Record.partition(x, f) // => [{ b: 2 }, { a: 1, c: 3 }]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -966,6 +996,7 @@ export const partition: {
  * Record.separate({ a: Result.fail("e"), b: Result.succeed(1) }) // => [{ b: 1 }, { a: "e" }]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -984,6 +1015,7 @@ export const separate: <K extends string, A, B>(
  * Record.keys({ a: 1, b: 2, c: 3 }) // => ["a", "b", "c"]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1001,6 +1033,7 @@ export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): 
  * Record.values({ a: 1, b: 2, c: 3 }) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1018,6 +1051,7 @@ export const values = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<A
  * Record.set("c", 5)({ a: 1, b: 2 }) // => { a: 1, b: 2, c: 5 }
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -1074,6 +1108,7 @@ export const set: {
  * ```
  *
  * @see {@link set} for an immutable update
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -1103,6 +1138,7 @@ export const assignProperty: (self: object, key: PropertyKey, value: unknown) =>
  * isSubrecord(required, { role: "editor", status: "active" }) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1136,6 +1172,7 @@ export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
  * Record.isSubrecord({ a: 1, b: 2 }, { a: 1 } as Record<string, number>) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1155,6 +1192,7 @@ export const isSubrecord: {
  * Record.reduce({ a: 1, b: 2, c: 3 }, 0, (acc, value) => acc + value) // => 6
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -1191,6 +1229,7 @@ export const reduce: {
  * Record.every({ a: 1, b: -1 }, (n) => n > 0) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -1231,6 +1270,7 @@ export const every: {
  * Record.some({ a: 1, b: 2 }, (n) => n > 2) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1261,6 +1301,7 @@ export const some: {
  * Record.union({ a: 1, b: 2 }, { b: 3, c: 4 }, (a, b) => a + b) // => { a: 1, b: 5, c: 4 }
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -1316,6 +1357,7 @@ export const union: {
  * Record.intersection({ a: 1, b: 2 }, { b: 3, c: 4 }, (a, b) => a + b) // => { b: 5 }
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -1361,6 +1403,7 @@ export const intersection: {
  * Record.difference({ a: 1, b: 2 }, { b: 3, c: 4 }) // => { a: 1, c: 4 }
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -1411,6 +1454,7 @@ export const difference: {
  * recordEquivalence({ a: 1, b: 2 }, { a: 1, b: 3 }) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -1432,6 +1476,7 @@ export const makeEquivalence = <K extends string, A>(
  * Record.singleton("a", 1) // => { a: 1 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1458,6 +1503,7 @@ export const singleton = <K extends string | symbol, A>(key: K, value: A): Recor
  * @see {@link union} for one-off record merging with the same union semantics
  * @see {@link makeReducerIntersection} for a reducer that keeps only keys present on both sides
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -1486,6 +1532,7 @@ export function makeReducerUnion<K extends string, A>(combiner: Combiner.Combine
  * @see {@link makeReducerUnion} for a reducer that preserves keys from either input record
  * @see {@link intersection} for applying the shared-key merge to one pair of records
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -1514,6 +1561,7 @@ export function makeReducerIntersection<K extends string, A>(
  * ) // => Option.some(["c", 3])
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 3.14.0
  */

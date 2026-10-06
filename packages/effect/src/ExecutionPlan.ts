@@ -27,6 +27,7 @@ import * as Schedule from "./Schedule.ts"
  * String literal type used as the runtime type identifier for `ExecutionPlan`
  * values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 3.16.0
  */
@@ -36,6 +37,7 @@ export type TypeId = "~effect/ExecutionPlan"
  * Runtime type identifier attached to `ExecutionPlan` values and used by
  * `isExecutionPlan`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 3.16.0
  */
@@ -59,6 +61,7 @@ export const TypeId: TypeId = "~effect/ExecutionPlan"
  * @see {@link make} for constructing execution plans that satisfy this guard
  * @see {@link TypeId} for the runtime marker checked by this guard
  *
+ * @stability unstable
  * @category guards
  * @since 3.16.0
  */
@@ -85,6 +88,7 @@ export const isExecutionPlan = (u: unknown): u is ExecutionPlan<any> => Predicat
  * ThePlan.steps.map((step) => step.attempts ?? 1) // => [2, 1]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 3.16.0
  */
@@ -135,6 +139,7 @@ export interface ExecutionPlan<
  * from plan layers, predicates, or schedules, and `requirements` tracks
  * services needed to build or run the plan.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -166,6 +171,7 @@ export type ConfigBase = {
  * ThePlan.steps.length // => 2
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 3.16.0
  */
@@ -198,6 +204,7 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
 /**
  * Namespace containing type helpers used by `ExecutionPlan.make`.
  *
+ * @stability unstable
  * @since 3.16.0
  */
 export declare namespace make {
@@ -210,6 +217,7 @@ export declare namespace make {
    * `while` predicate for retry decisions, or attach a `Schedule` for retry
    * timing.
    *
+   * @stability unstable
    * @category models
    * @since 3.16.0
    */
@@ -246,6 +254,7 @@ export declare namespace make {
    * Computes the intersection of services provided by a list of execution-plan
    * steps.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.16.1
    */
@@ -263,6 +272,7 @@ export declare namespace make {
   /**
    * Computes the intersection of services provided by a list of execution plans.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.16.1
    */
@@ -275,6 +285,7 @@ export declare namespace make {
    * Computes the input type consumed by the `while` predicates and schedules in
    * a list of execution-plan steps.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.16.0
    */
@@ -292,6 +303,7 @@ export declare namespace make {
   /**
    * Computes the combined input type consumed by a list of execution plans.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.16.0
    */
@@ -361,6 +373,7 @@ const makeProto = <Provides, In, PlanE, PlanR>(
  *
  * @see {@link make} for building a plan from individual steps instead of combining existing plans
  *
+ * @stability unstable
  * @category combining
  * @since 3.16.0
  */
@@ -381,6 +394,7 @@ export const merge = <const Plans extends NonEmptyReadonlyArray<ExecutionPlan<an
  * `attempt` is the current 1-based attempt number, and `stepIndex` is the
  * 0-based index of the plan step currently being evaluated.
  *
+ * @stability unstable
  * @category metadata
  * @since 4.0.0
  */
@@ -398,6 +412,7 @@ export interface Metadata {
  * Use to read the active plan step and attempt while code is running under an
  * execution plan.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -418,6 +433,7 @@ export const CurrentMetadata = Context.Reference<Metadata>("effect/ExecutionPlan
  * 1-based attempt number within the current step, and `stepIndex` is the
  * 0-based index of the step being attempted.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -436,6 +452,7 @@ export interface AttemptStart {
  * A successful attempt completes the plan, so this is always the final event.
  * `duration` is the elapsed time of the attempt.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -457,6 +474,7 @@ export interface AttemptSuccess {
  * afterwards is decided by the step's `attempts`, `while`, and `schedule`; a
  * following `AttemptStart` indicates another attempt was made.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -478,6 +496,7 @@ export interface AttemptFailure<E> {
  * `AttemptSuccess` or `AttemptFailure`. An interrupted attempt emits
  * `AttemptFailure` with the interruption cause.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

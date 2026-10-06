@@ -80,6 +80,7 @@ const TxHashMapProto = {
  * await Effect.runPromise(program) // => 2
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -124,6 +125,7 @@ export interface TxHashMap<in out K, in out V> extends Inspectable, Pipeable {
  * await Effect.runPromise(program) // => Option.some({ stock: 3, price: 999 })
  * ```
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace TxHashMap {
@@ -153,6 +155,7 @@ export declare namespace TxHashMap {
    * await Effect.runPromise(program) // => Option.some({ name: "Alice", age: 30 })
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -187,6 +190,7 @@ export declare namespace TxHashMap {
    * await Effect.runPromise(program) // => Option.some("electronics: $999")
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -223,6 +227,7 @@ export declare namespace TxHashMap {
    * await Effect.runPromise(program) // => ["api_url=https://api.example.com", "retries=3", "timeout=5000"]
    * ```
    *
+   * @stability stable
    * @category utility types
    * @since 4.0.0
    */
@@ -253,6 +258,7 @@ export declare namespace TxHashMap {
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -289,6 +295,7 @@ export const empty = <K, V>(): Effect.Effect<TxHashMap<K, V>> =>
  * await Effect.runPromise(program) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -332,6 +339,7 @@ export const make = <K, V>(
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -370,6 +378,7 @@ export const fromIterable = <K, V>(
  * await Effect.runPromise(program) // => Option.some({ name: "Bob", role: "user" })
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -420,6 +429,7 @@ export const get: {
  * await Effect.runPromise(program) // => Option.some(8)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -458,6 +468,7 @@ export const set: {
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -507,6 +518,7 @@ export const has: {
  * await Effect.runPromise(program) // => 2
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -560,6 +572,7 @@ export const remove: {
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -594,6 +607,7 @@ export const clear = <K, V>(self: TxHashMap<K, V>): Effect.Effect<void> => TxRef
  * await Effect.runPromise(program) // => 3
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -628,6 +642,7 @@ export const size = <K, V>(self: TxHashMap<K, V>): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -658,6 +673,7 @@ export const isEmpty = <K, V>(self: TxHashMap<K, V>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -709,6 +725,7 @@ export const isNonEmpty = <K, V>(self: TxHashMap<K, V>): Effect.Effect<boolean> 
  * await Effect.runPromise(program) // => Option.some(500)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -778,6 +795,7 @@ export const modify: {
  * await Effect.runPromise(program) // => Option.some("content1.bak")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -843,6 +861,7 @@ export const modifyAt: {
  * await Effect.runPromise(program) // => ["alice: admin", "bob: user", "charlie: moderator"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -882,6 +901,7 @@ export const keys = <K, V>(self: TxHashMap<K, V>): Effect.Effect<Array<K>> =>
  * await Effect.runPromise(program) // => 95
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -912,6 +932,7 @@ export const values = <K, V>(self: TxHashMap<K, V>): Effect.Effect<Array<V>> =>
  * await Effect.runPromise(program) // => [["host", "localhost"], ["port", "3000"], ["ssl", "false"]]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -956,6 +977,7 @@ export const entries = <K, V>(
  * await Effect.runPromise(program) // => Option.some(45.2)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1005,6 +1027,7 @@ export const snapshot = <K, V>(
  * await Effect.runPromise(program) // => 5
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1067,6 +1090,7 @@ export const union: {
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1140,6 +1164,7 @@ export const removeMany: {
  * await Effect.runPromise(program) // => Option.some({ price: 399, stock: 3 })
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1194,6 +1219,7 @@ export const setMany: {
  * await Effect.runPromise(program) // => Exit.succeed("Valid TxHashMap")
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1241,6 +1267,7 @@ export const isTxHashMap = <K, V>(value: unknown): value is TxHashMap<K, V> => {
  * await Effect.runPromise(program) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1312,6 +1339,7 @@ export const getHash: {
  * await Effect.runPromise(program) // => ["Role admin: true", "Role user: true", "Role moderator: false"]
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -1374,6 +1402,7 @@ export const hasHash: {
  * await Effect.runPromise(program) // => Option.some({ name: "Alice", age: 30, active: true })
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1446,6 +1475,7 @@ export const map: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1520,6 +1550,7 @@ export const filter: {
  * await Effect.runPromise(program) // => { quarters: 4, total: 80000, max: 25000 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1598,6 +1629,7 @@ export const reduce: {
  * await Effect.runPromise(program) // => 3
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1660,6 +1692,7 @@ export const filterMap: {
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -1713,6 +1746,7 @@ export const hasBy: {
  * await Effect.runPromise(program) // => Option.some(["task1", { priority: 1, assignee: "alice", completed: false }])
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1770,6 +1804,7 @@ export const findFirst: {
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -1826,6 +1861,7 @@ export const some: {
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -1875,6 +1911,7 @@ export const every: {
  * result // => ["access.log: 2048 bytes (info)", "debug.log: 512 bytes (debug)", "error.log: 1024 bytes (error)"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1946,6 +1983,7 @@ export const forEach: {
  * await Effect.runPromise(program) // => 4
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -2020,6 +2058,7 @@ export const flatMap: {
  * await Effect.runPromise(program) // => [["alice", 30], ["charlie", 25], ["eve", 28]]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -2060,6 +2099,7 @@ export const compact = <K, A>(
  * await Effect.runPromise(program) // => { language: "en-US", theme: "dark", timezone: "UTC" }
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -2101,6 +2141,7 @@ export const toEntries = <K, V>(
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */

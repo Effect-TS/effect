@@ -24,6 +24,7 @@ import * as Option from "./Option.ts"
  * This marker is part of the runtime representation of partitioned semaphore
  * values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -41,6 +42,7 @@ export const PartitionedTypeId: PartitionedTypeId = "~effect/PartitionedSemaphor
  * Use this type when declaring fields that must contain the exact
  * `PartitionedTypeId` marker value.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -59,6 +61,7 @@ export type PartitionedTypeId = "~effect/PartitionedSemaphore"
  *
  * Waiting permits are distributed across partitions in round-robin order.
  *
+ * @stability unstable
  * @category models
  * @since 3.19.4
  */
@@ -91,6 +94,7 @@ export interface PartitionedSemaphore<in K> {
  * provides an alternate exported name for APIs that refer to a partitioned
  * permit pool.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -112,6 +116,7 @@ export interface Partitioned<in K> extends PartitionedSemaphore<K> {}
  *
  * @see {@link make} for creating a partitioned semaphore inside `Effect`
  *
+ * @stability unstable
  * @category constructors
  * @since 3.19.4
  */
@@ -344,6 +349,7 @@ export const makeUnsafe = <K = unknown>(options: {
  *
  * @see {@link makeUnsafe} for synchronous construction
  *
+ * @stability unstable
  * @category constructors
  * @since 3.19.4
  */
@@ -372,6 +378,7 @@ export const make = <K = unknown>(options: {
  * @see {@link release} for returning permits to the shared pool
  * @see {@link withPermitsIfAvailable} for running only when permits are immediately available
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -391,6 +398,7 @@ export const available = <K>(self: PartitionedSemaphore<K>): Effect.Effect<numbe
  *
  * @see {@link available} for the current number of free permits
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -420,6 +428,7 @@ export const capacity = <K>(self: PartitionedSemaphore<K>): number => self.capac
  * @see {@link withPermits} for automatic acquire and release around an effect
  * @see {@link withPermit} for acquiring exactly one permit around an effect
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -447,6 +456,7 @@ export const take: {
  * @see {@link withPermits} for automatic acquire and release around an effect
  * @see {@link available} for reading the permit count without releasing
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -481,6 +491,7 @@ export const release: {
  * @see {@link take} for manual acquisition
  * @see {@link release} for manual release
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -525,6 +536,7 @@ export const withPermits: {
  * @see {@link take} for manual acquisition
  * @see {@link release} for manual release
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -563,6 +575,7 @@ export const withPermit: {
  * @see {@link withPermits} for the keyed variant that waits until permits are
  * available for a partition
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

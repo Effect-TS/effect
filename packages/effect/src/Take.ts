@@ -24,6 +24,7 @@ import type * as Pull from "./Pull.ts"
  *
  * @see {@link toPull} for interpreting a `Take` as a `Pull` step
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -38,6 +39,7 @@ export type Take<A, E = never, Done = void> = NonEmptyReadonlyArray<A> | Exit.Ex
  * Use to interpret a stored or transferred `Take` as a `Pull` step while
  * preserving emitted batches, ordinary failures, and completion values.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */

@@ -55,6 +55,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * @see {@link make}
  * @see {@link strictEqual}
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -90,6 +91,7 @@ export type Equivalence<in A> = (self: A, that: A) => boolean
  *
  * @see {@link Equivalence}
  * @see {@link TypeLambda}
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -142,6 +144,7 @@ export interface EquivalenceTypeLambda extends TypeLambda {
  *
  * @see {@link strictEqual}
  * @see {@link mapInput}
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -194,6 +197,7 @@ const isStrictEquivalent = (x: unknown, y: unknown) => x === y
  *
  * @see {@link make}
  * @see `Equal` for structural equality
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -215,6 +219,7 @@ export const strictEqual: <A>() => Equivalence<A> = () => isStrictEquivalent
  * Equivalence.String("hello", "world") // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -237,6 +242,7 @@ export const String: Equivalence<string> = isStrictEquivalent
  * Equivalence.Number(NaN, NaN) // => true
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -260,6 +266,7 @@ export const Number: Equivalence<number> = make((self, that) =>
  * Equivalence.Boolean(true, false) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -281,6 +288,7 @@ export const Boolean: Equivalence<boolean> = isStrictEquivalent
  * Equivalence.BigInt(1n, 2n) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -332,6 +340,7 @@ export const BigInt: Equivalence<bigint> = isStrictEquivalent
  *
  * @see {@link combineAll}
  * @see {@link mapInput}
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -401,6 +410,7 @@ export const combine: {
  *
  * @see {@link combine}
  * @see {@link mapInput}
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -471,6 +481,7 @@ export const combineAll = <A>(collection: Iterable<Equivalence<A>>): Equivalence
  *
  * @see {@link combine}
  * @see {@link Struct}
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -536,6 +547,7 @@ export const mapInput: {
  * customTupleEq(["Hello", "World", "Test"], ["HELLO", "WORLD", "TEST"]) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -615,6 +627,7 @@ export {
    *
    * @see {@link Tuple}
    * @see {@link Record}
+   * @stability stable
    * @category combinators
    * @since 4.0.0
    */
@@ -686,6 +699,7 @@ export {
  * @see {@link Record}
  * @see {@link mapInput}
  * @see {@link combine}
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -750,6 +764,7 @@ export function Struct<R extends Record<string, Equivalence<any>>>(
  * numberRecordEq(scores1, scores3) // => false
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -804,6 +819,7 @@ export function Record<A>(value: Equivalence<A>): Equivalence<Record<PropertyKey
  * @see {@link combine} Combine two equivalences
  * @see {@link combineAll} Combine multiple equivalences
  * @see {@link Reducer} Reducer type for collection operations
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -860,6 +876,7 @@ export function makeReducer<A>() {
  * @see {@link Number} for the numeric equivalence applied to each `Date#getTime()` result
  * @see {@link mapInput} for deriving an equivalence by mapping inputs before comparison
  * @see {@link strictEqual} for reference equality when two values must be the same object
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */

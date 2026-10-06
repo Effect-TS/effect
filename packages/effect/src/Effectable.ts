@@ -27,6 +27,7 @@ import { evaluate, makePrimitiveProto } from "./internal/core.ts"
  * @see {@link Class} for a class-based approach to defining custom Effect values
  * @see {@link Mixin} for wrapping an existing class constructor
  *
+ * @stability stable
  * @category prototypes
  * @since 4.0.0
  */
@@ -65,6 +66,7 @@ const Base: new<A, E, R>() => Effect.Effect<A, E, R> = (() => {
  *
  * @see {@link Prototype} for a lower-level primitive approach to creating custom Effect-like values without a class
  * @see {@link Mixin} for wrapping an existing class constructor
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -124,6 +126,7 @@ declare abstract class MixinBase extends Class<any, any, any> {
  *
  * @see {@link Prototype} for a lower-level primitive approach to creating custom Effect-like values without a class
  * @see {@link Class} for a base constructor to extend
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */

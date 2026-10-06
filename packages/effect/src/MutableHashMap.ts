@@ -58,6 +58,7 @@ const TypeId = "~effect/MutableHashMap"
  * @see {@link get} for reading values by key
  * @see {@link set} for mutating entries by key
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -84,6 +85,7 @@ export interface MutableHashMap<out K, out V> extends Iterable<[K, V]>, Pipeable
  *
  * @see {@link MutableHashMap} for the mutable hash map interface
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -139,6 +141,7 @@ const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backing" | "b
  * @see {@link make} for creating a map from explicit entries
  * @see {@link fromIterable} for creating a map from an iterable of entries
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -174,6 +177,7 @@ export const empty = <K, V>(): MutableHashMap<K, V> => {
  * @see {@link empty} for creating an empty map
  * @see {@link fromIterable} for creating a map from an iterable of entries
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -215,6 +219,7 @@ export const make: <Entries extends Array<readonly [any, any]>>(
  * @see {@link make} for creating a map from explicit entries
  * @see {@link empty} for creating an empty map
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -255,6 +260,7 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): MutableH
  * @see {@link has} for checking only whether a key is present
  * @see {@link set} for inserting or replacing a value by key
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -304,6 +310,7 @@ const isSimpleKey = (u: unknown): boolean => typeof u !== "object" && typeof u !
  * @see {@link values} for iterating over stored values
  * @see {@link has} for checking one key without iterating
  *
+ * @stability stable
  * @category getters
  * @since 3.8.0
  */
@@ -338,6 +345,7 @@ export const keys = <K, V>(self: MutableHashMap<K, V>): Iterable<K> => self.back
  *
  * @see {@link keys} for iterating over stored keys
  *
+ * @stability stable
  * @category getters
  * @since 3.8.0
  */
@@ -381,6 +389,7 @@ const getFromBucket = <K, V>(
  *
  * @see {@link get} for reading the value as an `Option`
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -428,6 +437,7 @@ export const has: {
  * @see {@link modifyAt} for setting or removing based on the current optional value
  * @see {@link remove} for deleting an entry by key
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -506,6 +516,7 @@ const getRefKey = <K>(
  * @see {@link set} for inserting or replacing a value directly
  * @see {@link modifyAt} for handling both missing and existing keys
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -586,6 +597,7 @@ export const modify: {
  * @see {@link set} for inserting or replacing directly
  * @see {@link remove} for deleting directly
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -653,6 +665,7 @@ export const modifyAt: {
  * @see {@link clear} for removing all entries
  * @see {@link modifyAt} for conditionally removing based on the current value
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -722,6 +735,7 @@ export const remove: {
  * @see {@link remove} for deleting one key
  * @see {@link empty} for creating a fresh empty map
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -759,6 +773,7 @@ export const clear = <K, V>(self: MutableHashMap<K, V>) => {
  *
  * @see {@link isEmpty} for checking whether the map has no entries
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -773,6 +788,7 @@ export const size = <K, V>(self: MutableHashMap<K, V>): number => self.backing.s
  *
  * @see {@link size} for reading the exact number of entries
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -794,6 +810,7 @@ export const isEmpty = <K, V>(self: MutableHashMap<K, V>): boolean => self.backi
  * @see {@link keys} for iterating only keys
  * @see {@link values} for iterating only values
  *
+ * @stability stable
  * @category traversing
  * @since 2.0.0
  */

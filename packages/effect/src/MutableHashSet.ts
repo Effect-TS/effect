@@ -60,6 +60,7 @@ const TypeId = "~effect/MutableHashSet"
  * MutableHashSet.size(set) // => 3
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -85,6 +86,7 @@ export interface MutableHashSet<out V> extends Iterable<V>, Pipeable, Inspectabl
  *
  * @see {@link MutableHashSet} for the mutable hash set interface
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -149,6 +151,7 @@ const fromHashMap = <V>(keyMap: MutableHashMap.MutableHashMap<V, boolean>): Muta
  * @see {@link fromIterable} for creating a set from an iterable of values
  * @see {@link clear} for emptying an existing mutable set
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -180,6 +183,7 @@ export const empty = <K = never>(): MutableHashSet<K> => fromHashMap(MutableHash
  * Array.from(MutableHashSet.fromIterable("hello")) // => ["h", "e", "l", "o"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -213,6 +217,7 @@ export const fromIterable = <K = never>(keys: Iterable<K>): MutableHashSet<K> =>
  * MutableHashSet.size(MutableHashSet.make("hello", 42, true, "hello")) // => 3
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -252,6 +257,7 @@ export const make = <Keys extends ReadonlyArray<unknown>>(
  * MutableHashSet.size(set) // => 3
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -297,6 +303,7 @@ export const add: {
  * @see {@link add} for adding a value to the set
  * @see {@link remove} for removing a value from the set
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -340,6 +347,7 @@ export const has: {
  * MutableHashSet.size(set) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -378,6 +386,7 @@ export const remove: {
  * MutableHashSet.size(set) // => 0
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -412,6 +421,7 @@ export const size = <V>(self: MutableHashSet<V>): number => MutableHashMap.size(
  * MutableHashSet.size(set) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */

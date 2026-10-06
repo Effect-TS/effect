@@ -26,6 +26,7 @@ import * as predicate from "./Predicate.ts"
  * Symbol.isSymbol("a") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */

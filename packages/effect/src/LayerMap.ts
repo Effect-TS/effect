@@ -73,6 +73,7 @@ type IdleTimeToLiveInput<K> = Duration.Input | ((key: K) => Duration.Input)
  * await Effect.runPromise(Effect.scoped(program)) // => { development: "development: SELECT 1", production: "production: SELECT 1" }
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 3.14.0
  */
@@ -151,6 +152,7 @@ export interface LayerMap<in out K, in out I, in out E = never> {
  * await Effect.runPromise(Effect.scoped(program)) // => "development: SELECT * FROM users"
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 3.14.0
  */
@@ -257,6 +259,7 @@ export const make: <
  * await Effect.runPromise(Effect.scoped(program)) // => { development: "DEV: SELECT 1", production: "PROD: SELECT 1" }
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 3.14.0
  */
@@ -303,6 +306,7 @@ export const fromRecord = <
  *
  * @see {@link Service} for creating concrete `LayerMap` service classes
  *
+ * @stability unstable
  * @category services
  * @since 3.14.0
  */
@@ -403,6 +407,7 @@ export interface TagClass<
  * await Effect.runPromise(program) // => "Hello, John!"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 3.14.0
  */
@@ -489,12 +494,14 @@ export const Service = <Self>() =>
 /**
  * Type helpers for values created with `LayerMap.Service`.
  *
+ * @stability unstable
  * @since 3.14.0
  */
 export declare namespace Service {
   /**
    * Extracts the key type accepted by a `LayerMap.Service` definition.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.14.0
    */
@@ -505,6 +512,7 @@ export declare namespace Service {
   /**
    * Extracts the layer type produced by a `LayerMap.Service` definition.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.14.0
    */
@@ -516,6 +524,7 @@ export declare namespace Service {
    * Extracts the services provided by the layers in a `LayerMap.Service`
    * definition.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.14.0
    */
@@ -524,6 +533,7 @@ export declare namespace Service {
   /**
    * Extracts the error type of the layers in a `LayerMap.Service` definition.
    *
+   * @stability unstable
    * @category utility types
    * @since 3.14.0
    */
@@ -533,6 +543,7 @@ export declare namespace Service {
    * Extracts the service requirements of the layers in a `LayerMap.Service`
    * definition.
    *
+   * @stability unstable
    * @category utility types
    * @since 4.0.0
    */
