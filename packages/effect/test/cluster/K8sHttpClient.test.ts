@@ -2,9 +2,10 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Schema } from "effect"
 import * as K8sHttpClient from "effect/cluster/K8sHttpClient"
 import { HttpClient, HttpClientResponse } from "effect/http"
+import { TestClock } from "effect/testing"
 
 describe.concurrent("K8sHttpClient", () => {
-  it.effect("uses the rotated token on subsequent executions of the same request", () => {
+  it.effect("uses the rotated token after the token cache expires", () => {
     let token = "token-1"
     const authorization: Array<string | undefined> = []
 
@@ -13,6 +14,7 @@ describe.concurrent("K8sHttpClient", () => {
       const request = client.get("/v1/pods")
       yield* request
       token = "token-2"
+      yield* TestClock.adjust("61 seconds")
       yield* request
       assert.deepStrictEqual(authorization, ["Bearer token-1", "Bearer token-2"])
     }).pipe(

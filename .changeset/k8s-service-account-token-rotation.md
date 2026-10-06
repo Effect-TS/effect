@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Read the Kubernetes service-account token on each HTTP request, including retries, so token rotation does not leave K8sHttpClient using stale credentials.
+Cache the Kubernetes service-account token for one minute so K8sHttpClient picks up rotated credentials without reading the token file on every request.
