@@ -6,21 +6,6 @@ import { ClusterSchema, Entity, SingleRunner } from "effect/cluster"
 import { Rpc } from "effect/rpc"
 import { SqlClient } from "effect/sql"
 
-// Semantics for persisted requests on entities annotated with
-// `ClusterSchema.WithTransaction`:
-//
-// - The handler's own writes commit only when the handler succeeds. Success
-//   commits the writes, the reply and the processed flag atomically.
-// - A terminal reply (success, typed failure, or a defect when fatal defects
-//   are disabled) is persisted even when the handler transaction rolls back,
-//   so retries, deduplicated callers and other runners observe it and the
-//   handler does not run again.
-// - Fatal defects are not replies: the transaction rolls back and the request
-//   is retried, exactly as without the annotation.
-// - Interrupts roll back the handler's writes and otherwise behave as they do
-//   without the annotation: a shutdown interrupt is not a reply, so the
-//   request is redelivered.
-
 class Rejected extends Schema.TaggedError<Rejected>()("Rejected", {}) {}
 
 const payload = { requestId: Schema.String }
@@ -90,8 +75,7 @@ const makeHarness = Effect.fnUntraced(function*(options: {
     }
   )
 
-  // Each `runner` call boots a fresh runner over the shared database, so a
-  // second call observes only what the first one persisted.
+  // Each call starts a fresh runner over the same database.
   const runner = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
       Effect.provide(entityLayer.pipe(
@@ -123,7 +107,6 @@ const makeHarness = Effect.fnUntraced(function*(options: {
   } as const
 })
 
-// Bounded so a lost reply fails the test instead of hanging it.
 const outcome = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.timeout("10 seconds"),
@@ -155,7 +138,6 @@ const SqliteLayer = Effect.gen(function*() {
 describe("ClusterSchema.WithTransaction", () => {
   for (const withTransaction of [true, false]) {
     const label = withTransaction ? "with transaction" : "without transaction"
-    // Handler writes from an attempt that did not succeed.
     const uncommitted = (attempts: number) => withTransaction ? 0 : attempts
 
     describe(label, { timeout: 60_000 }, () => {

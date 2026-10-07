@@ -73,8 +73,7 @@ import { withRun } from "./Utils.ts"
 export interface RpcServer<A extends Rpc.Any> {
   readonly write: (clientId: number, message: FromClient<A>, options?: {
     /**
-     * Wraps the request handler together with its success response. Failure
-     * responses are sent after the wrapped effect exits.
+     * Wraps the handler and success response. Failure responses are sent after the wrapper exits.
      */
     readonly onRequest?: (<A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>) | undefined
   }) => Effect.Effect<void>
@@ -317,8 +316,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         exit: exit as any
       })
     }
-    // With `onRequest`, failure replies wait until it has exited, so a
-    // transaction it rolls back cannot discard them.
+    // Send failure replies after onRequest exits to keep them outside its transaction.
     let failure: Exit.Failure<unknown, unknown> | undefined = undefined
     let effect = Effect.onExit(withMiddleware, (exit) => {
       responded = true
