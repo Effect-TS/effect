@@ -3,7 +3,7 @@ import * as OtelTracer from "@effect/opentelemetry/OtelTracer"
 import { assert, describe, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
-import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
+import { InMemorySpanExporter, type ReadableSpan, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -23,7 +23,7 @@ const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
 
 // needed to test context propagation
 const contextManager = new AsyncHooksContextManager()
-OtelApi.context.setGlobalContextManager(contextManager)
+OtelApi.context.setGlobalContextManager(contextManager.enable())
 
 describe("Tracer", () => {
   it.effect("uses the shared Effect version as the tracer instrumentation scope", () => {
@@ -181,6 +181,81 @@ describe("Tracer", () => {
         assert.isTrue(Option.isNone(child.parent))
         assert.notStrictEqual(child.traceId, waker.traceId)
       }).pipe(Effect.provide(TracingLayer)))
+
+    it.effect("withSpan in an Effect run started inside a traced effect has no parent", () =>
+      Effect.gen(function*() {
+        const services = yield* Effect.context<never>()
+        const [outer, child] = yield* Effect.gen(function*() {
+          const outer = yield* Effect.currentSpan
+          const child = yield* Effect.promise(() =>
+            Effect.runPromise(
+              Effect.currentSpan.pipe(
+                Effect.withSpan("child"),
+                Effect.provideContext(services)
+              )
+            )
+          )
+          return [outer, child] as const
+        }).pipe(Effect.withSpan("outer"))
+
+        assert(child instanceof OtelTracer.OtelSpan)
+        assert.isTrue(Option.isNone(child.parent))
+        assert.notStrictEqual(child.traceId, outer.traceId)
+      }).pipe(Effect.provide(TracingLayer)))
+
+    it.effect("withSpan in an Effect run started from a timer set inside a span has no parent", () =>
+      Effect.gen(function*() {
+        const services = yield* Effect.context<never>()
+        const [outer, child] = yield* Effect.gen(function*() {
+          const outer = yield* Effect.currentSpan
+          const child = yield* Effect.promise(() =>
+            new Promise<EffectTracer.Span>((resolve, reject) => {
+              setTimeout(() => {
+                Effect.runPromise(
+                  Effect.currentSpan.pipe(
+                    Effect.withSpan("child"),
+                    Effect.provideContext(services)
+                  )
+                ).then(resolve, reject)
+              }, 0)
+            })
+          )
+          return [outer, child] as const
+        }).pipe(Effect.withSpan("outer"))
+
+        assert(child instanceof OtelTracer.OtelSpan)
+        assert.isTrue(Option.isNone(child.parent))
+        assert.notStrictEqual(child.traceId, outer.traceId)
+      }).pipe(Effect.provide(TracingLayer)))
+
+    it.effect.each([
+      {
+        name: "DisablePropagation",
+        disable: Effect.withSpan("disabled", {
+          annotations: EffectTracer.DisablePropagation.context(true)
+        })
+      },
+      {
+        name: "withTracerEnabled(false)",
+        disable: <A, E, R>(self: Effect.Effect<A, E, R>) =>
+          self.pipe(Effect.withSpan("disabled"), Effect.withTracerEnabled(false))
+      }
+    ])(
+      "raw OpenTelemetry span below a $name span uses the nearest propagated parent",
+      ({ disable }) =>
+        Effect.gen(function*() {
+          const parent = yield* Effect.currentSpan
+          const tracer = yield* OtelTracer.OtelTracer
+          const raw = yield* Effect.sync(() => {
+            const span = tracer.startSpan("raw")
+            span.end()
+            return span as unknown as ReadableSpan
+          }).pipe(disable)
+
+          assert.strictEqual(raw.spanContext().traceId, parent.traceId)
+          assert.strictEqual(raw.parentSpanContext?.spanId, parent.spanId)
+        }).pipe(Effect.withSpan("parent"), Effect.provide(TracingLayer))
+    )
 
     it.effect("supervisor sets context", () =>
       Effect.sync(() => {
