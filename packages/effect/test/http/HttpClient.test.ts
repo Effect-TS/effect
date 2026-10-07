@@ -1,10 +1,11 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
+import { collectGarbage } from "../utils/gc.ts"
 
 const makeStatusClient = Effect.fnUntraced(function*(status: number) {
   const attempts = yield* Ref.make(0)
@@ -38,6 +39,36 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 describe("HttpClient", () => {
+  it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+    "does not retain unread responses without FinalizationRegistry",
+    async () => {
+      vi.stubGlobal("FinalizationRegistry", undefined)
+      try {
+        // The response registry is selected when HttpClient is imported.
+        vi.resetModules()
+        const { Effect } = await import("effect")
+        const { HttpClient, HttpClientResponse } = await import("effect/http")
+        let reference: WeakRef<HttpClientResponse.HttpClientResponse> | undefined
+        const client = HttpClient.make((request) =>
+          Effect.sync(() => {
+            const response = HttpClientResponse.fromWeb(request, new Response("unread"))
+            reference = new WeakRef(response)
+            return response
+          })
+        )
+
+        await Effect.runPromise(Effect.asVoid(client.get("https://example.test/")))
+        await Effect.runPromise(collectGarbage)
+
+        assert.isDefined(reference)
+        assert.isUndefined(reference!.deref())
+      } finally {
+        vi.unstubAllGlobals()
+        vi.resetModules()
+      }
+    }
+  )
+
   it.effect("applies JSON revivers to response schema decoders", () =>
     Effect.gen(function*() {
       const makeResponse = () =>
@@ -141,7 +172,7 @@ Missing key
     }))
 
   describe("tracer", () => {
-    it.effect("includes request and response headers by default", () =>
+    it.effect("omits request and response headers by default", () =>
       Effect.gen(function*() {
         let clientSpan: Tracer.NativeSpan | undefined
         const tracer = Tracer.make({
@@ -166,8 +197,8 @@ Missing key
         }).pipe(Effect.provideService(Tracer.Tracer, tracer))
 
         assert(clientSpan !== undefined)
-        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), "request")
-        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), "response")
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), undefined)
       }))
 
     it.effect("filters request and response header span attributes", () =>
@@ -1359,5 +1390,13 @@ Missing key
         yield* Fiber.join(next)
         strictEqual(yield* Ref.get(attempts), 3)
       }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+  })
+
+  it("reads cookies when Headers has no getSetCookie", () => {
+    // React Native's Headers implementation does not provide getSetCookie.
+    const source = new Response(null, { headers: { "content-type": "text/plain" } })
+    Object.defineProperty(source.headers, "getSetCookie", { value: undefined })
+    const response = HttpClientResponse.fromWeb(HttpClientRequest.get("http://localhost"), source)
+    assert.isTrue(Cookies.isEmpty(response.cookies))
   })
 })

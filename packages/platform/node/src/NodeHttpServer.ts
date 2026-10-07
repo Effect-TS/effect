@@ -43,6 +43,7 @@ import {
 import * as Request from "effect/http/HttpServerRequest"
 import { HttpServerRequest } from "effect/http/HttpServerRequest"
 import type { HttpServerResponse } from "effect/http/HttpServerResponse"
+import * as Response from "effect/http/HttpServerResponse"
 import type * as Multipart from "effect/http/Multipart"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
@@ -166,11 +167,14 @@ export const make = Effect.fnUntraced(function*(
         middleware: middleware as any,
         scope
       })
-      yield* Scope.addFinalizerExit(serveScope, () => {
-        server.off("request", handler)
-        server.off("upgrade", upgradeHandler)
-        return preemptiveShutdown
-      })
+      yield* Scope.addFinalizerExit(serveScope, () =>
+        Effect.ensuring(
+          preemptiveShutdown,
+          Effect.sync(() => {
+            server.off("request", handler)
+            server.off("upgrade", upgradeHandler)
+          })
+        ))
       server.on("request", handler)
       server.on("upgrade", upgradeHandler)
     })
@@ -253,15 +257,12 @@ export const makeUpgradeHandler = <
       socket: Duplex,
       head: Buffer
     ) {
-      let upgraded = false
       let nodeResponse_: Http.ServerResponse | undefined = undefined
       const nodeResponse = () => {
         if (nodeResponse_ === undefined) {
           nodeResponse_ = new Http.ServerResponse(nodeRequest)
-          if (upgraded) {
-            // the connection now carries WebSocket frames, so end the response
-            // before a socket is assigned to it to make handleResponse skip the
-            // write (writableEnded check)
+          if (request.upgraded || socket.destroyed) {
+            // End without assigning the socket so handleResponse skips HTTP writes.
             nodeResponse_.end()
           } else {
             nodeResponse_.assignSocket(socket as any)
@@ -276,20 +277,30 @@ export const makeUpgradeHandler = <
         lazyWss,
         (wss) =>
           Effect.acquireRelease(
-            Effect.callback<NodeWS.WebSocket>((resume) =>
+            Effect.callback<NodeWS.WebSocket, Socket.SocketError>((resume) => {
+              // A refused handshake never invokes the callback, so fail on close instead.
+              const onClose = () =>
+                resume(Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({
+                      kind: "Unknown",
+                      cause: new Error("The socket closed before the upgrade")
+                    })
+                  })
+                ))
+              if (socket.destroyed) return onClose()
+              socket.once("close", onClose)
               wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
-                upgraded = true
+                socket.off("close", onClose)
+                request.upgraded = true
                 resume(Effect.succeed(ws))
               })
-            ),
+            }),
             (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
       ))
-      const context = Context.add(
-        services,
-        HttpServerRequest,
-        new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
-      )
+      const request = new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
+      const context = Context.add(services, HttpServerRequest, request)
       const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handledApp), options.scope)
       socket.on("error", () => {})
       socket.on("close", () => {
@@ -305,6 +316,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   readonly [Request.TypeId]: typeof Request.TypeId
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
   private upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError> | undefined
+  upgraded = false
   readonly url: string
   private headersOverride?: Headers.Headers | undefined
 
@@ -522,10 +534,16 @@ export const layerTest: Layer.Layer<
 const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
   Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
+// Reported to middleware in place of the handler's discarded response.
+const upgradedResponse = Response.empty({ status: 101 })
+
 const handleResponse = (
   request: HttpServerRequest,
   response: HttpServerResponse
-): Effect.Effect<void, HttpServerError> => {
+): Effect.Effect<unknown, HttpServerError> => {
+  if ((request as ServerRequestImpl).upgraded) {
+    return Effect.succeed(upgradedResponse)
+  }
   const nodeResponse = (request as ServerRequestImpl).resolvedResponse
   if (nodeResponse.writableEnded) {
     return Effect.void

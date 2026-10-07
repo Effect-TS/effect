@@ -1,9 +1,8 @@
 /**
  * The `OpenAiTelemetry` module defines OpenAI-specific telemetry attributes
  * and a helper for adding them to a tracing span. It keeps the standard GenAI
- * telemetry attributes and adds request and response metadata, such as response
- * format, service tier, and system fingerprint, under the `gen_ai.openai.*`
- * OpenTelemetry namespaces.
+ * telemetry attributes and adds service tier and system fingerprint under
+ * `openai.*`.
  *
  * @since 4.0.0
  */
@@ -28,31 +27,17 @@ import type { Simplify } from "effect/Types"
  */
 export type OpenAiTelemetryAttributes = Simplify<
   & Telemetry.GenAITelemetryAttributes
-  & Telemetry.AttributesWithPrefix<RequestAttributes, "gen_ai.openai.request">
-  & Telemetry.AttributesWithPrefix<ResponseAttributes, "gen_ai.openai.response">
+  & Telemetry.AttributesWithPrefix<RequestAttributes, "openai.request">
+  & Telemetry.AttributesWithPrefix<ResponseAttributes, "openai.response">
 >
 
 /**
- * All telemetry attributes which are part of the GenAI specification,
- * including the OpenAI-specific attributes.
- *
- * @category models
- * @since 4.0.0
- */
-export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & ResponseAttributes
-
-/**
- * Telemetry attributes which are part of the GenAI specification and are
- * namespaced by `gen_ai.openai.request`.
+ * OpenAI request metadata, written under `openai.request.*`.
  *
  * @category models
  * @since 4.0.0
  */
 export interface RequestAttributes {
-  /**
-   * The response format that is requested.
-   */
-  readonly responseFormat?: (string & {}) | WellKnownResponseFormat | null | undefined
   /**
    * The service tier requested. May be a specific tier, `default`, or `auto`.
    */
@@ -61,7 +46,7 @@ export interface RequestAttributes {
 
 /**
  * Telemetry attributes which are part of the GenAI specification and are
- * namespaced by `gen_ai.openai.response`.
+ * namespaced by `openai.response`.
  *
  * @category models
  * @since 4.0.0
@@ -79,21 +64,7 @@ export interface ResponseAttributes {
 }
 
 /**
- * The `gen_ai.openai.request.response_format` attribute has the following
- * list of well-known values.
- *
- * **Details**
- *
- * If one of them applies, then the respective value **MUST** be used;
- * otherwise, a custom value **MAY** be used.
- *
- * @category models
- * @since 4.0.0
- */
-export type WellKnownResponseFormat = "json_object" | "json_schema" | "text"
-
-/**
- * The `gen_ai.openai.request.service_tier` attribute has the following
+ * The `openai.request.service_tier` attribute has the following
  * list of well-known values.
  *
  * **Details**
@@ -120,10 +91,10 @@ export type OpenAiTelemetryAttributeOptions = Telemetry.GenAITelemetryAttributeO
   } | undefined
 }
 
-const addOpenAiRequestAttributes = Telemetry.addSpanAttributes("gen_ai.openai.request", String.camelToSnake)<
+const addOpenAiRequestAttributes = Telemetry.addSpanAttributes("openai.request", String.camelToSnake)<
   RequestAttributes
 >
-const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("gen_ai.openai.response", String.camelToSnake)<
+const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("openai.response", String.camelToSnake)<
   ResponseAttributes
 >
 

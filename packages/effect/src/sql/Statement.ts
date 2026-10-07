@@ -114,7 +114,7 @@ export const CurrentTransformer = Context.Reference<Transformer | undefined>("ef
 })
 
 /**
- * Parents driver spans under `sql.execute` for every client in the current scope,
+ * Parents driver spans under the statement span for every client in the current scope,
  * including acquisition and stream pulls, and records how long each statement
  * waited for a connection as `db.client.connection.wait_time_ms`. Defaults to
  * `false`; ignored when tracing is disabled.
@@ -1271,11 +1271,63 @@ export const defaultTransforms = (
   } as const
 }
 
+/**
+ * Returns the OpenTelemetry database span target for a client with the given
+ * span attributes: `db.namespace`, then `server.address[:server.port]`, or
+ * `undefined` when neither is set.
+ *
+ * @stability unstable
+ * @category tracing
+ * @since 4.0.1
+ */
+export const spanTarget = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string | undefined => {
+  const namespace = spanAttribute(spanAttributes, "db.namespace")
+  if (isNonEmptyString(namespace)) {
+    return namespace
+  }
+  const address = spanAttribute(spanAttributes, "server.address")
+  if (isNonEmptyString(address)) {
+    const port = spanAttribute(spanAttributes, "server.port")
+    return port === undefined ? address : `${address}:${port}`
+  }
+  return undefined
+}
+
+/**
+ * Returns the span name for statements run by a client with the given span
+ * attributes, following the OpenTelemetry database span conventions: the
+ * {@link spanTarget}, then `db.system.name`, falling back to `sql.execute`.
+ *
+ * @stability unstable
+ * @category tracing
+ * @since 4.0.1
+ */
+export const spanName = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string => {
+  const target = spanTarget(spanAttributes)
+  if (target !== undefined) {
+    return target
+  }
+  const system = spanAttribute(spanAttributes, "db.system.name")
+  return isNonEmptyString(system) ? system : "sql.execute"
+}
+
 // internal
 
-const ATTR_DB_OPERATION_NAME = "db.operation.name"
 const ATTR_DB_QUERY_TEXT = "db.query.text"
 const ATTR_DB_CLIENT_CONNECTION_WAIT_TIME = "db.client.connection.wait_time_ms"
+const ATTR_SQL_METHOD = "effect.sql.method"
+
+// the last value wins, matching the order the attributes are applied to spans
+const spanAttribute = (spanAttributes: ReadonlyArray<readonly [string, unknown]>, key: string): unknown => {
+  for (let i = spanAttributes.length - 1; i >= 0; i--) {
+    if (spanAttributes[i][0] === key) {
+      return spanAttributes[i][1]
+    }
+  }
+  return undefined
+}
+
+const isNonEmptyString = (u: unknown): u is string => typeof u === "string" && u.length > 0
 
 interface StatementImpl<A> extends Statement<A> {
   readonly segments: ReadonlyArray<Segment>
@@ -1341,7 +1393,7 @@ const StatementProto: Omit<
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
     return Effect.useSpan(
-      "sql.execute",
+      spanName(this.spanAttributes),
       { kind: "client" },
       (span) =>
         this.withConnectionSpan(
@@ -1368,7 +1420,7 @@ const StatementProto: Omit<
       for (const [key, value] of this.spanAttributes) {
         span.attribute(key, value)
       }
-      span.attribute(ATTR_DB_OPERATION_NAME, operation)
+      span.attribute(ATTR_SQL_METHOD, operation)
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
       const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
       const recordWait = propagate ? connectionWaitRecorder(span, fiber) : undefined
@@ -1405,14 +1457,14 @@ const StatementProto: Omit<
   get stream(): Stream.Stream<any, SqlError> {
     const self = this as StatementImpl<any>
     return Stream.unwrap(Effect.flatMap(
-      Effect.makeSpanScoped("sql.execute", { kind: "client" }),
+      Effect.makeSpanScoped(spanName(self.spanAttributes), { kind: "client" }),
       (span) =>
         withStatement(self, span, (statement, fiber) => {
           const [sql, params] = statement.compile()
           for (const [key, value] of self.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
+          span.attribute(ATTR_SQL_METHOD, "executeStream")
           span.attribute(ATTR_DB_QUERY_TEXT, sql)
           const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
           const recordWait = propagate ? connectionWaitRecorder(span, fiber) : constVoid
@@ -1455,7 +1507,7 @@ const StatementProto: Omit<
   ...Effectable.Prototype<StatementImpl<any>>({
     label: "Statement",
     evaluate(fiber) {
-      const span = internalEffect.makeSpanUnsafe(fiber, "sql.execute", { kind: "client" })
+      const span = internalEffect.makeSpanUnsafe(fiber, spanName(this.spanAttributes), { kind: "client" })
       const clock = fiber.getRef(Clock)
       const timingEnabled = fiber.getRef(TracerTimingEnabled)
       return Effect.onExit(

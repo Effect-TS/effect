@@ -51,7 +51,7 @@ export class HttpServer extends Context.Service<HttpServer, {
     ): Effect.Effect<
       void,
       never,
-      Exclude<R, HttpServerRequest> | Scope.Scope
+      Exclude<Effect.Services<App>, HttpServerRequest> | Scope.Scope
     >
   }
 

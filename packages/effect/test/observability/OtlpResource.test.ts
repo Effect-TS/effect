@@ -1,9 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ConfigProvider, Effect } from "effect"
+import { Cause, ConfigProvider, Effect, Exit } from "effect"
 import { OtlpResource } from "effect/observability"
+import * as Version from "effect/Version"
 
 const attributesRecord = (resource: OtlpResource.Resource): Record<string, string | null | undefined> =>
   Object.fromEntries(resource.attributes.map((attribute) => [attribute.key, attribute.value.stringValue]))
+
+const sdk = {
+  "telemetry.sdk.name": "effect",
+  "telemetry.sdk.language": "nodejs",
+  "telemetry.sdk.version": Version.getCurrentVersion()
+}
 
 describe("OtlpResource", () => {
   describe("fromConfig", () => {
@@ -41,6 +48,7 @@ describe("OtlpResource", () => {
         })
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "custom.attribute": "explicit",
           "service.name": "explicit-service",
           "service.version": "explicit-version"
@@ -69,6 +77,7 @@ describe("OtlpResource", () => {
         })
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "custom.attribute": "explicit",
           "service.name": "explicit-attribute-service",
           "service.version": "explicit-attribute-version"
@@ -92,6 +101,7 @@ describe("OtlpResource", () => {
         const resource = yield* OtlpResource.fromConfig()
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "service.name": "env-service",
           "service.version": "env-version"
         })
@@ -115,6 +125,7 @@ describe("OtlpResource", () => {
         })
 
         assert.deepStrictEqual(attributesRecord(resource), {
+          ...sdk,
           "service.name": "explicit-service"
         })
       }).pipe(
@@ -125,6 +136,36 @@ describe("OtlpResource", () => {
           })
         )
       ))
+
+    it.effect("dies when no service name is configured", () =>
+      Effect.gen(function*() {
+        const exit = yield* Effect.exit(OtlpResource.fromConfig())
+        assert(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+        assert.include(Cause.pretty(exit.cause), "OTEL_SERVICE_NAME")
+      }).pipe(
+        Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromEnv({ env: {} }))
+      ))
+  })
+
+  it("lets custom attributes override SDK defaults and service options override attributes", () => {
+    const resource = OtlpResource.make({
+      serviceName: "test",
+      serviceVersion: "1.0.0",
+      attributes: {
+        "telemetry.sdk.name": "custom",
+        "telemetry.sdk.language": "webjs",
+        "telemetry.sdk.version": "custom-version",
+        "service.name": "attribute-service",
+        "service.version": "attribute-version"
+      }
+    })
+    assert.deepStrictEqual(resource.attributes, [
+      { key: "telemetry.sdk.name", value: { stringValue: "custom" } },
+      { key: "telemetry.sdk.language", value: { stringValue: "webjs" } },
+      { key: "telemetry.sdk.version", value: { stringValue: "custom-version" } },
+      { key: "service.name", value: { stringValue: "test" } },
+      { key: "service.version", value: { stringValue: "1.0.0" } }
+    ])
   })
 
   describe("unknownToAttributeValue", () => {

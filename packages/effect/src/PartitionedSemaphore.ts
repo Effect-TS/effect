@@ -142,36 +142,51 @@ export const makeUnsafe = <K = unknown>(options: {
 
   const partitions = MutableHashMap.empty<K, Set<Waiter>>()
   let iterator = partitions[Symbol.iterator]()
+  let releasing = false
+  let pendingPermits = 0
 
   const releaseUnsafe = (permits: number): number => {
-    while (permits > 0) {
-      if (waitingPermits === 0) {
-        totalPermits = Math.min(maxPermits, totalPermits + permits)
-        return totalPermits
-      }
+    if (permits > 0) {
+      pendingPermits += permits
+    }
 
-      let state = iterator.next()
-      if (state.done) {
-        iterator = partitions[Symbol.iterator]()
-        state = iterator.next()
-        if (state.done) {
-          return totalPermits
+    // Synchronous waiter finalizers can release again. Let the active loop
+    // allocate those permits rather than recursively resuming another fiber.
+    if (!releasing) {
+      releasing = true
+      try {
+        while (pendingPermits > 0 && waitingPermits > 0) {
+          let state = iterator.next()
+          if (state.done) {
+            iterator = partitions[Symbol.iterator]()
+            state = iterator.next()
+            if (state.done) {
+              break
+            }
+          }
+
+          const waiter = state.value[1].values().next().value
+          if (waiter === undefined) {
+            continue
+          }
+
+          waiter.permits -= 1
+          waitingPermits -= 1
+          pendingPermits -= 1
+
+          if (waiter.permits === 0) {
+            waiter.resume()
+          }
         }
+      } finally {
+        releasing = false
       }
+    }
 
-      const waiter = state.value[1].values().next().value
-      if (waiter === undefined) {
-        continue
-      }
-
-      waiter.permits -= 1
-      waitingPermits -= 1
-
-      if (waiter.permits === 0) {
-        waiter.resume()
-      }
-
-      permits -= 1
+    // Free permits must be visible before a reentrant release returns.
+    if (waitingPermits === 0) {
+      totalPermits = Math.min(maxPermits, totalPermits + pendingPermits)
+      pendingPermits = 0
     }
 
     return totalPermits

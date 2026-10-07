@@ -383,11 +383,11 @@ function flatMapSourcePull<A, B>(
     Effect.suspend(() => {
       const current = stack[stack.length - 1]
       if (current === undefined) return done()
-      return Effect.matchEffect(current, {
-        onFailure: () => {
+      return Effect.matchCauseEffect(current, {
+        onFailure: Model.onTypedFailure(() => {
           stack.pop()
           return loop()
-        },
+        }),
         onSuccess: (sourceAttempt) => {
           if (sourceAttempt._tag === "Discarded") return Effect.succeed<Model.Attempt<B>>(sourceAttempt)
           const sourceSample = sourceAttempt
@@ -505,14 +505,14 @@ const evaluateProperty = <A, E, R>(
 ): Effect.Effect<typeof passedProperty | PropertyFailure<E>, never, R> => {
   const output = property(value)
   if (!Effect.isEffect(output)) return Effect.succeed(output === true ? passedProperty : returnedFalse)
-  return Effect.matchEager(output, {
-    onFailure: (error): PropertyError<E> => ({ _tag: "PropertyError", error }),
-    onSuccess: (success) => success === true ? passedProperty : returnedFalse
+  return Effect.matchCauseEffectEager(output, {
+    onFailure: Model.onTypedFailure((error: E) => Effect.succeed<PropertyError<E>>({ _tag: "PropertyError", error })),
+    onSuccess: (success) => Effect.succeed(success === true ? passedProperty : returnedFalse)
   })
 }
 
 const pullNext = <A>(pull: Model.ShrinkPull<Model.Attempt<A>>): Effect.Effect<Model.Attempt<A> | undefined> =>
-  Effect.catch(pull, () => Effect.succeed(undefined))
+  Effect.catchCause(pull, Model.onTypedFailure(() => Effect.succeed(undefined)))
 
 const shrink = Effect.fnUntraced(function*<A, E, R>(
   initial: Model.Sample<A>,

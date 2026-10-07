@@ -4708,6 +4708,36 @@ Expected a value between -2147483648 and 2147483647`
         strictEqual(secondCalls, 1)
       }))
 
+    it(`mode: "oneOf" succeeds on each execution of the same suspended decode effect`, () => {
+      const first = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformEffect((s) => Effect.sync(() => s)),
+        encode: SchemaGetter.passthrough()
+      }))
+      const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))], { mode: "oneOf" })
+      const effect = SchemaParser.decodeUnknownEffect(schema)("a")
+
+      strictEqual(Effect.runSync(effect), "a")
+      strictEqual(Effect.runSync(effect), "a")
+    })
+
+    it(`mode: "anyOf" does not reuse a previous success when all members now fail`, () => {
+      let succeeds = true
+      const first = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformEffect((s) =>
+          Effect.suspend(() =>
+            succeeds ? Effect.succeed(s) : Effect.fail(new SchemaIssue.Forbidden({ message: "first failed" }))
+          )
+        ),
+        encode: SchemaGetter.passthrough()
+      }))
+      const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))])
+      const effect = SchemaParser.decodeUnknownEffect(schema)("a")
+
+      strictEqual(Effect.runSync(effect), "a")
+      succeeds = false
+      strictEqual(Effect.runSync(Effect.flip(effect))._tag, "AnyOf")
+    })
+
     it.effect(`mode: "oneOf" detects asynchronous successes in member order`, () =>
       Effect.gen(function*() {
         const firstStarted = yield* Deferred.make<void>()
@@ -9533,9 +9563,21 @@ pointed message
           Schema.Struct({ _tag: Schema.tag("B"), type: Schema.tag("TypeB"), b: Schema.FiniteFromString })
         ]).pipe(Schema.toTaggedUnion("type"))
 
+        strictEqual(schema.tag, "type")
+
         // cases
         deepStrictEqual(schema.cases.TypeA, schema.members[0])
         deepStrictEqual(schema.cases.TypeB, schema.members[1])
+      })
+
+      it("should expose a symbol tag", () => {
+        const tag = Symbol.for("tag")
+        const schema = Schema.Union([
+          Schema.Struct({ [tag]: Schema.tag("A") }),
+          Schema.Struct({ [tag]: Schema.tag("B") })
+        ]).pipe(Schema.toTaggedUnion(tag))
+
+        strictEqual(schema.tag, tag)
       })
 
       it("should throw on duplicate discriminants", () => {
@@ -9601,6 +9643,8 @@ pointed message
           C: { c: Schema.Boolean },
           B: { b: Schema.FiniteFromString }
         }).annotate({})
+
+        strictEqual(schema.tag, "_tag")
 
         const { A, B, C } = schema.cases
 

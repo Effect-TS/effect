@@ -1221,12 +1221,9 @@ export const shutdownUnsafe = <A, E>(self: Enqueue<A, E>): boolean => {
  * @since 4.0.0
  */
 export const clear = <A, E>(self: Dequeue<A, E>): Effect<Array<A>, Pull.ExcludeDone<E>> =>
-  internalEffect.suspend(() => {
+  suspendTake(() => {
     if (self.state._tag === "Done") {
-      if (Pull.isDoneCause(self.state.exit.cause)) {
-        return internalEffect.succeed([])
-      }
-      return self.state.exit
+      return Pull.catchDone(self.state.exit, () => internalEffect.succeed([]))
     }
     const messages = takeAllUnsafe(self)
     releaseCapacity(self)
@@ -1408,7 +1405,7 @@ export const takeBetween: {
 } = dual(3, <A, E>(self: Dequeue<A, E>, min: number, max: number): Effect<Array<A>, E> => {
   min = Count.normalize(min)
   max = Count.normalize(max)
-  return internalEffect.suspend(() =>
+  return suspendTake(() =>
     takeBetweenUnsafe(self, min, max) ??
       internalEffect.andThen(awaitTake(self, () => canTake(self, min)), takeBetween(self, min, max))
   )
@@ -1454,9 +1451,7 @@ export const takeBetween: {
  * @since 2.0.0
  */
 export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
-  internalEffect.suspend(() =>
-    takeUnsafe(self) ?? internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), take(self))
-  )
+  suspendTake(() => takeUnsafe(self) ?? internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), take(self)))
 
 /**
  * Attempts to take one item from the queue without waiting.
@@ -1493,7 +1488,7 @@ export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
  * @since 2.0.0
  */
 export const poll = <A, E>(self: Dequeue<A, E>): Effect<Option.Option<A>> =>
-  internalEffect.suspend(() => {
+  suspendTake(() => {
     const result = takeUnsafe(self)
     if (result === undefined) {
       return internalEffect.succeed(Option.none())
@@ -1989,6 +1984,15 @@ const takeBetweenUnsafe = <A, E>(
   return core.exitSucceed(messages)
 }
 
+// Deliver dequeued results in the same fiber step to prevent message loss on interruption.
+const suspendTake: <A, E>(f: () => Effect<A, E>) => Effect<A, E> = core.makePrimitive({
+  op: "QueueTake",
+  [core.evaluate](fiber) {
+    const effect = this[core.args]()
+    return core.isExit(effect) ? (effect as unknown as core.Primitive)[core.evaluate](fiber) : effect
+  }
+})
+
 // Whether a take of at least `min` messages can complete without waiting.
 // A closing queue receives no more messages, so any remainder satisfies `min`.
 const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
@@ -2077,6 +2081,11 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
       }
       self.state.offers.delete(entry)
       entry.resume(core.exitSucceed([]))
+    }
+    // The resumed producer may have replaced the state with Done.
+    const state = self.state as Queue.State<A, E>
+    if (state._tag === "Done") {
+      return Pull.isDoneCause(state.exit.cause)
     }
   }
   return false

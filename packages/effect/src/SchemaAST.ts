@@ -3800,7 +3800,14 @@ function parseUnionCandidates(
     if (state.out) return state.out
     return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
   }
-  return resumeUnion(eff, state)
+  if (effectIsExit(eff)) return resumeUnion(eff, state)
+  // Reparse on later runs to avoid reusing mutable traversal state.
+  let first = true
+  return Effect.suspend(() => {
+    if (!first) return parseUnionCandidates(ast, parser, candidates, input, options)
+    first = false
+    return resumeUnion(eff, state)
+  })
 }
 
 function resumeUnion(

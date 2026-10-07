@@ -107,6 +107,7 @@ export default defineConfig({
           : undefined
       ),
       ...project("@effect/ai-anthropic", "packages/ai/anthropic"),
+      ...project("@effect/ai-cloudflare", "packages/ai/cloudflare"),
       ...project("@effect/ai-openai", "packages/ai/openai"),
       ...project("@effect/ai-typesafe", "packages/ai/typesafe"),
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),

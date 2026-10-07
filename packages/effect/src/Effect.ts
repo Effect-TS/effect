@@ -7084,6 +7084,11 @@ export const onExitFilter: {
  * evaluations of the same effect will return the cached result without
  * re-executing the logic.
  *
+ * Concurrent callers share the pending computation, which is interrupted only
+ * once every caller waiting on it has been interrupted. Interrupted
+ * computations are never cached, so the next evaluation starts a fresh
+ * computation.
+ *
  * **Example** (Memoizing an effect until invalidated)
  *
  * ```ts import.meta.vitest
@@ -7145,11 +7150,12 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  * `Duration.Input`. The function runs once after each fresh computation,
  * including failures, so successes and failures can have different TTLs. It
  * does not run when the cache is created or when a cached result is reused.
- * The callback also receives interruption exits, which are cached for the
- * returned duration.
+ * Interrupted computations are never cached and do not call the function.
  *
  * The TTL starts when the computation completes. Concurrent callers share the
- * pending computation. A zero TTL expires immediately, and an infinite TTL
+ * pending computation, which is interrupted only once every caller waiting on
+ * it has been interrupted. The next evaluation then starts a fresh
+ * computation. A zero TTL expires immediately, and an infinite TTL
  * keeps the result indefinitely.
  *
  * **Example** (Memoizing an effect with TTL)
@@ -7218,8 +7224,8 @@ export const cachedWithTTL: {
 } = internal.cachedWithTTL
 
 /**
- * Creates a cached effect result for a specified duration and allows manual
- * invalidation before expiration.
+ * Creates a cached effect result for a fixed duration or a duration computed
+ * from its `Exit` and allows manual invalidation before expiration.
  *
  * **When to use**
  *
@@ -7276,8 +7282,17 @@ export const cachedWithTTL: {
  * @since 2.0.0
  */
 export const cachedInvalidateWithTTL: {
+  <A, E>(
+    timeToLive: (exit: Exit.Exit<A, E>) => Duration.Input
+  ): <R>(self: Effect<A, E, R>) => Effect<[Effect<A, E, R>, Effect<void>]>
   (timeToLive: Duration.Input): <A, E, R>(self: Effect<A, E, R>) => Effect<[Effect<A, E, R>, Effect<void>]>
-  <A, E, R>(self: Effect<A, E, R>, timeToLive: Duration.Input): Effect<[Effect<A, E, R>, Effect<void>]>
+  <A, E>(
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): <R>(self: Effect<A, E, R>) => Effect<[Effect<A, E, R>, Effect<void>]>
+  <A, E, R>(
+    self: Effect<A, E, R>,
+    timeToLive: Duration.Input | ((exit: Exit.Exit<A, E>) => Duration.Input)
+  ): Effect<[Effect<A, E, R>, Effect<void>]>
 } = internal.cachedInvalidateWithTTL
 
 // -----------------------------------------------------------------------------
@@ -14618,7 +14633,7 @@ export const tx = <A, E, R>(
 ): Effect<A, E, Exclude<R, Transaction>> =>
   withFiber((fiber) => {
     let state = Context.getOrUndefined(fiber.context, Transaction)
-    if (state) {
+    if (state && !completedTransactions.has(state)) {
       return effect as Effect<A, E, Exclude<R, Transaction>>
     }
     // Create transaction state only at the outermost boundary
@@ -14631,8 +14646,11 @@ export const tx = <A, E, R>(
           body: constant(
             restore(effect).pipe(
               provideService(Transaction, state),
-              tapCause(() => {
+              tapCause((cause) => {
                 if (!state.retry) return void_
+                // txRetry interrupts the body; any other reason in the cause is a real failure.
+                // Roll back now so the step below fails instead of waiting or rerunning.
+                if (!internal.hasInterruptsOnly(cause)) return sync(() => clearTransaction(state))
                 return restore(awaitPendingTransaction(state))
               }),
               exit
@@ -14644,9 +14662,9 @@ export const tx = <A, E, R>(
             }
             if (Exit.isSuccess(exit)) {
               commitTransaction(fiber, state)
-            } else {
-              clearTransaction(state)
             }
+            clearTransaction(state)
+            completedTransactions.add(state)
             result = exit
           }
         }),
@@ -14654,6 +14672,10 @@ export const tx = <A, E, R>(
       )
     )
   })
+
+// Child fibers inherit the boundary's state, so mark it completed once the
+// boundary finishes and let later `tx` calls start a fresh boundary.
+const completedTransactions = new WeakSet<Transaction["Service"]>()
 
 const isTransactionConsistent = (state: Transaction["Service"]) => {
   for (const [ref, { version }] of state.journal) {
@@ -15071,7 +15093,7 @@ export const effectify: {
       try {
         fn(...args, (err: globalThis.Error | null, result: A) => {
           if (err) {
-            resume(fail(onError ? onError(err, args) : err))
+            resume(onError ? suspend(() => fail(onError(err, args))) : fail(err))
           } else {
             resume(succeed(result))
           }

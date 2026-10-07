@@ -20,6 +20,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Rec from "effect/Record"
+import * as Version from "effect/Version"
 
 /**
  * Service tag for OpenTelemetry metadata attached to emitted telemetry.
@@ -55,8 +56,16 @@ export const layer = (config: {
     Resources.resourceFromAttributes(configToAttributes(config))
   )
 
+const sdkAttributes = (): Record<string, string> => ({
+  [OtelSemConv.ATTR_TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
+  [OtelSemConv.ATTR_TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
+    ? OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
+    : OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_WEBJS,
+  [OtelSemConv.ATTR_TELEMETRY_SDK_VERSION]: Version.getCurrentVersion()
+})
+
 /**
- * Converts resource configuration into OpenTelemetry attributes, adding service name, optional service version, and telemetry SDK metadata.
+ * Converts service metadata into OpenTelemetry attributes with SDK defaults.
  *
  * **When to use**
  *
@@ -66,14 +75,8 @@ export const layer = (config: {
  *
  * **Details**
  *
- * The returned record copies `attributes` first, then sets `service.name`,
- * `telemetry.sdk.name`, and `telemetry.sdk.language`. `service.version` is
- * included only when `serviceVersion` is provided.
- *
- * **Gotchas**
- *
- * Custom values for `service.name` and `telemetry.sdk.*` are overwritten by this
- * helper. An empty `serviceVersion` is treated as absent.
+ * Custom attributes override `telemetry.sdk.*` defaults. Service options override
+ * matching attributes. An empty `serviceVersion` is treated as absent.
  *
  * @see {@link layer} for creating a `Resource` layer from explicit metadata
  * @see {@link layerFromEnv} for merging attributes with OpenTelemetry environment variables
@@ -88,12 +91,9 @@ export const configToAttributes = (options: {
   readonly attributes?: OtelApi.Attributes
 }): Record<string, string> => {
   const attributes: Record<string, string> = {
+    ...sdkAttributes(),
     ...(options.attributes ?? undefined),
-    [OtelSemConv.ATTR_SERVICE_NAME]: options.serviceName,
-    [OtelSemConv.ATTR_TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
-    [OtelSemConv.ATTR_TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
-      ? OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
-      : OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_WEBJS
+    [OtelSemConv.ATTR_SERVICE_NAME]: options.serviceName
   }
   if (options.serviceVersion) {
     attributes[OtelSemConv.ATTR_SERVICE_VERSION] = options.serviceVersion
@@ -102,7 +102,8 @@ export const configToAttributes = (options: {
 }
 
 /**
- * Creates a `Resource` layer from OpenTelemetry environment variables, optionally merging additional attributes.
+ * Creates a `Resource` layer from SDK defaults, then environment variables,
+ * then additional attributes (later values take precedence).
  *
  * @stability unstable
  * @category layers
@@ -135,6 +136,7 @@ export const layerFromEnv = (
         attributes[OtelSemConv.ATTR_SERVICE_NAME] = serviceName.value
       }
       return Resources.resourceFromAttributes({
+        ...sdkAttributes(),
         ...attributes,
         ...additionalAttributes
       })

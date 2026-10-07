@@ -470,7 +470,12 @@ const asyncQueue = <A, E = never, R = never>(
     strategy: options?.strategy
   }).pipe(
     Effect.tap((queue) => Scope.addFinalizer(scope, Queue.shutdown(queue))),
-    Effect.tap((queue) => Effect.forkIn(Scope.provide(f(queue), scope), scope))
+    Effect.tap((queue) =>
+      Scope.provide(f(queue), scope).pipe(
+        Effect.catchCause((cause) => Queue.failCause(queue, cause)),
+        Effect.forkIn(scope)
+      )
+    )
   )
 
 /**
@@ -591,8 +596,10 @@ export const acquireUseRelease = <A, E, R, OutElem, OutErr, OutDone, InElem, InE
         Option.isSome(option)
           ? release(option.value, exit as any)
           : Effect.void)
-      const value = yield* Effect.uninterruptible(acquire)
-      option = Option.some(value)
+      const value = yield* Effect.uninterruptible(Effect.map(acquire, (value) => {
+        option = Option.some(value)
+        return value
+      }))
       return yield* toTransform(use(value))(upstream, scope)
     })
   )
@@ -2235,8 +2242,8 @@ export const mapInput: {
   <InElem, InElem2, InErr, R = never>(
     f: (i: InElem2) => Effect.Effect<InElem, InErr, R>
   ): <OutElem, OutErr, OutDone, InErr, InDone, Env>(
-    self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env | R>
-  ) => Channel<OutElem, OutErr, OutDone, InElem2, InErr, InDone, Env>
+    self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
+  ) => Channel<OutElem, OutErr, OutDone, InElem2, InErr, InDone, Env | R>
   <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, InElem2, R = never>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
     f: (i: InElem2) => Effect.Effect<InElem, InErr, R>
@@ -6333,17 +6340,17 @@ export const mergeAll: {
               Effect.flatMap((value) => Queue.offer(queue, value)),
               Effect.forever({ disableYield: true }),
               Effect.onError(Effect.fnUntraced(function*(cause) {
-                const halt = Pull.filterDone(cause)
-                yield* Effect.exit(Scope.close(
-                  childScope,
-                  !Result.isFailure(halt) ? Exit.succeed(halt.success.value) : Exit.failCause(halt.failure)
-                ))
+                const exit = Pull.doneExitFromCause(cause)
+                const closeExit = yield* Effect.exit(Scope.close(childScope, exit))
                 if (!fibers.has(fiber)) return
+                // Publish usage and finalizer failures before releasing the
+                // permit or opening the latch, so the outer channel cannot
+                // complete ahead of them.
+                const failure = Exit.asVoidAll([exit, closeExit])
+                if (Exit.isFailure(failure)) yield* Queue.failCause(queue, failure.cause)
                 fibers.delete(fiber)
                 if (semaphore) yield* semaphore.release(1)
                 if (fibers.size === 0) yield* doneLatch.open
-                if (Result.isSuccess(halt)) return
-                return yield* Queue.failCause(queue, cause as any)
               })),
               Effect.forkChild
             )
@@ -6531,9 +6538,11 @@ export const merge: {
           )
         ),
         Effect.onError((cause) =>
-          Effect.andThen(
-            Scope.close(scope, Pull.doneExitFromCause(cause)),
-            onExit(side, cause)
+          Effect.onExitPrimitive(Pull.doneExitFromCause(cause), (exit) => Scope.close(scope, exit)).pipe(
+            Effect.matchCauseEffect({
+              onFailure: (cause) => onExit(side, cause),
+              onSuccess: () => onExit(side, cause)
+            })
           )
         ),
         Effect.forkIn(forkedScope)
@@ -6717,7 +6726,10 @@ export const splitLines = <Err, Done>(): Channel<
  * @category decoding
  * @since 4.0.0
  */
-export const decodeText = <Err, Done>(encoding?: string, options?: TextDecoderOptions): Channel<
+export const decodeText = <Err, Done>(
+  encoding?: string,
+  options?: ConstructorParameters<typeof TextDecoder>[1]
+): Channel<
   Arr.NonEmptyReadonlyArray<string>,
   Err,
   Done,
@@ -8719,14 +8731,14 @@ export const runIntoPubSub: {
     } | undefined
   ): <OutErr, OutDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>
-  ) => Effect.Effect<void, never, Env>
+  ) => Effect.Effect<void, OutErr, Env>
   <OutElem, OutErr, OutDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>,
     pubsub: PubSub.PubSub<OutElem>,
     options?: {
       readonly shutdownOnEnd?: boolean | undefined
     } | undefined
-  ): Effect.Effect<void, never, Env>
+  ): Effect.Effect<void, OutErr, Env>
 } = dual(
   (args) => isChannel(args[0]),
   <OutElem, OutErr, OutDone, Env>(

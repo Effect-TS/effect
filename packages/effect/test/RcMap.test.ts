@@ -569,4 +569,32 @@ describe("RcMap", () => {
       yield* Fiber.join(close)
       assert.strictEqual(released, 2)
     }))
+
+  it.effect("drops an interrupted lookup and closes its scope", () =>
+    Effect.gen(function*() {
+      let lookups = 0
+      const started = yield* Deferred.make<void>()
+      const interrupt = yield* Deferred.make<void>()
+      const finalized = yield* Deferred.make<void>()
+      const map = yield* RcMap.make({
+        lookup: (_key: string) =>
+          Effect.gen(function*() {
+            if (++lookups > 1) return lookups
+            yield* Effect.addFinalizer(() => Deferred.succeed(finalized, void 0))
+            yield* Deferred.succeed(started, void 0)
+            yield* Deferred.await(interrupt)
+            return yield* Effect.interrupt
+          }),
+        idleTimeToLive: "1 minute"
+      })
+
+      // The only borrower leaves, so nothing else releases the entry.
+      const borrower = yield* Effect.forkChild(Effect.scoped(RcMap.get(map, "key")), { startImmediately: true })
+      yield* Deferred.await(started)
+      yield* Fiber.interrupt(borrower)
+      yield* Deferred.succeed(interrupt, void 0)
+
+      assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "key")), 2)
+      yield* Deferred.await(finalized)
+    }))
 })

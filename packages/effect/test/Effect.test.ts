@@ -663,6 +663,33 @@ describe("Effect", () => {
       }))
   })
 
+  describe("effectify", () => {
+    it.effect("turns a throwing onError mapper in an async callback into a defect", () =>
+      Effect.gen(function*() {
+        let callback!: (error: Error | null, value?: string) => void
+        let finalized = false
+        const defect = new Error("mapper")
+        const effectified = Effect.effectify(
+          (cb: (error: Error | null, value?: string) => void) => {
+            callback = cb
+          },
+          () => {
+            throw defect
+          }
+        )
+        const fiber = yield* effectified().pipe(
+          Effect.ensuring(Effect.sync(() => {
+            finalized = true
+          })),
+          Effect.forkChild({ startImmediately: true })
+        )
+        // Invoke after registration returns, outside effectify's synchronous try/catch.
+        assert.doesNotThrow(() => callback(new Error("source")))
+        assertExitDefect(yield* Fiber.await(fiber), defect)
+        assert.isTrue(finalized)
+      }))
+  })
+
   describe("gen", () => {
     it("gen", () =>
       Effect.gen(function*() {
@@ -1443,6 +1470,15 @@ describe("Effect", () => {
   }
 
   describe("repeat", () => {
+    it.effect("preserves finalizer defects accompanying schedule completion", () =>
+      Effect.gen(function*() {
+        const policy = Schedule.fromStep(
+          Effect.succeed(() => Cause.done(42).pipe(Effect.ensuring(Effect.die("cleanup failed"))))
+        )
+        const exit = yield* Effect.exit(Effect.repeat(Effect.void, policy))
+        assert.deepStrictEqual(exit, Exit.die("cleanup failed"))
+      }))
+
     it.effect("is interruptible", () =>
       Effect.gen(function*() {
         const fiber = yield* Effect.void.pipe(
@@ -1572,6 +1608,18 @@ describe("Effect", () => {
   })
 
   describe("retry", () => {
+    it.effect("does not retry typed failures accompanied by finalizer defects", () =>
+      Effect.gen(function*() {
+        let attempts = 0
+        const source = Effect.suspend(() => {
+          attempts++
+          return Effect.fail("error").pipe(Effect.ensuring(Effect.die("cleanup failed")))
+        })
+        const exit = yield* Effect.exit(Effect.retry(source, Schedule.recurs(1)))
+        assert.strictEqual(attempts, 1)
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail("error"), Cause.die("cleanup failed"))))
+      }))
+
     it.live("nothing on success", () =>
       Effect.gen(function*() {
         let count = 0
@@ -3825,6 +3873,19 @@ describe("Effect", () => {
   })
 
   describe("catchCause", () => {
+    it("repeated throwing handlers do not overflow the stack and run finalizers", () => {
+      let program: Effect.Effect<unknown> = Effect.die("initial")
+      for (let i = 0; i < 20_000; i++) {
+        program = Effect.catchCause(program, () => {
+          throw "handler defect"
+        })
+      }
+      let finalized = 0
+      const exit = Effect.runSyncExit(Effect.ensuring(program, Effect.sync(() => finalized++)))
+      assert.deepStrictEqual(exit, Exit.die("handler defect"))
+      assert.strictEqual(finalized, 1)
+    })
+
     it.effect("first argument as success", () =>
       Effect.gen(function*() {
         const result = yield* Effect.catchCause(Effect.succeed(1), () => Effect.fail("e2" as const))
@@ -3855,6 +3916,20 @@ describe("Effect", () => {
 
           assert.strictEqual(val1, 10)
           assert.strictEqual(val2, 200)
+        }))
+
+      it.effect("should publish child transaction writes after the enclosing transaction completes", () =>
+        Effect.gen(function*() {
+          const ref = TxRef.makeUnsafe(0)
+          const gate = yield* Deferred.make<void>()
+          const child = yield* Effect.tx(
+            Effect.forkChild(Deferred.await(gate).pipe(Effect.andThen(Effect.tx(TxRef.set(ref, 42)))))
+          )
+
+          yield* Deferred.succeed(gate, undefined)
+          yield* Fiber.join(child)
+
+          assert.strictEqual(yield* TxRef.get(ref), 42)
         }))
 
       it.effect("should allow TxRef.modify outside an existing transaction", () =>
@@ -4002,6 +4077,29 @@ describe("Effect", () => {
     })
 
     describe("retry", () => {
+      it.effect("should preserve a retry cleanup failure when a read ref changes during cleanup", () =>
+        Effect.gen(function*() {
+          const ref = TxRef.makeUnsafe(0)
+          const cleaning = yield* Deferred.make<void>()
+          const release = yield* Deferred.make<void>()
+          const transaction = yield* Effect.tx(Effect.gen(function*() {
+            if ((yield* TxRef.get(ref)) !== 0) return
+            return yield* Effect.txRetry.pipe(Effect.onExit(() =>
+              Deferred.succeed(cleaning, undefined).pipe(
+                Effect.andThen(Deferred.await(release)),
+                Effect.andThen(Effect.fail("release-error"))
+              )
+            ))
+          })).pipe(Effect.forkChild)
+
+          yield* Deferred.await(cleaning)
+          yield* Effect.tx(TxRef.set(ref, 1))
+          yield* Deferred.succeed(release, undefined)
+
+          const error = yield* Fiber.join(transaction).pipe(Effect.flip)
+          assert.strictEqual(error, "release-error")
+        }))
+
       it.effect("should rerun when a read ref changed while the transaction was suspended", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)
@@ -4407,25 +4505,60 @@ describe("Effect", () => {
         assert.strictEqual(yield* cached, 42)
       }))
 
-    it.effect("replays the owner's interrupted exit", () =>
+    it.effect("shares a run until every caller is interrupted, then starts fresh", () =>
       Effect.gen(function*() {
+        let runs = 0
         const started = yield* Deferred.make<void>()
+        const finalizing = yield* Deferred.make<void>()
+        const finishFinalizer = yield* Deferred.make<void>()
         const cached = yield* Effect.cached(
-          Deferred.succeed(started, void 0).pipe(Effect.andThen(Effect.never))
+          Effect.suspend(() => {
+            if (++runs > 1) return Effect.succeed(runs)
+            return Deferred.succeed(started, void 0).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() =>
+                Deferred.succeed(finalizing, void 0).pipe(Effect.andThen(Deferred.await(finishFinalizer)))
+              )
+            )
+          })
         )
 
-        const owner = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        const first = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
         yield* Deferred.await(started)
-        yield* Fiber.interrupt(owner)
-        const ownerExit = yield* Fiber.await(owner)
-        const replayedExit = yield* Effect.exit(cached)
+        const second = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(first)
+        assert.isFalse(yield* Deferred.isDone(finalizing))
 
-        assert.isTrue(Exit.hasInterrupts(ownerExit))
-        assert.deepStrictEqual(replayedExit, ownerExit)
+        // A call made while the abandoned run finalizes starts a fresh run.
+        const interruptSecond = yield* Effect.forkChild(Fiber.interrupt(second), { startImmediately: true })
+        yield* Deferred.await(finalizing)
+        const fresh = yield* cached.pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.succeed(finishFinalizer, void 0)
+        yield* Fiber.join(interruptSecond)
+        assert.deepStrictEqual(yield* Fiber.await(fresh), Exit.succeed(2))
       }))
   })
 
   describe("cachedWithTTL", () => {
+    it.effect("skips the ttl callback on interruption and invokes it once on the next successful run", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const exits: Array<Exit.Exit<number>> = []
+        const cached = yield* Effect.cachedWithTTL(
+          Effect.suspend(() => ++runs === 1 ? Effect.interrupt : Effect.succeed(runs)),
+          (exit: Exit.Exit<number>) => {
+            exits.push(exit)
+            return "1 minute"
+          }
+        )
+
+        assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(cached)))
+        assert.deepStrictEqual(exits, [])
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.succeed(2)])
+      }))
+
     it.effect("selects ttl from each fresh exit without evaluating on cache hits", () =>
       Effect.gen(function*() {
         let count = 0
@@ -4499,6 +4632,28 @@ describe("Effect", () => {
         yield* TestClock.adjust("2 seconds")
         assert.strictEqual(yield* Fiber.join(secondFiber), 1)
         assert.strictEqual(count, 1)
+      }))
+  })
+
+  describe("cachedInvalidateWithTTL", () => {
+    it.effect("supports a piped callback that skips failures and caches successes", () =>
+      Effect.gen(function*() {
+        let count = 0
+        const exits: Array<Exit.Exit<number, string>> = []
+        const [cached] = yield* Effect.suspend(() => ++count === 1 ? Effect.fail("boom") : Effect.succeed(count)).pipe(
+          Effect.cachedInvalidateWithTTL((exit: Exit.Exit<number, string>) => {
+            exits.push(exit)
+            return Exit.isFailure(exit) ? 0 : "1 second"
+          })
+        )
+
+        assert.deepStrictEqual(yield* Effect.exit(cached), Exit.fail("boom"))
+        assert.strictEqual(yield* cached, 2)
+        assert.strictEqual(yield* cached, 2)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2)])
+        yield* TestClock.adjust("1 second")
+        assert.strictEqual(yield* cached, 3)
+        assert.deepStrictEqual(exits, [Exit.fail("boom"), Exit.succeed(2), Exit.succeed(3)])
       }))
   })
 

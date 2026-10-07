@@ -15,6 +15,22 @@ import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { deepStrictEqual, strictEqual } from "../utils/assert.ts"
 
 describe("compiler regression contracts", () => {
+  it.effect("re-running a compiled Struct decoder keeps earlier results intact", () =>
+    Effect.gen(function*() {
+      let ids = 0
+      const schema = Schema.Struct({
+        id: Schema.Number.pipe(Schema.decode({
+          decode: SchemaGetter.transformEffect(() => Effect.sync(() => ++ids)),
+          encode: SchemaGetter.passthrough()
+        }))
+      })
+      SchemaJITCompiler.enable(schema.ast)
+      const program = SchemaParser.decodeUnknownEffect(schema)({ id: 0 })
+      const first = yield* program
+      const second = yield* program
+      assert.deepStrictEqual([first, second], [{ id: 1 }, { id: 2 }])
+    }))
+
   it("preserves template literal issues after compilation", () => {
     const schema = Schema.TemplateLiteral(["count:", Schema.Int.check(Schema.isGreaterThan(0))])
     const inputs = ["count:1", "count:0", "count:1.5", "invalid", null]

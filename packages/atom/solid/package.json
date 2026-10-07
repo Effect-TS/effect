@@ -1,6 +1,6 @@
 {
   "name": "@effect/atom-solid",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "type": "module",
   "license": "MIT",
   "description": "SolidJS bindings for the Effect Atom modules",

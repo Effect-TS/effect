@@ -1,10 +1,12 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
   ByteSize,
+  Cause,
   Config,
   ConfigProvider,
   Duration,
   Effect,
+  Exit,
   Option,
   pipe,
   Redacted,
@@ -87,6 +89,29 @@ describe("Config", () => {
         assert.strictEqual(recovered, false)
       }
     }))
+
+  it.effect("does not recover source errors with finalizer defects", () =>
+    Effect.gen(function*() {
+      const sourceError = new ConfigProvider.SourceError({ message: "read failed" })
+      const cleanup = new Error("cleanup failed")
+      const provider = ConfigProvider.make(() => Effect.fail(sourceError).pipe(Effect.ensuring(Effect.die(cleanup))))
+      const exit = yield* Effect.exit(
+        Config.String("value").pipe(Config.orElse(() => Config.succeed("fallback"))).parse(provider)
+      )
+
+      assert.deepStrictEqual(
+        exit,
+        Exit.failCause(Cause.combine(Cause.fail(new Config.ConfigError(sourceError)), Cause.die(cleanup)))
+      )
+    }))
+
+  it("preserves provider defects and interruption reasons", async () => {
+    const cause = Cause.combine(Cause.die(new Error("provider defect")), Cause.interrupt(123))
+    const provider = ConfigProvider.make(() => Effect.failCause(cause))
+    const exit = await Effect.runPromiseExit(Config.String("value").parse(provider))
+
+    assert.deepStrictEqual(exit, Exit.failCause(cause))
+  })
 
   describe("constructors", () => {
     it("fail creates an always-failing config", async () => {

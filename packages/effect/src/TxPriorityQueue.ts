@@ -383,8 +383,10 @@ export const offerAll: {
   <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void>
 } = dual(
   2,
-  <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => mergeSorted(chunk, Array.from(values).sort(self.ord), self.ord))
+  <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void> => {
+    const sorted = Array.from(values).sort(self.ord)
+    return TxRef.update(self.ref, (chunk) => mergeSorted(chunk, sorted, self.ord))
+  }
 )
 
 /**

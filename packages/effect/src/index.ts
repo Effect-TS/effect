@@ -721,3 +721,8 @@ export * as Unify from "./Unify.ts"
  * @since 2.0.0
  */
 export * as Utils from "./Utils.ts"
+
+/**
+ * @since 4.0.2
+ */
+export * as Version from "./Version.ts"

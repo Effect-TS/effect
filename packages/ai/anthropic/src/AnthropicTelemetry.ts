@@ -32,15 +32,6 @@ export type AnthropicTelemetryAttributes = Simplify<
 >
 
 /**
- * All telemetry attributes which are part of the GenAI specification,
- * including the Anthropic-specific attributes.
- *
- * @category models
- * @since 4.0.0
- */
-export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & ResponseAttributes
-
-/**
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.anthropic.request`.
  *
@@ -70,14 +61,6 @@ export interface ResponseAttributes {
    * The stop reason from the response.
    */
   readonly stopReason?: string | null | undefined
-  /**
-   * Number of cache creation input tokens.
-   */
-  readonly cacheCreationInputTokens?: number | null | undefined
-  /**
-   * Number of cache read input tokens.
-   */
-  readonly cacheReadInputTokens?: number | null | undefined
 }
 
 /**
