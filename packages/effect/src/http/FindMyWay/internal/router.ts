@@ -338,13 +338,6 @@ class RouterImpl<A> implements Router.Router<A> {
         path = path.replace(FULL_PATH_REGEXP, "/")
       }
 
-      // This must be run before sanitizeUrl as the resulting function
-      // .sliceParameter must be constructed with same URL string used
-      // throughout the rest of this function.
-      if (this.options.ignoreDuplicateSlashes) {
-        path = removeDuplicateSlashes(path)
-      }
-
       let sanitizedUrl
       try {
         sanitizedUrl = safeDecodeURI(path)
@@ -353,6 +346,10 @@ class RouterImpl<A> implements Router.Router<A> {
         shouldDecodeParam = sanitizedUrl.shouldDecodeParam
       } catch (error) {
         return undefined
+      }
+
+      if (this.options.ignoreDuplicateSlashes) {
+        path = removeDuplicateSlashes(path)
       }
 
       if (this.options.ignoreTrailingSlash) {
