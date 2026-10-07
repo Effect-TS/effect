@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Equal, Hash, Random, Result, Schema } from "effect"
+import { Duration, Effect, Equal, Hash, Result, Schema } from "effect"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
@@ -138,20 +138,6 @@ describe("Dns", () => {
       )
       assert.isTrue(Host.isDomainName(Dns.reverseName(ip("2001:db8::1"))))
     })
-
-    it.effect("orders service records by priority and weight", () =>
-      Effect.gen(function*() {
-        const records = [srv("c", 20, 0), srv("a", 10, 1), srv("b", 10, 1000), srv("d", 20, 0)] as const
-        const ordered = yield* Dns.orderSrv(records)
-        assert.deepStrictEqual(ordered.map((record) => record.priority), [10, 10, 20, 20])
-        assert.sameMembers(ordered.map((record) => record.target), ["a", "b", "c", "d"])
-        let heavyFirst = 0
-        for (let i = 0; i < 50; i++) {
-          const result = yield* Dns.orderSrv([srv("light", 0, 1), srv("heavy", 0, 1000)])
-          if (result[0].target === "heavy") heavyFirst++
-        }
-        assert.isAbove(heavyFirst, 40)
-      }).pipe(Random.withSeed("dns")))
 
     it("round-trips records through JSON", () => {
       const codec = Schema.toCodecJson(Schema.Array(Schema.DnsRecord))

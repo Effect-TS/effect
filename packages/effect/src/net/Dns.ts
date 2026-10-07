@@ -22,7 +22,6 @@ import * as Hash from "../Hash.ts"
 import * as Inspectable from "../Inspectable.ts"
 import * as Layer from "../Layer.ts"
 import { hasProperty } from "../Predicate.ts"
-import * as Random from "../Random.ts"
 import * as Result from "../Result.ts"
 import * as Host from "./Host.ts"
 import * as NetAddress from "./NetAddress.ts"
@@ -155,7 +154,6 @@ export interface Soa extends RecordProto<"SOA"> {
 /**
  * A service location record.
  *
- * @see {@link orderSrv} for ordering service records by priority and weight
  * @stability unstable
  * @category models
  * @since 4.0.0
@@ -413,51 +411,6 @@ export const formatRecord = (self: DnsRecord): string => {
       return `TXT ${self.chunks.map(quote).join(" ")}`
   }
 }
-
-/**
- * Orders service records for connection attempts as described in RFC 2782.
- *
- * **Details**
- *
- * Records are sorted by ascending priority. Records with the same priority are
- * ordered by weighted random selection using the `Random` service, so records
- * with a higher weight tend to come first.
- *
- * @stability unstable
- * @category ordering
- * @since 4.0.0
- */
-export const orderSrv = (
-  records: Arr.NonEmptyReadonlyArray<Srv>
-): Effect.Effect<Arr.NonEmptyReadonlyArray<Srv>> =>
-  Effect.gen(function*() {
-    const groups = new Map<number, Array<Srv>>()
-    for (const record of records) {
-      const group = groups.get(record.priority)
-      if (group === undefined) groups.set(record.priority, [record])
-      else group.push(record)
-    }
-    const ordered: Array<Srv> = []
-    for (const priority of [...groups.keys()].sort((a, b) => a - b)) {
-      const group = groups.get(priority)!
-      const remaining = [
-        ...group.filter((record) => record.weight === 0),
-        ...group.filter((record) => record.weight > 0)
-      ]
-      while (remaining.length > 0) {
-        const total = remaining.reduce((sum, record) => sum + record.weight, 0)
-        const selected = yield* Random.nextIntBetween(0, total)
-        let running = 0
-        let index = 0
-        for (; index < remaining.length - 1; index++) {
-          running += remaining[index].weight
-          if (running >= selected) break
-        }
-        ordered.push(remaining.splice(index, 1)[0])
-      }
-    }
-    return ordered as unknown as Arr.NonEmptyReadonlyArray<Srv>
-  })
 
 /**
  * Returns the reverse-lookup domain name for an IP address, in `in-addr.arpa`
