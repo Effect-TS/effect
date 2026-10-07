@@ -2506,6 +2506,58 @@ describe("Effect", () => {
         assert.isTrue(cleanedUp)
       }))
 
+    it.effect("callback with cleanup leaves the fiber interruptible after resuming", () =>
+      Effect.gen(function*() {
+        let resume!: (effect: Effect.Effect<void>) => void
+        let cleanups = 0
+        const fiber = yield* Effect.callback<void>((resume_) => {
+          resume = resume_
+          return Effect.sync(() => {
+            cleanups++
+          })
+        }).pipe(
+          Effect.andThen(Effect.never),
+          Effect.forkChild({ startImmediately: true })
+        )
+        resume(Effect.void)
+        assert.isUndefined(fiber.pollUnsafe())
+        fiber.interruptUnsafe()
+        const exit = fiber.pollUnsafe()
+        assert.isTrue(exit !== undefined && Exit.hasInterrupts(exit))
+        assert.strictEqual(cleanups, 0)
+      }))
+
+    it.effect("callback with cleanup keeps an uninterruptible region masked after resuming", () =>
+      Effect.gen(function*() {
+        let resume!: (effect: Effect.Effect<void>) => void
+        let resumeNext!: (effect: Effect.Effect<void>) => void
+        let cleanups = 0
+        let reached = false
+        const fiber = yield* Effect.callback<void>((resume_) => {
+          resume = resume_
+          return Effect.sync(() => {
+            cleanups++
+          })
+        }).pipe(
+          Effect.andThen(Effect.callback<void>((resume_) => {
+            resumeNext = resume_
+          })),
+          Effect.andThen(Effect.sync(() => {
+            reached = true
+          })),
+          Effect.uninterruptible,
+          Effect.forkChild({ startImmediately: true })
+        )
+        resume(Effect.void)
+        fiber.interruptUnsafe()
+        assert.isUndefined(fiber.pollUnsafe())
+        resumeNext(Effect.void)
+        const exit = fiber.pollUnsafe()
+        assert.isTrue(reached)
+        assert.strictEqual(cleanups, 0)
+        assert.isTrue(exit !== undefined && Exit.hasInterrupts(exit))
+      }))
+
     describe("uninterruptibleMask", () => {
       it.effect("defers a pending interrupt until the masked region completes", () =>
         Effect.gen(function*() {
