@@ -146,6 +146,7 @@ jobs:
           docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
+          docker pull coredns/coredns:1.14.7 &
           wait
 
       - name: Install dependencies

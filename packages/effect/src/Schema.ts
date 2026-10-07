@@ -55,6 +55,8 @@ import { isSchemaError as isSchemaErrorInternal, SchemaErrorTypeId } from "./int
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import type * as JsonPatch from "./JsonPatch.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
+import * as Dns_ from "./net/Dns.ts"
+import * as Host_ from "./net/Host.ts"
 import * as IpInterface_ from "./net/IpInterface.ts"
 import * as IpNetwork_ from "./net/IpNetwork.ts"
 import * as NetAddress_ from "./net/NetAddress.ts"
@@ -11589,24 +11591,45 @@ export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedStr
   decodeTo(DateTimeZoned, dateTimeZonedFromString)
 )
 
+const netAddressStringTransformation = <T, E extends { readonly message: string }>(
+  parse: (input: string) => Result_.Result<T, E>,
+  encode: (value: T) => string
+): SchemaTransformation.Transformation<T, string> =>
+  SchemaTransformation.transformEffect<T, string>({
+    decode: (input, options) => {
+      const result = parse(input)
+      return Result_.isSuccess(result)
+        ? Effect.succeed(result.success)
+        : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+    },
+    encode: (value) => Effect.succeed(encode(value))
+  })
+
 const netAddressFromString = <S extends declare<any>, E extends { readonly message: string }>(
   declaration: S,
   parse: (input: string) => Result_.Result<S["Type"], E>,
   encode: (value: S["Type"]) => string,
   identifier: string
+) => String.pipe(decodeTo(declaration, netAddressStringTransformation(parse, encode))).annotate({ identifier })
+
+const netAddressJson = <T, E extends { readonly message: string }>(
+  parse: (input: string) => Result_.Result<T, E>,
+  encode: (value: T) => string
 ) =>
-  String.pipe(decodeTo(
-    declaration,
-    SchemaTransformation.transformEffect({
-      decode: (input, options) => {
-        const result = parse(input)
-        return Result_.isSuccess(result)
-          ? Effect.succeed(result.success)
-          : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
-      },
-      encode: (value) => Effect.succeed(encode(value))
-    })
-  )).annotate({ identifier })
+(): SchemaAST.Link => link<T>()(String, netAddressStringTransformation(parse, encode))
+
+const inetAddressFamilyFromString = <A extends NetAddress_.InetAddress>(
+  guard: (u: unknown) => u is A,
+  expected: string
+) =>
+(input: string): Result_.Result<A, NetAddress_.NetAddressError> =>
+  Result_.flatMap(
+    NetAddress_.inetAddressFromString(input),
+    (address) =>
+      guard(address)
+        ? Result_.succeed(address)
+        : Result_.fail(new NetAddress_.NetAddressError({ message: `expected ${expected}`, input }))
+  )
 
 /**
  * Type-level representation of {@link MacAddress}.
@@ -11627,7 +11650,8 @@ export interface MacAddress extends declare<NetAddress_.MacAddress> {
  * @since 4.0.0
  */
 export const MacAddress: MacAddress = declare(NetAddress_.isMacAddress, {
-  identifier: "MacAddress"
+  identifier: "MacAddress",
+  toCodecJson: netAddressJson(NetAddress_.macAddressFromString, NetAddress_.formatMacAddress)
 })
 
 /**
@@ -11674,7 +11698,8 @@ export interface Ipv4Address extends declare<NetAddress_.Ipv4Address> {
  * @since 4.0.0
  */
 export const Ipv4Address: Ipv4Address = declare(NetAddress_.isIpv4Address, {
-  identifier: "Ipv4Address"
+  identifier: "Ipv4Address",
+  toCodecJson: netAddressJson(NetAddress_.ipv4FromString, NetAddress_.formatIp)
 })
 
 /**
@@ -11721,7 +11746,8 @@ export interface Ipv6Address extends declare<NetAddress_.Ipv6Address> {
  * @since 4.0.0
  */
 export const Ipv6Address: Ipv6Address = declare(NetAddress_.isIpv6Address, {
-  identifier: "Ipv6Address"
+  identifier: "Ipv6Address",
+  toCodecJson: netAddressJson(NetAddress_.ipv6FromString, NetAddress_.formatIp)
 })
 
 /**
@@ -11768,7 +11794,8 @@ export interface IpAddress extends declare<NetAddress_.IpAddress> {
  * @since 4.0.0
  */
 export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
-  identifier: "IpAddress"
+  identifier: "IpAddress",
+  toCodecJson: netAddressJson(NetAddress_.ipFromString, NetAddress_.formatIp)
 })
 
 /**
@@ -12518,7 +12545,8 @@ export interface Ipv4Interface extends declare<IpInterface_.Ipv4Interface> {
  * @since 4.0.0
  */
 export const Ipv4Interface: Ipv4Interface = declare(IpInterface_.isIpv4Interface, {
-  identifier: "Ipv4Interface"
+  identifier: "Ipv4Interface",
+  toCodecJson: netAddressJson((input) => IpInterface_.ipv4FromString(input), IpInterface_.format)
 })
 
 /**
@@ -12565,7 +12593,8 @@ export interface Ipv6Interface extends declare<IpInterface_.Ipv6Interface> {
  * @since 4.0.0
  */
 export const Ipv6Interface: Ipv6Interface = declare(IpInterface_.isIpv6Interface, {
-  identifier: "Ipv6Interface"
+  identifier: "Ipv6Interface",
+  toCodecJson: netAddressJson((input) => IpInterface_.ipv6FromString(input), IpInterface_.format)
 })
 
 /**
@@ -12612,7 +12641,8 @@ export interface IpInterface extends declare<IpInterface_.IpInterface> {
  * @since 4.0.0
  */
 export const IpInterface: IpInterface = declare(IpInterface_.isIpInterface, {
-  identifier: "IpInterface"
+  identifier: "IpInterface",
+  toCodecJson: netAddressJson((input) => IpInterface_.fromString(input), IpInterface_.format)
 })
 
 /**
@@ -12659,7 +12689,8 @@ export interface Ipv4Network extends declare<IpNetwork_.Ipv4Network> {
  * @since 4.0.0
  */
 export const Ipv4Network: Ipv4Network = declare(IpNetwork_.isIpv4Network, {
-  identifier: "Ipv4Network"
+  identifier: "Ipv4Network",
+  toCodecJson: netAddressJson(IpNetwork_.ipv4FromString, IpNetwork_.format)
 })
 
 /**
@@ -12706,7 +12737,8 @@ export interface Ipv6Network extends declare<IpNetwork_.Ipv6Network> {
  * @since 4.0.0
  */
 export const Ipv6Network: Ipv6Network = declare(IpNetwork_.isIpv6Network, {
-  identifier: "Ipv6Network"
+  identifier: "Ipv6Network",
+  toCodecJson: netAddressJson(IpNetwork_.ipv6FromString, IpNetwork_.format)
 })
 
 /**
@@ -12753,7 +12785,8 @@ export interface IpNetwork extends declare<IpNetwork_.IpNetwork> {
  * @since 4.0.0
  */
 export const IpNetwork: IpNetwork = declare(IpNetwork_.isIpNetwork, {
-  identifier: "IpNetwork"
+  identifier: "IpNetwork",
+  toCodecJson: netAddressJson(IpNetwork_.fromString, IpNetwork_.format)
 })
 
 /**
@@ -12800,7 +12833,11 @@ export interface InetAddressV4 extends declare<NetAddress_.InetAddressV4> {
  * @since 4.0.0
  */
 export const InetAddressV4: InetAddressV4 = declare(NetAddress_.isInetAddressV4, {
-  identifier: "InetAddressV4"
+  identifier: "InetAddressV4",
+  toCodecJson: netAddressJson(
+    inetAddressFamilyFromString(NetAddress_.isInetAddressV4, "an IPv4 internet address"),
+    NetAddress_.formatInet
+  )
 })
 
 /**
@@ -12822,7 +12859,11 @@ export interface InetAddressV6 extends declare<NetAddress_.InetAddressV6> {
  * @since 4.0.0
  */
 export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6, {
-  identifier: "InetAddressV6"
+  identifier: "InetAddressV6",
+  toCodecJson: netAddressJson(
+    inetAddressFamilyFromString(NetAddress_.isInetAddressV6, "an IPv6 internet address"),
+    NetAddress_.formatInet
+  )
 })
 
 /**
@@ -12844,7 +12885,8 @@ export interface InetAddress extends declare<NetAddress_.InetAddress> {
  * @since 4.0.0
  */
 export const InetAddress: InetAddress = declare(NetAddress_.isInetAddress, {
-  identifier: "InetAddress"
+  identifier: "InetAddress",
+  toCodecJson: netAddressJson(NetAddress_.inetAddressFromString, NetAddress_.formatInet)
 })
 
 /**
@@ -12892,7 +12934,17 @@ export interface UnixPathAddress extends declare<NetAddress_.UnixPathAddress> {
  */
 export const UnixPathAddress: UnixPathAddress = declare(
   NetAddress_.isUnixPathAddress,
-  { identifier: "UnixPathAddress" }
+  {
+    identifier: "UnixPathAddress",
+    toCodecJson: () =>
+      link<NetAddress_.UnixPathAddress>()(
+        String,
+        SchemaTransformation.transform({
+          decode: NetAddress_.unixPathAddress,
+          encode: (address) => address.path
+        })
+      )
+  }
 )
 
 /**
@@ -12935,13 +12987,203 @@ export interface SocketAddress extends declare<NetAddress_.SocketAddress> {
 /**
  * Schema for already-constructed portable concrete socket addresses.
  *
+ * **Details**
+ *
+ * The default JSON serializer encodes internet addresses as numeric socket
+ * strings such as `127.0.0.1:80` or `[::1]:80`, and Unix-domain addresses as
+ * `{ path }` objects so that paths are never confused with socket strings.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
 export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress, {
-  identifier: "SocketAddress"
+  identifier: "SocketAddress",
+  toCodecJson: () =>
+    link<NetAddress_.SocketAddress>()(
+      Union([String, Struct({ path: String })]),
+      SchemaTransformation.transformEffect<NetAddress_.SocketAddress, string | { readonly path: string }>({
+        decode: (input, options) => {
+          if (typeof input !== "string") return Effect.succeed(NetAddress_.unixPathAddress(input.path))
+          const result = NetAddress_.inetAddressFromString(input)
+          return Result_.isSuccess(result)
+            ? Effect.succeed(result.success)
+            : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+        },
+        encode: (address) =>
+          Effect.succeed(
+            NetAddress_.isUnixPathAddress(address) ? { path: address.path } : NetAddress_.formatInet(address)
+          )
+      })
+    )
 })
+
+/**
+ * Type-level representation of {@link DomainName}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface DomainName extends declare<Host_.DomainName> {
+  readonly "Rebuild": DomainName
+}
+
+/**
+ * Schema for normalized DNS domain names.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DomainName: DomainName = declare(Host_.isDomainName, {
+  identifier: "DomainName",
+  toCodecJson: netAddressJson(Host_.domainNameFromString, (name: Host_.DomainName): string => name)
+})
+
+/**
+ * Type-level representation of {@link DomainNameFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface DomainNameFromString extends decodeTo<DomainName, String> {
+  readonly "Rebuild": DomainNameFromString
+}
+
+/**
+ * Schema for DNS domain names decoded from strings, normalizing case and
+ * converting internationalized names to their ASCII form.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DomainNameFromString: DomainNameFromString = netAddressFromString(
+  DomainName,
+  Host_.domainNameFromString,
+  (name) => name,
+  "DomainNameFromString"
+)
+
+/**
+ * Type-level representation of {@link Host}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Host extends declare<Host_.Host> {
+  readonly "Rebuild": Host
+}
+
+/**
+ * Schema for hosts: numeric IP addresses, scoped IPv6 literals, or domain names.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Host: Host = declare(Host_.isHost, {
+  identifier: "Host",
+  toCodecJson: netAddressJson(Host_.hostFromString, Host_.formatHost)
+})
+
+/**
+ * Type-level representation of {@link HostFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostFromString extends decodeTo<Host, String> {
+  readonly "Rebuild": HostFromString
+}
+
+/**
+ * Schema for hosts decoded from strings. Numeric IP strings decode to IP
+ * addresses; other strings decode to scoped IPv6 literals or domain names.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostFromString: HostFromString = netAddressFromString(
+  Host,
+  Host_.hostFromString,
+  Host_.formatHost,
+  "HostFromString"
+)
+
+/**
+ * Type-level representation of {@link HostPort}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPort extends declare<Host_.HostPort> {
+  readonly "Rebuild": HostPort
+}
+
+/**
+ * Schema for already-constructed unresolved host and port values.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostPort: HostPort = declare(Host_.isHostPort, {
+  identifier: "HostPort",
+  toCodecJson: netAddressJson(Host_.hostPortFromString, Host_.formatHostPort)
+})
+
+/**
+ * Type-level representation of {@link HostPortFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPortFromString extends decodeTo<HostPort, String> {
+  readonly "Rebuild": HostPortFromString
+}
+
+/**
+ * Schema for unresolved endpoints encoded as `host:port` or `[IPv6]:port`
+ * strings.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostPortFromString: HostPortFromString = netAddressFromString(
+  HostPort,
+  Host_.hostPortFromString,
+  Host_.formatHostPort,
+  "HostPortFromString"
+)
+
+/**
+ * Type-level representation of {@link Port}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Port extends Int {
+  readonly "Rebuild": Port
+}
+
+/**
+ * Schema for TCP and UDP port numbers from 0 through 65535.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Port: Port = Int.check(isBetween({ minimum: 0, maximum: 65535 }, { expected: "a port number" }))
 
 // -----------------------------------------------------------------------------
 // Duration schemas
@@ -13151,6 +13393,100 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
 export const DurationFromMillis: DurationFromMillis = Number.pipe(
   decodeTo(Duration, durationFromMillis)
 )
+
+// -----------------------------------------------------------------------------
+// DNS schemas
+// -----------------------------------------------------------------------------
+
+/**
+ * Type-level representation of {@link DnsRecordType}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsRecordType extends Literals<ReadonlyArray<Dns_.RecordType>> {}
+
+/**
+ * Schema for supported DNS record types such as `"A"` or `"SRV"`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsRecordType: DnsRecordType = Literals(Dns_.recordTypes)
+
+// Field ranges and names are checked by `Dns.makeRecord` when decoding.
+const DnsRecordJson = TaggedUnion({
+  A: { address: Ipv4Address },
+  AAAA: { address: Ipv6Address },
+  CAA: { critical: Boolean, tag: String, value: String },
+  CNAME: { target: DomainName },
+  MX: { exchange: DomainName, priority: Int },
+  NAPTR: {
+    order: Int,
+    preference: Int,
+    flags: String,
+    service: String,
+    regexp: String,
+    replacement: DomainName
+  },
+  NS: { host: DomainName },
+  PTR: { host: DomainName },
+  SOA: {
+    primary: DomainName,
+    admin: DomainName,
+    serial: Int,
+    refresh: Duration,
+    retry: Duration,
+    expire: Duration,
+    minimum: Duration
+  },
+  SRV: { target: DomainName, port: Int, priority: Int, weight: Int },
+  TXT: { chunks: NonEmptyArray(String) }
+})
+
+/**
+ * Type-level representation of {@link DnsRecord}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsRecord extends declare<Dns_.DnsRecord> {
+  readonly "Rebuild": DnsRecord
+}
+
+/**
+ * Schema for already-constructed DNS record values.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes records as objects tagged by record type,
+ * with IP addresses and names as strings, such as
+ * `{ "_tag": "SRV", "target": "db.internal", "port": 5432, "priority": 10, "weight": 5 }`.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsRecord: DnsRecord = declare(Dns_.isDnsRecord, {
+  identifier: "DnsRecord",
+  toCodecJson: () =>
+    link<Dns_.DnsRecord>()(
+      DnsRecordJson,
+      SchemaTransformation.transformEffect<Dns_.DnsRecord, typeof DnsRecordJson["Type"]>({
+        decode: (input, options) => {
+          const { _tag, ...fields } = input
+          const result = Dns_.makeRecord(_tag, fields as Dns_.RecordFields<typeof _tag>)
+          return Result_.isSuccess(result)
+            ? Effect.succeed(result.success)
+            : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+        },
+        encode: (record) => Effect.succeed({ ...record } as typeof DnsRecordJson["Type"])
+      })
+    )
+})
 
 // -----------------------------------------------------------------------------
 // Exit schemas

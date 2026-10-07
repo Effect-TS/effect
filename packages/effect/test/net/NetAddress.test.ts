@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue } from "@effect/vitest/utils"
 import { Equal, Hash, Option, Result, Schema } from "effect"
+import * as IpInterface from "effect/net/IpInterface"
+import * as IpNetwork from "effect/net/IpNetwork"
 import * as NetAddress from "effect/net/NetAddress"
 import { Buffer } from "node:buffer"
 import { inspect } from "node:util"
@@ -756,6 +758,37 @@ describe("NetAddress", () => {
       assert.strictEqual(NetAddress.formatSocketAddress(address), "./run/../server.sock")
       assert.isTrue(Equal.equals(address, NetAddress.unixPathAddress("./run/../server.sock")))
     })
+  })
+
+  it("round-trips address schemas through JSON", () => {
+    const cases: ReadonlyArray<readonly [Schema.Codec<any, any>, unknown, unknown]> = [
+      [Schema.MacAddress, NetAddress.macAddressFromStringUnsafe("02:0A:0b:0C:0d:0E"), "02:0a:0b:0c:0d:0e"],
+      [Schema.Ipv4Address, NetAddress.ipFromStringUnsafe("10.0.0.1"), "10.0.0.1"],
+      [Schema.Ipv6Address, NetAddress.ipFromStringUnsafe("2001:DB8::1"), "2001:db8::1"],
+      [Schema.IpAddress, NetAddress.ipFromStringUnsafe("::1"), "::1"],
+      [Schema.IpInterface, IpInterface.fromStringUnsafe("192.0.2.1/24"), "192.0.2.1/24"],
+      [Schema.Ipv6Network, IpNetwork.fromStringUnsafe("2001:db8::/32"), "2001:db8::/32"],
+      [Schema.InetAddressV4, NetAddress.inetAddressFromStringUnsafe("10.0.0.1:80"), "10.0.0.1:80"],
+      [Schema.InetAddressV6, NetAddress.inetAddressFromStringUnsafe("[fe80::1%3]:80"), "[fe80::1%3]:80"],
+      [Schema.InetAddress, NetAddress.inetAddressFromStringUnsafe("[::1]:443"), "[::1]:443"],
+      [Schema.UnixPathAddress, NetAddress.unixPathAddress("/run/app.sock"), "/run/app.sock"],
+      [Schema.SocketAddress, NetAddress.inetAddressFromStringUnsafe("10.0.0.1:80"), "10.0.0.1:80"],
+      [Schema.SocketAddress, NetAddress.unixPathAddress("10.0.0.1:80"), { path: "10.0.0.1:80" }]
+    ]
+    for (const [schema, value, json] of cases) {
+      const codec = Schema.toCodecJson(schema)
+      assert.deepStrictEqual(Schema.encodeUnknownSync(codec)(value), json)
+      assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(json), value))
+    }
+    assert.throws(() => Schema.decodeUnknownSync(Schema.toCodecJson(Schema.InetAddressV4))("[::1]:80"))
+    assert.throws(() => Schema.decodeUnknownSync(Schema.toCodecJson(Schema.Ipv4Address))("::1"))
+  })
+
+  it("validates ports", () => {
+    assert.strictEqual(Schema.decodeUnknownSync(Schema.Port)(65535), 65535)
+    assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(65536))
+    assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(-1))
+    assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(1.5))
   })
 
   it("decodes and canonically encodes schemas", () => {

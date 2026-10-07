@@ -9,6 +9,18 @@
  * @stability unstable
  * @since 4.0.0
  */
+export * as Dns from "./Dns.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as Host from "./Host.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as IpInterface from "./IpInterface.ts"
 
 /**

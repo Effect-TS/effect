@@ -27,6 +27,11 @@ export * as BunCrypto from "./BunCrypto.ts"
 /**
  * @since 4.0.0
  */
+export * as BunDns from "./BunDns.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as BunFileSystem from "./BunFileSystem.ts"
 
 /**

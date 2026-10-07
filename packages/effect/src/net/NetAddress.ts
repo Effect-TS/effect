@@ -53,6 +53,24 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
  */
 export type IpAddress = Ipv4Address | Ipv6Address
 
+const ScopedIpv6LiteralTypeId = "~effect/net/NetAddress/ScopedIpv6Literal" as const
+
+/**
+ * An IPv6 literal with a zone, such as `fe80::1%eth0` or `fe80::1%3`.
+ *
+ * **Details**
+ *
+ * The zone is kept as written because mapping an interface name to a numeric
+ * scope ID requires the operating system's interface table. The address part is
+ * stored in canonical form.
+ *
+ * @see {@link scopedIpv6LiteralFromString} for parsing scoped IPv6 literals
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type ScopedIpv6Literal = Brand.Branded<string, typeof ScopedIpv6LiteralTypeId>
+
 /**
  * An immutable 48-bit IEEE 802 MAC address.
  *
@@ -874,6 +892,41 @@ export const ipFromString = (input: string): Result.Result<IpAddress, NetAddress
  * @since 4.0.0
  */
 export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThrow(ipFromString(input))
+
+/**
+ * Returns `true` when a value is a canonical scoped IPv6 literal.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isScopedIpv6Literal = (u: unknown): u is ScopedIpv6Literal => {
+  if (typeof u !== "string") return false
+  const result = scopedIpv6LiteralFromString(u)
+  return Result.isSuccess(result) && result.success === u
+}
+
+/**
+ * Parses an IPv6 literal with a numeric or named zone, such as `fe80::1%eth0`.
+ *
+ * @stability unstable
+ * @category decoding
+ * @since 4.0.0
+ */
+export const scopedIpv6LiteralFromString = (
+  input: string
+): Result.Result<ScopedIpv6Literal, NetAddressError> => {
+  const separator = input.indexOf("%")
+  if (separator === -1) return addressError(input, "expected an IPv6 zone")
+  const zone = input.slice(separator + 1)
+  if (zone.length === 0 || /[%[\]/\s]/.test(zone)) {
+    return addressError(input, "invalid IPv6 scope identifier")
+  }
+  return Result.map(
+    ipv6FromString(input.slice(0, separator)),
+    (address) => `${formatIp(address)}%${zone}` as ScopedIpv6Literal
+  )
+}
 
 /**
  * Returns the four numeric octets of an IPv4 address in a fresh tuple.

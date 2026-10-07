@@ -27,6 +27,11 @@ export * as NodeCrypto from "./NodeCrypto.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeDns from "./NodeDns.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodeFileSystem from "./NodeFileSystem.ts"
 
 /**

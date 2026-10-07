@@ -71,6 +71,7 @@
     "@types/node": "^26.6.4",
     "effect": "workspace:^",
     "tar": "^7.5.22",
+    "testcontainers": "^12.2.0",
     "tinybench": "^6.2.0"
   },
   "dependencies": {
