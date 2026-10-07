@@ -476,7 +476,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare readonly id: number
   declare interruptible: boolean
   declare currentOpCount: number
-  declare readonly _stack: Array<Primitive>
+  declare _stack: Array<Primitive>
   declare _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
   declare _exit: Exit.Exit<A, E> | undefined
   declare _children: Set<FiberImpl<any, any>> | undefined
@@ -581,7 +581,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         observers[i](exit)
       }
     }
-    this._stack.length = 0
+    // A stack popped back to empty keeps its grown backing store. Replacing
+    // it releases that store like `length = 0` does, without V8's length
+    // setter, which is a runtime call even for an empty array.
+    this._stack = []
     this._children = undefined
     this.context = Context.empty()
   }
