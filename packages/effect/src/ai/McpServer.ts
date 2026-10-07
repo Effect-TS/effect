@@ -50,6 +50,8 @@ import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
+import type { PreparedParameters } from "./internal/mcpToolkitParameters.ts"
+import { mcpParseOptions } from "./internal/mcpToolkitParameters.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
@@ -92,6 +94,12 @@ import * as Toolkit from "./Toolkit.ts"
 
 type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
+const encodeJsonSync = Schema.encodeSync(Schema.UnknownFromJsonString)
+const decodeJsonSync = Schema.decodeSync(Schema.UnknownFromJsonString)
+const encodeJson = Schema.encodeEffect(Schema.UnknownFromJsonString)
+const decodeJson = Schema.decodeEffect(Schema.UnknownFromJsonString)
+const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
+
 interface QueuedServerNotification {
   readonly notification: McpCore.ServerNotification
   readonly targetClientId?: number | undefined
@@ -100,18 +108,29 @@ interface QueuedServerNotification {
   readonly requestHeaders?: Headers.Headers | undefined
 }
 
+interface InternalToolRegistration {
+  readonly tool: McpTool
+  readonly annotations: Context.Context<never>
+  readonly handle: (
+    payload: unknown,
+    prepared?: PreparedParameters
+  ) => Effect.Effect<CallToolResult | McpSchema.InputRequired, InternalError | InvalidParams, McpRequestContext>
+}
+
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
+  readonly addTool: (options: InternalToolRegistration) => Effect.Effect<void>
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
   readonly notificationDelivery: { consumers: number }
 }>()
+
 type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
+
 type ServerNotificationRequest<
   R extends Rpc.Any = RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>
 > = R extends Rpc.Any ? RpcMessage.Request<R> : never
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
-const isLoggingLevel = Schema.is(McpSchema.LoggingLevel)
 
 const toInternalServerNotification = (
   message: ServerNotificationRequest
@@ -224,7 +243,6 @@ export class McpServer extends Context.Service<McpServer, {
   readonly callTool: (
     requests: typeof CallTool.payloadSchema.Type
   ) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient>
-
   readonly resources: ReadonlyArray<{
     readonly resource: Resource
     readonly annotations: Context.Context<never>
@@ -238,7 +256,6 @@ export class McpServer extends Context.Service<McpServer, {
       McpRequestContext
     >
   }) => Effect.Effect<void>
-
   readonly resourceTemplates: ReadonlyArray<{
     readonly template: ResourceTemplate
     readonly annotations: Context.Context<never>
@@ -265,11 +282,9 @@ export class McpServer extends Context.Service<McpServer, {
       >
     }
   ) => Effect.Effect<void>
-
   readonly findResource: (
     uri: string
   ) => Effect.Effect<ReadResourceResult, McpErrorBase | InvalidParams | InternalError, McpServerClient>
-
   readonly prompts: ReadonlyArray<{
     readonly prompt: Prompt
     readonly annotations: Context.Context<never>
@@ -291,7 +306,6 @@ export class McpServer extends Context.Service<McpServer, {
   readonly getPromptResult: (
     request: typeof GetPrompt.payloadSchema.Type
   ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpServerClient>
-
   readonly completion: (
     complete: typeof Complete.payloadSchema.Type
   ) => Effect.Effect<CompleteResult, InvalidParams | InternalError, McpServerClient>
@@ -373,7 +387,60 @@ export class McpServer extends Context.Service<McpServer, {
           })
         ))
     })
-
+    const addTool = Effect.fnUntraced(function*(options: InternalToolRegistration) {
+      const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
+      if (existingIndex === -1) {
+        tools.push(options)
+      } else {
+        tools[existingIndex] = options
+      }
+      const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+      yield* internalCore.tools.register({
+        descriptor: new McpTool({
+          ...options.tool,
+          title: options.tool.title ?? options.tool.annotations?.title
+        }),
+        isVisible: (profile) =>
+          enabledWhen === undefined || enabledWhen(
+            {
+              protocolVersion: profile.protocolVersion,
+              capabilities: profile.clientCapabilities,
+              clientInfo: profile.clientInfo
+            }
+          ),
+        handle: (call, invocation, prepared) =>
+          provideInvocationContext(
+            options.handle(call.arguments, prepared),
+            invocation
+          ).pipe(
+            Effect.catchTags({
+              InternalError: (error) =>
+                Effect.fail(
+                  new McpCore.ToolExecutionError({
+                    name: options.tool.name,
+                    message: error.message
+                  })
+                ),
+              InvalidParams: (error) =>
+                Effect.fail(
+                  new (invocation.requestContext.requestState === undefined &&
+                      invocation.requestContext.inputResponses === undefined
+                    ? McpCore.InvalidToolInput
+                    : McpCore.InvalidToolContinuation)({
+                    name: options.tool.name,
+                    message: error.message
+                  })
+                )
+            }),
+            Effect.map((result) =>
+              Predicate.isTagged(result, "InputRequired")
+                ? McpCore.OperationOutcome.InputRequired(result)
+                : McpCore.OperationOutcome.Complete(result)
+            )
+          )
+      })
+      yield* notifications.client["notifications/tools/list_changed"]({})
+    })
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
@@ -393,58 +460,7 @@ export class McpServer extends Context.Service<McpServer, {
       get tools() {
         return tools
       },
-      addTool: (options) =>
-        Effect.gen(function*() {
-          const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
-          if (existingIndex === -1) {
-            tools.push(options)
-          } else {
-            tools[existingIndex] = options
-          }
-          const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
-          yield* internalCore.tools.register({
-            descriptor: new McpTool({
-              ...options.tool,
-              title: options.tool.title ?? options.tool.annotations?.title
-            }),
-            isVisible: (profile) =>
-              enabledWhen === undefined || enabledWhen(
-                {
-                  protocolVersion: profile.protocolVersion,
-                  capabilities: profile.clientCapabilities,
-                  clientInfo: profile.clientInfo
-                }
-              ),
-            handle: (call, invocation) =>
-              provideInvocationContext(options.handle(call.arguments), invocation).pipe(
-                Effect.catchTags({
-                  InternalError: (error) =>
-                    Effect.fail(
-                      new McpCore.ToolExecutionError({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    ),
-                  InvalidParams: (error) =>
-                    Effect.fail(
-                      new (invocation.requestContext.requestState === undefined &&
-                          invocation.requestContext.inputResponses === undefined
-                        ? McpCore.InvalidToolInput
-                        : McpCore.InvalidToolContinuation)({
-                        name: options.tool.name,
-                        message: error.message
-                      })
-                    )
-                }),
-                Effect.map((result) =>
-                  Predicate.isTagged(result, "InputRequired")
-                    ? McpCore.OperationOutcome.InputRequired(result)
-                    : McpCore.OperationOutcome.Complete(result)
-                )
-              )
-          })
-          yield* notifications.client["notifications/tools/list_changed"]({})
-        }),
+      addTool,
       callTool: (request) =>
         Effect.gen(function*() {
           const client = yield* McpServerClient
@@ -634,10 +650,9 @@ export class McpServer extends Context.Service<McpServer, {
         }
       })
     })
-    internalState.set(service, { core: internalCore, notifications: notificationsQueue, notificationDelivery })
+    internalState.set(service, { core: internalCore, addTool, notifications: notificationsQueue, notificationDelivery })
     return service
   })
-
   /**
    * Layer that provides the MCP server and client services.
    *
@@ -647,10 +662,26 @@ export class McpServer extends Context.Service<McpServer, {
   static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.effect(McpServer)(McpServer.make) as any
 }
 
+/** @internal */
+export const getCore = (server: McpServer["Service"]): Effect.Effect<McpCore.McpCore> =>
+  Effect.map(getInternalState(server), (state) => state.core)
+
+const getInternalState = Effect.fnUntraced(function*(server: McpServer["Service"]) {
+  const state = internalState.get(server)
+  if (state === undefined) {
+    return yield* Effect.die(
+      new Cause.IllegalArgumentError("McpServer internal state is unavailable; use McpServer.make or McpServer.layer")
+    )
+  }
+  return state
+})
+
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
+
 const cancelledResponses = new WeakMap<object, string | number>()
+
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
 interface ActiveRequest {
@@ -808,7 +839,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     })
   let writeFromClient!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
   const handlers = yield* runtime.installHandlers({
-    core: internalState.get(server)!.core,
+    core: yield* getCore(server),
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
     ...(!protocol.supportsNotifications ? {} : {
       sendNotification,
@@ -821,7 +852,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
     defaultLogLevel,
     serverInfo: options
   })
-
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(key: McpClientKey) {
       const selectedProtocol = runtime.selectProtocol(key.profile.protocolVersion)
@@ -862,12 +892,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
       const client = yield* selectedProtocol.makeReverseClient(key.profile).pipe(
         Effect.provideService(RpcClient.Protocol, reverseProtocol)
       )
-
       return { client, write } as const
     }),
     idleTimeToLive: 10000
   })
-
   const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, rpc }) => {
     const session = runtime.resolveRequest(client.id, headers)
     const isInitialize = rpc._tag.endsWith("/initialize")
@@ -943,7 +971,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
       runtime.effectLogLevel(client.id, headers, defaultLogLevel)
     )
   })
-
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
     send: (clientId, response) => {
@@ -1231,7 +1258,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     })
   }
 
-  const { notificationDelivery, notifications } = internalState.get(server)!
+  const { notificationDelivery, notifications } = yield* getInternalState(server)
   yield* Effect.acquireRelease(
     Effect.sync(() => {
       notificationDelivery.consumers++
@@ -1307,7 +1334,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
             const level = Predicate.hasProperty(metadata, "io.modelcontextprotocol/logLevel")
               ? metadata["io.modelcontextprotocol/logLevel"]
               : undefined
-
             if (
               requestContext?.clientId !== clientId ||
               !isLoggingLevel(level) ||
@@ -1358,7 +1384,6 @@ const runWithRuntime = Effect.fnUntraced(function*(
     Effect.forever,
     Effect.forkScoped
   )
-
   return yield* RpcServer.make(runtime.clientRpcs, {
     spanPrefix: "McpServer",
     disableFatalDefects: true
@@ -1430,6 +1455,7 @@ const layerWithRuntime = (options: {
   Layer.effectDiscard(
     Effect.gen(function*() {
       const runtime = yield* McpRuntime.ServerRuntime
+      runtime.setCore(yield* getCore(yield* McpServer))
       yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
     })
   ).pipe(
@@ -1516,14 +1542,14 @@ const mcpStdioSerialization = (
               const offered = getJsonRpcProtocolVersion(frame)
               selectedProtocol = McpRuntime.selectStatefulProtocol(protocols, offered)
             }
-            decoded.push(...parser.decode(JSON.stringify(frame)))
+            decoded.push(...parser.decode(encodeJsonSync(frame)))
           }
           return decoded
         },
         encode: (response) => {
           const invalidBatchExit = decodeInvalidBatchExit(response)
           if (Result.isSuccess(invalidBatchExit)) {
-            return JSON.stringify({
+            return encodeJsonSync({
               jsonrpc: "2.0",
               id: null,
               error: {
@@ -1652,7 +1678,7 @@ const layerMcpProtocolHttp = (options: {
       }
       return Effect.gen(function*() {
         const parsed = yield* Effect.result(
-          Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
+          Effect.flatMap(request.text, decodeJson)
         )
         const admission = runtime.admitHttp(request.headers, parsed)
         if (admission._tag === "Rejected") {
@@ -1734,7 +1760,7 @@ function mcpJsonRpcSerialization(options?: {
           const encoded = parser.encode(response)
           if (typeof encoded !== "string") return encoded
           if (cancelledIds.size === 0 && !encoded.includes("\"_tag\":\"Cause\"")) return encoded
-          let message: unknown = JSON.parse(encoded)
+          let message = decodeJsonSync(encoded)
           if (cancelledIds.size > 0) {
             // Count cancelled completions toward the batch, but never write their responses.
             // https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
@@ -1749,7 +1775,7 @@ function mcpJsonRpcSerialization(options?: {
               return undefined
             }
           }
-          return JSON.stringify(normalizeMcpJsonRpcResponse(message))
+          return encodeJsonSync(normalizeMcpJsonRpcResponse(message))
         }
       }
     }
@@ -1837,8 +1863,11 @@ const toolErrorResult = (message: string): CallToolResult =>
     content: [{ type: "text", text: message }]
   })
 
-const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
-  encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
+const toolResultContent = Effect.fnUntraced(function*(encoded: unknown): Effect.fn.Return<CallToolResult["content"]> {
+  if (encoded === undefined) return []
+  const text = yield* encodeJson(encoded).pipe(Effect.orDie)
+  return [{ type: "text", text }]
+})
 
 /**
  * Registers a `Toolkit` with the `McpServer`.
@@ -1857,14 +1886,22 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
   const registry = yield* McpServer
-  const built = yield* (toolkit as any as Effect.Effect<
-    Toolkit.WithHandler<Tools>,
+  const addTool = internalState.get(registry)?.addTool ??
+    ((options: InternalToolRegistration) => registry.addTool(options))
+  // Execution clones retain handler IDs and result schemas; discovery uses the original tools.
+  const preparedToolkit = Toolkit.make(
+    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+  )
+  // The clones use the original handler IDs, so both evaluations need the original handler services.
+  const [built, preparedBuilt] = yield* (Effect.all([toolkit, preparedToolkit]) as unknown as Effect.Effect<
+    readonly [Toolkit.WithHandler<Record<string, Tool.Any>>, Effect.Success<typeof preparedToolkit>],
     never,
     Exclude<Tool.HandlersFor<Tools>, McpRequestContext>
   >).pipe(Effect.updateContext((context: Context.Context<Exclude<Tool.HandlersFor<Tools>, McpRequestContext>>) => {
     // Toolkit handlers also retain the context in which their layer was built.
     const services = new Map(context.mapUnsafe)
     for (const tool of Object.values(toolkit.tools)) {
+      // Toolkit.toLayer stores each handler under this tool ID; mapUnsafe erases the entry type.
       const handler = services.get(tool.id) as Tool.Handler<string> | undefined
       if (handler !== undefined) {
         services.set(tool.id, { ...handler, context: omitRequestServices(handler.context) })
@@ -1888,7 +1925,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         Effect.as(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
       )
   }
-  const registrations: Array<Parameters<typeof registry.addTool>[0]> = []
+  const registrations: Array<InternalToolRegistration> = []
   for (const tool of Object.values(built.tools)) {
     const strict = Tool.getStrictMode(tool) === true
     const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
@@ -1897,10 +1934,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
         `McpServer cannot strictly validate the raw JSON Schema for tool '${tool.name}'; use an Effect Schema instead`
       )
     }
-    const decodeOptions: SchemaAST.ParseOptions = {
-      onExcessProperty: strict ? "error" : "ignore",
-      errors: "all"
-    }
+    const decodeOptions = mcpParseOptions(tool)
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
@@ -1910,8 +1944,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const declaredFailureResult = (error: unknown) =>
       error instanceof Error && error.message !== ""
         ? Effect.succeed(toolErrorResult(error.message))
-        : Effect.map(encodeFailure(error), (encoded) =>
-          new CallToolResult({ isError: true, content: toolResultContent(encoded) }))
+        : encodeFailure(error).pipe(
+          Effect.flatMap(toolResultContent),
+          Effect.map((content) => new CallToolResult({ isError: true, content }))
+        )
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
@@ -1962,34 +1998,37 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     registrations.push({
       tool: mcpTool,
       annotations,
-      handle(payload) {
-        return built.handle(tool.name as keyof Tools, payload ?? {}, undefined, decodeOptions).pipe(
+      handle: Effect.fnUntraced(function*(payload, prepared) {
+        const stream = prepared === undefined
+          ? built.handle(tool.name, payload ?? {}, undefined, decodeOptions)
+          : preparedBuilt.handle(tool.name, prepared.parameters, undefined, decodeOptions)
+        return yield* stream.pipe(
           Stream.unwrap,
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),
-          Effect.flatMap((result) =>
+          Effect.flatMap(Effect.fnUntraced(function*(result) {
             // Declared failures return their encoded payload; anything else is classified by origin.
-            result.isFailure && result.failureOrigin !== "handler"
-              ? Effect.failCause(Cause.annotate(
+            if (result.isFailure && result.failureOrigin !== "handler") {
+              return yield* Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
-              : Effect.succeed(
-                new CallToolResult({
-                  isError: result.isFailure,
-                  structuredContent: result.isFailure ? undefined : result.encodedResult,
-                  content: toolResultContent(result.encodedResult)
-                })
-              )
-          ),
+            }
+            return new CallToolResult({
+              isError: result.isFailure,
+              structuredContent: result.isFailure ? undefined : result.encodedResult,
+              content: yield* toolResultContent(result.encodedResult)
+            })
+          })),
           Effect.catchCause(handleCause),
-          Effect.provideContext(services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>)
+          // Tool.Any erases services already supplied by handler contexts and the current invocation.
+          Effect.provideContext(services as Context.Context<unknown>)
         )
-      }
+      })
     })
   }
   for (const registration of registrations) {
-    yield* registry.addTool(registration)
+    yield* addTool(registration)
   }
 })
 
@@ -2601,7 +2640,6 @@ const makeUriMatcher = <A>() => {
     router.on("GET", `/${uri}`, value)
   }
   const find = (uri: string) => router.find("GET", `/${uri}`)
-
   return { add, find } as const
 }
 

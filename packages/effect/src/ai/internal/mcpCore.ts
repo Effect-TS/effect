@@ -10,6 +10,7 @@ import * as Effect from "../../Effect.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
+import type { PreparedParameters } from "./mcpToolkitParameters.ts"
 
 /**
  * @internal
@@ -169,7 +170,8 @@ export interface ToolRegistration {
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
-    invocation: McpInvocation
+    invocation: McpInvocation,
+    prepared?: PreparedParameters
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
     InvalidToolInput | InvalidToolContinuation | ToolExecutionError,
@@ -181,6 +183,8 @@ export interface ToolRegistration {
  * @internal
  */
 export interface Tools {
+  readonly decorate: (name: string, f: (registration: ToolRegistration) => ToolRegistration) => Effect.Effect<void>
+
   readonly register: (
     registration: ToolRegistration
   ) => Effect.Effect<void>
@@ -189,7 +193,8 @@ export interface Tools {
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>>
   readonly call: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
-    invocation: McpInvocation
+    invocation: McpInvocation,
+    prepared?: PreparedParameters
   ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
 }
 
@@ -409,6 +414,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const resourceRegistrations: Array<ResourceRegistration> = []
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
+
   const completionRegistrations = new Map<
     string,
     (
@@ -416,6 +422,17 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       invocation: McpInvocation
     ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
   >()
+
+  const runTool: Tools["call"] = (call, invocation, prepared) =>
+    Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
+      const registration = registrations.get(call.name)
+
+      if (registration === undefined || !registration.isVisible(invocation.protocol)) {
+        return new ToolNotFound({ name: call.name })
+      }
+
+      return registration.handle(call, invocation, prepared)
+    })
 
   const tools: Tools = {
     register: (registration) =>
@@ -425,23 +442,21 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     list: (profile) =>
       Effect.sync(() => {
         const descriptors: Array<McpSchema.Tool> = []
+
         for (const registration of registrations.values()) {
           if (registration.isVisible(profile)) {
             descriptors.push(registration.descriptor)
           }
         }
+
         return descriptors
       }),
-    call: (call, invocation) =>
-      Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
-        const registration = registrations.get(call.name)
-        if (registration === undefined) {
-          return new ToolNotFound({ name: call.name })
-        }
-        if (!registration.isVisible(invocation.protocol)) {
-          return new ToolNotFound({ name: call.name })
-        }
-        return registration.handle(call, invocation)
+    call: runTool,
+    decorate: (name, f) =>
+      Effect.sync(() => {
+        const registration = registrations.get(name)
+
+        if (registration !== undefined) registrations.set(name, f(registration))
       })
   }
 
@@ -449,6 +464,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     register: (registration) =>
       Effect.sync(() => {
         const index = resourceRegistrations.findIndex((entry) => entry.descriptor.uri === registration.descriptor.uri)
+
         if (index === -1) {
           resourceRegistrations.push(registration)
         } else {
@@ -460,6 +476,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
         const index = resourceTemplateRegistrations.findIndex(
           (entry) => entry.descriptor.uriTemplate === registration.descriptor.uriTemplate
         )
+
         if (index === -1) {
           resourceTemplateRegistrations.push(registration)
         } else {
@@ -480,15 +497,19 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       ),
     read: Effect.fnUntraced(function*(uri, invocation) {
       const resource = resourceRegistrations.find((entry) => entry.descriptor.uri === uri)
+
       if (resource !== undefined && resource.isVisible(invocation.protocol)) {
         return yield* resource.read(invocation)
       }
+
       for (const template of resourceTemplateRegistrations) {
         const params = template.match(uri)
+
         if (params !== undefined && template.isVisible(invocation.protocol)) {
           return yield* template.read(uri, params, invocation)
         }
       }
+
       return yield* new ResourceNotFound({ uri })
     })
   }
@@ -506,9 +527,11 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       ),
     get: Effect.fnUntraced(function*(name, args, invocation) {
       const registration = promptRegistrations.get(name)
+
       if (registration === undefined || !registration.isVisible(invocation.protocol)) {
         return yield* new PromptNotFound({ name })
       }
+
       return yield* registration.get(args, invocation)
     })
   }
@@ -522,12 +545,16 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       const key = request.reference.type === "prompt"
         ? `prompt/${request.reference.name}/${request.argument.name}`
         : `resource/${request.reference.uriTemplate}/${request.argument.name}`
+
       const complete = completionRegistrations.get(key)
+
       if (complete === undefined) {
         return yield* new McpSchema.InvalidParams({ message: "Unknown completion reference or argument" })
       }
+
       const result = yield* complete(request, invocation)
       const values = Arr.take(result.values, 100)
+
       return {
         ...result,
         values,
