@@ -5,12 +5,12 @@
  * file can measure any checkout (`worker.mts --root <dir>`). Only type imports
  * of effect are allowed here; they are erased before execution.
  */
-import type * as Deferred from "../../src/Deferred.ts"
-import type { Effect } from "../../src/Effect.ts"
-import type * as Fiber from "../../src/Fiber.ts"
-import type * as EffectIndex from "../../src/index.ts"
-import type * as Queue from "../../src/Queue.ts"
-import type * as Semaphore from "../../src/Semaphore.ts"
+import type * as EffectIndex from "effect"
+import type * as Deferred from "effect/Deferred"
+import type { Effect } from "effect/Effect"
+import type * as Fiber from "effect/Fiber"
+import type * as Queue from "effect/Queue"
+import type * as Semaphore from "effect/Semaphore"
 
 export type EffectModule = typeof EffectIndex
 
