@@ -5,6 +5,7 @@
  * work with schema-typed input and output while the inner channel uses encoded
  * values.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "./Array.ts"
@@ -31,6 +32,7 @@ import type * as SchemaAST from "./SchemaAST.ts"
  * @see {@link encodeUnknown} for encoded output chunks that should be typed as `unknown`
  * @see {@link decode} for the inverse channel that decodes encoded chunks into schema values
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -61,6 +63,7 @@ export const encode = <S extends Schema.Constraint>(
  *
  * @see {@link encode} for the variant that preserves the schema encoded type
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -93,6 +96,7 @@ export const encodeUnknown: <S extends Schema.Constraint>(
  * @see {@link decodeUnknown} for boundaries where the encoded input side is intentionally untyped
  * @see {@link encode} for the inverse adapter that encodes typed schema values
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -129,6 +133,7 @@ export const decode = <S extends Schema.Constraint>(
  *
  * @see {@link decode} for the typed variant that preserves the schema's encoded type
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -165,6 +170,7 @@ export const decodeUnknown: <S extends Schema.Constraint>(
  * @see {@link encode} for encoding typed chunks at one-way channel boundaries
  * @see {@link decode} for decoding encoded chunks at one-way channel boundaries
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -259,6 +265,7 @@ export const duplex: {
  *
  * @see {@link duplex} for the variant that preserves the schema encoded types on the wrapped channel
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

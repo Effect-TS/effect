@@ -24,6 +24,7 @@
  * POSIX cleanup targets a numeric process-group ID. If the group disappears
  * and its ID is reused before cleanup, an unrelated group may be signalled.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
@@ -698,6 +699,7 @@ const make = Effect.gen(function*() {
 /**
  * Layer that provides the `NodeChildProcessSpawner` implementation.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -714,6 +716,7 @@ export const layer: Layer.Layer<
 /**
  * Result of flattening a pipeline of commands.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -726,6 +729,7 @@ export interface FlattenedPipeline {
  * Flattens a `Command` into an array of `StandardCommand`s along with pipe
  * options for each connection.
  *
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */

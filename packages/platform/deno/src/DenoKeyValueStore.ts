@@ -1,6 +1,7 @@
 /**
  * Deno-backed `KeyValueStore` layers using Web Storage APIs.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -10,6 +11,7 @@ import * as KeyValueStore from "effect/persistence/KeyValueStore"
 /**
  * Creates a `KeyValueStore` layer backed by `localStorage`, with values stored between sessions.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -20,6 +22,7 @@ export const layerLocalStorage: Layer.Layer<KeyValueStore.KeyValueStore> = KeyVa
 /**
  * Creates a `KeyValueStore` layer backed by `sessionStorage`, with values stored only for the current session.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

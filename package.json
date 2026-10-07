@@ -46,7 +46,7 @@
     "@effect/doctest": "workspace:^",
     "@effect/jsdocs": "workspace:^",
     "@effect/oxc": "workspace:^",
-    "@effect/tsgo": "^0.48.0",
+    "@effect/tsgo": "^0.51.0",
     "@effect/utils": "workspace:^",
     "@effect/vitest": "workspace:^",
     "@faker-js/faker": "^10.6.0",

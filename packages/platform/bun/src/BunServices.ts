@@ -6,6 +6,7 @@
  * and terminal services. Use the layer when a Bun program wants the standard
  * platform services from one place.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Crypto } from "effect/Crypto"
@@ -28,6 +29,7 @@ import * as BunTerminal from "./BunTerminal.ts"
  * The union of core services provided by the Bun platform layer, including child
  * process spawning, filesystem, path, stdio, and terminal services.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -37,6 +39,7 @@ export type BunServices = ChildProcessSpawner | Crypto | Dns | FileSystem | Path
  * Provides the default Bun implementations for child process spawning,
  * crypto, DNS, filesystem, path, stdio, and terminal services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

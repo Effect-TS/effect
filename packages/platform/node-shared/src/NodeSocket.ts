@@ -6,6 +6,7 @@
  * channels, or layers. It also exposes the `NetSocket` service tag for the
  * underlying Node socket and re-exports the `ws` package namespace.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
@@ -38,6 +39,7 @@ export * as NodeWS from "ws"
  * Service tag for the underlying Node `net.Socket` associated with the current
  * socket connection.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -85,6 +87,7 @@ const closeSocket = (conn: Net.Socket, isOpen: boolean) => {
  * Supports `openTimeout` and closes or destroys the underlying socket when the
  * reader scope is finalized.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -142,6 +145,7 @@ export const makeNet = (
  * the internal buffer is full. `writeAll` corks the stream around the batch.
  * Releasing the writer scope half-closes the stream (`end()`).
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -510,6 +514,7 @@ export const fromDuplex = <RO>(
  * Creates a `Channel` over a TCP socket, reading arrays of `Uint8Array`
  * chunks and writing arrays of bytes, strings, or socket close events.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -530,6 +535,7 @@ export const makeNetChannel = <IE = never>(
  * Provides a `Socket.Socket` by opening a TCP connection with the supplied
  * Node `net` connection options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -554,6 +560,7 @@ export const layerNet: (options: Net.NetConnectOpts) => Layer.Layer<
  * certificate, fails with a `SocketOpenError`. Supports `openTimeout` and
  * destroys the underlying socket when the reader scope is finalized.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -598,6 +605,7 @@ export const makeTls = (
  * Creates a `Channel` over a TLS socket, reading arrays of `Uint8Array`
  * chunks and writing arrays of bytes, strings, or socket close events.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -618,6 +626,7 @@ export const makeTlsChannel = <IE = never>(
  * Provides a `Socket.Socket` by opening a TLS connection with the supplied
  * Node `tls` connection options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -5,6 +5,7 @@
  * arguments and Web Streams. Standard input remains open, and standard output
  * and error output are not closed unless requested through `endOnDone`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -33,6 +34,7 @@ const output = (
  * Provides the `Stdio` service backed by `Deno.args`, `Deno.stdin`,
  * `Deno.stdout`, and `Deno.stderr`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

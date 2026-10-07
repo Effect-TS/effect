@@ -7,6 +7,7 @@
  * wraps JSON formatting with redaction and circular-reference handling, and the
  * module also includes helpers for property keys, paths, and dates.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Predicate from "./Predicate.ts"
@@ -35,6 +36,7 @@ import { getRedacted, redact, symbolRedactable } from "./Redactable.ts"
  *
  * @see {@link format}
  * @see {@link formatJson}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -102,6 +104,7 @@ export interface Formatter<in Value, out Format = string> {
  *
  * @see {@link formatJson}
  * @see {@link Formatter}
+ * @stability stable
  * @category formatting
  * @since 2.0.0
  */
@@ -298,6 +301,7 @@ function safeGet(input: object, key: PropertyKey): unknown {
  *
  * @see {@link format}
  * @see {@link Formatter}
+ * @stability stable
  * @category serialization
  * @since 4.0.0
  */

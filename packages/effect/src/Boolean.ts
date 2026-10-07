@@ -6,6 +6,7 @@
  * logical operations, checking collections with `every` or `some`, ordering
  * booleans, and reducing boolean values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equ from "./Equivalence.ts"
@@ -39,6 +40,7 @@ import * as Reducer from "./Reducer.ts"
  * Boolean.Boolean(0) // => false
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -60,6 +62,7 @@ export const Boolean = globalThis.Boolean
  * Boolean.isBoolean("true") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -83,6 +86,7 @@ export const isBoolean: (input: unknown) => input is boolean = predicate.isBoole
  * }) // => "It's true!"
  * ```
  *
+ * @stability stable
  * @category pattern matching
  * @since 2.0.0
  */
@@ -119,6 +123,7 @@ export const match: {
  * Boolean.Order(true, true) // => 0
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -141,6 +146,7 @@ export const Order: order.Order<boolean> = order.Boolean
  * Boolean.Equivalence(true, false) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -162,6 +168,7 @@ export const Equivalence: Equ.Equivalence<boolean> = Equ.Boolean
  * Boolean.not(false) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -189,6 +196,7 @@ export const not = (self: boolean): boolean => !self
  * Boolean.and(false, false) // => false
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -215,6 +223,7 @@ export const and: {
  * Boolean.nand(false, false) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -241,6 +250,7 @@ export const nand: {
  * Boolean.or(false, false) // => false
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -267,6 +277,7 @@ export const or: {
  * Boolean.nor(false, false) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -293,6 +304,7 @@ export const nor: {
  * Boolean.xor(false, false) // => false
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -319,6 +331,7 @@ export const xor: {
  * Boolean.eqv(false, false) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -345,6 +358,7 @@ export const eqv: {
  * Boolean.implies(false, false) // => true
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -372,6 +386,7 @@ export const implies: {
  * @see {@link some} for checking whether at least one value is `true`
  * @see {@link ReducerAnd} for reducing booleans with AND through a `Reducer`
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -403,6 +418,7 @@ export const every = (collection: Iterable<boolean>): boolean => {
  * @see {@link every} for checking whether all values are `true`
  * @see {@link ReducerOr} for reducing booleans with OR through a `Reducer`
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -435,6 +451,7 @@ export const some = (collection: Iterable<boolean>): boolean => {
  * @see {@link ReducerOr} for reducing with OR semantics
  * @see {@link every} for checking an iterable directly
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -455,6 +472,7 @@ export const ReducerAnd: Reducer.Reducer<boolean> = Reducer.make((a, b) => a && 
  * @see {@link ReducerAnd} for reducing with AND semantics
  * @see {@link some} for checking an iterable directly
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */

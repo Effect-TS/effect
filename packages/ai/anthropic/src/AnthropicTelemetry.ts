@@ -4,6 +4,7 @@
  * standard GenAI telemetry attributes and adds request and response metadata
  * under the `gen_ai.anthropic.*` OpenTelemetry namespaces.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Telemetry from "effect/ai/Telemetry"
@@ -22,6 +23,7 @@ import type { Simplify } from "effect/Types"
  * conventions:
  * https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -35,6 +37,7 @@ export type AnthropicTelemetryAttributes = Simplify<
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.anthropic.request`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -53,6 +56,7 @@ export interface RequestAttributes {
  * Telemetry attributes which are part of the GenAI specification and are
  * namespaced by `gen_ai.anthropic.response`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -66,6 +70,7 @@ export interface ResponseAttributes {
 /**
  * Options accepted by `addGenAIAnnotations`, combining standard GenAI telemetry attributes with optional Anthropic request and response attributes.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -96,6 +101,7 @@ const addAnthropicResponseAttributes = Telemetry.addSpanAttributes("gen_ai.anthr
  *
  * This method mutates the `Span` in place.
  *
+ * @stability unstable
  * @category tracing
  * @since 4.0.0
  */

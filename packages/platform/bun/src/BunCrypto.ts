@@ -9,6 +9,7 @@
  * present for interoperability with existing protocols, not for new
  * security-sensitive designs.
  *
+ * @stability unstable
  * @since 1.0.0
  */
 import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
@@ -18,6 +19,7 @@ import type * as Layer from "effect/Layer"
 /**
  * Layer that provides the Bun Crypto service implementation.
  *
+ * @stability unstable
  * @category layers
  * @since 1.0.0
  */

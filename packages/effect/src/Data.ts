@@ -6,6 +6,7 @@
  * makes them easy to narrow with pattern matching or simple checks. These
  * helpers are commonly used for domain values and errors in Effect programs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"
@@ -42,6 +43,7 @@ import type { Unify } from "./Unify.ts"
  * @see {@link TaggedClass} — adds a `_tag` field
  * @see {@link Error} — yieldable error variant
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -85,6 +87,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * @see {@link TaggedError} — tagged error variant
  * @see {@link TaggedEnum} — multi-variant unions
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -136,6 +139,7 @@ export const TaggedClass = <Tag extends string>(
  * @see {@link TaggedEnum.WithGenerics} — generic tagged enums
  * @see {@link TaggedEnum.Constructor} — the constructor object type
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -172,6 +176,7 @@ type UntaggedChildren<A> = true extends ChildrenAreTagged<A>
  *   values ({@link TaggedEnum.Value})
  * - Full constructor objects ({@link TaggedEnum.Constructor})
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace TaggedEnum {
@@ -574,6 +579,7 @@ export declare namespace TaggedEnum {
  * @see {@link TaggedEnum.Constructor} — the returned object type
  * @see {@link TaggedEnum.WithGenerics} — generic enum support
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -706,6 +712,7 @@ function taggedMatch<
  * @see {@link TaggedError} — adds a `_tag` for `Effect.catchTag`
  * @see {@link Class} — non-error data class
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -755,6 +762,7 @@ export const Error: new<A extends Record<string, any> = {}>(
  * @see {@link Error} — without a `_tag`
  * @see {@link TaggedClass} — tagged class that is not an error
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */

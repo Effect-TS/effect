@@ -7,6 +7,7 @@
  * `make` manages readline and TTY raw mode in a scope, while `layer` provides
  * the default service that ends key input on Ctrl+C or Ctrl+D.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "effect/Cause"
@@ -26,6 +27,7 @@ import * as readline from "node:readline"
  * TTY raw mode while in scope and using the supplied predicate to decide when
  * key input should end.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -168,6 +170,7 @@ export const make: (
  * Provides the default process-backed `Terminal` service, ending key input on
  * Ctrl+C or Ctrl+D.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
