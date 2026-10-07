@@ -274,6 +274,95 @@ describe("MessageStorage", () => {
         yield* Fiber.await(fiber)
       }).pipe(Effect.provide(MemoryLayer)))
 
+    it.effect("nested transactions notify reply handlers after the outer transaction commits", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        const reply = yield* makeReply(request)
+        let delivered = 0
+        const handler = yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: () =>
+              Effect.sync(() => {
+                delivered++
+              })
+          })
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+
+        // The inner transaction is a savepoint; only the outer COMMIT makes
+        // the reply visible.
+        const commit = yield* Latch.make()
+        const transaction = yield* storage.withTransaction(
+          storage.withTransaction(storage.saveReply(reply)).pipe(Effect.andThen(commit.await))
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+        assert.strictEqual(delivered, 0)
+        assert.isUndefined(handler.pollUnsafe())
+
+        yield* commit.open
+        yield* Fiber.join(transaction)
+        yield* Fiber.join(handler)
+        assert.strictEqual(delivered, 1)
+      }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("nested transactions do not notify reply handlers when the outer transaction fails", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        const reply = yield* makeReply(request)
+        let delivered = 0
+        const handler = yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: () =>
+              Effect.sync(() => {
+                delivered++
+              })
+          })
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+
+        const exit = yield* storage.withTransaction(
+          storage.withTransaction(storage.saveReply(reply)).pipe(Effect.andThen(Effect.fail("COMMIT failed")))
+        ).pipe(Effect.exit)
+        assert(Exit.isFailure(exit))
+        yield* TestClock.adjust(1)
+        assert.strictEqual(delivered, 0)
+        assert.isUndefined(handler.pollUnsafe())
+      }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("nested transactions do not notify reply handlers when the inner transaction rolls back", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        const reply = yield* makeReply(request)
+        let delivered = 0
+        const handler = yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: () =>
+              Effect.sync(() => {
+                delivered++
+              })
+          })
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(1)
+
+        // The outer transaction commits, but the savepoint that saved the
+        // reply was rolled back.
+        yield* storage.withTransaction(
+          storage.withTransaction(Effect.andThen(storage.saveReply(reply), Effect.fail("inner"))).pipe(Effect.ignore)
+        )
+        yield* TestClock.adjust(1)
+        assert.strictEqual(delivered, 0)
+        assert.isUndefined(handler.pollUnsafe())
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("unregisterShardReplyHandlers fails parked waiters during rebalance", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
