@@ -1313,8 +1313,9 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * **Details**
  *
  * The getter is pure and never fails. It splits the string by `separator`
- * (default `,`) and then each pair by `keyValueSeparator` (default `=`). Pairs
- * missing a key or value are silently skipped.
+ * (default `,`) and then each pair at the first `keyValueSeparator` (default `=`),
+ * preserving the rest of the value. An empty `keyValueSeparator` uses the first
+ * two characters as the key and value. Pairs missing a key or value are skipped.
  *
  * **Example** (Parsing a key-value string)
  *
@@ -1340,8 +1341,16 @@ export function splitKeyValue<E extends string>(options?: {
   const keyValueSeparator = options?.keyValueSeparator ?? "="
   return transform((input) =>
     input.split(separator).reduce((acc, pair) => {
-      const [key, value] = pair.split(keyValueSeparator)
-      if (key && value) {
+      if (keyValueSeparator === "") {
+        const [key, value] = pair.split("")
+        if (key && value) InternalRecord.assignProperty(acc, key, value)
+        return acc
+      }
+      const index = pair.indexOf(keyValueSeparator)
+      if (index <= 0) return acc
+      const key = pair.slice(0, index)
+      const value = pair.slice(index + keyValueSeparator.length)
+      if (value) {
         InternalRecord.assignProperty(acc, key, value)
       }
       return acc
