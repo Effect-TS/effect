@@ -1733,30 +1733,7 @@ describe.concurrent("Sharding", () => {
       assert.strictEqual(second._tag, "BoomError")
       assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-      // Replies saved inside a failed transaction are discarded, like a SQL
-      // rollback.
-      Layer.updateService(MessageStorage.MessageStorage, (storage) => {
-        let saved: Array<Snowflake.Snowflake> = []
-        return {
-          ...storage,
-          withTransaction: (effect) =>
-            storage.withTransaction(effect).pipe(
-              Effect.onExit((exit) => {
-                const rolledBack = saved
-                saved = []
-                return Exit.isFailure(exit)
-                  ? Effect.forEach(rolledBack, (id) => Effect.orDie(storage.clearReplies(id)), { discard: true })
-                  : Effect.void
-              })
-            ),
-          saveReply: (reply) =>
-            MessageStorage.MemoryTransaction.use((inTransaction) => {
-              if (inTransaction) saved.push(reply.reply.requestId)
-              return storage.saveReply(reply)
-            })
-        }
-      }),
-      Layer.provide(MessageStorage.layerMemory),
+      Layer.provide(RollbackMemoryStorage((transaction) => transaction)),
       Layer.provide(TestShardingConfig)
     ))))
 
@@ -1781,10 +1758,9 @@ describe.concurrent("Sharding", () => {
         yield* TestClock.adjust(5000)
         assert.strictEqual(yield* Fiber.join(result), true)
       }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-        RollbackMemoryStorage((transaction) =>
+        Layer.provide(RollbackMemoryStorage((transaction) =>
           Effect.tap(transaction, () => Effect.andThen(committing.open, commit.await))
-        ),
-        Layer.provide(MessageStorage.layerMemory),
+        )),
         Layer.provide(TestShardingConfig)
       )))
     }))
@@ -1805,10 +1781,9 @@ describe.concurrent("Sharding", () => {
       yield* TestClock.adjust(5000)
       assert.deepStrictEqual(yield* Fiber.join(result), [true, 2])
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-      RollbackMemoryStorage((transaction, attempt) =>
+      Layer.provide(RollbackMemoryStorage((transaction, attempt) =>
         attempt === 1 ? Effect.andThen(transaction, Effect.die("COMMIT failed")) : transaction
-      ),
-      Layer.provide(MessageStorage.layerMemory),
+      )),
       Layer.provide(TestShardingConfig)
     ))))
 
@@ -1829,12 +1804,11 @@ describe.concurrent("Sharding", () => {
       yield* TestClock.adjust(5000)
       assert.deepStrictEqual(yield* Fiber.join(result), ["BoomError", 2])
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-      RollbackMemoryStorage((transaction, attempt) =>
+      Layer.provide(RollbackMemoryStorage((transaction, attempt) =>
         attempt === 1
           ? Effect.catchCause(transaction, () => Effect.die("ROLLBACK failed"))
           : transaction
-      ),
-      Layer.provide(MessageStorage.layerMemory),
+      )),
       Layer.provide(TestShardingConfig)
     ))))
 
@@ -1858,34 +1832,38 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provide(TestSharding)))
 })
 
-// Memory storage whose transactions discard the replies saved inside them when
-// they fail, like a SQL rollback. `wrap` runs around each transaction, with
-// the 1-based attempt number.
+// Memory storage whose driver transactions discard the replies saved inside
+// them when they fail, like a SQL rollback. `wrap` runs around each driver
+// transaction, with the 1-based attempt number.
 const RollbackMemoryStorage = (
   wrap: <A, E, R>(transaction: Effect.Effect<A, E, R>, attempt: number) => Effect.Effect<A, E, R>
 ) =>
-  Layer.updateService(MessageStorage.MessageStorage, (storage) => {
-    let attempts = 0
-    let saved: Array<Snowflake.Snowflake> = []
-    return {
-      ...storage,
-      withTransaction: (effect) =>
-        Effect.suspend(() => wrap(storage.withTransaction(effect), ++attempts)).pipe(
-          Effect.onExit((exit) => {
-            const rolledBack = saved
-            saved = []
-            return Exit.isFailure(exit)
-              ? Effect.forEach(rolledBack, (id) => Effect.orDie(storage.clearReplies(id)), { discard: true })
-              : Effect.void
+  Layer.effect(
+    MessageStorage.MessageStorage,
+    Effect.gen(function*() {
+      const { encoded } = yield* MessageStorage.MemoryDriver
+      let attempts = 0
+      let saved: Array<Snowflake.Snowflake> = []
+      return yield* MessageStorage.makeEncoded({
+        ...encoded,
+        withTransaction: (effect) =>
+          Effect.suspend(() => wrap(encoded.withTransaction(effect), ++attempts)).pipe(
+            Effect.onExit((exit) => {
+              const rolledBack = saved
+              saved = []
+              return Exit.isFailure(exit)
+                ? Effect.forEach(rolledBack, (id) => Effect.orDie(encoded.clearReplies(id)), { discard: true })
+                : Effect.void
+            })
+          ),
+        saveReply: (reply) =>
+          MessageStorage.MemoryTransaction.use((inTransaction) => {
+            if (inTransaction) saved.push(Snowflake.Snowflake(reply.requestId))
+            return encoded.saveReply(reply)
           })
-        ),
-      saveReply: (reply) =>
-        MessageStorage.MemoryTransaction.use((inTransaction) => {
-          if (inTransaction) saved.push(reply.reply.requestId)
-          return storage.saveReply(reply)
-        })
-    }
-  })
+      })
+    })
+  ).pipe(Layer.provide([MessageStorage.MemoryDriver.layer, Snowflake.layerGenerator]))
 
 const DefectRecoveryRun = Rpc.make("run", {
   payload: { id: Schema.String },

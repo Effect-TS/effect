@@ -40,7 +40,6 @@ import * as Snowflake from "../Snowflake.ts"
 import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
-import { ReplyHold } from "./replyHold.ts"
 import { ResourceMap } from "./resourceMap.ts"
 import { ResourceRef } from "./resourceRef.ts"
 
@@ -87,9 +86,9 @@ export interface Residency {
   readonly releaseUnsafe: () => void
 }
 
-// An open handler transaction. The handler's reply and bookkeeping wait here
-// until the transaction outcome is known.
-interface RequestTransaction extends ReplyHold {
+// An open handler transaction for a persisted request. The handler's reply
+// and bookkeeping wait here until the transaction outcome is known.
+interface RequestTransaction {
   settle?: ((outcome: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 }
 
@@ -281,6 +280,7 @@ export const make = Effect.fnUntraced(function*<
                   if (!isShuttingDown) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
+                      Effect.setContext(handlerContext),
                       Effect.forkIn(handlerScope)
                     )
                   }
@@ -315,24 +315,13 @@ export const make = Effect.fnUntraced(function*<
                 if (!transaction) return respond
                 const exit = response.exit
 
-                // Non-persisted replies are not saved, so only their failures
-                // wait for the rollback.
-                if (!storageEnabled || !Context.get(request.message.annotations, Persisted)) {
-                  if (Exit.isSuccess(exit)) return respond
-                  transaction.settle = () => respond
-                  return Effect.void
-                }
-
-                // A success is saved with the handler's writes and the caller
-                // is notified after COMMIT. A failure is saved after a clean
-                // rollback. If COMMIT or ROLLBACK itself fails, the outcome is
-                // unknown and the request is replayed.
+                // A success is saved with the handler's writes, and storage
+                // notifies the caller after COMMIT. A failure is saved after a
+                // clean rollback. If COMMIT or ROLLBACK itself fails, the
+                // outcome is unknown and the request is replayed.
                 if (Exit.isSuccess(exit)) {
-                  transaction.settle = (outcome) =>
-                    Exit.isSuccess(outcome)
-                      ? Effect.orDie(Effect.andThen(transaction.notify ?? Effect.void, complete))
-                      : restartFrom(outcome.cause)
-                  return Effect.orDie(Effect.provideService(save, ReplyHold, transaction))
+                  transaction.settle = (outcome) => Exit.isSuccess(outcome) ? complete : restartFrom(outcome.cause)
+                  return Effect.orDie(save)
                 }
                 transaction.settle = (outcome) =>
                   Exit.isSuccess(outcome) || Equal.equals(outcome.cause, exit.cause)
@@ -375,12 +364,13 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
-        // Rebuild the handlers and replay the active requests.
+        // Rebuild the handlers and replay the active requests. The restart is
+        // forked from a handler, so it leaves that handler's context behind.
         const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
           if (!isActive()) return endLatch.open
           const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
           if (!rebuild) return Effect.void
-          return Effect.forkIn(restart(cause, rebuild), managerScope)
+          return Effect.forkIn(Effect.setContext(restart(cause, rebuild), handlerContext), managerScope)
         }
 
         yield* Scope.addFinalizer(
@@ -640,9 +630,13 @@ export const make = Effect.fnUntraced(function*<
       transaction?: RequestTransaction | undefined
     }
   ): Parameters<EntityState["write"]>[2] => {
-    // The reply and bookkeeping settle once the transaction outcome is known.
-    const onTransaction = Context.get(entry.message.annotations, WithTransaction)
-      ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    // A persisted reply settles once the transaction outcome is known.
+    // Non-persisted replies are not saved, so they have nothing to wait for.
+    const onTransaction = !Context.get(entry.message.annotations, WithTransaction)
+      ? undefined
+      : !Context.get(entry.message.annotations, Persisted)
+      ? options.storage.withTransaction
+      : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         Effect.suspend(() => {
           const transaction: RequestTransaction = {}
           entry.transaction = transaction
@@ -651,7 +645,6 @@ export const make = Effect.fnUntraced(function*<
             return transaction.settle ? transaction.settle(outcome) : Effect.void
           })
         })
-      : undefined
     const onCaller = entry.callerScope && bindToCaller(entry.callerScope)
     if (!onCaller) return onTransaction && { onRequest: onTransaction }
     return { onRequest: onTransaction ? (effect) => onCaller(onTransaction(effect)) : onCaller }

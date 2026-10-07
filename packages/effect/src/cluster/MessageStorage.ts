@@ -30,7 +30,6 @@ import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { ReplyHold } from "./internal/replyHold.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
@@ -525,6 +524,12 @@ export type EncodedRepliesOptions<A> = {
   readonly cursor: Option.Option<A>
 }
 
+// Caller notifications of the `WithExit` replies saved inside the current
+// transaction. They run after it commits.
+const TransactionNotifications = Context.Reference<
+  Array<Effect.Effect<void, PersistenceError | MalformedMessage>> | undefined
+>("effect/cluster/MessageStorage/TransactionNotifications", { defaultValue: () => undefined })
+
 /**
  * Wraps a concrete message storage implementation with reply-handler management.
  *
@@ -567,6 +572,15 @@ export const make = (
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
       ...storage,
+      // Callers learn of the `WithExit` replies saved inside a transaction
+      // once it has committed.
+      withTransaction: (effect) =>
+        Effect.suspend(() => {
+          const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
+          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
+            Effect.tap(() => Effect.orDie(Effect.forEach(notifications, identity, { discard: true })))
+          )
+        }),
       registerReplyHandler: (message) => {
         const requestId = message.envelope.requestId
         return Effect.callback<void, EntityNotAssignedToRunner>((resume) => {
@@ -648,11 +662,10 @@ export const make = (
               : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
           })
           if (persisted.reply._tag !== "WithExit") return notify
-          // A reply saved inside its request's transaction becomes visible to
-          // callers at COMMIT, so the transaction owner runs the notification.
-          return ReplyHold.use((hold) =>
-            hold === undefined ? notify : Effect.sync(() => {
-              hold.notify = notify
+          // A reply saved inside a transaction becomes visible at COMMIT.
+          return TransactionNotifications.use((notifications) =>
+            notifications === undefined ? notify : Effect.sync(() => {
+              notifications.push(notify)
             })
           )
         })
