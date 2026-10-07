@@ -172,9 +172,9 @@ export const describeDnsServer = (
 
     it.effect("looks up localhost from the hosts file", () =>
       Effect.gen(function*() {
-        const addresses = yield* dns().lookup(name("localhost"), { family: "ipv4" })
+        const addresses = yield* dns().lookup(name("localhost"), { family: "IPv4" })
         assert.isTrue(addresses.some((address) => NetAddress.formatIp(address) === "127.0.0.1"))
-        const endpoints = yield* Dns.resolveInet(Host.hostPortFromStringUnsafe("localhost:8080"), { family: "ipv4" })
+        const endpoints = yield* Dns.resolveInet(Host.hostPortFromStringUnsafe("localhost:8080"), { family: "IPv4" })
           .pipe(Effect.provideService(Dns.Dns, dns()))
         assert.isTrue(endpoints.some((address) => NetAddress.formatInet(address) === "127.0.0.1:8080"))
       }))

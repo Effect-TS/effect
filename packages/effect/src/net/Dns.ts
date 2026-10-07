@@ -515,23 +515,15 @@ export class DnsError extends Data.TaggedError("DnsError")<{
 // =============================================================================
 
 /**
- * The address family requested from a lookup.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export type Family = "any" | "ipv4" | "ipv6"
-
-/**
- * Options for address lookups.
+ * Options for address lookups. Without a `family`, addresses of both families
+ * are returned.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
 export interface LookupOptions {
-  readonly family?: Family | undefined
+  readonly family?: NetAddress.IpFamily | undefined
 }
 
 /**
@@ -554,14 +546,10 @@ export interface Dns {
    * Looks up the addresses of a host name with the operating system resolver,
    * keeping the system's preferred order.
    */
-  lookup(
+  lookup<F extends NetAddress.IpFamily>(
     host: Host.DomainName,
-    options: { readonly family: "ipv4" }
-  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.Ipv4Address>, DnsError>
-  lookup(
-    host: Host.DomainName,
-    options: { readonly family: "ipv6" }
-  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.Ipv6Address>, DnsError>
+    options: { readonly family: F }
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.FamilyAddress<F>>, DnsError>
   lookup(
     host: Host.DomainName,
     options?: LookupOptions
@@ -590,8 +578,10 @@ export interface Dns {
  */
 export const Dns: Context.Service<Dns, Dns> = Context.Service("effect/net/Dns")
 
-const matchesFamily = (address: NetAddress.IpAddress, family: Family): boolean =>
-  family === "any" || (family === "ipv4" ? NetAddress.isIpv4Address(address) : NetAddress.isIpv6Address(address))
+const matchesFamily = (
+  address: NetAddress.IpAddress | NetAddress.InetAddress,
+  family: NetAddress.IpFamily | undefined
+): boolean => family === undefined || NetAddress.isFamily(address, family)
 
 const dedupe = <A>(values: ReadonlyArray<A>): Array<A> => {
   const out: Array<A> = []
@@ -623,14 +613,14 @@ const nonEmptyOrNotFound = <A>(
 export const make = (impl: {
   readonly lookup: (
     host: Host.DomainName,
-    family: Family
+    family: NetAddress.IpFamily | undefined
   ) => Effect.Effect<ReadonlyArray<NetAddress.IpAddress>, DnsError>
   readonly resolve: (name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>
   readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<Host.DomainName>, DnsError>
 }): Dns => ({
   [TypeId]: TypeId,
-  lookup: (host, options) => {
-    const family = options?.family ?? "any"
+  lookup: (host: Host.DomainName, options?: LookupOptions) => {
+    const family = options?.family
     return Effect.flatMap(
       impl.lookup(host, family),
       (addresses) =>
@@ -683,9 +673,9 @@ export interface ResolveOptions extends LookupOptions {
 
 const literalInet = <A extends NetAddress.InetAddress>(
   address: A,
-  family: Family
+  family: NetAddress.IpFamily | undefined
 ): Effect.Effect<Arr.NonEmptyReadonlyArray<A>, DnsError> =>
-  matchesFamily(address.address, family)
+  matchesFamily(address, family)
     ? Effect.succeed([address])
     : Effect.fail(new DnsError({ reason: "NotFound", method: "lookup", hostname: NetAddress.formatHost(address) }))
 
@@ -724,19 +714,11 @@ const literalInet = <A extends NetAddress.InetAddress>(
  * @since 4.0.0
  */
 export const resolveInet: {
-  (
+  <F extends NetAddress.IpFamily>(
     target: NetAddress.InetAddress | Host.HostPort,
-    options: ResolveOptions & { readonly family: "ipv4" }
+    options: ResolveOptions & { readonly family: F }
   ): Effect.Effect<
-    Arr.NonEmptyReadonlyArray<NetAddress.InetAddressV4>,
-    DnsError | NetAddress.NetAddressError,
-    Dns
-  >
-  (
-    target: NetAddress.InetAddress | Host.HostPort,
-    options: ResolveOptions & { readonly family: "ipv6" }
-  ): Effect.Effect<
-    Arr.NonEmptyReadonlyArray<NetAddress.InetAddressV6>,
+    Arr.NonEmptyReadonlyArray<NetAddress.Inet<NetAddress.FamilyAddress<F>>>,
     DnsError | NetAddress.NetAddressError,
     Dns
   >
@@ -750,7 +732,7 @@ export const resolveInet: {
   >
 } = (target: NetAddress.InetAddress | Host.HostPort, options?: ResolveOptions) =>
   Effect.gen(function*() {
-    const family = options?.family ?? "any"
+    const family = options?.family
     if (NetAddress.isInetAddress(target)) {
       return yield* literalInet(target, family)
     }

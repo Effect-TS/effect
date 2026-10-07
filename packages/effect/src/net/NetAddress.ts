@@ -357,6 +357,29 @@ export type Family<A extends IpAddress | InetAddress> = A extends Ipv4Address | 
   : Ipv6Address
 
 /**
+ * The name of an IP address family, spelled as in `os.networkInterfaces()` and
+ * socket address information on Node.js, Deno, and Bun.
+ *
+ * @see {@link familyOf} for reading the family of an address
+ * @see {@link FamilyAddress} for the address type of a family
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type IpFamily = "IPv4" | "IPv6"
+
+/**
+ * The IP address type for an IP address family name. `FamilyAddress<IpFamily>`
+ * is `IpAddress`.
+ *
+ * @see {@link Family} for the inverse mapping from an address type
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type FamilyAddress<F extends IpFamily> = F extends "IPv4" ? Ipv4Address : Ipv6Address
+
+/**
  * The internet address type for an IP address family.
  *
  * **Details**
@@ -461,6 +484,49 @@ export const isIpAddress = (u: unknown): u is IpAddress => isIpv4Address(u) || i
  * @since 4.0.0
  */
 export const width = (address: IpAddress): 32 | 128 => isIpv4Address(address) ? 32 : 128
+
+/**
+ * Returns the family of an IP address or internet address.
+ *
+ * **Example** (Reading address families)
+ *
+ * ```ts import.meta.vitest
+ * import { NetAddress } from "effect/net"
+ *
+ * NetAddress.familyOf(NetAddress.ipv4Loopback) // => "IPv4"
+ * NetAddress.familyOf(NetAddress.inetAddressFromStringUnsafe("[::1]:80")) // => "IPv6"
+ * ```
+ *
+ * @stability unstable
+ * @category getters
+ * @since 4.0.0
+ */
+export const familyOf = (self: IpAddress | InetAddress): IpFamily =>
+  isIpv4Address(self) || isInetAddressV4(self) ? "IPv4" : "IPv6"
+
+/**
+ * Returns `true` when an IP address or internet address belongs to a family,
+ * narrowing it to that family.
+ *
+ * @stability unstable
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isFamily: {
+  <F extends IpFamily>(
+    family: F
+  ): <A extends IpAddress | InetAddress>(self: A) => self is Extract<A, FamilyAddress<F> | Inet<FamilyAddress<F>>>
+  <A extends IpAddress | InetAddress, F extends IpFamily>(
+    self: A,
+    family: F
+  ): self is Extract<A, FamilyAddress<F> | Inet<FamilyAddress<F>>>
+} = dual(
+  2,
+  <A extends IpAddress | InetAddress, F extends IpFamily>(
+    self: A,
+    family: F
+  ): self is Extract<A, FamilyAddress<F> | Inet<FamilyAddress<F>>> => familyOf(self) === family
+)
 
 /**
  * Returns `true` when a value is a MAC address.
@@ -1476,7 +1542,7 @@ export const inetAddressFromHostString = (
  * @since 4.0.0
  */
 export interface NetworkInterfaceAddress {
-  readonly family: string
+  readonly family: IpFamily
   readonly scopeid?: number | undefined
 }
 

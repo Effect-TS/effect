@@ -5,6 +5,7 @@ import * as IpInterface from "effect/net/IpInterface"
 import * as IpNetwork from "effect/net/IpNetwork"
 import * as NetAddress from "effect/net/NetAddress"
 import { Buffer } from "node:buffer"
+import * as Os from "node:os"
 import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
@@ -18,6 +19,21 @@ const failure = <E>(result: Result.Result<unknown, E>): E => {
 }
 
 describe("NetAddress", () => {
+  it("returns and checks address families", () => {
+    const ipv4 = success(NetAddress.ipv4FromString("1.2.3.4"))
+    const ipv6 = success(NetAddress.ipv6FromString("2001:db8::1"))
+    const inet6 = success(NetAddress.inetAddressFromString("[::1]:80"))
+    assert.strictEqual(NetAddress.familyOf(ipv4), "IPv4")
+    assert.strictEqual(NetAddress.familyOf(ipv6), "IPv6")
+    assert.strictEqual(NetAddress.familyOf(success(NetAddress.inetAddressFromString("1.2.3.4:80"))), "IPv4")
+    assert.strictEqual(NetAddress.familyOf(inet6), "IPv6")
+    assert.isTrue(NetAddress.isFamily(ipv4, "IPv4"))
+    assert.isFalse(NetAddress.isFamily(ipv4, "IPv6"))
+    const addresses: ReadonlyArray<NetAddress.IpAddress> = [ipv4, ipv6]
+    const v6: ReadonlyArray<NetAddress.Ipv6Address> = addresses.filter(NetAddress.isFamily("IPv6"))
+    assert.deepStrictEqual(v6.map(NetAddress.formatIp), ["2001:db8::1"])
+  })
+
   it("returns IP address widths", () => {
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv4FromString("1.2.3.4"))), 32)
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv6FromString("2001:db8::1"))), 128)
@@ -664,8 +680,8 @@ describe("NetAddress", () => {
     })
 
     it("snapshots the first positive IPv6 scope ID from each interface", () => {
-      const linkLocal = { family: "IPv6", scopeid: 7 }
-      const interfaces = {
+      const linkLocal: { family: "IPv6"; scopeid: number } = { family: "IPv6", scopeid: 7 }
+      const interfaces: Record<string, ReadonlyArray<NetAddress.NetworkInterfaceAddress> | undefined> = {
         en0: [
           { family: "IPv4", scopeid: 99 },
           { family: "IPv6" },
@@ -682,6 +698,10 @@ describe("NetAddress", () => {
       linkLocal.scopeid = 12
       assert.deepStrictEqual(scopeIds, new Map([["en0", 7], ["en3", 11]]))
       assert.deepStrictEqual(NetAddress.scopeIdsFromInterfaces([]), new Map())
+    })
+
+    it("accepts the operating system's interface entries", () => {
+      assert.instanceOf(NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces())), Map)
     })
 
     it("provides throwing counterparts for trusted construction", () => {

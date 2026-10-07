@@ -155,7 +155,8 @@ const queries: {
     )
 }
 
-const toFamily = (family: Dns.Family): 0 | 4 | 6 => family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0
+const toFamily = (family: NetAddress.IpFamily | undefined): 0 | 4 | 6 =>
+  family === "IPv4" ? 4 : family === "IPv6" ? 6 : 0
 
 const stripZone = (address: string): string => {
   const separator = address.indexOf("%")

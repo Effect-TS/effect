@@ -190,7 +190,7 @@ describe("Dns", () => {
         })
         const all = yield* dns.lookup(name("a.b"))
         assert.deepStrictEqual(all.map(NetAddress.formatIp), ["10.0.0.1", "::1"])
-        const v6 = yield* dns.lookup(name("a.b"), { family: "ipv6" })
+        const v6 = yield* dns.lookup(name("a.b"), { family: "IPv6" })
         assert.deepStrictEqual(v6.map(NetAddress.formatIp), ["::1"])
         assert.strictEqual((yield* dns.resolve(name("a.b"), "SRV")).length, 1)
         const noData = yield* Effect.flip(dns.resolve(name("a.b"), "MX"))
@@ -205,7 +205,7 @@ describe("Dns", () => {
         const dns = yield* Dns.Dns
         const addresses = yield* dns.lookup(name("DB.internal."))
         assert.deepStrictEqual(addresses.map(NetAddress.formatIp), ["10.0.0.5", "fd00::5"])
-        const alias = yield* dns.lookup(name("alias.internal"), { family: "ipv4" })
+        const alias = yield* dns.lookup(name("alias.internal"), { family: "IPv4" })
         assert.deepStrictEqual(alias.map(NetAddress.formatIp), ["10.0.0.5"])
         const web = yield* dns.resolve(name("www.example.com"), "A")
         assert.deepStrictEqual(web.map(Dns.formatRecord), ["A 192.0.2.1"])
@@ -217,7 +217,7 @@ describe("Dns", () => {
 
         const missing = yield* Effect.flip(dns.lookup(name("missing.internal")))
         assert.strictEqual(missing.reason, "NotFound")
-        const noV6 = yield* Effect.flip(dns.lookup(name("v4.internal"), { family: "ipv6" }))
+        const noV6 = yield* Effect.flip(dns.lookup(name("v4.internal"), { family: "IPv6" }))
         assert.strictEqual(noV6.reason, "NotFound")
         const hostsOnly = yield* Effect.flip(dns.resolve(name("v4.internal"), "A"))
         assert.strictEqual(hostsOnly.reason, "NotFound")
@@ -237,7 +237,7 @@ describe("Dns", () => {
         assert.deepStrictEqual(yield* Dns.resolveInet(inet), [inet])
         const literal = yield* Dns.resolveInet(endpoint("[::1]:443"))
         assert.deepStrictEqual(literal.map(NetAddress.formatInet), ["[::1]:443"])
-        const wrongFamily = yield* Effect.flip(Dns.resolveInet(inet, { family: "ipv6" }))
+        const wrongFamily = yield* Effect.flip(Dns.resolveInet(inet, { family: "IPv6" }))
         assert.strictEqual(wrongFamily._tag, "DnsError")
       }).pipe(Effect.provide(Dns.layerStatic({}))))
 
@@ -256,7 +256,7 @@ describe("Dns", () => {
       Effect.gen(function*() {
         const all = yield* Dns.resolveInet(endpoint("db.internal:5432"))
         assert.deepStrictEqual(all.map(NetAddress.formatInet), ["10.0.0.5:5432", "[fd00::5]:5432"])
-        const v4 = yield* Dns.resolveInet(endpoint("db.internal:5432"), { family: "ipv4" })
+        const v4 = yield* Dns.resolveInet(endpoint("db.internal:5432"), { family: "IPv4" })
         const first: NetAddress.InetAddressV4 = v4[0]
         assert.strictEqual(NetAddress.formatInet(first), "10.0.0.5:5432")
       }).pipe(Effect.provide(zone)))
