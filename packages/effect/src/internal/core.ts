@@ -13,6 +13,7 @@ import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
+import { byReferenceInstances } from "./equal.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
@@ -279,10 +280,48 @@ export const causeFromReasons = <E>(
   reasons: ReadonlyArray<Cause.Reason<E>>
 ): Cause.Cause<E> => new CauseImpl(reasons)
 
+// Built-in interrupt reasons are equal exactly when their fiber ids and
+// annotation maps are identical, which also makes their hashes equal. Small
+// interrupt-only causes, the common result of fiber interruption, can then be
+// deduplicated without hashing or populating the global Hash / Equal caches.
+const maxPairwiseInterrupts = 16
+
+const isPlainInterrupt = (reason: Cause.Reason<unknown>): boolean =>
+  Object.getPrototypeOf(reason) === Interrupt.prototype && !byReferenceInstances.has(reason)
+
+const dedupeInterrupts = <E>(
+  self: ReadonlyArray<Cause.Reason<E>>,
+  that: ReadonlyArray<Cause.Reason<E>>
+): Array<Cause.Reason<E>> | undefined => {
+  if (self.length + that.length > maxPairwiseInterrupts) return undefined
+  for (let i = 0; i < self.length; i++) {
+    if (!isPlainInterrupt(self[i])) return undefined
+  }
+  for (let i = 0; i < that.length; i++) {
+    if (!isPlainInterrupt(that[i])) return undefined
+  }
+  const out: Array<Cause.Reason<E>> = []
+  const all = self.concat(that) as Array<Interrupt>
+  outer: for (let i = 0; i < all.length; i++) {
+    const reason = all[i]
+    for (let j = 0; j < out.length; j++) {
+      const previous = out[j] as Interrupt
+      if (
+        previous === reason ||
+        (previous.fiberId === reason.fiberId && previous.annotations === reason.annotations)
+      ) continue outer
+    }
+    out.push(reason)
+  }
+  return out
+}
+
 const dedupeReasons = <E>(
   self: ReadonlyArray<Cause.Reason<E>>,
   that: ReadonlyArray<Cause.Reason<E>>
 ): Array<Cause.Reason<E>> => {
+  const interrupts = dedupeInterrupts(self, that)
+  if (interrupts !== undefined) return interrupts
   // Avoid importing Array.ts into the core bundle.
   // Snapshot both arrays before invoking user-defined hash or equality methods.
   const buckets = new Map<number, Array<Cause.Reason<E>>>()
@@ -302,6 +341,16 @@ const dedupeReasons = <E>(
   return out
 }
 
+const isSameReasons = <E>(
+  self: ReadonlyArray<Cause.Reason<E>>,
+  that: ReadonlyArray<Cause.Reason<E>>
+): boolean => {
+  for (let i = 0; i < self.length; i++) {
+    if (self[i] !== that[i]) return false
+  }
+  return true
+}
+
 /** @internal */
 export const causeCombine: {
   <E2>(that: Cause.Cause<E2>): <E>(self: Cause.Cause<E>) => Cause.Cause<E | E2>
@@ -314,9 +363,18 @@ export const causeCombine: {
     } else if (that.reasons.length === 0) {
       return self as Cause.Cause<E | E2>
     }
-    const newCause = new CauseImpl<E | E2>(
-      dedupeReasons<E | E2>(self.reasons, that.reasons)
-    )
+    const reasons = dedupeReasons<E | E2>(self.reasons, that.reasons)
+    // Causes with different reason counts are never equal
+    if (reasons.length !== self.reasons.length) {
+      return new CauseImpl<E | E2>(reasons)
+    }
+    if (
+      Object.getPrototypeOf(self) === CauseImpl.prototype && !byReferenceInstances.has(self) &&
+      isSameReasons(self.reasons, reasons)
+    ) {
+      return self as Cause.Cause<E | E2>
+    }
+    const newCause = new CauseImpl<E | E2>(reasons)
     return Equal.equals(self, newCause) ? self : newCause
   }
 )
@@ -356,6 +414,39 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
   [Hash.symbol](): number {
     return Hash.combine(Hash.string(this._tag))(
       Hash.combine(Hash.hash(this.defect))(Hash.hash(this.annotations))
+    )
+  }
+}
+
+/** @internal */
+export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrupt {
+  declare readonly fiberId: number | undefined
+  constructor(
+    fiberId: number | undefined,
+    annotations = constEmptyAnnotations
+  ) {
+    super("Interrupt", annotations, "Interrupted")
+    this.fiberId = fiberId
+  }
+  override toString() {
+    return `Interrupt(${this.fiberId})`
+  }
+  toJSON(): unknown {
+    return {
+      _tag: "Interrupt",
+      fiberId: this.fiberId
+    }
+  }
+  [Equal.symbol](that: any): boolean {
+    return (
+      isInterruptReason(that) &&
+      this.fiberId === that.fiberId &&
+      this.annotations === that.annotations
+    )
+  }
+  [Hash.symbol](): number {
+    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
+      Hash.random(this.annotations)
     )
   }
 }

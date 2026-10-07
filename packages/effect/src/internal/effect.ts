@@ -5,14 +5,12 @@ import type * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
-import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
 import { formatJson } from "../Formatter.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constFalse, constTrue, constUndefined, constVoid, dual, identity } from "../Function.ts"
-import * as Hash from "../Hash.ts"
 import { toJson, toStringUnknown } from "../Inspectable.ts"
 import * as Iterable from "../Iterable.ts"
 import type * as _Latch from "../Latch.ts"
@@ -54,7 +52,6 @@ import {
   causeEmpty,
   causeFromReasons,
   CauseImpl,
-  constEmptyAnnotations,
   contA,
   contAll,
   contE,
@@ -65,6 +62,7 @@ import {
   exitSucceed,
   ExitTypeId,
   Fail,
+  Interrupt,
   InterruptorStackTrace,
   isCause,
   isDieReason,
@@ -75,7 +73,6 @@ import {
   makePrimitive,
   makePrimitiveProto,
   NoSuchElementError,
-  ReasonBase,
   StackTraceKey as CauseStackTrace,
   TaggedError,
   withFiber,
@@ -102,39 +99,6 @@ import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 // ----------------------------------------------------------------------------
 // Cause
 // ----------------------------------------------------------------------------
-
-/** @internal */
-export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrupt {
-  declare readonly fiberId: number | undefined
-  constructor(
-    fiberId: number | undefined,
-    annotations = constEmptyAnnotations
-  ) {
-    super("Interrupt", annotations, "Interrupted")
-    this.fiberId = fiberId
-  }
-  override toString() {
-    return `Interrupt(${this.fiberId})`
-  }
-  toJSON(): unknown {
-    return {
-      _tag: "Interrupt",
-      fiberId: this.fiberId
-    }
-  }
-  [Equal.symbol](that: any): boolean {
-    return (
-      isInterruptReason(that) &&
-      this.fiberId === that.fiberId &&
-      this.annotations === that.annotations
-    )
-  }
-  [Hash.symbol](): number {
-    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
-      Hash.random(this.annotations)
-    )
-  }
-}
 
 /** @internal */
 export const makeInterruptReason = (fiberId?: number | undefined): Cause.Interrupt => new Interrupt(fiberId)
