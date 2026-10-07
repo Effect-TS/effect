@@ -36,6 +36,7 @@ export * as DenoCrypto from "./DenoCrypto.ts"
 export * as DenoDns from "./DenoDns.ts"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as DenoFileSystem from "./DenoFileSystem.ts"

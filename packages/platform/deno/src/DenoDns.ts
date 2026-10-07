@@ -11,6 +11,7 @@
  * error as a missing name, so refused queries fail with `NotFound` instead of
  * `Refused`. Queries require the `--allow-net` permission.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeDns from "@effect/platform-node-shared/NodeDns"
@@ -31,6 +32,7 @@ import * as NetAddress from "effect/net/NetAddress"
  * lookups; an IP address without a port uses port 53. Address lookups always
  * use the operating system resolver.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -150,6 +152,7 @@ const convert = <A>(
 /**
  * Creates a Deno `Dns` service.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -187,6 +190,7 @@ export const make = (options?: Options): Dns.Dns => {
  * Layer that provides the Deno `Dns` service using the system resolver
  * configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -196,6 +200,7 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * Layer that provides the Deno `Dns` service with options read from
  * configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

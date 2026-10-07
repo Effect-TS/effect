@@ -6,6 +6,7 @@
  * reverse lookups use a `dns.Resolver` per operation, so interrupting a query
  * cancels it.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "effect/Config"
@@ -27,6 +28,7 @@ import * as NodeDns from "node:dns"
  * time allowed for each attempt and `tries` the number of attempts per name
  * server. Address lookups always use the operating system resolver.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -168,6 +170,7 @@ const convert = <A>(
 /**
  * Creates a Node.js `Dns` service.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -229,6 +232,7 @@ export const make = (options?: Options): Dns.Dns => {
  * Layer that provides the Node.js `Dns` service using the system resolver
  * configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -238,6 +242,7 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * Layer that provides the Node.js `Dns` service with options read from
  * configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

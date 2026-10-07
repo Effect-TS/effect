@@ -11,10 +11,12 @@
  * a record made of several strings arrives as several TXT records whose chunks
  * cannot be reassembled (https://github.com/oven-sh/bun/issues/44692).
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export * from "@effect/platform-node-shared/NodeDns"
