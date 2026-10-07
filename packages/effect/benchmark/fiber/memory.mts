@@ -2,7 +2,7 @@
 // `node --expose-gc` child; heap readings are taken after FORCED GC, so outputs
 // carry `forcedGc: true` and must never be mixed with throughput results.
 //
-// Single root:  node memory.mts [--root <dir>] --scenario <name> [--n 50000] [--repeats 5] [--json]
+// Single root:  node memory.mts [--root <dir>] --scenario <name> [--n 50000] [--repeats 5] [--child-yields k] [--json]
 // Paired:       node memory.mts --base <dir> --head <dir> --scenario <name> [--n 50000] [--repeats 5]
 // allocation:   node memory.mts --scenario allocation --workload <name> [--iterations 20] [--size k=v]
 //
@@ -58,6 +58,14 @@ const runChild = async (options) => {
   const n = numberOption(options, "n", scenario === "peak-fanout" ? 100_000 : 50_000)
   const awaitFiber = (fiber) => Effect.runPromise(Fiber.await(fiber))
 
+  // Children optionally yield `childYields` times first, which gives each of
+  // them its own scheduler dispatcher.
+  const childYields = numberOption(options, "child-yields", 0)
+  const afterYields = (effect) => {
+    for (let i = 0; i < childYields; i++) effect = Effect.andThen(Effect.yieldNow, effect)
+    return effect
+  }
+
   // Starts n children blocked on a Deferred (or never) under one root fiber.
   const startSuspended = async (count, blockOn) => {
     const deferred = Deferred.makeUnsafe()
@@ -65,7 +73,7 @@ const runChild = async (options) => {
     const ready = new Promise((resolve) => {
       markReady = resolve
     })
-    const blocker = blockOn === "never" ? Effect.never : Deferred.await(deferred)
+    const blocker = afterYields(blockOn === "never" ? Effect.never : Deferred.await(deferred))
     const rootFiber = Effect.runFork(Effect.gen(function*() {
       for (let i = 0; i < count; i++) yield* Effect.forkChild(blocker)
       yield* Effect.yieldNow
@@ -112,7 +120,7 @@ const runChild = async (options) => {
       const forkAll = (count) =>
         Effect.runPromise(Effect.gen(function*() {
           const handles = []
-          for (let i = 0; i < count; i++) handles.push(yield* Effect.forkChild(Effect.succeed(i)))
+          for (let i = 0; i < count; i++) handles.push(yield* Effect.forkChild(afterYields(Effect.succeed(i))))
           yield* Fiber.joinAll(handles)
           return handles
         }))
@@ -290,7 +298,7 @@ const runChild = async (options) => {
 const scriptPath = fileURLToPath(import.meta.url)
 
 const spawnChild = (root, options) => {
-  const forwarded = ["scenario", "n", "workload", "iterations", "warmup-iterations", "size", "settles"]
+  const forwarded = ["scenario", "n", "workload", "iterations", "warmup-iterations", "size", "settles", "child-yields"]
   const args = ["--expose-gc", scriptPath, "--child", "--root", root]
   for (const key of forwarded) {
     if (typeof options[key] === "string") args.push(`--${key}`, options[key])
