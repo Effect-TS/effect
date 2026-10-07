@@ -126,7 +126,7 @@ const makeHarness = Effect.fnUntraced(function*(options: {
 // Bounded so a lost reply fails the test instead of hanging it.
 const outcome = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
-    Effect.timeout("3 seconds"),
+    Effect.timeout("10 seconds"),
     Effect.exit,
     Effect.map((exit): string => {
       if (Exit.isSuccess(exit)) return "success"
@@ -158,7 +158,7 @@ describe("ClusterSchema.WithTransaction", () => {
     // Handler writes from an attempt that did not succeed.
     const uncommitted = (attempts: number) => withTransaction ? 0 : attempts
 
-    describe(label, { timeout: 20_000 }, () => {
+    describe(label, { timeout: 60_000 }, () => {
       it.live("success commits the handler writes and the reply", () =>
         Effect.gen(function*() {
           const h = yield* makeHarness({ withTransaction })

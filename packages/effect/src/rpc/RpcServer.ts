@@ -72,6 +72,10 @@ import { withRun } from "./Utils.ts"
  */
 export interface RpcServer<A extends Rpc.Any> {
   readonly write: (clientId: number, message: FromClient<A>, options?: {
+    /**
+     * Wraps the request handler together with its success response. Failure
+     * responses are sent after the wrapped effect exits.
+     */
     readonly onRequest?: (<A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>) | undefined
   }) => Effect.Effect<void>
   readonly disconnect: (clientId: number) => Effect.Effect<void>
@@ -289,8 +293,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     let responded = false
     const scope = Scope.makeUnsafe()
     let deferred: Deferred.Deferred<unknown, unknown> | undefined = undefined
-    let effect = Effect.onExit(withMiddleware, (exit) => {
-      responded = true
+    let failure: Exit.Failure<unknown, unknown> | undefined = undefined
+    const respond = (exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> => {
       let write: Effect.Effect<void>
       if (exit._tag === "Success") {
         if (Deferred.isDeferred(exit.value)) {
@@ -318,14 +322,25 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           exit: exit as any
         })
       }
-      const close = Scope.closeUnsafe(scope, exit)
       if (exit._tag === "Failure") {
         reportCauseUnsafe(Fiber.getCurrent()!, exit.cause)
       }
+      return write
+    }
+    let effect = Effect.onExit(withMiddleware, (exit) => {
+      responded = true
+      const close = Scope.closeUnsafe(scope, exit)
+      if (opts?.onRequest && exit._tag === "Failure") {
+        // Failure replies are sent once `onRequest` exits, so a transaction it
+        // rolls back cannot discard them.
+        failure = exit
+        return close ?? Effect.void
+      }
+      const write = respond(exit)
       return close ? Effect.ensuring(write, close) : write
     })
     if (opts?.onRequest) {
-      effect = opts.onRequest(effect)
+      effect = Effect.onExit(opts.onRequest(effect), () => failure ? respond(failure) : Effect.void)
     }
     if (enableTracing) {
       const parentSpan = Context.getOrUndefined(
