@@ -1340,6 +1340,11 @@ export function splitKeyValue<E extends string>(options?: {
   const keyValueSeparator = options?.keyValueSeparator ?? "="
   return transform((input) =>
     input.split(separator).reduce((acc, pair) => {
+      if (keyValueSeparator === "") {
+        const [key, value] = pair.split("")
+        if (key && value) InternalRecord.assignProperty(acc, key, value)
+        return acc
+      }
       const index = pair.indexOf(keyValueSeparator)
       if (index <= 0) return acc
       const key = pair.slice(0, index)
