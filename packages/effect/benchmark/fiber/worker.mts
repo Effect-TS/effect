@@ -1,12 +1,13 @@
 // One fresh-process measurement of a single workload against one checkout.
 //
 //   node worker.mts --root <checkout> --workload <name> --time <ms> --warmup <ms> [--min-iterations n]
-//                   [--size key=value,...] [--json]
+//                   [--size key=value,...] [--pollute] [--json]
 //
 // Works under node, `bun worker.mts` and `deno run -A worker.mts`.
 import * as os from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
+import { pollute } from "./pollute.ts"
 import {
   engineInfo,
   formatNs,
@@ -31,6 +32,10 @@ const E = await import(pathToFileURL(join(root, "packages/effect/src/index.ts"))
 const workload = findWorkload(options.workload)
 const size = { ...workload.size, ...parseSizeOverrides(options.size) }
 const instance = workload.make(E, size)
+
+// Realistic (polymorphic) type feedback for the interpreter's shared sites.
+const polluted = options.pollute === true
+if (polluted) await pollute(E)
 
 const nowNs = () => process.hrtime.bigint()
 
@@ -124,6 +129,7 @@ const output = {
   workload: workload.name,
   group: workload.group,
   size,
+  polluted,
   root,
   source: identity,
   srcChangedDuringRun: identityAfter.srcHash !== identity.srcHash,

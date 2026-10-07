@@ -2,7 +2,9 @@
 //
 //   node compare.mts --base <dir> --head <dir> [--workloads a,b | --group g] [--rounds 10] [--time 1500]
 //                    [--warmup 500] [--engine node|bun|deno] [--min-improvement 2] [--max-regression 2]
-//                    [--size k=v] [--output tmp/fiberperf/<file>.json]
+//                    [--size k=v] [--no-pollute] [--output tmp/fiberperf/<file>.json]
+//
+// Workers run the type-feedback pollution mix (pollute.ts) before warmup unless --no-pollute is given.
 import { analyzePairs, median } from "../../runtimeperf/stats.mts"
 import {
   cv,
@@ -37,13 +39,14 @@ const thresholds = {
   maxRegressionPercent: numberOption(options, "max-regression", 2)
 }
 const selected = await selectWorkloads(options)
+const polluteWorkers = options["no-pollute"] !== true
 
 warnIfLoaded()
 const env = environment(engine)
 const outputPath = resolveOutput(options.output, `compare-${timestamp()}.json`)
 console.log(
   `base ${base}\nhead ${head}\nengine ${engine}, ${rounds} rounds x (${warmupMs}ms warmup + ${timeMs}ms), ` +
-    `${selected.length} workloads, ${env.cpuModel} x${env.nproc}`
+    `${selected.length} workloads, pollute ${polluteWorkers}, ${env.cpuModel} x${env.nproc}`
 )
 
 const results = []
@@ -66,7 +69,8 @@ for (const workload of selected) {
           timeMs,
           warmupMs,
           minIterations,
-          size: options.size
+          size: options.size,
+          pollute: polluteWorkers
         })
       )
     }
@@ -131,7 +135,18 @@ for (const workload of selected) {
   writeJson(outputPath, {
     kind: "fiberperf-compare",
     complete: false,
-    args: { base, head, engine, rounds, timeMs, warmupMs, minIterations, thresholds, size: options.size ?? null },
+    args: {
+      base,
+      head,
+      engine,
+      rounds,
+      timeMs,
+      warmupMs,
+      minIterations,
+      thresholds,
+      size: options.size ?? null,
+      pollute: polluteWorkers
+    },
     environment: env,
     results,
     warnings
@@ -148,7 +163,18 @@ const { loadavg } = await import("node:os")
 writeJson(outputPath, {
   kind: "fiberperf-compare",
   complete: true,
-  args: { base, head, engine, rounds, timeMs, warmupMs, minIterations, thresholds, size: options.size ?? null },
+  args: {
+    base,
+    head,
+    engine,
+    rounds,
+    timeMs,
+    warmupMs,
+    minIterations,
+    thresholds,
+    size: options.size ?? null,
+    pollute: polluteWorkers
+  },
   environment: { ...env, finishedAt: new Date().toISOString(), loadavgEnd: loadavg() },
   results,
   warnings

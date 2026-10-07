@@ -182,7 +182,7 @@ export const warnIfLoaded = () => {
 
 /** Runs one fresh worker process and returns its parsed JSON output. */
 export const runWorker = (
-  { engine = "node", root, workload, timeMs, warmupMs, minIterations, size, extraFlags = [] }
+  { engine = "node", root, workload, timeMs, warmupMs, minIterations, size, pollute = false, extraFlags = [] }
 ) => {
   const args = [
     "--root",
@@ -197,6 +197,7 @@ export const runWorker = (
   ]
   if (minIterations !== undefined) args.push("--min-iterations", String(minIterations))
   if (typeof size === "string") args.push("--size", size)
+  if (pollute) args.push("--pollute")
   const { command, args: fullArgs } = engineCommand(engine, workerPath, args, extraFlags)
   const loadBefore = os.loadavg()
   const result = spawnSync(command, fullArgs, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
