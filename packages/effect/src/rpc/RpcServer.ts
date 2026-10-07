@@ -293,46 +293,37 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     let responded = false
     const scope = Scope.makeUnsafe()
     let deferred: Deferred.Deferred<unknown, unknown> | undefined = undefined
-    let failure: Exit.Failure<unknown, unknown> | undefined = undefined
     const respond = (exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> => {
-      let write: Effect.Effect<void>
       if (exit._tag === "Success") {
         if (Deferred.isDeferred(exit.value)) {
           deferred = exit.value
-          write = Effect.void
-        } else {
-          write = options.onFromServer({
-            _tag: "Exit",
-            clientId: client.id,
-            requestId: request.id,
-            exit: exit as any
-          })
+          return Effect.void
         }
-      } else if (
-        !disableFatalDefects &&
-        Cause.hasDies(exit.cause) &&
-        !Cause.hasInterrupts(exit.cause)
-      ) {
-        write = sendDefect(client, Cause.squash(exit.cause))
-      } else {
-        write = options.onFromServer({
+        return options.onFromServer({
           _tag: "Exit",
           clientId: client.id,
           requestId: request.id,
           exit: exit as any
         })
       }
-      if (exit._tag === "Failure") {
-        reportCauseUnsafe(Fiber.getCurrent()!, exit.cause)
+      reportCauseUnsafe(Fiber.getCurrent()!, exit.cause)
+      if (!disableFatalDefects && Cause.hasDies(exit.cause) && !Cause.hasInterrupts(exit.cause)) {
+        return sendDefect(client, Cause.squash(exit.cause))
       }
-      return write
+      return options.onFromServer({
+        _tag: "Exit",
+        clientId: client.id,
+        requestId: request.id,
+        exit: exit as any
+      })
     }
+    // With `onRequest`, failure replies wait until it has exited, so a
+    // transaction it rolls back cannot discard them.
+    let failure: Exit.Failure<unknown, unknown> | undefined = undefined
     let effect = Effect.onExit(withMiddleware, (exit) => {
       responded = true
       const close = Scope.closeUnsafe(scope, exit)
       if (opts?.onRequest && exit._tag === "Failure") {
-        // Failure replies are sent once `onRequest` exits, so a transaction it
-        // rolls back cannot discard them.
         failure = exit
         return close ?? Effect.void
       }
