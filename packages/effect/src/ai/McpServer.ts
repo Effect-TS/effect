@@ -1667,20 +1667,23 @@ const layerMcpProtocolHttp = (options: {
         if (admission._tag === "Rejected") {
           return admission.response
         }
-        const response = Effect.map(httpEffect, (response) => {
+        const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
           // Completed responses may already contain notifications followed by the result.
           const hasMultipleMessages = response.body._tag === "Uint8Array" &&
             response.body.body.subarray(0, -1).includes(10)
           return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
             ? toServerSentEvents(response, admission.isSubscription)
             : response
-        })
-        if (admission.acknowledge) {
-          return yield* Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
         }
-        return yield* Effect.flatMap(response, (response) => {
+        if (admission.acknowledge) {
+          return yield* Effect.catchCause(
+            Effect.map(httpEffect, toResponse),
+            () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+          )
+        }
+        return yield* Effect.flatMap(httpEffect, (response) => {
           if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
-            return Effect.succeed(response)
+            return Effect.succeed(toResponse(response))
           }
           // Only fully cancelled request POSTs may return an empty SSE response.
           // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
