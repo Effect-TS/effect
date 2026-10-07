@@ -39,6 +39,7 @@ import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
+import { HeldReply } from "./heldReply.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
 import { ResourceRef } from "./resourceRef.ts"
@@ -86,9 +87,10 @@ export interface Residency {
   readonly releaseUnsafe: () => void
 }
 
-// An open handler transaction. A failure reply waits here until rollback.
-interface RequestTransaction {
-  reply?: Effect.Effect<void> | undefined
+// An open handler transaction. The handler's reply and bookkeeping wait here
+// until the transaction outcome is known.
+interface RequestTransaction extends HeldReply {
+  settle?: ((outcome: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 }
 
 // Represents the entities managed by this entity manager
@@ -285,7 +287,7 @@ export const make = Effect.fnUntraced(function*<
                   activeRequests.delete(Snowflake.Snowflake(response.requestId))
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
-                const respond = retryRespond(
+                const save = retryRespond(
                   4,
                   Effect.suspend(() =>
                     request.message.respond(
@@ -296,27 +298,42 @@ export const make = Effect.fnUntraced(function*<
                       })
                     )
                   )
-                ).pipe(
-                  Effect.flatMap(() => {
-                    if (storageEnabled) {
-                      processedRequestIds.add(request.message.envelope.requestId)
-                    }
-                    activeRequests.delete(Snowflake.Snowflake(response.requestId))
-
-                    // Start the idle timer when the last request completes.
-                    if (activeRequests.size === 0) {
-                      state.lastActiveCheck = clock.currentTimeMillisUnsafe()
-                    }
-
-                    return Effect.void
-                  }),
-                  Effect.orDie
                 )
-                if (request.transaction && Exit.isFailure(response.exit)) {
-                  request.transaction.reply = respond
+                const complete = Effect.sync(() => {
+                  if (storageEnabled) {
+                    processedRequestIds.add(request.message.envelope.requestId)
+                  }
+                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
+
+                  // Start the idle timer when the last request completes.
+                  if (activeRequests.size === 0) {
+                    state.lastActiveCheck = clock.currentTimeMillisUnsafe()
+                  }
+                })
+                const respond = Effect.orDie(Effect.andThen(save, complete))
+                const transaction = request.transaction
+                if (!transaction) return respond
+                const exit = response.exit
+
+                // Non-persisted replies are not saved, so only failures wait for the rollback.
+                if (!storageEnabled || !Context.get(request.message.annotations, Persisted)) {
+                  if (Exit.isSuccess(exit)) return respond
+                  transaction.settle = () => respond
                   return Effect.void
                 }
-                return respond
+
+                // A success is saved with the handler's writes; storage holds
+                // its delivery until COMMIT. A failure is saved after a clean
+                // rollback. If COMMIT or ROLLBACK fails, the request is replayed.
+                if (Exit.isSuccess(exit)) {
+                  transaction.settle = (outcome) => Exit.isSuccess(outcome) ? complete : restartFrom(outcome.cause)
+                  return Effect.orDie(save)
+                }
+                transaction.settle = (outcome) =>
+                  Exit.isFailure(outcome) && !isSameCause(outcome.cause, exit.cause)
+                    ? restartFrom(outcome.cause)
+                    : respond
+                return Effect.void
               }
               case "Chunk": {
                 const request = activeRequests.get(Snowflake.Snowflake(response.requestId))
@@ -341,10 +358,7 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                if (!isActive()) return endLatch.open
-                const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
-                if (!rebuild) return Effect.void
-                return Effect.forkIn(restart(Cause.die(response.defect), rebuild), managerScope)
+                return restartFrom(Cause.die(response.defect))
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -355,6 +369,14 @@ export const make = Effect.fnUntraced(function*<
           Scope.provide(handlerScope),
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
+
+        // Rebuild the handlers and replay the active requests.
+        const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
+          if (!isActive()) return endLatch.open
+          const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
+          if (!rebuild) return Effect.void
+          return Effect.forkIn(restart(cause, rebuild), managerScope)
+        }
 
         yield* Scope.addFinalizer(
           handlerScope,
@@ -613,18 +635,21 @@ export const make = Effect.fnUntraced(function*<
       transaction?: RequestTransaction | undefined
     }
   ): Parameters<EntityState["write"]>[2] => {
-    // Failure replies are saved after rollback, so the rollback cannot discard them.
+    // Replies settle once the transaction outcome is known. Deliveries held
+    // by storage reach callers only after COMMIT.
     const onTransaction = Context.get(entry.message.annotations, WithTransaction)
       ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         Effect.suspend(() => {
-          const transaction: RequestTransaction = {}
+          const transaction: RequestTransaction = { requestId: entry.message.envelope.requestId }
           entry.transaction = transaction
-          return Effect.ensuring(
-            options.storage.withTransaction(effect),
-            Effect.suspend(() => {
+          return Effect.onExit(
+            Effect.provideService(options.storage.withTransaction(effect), HeldReply, transaction),
+            (outcome) => {
               if (entry.transaction === transaction) entry.transaction = undefined
-              return transaction.reply ?? Effect.void
-            })
+              const settle = transaction.settle ? transaction.settle(outcome) : Effect.void
+              if (Exit.isFailure(outcome) || !transaction.delivery) return settle
+              return Effect.andThen(settle, Effect.orDie(transaction.delivery))
+            }
           )
         })
       : undefined
@@ -809,6 +834,21 @@ const requestEnvelope = (entry: {
     lastSentChunk: entry.lastSentChunk
   } as any) as any
 })
+
+// Whether two causes carry the same failures, ignoring annotations added as a
+// cause propagates.
+const isSameCause = (self: Cause.Cause<unknown>, that: Cause.Cause<unknown>): boolean =>
+  self === that || (self.reasons.length === that.reasons.length && self.reasons.every((reason, i) => {
+    const other = that.reasons[i]
+    switch (reason._tag) {
+      case "Fail":
+        return other._tag === "Fail" && other.error === reason.error
+      case "Die":
+        return other._tag === "Die" && other.defect === reason.defect
+      case "Interrupt":
+        return other._tag === "Interrupt" && other.fiberId === reason.fiberId
+    }
+  }))
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?
