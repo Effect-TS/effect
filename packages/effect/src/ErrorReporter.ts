@@ -328,8 +328,29 @@ export const report = <E>(cause: Cause.Cause<E>): Effect.Effect<void> =>
  * @since 4.0.0
  */
 export interface Reportable {
+  /**
+   * Suppress reports for this error.
+   *
+   * @stability unstable
+   * @category annotations
+   * @since 4.0.0
+   */
   readonly [ignore]?: boolean
+  /**
+   * Override the severity level for this error.
+   *
+   * @stability unstable
+   * @category annotations
+   * @since 4.0.0
+   */
   readonly [severity]?: Severity
+  /**
+   * Attach extra key/value metadata to this error.
+   *
+   * @stability unstable
+   * @category annotations
+   * @since 4.0.0
+   */
   readonly [attributes]?: ReadonlyRecord<string, unknown>
 }
 
