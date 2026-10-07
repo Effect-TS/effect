@@ -1,6 +1,6 @@
 {
   "name": "@effect/ai-anthropic",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "type": "module",
   "license": "MIT",
   "description": "An Anthropic provider integration for Effect AI SDK",
