@@ -7,6 +7,7 @@
  * present and falls back to `ws`, one that always uses `ws`, and one that
  * creates a `Socket.Socket` layer for a WebSocket URL.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { NodeWS as WS } from "@effect/platform-node-shared/NodeSocket"
@@ -28,6 +29,7 @@ const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) =
  * Provides a `Socket.WebSocketConstructor`, using `globalThis.WebSocket` when
  * available and falling back to the `ws` package otherwise.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -49,6 +51,7 @@ export const layerWebSocketConstructor: Layer.Layer<
  * Provides a `Socket.WebSocketConstructor` backed explicitly by the `ws`
  * package.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -61,6 +64,7 @@ export const layerWebSocketConstructorWS: Layer.Layer<
  * constructor layer, honoring protocol, open-timeout, and high-water-mark
  * options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

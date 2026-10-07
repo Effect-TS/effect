@@ -10,6 +10,7 @@
  * constructors plus layers for the server alone, HTTP support services, the
  * combined server, configurable options, and tests.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -68,6 +69,7 @@ import { NodeWS } from "./NodeSocket.ts"
 /**
  * Options accepted by the Node `HttpServer` constructors and layers.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -92,6 +94,7 @@ export interface Options extends Net.ListenOptions {
  * with the supplied options, registers request and upgrade handling, and closes
  * the server during scope finalization with optional graceful-shutdown control.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -186,6 +189,7 @@ export const make = Effect.fnUntraced(function*(
  * injecting a `HttpServerRequest` and interrupting the request fiber if the
  * client closes the response before it finishes.
  *
+ * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
@@ -438,6 +442,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
  * Provides an `HttpServer` by creating and managing a scoped Node
  * `http.Server` with the supplied listen and shutdown options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -450,6 +455,7 @@ export const layerServer: (
  * Provides the Node HTTP support services used by `NodeHttpServer`, including
  * the HTTP platform, ETag generator, and core Node platform services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -465,6 +471,7 @@ export const layerHttpServices: Layer.Layer<
  * Provides a Node `HttpServer` together with the Node HTTP platform, ETag, and
  * core platform services required to serve requests.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -485,6 +492,7 @@ export const layer = (
  * and core Node platform services, reading the listen and shutdown options from
  * a `Config` value.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -506,6 +514,7 @@ export const layerConfig = (
  * Provides a test HTTP server listening on an ephemeral port together with a
  * Fetch-backed `HttpClient` configured for server integration tests.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */

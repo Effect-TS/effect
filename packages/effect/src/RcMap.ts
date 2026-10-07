@@ -9,6 +9,7 @@
  * lifecycles such as clients, sessions, and connections, not as a general
  * mutable cache.
  *
+ * @stability stable
  * @since 3.5.0
  */
 import * as Cause from "./Cause.ts"
@@ -67,6 +68,7 @@ const TypeId = "~effect/RcMap"
  * @see {@link make} for creating an `RcMap`
  * @see {@link get} for acquiring or retaining a resource by key
  *
+ * @stability stable
  * @category models
  * @since 3.5.0
  */
@@ -93,6 +95,7 @@ export interface RcMap<in out K, in out A, in out E = never> extends Pipeable {
  * @see {@link State.Open} for the active state with entries
  * @see {@link State.Closed} for the shutdown state
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -106,6 +109,7 @@ export type State<K, A, E> = State.Open<K, A, E> | State.Closed
  * Use when referring to the concrete open, closed, and entry state shapes used
  * by `RcMap`.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace State {
@@ -234,6 +238,7 @@ const makeUnsafe = <K, A, E>(options: {
  * @see {@link get} for acquiring or retaining a resource by key
  * @see {@link invalidate} for removing a resource from the map
  *
+ * @stability stable
  * @category constructors
  * @since 3.5.0
  */
@@ -329,6 +334,7 @@ export const make: {
  * @see {@link make} for creating the reference-counted map
  * @see {@link invalidate} for removing a resource by key
  *
+ * @stability stable
  * @category combinators
  * @since 3.5.0
  */
@@ -429,6 +435,7 @@ export const get: {
  * @see {@link get} for acquiring a resource when the key is missing
  * @see {@link has} for checking presence without retaining or awaiting the entry
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -558,6 +565,7 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
  *
  * @see {@link has} for checking one key without enumerating all keys
  *
+ * @stability stable
  * @category combinators
  * @since 3.8.0
  */
@@ -609,6 +617,7 @@ export const keys = <K, A, E>(self: RcMap<K, A, E>): Effect.Effect<Iterable<K>> 
  * @see {@link get} for acquiring or retaining the resource for a key
  * @see {@link touch} for extending the idle lifetime without removing the entry
  *
+ * @stability stable
  * @category combinators
  * @since 3.13.0
  */
@@ -649,6 +658,7 @@ export const invalidate: {
  * @see {@link get} for acquiring or retaining the resource for a key
  * @see {@link keys} for enumerating all currently stored keys
  *
+ * @stability stable
  * @category combinators
  * @since 3.17.7
  */
@@ -707,6 +717,7 @@ export const has: {
  *
  * @see {@link invalidate} for removing the resource instead of extending it
  *
+ * @stability stable
  * @category combinators
  * @since 3.13.0
  */

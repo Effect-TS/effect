@@ -25,6 +25,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Lint
         run: pnpm lint
+      - name: Check JSDoc
+        run: pnpm jsdocs --check
       - name: Check circular dependencies
         run: pnpm circular
       - name: Generate AI documentation

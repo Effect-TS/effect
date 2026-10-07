@@ -8,6 +8,7 @@
  * typed positions, and deriving comparison or combination helpers for tuple
  * shapes.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Combiner from "./Combiner.ts"
@@ -40,6 +41,7 @@ import type { Apply, Lambda } from "./Struct.ts"
  *
  * @see {@link get} – access a single element by index
  * @see {@link appendElement} – append an element to a tuple
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -69,6 +71,7 @@ type Indices<T extends ReadonlyArray<unknown>> = Exclude<Partial<T>["length"], T
  *
  * @see {@link make} – create a tuple
  * @see {@link pick} – extract multiple elements into a new tuple
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -116,6 +119,7 @@ type PickTuple<T extends ReadonlyArray<unknown>, I extends ReadonlyArray<Indices
  *
  * @see {@link omit} – the inverse (exclude indices instead)
  * @see {@link get} – extract a single element
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -159,6 +163,7 @@ type OmitTuple<T extends ReadonlyArray<unknown>, K> = _BuildTuple<T, Exclude<Ind
  * ```
  *
  * @see {@link pick} – the inverse (keep only specified indices)
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -202,6 +207,7 @@ export const omit: {
  * ```
  *
  * @see {@link appendElements} – append multiple elements (another tuple)
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -231,6 +237,7 @@ export const appendElement: {
  * ```
  *
  * @see {@link appendElement} – append a single element
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -283,6 +290,7 @@ type Evolved<T, E> = { [I in keyof T]: I extends keyof E ? EvolveElement<T[I], E
  *
  * @see {@link map} – apply the same transformation to all elements
  * @see {@link renameIndices} – swap element positions
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -325,6 +333,7 @@ export const evolve: {
  * ```
  *
  * @see {@link evolve} – transform element values instead of positions
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -379,6 +388,7 @@ export const renameIndices: {
  * @see {@link mapPick} – apply a lambda only to selected indices
  * @see {@link mapOmit} – apply a lambda to all indices except selected ones
  * @see {@link evolve} – apply different functions to different indices
+ * @stability stable
  * @category mapping
  * @since 3.9.0
  */
@@ -427,6 +437,7 @@ export const map: {
  *
  * @see {@link map} – apply a lambda to all elements
  * @see {@link mapOmit} – apply a lambda to all elements except selected ones
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -482,6 +493,7 @@ export const mapPick: {
  *
  * @see {@link map} – apply a lambda to all elements
  * @see {@link mapPick} – apply a lambda only to selected indices
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -537,6 +549,7 @@ export const mapOmit: {
  * ```
  *
  * @see {@link makeOrder} – create an `Order` for tuples
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -568,6 +581,7 @@ export const makeEquivalence = Equivalence.Tuple
  * ```
  *
  * @see {@link makeEquivalence} – create an `Equivalence` for tuples
+ * @stability stable
  * @category ordering
  * @since 4.0.0
  */
@@ -604,6 +618,7 @@ export {
    * ```
    *
    * @see `isTupleOfAtLeast` – check for a minimum length
+   * @stability stable
    * @category guards
    * @since 3.3.0
    */
@@ -638,6 +653,7 @@ export {
    * ```
    *
    * @see `isTupleOf` – check for an exact length
+   * @stability stable
    * @category guards
    * @since 3.3.0
    */
@@ -668,6 +684,7 @@ export {
  * ```
  *
  * @see {@link makeReducer} – like `makeCombiner` but with an initial value
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -712,6 +729,7 @@ export function makeCombiner<A extends ReadonlyArray<unknown>>(
  * ```
  *
  * @see {@link makeCombiner} – like `makeReducer` but without an initial value
+ * @stability stable
  * @category folding
  * @since 4.0.0
  */

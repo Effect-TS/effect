@@ -6,6 +6,7 @@
  * choosing serialization, runner health checks, runner storage, message
  * storage, and optional client-only mode from the supplied options.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as HttpRunner from "effect/cluster/HttpRunner"
@@ -39,6 +40,7 @@ export {
   /**
    * Layer that provides a Kubernetes HTTP client for runner health checks.
    *
+   * @stability unstable
    * @category re-exports
    * @since 4.0.0
    */
@@ -48,6 +50,7 @@ export {
 /**
  * Layer that provides a Bun HTTP server for cluster runners.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -94,6 +97,7 @@ export const layerHttpServer: Layer.Layer<
  * @see {@link layerHttpServer} for the server layer used by non-client-only transports
  * @see {@link layerK8sHttpClient} for Kubernetes runner health support
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

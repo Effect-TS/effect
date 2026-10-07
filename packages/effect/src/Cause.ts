@@ -7,6 +7,7 @@
  * includes the `Cause` and `Reason` data types, helpers for building and
  * checking causes, and small error types used by several Effect APIs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
@@ -25,6 +26,7 @@ import type * as Types from "./Types.ts"
 /**
  * Unique brand for `Cause` values, used for runtime type checks via {@link isCause}.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -33,6 +35,7 @@ export const TypeId: "~effect/Cause" = core.CauseTypeId
 /**
  * Unique brand for `Reason` values, used for runtime type checks via {@link isReason}.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -69,6 +72,7 @@ export const ReasonTypeId: "~effect/Cause/Reason" = core.CauseReasonTypeId
  * Cause.fail("Something went wrong") // => Cause.fail("Something went wrong")
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -89,6 +93,7 @@ export interface Cause<out E> extends Pipeable, Inspectable, Equal {
  * Cause.isCause("not a cause") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -107,6 +112,7 @@ export const isCause: (self: unknown) => self is Cause<unknown> = core.isCause
  * Cause.isReason("not a reason") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -138,6 +144,7 @@ export const isReason: (self: unknown) => self is Reason<unknown> = core.isCause
  * }
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -164,6 +171,7 @@ export type Reason<E> = Fail<E> | Die | Interrupt
  * @see {@link isDieReason} — narrow to `Die`
  * @see {@link isInterruptReason} — narrow to `Interrupt`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -190,6 +198,7 @@ export const isFailReason: <E>(self: Reason<E>) => self is Fail<E> = core.isFail
  * @see {@link isFailReason} — narrow to `Fail`
  * @see {@link isInterruptReason} — narrow to `Interrupt`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -216,6 +225,7 @@ export const isDieReason: <E>(self: Reason<E>) => self is Die = core.isDieReason
  * @see {@link isFailReason} — narrow to `Fail`
  * @see {@link isDieReason} — narrow to `Die`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -224,6 +234,7 @@ export const isInterruptReason: <E>(self: Reason<E>) => self is Interrupt = core
 /**
  * Companion namespace for the `Cause` interface.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Cause {
@@ -270,6 +281,7 @@ export declare namespace Cause {
 /**
  * Companion namespace for the `Reason` type.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace Reason {
@@ -320,6 +332,7 @@ export declare namespace Reason {
  * @see {@link die} for constructing a cause with a single `Die` reason
  * @see {@link isDieReason} for narrowing a `Reason` to `Die`
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -355,6 +368,7 @@ export interface Die extends Cause.ReasonProto<"Die"> {
  * @see {@link fail} for constructing a cause with a single `Fail` reason
  * @see {@link isFailReason} for narrowing a `Reason` to `Fail`
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -382,6 +396,7 @@ export interface Fail<out E> extends Cause.ReasonProto<"Fail"> {
  * }
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -422,6 +437,7 @@ export interface Interrupt extends Cause.ReasonProto<"Interrupt"> {
  *
  * @see {@link combine} — merge two existing causes
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -452,6 +468,7 @@ export const fromReasons: <E>(
  *
  * @see {@link combine} for merging causes where `empty` acts as the identity
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -476,6 +493,7 @@ export const empty: Cause<never> = core.causeEmpty
  * @see {@link die} — for untyped defects
  * @see {@link interrupt} — for fiber interruptions
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -500,6 +518,7 @@ export const fail: <E>(error: E) => Cause<E> = core.causeFail
  * @see {@link fail} — for typed errors
  * @see {@link interrupt} — for fiber interruptions
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -520,6 +539,7 @@ export const die: (defect: unknown) => Cause<never> = core.causeDie
  * @see {@link fail} — for typed errors
  * @see {@link die} — for untyped defects
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -544,6 +564,7 @@ export const interrupt: (fiberId?: number | undefined) => Cause<never> = effect.
  * @see {@link makeDieReason} — create a `Die` reason
  * @see {@link makeInterruptReason} — create an `Interrupt` reason
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -568,6 +589,7 @@ export const makeFailReason = <E>(error: E): Fail<E> => new core.Fail(error)
  * @see {@link makeFailReason} — create a `Fail` reason
  * @see {@link makeInterruptReason} — create an `Interrupt` reason
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -593,6 +615,7 @@ export const makeDieReason = (defect: unknown): Die => new core.Die(defect)
  * @see {@link makeFailReason} — create a `Fail` reason
  * @see {@link makeDieReason} — create a `Die` reason
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -618,6 +641,7 @@ export const makeInterruptReason: (fiberId?: number | undefined) => Interrupt = 
  *
  * @see {@link hasInterrupts} — `true` if the cause contains *any* interrupts
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -652,6 +676,7 @@ export const hasInterruptsOnly: <E>(self: Cause<E>) => boolean = effect.hasInter
  * }
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -686,6 +711,7 @@ export const map: {
  * @see {@link fromReasons} — build a cause from an array of reasons
  * @see {@link empty} for the identity cause used when combining
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -730,6 +756,7 @@ export const combine: {
  * @see {@link prettyErrors} — non-lossy conversion to `Array<Error>`
  * @see {@link pretty} — human-readable string rendering
  *
+ * @stability stable
  * @category destructors
  * @since 2.0.0
  */
@@ -755,6 +782,7 @@ export const squash: <E>(self: Cause<E>) => unknown = effect.causeSquash
  * @see {@link hasDies} — check for defects
  * @see {@link hasInterrupts} — check for interruptions
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -782,6 +810,7 @@ export const hasFails: <E>(self: Cause<E>) => boolean = effect.hasFails
  * @see {@link findError} — extract the unwrapped `E` value
  * @see {@link findDie} — extract the first `Die` reason
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -809,6 +838,7 @@ export const findFail: <E>(self: Cause<E>) => Result.Result<Fail<E>, Cause<never
  * @see {@link findFail} — extract the full `Fail` reason
  * @see {@link findErrorOption} — `Option`-based variant
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -834,6 +864,7 @@ export const findError: <E>(self: Cause<E>) => Result.Result<E, Cause<never>> = 
  *
  * @see {@link findError} — `Result`-based variant
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -859,6 +890,7 @@ export const findErrorOption: <E>(input: Cause<E>) => Option<E> = effect.findErr
  * @see {@link hasFails} — check for typed errors
  * @see {@link hasInterrupts} — check for interruptions
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -885,6 +917,7 @@ export const hasDies: <E>(self: Cause<E>) => boolean = effect.hasDies
  * @see {@link findDefect} — extract the unwrapped defect value
  * @see {@link findFail} — extract the first `Fail` reason
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -911,6 +944,7 @@ export const findDie: <E>(self: Cause<E>) => Result.Result<Die, Cause<E>> = effe
  * @see {@link findDie} — extract the full `Die` reason
  * @see {@link findError} — extract the first typed error
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -932,6 +966,7 @@ export const findDefect: <E>(self: Cause<E>) => Result.Result<unknown, Cause<E>>
  * @see {@link hasFails} — check for typed errors
  * @see {@link hasDies} — check for defects
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -957,6 +992,7 @@ export const hasInterrupts: <E>(self: Cause<E>) => boolean = effect.hasInterrupt
  *
  * @see {@link interruptors} — collect all interrupting fiber IDs as a `Set`
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -987,6 +1023,7 @@ export const findInterrupt: <E>(self: Cause<E>) => Result.Result<Interrupt, Caus
  *
  * @see {@link filterInterruptors} — `Result`-based variant
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1018,6 +1055,7 @@ export const interruptors: <E>(self: Cause<E>) => ReadonlySet<number> = effect.c
  *
  * @see {@link interruptors} — always-succeeding variant
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -1062,6 +1100,7 @@ export const filterInterruptors: <E>(self: Cause<E>) => Result.Result<Set<number
  * @see {@link pretty} — renders the cause as a single string
  * @see {@link squash} — lossy collapse to a single thrown value
  *
+ * @stability stable
  * @category formatting
  * @since 3.2.0
  */
@@ -1109,6 +1148,7 @@ export const prettyErrors: <E>(self: Cause<E>, options?: {
  *
  * @see {@link prettyErrors} — get the individual `Error` instances
  *
+ * @stability stable
  * @category formatting
  * @since 2.0.0
  */
@@ -1139,6 +1179,7 @@ export const pretty: <E>(cause: Cause<E>) => string = effect.causePretty
  * await Effect.runPromiseExit(program) // => Exit.fail(error)
  * ```
  *
+ * @stability stable
  * @category errors
  * @since 2.0.0
  */
@@ -1159,6 +1200,7 @@ export interface YieldableError extends Error, Pipeable, Inspectable {
  * Cause.isNoSuchElementError("nope") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1167,6 +1209,7 @@ export const isNoSuchElementError: (u: unknown) => u is NoSuchElementError = cor
 /**
  * Unique brand for `NoSuchElementError`.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1191,6 +1234,7 @@ export const NoSuchElementErrorTypeId: "~effect/Cause/NoSuchElementError" = core
  * expected case. This error is mainly for APIs that intentionally turn absence
  * into a thrown value or failed effect.
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1217,6 +1261,7 @@ export interface NoSuchElementError extends YieldableError {
  *
  * @see {@link isNoSuchElementError} for checking unknown values
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1234,6 +1279,7 @@ export const NoSuchElementError: new(message?: string) => NoSuchElementError = c
  * Cause.isDone("not done") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1242,6 +1288,7 @@ export const isDone: (u: unknown) => u is Done<any> = core.isDone
 /**
  * Unique brand for `Done` values.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1280,6 +1327,7 @@ export const DoneTypeId: "~effect/Cause/Done" = core.DoneTypeId
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1292,6 +1340,7 @@ export interface Done<A = void> {
 /**
  * Companion namespace for the `Done` interface.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace Done {
@@ -1322,6 +1371,7 @@ export declare namespace Done {
  *
  * @see {@link done} — create a failing `Effect` with `Done`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1347,6 +1397,7 @@ export const Done: <A = void>(value?: A) => Done<A> = core.Done
  *
  * @see {@link Done} — create the signal value without an Effect
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1355,6 +1406,7 @@ export const done: <A = void>(value?: A) => Effect.Effect<never, Done<A>> = core
 /**
  * Unique brand for `TimeoutError`.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1372,6 +1424,7 @@ export const TimeoutErrorTypeId: "~effect/Cause/TimeoutError" = effect.TimeoutEr
  * Cause.isTimeoutError("nope") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1385,6 +1438,7 @@ export const isTimeoutError: (u: unknown) => u is TimeoutError = effect.isTimeou
  * Produced by `Effect.timeout` and related APIs. Implements
  * `YieldableError`.
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1404,6 +1458,7 @@ export interface TimeoutError extends YieldableError {
  * new Cause.TimeoutError("Operation timed out").message // => "Operation timed out"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1412,6 +1467,7 @@ export const TimeoutError: new(message?: string) => TimeoutError = effect.Timeou
 /**
  * Unique brand for `IllegalArgumentError`.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1429,6 +1485,7 @@ export const IllegalArgumentErrorTypeId: "~effect/Cause/IllegalArgumentError" = 
  * Cause.isIllegalArgumentError("nope") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1442,6 +1499,7 @@ export const isIllegalArgumentError: (u: unknown) => u is IllegalArgumentError =
  *
  * Implements `YieldableError`.
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1461,6 +1519,7 @@ export interface IllegalArgumentError extends YieldableError {
  * new Cause.IllegalArgumentError("Invalid argument").message // => "Invalid argument"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1478,6 +1537,7 @@ export const IllegalArgumentError: new(message?: string) => IllegalArgumentError
  * Cause.isExceededCapacityError("nope") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1486,6 +1546,7 @@ export const isExceededCapacityError: (u: unknown) => u is ExceededCapacityError
 /**
  * Unique brand for `ExceededCapacityError`.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1504,6 +1565,7 @@ export const ExceededCapacityErrorTypeId: "~effect/Cause/ExceededCapacityError" 
  *
  * Implements `YieldableError`.
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1529,6 +1591,7 @@ export interface ExceededCapacityError extends YieldableError {
  *
  * @see {@link isExceededCapacityError} for checking unknown values
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1538,6 +1601,7 @@ export const ExceededCapacityError: new(message?: string) => ExceededCapacityErr
  * Unique brand present on `AsyncFiberError` values and used by
  * `isAsyncFiberError` for runtime checks.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1558,6 +1622,7 @@ export const AsyncFiberErrorTypeId: "~effect/Cause/AsyncFiberError" = effect.Asy
  * Cause.isAsyncFiberError("nope") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1588,6 +1653,7 @@ export const isAsyncFiberError: (u: unknown) => u is AsyncFiberError = effect.is
  * isSameFiber // => true
  * ```
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1618,6 +1684,7 @@ export interface AsyncFiberError extends YieldableError {
  *
  * @see {@link isAsyncFiberError} for checking unknown values
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1626,6 +1693,7 @@ export const AsyncFiberError: new(fiber: Fiber<unknown, unknown>) => AsyncFiberE
 /**
  * Unique brand for `UnknownError`.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1643,6 +1711,7 @@ export const UnknownErrorTypeId: "~effect/Cause/UnknownError" = effect.UnknownEr
  * Cause.isUnknownError("nope") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1657,6 +1726,7 @@ export const isUnknownError: (u: unknown) => u is UnknownError = effect.isUnknow
  * typed error. The original value is stored in the `cause` property inherited
  * from `Error`. Implements `YieldableError`.
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1678,6 +1748,7 @@ export interface UnknownError extends YieldableError {
  * new Cause.UnknownError({ raw: true }, "Unexpected value").message // => "Unexpected value"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1714,6 +1785,7 @@ export const UnknownError: new(cause: unknown, message?: string) => UnknownError
  * @see {@link annotations} for reading merged annotations from a cause
  * @see {@link reasonAnnotations} for reading annotations from a single reason
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -1752,6 +1824,7 @@ export const annotate: {
  *
  * @see {@link annotations} — merged annotations from all reasons in a cause
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -1786,6 +1859,7 @@ export const reasonAnnotations: <E>(self: Reason<E>) => Context.Context<never> =
  *
  * @see {@link reasonAnnotations} — annotations from a single reason
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -1809,6 +1883,7 @@ export const annotations: <E>(self: Cause<E>) => Context.Context<never> = effect
  * @see {@link annotations} for reading merged annotations from a cause
  * @see {@link InterruptorStackTrace} for the interrupt-specific stack-frame annotation
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -1831,6 +1906,7 @@ export class StackTrace extends Context.Service<StackTrace, StackFrame>()("effec
  * @see {@link reasonAnnotations} for reading annotations from a single reason
  * @see {@link annotate} for attaching annotations to a cause
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */

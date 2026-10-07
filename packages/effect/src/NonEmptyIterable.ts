@@ -4,6 +4,7 @@
  * `NonEmptyIterable<A>` can be consumed anywhere an `Iterable<A>` is expected,
  * while also carrying the guarantee that reading the first element is safe.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -23,6 +24,7 @@
  *
  * @see {@link NonEmptyIterable} for the branded iterable type that uses this symbol
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -44,6 +46,7 @@ export declare const nonEmpty: unique symbol
  * The type is branded with a unique symbol to ensure type safety while maintaining
  * full compatibility with JavaScript's iteration protocol.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -76,6 +79,7 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  * globalThis.Array.from({ [Symbol.iterator]: () => rest }) // => [2, 3]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */

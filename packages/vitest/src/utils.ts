@@ -7,6 +7,7 @@
  * expressions, class instances, `Option`, `Result`, and `Exit`. Most helpers are
  * synchronous; `throwsAsync` handles rejected promises.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "effect/Cause"
@@ -25,6 +26,7 @@ import { assert as vassert } from "vitest"
 /**
  * Fails the current test with the provided error message.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -35,6 +37,7 @@ export function fail(message: string) {
 /**
  * Asserts that `actual` is deeply strictly equal to `expected` using Node's `assert.deepStrictEqual`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -49,6 +52,7 @@ export function deepStrictEqual<A>(actual: A, expected: A, message?: string, ...
 /**
  * Asserts that `actual` is not deeply strictly equal to `expected` using Node's `assert.notDeepStrictEqual`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -63,6 +67,7 @@ export function notDeepStrictEqual<A>(actual: A, expected: A, message?: string, 
 /**
  * Asserts that `actual` is strictly equal to `expected` using Node's `assert.strictEqual`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -77,6 +82,7 @@ export function strictEqual<A>(actual: A, expected: A, message?: string, ..._: A
 /**
  * Asserts that `actual` is equal to `expected` using the `Equal.equals` trait.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -90,6 +96,7 @@ export function assertEquals<A>(actual: A, expected: A, message?: string, ..._: 
 /**
  * Asserts that `thunk` does not throw an error.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -104,6 +111,7 @@ export function doesNotThrow(thunk: () => void, message?: string, ..._: Array<ne
 /**
  * Asserts that `value` is an instance of `constructor`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -119,6 +127,7 @@ export function assertInstanceOf<C extends abstract new(...args: any) => any>(
 /**
  * Asserts that `self` is `true`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -129,6 +138,7 @@ export function assertTrue(self: unknown, message?: string, ..._: Array<never>):
 /**
  * Asserts that `self` is `false`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -139,6 +149,7 @@ export function assertFalse(self: boolean, message?: string, ..._: Array<never>)
 /**
  * Asserts that `actual` includes `expected`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -153,6 +164,7 @@ export function assertInclude(actual: string | undefined, expected: string, ..._
 /**
  * Asserts that `actual` matches `regExp`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -165,6 +177,7 @@ export function assertMatch(actual: string, regExp: RegExp, ..._: Array<never>) 
 /**
  * Asserts that `thunk` throws, optionally checking the thrown value against an expected `Error` or validation function.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -189,6 +202,7 @@ export function throws(thunk: () => void, error?: Error | ((u: unknown) => undef
 /**
  * Asserts that `thunk` throws or returns a rejected promise, optionally checking the failure value against an expected `Error` or validation function.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -219,6 +233,7 @@ export async function throwsAsync(
 /**
  * Asserts that `option` is `None`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -229,6 +244,7 @@ export function assertNone<A>(option: Option.Option<A>, ..._: Array<never>): ass
 /**
  * Asserts that `a` is not `undefined`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -244,6 +260,7 @@ export function assertDefined<A>(
 /**
  * Asserts that `a` is `undefined`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -259,6 +276,7 @@ export function assertUndefined<A>(
 /**
  * Asserts that `option` is `Some` and contains a value equal to `expected`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -277,6 +295,7 @@ export function assertSome<A>(
 /**
  * Asserts that `result` is `Success` and contains a value equal to `expected`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -291,6 +310,7 @@ export function assertSuccess<A, E>(
 /**
  * Asserts that `result` is `Failure` and contains an error equal to `expected`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -309,6 +329,7 @@ export function assertFailure<A, E>(
 /**
  * Asserts that `exit` is a failure with a cause equal to `expected`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -323,6 +344,7 @@ export function assertExitFailure<A, E>(
 /**
  * Asserts that `exit` is a success with a value equal to `expected`.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */

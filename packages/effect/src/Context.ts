@@ -8,6 +8,7 @@
  * for creating keys, building contexts, adding and reading services, merging
  * contexts, and selecting or removing services.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type { Effect, EffectIterator } from "./Effect.ts"
@@ -26,6 +27,7 @@ import type * as Types from "./Types.ts"
  * String literal type used as the runtime type identifier for `Context`
  * service keys.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -35,6 +37,7 @@ export type ServiceTypeId = "~effect/Context/Service"
  * Runtime type identifier attached to `Context` service keys and used by
  * `isKey` to recognize them.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -58,6 +61,7 @@ export const ServiceTypeId: ServiceTypeId = "~effect/Context/Service"
  * @see {@link Service} for creating required service keys
  * @see {@link Reference} for creating service keys with default values
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -92,6 +96,7 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
  * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -117,6 +122,7 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
  *
  * @see {@link Service} for creating function-style keys or class-style service keys
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -131,6 +137,7 @@ export interface ServiceClass<in out Self, in out Identifier extends string, in 
  * Namespace containing helper types for class-style `Context.Service`
  * declarations.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace ServiceClass {
@@ -195,6 +202,7 @@ export declare namespace ServiceClass {
  *
  * @see {@link Reference} for service keys with default values
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -329,6 +337,7 @@ const ReferenceTypeId = "~effect/Context/Reference" as const
  * messages // => ["default logger"]
  * ```
  *
+ * @stability stable
  * @category services
  * @since 3.11.0
  */
@@ -360,6 +369,7 @@ export interface Reference<in out Shape> extends Service<never, Shape> {
  * Database.key // => "Database"
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Service {
@@ -461,6 +471,7 @@ const TypeId = "~effect/Context" as const
  * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -576,6 +587,7 @@ const lookup = (self: Context<any>, key: string): unknown => {
  * context.mapUnsafe.size // => 1
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -648,6 +660,7 @@ export const hasSameCache = <Services, Services2>(
  * @see {@link isKey} for checking service keys
  * @see {@link isReference} for checking references with defaults
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -663,6 +676,7 @@ export const isContext = (u: unknown): u is Context<never> => hasProperty(u, Typ
  * Context.isKey(Context.Service("Service")) // => true
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -684,6 +698,7 @@ export const isKey = (u: unknown): u is Key<any, any> => hasProperty(u, ServiceT
  * Context.isReference(Context.Service("Key")) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 3.11.0
  */
@@ -699,6 +714,7 @@ export const isReference = <I, S>(u: Key<I, S>): u is Reference<S> => !!(u as Re
  * Context.empty().mapUnsafe.size // => 0
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -720,6 +736,7 @@ const emptyContext = makeUnsafe(new Map())
  * Context.get(context, Port).PORT // => 8080
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -761,6 +778,7 @@ export const make = <I, S>(
  *
  * @see {@link addOrOmit} for adding or removing a service from an `Option`
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -783,6 +801,7 @@ export const add: {
 /**
  * Adds a service by key to a given `Context` using a string key.
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -841,6 +860,7 @@ export const addUnsafe = <Services, I, S>(
  *
  * @see {@link add} for always storing a service value
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -907,6 +927,7 @@ export const addOrOmit: {
  *
  * @see {@link getOption} for returning `Option.none` when a non-reference key is missing
  *
+ * @stability stable
  * @category getters
  * @since 3.7.0
  */
@@ -935,6 +956,7 @@ export const getOrElse: {
  *
  * @see {@link getOption} for a reference-aware optional lookup
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -984,6 +1006,7 @@ export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services
  * @see {@link get} for type-checked service access
  * @see {@link getOption} for optional service access
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1029,6 +1052,7 @@ export const getUnsafe: {
  * @see {@link getOption} for optional service access
  * @see {@link getOrElse} for fallback values
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1089,6 +1113,7 @@ const serviceNotFoundError = (service: Key<any, any>) => {
  *
  * @see {@link getOrElse} for returning a fallback value directly
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1132,6 +1157,7 @@ export const getOption: {
  *
  * @see {@link mergeAll} for merging more than two contexts at once
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -1180,6 +1206,7 @@ export const merge: {
  *
  * @see {@link merge} for merging two contexts
  *
+ * @stability stable
  * @category combining
  * @since 3.12.0
  */
@@ -1223,6 +1250,7 @@ export const mergeAll = <T extends Array<unknown>>(
  *
  * @see {@link omit} for removing selected services
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1265,6 +1293,7 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
  *
  * @see {@link pick} for keeping selected services
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1321,6 +1350,7 @@ export const omit = <S extends ReadonlyArray<Key<any, any>>>(
  *
  * @see {@link Service} for required services without default values
  *
+ * @stability stable
  * @category services
  * @since 3.11.0
  */

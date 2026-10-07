@@ -5,6 +5,7 @@
  * fiber in Bun. It reuses the shared Node runtime runner, including its error
  * reporting, signal handling, and optional teardown behavior.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeRuntime from "@effect/platform-node-shared/NodeRuntime"
@@ -32,6 +33,7 @@ import type { Teardown } from "effect/Runtime"
  * - `disablePrettyLogger`: Avoid adding the pretty logger.
  * - `teardown`: Provide custom finalization logic.
  *
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */

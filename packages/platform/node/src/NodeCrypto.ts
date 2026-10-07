@@ -9,6 +9,7 @@
  * implementation. Digest failures are reported as platform errors, and SHA-1
  * remains available only for interoperability with existing protocols.
  *
+ * @stability unstable
  * @since 1.0.0
  */
 import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
@@ -18,6 +19,7 @@ import type * as Layer from "effect/Layer"
 /**
  * Layer that provides the Node.js Crypto service implementation.
  *
+ * @stability unstable
  * @category layers
  * @since 1.0.0
  */

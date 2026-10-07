@@ -6,6 +6,7 @@
  * supports byte ranges, converts Web `File` values to readable streams, and
  * fills in content type and content length headers when needed.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
@@ -108,6 +109,7 @@ const compression = NodeHttpCompression.make({
  * Creates the Node `HttpPlatform`, serving file responses from Node readable
  * streams and adding MIME type and content-length headers when needed.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -156,6 +158,7 @@ export const make = Platform.make({
  * Provides the Node `HttpPlatform` together with the filesystem and ETag
  * services it needs for file responses.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

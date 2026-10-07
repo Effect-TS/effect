@@ -6,6 +6,7 @@
  * and terminal services. Use the layer when a Deno program wants the standard
  * platform services from one place.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Crypto } from "effect/Crypto"
@@ -26,6 +27,7 @@ import * as DenoTerminal from "./DenoTerminal.ts"
  * The union of core services provided by the Deno platform layer, including
  * child process spawning, crypto, filesystem, path, stdio, and terminal services.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -35,6 +37,7 @@ export type DenoServices = ChildProcessSpawner | Crypto | FileSystem | Path | Te
  * Provides the default Deno implementations for child process spawning,
  * crypto, filesystem, path, stdio, and terminal services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
