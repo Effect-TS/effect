@@ -332,7 +332,6 @@ export interface Reportable {
    * Suppress reports for this error.
    *
    * @stability unstable
-   * @category annotations
    * @since 4.0.0
    */
   readonly [ignore]?: boolean
@@ -340,7 +339,6 @@ export interface Reportable {
    * Override the severity level for this error.
    *
    * @stability unstable
-   * @category annotations
    * @since 4.0.0
    */
   readonly [severity]?: Severity
@@ -348,7 +346,6 @@ export interface Reportable {
    * Attach extra key/value metadata to this error.
    *
    * @stability unstable
-   * @category annotations
    * @since 4.0.0
    */
   readonly [attributes]?: ReadonlyRecord<string, unknown>
