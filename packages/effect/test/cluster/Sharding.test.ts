@@ -1711,6 +1711,54 @@ describe.concurrent("Sharding", () => {
         Layer.provide(TestShardingConfig)
       )))
     }))
+
+  it.effect("WithTransaction persists a failure reply after rollback", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const first = yield* Effect.flip(client.FailWithTransaction({ id: 1 }))
+      assert.strictEqual(first._tag, "BoomError")
+
+      // The retry must be answered from storage without rerunning the handler.
+      const retry = yield* client.FailWithTransaction({ id: 1 }).pipe(
+        Effect.flip,
+        Effect.timeout(5000),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust(5000)
+      const second = yield* Fiber.join(retry)
+      assert.strictEqual(second._tag, "BoomError")
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+      // Replies saved inside a failed transaction are discarded, like a SQL
+      // rollback.
+      Layer.updateService(MessageStorage.MessageStorage, (storage) => {
+        let saved: Array<Snowflake.Snowflake> = []
+        return {
+          ...storage,
+          withTransaction: (effect) =>
+            storage.withTransaction(effect).pipe(
+              Effect.onExit((exit) => {
+                const rolledBack = saved
+                saved = []
+                return Exit.isFailure(exit)
+                  ? Effect.forEach(rolledBack, (id) => Effect.orDie(storage.clearReplies(id)), { discard: true })
+                  : Effect.void
+              })
+            ),
+          saveReply: (reply) =>
+            MessageStorage.MemoryTransaction.use((inTransaction) => {
+              if (inTransaction) saved.push(reply.reply.requestId)
+              return storage.saveReply(reply)
+            })
+        }
+      }),
+      Layer.provide(MessageStorage.layerMemory),
+      Layer.provide(TestShardingConfig)
+    ))))
 })
 
 const DefectRecoveryRun = Rpc.make("run", {
