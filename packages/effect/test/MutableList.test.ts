@@ -3,6 +3,22 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { MutableList } from "effect"
 
 describe("MutableList", () => {
+  it("append after drain starts a one-element mutable bucket", () => {
+    const list = MutableList.make<number>()
+    MutableList.append(list, 1)
+    MutableList.takeAll(list)
+    MutableList.append(list, 2)
+    deepStrictEqual(
+      [list.head?.array, list.head?.offset, list.head?.mutable, list.head === list.tail, list.length],
+      [[2], 0, true, true, 1]
+    )
+    MutableList.appendAll(list, [3, 4])
+    MutableList.append(list, 5)
+    deepStrictEqual(list.tail?.array, [5])
+    strictEqual(list.length, 4)
+    deepStrictEqual(MutableList.takeAll(list), [2, 3, 4, 5])
+  })
+
   it("prependAll with no values preserves existing elements", () => {
     const list = MutableList.make<number>()
     MutableList.appendAll(list, [1, 2])
