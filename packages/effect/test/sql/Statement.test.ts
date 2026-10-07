@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option, References, Stream } from "effect"
+import { Effect, Fiber, Option, References, Stream, Tracer } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import * as Statement from "effect/sql/Statement"
+import * as TestClock from "effect/testing/TestClock"
 
 describe("Statement", () => {
   it("defaultTransforms ignores inherited properties", () => {
@@ -95,6 +96,40 @@ describe("Statement", () => {
       }).pipe(Effect.provideService(Statement.SpanPropagationEnabled, true))
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect("records how long a statement waited for a connection", () =>
+    Effect.gen(function*() {
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      const acquired = yield* makeClient(Effect.void, false, Effect.sleep("30 millis"))
+      const borrowed = yield* makeClient(Effect.void, true, Effect.sleep("30 millis"))
+      const run = (sql: SqlClient.SqlClient, propagate: boolean) =>
+        Effect.gen(function*() {
+          const fiber = yield* Effect.forkChild(
+            sql`select 1`.pipe(
+              Effect.withTracer(tracer),
+              Effect.provideService(Statement.SpanPropagationEnabled, propagate)
+            )
+          )
+          yield* TestClock.adjust("30 millis")
+          yield* Fiber.join(fiber)
+        })
+
+      yield* run(acquired, true)
+      yield* run(borrowed, true)
+      yield* run(acquired, false)
+      yield* run(borrowed, false)
+      assert.deepStrictEqual(
+        spans.map((span) => span.attributes.get("db.client.connection.wait_time_ms")),
+        [30, 30, undefined, undefined]
+      )
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect("skips propagation when tracing is disabled", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient(Effect.map(Effect.option(Effect.currentSpan), (span) => {
@@ -107,7 +142,7 @@ describe("Statement", () => {
     }).pipe(Effect.provide(Reactivity.layer)))
 })
 
-const makeClient = (observe: Effect.Effect<void>, borrow = false) => {
+const makeClient = (observe: Effect.Effect<void>, borrow = false, acquire = observe) => {
   const execute = Effect.as(observe, [])
   const connection: Connection = {
     execute: () => execute,
@@ -118,8 +153,8 @@ const makeClient = (observe: Effect.Effect<void>, borrow = false) => {
     executeStream: () => Stream.fromEffect(execute)
   }
   return SqlClient.make({
-    acquirer: Effect.as(observe, connection),
-    borrower: borrow ? (f) => Effect.andThen(observe, f(connection)) : undefined,
+    acquirer: Effect.as(acquire, connection),
+    borrower: borrow ? (f) => Effect.andThen(acquire, f(connection)) : undefined,
     compiler: Statement.makeCompilerSqlite(),
     spanAttributes: []
   })
