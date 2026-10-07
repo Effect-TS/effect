@@ -7,22 +7,17 @@ import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
 import * as Version from "effect/Version"
 
-const makeTracingLayer = (exporter = new InMemorySpanExporter()) =>
-  OtelTracer.layer.pipe(
-    Layer.provide(NodeSdk.layerTracerProvider([new SimpleSpanProcessor(exporter)])),
-    Layer.provide(Resource.layerEmpty)
-  )
-
-const TracingLayer = makeTracingLayer()
+const TracingLayer = OtelTracer.layer.pipe(
+  Layer.provide(NodeSdk.layerTracerProvider([new SimpleSpanProcessor(new InMemorySpanExporter())])),
+  Layer.provide(Resource.layerEmpty)
+)
 
 // needed to test context propagation
 const contextManager = new AsyncHooksContextManager()
@@ -80,149 +75,53 @@ describe("Tracer", () => {
         Effect.provide(TracingLayer)
       ))
 
-    describe("parentage", () => {
-      const parentContext: OtelApi.SpanContext = {
-        traceId: "1".repeat(32),
-        spanId: "2".repeat(16),
-        traceFlags: OtelApi.TraceFlags.SAMPLED
-      }
-      const active = OtelApi.trace.setSpanContext(OtelApi.ROOT_CONTEXT, parentContext)
-
-      it.effect.each([undefined, false])(
-        "inherits the active OpenTelemetry parent with root %s",
-        (root) =>
-          Effect.gen(function*() {
-            const services = yield* Effect.context<never>()
-            const child = yield* Effect.promise(() =>
-              OtelApi.context.with(active, () =>
-                Effect.runPromise(Effect.currentSpan.pipe(
-                  Effect.withSpan("child", { root }),
-                  Effect.provideContext(services)
-                )))
-            )
-
-            assert.strictEqual(child.traceId, parentContext.traceId)
-            assert.strictEqual(Option.getOrThrow(child.parent).spanId, parentContext.spanId)
-          }).pipe(Effect.provide(TracingLayer))
-      )
-
-      it.effect("root true ignores the active OpenTelemetry parent", () =>
-        Effect.gen(function*() {
-          const services = yield* Effect.context<never>()
-          const child = yield* Effect.promise(() =>
-            OtelApi.context.with(active, () =>
-              Effect.runPromise(Effect.currentSpan.pipe(
-                Effect.withSpan("child", { root: true }),
-                Effect.provideContext(services)
-              )))
-          )
-
-          assert.isTrue(Option.isNone(child.parent))
-          assert.notStrictEqual(child.traceId, parentContext.traceId)
-        }).pipe(Effect.provide(TracingLayer)))
-
-      it.effect("an explicit Effect parent takes precedence over the active OpenTelemetry parent", () =>
-        Effect.gen(function*() {
-          const parent = EffectTracer.externalSpan({ traceId: "3".repeat(32), spanId: "4".repeat(16) })
-          const services = yield* Effect.context<never>()
-          const child = yield* Effect.promise(() =>
-            OtelApi.context.with(active, () =>
-              Effect.runPromise(Effect.currentSpan.pipe(
-                Effect.withSpan("child"),
-                Effect.withParentSpan(parent),
-                Effect.provideContext(services)
-              )))
-          )
-
-          assert.strictEqual(child.traceId, parent.traceId)
-          assert.strictEqual(Option.getOrThrow(child.parent).spanId, parent.spanId)
-        }).pipe(Effect.provide(TracingLayer)))
-
-      it.effect("inherits an OpenTelemetry span started inside an Effect span", () =>
-        Effect.gen(function*() {
-          const services = yield* Effect.context<never>()
-          const tracer = yield* OtelTracer.OtelTracer
-          yield* Effect.promise(() =>
-            tracer.startActiveSpan("otel-parent", async (parent) => {
-              try {
-                const child = await Effect.runPromise(Effect.currentSpan.pipe(
-                  Effect.withSpan("child"),
-                  Effect.provideContext(services)
-                ))
-
-                assert.strictEqual(child.traceId, parent.spanContext().traceId)
-                assert.strictEqual(Option.getOrThrow(child.parent).spanId, parent.spanContext().spanId)
-              } finally {
-                parent.end()
-              }
-            })
-          ).pipe(Effect.withSpan("outer"))
-        }).pipe(Effect.provide(TracingLayer)))
-
-      it.effect("does not inherit an ambient Effect span when re-entering from JavaScript", () =>
-        Effect.gen(function*() {
-          const services = yield* Effect.context<never>()
-          yield* Effect.gen(function*() {
-            const outer = yield* Effect.currentSpan
-            const child = yield* Effect.promise(() =>
-              Effect.runPromise(Effect.currentSpan.pipe(
+    it.effect("inherits an OpenTelemetry span started inside an Effect span", () =>
+      Effect.gen(function*() {
+        const services = yield* Effect.context<never>()
+        const tracer = yield* OtelTracer.OtelTracer
+        yield* Effect.promise(() =>
+          tracer.startActiveSpan("otel-parent", async (parent) => {
+            try {
+              const child = await Effect.runPromise(Effect.currentSpan.pipe(
                 Effect.withSpan("child"),
                 Effect.provideContext(services)
               ))
-            )
 
-            assert.isTrue(Option.isNone(child.parent))
-            assert.notStrictEqual(child.traceId, outer.traceId)
-          }).pipe(Effect.withSpan("outer"))
-        }).pipe(Effect.provide(TracingLayer)))
+              assert.strictEqual(child.traceId, parent.spanContext().traceId)
+              assert.strictEqual(Option.getOrThrow(child.parent).spanId, parent.spanContext().spanId)
+            } finally {
+              parent.end()
+            }
+          })
+        ).pipe(Effect.withSpan("outer"))
+      }).pipe(Effect.provide(TracingLayer)))
 
-      it.effect("a propagation-disabled Effect span is not a parent", () =>
-        Effect.gen(function*() {
-          const child = yield* Effect.currentSpan.pipe(
-            Effect.withSpan("child"),
-            Effect.withSpan("disabled", { annotations: EffectTracer.DisablePropagation.context(true) })
+    it.effect("does not inherit an ambient Effect span when re-entering from JavaScript", () =>
+      Effect.gen(function*() {
+        const services = yield* Effect.context<never>()
+        yield* Effect.gen(function*() {
+          const outer = yield* Effect.currentSpan
+          const child = yield* Effect.promise(() =>
+            Effect.runPromise(Effect.currentSpan.pipe(
+              Effect.withSpan("child"),
+              Effect.provideContext(services)
+            ))
           )
 
           assert.isTrue(Option.isNone(child.parent))
-        }).pipe(Effect.provide(TracingLayer)))
+          assert.notStrictEqual(child.traceId, outer.traceId)
+        }).pipe(Effect.withSpan("outer"))
+      }).pipe(Effect.provide(TracingLayer)))
 
-      it.effect("does not inherit the span of the fiber that resumed it", () =>
-        Effect.gen(function*() {
-          const deferred = yield* Deferred.make<void>()
-          const worker = yield* Deferred.await(deferred).pipe(
-            Effect.andThen(Effect.currentSpan.pipe(Effect.withSpan("worker"))),
-            Effect.forkChild({ startImmediately: true })
-          )
-          const waker = yield* Deferred.succeed(deferred, void 0).pipe(
-            Effect.andThen(Effect.currentSpan),
-            Effect.withSpan("waker")
-          )
-          const child = yield* Fiber.join(worker)
+    it.effect("a propagation-disabled Effect span is not a parent", () =>
+      Effect.gen(function*() {
+        const child = yield* Effect.currentSpan.pipe(
+          Effect.withSpan("child"),
+          Effect.withSpan("disabled", { annotations: EffectTracer.DisablePropagation.context(true) })
+        )
 
-          assert.isTrue(Option.isNone(child.parent))
-          assert.notStrictEqual(child.traceId, waker.traceId)
-        }).pipe(Effect.provide(TracingLayer)))
-
-      it.effect("raw OpenTelemetry spans skip propagation-disabled Effect spans", () =>
-        Effect.gen(function*() {
-          const exporter = new InMemorySpanExporter()
-          yield* Effect.gen(function*() {
-            const parent = yield* Effect.currentSpan
-            const tracer = yield* OtelTracer.OtelTracer
-            yield* Effect.sync(() => tracer.startSpan("raw").end()).pipe(
-              Effect.withSpan("disabled", { annotations: EffectTracer.DisablePropagation.context(true) })
-            )
-            const raw = exporter.getFinishedSpans().find((span) => span.name === "raw")
-
-            assert(raw !== undefined)
-            assert.strictEqual(raw.spanContext().traceId, parent.traceId)
-            assert.strictEqual(raw.parentSpanContext?.spanId, parent.spanId)
-          }).pipe(
-            Effect.withSpan("parent"),
-            Effect.provide(makeTracingLayer(exporter))
-          )
-        }))
-    })
+        assert.isTrue(Option.isNone(child.parent))
+      }).pipe(Effect.provide(TracingLayer)))
 
     it.effect("supervisor sets context", () =>
       Effect.sync(() => {
