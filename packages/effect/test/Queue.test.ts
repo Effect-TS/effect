@@ -658,6 +658,29 @@ describe("Queue", () => {
       assert.deepStrictEqual(yield* Fiber.joinAll([f1, f2]), [[1, 2, 3], [4, 5]])
     }))
 
+  it.effect("interrupting the last pending offer of a closing queue finalizes it", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, Cause.Done>(0)
+      const offer = yield* Effect.forkChild(Queue.offer(queue, 1), { startImmediately: true })
+      yield* Queue.end(queue)
+      assert.strictEqual(queue.state._tag, "Closing")
+      yield* Fiber.interrupt(offer)
+      assert.strictEqual(queue.state._tag, "Done")
+      assert.isTrue(Cause.isDone(yield* Effect.flip(Queue.take(queue))))
+    }))
+
+  it.effect("interrupting the last pending offer of a closing queue keeps its buffered messages", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, Cause.Done>(1)
+      yield* Queue.offer(queue, 1)
+      const offer = yield* Effect.forkChild(Queue.offer(queue, 2), { startImmediately: true })
+      yield* Queue.end(queue)
+      yield* Fiber.interrupt(offer)
+      assert.strictEqual(queue.state._tag, "Closing")
+      assert.strictEqual(yield* Queue.take(queue), 1)
+      assert.strictEqual(queue.state._tag, "Done")
+    }))
+
   it.effect("queue effects do not expose queue contents when formatted", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<string>()

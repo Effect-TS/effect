@@ -2152,10 +2152,30 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
     if (ready()) return resume(internalEffect.exitVoid)
     const taker = { ready, resume }
     self.state.takers.add(taker)
-    return internalEffect.sync(() => {
-      if (self.state._tag !== "Done") self.state.takers.delete(taker)
-    })
+    return withdrawTaker(self, taker)
   })
+
+// The cancellation of a waiting taker. A primitive with fields allocates less
+// than a `sync` thunk closing over the queue and the taker.
+const withdrawTaker: <A, E>(self: Dequeue<A, E>, taker: Queue.Taker<E>) => Effect<void> = core.makePrimitive({
+  op: "QueueWithdrawTaker",
+  [core.evaluate](fiber) {
+    const self = this[core.args] as Dequeue<any, any>
+    if (self.state._tag !== "Done") {
+      self.state.takers.delete((this as unknown as { readonly taker: Queue.Taker<any> }).taker)
+    }
+    return fiber.continueWith(undefined, undefined)
+  }
+}, (Proto) => {
+  const QueueWithdrawTaker = function(this: any, self: unknown, taker: unknown) {
+    this[core.args] = self
+    this.taker = taker
+  } as unknown as new(self: unknown, taker: unknown) => core.Primitive
+  QueueWithdrawTaker.prototype = opaqueQueueEffect(Proto)
+  return function(self: any, taker: any) {
+    return new QueueWithdrawTaker(self, taker)
+  } as any
+})
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
   internalEffect.callback<boolean>((resume) =>
@@ -2166,14 +2186,42 @@ const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {
   if (self.state._tag !== "Open") return resumeUnoffered(entry)
   const offers = self.state.offers
   offers.add(entry)
-  return internalEffect.sync(() => {
-    if (self.state._tag === "Done") return
-    offers.delete(entry)
-    if (self.state._tag === "Closing" && offers.size === 0 && self.messages.length === 0) {
-      finalize(self, self.state.exit)
-    }
-  })
+  return withdrawOffer(self, offers, entry)
 }
+
+// The cancellation of a waiting offer, as a primitive for the same reason as
+// `withdrawTaker`.
+const withdrawOffer: <A, E>(
+  self: Enqueue<A, E>,
+  offers: Set<Queue.OfferEntry<A>>,
+  entry: Queue.OfferEntry<A>
+) => Effect<void> = core.makePrimitive({
+  op: "QueueWithdrawOffer",
+  [core.evaluate](fiber) {
+    const self = this[core.args] as Enqueue<any, any>
+    if (self.state._tag !== "Done") {
+      const { entry, offers } = this as unknown as {
+        readonly offers: Set<Queue.OfferEntry<any>>
+        readonly entry: Queue.OfferEntry<any>
+      }
+      offers.delete(entry)
+      if (self.state._tag === "Closing" && offers.size === 0 && self.messages.length === 0) {
+        finalize(self, self.state.exit)
+      }
+    }
+    return fiber.continueWith(undefined, undefined)
+  }
+}, (Proto) => {
+  const QueueWithdrawOffer = function(this: any, self: unknown, offers: unknown, entry: unknown) {
+    this[core.args] = self
+    this.offers = offers
+    this.entry = entry
+  } as unknown as new(self: unknown, offers: unknown, entry: unknown) => core.Primitive
+  QueueWithdrawOffer.prototype = opaqueQueueEffect(Proto)
+  return function(self: any, offers: any, entry: any) {
+    return new QueueWithdrawOffer(self, offers, entry)
+  } as any
+})
 
 const resumeUnoffered = <A>(entry: Queue.OfferEntry<A>) =>
   entry._tag === "Single"
