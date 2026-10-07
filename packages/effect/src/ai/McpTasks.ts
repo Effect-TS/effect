@@ -21,6 +21,7 @@ import type * as Toolkit from "./Toolkit.ts"
 /**
  * Schema for a branded MCP task identifier.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -29,6 +30,7 @@ export const TaskId = Schema.String.pipe(Schema.brand("effect/ai/McpTasks/TaskId
 /**
  * Type for a branded MCP task identifier.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -37,6 +39,7 @@ export type TaskId = typeof TaskId.Type
 /**
  * Schema for the execution states of an MCP task.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -45,6 +48,7 @@ export const TaskStatus = Schema.Literals(["working", "input_required", "complet
 /**
  * Schema for task identity, status, timestamps, and retention.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -61,6 +65,7 @@ export const Task = Schema.Struct({
 /**
  * Schema for a task and the input requests, result, or error associated with its status.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -90,6 +95,7 @@ export const DetailedTask = Schema.Union([
 /**
  * Type for a task and the input requests, result, or error associated with its status.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -98,6 +104,7 @@ export type DetailedTask = typeof DetailedTask.Type
 /**
  * Error raised when a task policy or memory execution option is invalid.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -109,6 +116,7 @@ export const InvalidOption: new(options: {
 /**
  * Error raised when a task policy or memory execution option is invalid.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -122,6 +130,7 @@ export interface InvalidOption extends Cause.YieldableError {
 /**
  * Error raised when the client does not support a requested input operation.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -132,6 +141,7 @@ export const InputUnavailable: new(options: {
 /**
  * Error raised when the client does not support a requested input operation.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -144,6 +154,7 @@ export interface InputUnavailable extends Cause.YieldableError {
 /**
  * Policy that requires a tool to execute as a task.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -157,6 +168,7 @@ export interface RequiredPolicy {
 /**
  * Policy that chooses task or inline execution and defines behavior for unsupported clients.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -173,6 +185,7 @@ type InputNames<Tools extends Record<string, Tool.Any>> = {
 /**
  * Task policies indexed by tool name, requiring task execution for tools that depend on `Input`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -183,6 +196,7 @@ export type Policies<Tools extends Record<string, Tool.Any>> =
 /**
  * Service that exposes the execution mode and lets a tool update its task status message.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -192,6 +206,7 @@ export const TaskContext: Context.ServiceClass<TaskContext, "effect/ai/McpTasks/
 /**
  * Service that exposes the execution mode and lets a tool update its task status message.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -212,6 +227,7 @@ export interface TaskContext extends
 /**
  * Service that requests client input while a task is running.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -220,6 +236,7 @@ export const Input: Context.ServiceClass<Input, "effect/ai/McpTasks/Input", Inpu
 /**
  * Service that requests client input while a task is running.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -244,6 +261,7 @@ export interface Input extends
 /**
  * Request context used to authorize access to a task.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -252,6 +270,7 @@ export type TaskRequestContext = McpSchema.McpRequestContext["Service"]
 /**
  * Error returned by task operations with a JSON-RPC error code and message.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -264,6 +283,7 @@ export const TaskError: new(options: {
 /**
  * Error returned by task operations with a JSON-RPC error code and message.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -278,6 +298,7 @@ export interface TaskError extends Cause.YieldableError {
 /**
  * Service that creates, reads, updates, and cancels tasks.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -287,6 +308,7 @@ export const Execution: Context.ServiceClass<Execution, "effect/ai/McpTasks/Exec
 /**
  * Service that creates, reads, updates, and cancels tasks.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -310,6 +332,7 @@ export interface Execution extends
 /**
  * Options for in-memory task capacity, ownership, retention, and shutdown.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -337,6 +360,7 @@ export interface MemoryOptions<R = never> {
 /**
  * Normalized duration overrides for an individual task execution.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -362,6 +386,7 @@ type DecisionServices<Config> = {
  * Uninterruptible work and blocked finalizers can continue occupying execution
  * capacity. Shutdown returns after its grace period; finalizers may continue afterward.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -448,6 +473,7 @@ export const layerMemory: <R = never>(
  * )
  * ```
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -480,6 +506,7 @@ export const toolkit: <
 /**
  * Reusable tool handler layer with a separate MCP execution layer.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -499,6 +526,7 @@ export interface ToolkitLayer<ROut, E, RIn, RegistrationError, RegistrationServi
  * calls through an ordinary Toolkit fail with an `AiError` outside that context.
  *
  * @see toolkit
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -509,6 +537,7 @@ export const toLayer = <ROut, E, RIn, RegistrationError, RegistrationServices>(
 /**
  * Tool handlers with inferred services and optional separate task and inline implementations.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

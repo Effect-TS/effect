@@ -1881,7 +1881,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
 ) => Effect.Effect<
   void,
   never,
-  McpServer | Tool.HandlersFor<Tools>
+  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
 > = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
