@@ -1021,6 +1021,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
             const prepare = cancellationRequest === undefined
               ? runtime.prepareRequest(clientId, headers, request)
               : Effect.succeed(cancellationRequest.prepared)
+            if (httpRequest !== undefined && request.isNotification !== true) {
+              const httpPost = httpPostResponses.get(httpRequest) ?? { expected: 0 }
+              httpPost.expected++
+              httpPostResponses.set(httpRequest, httpPost)
+            }
             return Effect.gen(function*() {
               const prepared = yield* prepare
               const clientState = clientStates.get(clientId)
@@ -1139,17 +1144,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
               }
               if (request.isNotification !== true) {
                 const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
-                let httpPost: { expected: number } | undefined
-                if (httpRequest !== undefined) {
-                  httpPost = httpPostResponses.get(httpRequest) ?? { expected: 0 }
-                  httpPost.expected++
-                  httpPostResponses.set(httpRequest, httpPost)
-                }
                 requests.set(requestKey(request.id), {
                   requestId: RpcMessage.RequestId(request.id),
                   prepared,
                   cancelled: false,
-                  httpPost
+                  httpPost: httpRequest === undefined ? undefined : httpPostResponses.get(httpRequest)
                 })
                 activeRequests.set(clientId, requests)
               }
