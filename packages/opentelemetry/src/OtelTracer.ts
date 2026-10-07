@@ -116,8 +116,9 @@ export const make: Effect.Effect<Tracer.Tracer, never, OtelTracer> = Effect.map(
           return primitive["~effect/Effect/evaluate"](fiber)
         }
 
+        const context = populateContext(Otel.context.active(), currentSpan)
         return Otel.context.with(
-          populateEffectContext(Otel.context.active(), currentSpan),
+          context.setValue(EffectSpanKey, Otel.trace.getSpan(context)),
           () => primitive["~effect/Effect/evaluate"](fiber)
         )
       }
@@ -616,11 +617,6 @@ const getPropagatedSpan = (span: Tracer.AnySpan | undefined): Tracer.AnySpan | u
     span = span._tag === "Span" ? Option.getOrUndefined(span.parent) : undefined
   }
   return span
-}
-
-const populateEffectContext = (context: Otel.Context, span: Tracer.AnySpan): Otel.Context => {
-  const otelSpan = span instanceof OtelSpan ? span.span : Otel.trace.wrapSpanContext(makeSpanContext(span))
-  return Otel.trace.setSpan(context.setValue(EffectSpanKey, otelSpan), otelSpan)
 }
 
 const populateContext = (
