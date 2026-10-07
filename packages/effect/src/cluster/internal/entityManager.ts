@@ -86,8 +86,6 @@ export interface Residency {
   readonly releaseUnsafe: () => void
 }
 
-// An open handler transaction for a persisted request. The handler's reply
-// and bookkeeping wait here until the transaction outcome is known.
 interface RequestTransaction {
   settle?: ((outcome: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 }
@@ -315,10 +313,8 @@ export const make = Effect.fnUntraced(function*<
                 if (!transaction) return respond
                 const exit = response.exit
 
-                // A success is saved with the handler's writes, and storage
-                // notifies the caller after COMMIT. A failure is saved after a
-                // clean rollback. If COMMIT or ROLLBACK itself fails, the
-                // outcome is unknown and the request is replayed.
+                // Save success in the transaction; save failure after a clean
+                // rollback. Wrapper failures replay without completing the request.
                 if (Exit.isSuccess(exit)) {
                   transaction.settle = (outcome) => Exit.isSuccess(outcome) ? complete : restartFrom(outcome.cause)
                   return Effect.orDie(save)
@@ -364,8 +360,7 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
-        // Rebuild the handlers and replay the active requests. The restart is
-        // forked from a handler, so it leaves that handler's context behind.
+        // Restart without inheriting the failed handler's transaction context.
         const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
           if (!isActive()) return endLatch.open
           const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
@@ -630,8 +625,6 @@ export const make = Effect.fnUntraced(function*<
       transaction?: RequestTransaction | undefined
     }
   ): Parameters<EntityState["write"]>[2] => {
-    // A persisted reply settles once the transaction outcome is known.
-    // Non-persisted replies are not saved, so they have nothing to wait for.
     const onTransaction = !Context.get(entry.message.annotations, WithTransaction)
       ? undefined
       : !Context.get(entry.message.annotations, Persisted)

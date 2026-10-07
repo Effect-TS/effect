@@ -207,18 +207,17 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Used to wrap requests with transactions.
+   * Wraps requests in storage transactions.
    *
-   * For a persisted `WithTransaction` request, the `WithExit` reply the
-   * handler produces inside the transaction is saved inside it, and callers
-   * are notified only after COMMIT. A handler failure is saved and delivered
-   * after a clean rollback. If COMMIT or ROLLBACK itself fails, no reply is
-   * delivered and the request is replayed.
+   * `WithExit` replies saved inside a transaction notify callers only after
+   * the outermost COMMIT. For persisted `WithTransaction` requests, handler
+   * failures are saved and delivered after a clean rollback. COMMIT or ROLLBACK
+   * failures replay the request without delivering a terminal reply. Request
+   * bookkeeping waits for the transaction outcome.
    *
-   * This does not cover stream chunks, which are saved and delivered as they
-   * are produced; handlers that return a `Deferred`, whose reply arrives after
-   * the transaction has committed; or non-persisted requests, which save no
-   * reply.
+   * Stream chunks notify callers immediately. A handler returning a `Deferred`
+   * commits before its reply is saved. Non-persisted requests save no reply
+   * and deliver it as soon as the handler exits.
    */
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>
@@ -524,8 +523,6 @@ export type EncodedRepliesOptions<A> = {
   readonly cursor: Option.Option<A>
 }
 
-// Caller notifications of the `WithExit` replies saved inside the current
-// transaction. They run after it commits.
 const TransactionNotifications = Context.Reference<
   Array<Effect.Effect<void, PersistenceError | MalformedMessage>> | undefined
 >("effect/cluster/MessageStorage/TransactionNotifications", { defaultValue: () => undefined })
@@ -572,9 +569,8 @@ export const make = (
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
       ...storage,
-      // Callers learn of the `WithExit` replies saved inside a transaction
-      // once the outermost transaction has committed. Each nested transaction
-      // keeps its own notifications so a rollback discards only its replies.
+      // Merge notifications on inner success; discard them on rollback.
+      // Only the outermost COMMIT notifies callers.
       withTransaction: (effect) =>
         TransactionNotifications.use((outer) => {
           const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
@@ -669,7 +665,6 @@ export const make = (
               : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
           })
           if (persisted.reply._tag !== "WithExit") return notify
-          // A reply saved inside a transaction becomes visible at COMMIT.
           return TransactionNotifications.use((notifications) =>
             notifications === undefined ? notify : Effect.sync(() => {
               notifications.push(notify)
