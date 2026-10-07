@@ -53,7 +53,7 @@ const TransactionEntity = Entity.make("transaction", [
 
 const TransactionEntityLayer = TransactionEntity.toLayer(Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
-  yield* sql`CREATE TABLE writes (id TEXT)`
+  yield* sql`CREATE TABLE writes (id TEXT)`.pipe(Effect.orDie)
   return {
     Reject: ({ payload }) =>
       sql`INSERT INTO writes ${sql.insert({ id: payload.id })}`.pipe(
