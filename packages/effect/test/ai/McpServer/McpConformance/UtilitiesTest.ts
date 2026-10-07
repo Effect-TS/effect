@@ -436,7 +436,44 @@ export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer
           assert.strictEqual(cancelled.status, 202)
           yield* Deferred.await(interrupted).pipe(Effect.timeout("1 second"))
           const response = yield* Fiber.join(pending).pipe(Effect.timeout("1 second"))
+          // A POST carrying a request must be answered with JSON or SSE, never 202.
+          // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
+          assert.strictEqual(response.status, 200)
+          assert.strictEqual(response.headers.get("content-type"), "text/event-stream")
           assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+        }))
+
+      it.effect("should fail a request whose response could not be written", () =>
+        Effect.gen(function*() {
+          const registration = Layer.effectDiscard(McpServer.McpServer.use((server) =>
+            server.addTool({
+              tool: new McpSchema.Tool({ name: "Unwritable", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () =>
+                Effect.succeed(new McpSchema.CallToolResult({ content: [{ type: "text", text: "unwritable result" }] }))
+            })
+          ))
+          const harness = yield* makeHttpHarness(registration.pipe(Layer.provideMerge(serverLayer)))
+          const headers = yield* initializeHttpSession(harness, protocol)
+          // Fail serializing the result and its defect fallback, so no response is written.
+          const stringify = JSON.stringify
+          yield* Effect.acquireRelease(
+            Effect.sync(() => {
+              JSON.stringify = (value: unknown, replacer?: any, space?: string | number) => {
+                const json = stringify(value, replacer, space)
+                if (json?.includes("unwritable result")) throw new Error("unwritable result")
+                return json
+              }
+            }),
+            () => Effect.sync(() => (JSON.stringify = stringify))
+          )
+          const response = yield* harness.post({
+            jsonrpc: "2.0",
+            id: "unwritable",
+            method: "tools/call",
+            params: { name: "Unwritable", arguments: {} }
+          }, headers)
+          assert.strictEqual(response.status, 500)
         }))
 
       if (protocol.runtime.transport.jsonRpc.acceptsBatches) {

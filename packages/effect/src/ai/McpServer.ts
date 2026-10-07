@@ -650,14 +650,37 @@ export class McpServer extends Context.Service<McpServer, {
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
-const cancelledResponses = new WeakMap<object, string | number>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
+
+/**
+ * The JSON-RPC requests of one HTTP POST, and those whose response the server withheld because
+ * the client cancelled them. Only a POST whose every request was withheld may end without one.
+ */
+interface HttpPostRequests {
+  readonly requests: Set<string>
+  readonly withheld: Set<string>
+}
+const httpPostRequests = new WeakMap<HttpServerRequest.HttpServerRequest, HttpPostRequests>()
+// A cancelled request's exit, and where the encoder records that it withheld the response.
+const cancelledResponses = new WeakMap<object, {
+  readonly requestId: string | number
+  readonly post: HttpPostRequests | undefined
+}>()
 
 interface ActiveRequest {
   readonly requestId: RpcMessage.RequestId
   readonly prepared: McpRuntime.PreparedRequest
   readonly cancelled: boolean
+  readonly post: HttpPostRequests | undefined
 }
+
+/**
+ * A POST carrying a JSON-RPC request ended without its response, and the server had not withheld
+ * that response after a cancellation. For example, writing the response failed.
+ */
+class McpResponseNotWritten extends Data.TaggedError("McpResponseNotWritten")<{
+  readonly message: string
+}> {}
 
 class McpClientKey extends Data.Class<{
   readonly clientId: number
@@ -799,6 +822,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
       if (!cancelRequest(clientId, requestId)) {
         return Effect.void
       }
+      // Ending the HTTP stream withholds the subscription's response.
+      activeRequests.get(clientId)?.get(requestKey(requestId))?.post?.withheld.add(requestKey(requestId))
       return isHttp
         ? protocol.end(clientId)
         : sendNotification(protocolVersion, clientId, {
@@ -950,13 +975,13 @@ const runWithRuntime = Effect.fnUntraced(function*(
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
-        const cancelled = requests?.get(key)?.cancelled
+        const active = requests?.get(key)
         if (requests !== undefined && requests.delete(key) && requests.size === 0) {
           activeRequests.delete(clientId)
         }
-        if (cancelled === true) {
+        if (active?.cancelled === true) {
           if (transport === "custom") return Effect.void
-          cancelledResponses.set(response, response.requestId)
+          cancelledResponses.set(response, { requestId: response.requestId, post: active.post })
           return protocol.send(clientId, response)
         }
         if (
@@ -1135,10 +1160,17 @@ const runWithRuntime = Effect.fnUntraced(function*(
               }
               if (request.isNotification !== true) {
                 const requests = activeRequests.get(clientId) ?? new Map<string, ActiveRequest>()
+                let post: HttpPostRequests | undefined
+                if (httpRequest !== undefined) {
+                  post = httpPostRequests.get(httpRequest) ?? { requests: new Set(), withheld: new Set() }
+                  post.requests.add(requestKey(request.id))
+                  httpPostRequests.set(httpRequest, post)
+                }
                 requests.set(requestKey(request.id), {
                   requestId: RpcMessage.RequestId(request.id),
                   prepared,
-                  cancelled: false
+                  cancelled: false,
+                  post
                 })
                 activeRequests.set(clientId, requests)
               }
@@ -1658,13 +1690,34 @@ const layerMcpProtocolHttp = (options: {
         if (admission._tag === "Rejected") {
           return admission.response
         }
-        const response = Effect.map(httpEffect, (response) => {
+        // The protocol registers this POST's requests under the request in the current context.
+        const httpRequest = yield* HttpServerRequest.HttpServerRequest
+        const response = Effect.flatMap(httpEffect, (response) => {
+          if (!admission.acknowledge && response.body._tag === "Uint8Array" && response.body.body.length === 0) {
+            // A POST with a request must answer with JSON or SSE. Without a response, that is only
+            // correct when the server withheld every request's response after its cancellation.
+            // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
+            const post = httpPostRequests.get(httpRequest)
+            return post !== undefined && post.requests.size > 0 &&
+                Array.from(post.requests).every((key) => post.withheld.has(key))
+              ? Effect.succeed(HttpServerResponse.stream(Stream.empty, {
+                status: response.status,
+                headers: Headers.remove(response.headers, "content-type"),
+                cookies: response.cookies,
+                contentType: "text/event-stream"
+              }))
+              : Effect.die(
+                new McpResponseNotWritten({ message: "The MCP request ended without writing its response" })
+              )
+          }
           // Completed responses may already contain notifications followed by the result.
           const hasMultipleMessages = response.body._tag === "Uint8Array" &&
             response.body.body.subarray(0, -1).includes(10)
-          return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
-            ? toServerSentEvents(response, admission.isSubscription)
-            : response
+          return Effect.succeed(
+            admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
+              ? toServerSentEvents(response, admission.isSubscription)
+              : response
+          )
         })
         return yield* admission.acknowledge
           ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
@@ -1720,15 +1773,16 @@ function mcpJsonRpcSerialization(options?: {
     ...serialization,
     makeUnsafe: () => {
       const parser = serialization.makeUnsafe()
-      const cancelledIds = new Set<string | number>()
+      // Cancelled request IDs, and the POST to record each withheld response in.
+      const cancelledIds = new Map<string | number, HttpPostRequests | undefined>()
       return {
         decode: parser.decode,
         encode: (response) => {
           if (Predicate.isReadonlyObject(response)) {
-            const cancelledId = cancelledResponses.get(response)
-            if (cancelledId !== undefined) {
+            const cancelled = cancelledResponses.get(response)
+            if (cancelled !== undefined) {
               cancelledResponses.delete(response)
-              cancelledIds.add(cancelledId)
+              cancelledIds.set(cancelled.requestId, cancelled.post)
             }
           }
           const encoded = parser.encode(response)
@@ -1738,9 +1792,15 @@ function mcpJsonRpcSerialization(options?: {
           if (cancelledIds.size > 0) {
             // Count cancelled completions toward the batch, but never write their responses.
             // https://modelcontextprotocol.io/specification/2025-03-26/basic/utilities/cancellation
-            const keep = (message: unknown) =>
-              !(Predicate.isReadonlyObject(message) && !Predicate.hasProperty(message, "method") &&
-                (typeof message.id === "string" || typeof message.id === "number") && cancelledIds.delete(message.id))
+            const keep = (message: unknown) => {
+              if (
+                !Predicate.isReadonlyObject(message) || Predicate.hasProperty(message, "method") ||
+                (typeof message.id !== "string" && typeof message.id !== "number") || !cancelledIds.has(message.id)
+              ) return true
+              cancelledIds.get(message.id)?.withheld.add(requestKey(message.id))
+              cancelledIds.delete(message.id)
+              return false
+            }
             if (Array.isArray(message)) {
               const remaining = message.filter(keep)
               if (remaining.length === 0) return undefined
