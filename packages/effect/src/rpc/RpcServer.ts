@@ -72,9 +72,6 @@ import { withRun } from "./Utils.ts"
  */
 export interface RpcServer<A extends Rpc.Any> {
   readonly write: (clientId: number, message: FromClient<A>, options?: {
-    /**
-     * Wraps the handler and success response. Failure responses are sent after the wrapper exits.
-     */
     readonly onRequest?: (<A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>) | undefined
   }) => Effect.Effect<void>
   readonly disconnect: (clientId: number) => Effect.Effect<void>
@@ -292,44 +289,43 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     let responded = false
     const scope = Scope.makeUnsafe()
     let deferred: Deferred.Deferred<unknown, unknown> | undefined = undefined
-    const respond = (exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> => {
+    let effect = Effect.onExit(withMiddleware, (exit) => {
+      responded = true
+      let write: Effect.Effect<void>
       if (exit._tag === "Success") {
         if (Deferred.isDeferred(exit.value)) {
           deferred = exit.value
-          return Effect.void
+          write = Effect.void
+        } else {
+          write = options.onFromServer({
+            _tag: "Exit",
+            clientId: client.id,
+            requestId: request.id,
+            exit: exit as any
+          })
         }
-        return options.onFromServer({
+      } else if (
+        !disableFatalDefects &&
+        Cause.hasDies(exit.cause) &&
+        !Cause.hasInterrupts(exit.cause)
+      ) {
+        write = sendDefect(client, Cause.squash(exit.cause))
+      } else {
+        write = options.onFromServer({
           _tag: "Exit",
           clientId: client.id,
           requestId: request.id,
           exit: exit as any
         })
       }
-      reportCauseUnsafe(Fiber.getCurrent()!, exit.cause)
-      if (!disableFatalDefects && Cause.hasDies(exit.cause) && !Cause.hasInterrupts(exit.cause)) {
-        return sendDefect(client, Cause.squash(exit.cause))
-      }
-      return options.onFromServer({
-        _tag: "Exit",
-        clientId: client.id,
-        requestId: request.id,
-        exit: exit as any
-      })
-    }
-    // Send failure replies after onRequest exits to keep them outside its transaction.
-    let failure: Exit.Failure<unknown, unknown> | undefined = undefined
-    let effect = Effect.onExit(withMiddleware, (exit) => {
-      responded = true
       const close = Scope.closeUnsafe(scope, exit)
-      if (opts?.onRequest && exit._tag === "Failure") {
-        failure = exit
-        return close ?? Effect.void
+      if (exit._tag === "Failure") {
+        reportCauseUnsafe(Fiber.getCurrent()!, exit.cause)
       }
-      const write = respond(exit)
       return close ? Effect.ensuring(write, close) : write
     })
     if (opts?.onRequest) {
-      effect = Effect.onExit(opts.onRequest(effect), () => failure ? respond(failure) : Effect.void)
+      effect = opts.onRequest(effect)
     }
     if (enableTracing) {
       const parentSpan = Context.getOrUndefined(
