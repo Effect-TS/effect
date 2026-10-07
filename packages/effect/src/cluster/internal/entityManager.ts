@@ -86,6 +86,11 @@ export interface Residency {
   readonly releaseUnsafe: () => void
 }
 
+// An open handler transaction. A failure reply waits here until rollback.
+interface RequestTransaction {
+  reply?: Effect.Effect<void> | undefined
+}
+
 // Represents the entities managed by this entity manager
 /**
  * @internal
@@ -104,6 +109,7 @@ export type EntityState = {
     sequence: number
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
+    transaction?: RequestTransaction | undefined
   }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
@@ -279,7 +285,7 @@ export const make = Effect.fnUntraced(function*<
                   activeRequests.delete(Snowflake.Snowflake(response.requestId))
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
-                return retryRespond(
+                const respond = retryRespond(
                   4,
                   Effect.suspend(() =>
                     request.message.respond(
@@ -306,6 +312,11 @@ export const make = Effect.fnUntraced(function*<
                   }),
                   Effect.orDie
                 )
+                if (request.transaction && Exit.isFailure(response.exit)) {
+                  request.transaction.reply = respond
+                  return Effect.void
+                }
+                return respond
               }
               case "Chunk": {
                 const request = activeRequests.get(Snowflake.Snowflake(response.requestId))
@@ -596,10 +607,26 @@ export const make = Effect.fnUntraced(function*<
     })
 
   const requestWriteOptions = (
-    entry: { readonly message: Message.IncomingRequestLocal<any>; readonly callerScope?: Scope.Scope | undefined }
+    entry: {
+      readonly message: Message.IncomingRequestLocal<any>
+      readonly callerScope?: Scope.Scope | undefined
+      transaction?: RequestTransaction | undefined
+    }
   ): Parameters<EntityState["write"]>[2] => {
+    // Failure replies are saved after rollback, so the rollback cannot discard them.
     const onTransaction = Context.get(entry.message.annotations, WithTransaction)
-      ? options.storage.withTransaction
+      ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+        Effect.suspend(() => {
+          const transaction: RequestTransaction = {}
+          entry.transaction = transaction
+          return Effect.ensuring(
+            options.storage.withTransaction(effect),
+            Effect.suspend(() => {
+              if (entry.transaction === transaction) entry.transaction = undefined
+              return transaction.reply ?? Effect.void
+            })
+          )
+        })
       : undefined
     const onCaller = entry.callerScope && bindToCaller(entry.callerScope)
     if (!onCaller) return onTransaction && { onRequest: onTransaction }
