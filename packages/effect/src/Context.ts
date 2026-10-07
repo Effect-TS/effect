@@ -489,6 +489,8 @@ interface ContextImpl<in Services> extends Context<Services> {
   overlay: Overlay | undefined
   depth: number
   _flat: ReadonlyMap<string, any> | undefined
+  // Owned by the fiber runtime and only meaningful on a cacheRoot
+  _fiberCache: unknown
 }
 
 interface Overlay {
@@ -502,21 +504,36 @@ const MaxDepth = 8
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
 
+// A constructor whose prototype is `Proto` gives every Context a single hidden
+// class with all of its fields stored in-object, including the fiber cache
+// slot that would otherwise be added later to cache roots only
+const ContextConstructor = function(
+  this: ContextImpl<any>,
+  cacheRoot: ContextImpl<any> | undefined,
+  base: ReadonlyMap<string, any>,
+  overlay: Overlay | undefined,
+  depth: number
+) {
+  this.cacheRoot = cacheRoot ?? this
+  this.base = base
+  this.overlay = overlay
+  this.depth = depth
+  this._flat = undefined
+  this.baseHits = 0
+  this._fiberCache = undefined
+} as any as new<Services>(
+  cacheRoot: ContextImpl<any> | undefined,
+  base: ReadonlyMap<string, any>,
+  overlay: Overlay | undefined,
+  depth: number
+) => ContextImpl<Services>
+
 const makeImpl = <Services>(
   cacheRoot: ContextImpl<any> | undefined,
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
   depth: number
-): ContextImpl<Services> => {
-  const self: ContextImpl<Services> = Object.create(Proto)
-  self.cacheRoot = cacheRoot ?? self
-  self.base = base
-  self.overlay = overlay
-  self.depth = depth
-  self._flat = undefined
-  self.baseHits = 0
-  return self
-}
+): ContextImpl<Services> => new ContextConstructor<Services>(cacheRoot, base, overlay, depth)
 
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
   if (!overlay) return
@@ -596,7 +613,7 @@ export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits"
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "_fiberCache"
 > = {
   get mapUnsafe() {
     return flatten(this as any as ContextImpl<any>)
@@ -624,7 +641,9 @@ const Proto: Omit<
   [Hash.symbol]<A>(this: Context<A>): number {
     return Hash.number(this.mapUnsafe.size)
   }
-}
+} // Proto has no own `constructor`, so contexts keep reporting `Object` exactly
+ // as when they were created with `Object.create(Proto)`
+;(ContextConstructor as any).prototype = Proto
 
 /** @internal */
 export const hasSameCache = <Services, Services2>(
