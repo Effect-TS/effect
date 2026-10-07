@@ -1313,8 +1313,9 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * **Details**
  *
  * The getter is pure and never fails. It splits the string by `separator`
- * (default `,`) and then each pair at the first `keyValueSeparator` (default `=`). Pairs
- * missing a key or value are silently skipped.
+ * (default `,`) and then each pair at the first `keyValueSeparator` (default `=`),
+ * preserving the rest of the value. An empty `keyValueSeparator` uses the first
+ * two characters as the key and value. Pairs missing a key or value are skipped.
  *
  * **Example** (Parsing a key-value string)
  *
