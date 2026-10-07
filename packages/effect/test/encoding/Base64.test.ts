@@ -3,6 +3,43 @@ import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
 
 describe("Base64", () => {
+  it("matches the RFC 4648 test vectors", () => {
+    const vectors = [
+      ["", ""],
+      ["f", "Zg=="],
+      ["fo", "Zm8="],
+      ["foo", "Zm9v"],
+      ["foob", "Zm9vYg=="],
+      ["fooba", "Zm9vYmE="],
+      ["foobar", "Zm9vYmFy"]
+    ] as const
+
+    for (const [input, encoded] of vectors) {
+      assert.strictEqual(Base64.encode(input), encoded)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), new TextEncoder().encode(input))
+    }
+  })
+
+  it("preserves every byte value with and without padding", () => {
+    for (const length of [256, 257, 258]) {
+      const bytes = Uint8Array.from({ length }, (_, i) => i % 256)
+      const encoded = btoa(String.fromCharCode(...bytes))
+
+      assert.strictEqual(Base64.encode(bytes), encoded)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), bytes)
+    }
+  })
+
+  it("encodes only the bytes in a subarray view", () => {
+    const bytes = new Uint8Array([42, 0, 255, 128, 42])
+
+    assert.strictEqual(Base64.encode(bytes.subarray(1, 4)), "AP+A")
+    assert.strictEqual(Base64.encode(bytes.subarray(1, 3)), "AP8=")
+    assert.strictEqual(Base64.encode(bytes.subarray(1, 2)), "AA==")
+    assert.strictEqual(Base64.encode(bytes.subarray(1, 1)), "")
+    assert.deepStrictEqual(bytes, new Uint8Array([42, 0, 255, 128, 42]))
+  })
+
   it("encodes strings and bytes", () => {
     assert.strictEqual(Base64.encode("hello"), "aGVsbG8=")
     assert.strictEqual(Base64.encode(new Uint8Array([72, 101, 108, 108, 111])), "SGVsbG8=")
