@@ -513,7 +513,8 @@ export interface Primitive {
   [evaluate](fiber: FiberImpl): Primitive | Yield
 }
 
-interface PrimitiveClass {
+/** @internal */
+export interface PrimitiveClass {
   new(value: any): Primitive
   prototype: any
 }
@@ -554,6 +555,10 @@ export const makePrimitiveProto = <Op extends string>(options: {
     [contAll]: options[contAll]
   }) as any
 
+// V8 shares type feedback between closures created from the same function
+// literal, so the constructor and factory below see every primitive kind and
+// become megamorphic. Frequently allocated kinds pass `construct` to supply
+// their own constructor and factory literals instead.
 /** @internal */
 export const makePrimitive = <
   Fn extends (...args: Array<any>) => any
@@ -587,8 +592,9 @@ export const makePrimitive = <
     },
     fiber: FiberImpl
   ) => void | ((value: any, fiber: FiberImpl) => void)
-}): Fn => {
+}, construct?: (Proto: Primitive) => Fn): Fn => {
   const Proto = makePrimitiveProto(options as any)
+  if (construct !== undefined) return construct(Proto)
   const PrimitiveImpl = function(this: any, value: any) {
     this[args] = value
   } as unknown as PrimitiveClass
@@ -609,7 +615,7 @@ export const makeExit = <
     this: Exit.Exit<unknown, unknown> & { [args]: Parameters<Fn>[0] },
     fiber: FiberImpl<unknown, unknown>
   ) => Primitive | Yield
-}): Fn => {
+}, construct?: (Proto: object) => Fn): Fn => {
   const Proto = {
     [ExitTypeId]: ExitTypeId,
     _tag: options.op,
@@ -638,6 +644,7 @@ export const makeExit = <
       return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
     }
   }
+  if (construct !== undefined) return construct(Proto)
   const ExitPrimitive = function(this: any, value: unknown) {
     this[args] = value
   } as unknown as PrimitiveClass
@@ -654,6 +661,14 @@ export const exitSucceed: <A>(a: A) => Exit.Exit<A> = makeExit({
   [evaluate](fiber) {
     return fiber.continueWith(this[args], this)
   }
+}, (Proto) => {
+  const Success = function(this: any, value: unknown) {
+    this[args] = value
+  } as unknown as PrimitiveClass
+  Success.prototype = Proto
+  return function(value: unknown) {
+    return new Success(value)
+  } as any
 })
 
 /** @internal */
@@ -697,6 +712,14 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
       ? cont[contE](cause, fiber, annotated ? undefined : this)
       : fiber.yieldWith(annotated ? exitFailCause(cause) : this)
   }
+}, (Proto) => {
+  const Failure = function(this: any, cause: unknown) {
+    this[args] = cause
+  } as unknown as PrimitiveClass
+  Failure.prototype = Proto
+  return function(cause: unknown) {
+    return new Failure(cause)
+  } as any
 })
 
 /** @internal */
@@ -713,6 +736,14 @@ export const withFiber: <A, E = never, R = never>(
   [evaluate](fiber) {
     return this[args](fiber)
   }
+}, (Proto) => {
+  const WithFiber = function(this: any, f: unknown) {
+    this[args] = f
+  } as unknown as PrimitiveClass
+  WithFiber.prototype = Proto
+  return function(f: any) {
+    return new WithFiber(f)
+  } as any
 })
 
 /**
@@ -728,6 +759,14 @@ export const withFiberSucceed: <A, R = never>(
   [evaluate](fiber) {
     return fiber.continueWith(this[args](fiber), undefined)
   }
+}, (Proto) => {
+  const WithFiberSucceed = function(this: any, f: unknown) {
+    this[args] = f
+  } as unknown as PrimitiveClass
+  WithFiberSucceed.prototype = Proto
+  return function(f: any) {
+    return new WithFiberSucceed(f)
+  } as any
 })
 
 /** @internal */
