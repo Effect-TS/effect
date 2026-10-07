@@ -6,8 +6,8 @@
  * `lookup` uses the operating system resolver (`getaddrinfo`), so it also reads
  * the hosts file and other system sources, not only DNS. `resolve` sends DNS
  * queries for a record type, and `reverse` looks up the names of an address.
- * {@link resolveInet} converts an unresolved `Host.HostPort` into concrete
- * internet addresses, skipping the lookup for numeric hosts.
+ * The service's `resolveInet` converts an unresolved `Host.HostPort` into
+ * concrete internet addresses, skipping the lookup for numeric hosts.
  *
  * @stability unstable
  * @since 4.0.0
@@ -567,92 +567,35 @@ export interface Dns {
    * Looks up the host names of an address.
    */
   reverse(address: NetAddress.IpAddress): Effect.Effect<Arr.NonEmptyReadonlyArray<Host.DomainName>, DnsError>
+
+  /**
+   * Resolves an endpoint to every matching internet address. An `InetAddress`
+   * is returned as-is, a `Host.HostPort` with a numeric host is converted with
+   * `Host.toInetAddress`, and a `Host.HostPort` with a domain name is looked up
+   * with `lookup`, attaching the port to every address. Results keep the
+   * resolver's order and are filtered by the requested family.
+   */
+  resolveInet<F extends NetAddress.IpFamily>(
+    target: NetAddress.InetAddress | Host.HostPort,
+    options: ResolveOptions & { readonly family: F }
+  ): Effect.Effect<
+    Arr.NonEmptyReadonlyArray<NetAddress.Inet<NetAddress.FamilyAddress<F>>>,
+    DnsError | NetAddress.NetAddressError
+  >
+  resolveInet(
+    target: NetAddress.InetAddress | Host.HostPort,
+    options?: ResolveOptions
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>, DnsError | NetAddress.NetAddressError>
+
+  /**
+   * Resolves an endpoint like `resolveInet`, passing Unix-domain addresses
+   * through unchanged.
+   */
+  resolveSocketAddress(
+    target: NetAddress.SocketAddress | Host.HostPort,
+    options?: ResolveOptions
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, DnsError | NetAddress.NetAddressError>
 }
-
-/**
- * Service tag for the {@link Dns} service.
- *
- * @stability unstable
- * @category services
- * @since 4.0.0
- */
-export const Dns: Context.Service<Dns, Dns> = Context.Service("effect/net/Dns")
-
-const matchesFamily = (
-  address: NetAddress.IpAddress | NetAddress.InetAddress,
-  family: NetAddress.IpFamily | undefined
-): boolean => family === undefined || NetAddress.isFamily(address, family)
-
-const dedupe = <A>(values: ReadonlyArray<A>): Array<A> => {
-  const out: Array<A> = []
-  for (const value of values) {
-    if (!out.some((existing) => Equal.equals(existing, value))) out.push(value)
-  }
-  return out
-}
-
-const nonEmptyOrNotFound = <A>(
-  values: ReadonlyArray<A>,
-  error: () => DnsError
-): Effect.Effect<Arr.NonEmptyReadonlyArray<A>, DnsError> =>
-  Arr.isReadonlyArrayNonEmpty(values) ? Effect.succeed(values) : Effect.fail(error())
-
-/**
- * Creates a `Dns` service from platform resolver operations.
- *
- * **Details**
- *
- * The constructor filters lookups by the requested address family, keeps only
- * records of the requested type, removes duplicates, and turns empty results
- * into `NotFound` failures.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const make = (impl: {
-  readonly lookup: (
-    host: Host.DomainName,
-    family: NetAddress.IpFamily | undefined
-  ) => Effect.Effect<ReadonlyArray<NetAddress.IpAddress>, DnsError>
-  readonly resolve: (name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>
-  readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<Host.DomainName>, DnsError>
-}): Dns => ({
-  [TypeId]: TypeId,
-  lookup: (host: Host.DomainName, options?: LookupOptions) => {
-    const family = options?.family
-    return Effect.flatMap(
-      impl.lookup(host, family),
-      (addresses) =>
-        nonEmptyOrNotFound(
-          dedupe(addresses.filter((address) => matchesFamily(address, family))),
-          () => new DnsError({ reason: "NotFound", method: "lookup", hostname: host })
-        )
-    ) as any
-  },
-  resolve: (name, type) =>
-    Effect.flatMap(
-      impl.resolve(name, type),
-      (records) =>
-        nonEmptyOrNotFound(
-          dedupe(records.filter((record) => record._tag === type)),
-          () => new DnsError({ reason: "NotFound", method: "resolve", hostname: name, recordType: type })
-        )
-    ) as any,
-  reverse: (address) =>
-    Effect.flatMap(
-      impl.reverse(address),
-      (names) =>
-        nonEmptyOrNotFound(
-          dedupe(names),
-          () => new DnsError({ reason: "NotFound", method: "reverse", hostname: NetAddress.formatIp(address) })
-        )
-    )
-})
-
-// =============================================================================
-// Conversion to NetAddress
-// =============================================================================
 
 /**
  * Options for resolving endpoints to internet addresses.
@@ -671,103 +614,104 @@ export interface ResolveOptions extends LookupOptions {
   readonly scopeIds?: ReadonlyMap<string, number> | undefined
 }
 
-const literalInet = <A extends NetAddress.InetAddress>(
-  address: A,
-  family: NetAddress.IpFamily | undefined
-): Effect.Effect<Arr.NonEmptyReadonlyArray<A>, DnsError> =>
-  matchesFamily(address, family)
-    ? Effect.succeed([address])
-    : Effect.fail(new DnsError({ reason: "NotFound", method: "lookup", hostname: NetAddress.formatHost(address) }))
+/**
+ * Service tag for the {@link Dns} service.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const Dns: Context.Service<Dns, Dns> = Context.Service("effect/net/Dns")
+
+const dedupe = <A>(values: ReadonlyArray<A>): Array<A> => {
+  const out: Array<A> = []
+  for (const value of values) {
+    if (!out.some((existing) => Equal.equals(existing, value))) out.push(value)
+  }
+  return out
+}
+
+const notFound = (method: DnsError["method"], hostname: string, recordType?: RecordType) =>
+  Effect.fail(new DnsError({ reason: "NotFound", method, hostname, recordType }))
 
 /**
- * Resolves an endpoint to every matching internet address.
+ * Creates a `Dns` service from platform resolver operations.
  *
  * **Details**
  *
- * - An `InetAddress` is returned as-is.
- * - A `Host.HostPort` with a numeric IP host is converted without a lookup.
- * - A `Host.HostPort` with a scoped IPv6 literal is converted without a
- *   lookup, mapping a named zone through the `scopeIds` option.
- * - A `Host.HostPort` with a domain name is looked up with `Dns.lookup`, and the
- *   port is attached to every address.
- *
- * Results keep the resolver's order and are filtered by the requested family.
- *
- * **Example** (Resolving an endpoint with a static resolver)
- *
- * ```ts import.meta.vitest
- * import { Effect } from "effect"
- * import { Dns, Host, NetAddress } from "effect/net"
- *
- * const program = Dns.resolveInet(Host.hostPortFromStringUnsafe("db.internal:5432")).pipe(
- *   Effect.map((addresses) => addresses.map(NetAddress.formatInet)),
- *   Effect.provide(Dns.layerStatic({
- *     hosts: { "db.internal": [NetAddress.ipFromStringUnsafe("10.0.0.5")] }
- *   }))
- * )
- *
- * await Effect.runPromise(program) // => ["10.0.0.5:5432"]
- * ```
+ * The constructor filters lookups by the requested address family, keeps only
+ * records of the requested type, removes duplicates, and turns empty results
+ * into `NotFound` failures. `resolveInet` and `resolveSocketAddress` are
+ * derived from `lookup`.
  *
  * @stability unstable
- * @category converting
+ * @category constructors
  * @since 4.0.0
  */
-export const resolveInet: {
-  <F extends NetAddress.IpFamily>(
-    target: NetAddress.InetAddress | Host.HostPort,
-    options: ResolveOptions & { readonly family: F }
-  ): Effect.Effect<
-    Arr.NonEmptyReadonlyArray<NetAddress.Inet<NetAddress.FamilyAddress<F>>>,
-    DnsError | NetAddress.NetAddressError,
-    Dns
-  >
-  (
-    target: NetAddress.InetAddress | Host.HostPort,
-    options?: ResolveOptions
-  ): Effect.Effect<
-    Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>,
-    DnsError | NetAddress.NetAddressError,
-    Dns
-  >
-} = (target: NetAddress.InetAddress | Host.HostPort, options?: ResolveOptions) =>
-  Effect.gen(function*() {
-    const family = options?.family
-    if (NetAddress.isInetAddress(target)) {
-      return yield* literalInet(target, family)
-    }
-    const { host, port } = target
-    if (NetAddress.isIpAddress(host)) {
-      return yield* literalInet(yield* Effect.fromResult(NetAddress.inetAddress(host, port)), family)
-    }
-    if (host.includes("%")) {
-      return yield* literalInet(
-        yield* Effect.fromResult(NetAddress.inetAddressFromHostString(host, port, options?.scopeIds)),
-        family
+export const make = (impl: {
+  readonly lookup: (
+    host: Host.DomainName,
+    family: NetAddress.IpFamily | undefined
+  ) => Effect.Effect<ReadonlyArray<NetAddress.IpAddress>, DnsError>
+  readonly resolve: (name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>
+  readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<Host.DomainName>, DnsError>
+}): Dns => {
+  const inFamily =
+    (family: NetAddress.IpFamily | undefined) => (address: NetAddress.IpAddress | NetAddress.InetAddress): boolean =>
+      family === undefined || NetAddress.isFamily(address, family)
+
+  const lookup = (host: Host.DomainName, options?: LookupOptions) =>
+    impl.lookup(host, options?.family).pipe(
+      Effect.flatMap((addresses) =>
+        Arr.match(dedupe(addresses.filter(inFamily(options?.family))), {
+          onEmpty: () => notFound("lookup", host),
+          onNonEmpty: Effect.succeed
+        })
+      )
+    )
+
+  const resolveInet = (target: NetAddress.InetAddress | Host.HostPort, options?: ResolveOptions) => {
+    if (NetAddress.isInetAddress(target) || !Host.isDomainName(target.host)) {
+      return Effect.fromResult(
+        NetAddress.isInetAddress(target) ? Result.succeed(target) : Host.toInetAddress(target, options?.scopeIds)
+      ).pipe(
+        Effect.flatMap((address) =>
+          inFamily(options?.family)(address)
+            ? Effect.succeed(Arr.of(address))
+            : notFound("lookup", NetAddress.formatHost(address))
+        )
       )
     }
-    const dns = yield* Dns
-    const addresses = yield* dns.lookup(host as Host.DomainName, { family })
-    return Arr.map(addresses, (address) => NetAddress.inetAddressUnsafe(address, port))
-  }) as any
+    const { host, port } = target
+    return Effect.map(lookup(host, options), Arr.map((address) => NetAddress.inetAddressUnsafe(address, port)))
+  }
 
-/**
- * Resolves an endpoint to every matching socket address, passing Unix-domain
- * addresses through unchanged.
- *
- * @see {@link resolveInet} for the internet address rules
- * @stability unstable
- * @category converting
- * @since 4.0.0
- */
-export const resolveSocketAddress = (
-  target: NetAddress.SocketAddress | Host.HostPort,
-  options?: ResolveOptions
-): Effect.Effect<
-  Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>,
-  DnsError | NetAddress.NetAddressError,
-  Dns
-> => NetAddress.isUnixPathAddress(target) ? Effect.succeed([target]) : resolveInet(target, options)
+  return {
+    [TypeId]: TypeId,
+    lookup: lookup as Dns["lookup"],
+    resolve: ((name, type) =>
+      impl.resolve(name, type).pipe(
+        Effect.flatMap((records) =>
+          Arr.match(dedupe(records.filter((record) => record._tag === type)), {
+            onEmpty: () => notFound("resolve", name, type),
+            onNonEmpty: Effect.succeed
+          })
+        )
+      )) as Dns["resolve"],
+    reverse: (address) =>
+      impl.reverse(address).pipe(
+        Effect.flatMap((names) =>
+          Arr.match(dedupe(names), {
+            onEmpty: () => notFound("reverse", NetAddress.formatIp(address)),
+            onNonEmpty: Effect.succeed
+          })
+        )
+      ),
+    resolveInet: resolveInet as Dns["resolveInet"],
+    resolveSocketAddress: (target, options) =>
+      NetAddress.isUnixPathAddress(target) ? Effect.succeed([target]) : resolveInet(target, options)
+  }
+}
 
 // =============================================================================
 // Static resolver
@@ -797,8 +741,6 @@ interface StaticEntry {
   readonly records: Array<DnsRecord>
 }
 
-const maxAliasDepth = 8
-
 const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") ? name.slice(0, -1) : name
 
 /**
@@ -811,8 +753,25 @@ const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") 
  *
  * **Details**
  *
- * Lookups and A or AAAA queries follow CNAME records up to eight times. Unknown
- * names fail with `NotFound`.
+ * Names without matching addresses or records fail with `NotFound`. CNAME
+ * records are returned by `CNAME` queries but are not followed.
+ *
+ * **Example** (Resolving an endpoint with a static resolver)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Result } from "effect"
+ * import { Dns, Host, NetAddress } from "effect/net"
+ *
+ * const dns = Result.getOrThrow(Dns.makeStatic({
+ *   hosts: { "db.internal": [NetAddress.ipFromStringUnsafe("10.0.0.5")] }
+ * }))
+ *
+ * const program = dns.resolveInet(Host.hostPortFromStringUnsafe("db.internal:5432")).pipe(
+ *   Effect.map((addresses) => addresses.map(NetAddress.formatInet))
+ * )
+ *
+ * await Effect.runPromise(program) // => ["10.0.0.5:5432"]
+ * ```
  *
  * @see {@link layerStatic}
  * @stability unstable
@@ -853,66 +812,22 @@ export const makeStatic = (zone: StaticZone): Result.Result<Dns, NetAddress.NetA
     }
   }
 
-  const notFound = (method: DnsError["method"], hostname: string, recordType?: RecordType) =>
-    Effect.fail(new DnsError({ reason: "NotFound", method, hostname, recordType }))
-
-  const follow = <A>(
-    name: string,
-    collect: (entry: StaticEntry) => ReadonlyArray<A>,
-    onMissing: () => Effect.Effect<never, DnsError>
-  ): Effect.Effect<ReadonlyArray<A>, DnsError> => {
-    let key = zoneKey(name)
-    for (let depth = 0; depth <= maxAliasDepth; depth++) {
-      const current = entries.get(key)
-      if (current === undefined) return onMissing()
-      const values = collect(current)
-      if (values.length > 0) return Effect.succeed(values)
-      const alias = current.records.find((record): record is Cname => record._tag === "CNAME")
-      if (alias === undefined) return Effect.succeed([])
-      key = zoneKey(alias.target)
-    }
-    return Effect.succeed([])
-  }
+  const recordsAt = (name: string): ReadonlyArray<DnsRecord> => entries.get(zoneKey(name))?.records ?? []
 
   return Result.succeed(make({
     lookup: (host) =>
-      follow(
-        host,
-        (entry) => [
-          ...entry.addresses,
-          ...entry.records.flatMap((record) => record._tag === "A" || record._tag === "AAAA" ? [record.address] : [])
-        ],
-        () => notFound("lookup", host)
-      ),
-    resolve: (name, type) =>
-      type === "A" || type === "AAAA"
-        ? follow(name, (entry) =>
-          entry.records.filter((record) => record._tag === type), () =>
-          notFound("resolve", name, type))
-        : Effect.suspend(() => {
-          const current = entries.get(zoneKey(name))
-          return current === undefined
-            ? notFound("resolve", name, type)
-            : Effect.succeed(current.records.filter((record) =>
-              record._tag === type
-            ))
-        }),
+      Effect.sync(() => [
+        ...(entries.get(zoneKey(host))?.addresses ?? []),
+        ...recordsAt(host).flatMap((record) => record._tag === "A" || record._tag === "AAAA" ? [record.address] : [])
+      ]),
+    resolve: (name) => Effect.sync(() => recordsAt(name)),
     reverse: (address) =>
-      Effect.suspend(() => {
-        const names: Array<Host.DomainName> = []
-        for (const [name, current] of entries) {
-          if (current.addresses.some((candidate) => Equal.equals(candidate, address))) {
-            names.push(name as Host.DomainName)
-          }
-        }
-        const pointers = entries.get(reverseName(address))
-        if (pointers !== undefined) {
-          for (const record of pointers.records) {
-            if (record._tag === "PTR") names.push(record.host)
-          }
-        }
-        return names.length === 0 ? notFound("reverse", NetAddress.formatIp(address)) : Effect.succeed(names)
-      })
+      Effect.sync(() => [
+        ...[...entries].flatMap(([name, current]) =>
+          current.addresses.some((candidate) => Equal.equals(candidate, address)) ? [name as Host.DomainName] : []
+        ),
+        ...recordsAt(reverseName(address)).flatMap((record) => record._tag === "PTR" ? [record.host] : [])
+      ])
   }))
 }
 

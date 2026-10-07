@@ -354,3 +354,29 @@ export const formatHostPort = (self: HostPort): string => {
   const host = formatHost(self.host)
   return host.includes(":") ? `[${host}]:${self.port}` : `${host}:${self.port}`
 }
+
+/**
+ * Converts a host and port with a numeric host into an internet address
+ * without any lookup.
+ *
+ * **Details**
+ *
+ * IP address hosts convert directly. Scoped IPv6 literals use the zone as a
+ * numeric scope ID, or look up a named zone in `scopeIds`, which can be built
+ * with `NetAddress.scopeIdsFromInterfaces`. Domain names fail because they need
+ * a name lookup.
+ *
+ * @see {@link isDomainName} for checking whether a host needs a lookup
+ * @stability unstable
+ * @category converting
+ * @since 4.0.0
+ */
+export const toInetAddress = (
+  self: HostPort,
+  scopeIds?: ReadonlyMap<string, number>
+): Result.Result<NetAddress.InetAddress, NetAddress.NetAddressError> =>
+  NetAddress.isIpAddress(self.host)
+    ? NetAddress.inetAddress(self.host, self.port)
+    : NetAddress.isScopedIpv6Literal(self.host)
+    ? NetAddress.inetAddressFromHostString(self.host, self.port, scopeIds)
+    : hostError(self, "domain names must be looked up")

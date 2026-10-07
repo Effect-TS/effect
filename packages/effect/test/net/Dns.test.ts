@@ -205,10 +205,12 @@ describe("Dns", () => {
         const dns = yield* Dns.Dns
         const addresses = yield* dns.lookup(name("DB.internal."))
         assert.deepStrictEqual(addresses.map(NetAddress.formatIp), ["10.0.0.5", "fd00::5"])
-        const alias = yield* dns.lookup(name("alias.internal"), { family: "IPv4" })
-        assert.deepStrictEqual(alias.map(NetAddress.formatIp), ["10.0.0.5"])
-        const web = yield* dns.resolve(name("www.example.com"), "A")
+        const web = yield* dns.resolve(name("example.com"), "A")
         assert.deepStrictEqual(web.map(Dns.formatRecord), ["A 192.0.2.1"])
+        const alias = yield* dns.resolve(name("alias.internal"), "CNAME")
+        assert.deepStrictEqual(alias.map(Dns.formatRecord), ["CNAME db.internal"])
+        const notFollowed = yield* Effect.flip(dns.lookup(name("alias.internal")))
+        assert.strictEqual(notFollowed.reason, "NotFound")
         const services = yield* dns.resolve(name("_pg._tcp.db.internal"), "SRV")
         assert.deepStrictEqual(services.map((record) => record.target), ["db1.internal", "db2.internal"])
         const names = yield* dns.reverse(ip("192.0.2.1"))
@@ -234,29 +236,29 @@ describe("Dns", () => {
     it.effect("returns concrete addresses without a lookup", () =>
       Effect.gen(function*() {
         const inet = NetAddress.inetAddressFromStringUnsafe("10.0.0.1:80")
-        assert.deepStrictEqual(yield* Dns.resolveInet(inet), [inet])
-        const literal = yield* Dns.resolveInet(endpoint("[::1]:443"))
+        assert.deepStrictEqual(yield* (yield* Dns.Dns).resolveInet(inet), [inet])
+        const literal = yield* (yield* Dns.Dns).resolveInet(endpoint("[::1]:443"))
         assert.deepStrictEqual(literal.map(NetAddress.formatInet), ["[::1]:443"])
-        const wrongFamily = yield* Effect.flip(Dns.resolveInet(inet, { family: "IPv6" }))
+        const wrongFamily = yield* Effect.flip((yield* Dns.Dns).resolveInet(inet, { family: "IPv6" }))
         assert.strictEqual(wrongFamily._tag, "DnsError")
       }).pipe(Effect.provide(Dns.layerStatic({}))))
 
     it.effect("maps IPv6 zones through the scope ID option", () =>
       Effect.gen(function*() {
         const scopeIds = new Map([["eth0", 2]])
-        const named = yield* Dns.resolveInet(endpoint("[fe80::1%eth0]:80"), { scopeIds })
+        const named = yield* (yield* Dns.Dns).resolveInet(endpoint("[fe80::1%eth0]:80"), { scopeIds })
         assert.deepStrictEqual(named.map(NetAddress.formatInet), ["[fe80::1%2]:80"])
-        const numeric = yield* Dns.resolveInet(endpoint("[fe80::1%7]:80"))
+        const numeric = yield* (yield* Dns.Dns).resolveInet(endpoint("[fe80::1%7]:80"))
         assert.deepStrictEqual(numeric.map(NetAddress.formatInet), ["[fe80::1%7]:80"])
-        const unknown = yield* Effect.flip(Dns.resolveInet(endpoint("[fe80::1%wlan0]:80"), { scopeIds }))
+        const unknown = yield* Effect.flip((yield* Dns.Dns).resolveInet(endpoint("[fe80::1%wlan0]:80"), { scopeIds }))
         assert.strictEqual(unknown._tag, "NetAddressError")
       }).pipe(Effect.provide(zone)))
 
     it.effect("looks up domain names and attaches the port", () =>
       Effect.gen(function*() {
-        const all = yield* Dns.resolveInet(endpoint("db.internal:5432"))
+        const all = yield* (yield* Dns.Dns).resolveInet(endpoint("db.internal:5432"))
         assert.deepStrictEqual(all.map(NetAddress.formatInet), ["10.0.0.5:5432", "[fd00::5]:5432"])
-        const v4 = yield* Dns.resolveInet(endpoint("db.internal:5432"), { family: "IPv4" })
+        const v4 = yield* (yield* Dns.Dns).resolveInet(endpoint("db.internal:5432"), { family: "IPv4" })
         const first: NetAddress.InetAddressV4 = v4[0]
         assert.strictEqual(NetAddress.formatInet(first), "10.0.0.5:5432")
       }).pipe(Effect.provide(zone)))
@@ -264,8 +266,8 @@ describe("Dns", () => {
     it.effect("passes Unix paths through", () =>
       Effect.gen(function*() {
         const unix = NetAddress.unixPathAddress("/run/app.sock")
-        assert.deepStrictEqual(yield* Dns.resolveSocketAddress(unix), [unix])
-        const inet = yield* Dns.resolveSocketAddress(endpoint("v4.internal:1"))
+        assert.deepStrictEqual(yield* (yield* Dns.Dns).resolveSocketAddress(unix), [unix])
+        const inet = yield* (yield* Dns.Dns).resolveSocketAddress(endpoint("v4.internal:1"))
         assert.deepStrictEqual(inet.map(NetAddress.formatSocketAddress), ["10.0.0.4:1"])
       }).pipe(Effect.provide(zone)))
   })

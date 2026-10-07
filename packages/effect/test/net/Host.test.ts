@@ -146,6 +146,17 @@ describe("Host", () => {
     })
   })
 
+  it("converts numeric hosts to internet addresses", () => {
+    const format = (input: string, scopeIds?: ReadonlyMap<string, number>) =>
+      NetAddress.formatInet(success(Host.toInetAddress(success(Host.hostPortFromString(input)), scopeIds)))
+    assert.strictEqual(format("10.0.0.5:80"), "10.0.0.5:80")
+    assert.strictEqual(format("[::1]:443"), "[::1]:443")
+    assert.strictEqual(format("[fe80::1%7]:80"), "[fe80::1%7]:80")
+    assert.strictEqual(format("[fe80::1%eth0]:80", new Map([["eth0", 2]])), "[fe80::1%2]:80")
+    failure(Host.toInetAddress(success(Host.hostPortFromString("[fe80::1%eth0]:80"))))
+    failure(Host.toInetAddress(success(Host.hostPortFromString("example.com:80"))))
+  })
+
   it("decodes and encodes schemas", () => {
     assert.strictEqual(Schema.decodeUnknownSync(Schema.DomainNameFromString)("Example.COM"), "example.com")
     assert.throws(() => Schema.decodeUnknownSync(Schema.DomainNameFromString)("bad name"))
