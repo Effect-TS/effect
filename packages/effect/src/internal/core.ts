@@ -29,32 +29,32 @@ const effectVariance = {
 }
 
 /** @internal */
-export const identifier = `${EffectTypeId}/identifier` as const
+export const identifier = "~effect/Effect/identifier" as const
 /** @internal */
 export type identifier = typeof identifier
 
 /** @internal */
-export const args = `${EffectTypeId}/args` as const
+export const args = "~effect/Effect/args" as const
 /** @internal */
 export type args = typeof args
 
 /** @internal */
-export const evaluate = `${EffectTypeId}/evaluate` as const
+export const evaluate = "~effect/Effect/evaluate" as const
 /** @internal */
 export type evaluate = typeof evaluate
 
 /** @internal */
-export const contA = `${EffectTypeId}/successCont` as const
+export const contA = "~effect/Effect/successCont" as const
 /** @internal */
 export type contA = typeof contA
 
 /** @internal */
-export const contE = `${EffectTypeId}/failureCont` as const
+export const contE = "~effect/Effect/failureCont" as const
 /** @internal */
 export type contE = typeof contE
 
 /** @internal */
-export const contAll = `${EffectTypeId}/ensureCont` as const
+export const contAll = "~effect/Effect/ensureCont" as const
 /** @internal */
 export type contAll = typeof contAll
 
