@@ -116,22 +116,28 @@ describe("Tracer", () => {
     it.effect("withSpan uses an OpenTelemetry span started inside an Effect span as parent", () =>
       Effect.gen(function*() {
         const services = yield* Effect.context<never>()
-        const [otelSpan, child] = yield* Effect.sync(() =>
-          OtelApi.trace.getTracer("test").startActiveSpan("otel-span", (span) => {
-            try {
-              const child = Effect.runSync(
-                Effect.currentSpan.pipe(
-                  Effect.withSpan("child"),
-                  Effect.provideContext(services)
+        const tracer = yield* OtelTracer.OtelTracer
+        const [outer, otelSpan, child] = yield* Effect.gen(function*() {
+          const outer = yield* Effect.currentSpan
+          const [otelSpan, child] = yield* Effect.sync(() =>
+            tracer.startActiveSpan("otel-span", (span) => {
+              try {
+                const child = Effect.runSync(
+                  Effect.currentSpan.pipe(
+                    Effect.withSpan("child"),
+                    Effect.provideContext(services)
+                  )
                 )
-              )
-              return [span.spanContext(), child] as const
-            } finally {
-              span.end()
-            }
-          })
-        ).pipe(Effect.withSpan("outer"))
+                return [span.spanContext(), child] as const
+              } finally {
+                span.end()
+              }
+            })
+          )
+          return [outer, otelSpan, child] as const
+        }).pipe(Effect.withSpan("outer"))
 
+        assert.notStrictEqual(otelSpan.spanId, outer.spanId)
         assert(child instanceof OtelTracer.OtelSpan)
         assert.isTrue(Option.isSome(child.parent))
         assert.strictEqual(Option.getOrThrow(child.parent).spanId, otelSpan.spanId)
