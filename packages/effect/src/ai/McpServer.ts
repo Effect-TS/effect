@@ -651,12 +651,14 @@ const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
 const cancelledResponses = new WeakMap<object, string | number>()
+const httpPostResponses = new WeakMap<HttpServerRequest.HttpServerRequest, { expected: number }>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
 interface ActiveRequest {
   readonly requestId: RpcMessage.RequestId
   readonly prepared: McpRuntime.PreparedRequest
   readonly cancelled: boolean
+  readonly httpPost: { expected: number } | undefined
 }
 
 class McpClientKey extends Data.Class<{
@@ -950,12 +952,13 @@ const runWithRuntime = Effect.fnUntraced(function*(
       if (response._tag === "Exit") {
         const requests = activeRequests.get(clientId)
         const key = requestKey(response.requestId)
-        const cancelled = requests?.get(key)?.cancelled
+        const active = requests?.get(key)
         if (requests !== undefined && requests.delete(key) && requests.size === 0) {
           activeRequests.delete(clientId)
         }
-        if (cancelled === true) {
+        if (active?.cancelled === true) {
           if (transport === "custom") return Effect.void
+          if (active.httpPost !== undefined) active.httpPost.expected--
           cancelledResponses.set(response, response.requestId)
           return protocol.send(clientId, response)
         }
@@ -1003,6 +1006,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
         }
         switch (request._tag) {
           case "Request": {
+            if (httpRequest !== undefined && request.isNotification !== true) {
+              const httpPost = httpPostResponses.get(httpRequest) ?? { expected: 0 }
+              httpPost.expected++
+              httpPostResponses.set(httpRequest, httpPost)
+            }
             const headers = isHttp
               ? Context.getUnsafe(
                 Fiber.getCurrent()!.context,
@@ -1138,7 +1146,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
                 requests.set(requestKey(request.id), {
                   requestId: RpcMessage.RequestId(request.id),
                   prepared,
-                  cancelled: false
+                  cancelled: false,
+                  httpPost: httpRequest === undefined ? undefined : httpPostResponses.get(httpRequest)
                 })
                 activeRequests.set(clientId, requests)
               }
@@ -1658,17 +1667,30 @@ const layerMcpProtocolHttp = (options: {
         if (admission._tag === "Rejected") {
           return admission.response
         }
-        const response = Effect.map(httpEffect, (response) => {
+        const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
           // Completed responses may already contain notifications followed by the result.
           const hasMultipleMessages = response.body._tag === "Uint8Array" &&
             response.body.body.subarray(0, -1).includes(10)
           return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
             ? toServerSentEvents(response, admission.isSubscription)
             : response
+        }
+        if (admission.acknowledge) {
+          return yield* Effect.catchCause(
+            Effect.map(httpEffect, toResponse),
+            () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+          )
+        }
+        return yield* Effect.flatMap(httpEffect, (response) => {
+          if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
+            return Effect.succeed(toResponse(response))
+          }
+          // Only fully cancelled request POSTs may return an empty SSE response.
+          // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
+          return httpPostResponses.get(request)?.expected === 0
+            ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
+            : Effect.die(new Error("MCP request ended without writing its response"))
         })
-        return yield* admission.acknowledge
-          ? Effect.catchCause(response, () => Effect.succeed(HttpServerResponse.empty({ status: 202 })))
-          : response
       })
     })
     return protocol
