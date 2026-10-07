@@ -12,8 +12,10 @@
 import * as Arr from "./Array.ts"
 import type { Cause, Done } from "./Cause.ts"
 import type { Effect } from "./Effect.ts"
+import * as Equal from "./Equal.ts"
 import type { Exit, Failure } from "./Exit.ts"
 import { constant, constTrue, dual, identity } from "./Function.ts"
+import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as core from "./internal/core.ts"
 import { PipeInspectableProto } from "./internal/core.ts"
@@ -684,14 +686,7 @@ export const offer: {
   <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean>
 } = dual(
   2,
-  <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> =>
-    internalEffect.suspend(() =>
-      offerUnsafe(self, message)
-        ? exitTrue
-        : self.state._tag === "Open" && self.strategy === "suspend"
-        ? offerOrWait(self, message)
-        : exitFalse
-    )
+  <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> => makeOffer(self, message)
 )
 
 /**
@@ -1439,10 +1434,7 @@ export const takeBetween: {
 } = dual(3, <A, E>(self: Dequeue<A, E>, min: number, max: number): Effect<Array<A>, E> => {
   min = Count.normalize(min)
   max = Count.normalize(max)
-  return suspendTake(() =>
-    takeBetweenUnsafe(self, min, max) ??
-      internalEffect.andThen(awaitTake(self, () => canTake(self, min)), takeBetween(self, min, max))
-  )
+  return makeTakeBetween(self, min, max)
 })
 
 /**
@@ -1485,8 +1477,7 @@ export const takeBetween: {
  * @category taking
  * @since 2.0.0
  */
-export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
-  suspendTake(() => takeUnsafe(self) ?? internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), take(self)))
+export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> => makeTake(self)
 
 /**
  * Attempts to take one item from the queue without waiting.
@@ -1523,17 +1514,7 @@ export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
  * @category taking
  * @since 2.0.0
  */
-export const poll = <A, E>(self: Dequeue<A, E>): Effect<Option.Option<A>> =>
-  suspendTake(() => {
-    const result = takeUnsafe(self)
-    if (result === undefined) {
-      return internalEffect.succeed(Option.none())
-    }
-    if (result._tag === "Success") {
-      return internalEffect.succeed(Option.some(result.value))
-    }
-    return internalEffect.succeed(Option.none())
-  })
+export const poll = <A, E>(self: Dequeue<A, E>): Effect<Option.Option<A>> => makePoll(self)
 
 /**
  * Peeks at the next item without removing it.
@@ -1623,16 +1604,8 @@ export const takeUnsafe = <A, E>(self: Dequeue<A, E>): Exit<A, E> | undefined =>
   if (self.state._tag === "Done") {
     return self.state.exit
   }
-  if (self.messages.length > 0) {
-    const message = MutableList.take(self.messages)!
-    releaseCapacity(self)
-    return core.exitSucceed(message)
-  } else if (self.capacity <= 0 && self.state.offers.size > 0) {
-    const message = takeOfferUnsafe(self.state.offers)
-    releaseCapacity(self)
-    return core.exitSucceed(message)
-  }
-  return undefined
+  const message = takeMessageUnsafe(self)
+  return message === NoMessage ? undefined : core.exitSucceed(message)
 }
 
 /**
@@ -2037,6 +2010,131 @@ const suspendTake: <A, E>(f: () => Effect<A, E>) => Effect<A, E> = core.makePrim
     const effect = this[core.args]()
     return core.isExit(effect) ? (effect as unknown as core.Primitive)[core.evaluate](fiber) : effect
   }
+})
+
+// Queue effects keep their queue in fields. Like the closure-based effects
+// they replace, they format without their operands (so printing one never
+// walks the queue or exposes its messages) and compare and hash by identity.
+const opaqueQueueEffect = (Proto: core.Primitive): core.Primitive =>
+  Object.assign(Proto, {
+    toJSON(this: core.Primitive) {
+      return { _id: "Effect", op: this[core.identifier] }
+    },
+    [Equal.symbol](this: unknown, that: unknown): boolean {
+      return this === that
+    },
+    [Hash.symbol](this: object): number {
+      return Hash.random(this)
+    }
+  })
+
+// Private, so no offered message can be mistaken for it.
+const NoMessage: unique symbol = Symbol("effect/Queue/NoMessage")
+
+// Takes one message from a queue that is not Done, releasing the capacity it
+// frees before returning.
+const takeMessageUnsafe = <A, E>(self: Dequeue<A, E>): A | typeof NoMessage => {
+  if (self.messages.length > 0) {
+    const message = MutableList.take(self.messages) as A
+    releaseCapacity(self)
+    return message
+  } else if (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0) {
+    const message = takeOfferUnsafe(self.state.offers)
+    releaseCapacity(self)
+    return message
+  }
+  return NoMessage
+}
+
+// `offer`, `take`, `takeBetween` and `poll` are primitives that store their
+// operands as fields, so constructing one allocates no closure. Like
+// `suspendTake`, the take primitives deliver a dequeued message to the
+// continuation in the same fiber step, and a woken taker retries with the
+// same primitive instead of constructing a new one.
+const makeOffer: <A, E>(self: Enqueue<A, E>, message: A) => Effect<boolean> = core.makePrimitive({
+  op: "QueueOffer",
+  [core.evaluate]() {
+    const self = this[core.args] as Enqueue<any, any>
+    const message = (this as unknown as { readonly message: unknown }).message
+    return offerUnsafe(self, message)
+      ? exitTrue
+      : self.state._tag === "Open" && self.strategy === "suspend"
+      ? offerOrWait(self, message)
+      : exitFalse
+  }
+}, (Proto) => {
+  const QueueOffer = function(this: any, self: unknown, message: unknown) {
+    this[core.args] = self
+    this.message = message
+  } as unknown as new(self: unknown, message: unknown) => core.Primitive
+  QueueOffer.prototype = opaqueQueueEffect(Proto)
+  return function(self: any, message: any) {
+    return new QueueOffer(self, message)
+  } as any
+})
+
+const makeTake: <A, E>(self: Dequeue<A, E>) => Effect<A, E> = core.makePrimitive({
+  op: "QueueTake",
+  [core.evaluate](fiber) {
+    const self = this[core.args] as Dequeue<any, any>
+    if (self.state._tag === "Done") {
+      return (self.state.exit as unknown as core.Primitive)[core.evaluate](fiber)
+    }
+    const message = takeMessageUnsafe(self)
+    if (message !== NoMessage) {
+      return fiber.continueWith(message, undefined)
+    }
+    return internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), this as unknown as Effect<any, any>)
+  }
+}, (Proto) => {
+  const QueueTake = function(this: any, self: unknown) {
+    this[core.args] = self
+  } as unknown as new(self: unknown) => core.Primitive
+  QueueTake.prototype = opaqueQueueEffect(Proto)
+  return function(self: any) {
+    return new QueueTake(self)
+  } as any
+})
+
+const makeTakeBetween: <A, E>(self: Dequeue<A, E>, min: number, max: number) => Effect<Array<A>, E> = core
+  .makePrimitive({
+    op: "QueueTakeBetween",
+    [core.evaluate](fiber) {
+      const self = this[core.args] as Dequeue<any, any>
+      const { max, min } = this as unknown as { readonly min: number; readonly max: number }
+      const exit = takeBetweenUnsafe(self, min, max)
+      if (exit !== undefined) {
+        return (exit as unknown as core.Primitive)[core.evaluate](fiber)
+      }
+      return internalEffect.andThen(awaitTake(self, () => canTake(self, min)), this as unknown as Effect<any, any>)
+    }
+  }, (Proto) => {
+    const QueueTakeBetween = function(this: any, self: unknown, min: number, max: number) {
+      this[core.args] = self
+      this.min = min
+      this.max = max
+    } as unknown as new(self: unknown, min: number, max: number) => core.Primitive
+    QueueTakeBetween.prototype = opaqueQueueEffect(Proto)
+    return function(self: any, min: number, max: number) {
+      return new QueueTakeBetween(self, min, max)
+    } as any
+  })
+
+const makePoll: <A, E>(self: Dequeue<A, E>) => Effect<Option.Option<A>> = core.makePrimitive({
+  op: "QueuePoll",
+  [core.evaluate](fiber) {
+    const self = this[core.args] as Dequeue<any, any>
+    const message = self.state._tag === "Done" ? NoMessage : takeMessageUnsafe(self)
+    return fiber.continueWith(message === NoMessage ? Option.none() : Option.some(message), undefined)
+  }
+}, (Proto) => {
+  const QueuePoll = function(this: any, self: unknown) {
+    this[core.args] = self
+  } as unknown as new(self: unknown) => core.Primitive
+  QueuePoll.prototype = opaqueQueueEffect(Proto)
+  return function(self: any) {
+    return new QueuePoll(self)
+  } as any
 })
 
 // Whether a take of at least `min` messages can complete without waiting.
