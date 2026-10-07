@@ -14,7 +14,6 @@ import type * as Completions from "../../Completions.ts"
 
 const escapeZsh = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, "'\\''").replace(/:/g, "\\:")
 
-/** Escape a flag explanation, where an unescaped `]` ends the `[...]` early. */
 const escapeZshExplanation = (s: string): string => escapeZsh(s).replace(/]/g, "\\]")
 
 /** Escape choices for the second parse of a Zsh `_arguments` action. */
