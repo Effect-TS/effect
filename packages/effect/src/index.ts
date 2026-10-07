@@ -873,6 +873,7 @@ export * as Unify from "./Unify.ts"
 export * as Utils from "./Utils.ts"
 
 /**
+ * @stability unstable
  * @since 4.0.2
  */
 export * as Version from "./Version.ts"
