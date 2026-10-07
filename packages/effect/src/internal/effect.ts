@@ -722,7 +722,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the derived cache object is computed once per root and shared by all
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
-    const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
+    let cache: Fiber.Fiber.Cache | undefined = root._fiberCache
+    if (cache === undefined) {
+      // A root made by adding one cached key to a root with a computed cache
+      // keeps that cache (see Context.addUnsafe), which is current for every
+      // cached key but the added one
+      const parent: Fiber.Fiber.Cache | undefined = root._fiberCacheParent
+      if (parent === undefined) {
+        cache = root._fiberCache = makeFiberContextCache(context)
+      } else {
+        cache = root._fiberCache = deriveFiberContextCache(parent, context, root._fiberCacheKey)
+        root._fiberCacheParent = undefined
+      }
+    }
     if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
@@ -734,24 +746,124 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 }
 
-const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
+/** @internal */
+export const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // The string-keyed lookups keep the Tracer key values (and the native
   // tracer behind Tracer.Tracer's default) out of every bundle
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
-  return {
-    scheduler: Context.get(context, Scheduler.Scheduler),
-    tracer: currentTracer,
-    tracerContext: currentTracer ? currentTracer["context"] : undefined,
-    tracerEnabled: Context.get(context, TracerEnabled),
-    span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
-    logLevel: Context.get(context, CurrentLogLevel),
-    minimumLogLevel: Context.get(context, MinimumLogLevel),
-    stackFrame: Context.get(context, CurrentStackFrame),
-    runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
-    maxOpsBeforeYield: Context.get(context, Scheduler.MaxOpsBeforeYield),
-    preventYield: Context.get(context, Scheduler.PreventSchedulerYield)
-  }
+  return fiberContextCache(
+    Context.get(context, Scheduler.Scheduler),
+    currentTracer,
+    Context.get(context, TracerEnabled),
+    Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
+    Context.get(context, CurrentLogLevel),
+    Context.get(context, MinimumLogLevel),
+    Context.get(context, CurrentStackFrame),
+    Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
+    Context.get(context, Scheduler.MaxOpsBeforeYield),
+    Context.get(context, Scheduler.PreventSchedulerYield)
+  )
 }
+
+/**
+ * Derives the cache of `context` from `parent`, the cache of a context that
+ * resolves every cached key identically except `key`. Each field is read
+ * exactly as `makeFiberContextCache` reads it, so the result matches a full
+ * rebuild field for field.
+ *
+ * @internal
+ */
+export const deriveFiberContextCache = (
+  parent: Fiber.Fiber.Cache,
+  context: Context.Context<never>,
+  key: string
+): Fiber.Fiber.Cache => {
+  let {
+    logLevel,
+    maxOpsBeforeYield,
+    minimumLogLevel,
+    preventYield,
+    runtimeMetrics,
+    scheduler,
+    span,
+    stackFrame,
+    tracer,
+    tracerEnabled
+  } = parent
+  switch (key) {
+    case CurrentStackFrame.key:
+      stackFrame = Context.get(context, CurrentStackFrame)
+      break
+    case Tracer.ParentSpanKey:
+      span = Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey)
+      break
+    case CurrentLogLevel.key:
+      logLevel = Context.get(context, CurrentLogLevel)
+      break
+    case MinimumLogLevel.key:
+      minimumLogLevel = Context.get(context, MinimumLogLevel)
+      break
+    case TracerEnabled.key:
+      tracerEnabled = Context.get(context, TracerEnabled)
+      break
+    case Tracer.TracerKey:
+      tracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
+      break
+    case Scheduler.Scheduler.key:
+      scheduler = Context.get(context, Scheduler.Scheduler)
+      break
+    case Scheduler.MaxOpsBeforeYield.key:
+      maxOpsBeforeYield = Context.get(context, Scheduler.MaxOpsBeforeYield)
+      break
+    case Scheduler.PreventSchedulerYield.key:
+      preventYield = Context.get(context, Scheduler.PreventSchedulerYield)
+      break
+    case InternalMetric.FiberRuntimeMetricsKey:
+      runtimeMetrics = Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey)
+      break
+    default:
+      // A cached key the fiber cache does not read
+      return parent
+  }
+  return fiberContextCache(
+    scheduler,
+    tracer,
+    tracerEnabled,
+    span,
+    logLevel,
+    minimumLogLevel,
+    stackFrame,
+    runtimeMetrics,
+    maxOpsBeforeYield,
+    preventYield
+  )
+}
+
+// The single allocation site keeps every fiber cache on one hidden class
+const fiberContextCache = (
+  scheduler: Fiber.Fiber.Cache["scheduler"],
+  tracer: Fiber.Fiber.Cache["tracer"],
+  tracerEnabled: Fiber.Fiber.Cache["tracerEnabled"],
+  span: Fiber.Fiber.Cache["span"],
+  logLevel: Fiber.Fiber.Cache["logLevel"],
+  minimumLogLevel: Fiber.Fiber.Cache["minimumLogLevel"],
+  stackFrame: Fiber.Fiber.Cache["stackFrame"],
+  runtimeMetrics: Fiber.Fiber.Cache["runtimeMetrics"],
+  maxOpsBeforeYield: Fiber.Fiber.Cache["maxOpsBeforeYield"],
+  preventYield: Fiber.Fiber.Cache["preventYield"]
+): Fiber.Fiber.Cache => ({
+  scheduler,
+  tracer,
+  tracerContext: tracer ? tracer["context"] : undefined,
+  tracerEnabled,
+  span,
+  logLevel,
+  minimumLogLevel,
+  stackFrame,
+  runtimeMetrics,
+  maxOpsBeforeYield,
+  preventYield
+})
 
 const deferredInterruptCont: any = {
   [contA](_value: unknown, fiber: FiberImpl) {
