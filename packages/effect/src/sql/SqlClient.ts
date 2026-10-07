@@ -9,7 +9,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Cause from "../Cause.ts"
+import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -360,6 +360,18 @@ const isNoTransactionError = (error: SqlError): boolean => {
 }
 
 /**
+ * A failed COMMIT cleanup leaves the connection in an unsafe state, so both the
+ * COMMIT error and the cleanup error are promoted to defects: typed recovery
+ * must not be able to hide them.
+ */
+const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
+  Cause.fromReasons(cause.reasons.map((reason) =>
+    Cause.isFailReason(reason)
+      ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason))
+      : reason
+  ))
+
+/**
  * Builds a transaction wrapper that begins top-level transactions, uses
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
@@ -424,15 +436,19 @@ export const makeWithTransaction = <I, S>(options: {
                         )
                       ),
                       (exit) => {
-                        let effect: Effect.Effect<void>
+                        let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
                             span.event("effect.sql.transaction.commit", clock.currentTimeNanosUnsafe())
                             const onCommitFailure = options.onCommitFailure
-                            effect = Effect.orDie(options.commit(conn))
-                            if (onCommitFailure) {
-                              effect = Effect.onError(effect, () => Effect.orDie(onCommitFailure(conn)))
-                            }
+                            effect = onCommitFailure
+                              ? Effect.catchCause(options.commit(conn), (commitCause) =>
+                                Effect.matchCauseEffect(onCommitFailure(conn), {
+                                  onFailure: (cleanupCause) =>
+                                    Effect.failCause(failuresToDefects(Cause.combine(commitCause, cleanupCause))),
+                                  onSuccess: () => Effect.failCause(commitCause)
+                                }))
+                              : options.commit(conn)
                           } else {
                             span.event("effect.sql.transaction.savepoint", clock.currentTimeNanosUnsafe())
                             effect = Effect.void
