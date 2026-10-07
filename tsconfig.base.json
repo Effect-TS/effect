@@ -43,7 +43,17 @@
       "ignoreEffectErrorsInTscExitCode": true,
       "overrides": [
         {
-          "exclude": ["**/internal/**/*", "**/index.ts", "**/index.tsx", "**/index.mts", "**/index.cts", "**/ai-docs/**/*", "**/test/**/*", "**/Generated.ts", "**/packages/tools/**/*"],
+          "exclude": [
+            "**/internal/**/*",
+            "**/index.ts",
+            "**/index.tsx",
+            "**/index.mts",
+            "**/index.cts",
+            "**/ai-docs/**/*",
+            "**/test/**/*",
+            "**/Generated.ts",
+            "**/packages/tools/**/*"
+          ],
           "options": {
             "diagnosticSeverity": {
               "apiStabilityLeak": "error"
