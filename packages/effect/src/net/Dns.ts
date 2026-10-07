@@ -137,13 +137,20 @@ export interface Ptr extends RecordProto<"PTR"> {
 /**
  * A start of authority record.
  *
+ * **Details**
+ *
+ * `admin` is the administrator mailbox written as a domain name, such as
+ * `hostmaster.example.com`. A dot inside the mailbox's local part is escaped,
+ * as in `john\.doe.example.com`, so `admin` is a plain string rather than a
+ * `Host.DomainName`.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
 export interface Soa extends RecordProto<"SOA"> {
   readonly primary: Host.DomainName
-  readonly admin: Host.DomainName
+  readonly admin: string
   readonly serial: number
   readonly refresh: Duration.Duration
   readonly retry: Duration.Duration
@@ -170,6 +177,12 @@ export interface Srv extends RecordProto<"SRV"> {
  * kept as separate chunks; protocols such as SPF read them joined, for example
  * with `record.chunks.join("")`.
  *
+ * **Details**
+ *
+ * Platform services decode each character string as UTF-8, replacing bytes
+ * that are not valid UTF-8 with U+FFFD, and `formatRecord` writes chunks back
+ * as UTF-8 bytes.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
@@ -186,8 +199,8 @@ export interface Txt extends RecordProto<"TXT"> {
  * Records are immutable values tagged by record type, compared and hashed by
  * their fields. They hold the record data only: owner names and TTLs are not
  * included because platform resolvers do not report them consistently. Names
- * returned by platform services are fully qualified and written without the
- * trailing dot.
+ * returned by platform services are fully qualified and end with a dot, so
+ * passing them back to the resolver does not apply search domains.
  *
  * @stability unstable
  * @category models
@@ -221,7 +234,54 @@ export type RecordFor<T extends RecordType> = Extract<DnsRecord, { readonly _tag
  * @category models
  * @since 4.0.0
  */
-export type RecordFields<T extends RecordType> = Omit<RecordFor<T>, keyof RecordProto<T>>
+export type RecordFields<T extends RecordType> = T extends RecordType ? Omit<RecordFor<T>, keyof RecordProto<T>>
+  : never
+
+const isUint16 = (u: unknown): boolean => Number.isInteger(u) && (u as number) >= 0 && (u as number) <= 0xffff
+
+const isUint32 = (u: unknown): boolean => Number.isInteger(u) && (u as number) >= 0 && (u as number) <= 0xffffffff
+
+const isString = (u: unknown): u is string => typeof u === "string"
+
+// SOA timers are 32-bit unsigned counts of seconds on the wire.
+const isTimer = (u: unknown): boolean =>
+  Duration.isDuration(u) && Duration.isFinite(u) && isUint32(Duration.toSeconds(u))
+
+// The fields of every record type, in canonical order, with their checks.
+const recordFields: {
+  readonly [K in RecordType]: { readonly [F in keyof RecordFields<K>]-?: (u: unknown) => boolean }
+} = {
+  A: { address: NetAddress.isIpv4Address },
+  AAAA: { address: NetAddress.isIpv6Address },
+  CAA: {
+    critical: (u) => typeof u === "boolean",
+    tag: (u) => isString(u) && /^[a-z0-9]+$/i.test(u),
+    value: isString
+  },
+  CNAME: { target: Host.isDomainName },
+  MX: { exchange: Host.isDomainName, priority: isUint16 },
+  NAPTR: {
+    order: isUint16,
+    preference: isUint16,
+    flags: isString,
+    service: isString,
+    regexp: isString,
+    replacement: Host.isDomainName
+  },
+  NS: { host: Host.isDomainName },
+  PTR: { host: Host.isDomainName },
+  SOA: {
+    primary: Host.isDomainName,
+    admin: (u) => isString(u) && u.length > 0,
+    serial: isUint32,
+    refresh: isTimer,
+    retry: isTimer,
+    expire: isTimer,
+    minimum: isTimer
+  },
+  SRV: { target: Host.isDomainName, port: isUint16, priority: isUint16, weight: isUint16 },
+  TXT: { chunks: (u) => Array.isArray(u) && u.length > 0 && u.every(isString) }
+}
 
 /**
  * Every supported record type.
@@ -230,19 +290,7 @@ export type RecordFields<T extends RecordType> = Omit<RecordFor<T>, keyof Record
  * @category constants
  * @since 4.0.0
  */
-export const recordTypes: Arr.NonEmptyReadonlyArray<RecordType> = [
-  "A",
-  "AAAA",
-  "CAA",
-  "CNAME",
-  "MX",
-  "NAPTR",
-  "NS",
-  "PTR",
-  "SOA",
-  "SRV",
-  "TXT"
-]
+export const recordTypes: Arr.NonEmptyReadonlyArray<RecordType> = Object.keys(recordFields) as Array<any> as any
 
 /**
  * Returns `true` when a value is a supported record type.
@@ -252,33 +300,6 @@ export const recordTypes: Arr.NonEmptyReadonlyArray<RecordType> = [
  * @since 4.0.0
  */
 export const isRecordType = (u: unknown): u is RecordType => recordTypes.includes(u as RecordType)
-
-const isUint16 = (value: number): boolean => Number.isInteger(value) && value >= 0 && value <= 0xffff
-
-const isUint32 = (value: number): boolean => Number.isInteger(value) && value >= 0 && value <= 0xffffffff
-
-const isTimer = (value: Duration.Duration): boolean => Duration.isFinite(value) && !Duration.isNegative(value)
-
-// Only constraints that the field types cannot express are checked here.
-const invalidField = <T extends RecordType>(type: T, fields: RecordFields<T>): string | undefined => {
-  const record = fields as RecordFields<RecordType> & Record<string, any>
-  switch (type) {
-    case "CAA":
-      return /^[a-z0-9]+$/i.test(record.tag) ? undefined : "tag"
-    case "MX":
-      return isUint16(record.priority) ? undefined : "priority"
-    case "NAPTR":
-      return !isUint16(record.order) ? "order" : !isUint16(record.preference) ? "preference" : undefined
-    case "SOA":
-      return !isUint32(record.serial)
-        ? "serial"
-        : ["refresh", "retry", "expire", "minimum"].find((key) => !isTimer(record[key]))
-    case "SRV":
-      return ["port", "priority", "weight"].find((key) => !isUint16(record[key]))
-    default:
-      return undefined
-  }
-}
 
 /**
  * Returns `true` when a value is a DNS record.
@@ -312,10 +333,12 @@ const RecordPrototype = {
  *
  * **Details**
  *
- * Only constraints that the field types cannot express are checked:
- * priorities, weights, and ports must be 16-bit unsigned integers, the SOA
- * serial must be a 32-bit unsigned integer, SOA timers must be finite and
- * non-negative, and CAA property tags must be alphanumeric.
+ * Every field is checked at runtime: addresses must belong to the record's
+ * address family, names must be normalized domain names, priorities, weights,
+ * and ports must be 16-bit unsigned integers, the SOA serial and timers must be
+ * 32-bit unsigned integers (the timers in whole seconds), TXT records need at
+ * least one chunk, and CAA property tags must be alphanumeric. Fields that do
+ * not belong to the record type are ignored.
  *
  * **Example** (Creating a service record)
  *
@@ -340,12 +363,19 @@ export const makeRecord = <T extends RecordType>(
   type: T,
   fields: RecordFields<T>
 ): Result.Result<RecordFor<T>, NetAddress.NetAddressError> => {
-  const field = invalidField(type, fields)
-  if (field !== undefined) {
-    return Result.fail(new NetAddress.NetAddressError({ input: fields, message: `invalid ${type} record ${field}` }))
+  if (!isRecordType(type)) {
+    return Result.fail(new NetAddress.NetAddressError({ input: type, message: "unknown DNS record type" }))
   }
-  const self = Object.assign(Object.create(RecordPrototype), { _tag: type }, fields)
-  if (Array.isArray(self.chunks)) self.chunks = Object.freeze([...self.chunks])
+  const input: Record<string, unknown> = typeof fields === "object" && fields !== null ? fields : {}
+  const self = Object.create(RecordPrototype)
+  self._tag = type
+  for (const [key, check] of Object.entries<(u: unknown) => boolean>(recordFields[type])) {
+    const value = input[key]
+    if (!check(value)) {
+      return Result.fail(new NetAddress.NetAddressError({ input: fields, message: `invalid ${type} record ${key}` }))
+    }
+    self[key] = Array.isArray(value) ? Object.freeze([...value]) : value
+  }
   return Result.succeed(Object.freeze(self))
 }
 
@@ -623,16 +653,14 @@ export interface ResolveOptions extends LookupOptions {
  */
 export const Dns: Context.Service<Dns, Dns> = Context.Service("effect/net/Dns")
 
-const dedupe = <A>(values: ReadonlyArray<A>): Array<A> => {
-  const out: Array<A> = []
-  for (const value of values) {
-    if (!out.some((existing) => Equal.equals(existing, value))) out.push(value)
-  }
-  return out
-}
-
 const notFound = (method: DnsError["method"], hostname: string, recordType?: RecordType) =>
-  Effect.fail(new DnsError({ reason: "NotFound", method, hostname, recordType }))
+  Effect.fail(
+    new DnsError(
+      recordType === undefined
+        ? { reason: "NotFound", method, hostname }
+        : { reason: "NotFound", method, hostname, recordType }
+    )
+  )
 
 /**
  * Creates a `Dns` service from platform resolver operations.
@@ -663,7 +691,7 @@ export const make = (impl: {
   const lookup = (host: Host.DomainName, options?: LookupOptions) =>
     impl.lookup(host, options?.family).pipe(
       Effect.flatMap((addresses) =>
-        Arr.match(dedupe(addresses.filter(inFamily(options?.family))), {
+        Arr.match(Arr.dedupe(addresses.filter(inFamily(options?.family))), {
           onEmpty: () => notFound("lookup", host),
           onNonEmpty: Effect.succeed
         })
@@ -688,26 +716,26 @@ export const make = (impl: {
 
   return {
     [TypeId]: TypeId,
-    lookup: lookup as Dns["lookup"],
-    resolve: ((name, type) =>
+    lookup,
+    resolve: <T extends RecordType>(name: Host.DomainName, type: T) =>
       impl.resolve(name, type).pipe(
         Effect.flatMap((records) =>
-          Arr.match(dedupe(records.filter((record) => record._tag === type)), {
+          Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
             onEmpty: () => notFound("resolve", name, type),
             onNonEmpty: Effect.succeed
           })
         )
-      )) as Dns["resolve"],
+      ),
     reverse: (address) =>
       impl.reverse(address).pipe(
         Effect.flatMap((names) =>
-          Arr.match(dedupe(names), {
+          Arr.match(Arr.dedupe(names), {
             onEmpty: () => notFound("reverse", NetAddress.formatIp(address)),
             onNonEmpty: Effect.succeed
           })
         )
       ),
-    resolveInet: resolveInet as Dns["resolveInet"],
+    resolveInet,
     resolveSocketAddress: (target, options) =>
       NetAddress.isUnixPathAddress(target) ? Effect.succeed([target]) : resolveInet(target, options)
   }
@@ -832,7 +860,7 @@ export const makeStatic = (zone: StaticZone): Result.Result<Dns, NetAddress.NetA
 }
 
 /**
- * Layer that provides a `Dns` service answering from fixed data.
+ * Creates a layer that provides a `Dns` service answering from fixed data.
  *
  * @see {@link makeStatic} for the resolution rules
  * @stability unstable

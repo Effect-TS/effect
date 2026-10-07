@@ -25,8 +25,8 @@ const expected: { readonly [K in Dns.RecordType]: ReadonlyArray<Dns.RecordFor<K>
   ],
   AAAA: [Dns.makeRecordUnsafe("AAAA", { address: ip("2001:db8::1") as NetAddress.Ipv6Address })],
   CAA: [Dns.makeRecordUnsafe("CAA", { critical: false, tag: "issue", value: "ca.example.test" })],
-  CNAME: [Dns.makeRecordUnsafe("CNAME", { target: name("example.test") })],
-  MX: [Dns.makeRecordUnsafe("MX", { exchange: name("mail.example.test"), priority: 10 })],
+  CNAME: [Dns.makeRecordUnsafe("CNAME", { target: name("example.test.") })],
+  MX: [Dns.makeRecordUnsafe("MX", { exchange: name("mail.example.test."), priority: 10 })],
   NAPTR: [
     Dns.makeRecordUnsafe("NAPTR", {
       order: 100,
@@ -34,15 +34,15 @@ const expected: { readonly [K in Dns.RecordType]: ReadonlyArray<Dns.RecordFor<K>
       flags: "S",
       service: "SIP+D2U",
       regexp: "",
-      replacement: name("_sip._udp.example.test")
+      replacement: name("_sip._udp.example.test.")
     })
   ],
-  NS: [Dns.makeRecordUnsafe("NS", { host: name("ns1.example.test") })],
-  PTR: [Dns.makeRecordUnsafe("PTR", { host: name("example.test") })],
+  NS: [Dns.makeRecordUnsafe("NS", { host: name("ns1.example.test.") })],
+  PTR: [Dns.makeRecordUnsafe("PTR", { host: name("example.test.") })],
   SOA: [
     Dns.makeRecordUnsafe("SOA", {
-      primary: name("ns1.example.test"),
-      admin: name("hostmaster.example.test"),
+      primary: name("ns1.example.test."),
+      admin: "hostmaster.example.test.",
       serial: 2024010101,
       refresh: Duration.seconds(3600),
       retry: Duration.seconds(600),
@@ -50,7 +50,7 @@ const expected: { readonly [K in Dns.RecordType]: ReadonlyArray<Dns.RecordFor<K>
       minimum: Duration.seconds(300)
     })
   ],
-  SRV: [Dns.makeRecordUnsafe("SRV", { target: name("db1.example.test"), port: 5432, priority: 10, weight: 5 })],
+  SRV: [Dns.makeRecordUnsafe("SRV", { target: name("db1.example.test."), port: 5432, priority: 10, weight: 5 })],
   TXT: [Dns.makeRecordUnsafe("TXT", { chunks: ["v=spf1 ", "-all"] })]
 }
 
@@ -74,6 +74,9 @@ example.test {
 }
 2.0.192.in-addr.arpa {
   file /etc/coredns/2.0.192.in-addr.arpa.db
+}
+edge.test {
+  file /etc/coredns/edge.test.db
 }
 `
 
@@ -104,6 +107,20 @@ $TTL 300
 @           IN SOA   ns1.example.test. hostmaster.example.test. 1 3600 600 604800 300
 @           IN NS    ns1.example.test.
 1           IN PTR   example.test.
+2           IN PTR   good.example.test.
+2           IN PTR   bad\\032host.example.test.
+`
+
+// Records that platform resolvers report in unusual forms: a root primary name,
+// a mailbox with an escaped dot, timers of 2^31 seconds or more, a CAA record
+// with only a reserved flag set, and UTF-8 text.
+const edgeZone = `
+$ORIGIN edge.test.
+$TTL 300
+@           IN SOA   . john\\.doe.example.test. 1 4294967295 2147483648 604800 300
+@           IN NS    ns1.example.test.
+@           IN CAA   1 issue "ca.example.test"
+@           IN TXT   "gr\\195\\188\\195\\159"
 `
 
 /**
@@ -117,32 +134,43 @@ export const startDnsServer = async (): Promise<{
   // The fixtures are bind-mounted rather than copied: under Bun, the archive
   // testcontainers builds for copied content loses its last file.
   const directory = await Fs.mkdtemp(Path.join(Os.tmpdir(), "effect-dns-"))
-  await Fs.chmod(directory, 0o755)
-  for (
-    const [file, content] of [
-      ["Corefile", corefile],
-      ["example.test.db", exampleZone],
-      ["2.0.192.in-addr.arpa.db", reverseZone]
-    ]
-  ) {
-    await Fs.writeFile(Path.join(directory, file), content, { mode: 0o644 })
-  }
-  const container: StartedTestContainer = await new GenericContainer("coredns/coredns:1.14.7")
-    .withBindMounts([{ source: directory, target: "/etc/coredns", mode: "ro" }])
-    .withCommand(["-conf", "/etc/coredns/Corefile"])
-    .withExposedPorts("53/udp")
-    .withWaitStrategy(Wait.forLogMessage(/CoreDNS-/))
-    .start()
-  // The resolver APIs accept only IP addresses for name servers.
-  const { address } = await NodeDnsApi.promises.lookup(container.getHost(), { family: 4 })
-  return {
-    nameServer: NetAddress.inetAddressFromStringUnsafe(
-      `${address}:${container.getMappedPort("53/udp")}`
-    ) as NetAddress.InetAddressV4,
-    stop: async () => {
-      await container.stop()
+  let container: StartedTestContainer | undefined
+  const stop = async () => {
+    try {
+      await container?.stop()
+    } finally {
       await Fs.rm(directory, { recursive: true, force: true })
     }
+  }
+  try {
+    await Fs.chmod(directory, 0o755)
+    for (
+      const [file, content] of [
+        ["Corefile", corefile],
+        ["example.test.db", exampleZone],
+        ["2.0.192.in-addr.arpa.db", reverseZone],
+        ["edge.test.db", edgeZone]
+      ]
+    ) {
+      await Fs.writeFile(Path.join(directory, file), content, { mode: 0o644 })
+    }
+    container = await new GenericContainer("coredns/coredns:1.14.7")
+      .withBindMounts([{ source: directory, target: "/etc/coredns", mode: "ro" }])
+      .withCommand(["-conf", "/etc/coredns/Corefile"])
+      .withExposedPorts("53/udp")
+      .withWaitStrategy(Wait.forLogMessage(/CoreDNS-/))
+      .start()
+    // The resolver APIs accept only IP addresses for name servers.
+    const { address } = await NodeDnsApi.promises.lookup(container.getHost(), { family: 4 })
+    return {
+      nameServer: NetAddress.inetAddressFromStringUnsafe(
+        `${address}:${container.getMappedPort("53/udp")}`
+      ) as NetAddress.InetAddressV4,
+      stop
+    }
+  } catch (error) {
+    await stop()
+    throw error
   }
 }
 
@@ -157,7 +185,7 @@ const isDeno = "Deno" in globalThis
 
 export const describeDnsServer = (
   label: string,
-  make: (nameServer: NetAddress.InetAddressV4) => Dns.Dns
+  make: (nameServer: NetAddress.InetAddress) => Dns.Dns
 ) =>
   describe(label, () => {
     let server: Awaited<ReturnType<typeof startDnsServer>>
@@ -181,7 +209,7 @@ export const describeDnsServer = (
     it.effect("queries every record type", () =>
       Effect.gen(function*() {
         for (const type of ["A", "AAAA", "CAA", "MX", "NAPTR", "NS", "SOA"] as const) {
-          assertRecords(yield* dns().resolve(name("example.test"), type), expected[type])
+          assertRecords(yield* dns().resolve(name("example.test."), type), expected[type])
         }
         assertRecords(yield* dns().resolve(name("www.example.test"), "CNAME"), expected.CNAME)
         assertRecords(yield* dns().resolve(name("_pg._tcp.example.test"), "SRV"), expected.SRV)
@@ -192,7 +220,7 @@ export const describeDnsServer = (
     // https://github.com/oven-sh/bun/issues/44692
     it.effect.skipIf(isBun)("keeps the chunks of a TXT record together", () =>
       Effect.gen(function*() {
-        assertRecords(yield* dns().resolve(name("example.test"), "TXT"), expected.TXT)
+        assertRecords(yield* dns().resolve(name("example.test."), "TXT"), expected.TXT)
       }))
 
     it.effect("returns the root name for null targets", () =>
@@ -203,9 +231,48 @@ export const describeDnsServer = (
         assert.strictEqual(srv.target, ".")
       }))
 
+    it.effect("returns fully qualified names", () =>
+      Effect.gen(function*() {
+        const [srv] = yield* dns().resolve(name("_pg._tcp.example.test"), "SRV")
+        assert.isTrue(Host.isFullyQualified(srv.target))
+      }))
+
+    it.effect("converts unusual record data", () =>
+      Effect.gen(function*() {
+        assertRecords(yield* dns().resolve(name("edge.test"), "SOA"), [
+          Dns.makeRecordUnsafe("SOA", {
+            primary: name("."),
+            admin: "john\\.doe.example.test.",
+            serial: 1,
+            refresh: Duration.seconds(4294967295),
+            retry: Duration.seconds(2147483648),
+            expire: Duration.seconds(604800),
+            minimum: Duration.seconds(300)
+          })
+        ])
+        assertRecords(yield* dns().resolve(name("edge.test"), "CAA"), [
+          Dns.makeRecordUnsafe("CAA", { critical: false, tag: "issue", value: "ca.example.test" })
+        ])
+        assertRecords(yield* dns().resolve(name("edge.test"), "TXT"), [
+          Dns.makeRecordUnsafe("TXT", { chunks: ["grüß"] })
+        ])
+      }))
+
+    it.effect("rejects name servers with a scope ID", () =>
+      Effect.gen(function*() {
+        const scoped = make(NetAddress.inetAddressFromStringUnsafe("[fe80::1%1]:53"))
+        const error = yield* Effect.flip(scoped.resolve(name("example.test."), "A"))
+        assert.strictEqual(error.reason, "Unsupported")
+      }))
+
     it.effect("looks up the names of an address", () =>
       Effect.gen(function*() {
-        assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns().reverse(ip("192.0.2.1")), ["example.test"])
+        assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns().reverse(ip("192.0.2.1")), ["example.test."])
+      }))
+
+    it.effect("skips names that are not valid domain names", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns().reverse(ip("192.0.2.2")), ["good.example.test."])
       }))
 
     it.effect("reports missing names", () =>
@@ -215,8 +282,8 @@ export const describeDnsServer = (
         assert.strictEqual(error.recordType, "A")
       }))
 
-    // `Deno.resolveDns` reports a refused query with the same `NotFound` error
-    // as a missing name, so the two cannot be told apart.
+    // `Deno.resolveDns` reports every error response, including refused
+    // queries, with the same `NotFound` error as a missing name.
     it.effect.skipIf(isDeno)("reports refused queries", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(dns().resolve(name("outside.invalid"), "A"))
@@ -225,7 +292,7 @@ export const describeDnsServer = (
 
     it.effect("reports names without records of the requested type", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(dns().resolve(name("ns1.example.test"), "SRV"))
+        const error = yield* Effect.flip(dns().resolve(name("ns1.example.test."), "SRV"))
         assert.strictEqual(error.reason, "NotFound")
       }))
   })

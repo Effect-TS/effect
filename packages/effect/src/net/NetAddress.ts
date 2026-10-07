@@ -60,9 +60,10 @@ const ScopedIpv6LiteralTypeId = "~effect/net/NetAddress/ScopedIpv6Literal" as co
  *
  * **Details**
  *
- * The zone is kept as written because mapping an interface name to a numeric
- * scope ID requires the operating system's interface table. The address part is
- * stored in canonical form.
+ * Named zones are kept as written because mapping an interface name to a
+ * numeric scope ID requires the operating system's interface table. Numeric
+ * zones must be unsigned 32-bit integers and are stored without leading zeros,
+ * and the address part is stored in canonical form.
  *
  * @see {@link scopedIpv6LiteralFromString} for parsing scoped IPv6 literals
  * @stability unstable
@@ -513,19 +514,19 @@ export const familyOf = (self: IpAddress | InetAddress): IpFamily =>
  * @since 4.0.0
  */
 export const isFamily: {
-  <F extends IpFamily>(
-    family: F
-  ): <A extends IpAddress | InetAddress>(self: A) => self is Extract<A, FamilyAddress<F> | Inet<FamilyAddress<F>>>
-  <A extends IpAddress | InetAddress, F extends IpFamily>(
-    self: A,
-    family: F
-  ): self is Extract<A, FamilyAddress<F> | Inet<FamilyAddress<F>>>
+  (
+    family: "IPv4"
+  ): <A extends IpAddress | InetAddress>(self: A) => self is Extract<A, Ipv4Address | InetAddressV4>
+  (
+    family: "IPv6"
+  ): <A extends IpAddress | InetAddress>(self: A) => self is Extract<A, Ipv6Address | InetAddressV6>
+  (family: IpFamily): (self: IpAddress | InetAddress) => boolean
+  <A extends IpAddress | InetAddress>(self: A, family: "IPv4"): self is Extract<A, Ipv4Address | InetAddressV4>
+  <A extends IpAddress | InetAddress>(self: A, family: "IPv6"): self is Extract<A, Ipv6Address | InetAddressV6>
+  (self: IpAddress | InetAddress, family: IpFamily): boolean
 } = dual(
   2,
-  <A extends IpAddress | InetAddress, F extends IpFamily>(
-    self: A,
-    family: F
-  ): self is Extract<A, FamilyAddress<F> | Inet<FamilyAddress<F>>> => familyOf(self) === family
+  <A extends IpAddress | InetAddress>(self: A, family: IpFamily): self is A => familyOf(self) === family
 )
 
 /**
@@ -967,7 +968,7 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
  * @since 4.0.0
  */
 export const isScopedIpv6Literal = (u: unknown): u is ScopedIpv6Literal => {
-  if (typeof u !== "string") return false
+  if (typeof u !== "string" || !u.includes("%")) return false
   const result = scopedIpv6LiteralFromString(u)
   return Result.isSuccess(result) && result.success === u
 }
@@ -984,9 +985,14 @@ export const scopedIpv6LiteralFromString = (
 ): Result.Result<ScopedIpv6Literal, NetAddressError> => {
   const separator = input.indexOf("%")
   if (separator === -1) return addressError(input, "expected an IPv6 zone")
-  const zone = input.slice(separator + 1)
-  if (zone.length === 0 || /[%[\]/\s]/.test(zone)) {
+  let zone = input.slice(separator + 1)
+  if (zone.length === 0 || /[%[\]/\s\p{Cc}]/u.test(zone)) {
     return addressError(input, "invalid IPv6 scope identifier")
+  }
+  if (/^\d+$/.test(zone)) {
+    const scopeId = Number(zone)
+    if (scopeId > 0xffffffff) return addressError(input, "scope identifier must be an unsigned 32-bit integer")
+    zone = String(scopeId)
   }
   return Result.map(
     ipv6FromString(input.slice(0, separator)),

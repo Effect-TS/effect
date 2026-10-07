@@ -246,6 +246,19 @@ describe("NetAddress", () => {
     expect(bind).type.not.toBeCallableWith({ localAddress: localV4, remote: remoteV6 })
   })
 
+  it("narrows by family only for literal families", () => {
+    const addresses: ReadonlyArray<NetAddress.IpAddress> = []
+    expect(addresses.filter(NetAddress.isFamily("IPv4"))).type.toBe<Array<NetAddress.Ipv4Address>>()
+    expect(addresses.filter((address) => NetAddress.isFamily(address, "IPv6"))).type.toBe<
+      Array<NetAddress.Ipv6Address>
+    >()
+    const family = "IPv4" as NetAddress.IpFamily
+    expect(addresses.filter((address) => !NetAddress.isFamily(address, family))).type.toBe<
+      Array<NetAddress.IpAddress>
+    >()
+    expect(addresses.filter(NetAddress.isFamily(family))).type.toBe<Array<NetAddress.IpAddress>>()
+  })
+
   it("preserves named schema types when annotating codecs", () => {
     expect(Schema.MacAddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.MacAddressFromString>()
     expect(Schema.Ipv4AddressFromString.annotate({ identifier: "custom" })).type.toBe<Schema.Ipv4AddressFromString>()

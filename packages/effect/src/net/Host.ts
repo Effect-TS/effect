@@ -119,7 +119,7 @@ const toAsciiDomainName = (input: string): string | undefined => {
  * @since 4.0.0
  */
 export const isDomainName = (u: unknown): u is DomainName =>
-  typeof u === "string" && u === u.toLowerCase() && toAsciiDomainName(u) === u && validateDomainName(u) === undefined
+  typeof u === "string" && /^[a-z0-9_.-]+$/.test(u) && validateDomainName(u) === undefined
 
 /**
  * Returns `true` when a value is a host.
@@ -200,10 +200,13 @@ export const domainNameFromStringUnsafe = (input: string): DomainName => Result.
  * @since 4.0.0
  */
 export const hostFromString = (input: string): Result.Result<Host, NetAddress.NetAddressError> => {
-  const address = NetAddress.ipFromString(input)
-  if (Result.isSuccess(address)) return address
   if (input.includes("%")) return NetAddress.scopedIpv6LiteralFromString(input)
-  if (input.includes(":")) return address
+  if (input.includes(":")) return NetAddress.ipFromString(input)
+  // Only digits and dots can form an IPv4 address; anything else is a domain name.
+  if (/^[\d.]+$/.test(input)) {
+    const address = NetAddress.ipFromString(input)
+    if (Result.isSuccess(address)) return address
+  }
   return domainNameFromString(input)
 }
 

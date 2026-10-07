@@ -82,6 +82,38 @@ describe("Dns", () => {
       )
     })
 
+    it("rejects fields of the wrong shape", () => {
+      const pick = <T extends Dns.RecordType>(type: T): T => type
+      const anyType: Dns.RecordType = pick<Dns.RecordType>("A")
+      const addressType: "A" | "AAAA" = pick<"A" | "AAAA">("A")
+      const invalid: ReadonlyArray<Result.Result<Dns.DnsRecord, NetAddress.NetAddressError>> = [
+        Dns.makeRecord(anyType, {} as Dns.RecordFields<Dns.RecordType>),
+        Dns.makeRecord(addressType, { address: ip("2001:db8::1") as NetAddress.Ipv6Address }),
+        Dns.makeRecord("CNAME", { target: "not a name" as Host.DomainName }),
+        Dns.makeRecord("TXT", { chunks: [] as any }),
+        Dns.makeRecord("CAA", { critical: false, tag: undefined as any, value: "" }),
+        Dns.makeRecord("SOA", {
+          primary: name("a.b"),
+          admin: "a.b",
+          serial: 1,
+          refresh: Duration.millis(1500),
+          retry: Duration.seconds(2 ** 32),
+          expire: Duration.zero,
+          minimum: Duration.zero
+        }),
+        Dns.makeRecord("ANY" as Dns.RecordType, {} as Dns.RecordFields<Dns.RecordType>)
+      ]
+      for (const result of invalid) assert.isTrue(Result.isFailure(result))
+    })
+
+    it("keeps only the fields of the record type", () => {
+      const fields = { target: name("db.internal"), port: 99999, priority: -5, weight: 1.5, _tag: "SRV" }
+      const cname = Result.getOrThrow(Dns.makeRecord("CNAME", fields))
+      assert.strictEqual(cname._tag, "CNAME")
+      assert.deepStrictEqual(Object.keys(cname), ["_tag", "target"])
+      assert.isTrue(Equal.equals(cname, Dns.makeRecordUnsafe("CNAME", { target: name("db.internal") })))
+    })
+
     it("formats records in presentation format", () => {
       assert.strictEqual(Dns.formatRecord(srv("db.internal", 10, 5)), "SRV 10 5 5432 db.internal")
       assert.strictEqual(

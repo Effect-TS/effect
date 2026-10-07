@@ -791,7 +791,7 @@ describe("NetAddress", () => {
       [Schema.InetAddressV4, NetAddress.inetAddressFromStringUnsafe("10.0.0.1:80"), "10.0.0.1:80"],
       [Schema.InetAddressV6, NetAddress.inetAddressFromStringUnsafe("[fe80::1%3]:80"), "[fe80::1%3]:80"],
       [Schema.InetAddress, NetAddress.inetAddressFromStringUnsafe("[::1]:443"), "[::1]:443"],
-      [Schema.UnixPathAddress, NetAddress.unixPathAddress("/run/app.sock"), "/run/app.sock"],
+      [Schema.UnixPathAddress, NetAddress.unixPathAddress("/run/app.sock"), { path: "/run/app.sock" }],
       [Schema.SocketAddress, NetAddress.inetAddressFromStringUnsafe("10.0.0.1:80"), "10.0.0.1:80"],
       [Schema.SocketAddress, NetAddress.unixPathAddress("10.0.0.1:80"), { path: "10.0.0.1:80" }]
     ]
@@ -802,6 +802,28 @@ describe("NetAddress", () => {
     }
     assert.throws(() => Schema.decodeUnknownSync(Schema.toCodecJson(Schema.InetAddressV4))("[::1]:80"))
     assert.throws(() => Schema.decodeUnknownSync(Schema.toCodecJson(Schema.Ipv4Address))("::1"))
+
+    // Unix paths encode as objects, so unions with internet addresses stay unambiguous.
+    const sockets = [NetAddress.unixPathAddress("10.0.0.1:80"), NetAddress.inetAddressFromStringUnsafe("10.0.0.1:80")]
+    for (
+      const schema of [
+        Schema.Union([Schema.UnixPathAddress, Schema.InetAddress]),
+        Schema.Union([Schema.InetAddress, Schema.UnixPathAddress])
+      ]
+    ) {
+      const codec = Schema.toCodecJson(schema)
+      for (const value of sockets) {
+        assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(value)), value))
+      }
+    }
+  })
+
+  it("normalizes numeric IPv6 zones", () => {
+    assert.strictEqual(Result.getOrThrow(NetAddress.scopedIpv6LiteralFromString("fe80::1%01")), "fe80::1%1")
+    assert.isTrue(Result.isFailure(NetAddress.scopedIpv6LiteralFromString("fe80::1%4294967296")))
+    assert.isTrue(Result.isFailure(NetAddress.scopedIpv6LiteralFromString("fe80::1%eth0\u0000")))
+    assert.isFalse(NetAddress.isScopedIpv6Literal("fe80::1%01"))
+    assert.isFalse(NetAddress.isScopedIpv6Literal("example.com"))
   })
 
   it("validates ports", () => {

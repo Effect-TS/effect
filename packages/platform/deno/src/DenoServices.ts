@@ -37,7 +37,7 @@ export type DenoServices = ChildProcessSpawner | Crypto | Dns | FileSystem | Pat
 
 /**
  * Provides the default Deno implementations for child process spawning,
- * crypto, filesystem, path, stdio, and terminal services.
+ * crypto, DNS, filesystem, path, stdio, and terminal services.
  *
  * @stability unstable
  * @category layers
