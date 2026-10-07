@@ -65,8 +65,10 @@ export const Persisted = Context.Reference<boolean>("effect/cluster/ClusterSchem
  * Persisted requests deliver terminal replies and complete bookkeeping only
  * after the transaction settles. Success replies are saved in the transaction
  * and delivered after COMMIT; failures are saved and delivered after a clean
- * rollback. If COMMIT or ROLLBACK fails, the request is replayed without
- * delivering a terminal reply. Handlers must tolerate reruns.
+ * rollback. If COMMIT applied but reported failure, callers recover a stored
+ * terminal reply found after a successful handler. Otherwise, COMMIT or ROLLBACK
+ * failures replay the request without delivering a terminal reply. Handlers
+ * must tolerate reruns.
  *
  * **Gotchas**
  *

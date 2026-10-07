@@ -211,9 +211,11 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    *
    * `WithExit` replies saved inside a transaction notify callers only after
    * the outermost COMMIT. For persisted `WithTransaction` requests, handler
-   * failures are saved and delivered after a clean rollback. COMMIT or ROLLBACK
-   * failures replay the request without delivering a terminal reply. Request
-   * bookkeeping waits for the transaction outcome.
+   * failures are saved and delivered after a clean rollback. If COMMIT applied
+   * but reported failure, callers recover a stored terminal reply found after
+   * a successful handler. Otherwise, COMMIT or ROLLBACK failures replay the
+   * request without delivering a terminal reply. Request bookkeeping waits
+   * for the transaction outcome.
    *
    * Stream chunks notify callers immediately. A handler returning a `Deferred`
    * commits before its reply is saved. Non-persisted requests save no reply
