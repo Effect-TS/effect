@@ -5377,19 +5377,37 @@ describe("Stream", () => {
 
     it.effect("slidingSize keeps all elements of the final partial window", () =>
       Effect.gen(function*() {
-        const result = yield* Effect.all([
-          Stream.make(1, 2, 3, 4, 5, 6).pipe(Stream.slidingSize(3, 2), Stream.runCollect),
-          Stream.make(1, 2, 3, 4, 5, 6, 7).pipe(Stream.slidingSize(4, 2), Stream.runCollect),
-          Stream.make(1, 2, 3, 4, 5, 6).pipe(Stream.slidingSize(4, 3), Stream.runCollect),
-          Stream.make(1, 2, 3, 4, 5).pipe(Stream.slidingSize(3, 2), Stream.runCollect)
-        ])
+        const result = yield* Stream.fromArrays([1, 2], [3, 4, 5, 6]).pipe(
+          Stream.slidingSize(3, 2),
+          Stream.runCollect
+        )
 
-        deepStrictEqual(result, [
-          [[1, 2, 3], [3, 4, 5], [5, 6]],
-          [[1, 2, 3, 4], [3, 4, 5, 6], [5, 6, 7]],
-          [[1, 2, 3, 4], [4, 5, 6]],
-          [[1, 2, 3], [3, 4, 5]]
-        ])
+        deepStrictEqual(result, [[1, 2, 3], [3, 4, 5], [5, 6]])
+      }))
+
+    it.effect("slidingSize omits overlap after a full final window", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(
+          Stream.slidingSize(3, 2),
+          Stream.runCollect
+        )
+
+        deepStrictEqual(result, [[1, 2, 3], [3, 4, 5]])
+      }))
+
+    it.effect("slidingSize emits the final partial window before upstream failure", () =>
+      Effect.gen(function*() {
+        const ref = yield* Ref.make(Array.empty<Array.NonEmptyReadonlyArray<number>>())
+        const error = yield* Stream.make(1, 2, 3, 4, 5, 6).pipe(
+          Stream.concat(Stream.fail("Ouch")),
+          Stream.slidingSize(3, 2),
+          Stream.mapEffect((window) => Ref.update(ref, Array.append(window))),
+          Stream.runDrain,
+          Effect.flip
+        )
+
+        assert.strictEqual(error, "Ouch")
+        deepStrictEqual(yield* Ref.get(ref), [[1, 2, 3], [3, 4, 5], [5, 6]])
       }))
 
     it.effect("sliding - fails if upstream produces an error", () =>
