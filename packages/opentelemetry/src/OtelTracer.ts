@@ -10,11 +10,12 @@
  * OpenTelemetry tracer provider or an explicitly provided `OtelTracer`. This
  * module does not create exporters or span processors by itself, so spans are
  * exported only when the provider has been configured by the application or by
- * the Node/Web SDK layers. Parentage is taken from Effect spans first and can
- * also attach to the active OpenTelemetry context, while `makeExternalSpan` and
- * `withSpanContext` are the entry points for continuing an incoming remote
- * trace. Preserve `traceFlags` and `traceState` when building external spans;
- * otherwise sampling defaults to sampled and trace state cannot be propagated.
+ * the Node/Web SDK layers. Effect parents take precedence over active
+ * OpenTelemetry spans. Use `Effect.withParentSpan` to inherit Effect-installed
+ * ambient spans.
+ * `makeExternalSpan` and `withSpanContext` continue incoming remote traces.
+ * Preserve `traceFlags` and `traceState` when building external spans; otherwise
+ * sampling defaults to sampled and trace state cannot be propagated.
  *
  * @stability unstable
  * @since 4.0.0
@@ -109,14 +110,15 @@ export const make: Effect.Effect<Tracer.Tracer, never, OtelTracer> = Effect.map(
         )
       },
       context(primitive, fiber) {
-        const currentSpan = fiber.cache.span
+        const currentSpan = getPropagatedSpan(fiber.cache.span)
 
         if (currentSpan === undefined) {
           return primitive["~effect/Effect/evaluate"](fiber)
         }
 
+        const context = populateContext(Otel.context.active(), currentSpan)
         return Otel.context.with(
-          populateContext(Otel.context.active(), currentSpan),
+          context.setValue(EffectSpanKey, Otel.trace.getSpan(context)),
           () => primitive["~effect/Effect/evaluate"](fiber)
         )
       }
@@ -524,13 +526,18 @@ class OtelParentSpanContext extends Context.Service<
   Otel.SpanContext
 >()("@effect/opentelemetry/Tracer/OtelParentSpanContext") {}
 
+// Prevents re-entry from inheriting Effect-installed spans.
+const EffectSpanKey = Otel.createContextKey("@effect/opentelemetry/OtelTracer/EffectSpan")
+
 const getOtelParent = (
   tracer: Otel.TraceAPI,
   context: Otel.Context,
   annotations: Context.Context<never>
 ): Option.Option<Tracer.AnySpan> => {
-  const otelParent = tracer.getSpanContext(context)
-  if (!otelParent) return Option.none()
+  const otelSpan = tracer.getSpan(context)
+  if (otelSpan === undefined || otelSpan === context.getValue(EffectSpanKey)) return Option.none()
+  const otelParent = otelSpan.spanContext()
+  if (!tracer.isSpanContextValid(otelParent)) return Option.none()
   return Option.some(Tracer.externalSpan({
     spanId: otelParent.spanId,
     traceId: otelParent.traceId,
@@ -603,6 +610,13 @@ const extractTraceService = <I, S>(
     return instance
   }
   return Context.getOrUndefined(parent.annotations, service)
+}
+
+const getPropagatedSpan = (span: Tracer.AnySpan | undefined): Tracer.AnySpan | undefined => {
+  while (span !== undefined && Context.get(span.annotations, Tracer.DisablePropagation)) {
+    span = span._tag === "Span" ? Option.getOrUndefined(span.parent) : undefined
+  }
+  return span
 }
 
 const populateContext = (
