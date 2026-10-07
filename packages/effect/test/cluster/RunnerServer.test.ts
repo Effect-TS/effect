@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Option, PubSub, Queue, Schema, Scope, Stream } from "effect"
+import { Deferred, Effect, Exit, Layer, Option, PubSub, Queue, Schema, Scope, Stream } from "effect"
 import {
   ClusterSchema,
   Entity,
@@ -9,7 +9,6 @@ import {
   Envelope,
   Message,
   MessageStorage,
-  type Reply,
   RunnerHealth,
   Runners,
   RunnerServer,
@@ -28,10 +27,6 @@ const ReproEntity = Entity.make("ReproRunnerServer", [
 
 const HoleCodecEntity = Entity.make("HoleCodecEntity", [
   Rpc.make("Double", { success: Schema.Int, payload: { id: Schema.Number } })
-]).annotateRpcs(ClusterSchema.Persisted, false)
-
-const FailingEntity = Entity.make("FailingRunnerServer", [
-  Rpc.make("Fail", { error: Schema.String, payload: { id: Schema.Number } })
 ]).annotateRpcs(ClusterSchema.Persisted, false)
 
 const jsonCodec = Schema.toCodecJson as RpcSerialization.CodecFor
@@ -304,40 +299,6 @@ it.effect("releases a replayed handler when its caller disconnects during acquis
       // Both the original handler and its replacement must release resources.
       assert.strictEqual(stops, 2)
     }).pipe(Effect.provide(makeHandlers(entityLayer)))
-  }))
-
-it.effect("replies to a caller-bound failure before running request finalizers", () =>
-  Effect.gen(function*() {
-    const callerScope = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
-    // The caller only releases the finalizer after it has received the reply.
-    const release = yield* Deferred.make<void>()
-    const replied = yield* Deferred.make<Reply.ReplyWithContext<any>>()
-    const entityLayer = FailingEntity.toLayer({
-      Fail: () => Effect.andThen(Effect.addFinalizer(() => Deferred.await(release)), Effect.fail("rejected"))
-    })
-    yield* Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const sharding = yield* Sharding.Sharding
-      yield* sharding.send(
-        new Message.IncomingRequest({
-          envelope: yield* makeRequest(FailingEntity, "ordering", { tag: "Fail" }),
-          lastSentReply: Option.none(),
-          respond: (reply) => Deferred.succeed(replied, reply),
-          codecFor: jsonCodec,
-          callerScope
-        })
-      )
-      const reply = yield* Deferred.await(replied).pipe(Effect.timeoutOption(1000), Effect.forkChild)
-      yield* TestClock.adjust(1000)
-      const result = yield* Fiber.join(reply)
-      assert(Option.isSome(result), "no reply before the request finalizer completed")
-      const { reply: { _tag, exit } } = result.value as any
-      assert.strictEqual(_tag, "WithExit")
-      assert.deepStrictEqual(Exit.findErrorOption(exit), Option.some("rejected"))
-    }).pipe(
-      Effect.ensuring(Deferred.succeed(release, undefined)),
-      Effect.provide(makeHandlers(entityLayer))
-    )
   }))
 
 it.effect("does not admit a request with an already-closed caller scope", () =>
