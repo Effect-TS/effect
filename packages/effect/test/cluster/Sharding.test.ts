@@ -1837,6 +1837,25 @@ describe.concurrent("Sharding", () => {
       Layer.provide(MessageStorage.layerMemory),
       Layer.provide(TestShardingConfig)
     ))))
+
+  it.effect("WithTransaction delivers a failure after a handler defect replays the request", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+      MutableRef.set(state.defectTrigger, true)
+
+      // Attempt one dies inside its transaction; the replay fails with a typed error.
+      const result = yield* client.FailWithTransaction({ id: 1 }).pipe(
+        Effect.flip,
+        Effect.map((error) => [error._tag, Queue.sizeUnsafe(state.envelopes)] as const),
+        Effect.timeout(5000),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust(5000)
+      assert.deepStrictEqual(yield* Fiber.join(result), ["BoomError", 2])
+    }).pipe(Effect.provide(TestSharding)))
 })
 
 // Memory storage whose transactions discard the replies saved inside them when
