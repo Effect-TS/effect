@@ -1220,7 +1220,15 @@ export const merge: {
   if (extendsContext(that as ContextImpl<R1>, self as ContextImpl<Services>)) return that as any
   if (self.mapUnsafe.size === 0) return that as any
   if (that.mapUnsafe.size === 0) return self as any
-  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)))
+  const map = new Map(self.mapUnsafe)
+  let cached = false
+  that.mapUnsafe.forEach((value, key) => {
+    map.set(key, value)
+    if (!cached && cacheKeys.has(key)) cached = true
+  })
+  // Without a cached key from `that`, the result resolves every cached key
+  // exactly like `self`, so it can share `self`'s fiber cache
+  return makeImpl(cached ? undefined : (self as ContextImpl<Services>).cacheRoot, map, undefined, 0)
 })
 
 // Whether `that` is `self` with zero or more overlays added on top: both share
