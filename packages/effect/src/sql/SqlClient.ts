@@ -9,7 +9,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Cause from "../Cause.ts"
+import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -424,14 +424,26 @@ export const makeWithTransaction = <I, S>(options: {
                         )
                       ),
                       (exit) => {
-                        let effect: Effect.Effect<void>
+                        let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
                             span.event("effect.sql.transaction.commit", clock.currentTimeNanosUnsafe())
                             const onCommitFailure = options.onCommitFailure
-                            effect = Effect.orDie(options.commit(conn))
+                            effect = options.commit(conn)
                             if (onCommitFailure) {
-                              effect = Effect.onError(effect, () => Effect.orDie(onCommitFailure(conn)))
+                              effect = Effect.catchCause(effect, (commitCause) =>
+                                Effect.matchCauseEffect(onCommitFailure(conn), {
+                                  // Failed cleanup leaves the connection unsafe: typed recovery must not hide it.
+                                  onFailure: (cleanupCause) =>
+                                    Effect.failCause(Cause.fromReasons(
+                                      Cause.combine(commitCause, cleanupCause).reasons.map((reason) =>
+                                        Cause.isFailReason(reason)
+                                          ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason))
+                                          : reason
+                                      )
+                                    )),
+                                  onSuccess: () => Effect.failCause(commitCause)
+                                }))
                             }
                           } else {
                             span.event("effect.sql.transaction.savepoint", clock.currentTimeNanosUnsafe())
