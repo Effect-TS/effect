@@ -652,7 +652,7 @@ export const make = (
           if (persisted.reply._tag !== "WithExit") return deliver(persisted)
           // Inside the request's transaction, callers get the reply after it commits.
           return HeldReply.use((held) => {
-            if (held?.requestId !== requestId) return deliver(persisted)
+            if (!held?.open || held.requestId !== requestId) return deliver(persisted)
             held.delivery = deliver(persisted)
             return Effect.void
           })

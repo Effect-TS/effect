@@ -39,7 +39,7 @@ import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
-import { HeldReply } from "./heldReply.ts"
+import { HeldReply, withoutHeldReply } from "./heldReply.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
 import { ResourceRef } from "./resourceRef.ts"
@@ -281,6 +281,7 @@ export const make = Effect.fnUntraced(function*<
                   if (!isShuttingDown) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
+                      withoutHeldReply,
                       Effect.forkIn(handlerScope)
                     )
                   }
@@ -370,12 +371,14 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
-        // Rebuild the handlers and replay the active requests.
+        // Rebuild the handlers and replay the active requests. A defect can
+        // restart from inside a transaction, so the replayed handlers must not
+        // inherit its hold.
         const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
           if (!isActive()) return endLatch.open
           const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
           if (!rebuild) return Effect.void
-          return Effect.forkIn(restart(cause, rebuild), managerScope)
+          return Effect.forkIn(withoutHeldReply(restart(cause, rebuild)), managerScope)
         }
 
         yield* Scope.addFinalizer(
@@ -640,11 +643,12 @@ export const make = Effect.fnUntraced(function*<
     const onTransaction = Context.get(entry.message.annotations, WithTransaction)
       ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         Effect.suspend(() => {
-          const transaction: RequestTransaction = { requestId: entry.message.envelope.requestId }
+          const transaction: RequestTransaction = { requestId: entry.message.envelope.requestId, open: true }
           entry.transaction = transaction
           return Effect.onExit(
             Effect.provideService(options.storage.withTransaction(effect), HeldReply, transaction),
             (outcome) => {
+              transaction.open = false
               if (entry.transaction === transaction) entry.transaction = undefined
               const settle = transaction.settle ? transaction.settle(outcome) : Effect.void
               if (Exit.isFailure(outcome) || !transaction.delivery) return settle
