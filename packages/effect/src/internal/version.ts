@@ -1,2 +1,2 @@
 /** @internal */
-export const version = "4.0.1"
+export const version = "4.0.2"
