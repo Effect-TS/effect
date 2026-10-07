@@ -1217,10 +1217,29 @@ export const merge: {
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
+  if (extendsContext(that as ContextImpl<R1>, self as ContextImpl<Services>)) return that as any
   if (self.mapUnsafe.size === 0) return that as any
   if (that.mapUnsafe.size === 0) return self as any
   return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)))
 })
+
+// Whether `that` is `self` with zero or more overlays added on top: both share
+// the immutable base and `self`'s overlay node is in `that`'s chain, so the
+// chain below it is exactly `self`'s. Merging `that` into `self` then yields
+// `that`'s entries in `that`'s iteration order: `self`'s keys first, then the
+// keys first added by `that`'s extra overlays, every value taken from `that`.
+const extendsContext = (that: ContextImpl<any>, self: ContextImpl<any>): boolean => {
+  if (that.base !== self.base || self.base === undefined) return false
+  const target = self.overlay
+  if (target === undefined) return true
+  // Chains are at most MaxDepth long, but bound the walk regardless
+  let overlay = that.overlay
+  for (let i = 0; overlay !== undefined && i <= MaxDepth; i++) {
+    if (overlay === target) return true
+    overlay = overlay.parent
+  }
+  return false
+}
 
 /**
  * Merges any number of `Context`s into one.
