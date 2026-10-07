@@ -39,8 +39,8 @@ import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import { CurrentActivationScope } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
-import { HeldReply, withoutHeldReply } from "./heldReply.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
+import { ReplyHold } from "./replyHold.ts"
 import { ResourceMap } from "./resourceMap.ts"
 import { ResourceRef } from "./resourceRef.ts"
 
@@ -89,7 +89,7 @@ export interface Residency {
 
 // An open handler transaction. The handler's reply and bookkeeping wait here
 // until the transaction outcome is known.
-interface RequestTransaction extends HeldReply {
+interface RequestTransaction extends ReplyHold {
   settle?: ((outcome: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 }
 
@@ -281,7 +281,6 @@ export const make = Effect.fnUntraced(function*<
                   if (!isShuttingDown) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
-                      withoutHeldReply,
                       Effect.forkIn(handlerScope)
                     )
                   }
@@ -316,24 +315,29 @@ export const make = Effect.fnUntraced(function*<
                 if (!transaction) return respond
                 const exit = response.exit
 
-                // Non-persisted replies are not saved, so only failures wait for the rollback.
+                // Non-persisted replies are not saved, so only their failures
+                // wait for the rollback.
                 if (!storageEnabled || !Context.get(request.message.annotations, Persisted)) {
                   if (Exit.isSuccess(exit)) return respond
                   transaction.settle = () => respond
                   return Effect.void
                 }
 
-                // A success is saved with the handler's writes; storage holds
-                // its delivery until COMMIT. A failure is saved after a clean
-                // rollback. If COMMIT or ROLLBACK fails, the request is replayed.
+                // A success is saved with the handler's writes and the caller
+                // is notified after COMMIT. A failure is saved after a clean
+                // rollback. If COMMIT or ROLLBACK itself fails, the outcome is
+                // unknown and the request is replayed.
                 if (Exit.isSuccess(exit)) {
-                  transaction.settle = (outcome) => Exit.isSuccess(outcome) ? complete : restartFrom(outcome.cause)
-                  return Effect.orDie(save)
+                  transaction.settle = (outcome) =>
+                    Exit.isSuccess(outcome)
+                      ? Effect.orDie(Effect.andThen(transaction.notify ?? Effect.void, complete))
+                      : restartFrom(outcome.cause)
+                  return Effect.orDie(Effect.provideService(save, ReplyHold, transaction))
                 }
                 transaction.settle = (outcome) =>
-                  Exit.isFailure(outcome) && !isSameCause(outcome.cause, exit.cause)
-                    ? restartFrom(outcome.cause)
-                    : respond
+                  Exit.isSuccess(outcome) || Equal.equals(outcome.cause, exit.cause)
+                    ? respond
+                    : restartFrom(outcome.cause)
                 return Effect.void
               }
               case "Chunk": {
@@ -371,14 +375,12 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
-        // Rebuild the handlers and replay the active requests. A defect can
-        // restart from inside a transaction, so the replayed handlers must not
-        // inherit its hold.
+        // Rebuild the handlers and replay the active requests.
         const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
           if (!isActive()) return endLatch.open
           const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
           if (!rebuild) return Effect.void
-          return Effect.forkIn(withoutHeldReply(restart(cause, rebuild)), managerScope)
+          return Effect.forkIn(restart(cause, rebuild), managerScope)
         }
 
         yield* Scope.addFinalizer(
@@ -638,23 +640,16 @@ export const make = Effect.fnUntraced(function*<
       transaction?: RequestTransaction | undefined
     }
   ): Parameters<EntityState["write"]>[2] => {
-    // Replies settle once the transaction outcome is known. Deliveries held
-    // by storage reach callers only after COMMIT.
+    // The reply and bookkeeping settle once the transaction outcome is known.
     const onTransaction = Context.get(entry.message.annotations, WithTransaction)
       ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         Effect.suspend(() => {
-          const transaction: RequestTransaction = { requestId: entry.message.envelope.requestId, open: true }
+          const transaction: RequestTransaction = {}
           entry.transaction = transaction
-          return Effect.onExit(
-            Effect.provideService(options.storage.withTransaction(effect), HeldReply, transaction),
-            (outcome) => {
-              transaction.open = false
-              if (entry.transaction === transaction) entry.transaction = undefined
-              const settle = transaction.settle ? transaction.settle(outcome) : Effect.void
-              if (Exit.isFailure(outcome) || !transaction.delivery) return settle
-              return Effect.andThen(settle, Effect.orDie(transaction.delivery))
-            }
-          )
+          return Effect.onExit(options.storage.withTransaction(effect), (outcome) => {
+            if (entry.transaction === transaction) entry.transaction = undefined
+            return transaction.settle ? transaction.settle(outcome) : Effect.void
+          })
         })
       : undefined
     const onCaller = entry.callerScope && bindToCaller(entry.callerScope)
@@ -838,21 +833,6 @@ const requestEnvelope = (entry: {
     lastSentChunk: entry.lastSentChunk
   } as any) as any
 })
-
-// Whether two causes carry the same failures, ignoring annotations added as a
-// cause propagates.
-const isSameCause = (self: Cause.Cause<unknown>, that: Cause.Cause<unknown>): boolean =>
-  self === that || (self.reasons.length === that.reasons.length && self.reasons.every((reason, i) => {
-    const other = that.reasons[i]
-    switch (reason._tag) {
-      case "Fail":
-        return other._tag === "Fail" && other.error === reason.error
-      case "Die":
-        return other._tag === "Die" && other.defect === reason.defect
-      case "Interrupt":
-        return other._tag === "Interrupt" && other.fiberId === reason.fiberId
-    }
-  }))
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?

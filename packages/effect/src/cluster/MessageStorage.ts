@@ -30,7 +30,7 @@ import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { HeldReply } from "./internal/heldReply.ts"
+import { ReplyHold } from "./internal/replyHold.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
@@ -210,17 +210,16 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   /**
    * Used to wrap requests with transactions.
    *
-   * For persisted `WithTransaction` requests, the terminal `WithExit` reply is
-   * saved inside the transaction, but callers receive it and the request is
-   * marked processed only after the transaction exits with a known outcome:
-   * after COMMIT for a success, or after a clean rollback for a failure, which
-   * is then saved outside the transaction. If COMMIT or ROLLBACK fails, the
-   * held reply is dropped and the request is replayed.
+   * For a persisted `WithTransaction` request, the `WithExit` reply the
+   * handler produces inside the transaction is saved inside it, and callers
+   * are notified only after COMMIT. A handler failure is saved and delivered
+   * after a clean rollback. If COMMIT or ROLLBACK itself fails, no reply is
+   * delivered and the request is replayed.
    *
-   * Exclusions: stream chunks are saved and delivered immediately; replies
-   * from handlers that return a `Deferred` are saved after the transaction
-   * commits; non-persisted requests save no reply and keep immediate success
-   * delivery.
+   * This does not cover stream chunks, which are saved and delivered as they
+   * are produced; handlers that return a `Deferred`, whose reply arrives after
+   * the transaction has committed; or non-persisted requests, which save no
+   * reply.
    */
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>
@@ -631,8 +630,8 @@ export const make = (
         }),
       saveReply(reply) {
         const requestId = reply.reply.requestId
-        const deliver = (persisted: Reply.ReplyWithContext<any>) =>
-          Effect.suspend(() => {
+        return Effect.flatMap(storage.saveReply(reply), (persisted) => {
+          const notify = Effect.suspend(() => {
             const handlers = replyHandlers.get(requestId)
             if (!handlers) {
               return Effect.void
@@ -648,14 +647,14 @@ export const make = (
               ? handlers[0].respond(persisted)
               : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
           })
-        return Effect.flatMap(storage.saveReply(reply), (persisted) => {
-          if (persisted.reply._tag !== "WithExit") return deliver(persisted)
-          // Inside the request's transaction, callers get the reply after it commits.
-          return HeldReply.use((held) => {
-            if (!held?.open || held.requestId !== requestId) return deliver(persisted)
-            held.delivery = deliver(persisted)
-            return Effect.void
-          })
+          if (persisted.reply._tag !== "WithExit") return notify
+          // A reply saved inside its request's transaction becomes visible to
+          // callers at COMMIT, so the transaction owner runs the notification.
+          return ReplyHold.use((hold) =>
+            hold === undefined ? notify : Effect.sync(() => {
+              hold.notify = notify
+            })
+          )
         })
       }
     })
