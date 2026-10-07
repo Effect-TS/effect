@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
+import { Cause, Effect, Equal, Exit, Fiber, Hash, Option, Queue, Stream } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Queue", () => {
@@ -597,6 +597,94 @@ describe("Queue", () => {
       // Queue is now empty again
       const empty2 = yield* Queue.poll(queue)
       assert.isTrue(Option.isNone(empty2))
+    }))
+
+  it.effect("poll drains a failing queue and then returns none", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, string>(10)
+      yield* Queue.offerAll(queue, [1, 2])
+      yield* Queue.fail(queue, "boom")
+      assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(1))
+      assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(2))
+      assert.isTrue(Option.isNone(yield* Queue.poll(queue)))
+      assert.strictEqual(yield* Effect.flip(Queue.take(queue)), "boom")
+    }))
+
+  // A woken taker retries with the effect it was waiting in, so one effect
+  // value may be waiting in several fibers at once.
+  it.effect("one take effect shared by waiting fibers serves them in arrival order", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const take = Queue.take(queue)
+      const takeN = Queue.takeN(queue, 2)
+      const fibers = [
+        yield* Effect.forkChild(take, { startImmediately: true }),
+        yield* Effect.forkChild(takeN, { startImmediately: true }),
+        yield* Effect.forkChild(take, { startImmediately: true }),
+        yield* Effect.forkChild(takeN, { startImmediately: true })
+      ]
+      yield* Queue.offerAll(queue, [1, 2, 3, 4, 5, 6])
+      assert.deepStrictEqual(yield* Fiber.joinAll(fibers), [1, [2, 3], 4, [5, 6]])
+
+      const late = yield* Effect.forkChild(take, { startImmediately: true })
+      yield* Queue.offer(queue, 7)
+      assert.strictEqual(yield* Fiber.join(late), 7)
+    }))
+
+  it.effect("interrupting a waiter on a shared take effect leaks no taker and loses no message", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const take = Queue.take(queue)
+      const a = yield* Effect.forkChild(take, { startImmediately: true })
+      const b = yield* Effect.forkChild(take, { startImmediately: true })
+      yield* Fiber.interrupt(a)
+      assert(queue.state._tag === "Open")
+      assert.strictEqual(queue.state.takers.size, 1)
+      yield* Queue.offer(queue, 1)
+      assert.strictEqual(yield* Fiber.join(b), 1)
+      assert.strictEqual(queue.state.takers.size, 0)
+    }))
+
+  it.effect("shared takeBetween effect waits for min across retries", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      const takeBetween = Queue.takeBetween(queue, 2, 3)
+      const f1 = yield* Effect.forkChild(takeBetween, { startImmediately: true })
+      const f2 = yield* Effect.forkChild(takeBetween, { startImmediately: true })
+      yield* Queue.offer(queue, 1)
+      yield* Effect.yieldNow
+      assert.isUndefined(f1.pollUnsafe())
+      yield* Queue.offerAll(queue, [2, 3, 4, 5])
+      assert.deepStrictEqual(yield* Fiber.joinAll([f1, f2]), [[1, 2, 3], [4, 5]])
+    }))
+
+  it.effect("queue effects do not expose queue contents when formatted", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<string>()
+      Queue.offerAllUnsafe(queue, ["secret-a"])
+      Queue.offerUnsafe(queue, "secret-b")
+      const effects = [Queue.take(queue), Queue.offer(queue, "x"), Queue.poll(queue), Queue.takeN(queue, 2)]
+      for (const effect of effects) {
+        const formatted = String(effect) + JSON.stringify(effect)
+        assert.isFalse(formatted.includes("secret"), formatted)
+      }
+    }))
+
+  it.effect("queue effects compare and hash by identity", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<number>()
+      for (let i = 0; i < 20_000; i++) Queue.offerAllUnsafe(queue, [i])
+      assert.isFalse(Equal.equals(Queue.take(queue), Queue.take(queue)))
+      assert.isFalse(Equal.equals(Queue.offer(queue, 1), Queue.offer(queue, 1)))
+      assert.isFalse(Equal.equals(Queue.poll(queue), Queue.poll(queue)))
+      assert.isFalse(Equal.equals(Queue.takeN(queue, 2), Queue.takeN(queue, 2)))
+      const take = Queue.take(queue)
+      assert.isTrue(Equal.equals(take, take))
+      const start = performance.now()
+      assert.strictEqual(Hash.hash(take), Hash.hash(take))
+      Hash.hash(Queue.offer(queue, 1))
+      Hash.hash(Queue.takeN(queue, 2))
+      assert.isBelow(performance.now() - start, 100)
     }))
 
   it.effect("peek views item without removing it", () =>
