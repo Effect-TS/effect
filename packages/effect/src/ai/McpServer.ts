@@ -651,7 +651,6 @@ const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
 const cancelledResponses = new WeakMap<object, string | number>()
-// Request responses an HTTP POST is expected to write; cancellation withholds them.
 const httpPostResponses = new WeakMap<HttpServerRequest.HttpServerRequest, { expected: number }>()
 const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
@@ -1671,7 +1670,7 @@ const layerMcpProtocolHttp = (options: {
         const httpRequest = yield* HttpServerRequest.HttpServerRequest
         const response = Effect.flatMap(httpEffect, (response) => {
           if (!admission.acknowledge && response.body._tag === "Uint8Array" && response.body.body.length === 0) {
-            // A request POST is answered with JSON or SSE, so it may only be empty when cancellation withheld every response.
+            // Only fully cancelled request POSTs may return an empty SSE response.
             // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
             return httpPostResponses.get(httpRequest)?.expected === 0
               ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
