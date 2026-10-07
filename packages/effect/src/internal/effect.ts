@@ -666,7 +666,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       }
       const all = op[contAll]
       if (all !== undefined) {
-        const cont = all.call(op, this)
+        const cont = all.call(op, this, symbol)
         if (cont) {
           ;(cont as any)[symbol] = cont
           return cont as any
@@ -1199,11 +1199,20 @@ const asyncFinalizer: (
   onInterrupt: () => Effect.Effect<void, any, any>
 ) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
-  [contAll](fiber) {
-    if (fiber.interruptible) {
-      fiber.interruptible = false
-      fiber._stack.push(setInterruptibleTrue)
+  [contAll](fiber, symbol) {
+    if (!fiber.interruptible) return
+    if (symbol === contA) {
+      // This frame has no success continuation, so masking here would only
+      // push `setInterruptibleTrue` for `getCont` to pop straight away.
+      // Apply that frame's effect directly: interruptible stays true and a
+      // pending interruption replaces the success.
+      if (fiber._interruptedCause) {
+        return () => failCause(fiber._interruptedCause!)
+      }
+      return
     }
+    fiber.interruptible = false
+    fiber._stack.push(setInterruptibleTrue)
   },
   [contE](cause, _fiber) {
     return hasInterrupts(cause)
