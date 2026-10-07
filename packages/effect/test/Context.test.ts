@@ -1,8 +1,13 @@
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
+import * as internalEffect from "effect/internal/effect"
+import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
+import * as References from "effect/References"
+import * as Scheduler from "effect/Scheduler"
+import * as Tracer from "effect/Tracer"
 import { describe, it } from "vitest"
 
 interface ContextInternals {
@@ -291,5 +296,65 @@ describe("Context", () => {
     const context = Context.makeUnsafe(map)
 
     strictEqual(context.mapUnsafe, map)
+  })
+
+  it("derives fiber caches that match a full rebuild", () => {
+    const UserCached = Context.Service<number>("ContextTest/FiberCacheUserCached", { fiberCached: true })
+    const tracerA = Tracer.make({ span: () => undefined as any, context: () => undefined as any })
+    const tracerB = Tracer.make({ span: () => undefined as any })
+    const span = (spanId: string) => Tracer.externalSpan({ spanId, traceId: "trace" })
+    const frame = (name: string) => ({ name, stack: () => undefined, parent: undefined })
+    const metrics = { recordFiberStart() {}, recordFiberEnd() {} } as any
+    const choices: ReadonlyArray<readonly [string, ReadonlyArray<unknown>]> = [
+      [Scheduler.Scheduler.key, [new Scheduler.MixedScheduler(), new Scheduler.MixedScheduler(), undefined]],
+      [Tracer.TracerKey, [tracerA, tracerB, undefined]],
+      [References.TracerEnabled.key, [true, false, undefined]],
+      [Tracer.ParentSpanKey, [span("a"), span("b"), undefined]],
+      [References.CurrentLogLevel.key, ["Debug", "Error", undefined]],
+      [References.MinimumLogLevel.key, ["All", "Warn", undefined]],
+      [References.CurrentStackFrame.key, [frame("a"), frame("b"), undefined]],
+      [Metric.FiberRuntimeMetricsKey, [metrics, undefined]],
+      [Scheduler.MaxOpsBeforeYield.key, [1, 4096, undefined]],
+      [Scheduler.PreventSchedulerYield.key, [true, false, undefined]],
+      [UserCached.key, [1, 2]],
+      [A.key, [1, 2]],
+      [B.key, [3]]
+    ]
+    let seed = 42
+    const random = (n: number) => {
+      seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff
+      return (seed >>> 16) % n
+    }
+
+    const fiber = new internalEffect.FiberImpl(Context.empty())
+    const contexts: Array<Context.Context<never>> = [Context.empty()]
+    let derived = 0
+    for (let i = 0; i < 5000; i++) {
+      let context = contexts[random(contexts.length)]
+      const op = random(20)
+      if (op === 0) {
+        context = Context.omit(Context.Service(choices[random(choices.length)][0]))(context)
+      } else {
+        const [key, values] = choices[random(choices.length)]
+        context = Context.addUnsafe(context, key, values[random(values.length)])
+      }
+      contexts.push(context)
+      // Leave some roots unrefreshed so later additions on top of them have to
+      // fall back to a full rebuild
+      if (random(4) === 0) continue
+      const root = (context as any).cacheRoot
+      if (root._fiberCacheParent !== undefined) {
+        // Runtimes that only read `_fiberCache` must keep rebuilding in full
+        strictEqual(root._fiberCache, undefined)
+        derived++
+      }
+      fiber.setContext(context)
+      const expected = internalEffect.makeFiberContextCache(context)
+      deepStrictEqual(Object.keys(fiber.cache), Object.keys(expected))
+      for (const field of Object.keys(expected) as Array<keyof typeof expected>) {
+        strictEqual(fiber.cache[field], expected[field], field)
+      }
+    }
+    assertTrue(derived > 1000)
   })
 })

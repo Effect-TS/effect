@@ -491,6 +491,12 @@ interface ContextImpl<in Services> extends Context<Services> {
   _flat: ReadonlyMap<string, any> | undefined
   // Owned by the fiber runtime and only meaningful on a cacheRoot
   _fiberCache: unknown
+  // Set by `addUnsafe` on a root created by adding the cached key
+  // `_fiberCacheKey` on top of a root whose fiber cache was already computed:
+  // the parent root's cache, from which the fiber runtime derives this root's
+  // cache by refreshing that key alone
+  _fiberCacheParent: unknown
+  _fiberCacheKey: string | undefined
 }
 
 interface Overlay {
@@ -521,6 +527,8 @@ const ContextConstructor = function(
   this._flat = undefined
   this.baseHits = 0
   this._fiberCache = undefined
+  this._fiberCacheParent = undefined
+  this._fiberCacheKey = undefined
 } as any as new<Services>(
   cacheRoot: ContextImpl<any> | undefined,
   base: ReadonlyMap<string, any>,
@@ -613,7 +621,15 @@ export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "_fiberCache"
+  | "cacheRoot"
+  | "base"
+  | "overlay"
+  | "depth"
+  | "_flat"
+  | "baseHits"
+  | "_fiberCache"
+  | "_fiberCacheParent"
+  | "_fiberCacheKey"
 > = {
   get mapUnsafe() {
     return flatten(this as any as ContextImpl<any>)
@@ -830,7 +846,24 @@ export const addUnsafe = <Services, I, S>(
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
-  const cacheRoot = cacheKeys.has(key) ? undefined : impl.cacheRoot
+  if (!cacheKeys.has(key)) return addOverlay(impl, impl.cacheRoot, key, service)
+  const next = addOverlay<Services | I>(impl, undefined, key, service)
+  // The new root resolves every cached key like the parent root except `key`
+  // (the Redactable fallback context has no cacheRoot)
+  const parentCache = impl.cacheRoot?._fiberCache
+  if (parentCache !== undefined) {
+    next._fiberCacheParent = parentCache
+    next._fiberCacheKey = key
+  }
+  return next
+}
+
+const addOverlay = <Services>(
+  impl: ContextImpl<any>,
+  cacheRoot: ContextImpl<any> | undefined,
+  key: string,
+  service: unknown
+): ContextImpl<Services> => {
   if (impl.depth >= MaxDepth) {
     // Avoid mapUnsafe: it would flatten the parent before copying.
     const map = new Map(impl._flat ?? impl.base)
