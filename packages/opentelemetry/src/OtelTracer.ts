@@ -10,16 +10,12 @@
  * OpenTelemetry tracer provider or an explicitly provided `OtelTracer`. This
  * module does not create exporters or span processors by itself, so spans are
  * exported only when the provider has been configured by the application or by
- * the Node/Web SDK layers. Parentage is taken from Effect spans first. A span
- * without an Effect parent attaches to the active OpenTelemetry span only when
- * that span was created outside Effect, for example by plain JavaScript or
- * `startActiveSpan`. The context Effect installs for its own spans is not
- * inherited this way, so an Effect run started from inside a traced effect, or
- * a fiber resumed by one, starts a new trace unless it is given a parent with
- * `Effect.withParentSpan`. `makeExternalSpan` and `withSpanContext` are the
- * entry points for continuing an incoming remote trace. Preserve `traceFlags`
- * and `traceState` when building external spans; otherwise sampling defaults to
- * sampled and trace state cannot be propagated.
+ * the Node/Web SDK layers. Effect parents take precedence over active
+ * OpenTelemetry spans. Ambient spans installed by Effect are not inherited;
+ * use `Effect.withParentSpan` to pass an Effect parent explicitly.
+ * `makeExternalSpan` and `withSpanContext` continue incoming remote traces.
+ * Preserve `traceFlags` and `traceState` when building external spans; otherwise
+ * sampling defaults to sampled and trace state cannot be propagated.
  *
  * @stability unstable
  * @since 4.0.0
@@ -529,8 +525,7 @@ class OtelParentSpanContext extends Context.Service<
   Otel.SpanContext
 >()("@effect/opentelemetry/Tracer/OtelParentSpanContext") {}
 
-// Marks the OpenTelemetry span installed by the Effect `context` hook, so that
-// it is not mistaken for an external parent by span-less fibers.
+// Distinguishes Effect-installed spans from external ambient parents.
 const EffectSpanKey = Otel.createContextKey("@effect/opentelemetry/OtelTracer/EffectSpan")
 
 const getOtelParent = (
