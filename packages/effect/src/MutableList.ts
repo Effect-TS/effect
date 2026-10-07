@@ -183,8 +183,11 @@ const compactHead = <A>(self: MutableList<A>): void => {
   }
 }
 
-const emptyBucket = <A = never>(): MutableList.Bucket<A> => ({
-  array: [],
+// A new bucket starts with exactly one slot. In V8, pushing onto an empty array
+// grows it to 17 slots, which a list that drains after every append (a queue
+// handing one message at a time to a waiting taker) would discard each time.
+const singletonBucket = <A>(message: A): MutableList.Bucket<A> => ({
+  array: [message],
   mutable: true,
   offset: 0,
   next: undefined
@@ -214,12 +217,12 @@ const emptyBucket = <A = never>(): MutableList.Bucket<A> => ({
  */
 export const append = <A>(self: MutableList<A>, message: A): void => {
   if (!self.tail) {
-    self.head = self.tail = emptyBucket()
+    self.head = self.tail = singletonBucket(message)
   } else if (!self.tail.mutable) {
-    self.tail.next = emptyBucket()
-    self.tail = self.tail.next
+    self.tail = self.tail.next = singletonBucket(message)
+  } else {
+    self.tail.array.push(message)
   }
-  self.tail!.array.push(message)
   self.length++
 }
 
