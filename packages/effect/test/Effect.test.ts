@@ -55,6 +55,60 @@ const assertUnknownError = <A>(exit: Exit.Exit<A, Cause.UnknownError>, cause: un
 }
 
 describe("Effect", () => {
+  describe("interpreter dispatch", () => {
+    it("dies on invalid effects wrapped by map or returned by flatMap", () => {
+      for (
+        const effect of [
+          Effect.map(42 as any, (x) => x),
+          Effect.as(undefined as any, 1),
+          Effect.flatMap(Effect.sync(() => 1), () => 42 as any)
+        ] as Array<Effect.Effect<unknown, unknown>>
+      ) {
+        const exit = Effect.runSyncExit(effect)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.include(Cause.pretty(exit.cause), "Fiber.runLoop: Not a valid effect")
+        }
+      }
+    })
+
+    it.effect("auto-yields map / flatMap chains every MaxOpsBeforeYield operations", () =>
+      Effect.gen(function*() {
+        const trace: Array<string> = []
+        const chain = (name: string) => {
+          let effect: Effect.Effect<unknown> = Effect.void
+          for (let i = 0; i < 300; i++) {
+            effect = Effect.flatMap(Effect.map(effect, () => trace.push(name)), () => Effect.void)
+          }
+          return effect
+        }
+        const a = yield* Effect.forkChild(chain("a"))
+        const b = yield* Effect.forkChild(chain("b"))
+        yield* Fiber.join(a)
+        yield* Fiber.join(b)
+        assert.strictEqual(trace.slice(0, 48).join(""), "a".repeat(12) + "b".repeat(12) + "a".repeat(24))
+      }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 50)))
+
+    it.effect("a deferred self-interrupt inside sync skips the following map frames", () =>
+      Effect.gen(function*() {
+        let ran = false
+        const fiber = yield* Effect.forkChild(Effect.withFiber((fiber) =>
+          Effect.map(
+            Effect.sync(() => {
+              fiber.interruptUnsafe()
+              return 1
+            }),
+            () => {
+              ran = true
+            }
+          )
+        ))
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.isFalse(ran)
+      }))
+  })
+
   describe("interruption before cleanup registration", () => {
     const interruptAfterContextChange = (changed: (context: Context.Context<never>) => boolean) => {
       let yielded = false

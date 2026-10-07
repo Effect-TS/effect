@@ -652,8 +652,7 @@ export const exitSucceed: <A>(a: A) => Exit.Exit<A> = makeExit({
   op: "Success",
   prop: "value",
   [evaluate](fiber) {
-    const cont = fiber.getCont(contA)
-    return cont ? cont[contA](this[args], fiber, this) : fiber.yieldWith(this)
+    return fiber.continueWith(this[args], this)
   }
 })
 
@@ -727,9 +726,7 @@ export const withFiberSucceed: <A, R = never>(
 ) => Effect.Effect<A, never, R> = makePrimitive({
   op: "WithFiberSucceed",
   [evaluate](fiber) {
-    const value = this[args](fiber)
-    const cont = fiber.getCont(contA)
-    return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+    return fiber.continueWith(this[args](fiber), undefined)
   }
 })
 

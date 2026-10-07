@@ -612,6 +612,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
             const prev = current
             current = flatMap(yieldNow, () => prev as any) as any
           }
+          // map / flatMap / as / tap / andThen frames are the most common
+          // primitive. Evaluating them inline (push the frame, continue with
+          // the wrapped effect) keeps the generic dispatch below for the rest.
+          if (cache.tracerContext === undefined && (current as any) instanceof ContImpl) {
+            this._stack.push(current as Primitive)
+            current = (current as any)[args]
+            continue
+          }
           current = cache.tracerContext
             ? cache.tracerContext(current as any, this)
             : (current as any)[evaluate](this)
@@ -651,6 +659,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     while (true) {
       const op = this._stack.pop()
       if (!op) return undefined
+      // ContImpl frames only have a success continuation
+      if ((op as any) instanceof ContImpl) {
+        if (symbol === contA) return op as any
+        continue
+      }
       const all = op[contAll]
       if (all !== undefined) {
         const cont = all.call(op, this)
@@ -670,8 +683,21 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     if ((++this.currentOpCount & (maxInlineSteps - 1)) === 0) {
       return exitSucceed(value) as any
     }
+    return this.continueWith(value, undefined)
+  }
+  // Passes a success value to the next continuation, or completes the run
+  // loop with `exit` (or a new success Exit) when the stack is empty.
+  // ContImpl continuations are called from their own site, which only sees
+  // ContImpl frames, instead of the generic site shared by every frame type.
+  continueWith(value: unknown, exit: Exit.Exit<any, any> | undefined): Primitive | Yield {
     const cont = this.getCont(contA)
-    return cont ? cont[contA](value, this) : this.yieldWith(exitSucceed(value))
+    if (cont === undefined) {
+      return this.yieldWith(exit ?? exitSucceed(value))
+    } else if ((cont as any) instanceof ContImpl) {
+      return cont[contA](value, this, exit)
+    }
+    // User handlers can be stored as continuations, so keep their arity
+    return exit === undefined ? cont[contA](value, this) : cont[contA](value, this, exit)
   }
   yieldWith(value: Exit.Exit<any, any> | (() => void)): Yield {
     this._yielded = value
@@ -929,9 +955,7 @@ export const fail: <E>(error: E) => Effect.Effect<never, E> = exitFail
 export const sync: <A>(thunk: LazyArg<A>) => Effect.Effect<A> = makePrimitive({
   op: "Sync",
   [evaluate](fiber): Primitive | Yield {
-    const value = this[args]()
-    const cont = fiber.getCont(contA)
-    return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+    return fiber.continueWith(this[args](), undefined)
   }
 })
 

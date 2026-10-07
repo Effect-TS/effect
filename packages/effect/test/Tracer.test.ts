@@ -285,6 +285,29 @@ describe("Tracer", () => {
       }))
   })
 
+  describe("Tracer.context", () => {
+    it("observes map, flatMap, tap and as frames", () => {
+      const seen: Record<string, number> = {}
+      const tracer = Tracer.make({
+        span: (options) => new Tracer.NativeSpan(options),
+        context(primitive, fiber) {
+          const id = (primitive as any)["~effect/Effect/identifier"]
+          seen[id] = (seen[id] ?? 0) + 1
+          return primitive["~effect/Effect/evaluate"](fiber)
+        }
+      })
+      const program = Effect.succeed(1).pipe(
+        Effect.map((x) => x + 1),
+        Effect.flatMap((x) => Effect.succeed(x)),
+        Effect.tap(() => Effect.void),
+        Effect.as(5)
+      )
+      strictEqual(Effect.runSync(Effect.withTracer(program, tracer)), 5)
+      // map, flatMap, tap, the frame tap adds to restore its input, and as
+      strictEqual(seen["OnSuccess"], 5)
+    })
+  })
+
   describe("interruption as a traced region starts", () => {
     const interruptAtEveryStep = (
       make: () => Effect.Effect<unknown>,
