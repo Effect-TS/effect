@@ -44,7 +44,7 @@ import type {
   unassigned
 } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
-import type { Primitive } from "./core.ts"
+import type { Primitive, PrimitiveClass } from "./core.ts"
 import {
   args,
   causeAnnotate,
@@ -957,6 +957,14 @@ export const sync: <A>(thunk: LazyArg<A>) => Effect.Effect<A> = makePrimitive({
   [evaluate](fiber): Primitive | Yield {
     return fiber.continueWith(this[args](), undefined)
   }
+}, (Proto) => {
+  const Sync = function(this: any, thunk: unknown) {
+    this[args] = thunk
+  } as unknown as PrimitiveClass
+  Sync.prototype = Proto
+  return function(thunk: any) {
+    return new Sync(thunk)
+  } as any
 })
 
 /** @internal */
@@ -967,6 +975,14 @@ export const suspend: <A, E, R>(
   [evaluate](_fiber) {
     return this[args]()
   }
+}, (Proto) => {
+  const Suspend = function(this: any, evaluate: unknown) {
+    this[args] = evaluate
+  } as unknown as PrimitiveClass
+  Suspend.prototype = Proto
+  return function(evaluate: any) {
+    return new Suspend(evaluate)
+  } as any
 })
 
 /** @internal */
