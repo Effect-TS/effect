@@ -346,8 +346,14 @@ describe("Context", () => {
       deepStrictEqual([...assertMergeMatches(self2, that2).mapUnsafe], [[D.key, 0], [A.key, 4], [B.key, 2], [C.key, 3]])
     })
 
-    it("keeps the fiber cache of a derived context", () => {
+    it("keeps the fiber cache of self unless that holds a cached key", () => {
       const self = Context.make(A, 1).pipe(Context.add(Cached, 2))
+      const plain = Context.make(B, 3).pipe(Context.add(A, 4))
+      const withCached = Context.make(B, 3).pipe(Context.add(Cached, 5))
+
+      assertTrue(Context.hasSameCache(assertMergeMatches(self, plain), self))
+      assertFalse(Context.hasSameCache(assertMergeMatches(self, withCached), self))
+      // A derived context keeps its own cache
       const derived = Context.add(self, Cached, 6)
       assertTrue(Context.hasSameCache(assertMergeMatches(self, derived), derived))
       assertFalse(Context.hasSameCache(derived, self))
