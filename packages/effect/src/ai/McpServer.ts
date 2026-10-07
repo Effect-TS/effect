@@ -850,10 +850,13 @@ const runWithRuntime = Effect.fnUntraced(function*(
             if (request._tag === "Interrupt") {
               // A cancelled reverse request may never receive a reply.
               removeReverseRequestClient(requestKey(request.requestId), key)
+              return sendNotification(key.profile.protocolVersion, key.clientId, {
+                tag: "notifications/cancelled",
+                payload: { requestId: request.requestId }
+              })
             }
-            // Ack & co are not part of FromServerEncoded, but the JSON-RPC
-            // serializer encodes them symmetrically for reverse control flow
-            return protocol.send(key.clientId, request as any)
+            // Effect RPC control messages are not part of the MCP protocol.
+            return Effect.void
           },
           supportsAck: true,
           supportsTransferables: false,
