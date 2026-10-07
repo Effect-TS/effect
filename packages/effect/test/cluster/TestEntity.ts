@@ -137,7 +137,11 @@ export const TestEntityNoState = TestEntity.toLayer(
           Stream.rechunk(1)
         )
       },
-      WithTransaction: () => MemoryTransaction,
+      WithTransaction: (envelope) =>
+        Effect.suspend(() => {
+          Queue.offerUnsafe(state.envelopes, envelope)
+          return MemoryTransaction
+        }),
       FailWithTransaction: (envelope) =>
         Effect.suspend(() => {
           Queue.offerUnsafe(state.envelopes, envelope)
