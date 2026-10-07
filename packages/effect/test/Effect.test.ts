@@ -8,9 +8,11 @@ import {
   Duration,
   Effect,
   Effectable,
+  Equal,
   Exit,
   Fiber,
   type Filter,
+  Hash,
   Latch,
   Layer,
   Logger,
@@ -56,6 +58,50 @@ const assertUnknownError = <A>(exit: Exit.Exit<A, Cause.UnknownError>, cause: un
 
 describe("Effect", () => {
   describe("interpreter dispatch", () => {
+    it("preserves the shape of primitives and exits", () => {
+      const exit = Exit.succeed(1)
+      const effect = Effect.succeed(2)
+      assert.strictEqual(Object.getPrototypeOf(exit), Object.getPrototypeOf(effect))
+      assert.strictEqual(Reflect.ownKeys(exit).length, 1)
+      assert.notStrictEqual(Object.getPrototypeOf(Exit.succeed(1)), Object.getPrototypeOf(Exit.fail(1)))
+      assert.isTrue(Equal.equals(Exit.fail("a"), Exit.fail("a")))
+      assert.strictEqual(Hash.hash(Exit.succeed(1)), Hash.hash(Exit.succeed(1)))
+      assert.deepStrictEqual(Exit.succeed(1).toJSON(), { _id: "Exit", _tag: "Success", value: 1 })
+      assert.isTrue(Exit.isExit(new (Exit.succeed as any)(1)))
+    })
+
+    it.effect("skips generator frames when failures unwind through finalizers", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.gen(function*() {
+            return yield* Effect.fail("e")
+          }).pipe(Effect.ensuring(Effect.sync(() => log.push("finalizer"))))
+          log.push("unreached")
+        }).pipe(Effect.catch((e) => Effect.succeed(e)))
+        assert.strictEqual(result, "e")
+        assert.deepStrictEqual(log, ["finalizer"])
+      }))
+
+    it.effect("resumes generators with Exit values past the inline step limit", () =>
+      Effect.gen(function*() {
+        let sum = 0
+        for (let i = 0; i < 20_000; i++) {
+          sum += yield* (i % 2 ? Exit.succeed(i) : Effect.succeed(i))
+        }
+        assert.strictEqual(sum, 199_990_000)
+      }))
+
+    it.live("resumes fnUntracedEager after an async step", () =>
+      Effect.gen(function*() {
+        const f = Effect.fnUntracedEager(function*(n: number) {
+          const a = yield* Effect.succeed(n)
+          yield* Effect.sleep(1)
+          return a + (yield* Exit.succeed(2))
+        })
+        assert.strictEqual(yield* f(1), 3)
+      }))
+
     it("dies on invalid effects wrapped by map or returned by flatMap", () => {
       for (
         const effect of [

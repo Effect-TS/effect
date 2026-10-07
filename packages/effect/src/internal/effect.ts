@@ -659,8 +659,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     while (true) {
       const op = this._stack.pop()
       if (!op) return undefined
-      // ContImpl frames only have a success continuation
-      if ((op as any) instanceof ContImpl) {
+      // ContImpl and generator frames only have a success continuation
+      if ((op as any) instanceof ContImpl || (op as any) instanceof IteratorImpl) {
         if (symbol === contA) return op as any
         continue
       }
@@ -687,14 +687,17 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
   // Passes a success value to the next continuation, or completes the run
   // loop with `exit` (or a new success Exit) when the stack is empty.
-  // ContImpl continuations are called from their own site, which only sees
-  // ContImpl frames, instead of the generic site shared by every frame type.
+  // ContImpl and generator continuations are called from their own sites,
+  // which only see one frame type, instead of the generic site shared by
+  // every frame type.
   continueWith(value: unknown, exit: Exit.Exit<any, any> | undefined): Primitive | Yield {
     const cont = this.getCont(contA)
     if (cont === undefined) {
       return this.yieldWith(exit ?? exitSucceed(value))
     } else if ((cont as any) instanceof ContImpl) {
       return cont[contA](value, this, exit)
+    } else if ((cont as any) instanceof IteratorImpl) {
+      return cont[contA](value, this)
     }
     // User handlers can be stored as continuations, so keep their arity
     return exit === undefined ? cont[contA](value, this) : cont[contA](value, this, exit)
@@ -1413,39 +1416,35 @@ const fromIteratorEagerUnsafe = (
   }
 }
 
-const fromIteratorUnsafe: (
+const IteratorImpl = function(this: any, iterator: any, initial: any) {
+  this.iterator = iterator
+  this.initial = initial
+} as unknown as PrimitiveCtor<[iterator: any, initial: any]>
+IteratorImpl.prototype = makePrimitiveProto({
+  op: "Iterator",
+  [contA](this: any, value, fiber) {
+    const iter = this.iterator
+    while (true) {
+      const state = iter.next(value)
+      if (state.done) return succeed(state.value)
+      if (!effectIsExit(state.value)) {
+        fiber._stack.push(this)
+        return state.value
+      } else if (state.value._tag === "Failure") {
+        return state.value
+      }
+      value = state.value.value
+    }
+  },
+  [evaluate](this: any, fiber: FiberImpl) {
+    return this[contA](this.initial, fiber)
+  }
+})
+
+const fromIteratorUnsafe = (
   iterator: Iterator<Effect.Effect<any, any, any>>,
   initial?: undefined
-) => Effect.Effect<any, any, any> = (function() {
-  const Proto = makePrimitiveProto({
-    op: "Iterator",
-    [contA](this: any, value, fiber) {
-      const iter = this.iterator
-      while (true) {
-        const state = iter.next(value)
-        if (state.done) return succeed(state.value)
-        if (!effectIsExit(state.value)) {
-          fiber._stack.push(this)
-          return state.value
-        } else if (state.value._tag === "Failure") {
-          return state.value
-        }
-        value = state.value.value
-      }
-    },
-    [evaluate](this: any, fiber: FiberImpl) {
-      return this[contA](this.initial, fiber)
-    }
-  })
-  const IteratorImpl = function(this: any, iterator: any, initial: any) {
-    this.iterator = iterator
-    this.initial = initial
-  } as unknown as PrimitiveCtor<[iterator: any, initial: any]>
-  IteratorImpl.prototype = Proto
-  return function(iterator: any, initial?: undefined) {
-    return new IteratorImpl(iterator, initial)
-  } as any
-})()
+): Effect.Effect<any, any, any> => new IteratorImpl(iterator, initial)
 
 // ----------------------------------------------------------------------------
 // mapping & sequencing
