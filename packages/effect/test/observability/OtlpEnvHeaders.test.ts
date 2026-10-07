@@ -17,18 +17,3 @@ it.effect("decodes percent-encoded OTLP header values", () =>
       "x-comma": "comma,value"
     })
   }))
-
-it.effect("keeps = inside OTLP header values", () =>
-  Effect.gen(function*() {
-    const headers = yield* OtlpEnv.headers("TRACES").parse(
-      ConfigProvider.fromEnv({
-        env: {
-          OTEL_EXPORTER_OTLP_TRACES_HEADERS: "authorization=Basic%20dXNlcjpwYXNzd29yZA=="
-        }
-      })
-    )
-
-    assert.deepStrictEqual(headers, {
-      authorization: "Basic dXNlcjpwYXNzd29yZA=="
-    })
-  }))

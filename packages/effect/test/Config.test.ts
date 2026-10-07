@@ -1729,11 +1729,11 @@ Expected "Infinity" | "-Infinity" | "NaN"
 
         it("supports custom separators", async () => {
           const options = { separator: "&", keyValueSeparator: "==" }
-          const input = "service.name==my-service&service.version==1.0.0&custom.attribute==value"
+          const input = "service.name==my-service&service.version==1.0.0&custom.attribute==a==b"
           const expected = {
             "service.name": "my-service",
             "service.version": "1.0.0",
-            "custom.attribute": "value"
+            "custom.attribute": "a==b"
           }
 
           await assertSuccess(
