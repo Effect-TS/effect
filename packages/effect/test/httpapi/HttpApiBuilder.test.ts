@@ -548,32 +548,44 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
 
       assert.deepStrictEqual(result, { name: "Ada" })
     }))
+})
 
-  it.effect("decodes a single value into an array field of form and GET payloads", () =>
+it.layer(TestServices)("HttpApiBuilder array payloads", (it) => {
+  it.effect("round trips form-urlencoded array payloads with one or more values", () =>
     Effect.gen(function*() {
       const Tags = Schema.Struct({ tags: Schema.Array(Schema.String) })
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
-          HttpApiEndpoint.post("form", "/form", {
+          HttpApiEndpoint.post("create", "/create", {
             payload: Tags.pipe(HttpApiSchema.asFormUrlEncoded()),
             success: Tags
-          }),
-          HttpApiEndpoint.get("query", "/query", { payload: { tags: Schema.Array(Schema.String) }, success: Tags })
+          })
         )
       )
-      const GroupLayer = HttpApiBuilder.group(
-        Api,
-        "test",
-        (handlers) =>
-          handlers
-            .handle("form", ({ payload }) => Effect.succeed(payload))
-            .handle("query", ({ payload }) => Effect.succeed(payload))
-      )
-
+      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+        handlers.handle("create", ({ payload }) =>
+          Effect.succeed(payload)))
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
 
-      assert.deepStrictEqual(yield* client.test.form({ payload: { tags: ["a"] } }), { tags: ["a"] })
-      assert.deepStrictEqual(yield* client.test.query({ payload: { tags: ["a"] } }), { tags: ["a"] })
+      assert.deepStrictEqual(yield* client.test.create({ payload: { tags: ["a"] } }), { tags: ["a"] })
+      assert.deepStrictEqual(yield* client.test.create({ payload: { tags: ["a", "b"] } }), { tags: ["a", "b"] })
+    }))
+
+  it.effect("round trips GET array payloads with one or more values", () =>
+    Effect.gen(function*() {
+      const Tags = Schema.Struct({ tags: Schema.Array(Schema.String) })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("list", "/list", { payload: { tags: Schema.Array(Schema.String) }, success: Tags })
+        )
+      )
+      const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+        handlers.handle("list", ({ payload }) =>
+          Effect.succeed(payload)))
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a"] } }), { tags: ["a"] })
+      assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a", "b"] } }), { tags: ["a", "b"] })
     }))
 })
 
