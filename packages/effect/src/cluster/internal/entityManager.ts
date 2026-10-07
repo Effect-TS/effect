@@ -316,7 +316,19 @@ export const make = Effect.fnUntraced(function*<
                 // Save success in the transaction; save failure after a clean
                 // rollback. Wrapper failures replay without completing the request.
                 if (Exit.isSuccess(exit)) {
-                  transaction.settle = (outcome) => Exit.isSuccess(outcome) ? complete : restartFrom(outcome.cause)
+                  transaction.settle = (outcome) =>
+                    Exit.isSuccess(outcome) ? complete : Effect.flatMap(
+                      hasStoredExit(request.message.envelope.requestId),
+                      (committed) => {
+                        if (!committed) return restartFrom(outcome.cause)
+                        // COMMIT applied but was reported as failed. Callers
+                        // missed the notification, so they read the reply from storage.
+                        return Effect.andThen(
+                          complete,
+                          options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                        )
+                      }
+                    )
                   return Effect.orDie(save)
                 }
                 transaction.settle = (outcome) =>
@@ -359,6 +371,14 @@ export const make = Effect.fnUntraced(function*<
           Scope.provide(handlerScope),
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
+
+        // Whether storage holds a terminal reply for the request. Lookup failures
+        // count as none, so the request is replayed.
+        const hasStoredExit = (requestId: Snowflake.Snowflake): Effect.Effect<boolean> =>
+          options.storage.repliesForUnfiltered([requestId]).pipe(
+            Effect.map((replies) => replies.some((reply) => reply._tag === "WithExit")),
+            Effect.catchCause(() => Effect.succeed(false))
+          )
 
         // Restart without inheriting the failed handler's transaction context.
         const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
@@ -630,10 +650,12 @@ export const make = Effect.fnUntraced(function*<
       : !Context.get(entry.message.annotations, Persisted)
       ? options.storage.withTransaction
       : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-        Effect.suspend(() => {
+        // Only the handler is interruptible. An interrupt arriving during
+        // COMMIT must not hide the outcome from settle.
+        Effect.uninterruptibleMask((restore) => {
           const transaction: RequestTransaction = {}
           entry.transaction = transaction
-          return Effect.onExit(options.storage.withTransaction(effect), (outcome) => {
+          return Effect.onExit(options.storage.withTransaction(restore(effect)), (outcome) => {
             if (entry.transaction === transaction) entry.transaction = undefined
             return transaction.settle ? transaction.settle(outcome) : Effect.void
           })
