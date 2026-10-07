@@ -573,12 +573,19 @@ export const make = (
     return MessageStorage.of({
       ...storage,
       // Callers learn of the `WithExit` replies saved inside a transaction
-      // once it has committed.
+      // once the outermost transaction has committed. Each nested transaction
+      // keeps its own notifications so a rollback discards only its replies.
       withTransaction: (effect) =>
-        Effect.suspend(() => {
+        TransactionNotifications.use((outer) => {
           const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
           return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
-            Effect.tap(() => Effect.orDie(Effect.forEach(notifications, identity, { discard: true })))
+            Effect.tap(() =>
+              outer
+                ? Effect.sync(() => {
+                  outer.push(...notifications)
+                })
+                : Effect.orDie(Effect.forEach(notifications, identity, { discard: true }))
+            )
           )
         }),
       registerReplyHandler: (message) => {
