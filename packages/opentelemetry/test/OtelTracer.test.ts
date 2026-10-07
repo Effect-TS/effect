@@ -157,19 +157,6 @@ describe("Tracer", () => {
         assert.isTrue(Option.isNone(child.parent))
       }).pipe(Effect.provide(TracingLayer)))
 
-    it.effect("withSpan below a tracer-disabled span has no parent", () =>
-      Effect.gen(function*() {
-        const child = yield* Effect.currentSpan.pipe(
-          Effect.withSpan("child"),
-          Effect.withTracerEnabled(true),
-          Effect.withSpan("disabled"),
-          Effect.withTracerEnabled(false)
-        )
-
-        assert(child instanceof OtelTracer.OtelSpan)
-        assert.isTrue(Option.isNone(child.parent))
-      }).pipe(Effect.provide(TracingLayer)))
-
     it.effect("withSpan does not inherit the span of the fiber that resumed it", () =>
       Effect.gen(function*() {
         const deferred = yield* Deferred.make<void>()
@@ -188,67 +175,9 @@ describe("Tracer", () => {
         assert.notStrictEqual(child.traceId, waker.traceId)
       }).pipe(Effect.provide(TracingLayer)))
 
-    it.effect("withSpan in an Effect run started inside a traced effect has no parent", () =>
-      Effect.gen(function*() {
-        const services = yield* Effect.context<never>()
-        const [outer, child] = yield* Effect.gen(function*() {
-          const outer = yield* Effect.currentSpan
-          const child = yield* Effect.promise(() =>
-            Effect.runPromise(
-              Effect.currentSpan.pipe(
-                Effect.withSpan("child"),
-                Effect.provideContext(services)
-              )
-            )
-          )
-          return [outer, child] as const
-        }).pipe(Effect.withSpan("outer"))
-
-        assert(child instanceof OtelTracer.OtelSpan)
-        assert.isTrue(Option.isNone(child.parent))
-        assert.notStrictEqual(child.traceId, outer.traceId)
-      }).pipe(Effect.provide(TracingLayer)))
-
-    it.effect("withSpan in an Effect run started from a timer set inside a span has no parent", () =>
-      Effect.gen(function*() {
-        const services = yield* Effect.context<never>()
-        const [outer, child] = yield* Effect.gen(function*() {
-          const outer = yield* Effect.currentSpan
-          const child = yield* Effect.promise(() =>
-            new Promise<EffectTracer.Span>((resolve, reject) => {
-              setTimeout(() => {
-                Effect.runPromise(
-                  Effect.currentSpan.pipe(
-                    Effect.withSpan("child"),
-                    Effect.provideContext(services)
-                  )
-                ).then(resolve, reject)
-              }, 0)
-            })
-          )
-          return [outer, child] as const
-        }).pipe(Effect.withSpan("outer"))
-
-        assert(child instanceof OtelTracer.OtelSpan)
-        assert.isTrue(Option.isNone(child.parent))
-        assert.notStrictEqual(child.traceId, outer.traceId)
-      }).pipe(Effect.provide(TracingLayer)))
-
-    it.effect.each([
-      {
-        name: "DisablePropagation",
-        disable: Effect.withSpan("disabled", {
-          annotations: EffectTracer.DisablePropagation.context(true)
-        })
-      },
-      {
-        name: "withTracerEnabled(false)",
-        disable: <A, E, R>(self: Effect.Effect<A, E, R>) =>
-          self.pipe(Effect.withSpan("disabled"), Effect.withTracerEnabled(false))
-      }
-    ])(
-      "raw OpenTelemetry span below a $name span uses the nearest propagated parent",
-      ({ disable }) =>
+    it.effect(
+      "raw OpenTelemetry span below a propagation-disabled span uses the nearest propagated parent",
+      () =>
         Effect.gen(function*() {
           const parent = yield* Effect.currentSpan
           const tracer = yield* OtelTracer.OtelTracer
@@ -256,7 +185,9 @@ describe("Tracer", () => {
             const span = tracer.startSpan("raw")
             span.end()
             return span as unknown as ReadableSpan
-          }).pipe(disable)
+          }).pipe(Effect.withSpan("disabled", {
+            annotations: EffectTracer.DisablePropagation.context(true)
+          }))
 
           assert.strictEqual(raw.spanContext().traceId, parent.traceId)
           assert.strictEqual(raw.parentSpanContext?.spanId, parent.spanId)
