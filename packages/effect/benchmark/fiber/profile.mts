@@ -2,7 +2,7 @@
 // into throughput results.
 //
 //   node profile.mts --workload <name> [--root <dir>] [--time 3000] [--warmup 500] [--interval 100]
-//                    [--label <name>] [--heap-prof] [--top 25] [--window measure|all] [--size k=v]
+//                    [--label <name>] [--heap-prof] [--top 25] [--window measure|all] [--size k=v] [--pollute]
 //
 // Output in tmp/fiberperf/profiles/<label>/: *.cpuprofile, cpu.folded, cpu.svg, top.txt, worker.json
 // and with --heap-prof also *.heapprofile, heap.folded, heap.svg.
@@ -37,6 +37,7 @@ const workerArgs = [
   "--json"
 ]
 if (typeof options.size === "string") workerArgs.push("--size", options.size)
+if (options.pollute === true) workerArgs.push("--pollute")
 console.log(`INSTRUMENTED profiling run (not a throughput measurement): ${options.workload} -> ${dir}`)
 const result = spawnSync(process.execPath, [...nodeArgs, ...workerArgs], { encoding: "utf8" })
 if (result.status !== 0) throw new Error(`profiled worker failed:\n${result.stderr}\n${result.stdout}`)
