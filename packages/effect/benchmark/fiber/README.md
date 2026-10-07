@@ -95,6 +95,13 @@ iterations.
   shown spurious ±5–8% differences.
 - The tool warns if the 1-min loadavg is above 1.5 at start. The loadavg at start
   and end of every process is stored in the raw JSON.
+- Type feedback: a fresh process that runs one workload keeps the
+  interpreter's shared call and property sites monomorphic, which applications
+  do not. `compare.mts` therefore runs `pollute.ts`, a mix of about twenty
+  primitive kinds, in every worker before warmup (`--no-pollute` disables it;
+  `worker.mts`, `run.mts` callers and `profile.mts` take `--pollute`). On the
+  baseline this moves `succeed-flatmap-loop` from 18 to 23 ms, and it is what
+  exposed the megamorphic sites fixed in this branch.
 - Engines: `--engine node` (default), `bun` runs `bun worker.mts`, and `deno`
   runs `deno run -A worker.mts`. Bun has no GC observer (`gc.available: false`).
   Deno accepts a `gc` observer but delivers no entries, so it is also marked
@@ -125,13 +132,14 @@ Scenarios (default `--n 50000`; `peak-fanout` defaults to 100000):
 | `completed-handles` | bytes retained per completed `Fiber` handle, with the handle array cost measured separately                                       |
 | `released`          | fork N, interrupt, drop everything, settle repeatedly: retained delta, plus the `settleSeries`                                    |
 | `peak-fanout`       | `forEach` unbounded with yieldNow: heapUsed at the top of the fan-out (latch when the last fiber starts), 1 ms sampler peaks, RSS |
+| `--child-yields k`  | option for `suspended` and `completed-handles`: children yield k times first, so each owns a scheduler dispatcher                 |
 | `allocation`        | `--workload <name> --iterations 20`: allocated bytes per iteration, scavenge and major GC counts                                  |
 
 Known result on the baseline: `released` and `suspended-never` retain about
 125 B/fiber, scaling linearly. A heap-snapshot retainer chain shows this is the
-grown backing table of the module-level `hashCache` WeakMap in `Hash.ts`. The
-fibers themselves are not leaked, but something on the fork/interrupt path
-hashes an object for every fiber. The `peak-fanout` sampler rarely fires because
+grown backing table of the module-level `hashCache` WeakMap in `Hash.ts`: every
+interruption combined its interrupt causes through `Hash`/`Equal`. The fibers
+themselves are not leaked; the cause combination fast path removes this. The `peak-fanout` sampler rarely fires because
 the scheduler seldom yields to timers; the latch reading is the reliable one.
 
 ## Profiling methodology (`profile.mts`)
@@ -153,7 +161,8 @@ volume.
 
 ## Shared host lock
 
-Another thread on this host benchmarks too. Definitive comparisons and profiles must be wrapped in the lock:
+Another thread on this host benchmarks too. Definitive comparisons and profiles, and heavy test or typecheck runs
+while someone else measures, must be wrapped in the lock:
 
 ```sh
 flock /tmp/effect-fiber-bench.lock nix develop --command node packages/effect/benchmark/fiber/compare.mts ...
