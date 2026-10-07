@@ -788,6 +788,134 @@ const mixedService: Workload = {
   }
 }
 
+const timeoutFires: Workload = {
+  name: "timeout-fires",
+  group: "interruption",
+  description:
+    "Sequential Effect.timeout of Effect.never with a 0 ms limit: the firing path (timer resume + loser interrupt).",
+  size: { timeouts: 200 },
+  make: (E, size) => {
+    const { Effect, Option } = E
+    const count = size.timeouts
+    const program = Effect.gen(function*() {
+      let fired = 0
+      for (let i = 0; i < count; i++) {
+        const result = yield* Effect.timeoutOption(Effect.never, 0)
+        if (Option.isNone(result)) fired++
+      }
+      return fired
+    })
+    return promiseCase(E, program, (value) => expectEqual("fired", value, count))
+  }
+}
+
+const raceBothWork: Workload = {
+  name: "race-both-work",
+  group: "interruption",
+  description: "Sequential Effect.race where both sides yield and do work; the slower side is interrupted mid-run.",
+  size: { races: 2_000 },
+  make: (E, size) => {
+    const { Effect } = E
+    const count = size.races
+    const side = (i: number, yields: number) => {
+      let effect: Effect<number> = Effect.succeed(i)
+      for (let j = 0; j < yields; j++) effect = Effect.andThen(Effect.yieldNow, effect)
+      return effect
+    }
+    const program = Effect.gen(function*() {
+      let sum = 0
+      for (let i = 0; i < count; i++) sum += yield* Effect.race(side(i, 1), side(i, 3))
+      return sum
+    })
+    return promiseCase(E, program, (value) => expectEqual("sum", value, triangular(count)))
+  }
+}
+
+const interruptBusyFinalizers: Workload = {
+  name: "interrupt-busy-finalizers",
+  group: "interruption",
+  description:
+    "Fork fibers that loop (yielding) inside acquireRelease scopes, then interrupt them: busy-fiber interruption and finalizers run on interrupt.",
+  size: { fibers: 1_000 },
+  make: (E, size) => {
+    const { Effect, Fiber } = E
+    const count = size.fibers
+    let released = 0
+    const busy = Effect.scoped(
+      Effect.andThen(
+        Effect.acquireRelease(Effect.void, () =>
+          Effect.sync(() => {
+            released++
+          })),
+        Effect.forever(Effect.yieldNow)
+      )
+    )
+    const program = Effect.gen(function*() {
+      const fibers = []
+      for (let i = 0; i < count; i++) fibers.push(yield* Effect.forkChild(busy))
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      yield* Fiber.interruptAll(fibers)
+      const value = released
+      released = 0
+      return value
+    })
+    return promiseCase(E, program, (value) => expectEqual("released", value, count))
+  }
+}
+
+const sleepResume: Workload = {
+  name: "sleep-resume",
+  group: "async",
+  description:
+    "Many fibers resuming from Effect.sleep timers concurrently: timer-driven (macrotask) suspension and resumption.",
+  size: { fibers: 2_000, sleeps: 3 },
+  make: (E, size) => {
+    const { Effect } = E
+    const fibers = size.fibers
+    const sleeps = size.sleeps
+    const one = (i: number) =>
+      Effect.gen(function*() {
+        for (let j = 0; j < sleeps; j++) yield* Effect.sleep(0)
+        return i
+      })
+    const items = Array.from({ length: fibers }, (_, i) => i)
+    const program = Effect.map(
+      Effect.forEach(items, one, { concurrency: "unbounded" }),
+      (values) => values.reduce((a, b) => a + b, 0)
+    )
+    return promiseCase(E, program, (value) => expectEqual("sum", value, triangular(fibers)))
+  }
+}
+
+const rootRunPromise: Workload = {
+  name: "root-run-promise",
+  group: "fiber",
+  description:
+    "Many root fibers started from outside the runtime (one Effect.runPromise per request), all in flight together.",
+  size: { requests: 5_000 },
+  make: (E, size) => {
+    const { Effect } = E
+    const requests = size.requests
+    const handler = (i: number) => Effect.andThen(Effect.yieldNow, Effect.succeed(i))
+    let result: number | undefined
+    return {
+      run: async () => {
+        const promises = new Array<Promise<number>>(requests)
+        for (let i = 0; i < requests; i++) promises[i] = Effect.runPromise(handler(i))
+        const values = await Promise.all(promises)
+        let sum = 0
+        for (const value of values) sum += value
+        result = sum
+      },
+      validate: () => {
+        expectEqual("sum", result, triangular(requests))
+        result = undefined
+      }
+    }
+  }
+}
+
 export const workloads: ReadonlyArray<Workload> = [
   succeedFlatMapLoop,
   mapChainDeep,
@@ -802,13 +930,18 @@ export const workloads: ReadonlyArray<Workload> = [
   forEachBounded,
   forEachUnbounded,
   shortLivedFibers,
+  rootRunPromise,
   callbackResume,
   promiseInterop,
+  sleepResume,
   yieldContention,
   deferredPingPong,
   interruptSuspended,
   race,
   timeout,
+  timeoutFires,
+  raceBothWork,
+  interruptBusyFinalizers,
   scopeFinalizers,
   contextLocals,
   tracingSpans,
