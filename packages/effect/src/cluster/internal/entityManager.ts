@@ -86,25 +86,33 @@ export interface Residency {
   readonly releaseUnsafe: () => void
 }
 
-// Represents the entities managed by this entity manager
 /**
+ * @internal
+ */
+export type ActiveRequest = {
+  readonly rpc: Rpc.AnyWithProps
+  readonly message: Message.IncomingRequestLocal<any>
+  sentReply: boolean
+  /** Excludes requests awaiting their first dispatch from replay. */
+  delivered: boolean
+  sentExit: boolean
+  lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
+  sequence: number
+  /** Set when the request should not outlive its caller. */
+  callerScope?: Scope.Scope | undefined
+  /** Set while a `WithTransaction` handler's transaction is open. */
+  transaction?: { pendingExit: Effect.Effect<void> | undefined } | undefined
+}
+
+/**
+ * Represents the entities managed by this entity manager.
+ *
  * @internal
  */
 export type EntityState = {
   readonly address: EntityAddress
   readonly scope: Scope.Scope
-  readonly activeRequests: Map<Snowflake.Snowflake, {
-    readonly rpc: Rpc.AnyWithProps
-    readonly message: Message.IncomingRequestLocal<any>
-    sentReply: boolean
-    /** Excludes requests awaiting their first dispatch from replay. */
-    delivered: boolean
-    sentExit: boolean
-    lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
-    sequence: number
-    /** Set when the request should not outlive its caller. */
-    callerScope?: Scope.Scope | undefined
-  }>
+  readonly activeRequests: Map<Snowflake.Snowflake, ActiveRequest>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
   readonly keepAliveLatch: Latch.Latch
@@ -246,11 +254,18 @@ export const make = Effect.fnUntraced(function*<
           },
           concurrency: options.concurrency ?? 1,
           disableFatalDefects: options.disableFatalDefects,
-          onFromServer(response): Effect.Effect<void> {
+          onFromServer: function onFromServer(response): Effect.Effect<void> {
             switch (response._tag) {
               case "Exit": {
                 const request = activeRequests.get(Snowflake.Snowflake(response.requestId))
                 if (!request) return Effect.void
+
+                // A failure rolls back the handler's transaction, including
+                // any reply saved inside it, so reply once it has ended.
+                if (request.transaction && Exit.isFailure(response.exit)) {
+                  request.transaction.pendingExit = Effect.suspend(() => onFromServer(response))
+                  return Effect.void
+                }
 
                 request.sentReply = true
                 request.sentExit = true
@@ -595,11 +610,20 @@ export const make = Effect.fnUntraced(function*<
       return Effect.ensuring(effect, Effect.sync(() => scopeRemoveFinalizerUnsafe(callerScope, key)))
     })
 
-  const requestWriteOptions = (
-    entry: { readonly message: Message.IncomingRequestLocal<any>; readonly callerScope?: Scope.Scope | undefined }
-  ): Parameters<EntityState["write"]>[2] => {
+  // Runs the handler in a transaction, handling a failed exit after rollback.
+  const withTransaction = (entry: ActiveRequest) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    Effect.suspend(() => {
+      const transaction: NonNullable<ActiveRequest["transaction"]> = { pendingExit: undefined }
+      entry.transaction = transaction
+      return Effect.onExit(options.storage.withTransaction(effect), () => {
+        if (entry.transaction === transaction) entry.transaction = undefined
+        return transaction.pendingExit ?? Effect.void
+      })
+    })
+
+  const requestWriteOptions = (entry: ActiveRequest): Parameters<EntityState["write"]>[2] => {
     const onTransaction = Context.get(entry.message.annotations, WithTransaction)
-      ? options.storage.withTransaction
+      ? withTransaction(entry)
       : undefined
     const onCaller = entry.callerScope && bindToCaller(entry.callerScope)
     if (!onCaller) return onTransaction && { onRequest: onTransaction }

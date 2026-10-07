@@ -1,8 +1,9 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option } from "effect"
+import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option, Schema } from "effect"
 import {
+  ClusterSchema,
   Entity,
   EntityAddress,
   EntityId,
@@ -19,6 +20,7 @@ import {
   Snowflake,
   SqlMessageStorage
 } from "effect/cluster"
+import { Rpc } from "effect/rpc"
 import { SqlClient } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
@@ -38,6 +40,28 @@ const TestEntity = Entity.make("test", [GetUserRpc])
 const TestEntityLayer = TestEntity.toLayer({
   GetUser: () => Effect.void
 })
+
+class Rejected extends Schema.TaggedError<Rejected>()("Rejected", {}) {}
+
+const TransactionEntity = Entity.make("transaction", [
+  Rpc.make("Reject", {
+    payload: { id: Schema.String },
+    primaryKey: ({ id }) => id,
+    error: Rejected
+  })
+]).annotateRpcs(ClusterSchema.Persisted, true).annotateRpcs(ClusterSchema.WithTransaction, true)
+
+const TransactionEntityLayer = TransactionEntity.toLayer(Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  yield* sql`CREATE TABLE writes (id TEXT)`
+  return {
+    Reject: ({ payload }) =>
+      sql`INSERT INTO writes ${sql.insert({ id: payload.id })}`.pipe(
+        Effect.orDie,
+        Effect.andThen(Effect.fail(new Rejected()))
+      )
+  }
+}))
 
 const StorageLayer = SqlMessageStorage.layer.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
@@ -698,6 +722,32 @@ describe("SqlMessageStorage", () => {
     }).pipe(Effect.provide(StorageLayer.pipe(
       Layer.provideMerge(SqliteLayer)
     ))), { timeout: 15_000 })
+
+  it.effect("saves the reply of a failed WithTransaction handler after rolling back", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const makeClient = yield* TransactionEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const error = yield* Effect.flip(client.Reject({ id: "1" }))
+      expect(error._tag).toBe("Rejected")
+      expect(yield* sql`SELECT * FROM writes`).toEqual([])
+      expect(yield* sql`SELECT processed FROM cluster_messages`).toEqual([{ processed: 1 }])
+      expect(yield* sql`SELECT COUNT(*) AS count FROM cluster_replies`).toEqual([{ count: 1 }])
+
+      // A retry is deduplicated and receives the saved reply.
+      const retry = yield* Effect.flip(client.Reject({ id: "1" }))
+      expect(retry._tag).toBe("Rejected")
+    }).pipe(Effect.provide(TransactionEntityLayer.pipe(
+      Layer.provideMerge(Sharding.layer),
+      Layer.provide(RunnerStorage.layerMemory),
+      Layer.provide(RunnerHealth.layerNoop),
+      Layer.provide(Runners.layerNoop),
+      Layer.provide(ShardingConfig.layerDefaults),
+      Layer.provideMerge(StorageLayer),
+      Layer.provideMerge(SqliteLayer)
+    ))))
 })
 
 const SqliteLayer = Effect.gen(function*() {
