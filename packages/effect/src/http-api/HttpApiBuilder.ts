@@ -747,7 +747,6 @@ function buildPayloadDecoders(
   const result = new Map<string, PayloadDecoder>()
   payloadMap.forEach(({ encoding, schemas }, contentType) => {
     const schema = Schema.Union(schemas)
-    // Form fields and query params carry a one-element array as a bare value.
     const decode = Schema.decodeUnknownEffect(
       encoding._tag === "FormUrlEncoded" ? Schema.toCodecArrayFromSingle(schema) : schema,
       options
