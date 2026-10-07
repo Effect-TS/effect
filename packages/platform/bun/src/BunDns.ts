@@ -7,9 +7,9 @@
  *
  * **Gotchas**
  *
- * Bun's resolver reports a name without records of the requested type as a
- * missing name, so both fail with `NotFound`. It also returns each chunk of a
- * multi-chunk TXT record as a separate record.
+ * Bun returns each character string of a TXT record as a separate record, so
+ * a record made of several strings arrives as several TXT records whose chunks
+ * cannot be reassembled (https://github.com/oven-sh/bun/issues/44692).
  *
  * @since 4.0.0
  */

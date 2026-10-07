@@ -208,10 +208,10 @@ describe("Dns", () => {
         assert.deepStrictEqual(v6.map(NetAddress.formatIp), ["::1"])
         assert.strictEqual((yield* dns.resolve(name("a.b"), "SRV")).length, 1)
         const noData = yield* Effect.flip(dns.resolve(name("a.b"), "MX"))
-        assert.strictEqual(noData.reason, "NoData")
+        assert.strictEqual(noData.reason, "NotFound")
         assert.strictEqual(noData.recordType, "MX")
         const noNames = yield* Effect.flip(dns.reverse(ip("10.0.0.1")))
-        assert.strictEqual(noNames.reason, "NoData")
+        assert.strictEqual(noNames.reason, "NotFound")
       }))
 
     it.effect("answers from a static zone", () =>
@@ -232,9 +232,9 @@ describe("Dns", () => {
         const missing = yield* Effect.flip(dns.lookup(name("missing.internal")))
         assert.strictEqual(missing.reason, "NotFound")
         const noV6 = yield* Effect.flip(dns.lookup(name("v4.internal"), { family: "ipv6" }))
-        assert.strictEqual(noV6.reason, "NoData")
+        assert.strictEqual(noV6.reason, "NotFound")
         const hostsOnly = yield* Effect.flip(dns.resolve(name("v4.internal"), "A"))
-        assert.strictEqual(hostsOnly.reason, "NoData")
+        assert.strictEqual(hostsOnly.reason, "NotFound")
       }).pipe(Effect.provide(zone)))
 
     it("rejects invalid static zones", () => {

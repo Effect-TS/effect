@@ -38,7 +38,7 @@ export interface Options {
 
 const reasons: Record<string, Dns.DnsErrorReason> = {
   ENOTFOUND: "NotFound",
-  ENODATA: "NoData",
+  ENODATA: "NotFound",
   ETIMEOUT: "Timeout",
   EAI_AGAIN: "Temporary",
   ESERVFAIL: "ServerFailure",

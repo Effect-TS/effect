@@ -7,10 +7,9 @@
  *
  * **Gotchas**
  *
- * `Deno.resolveDns` does not distinguish a missing name from a name without
- * records of the requested type or from a refused query, so all three fail
- * with `NotFound`. Queries require
- * the `--allow-net` permission.
+ * `Deno.resolveDns` reports a query refused by the name server with the same
+ * error as a missing name, so refused queries fail with `NotFound` instead of
+ * `Refused`. Queries require the `--allow-net` permission.
  *
  * @since 4.0.0
  */

@@ -495,9 +495,10 @@ export const reverseName = (address: NetAddress.IpAddress): Host.DomainName => {
  *
  * **Details**
  *
- * - `NotFound`: the name does not exist.
- * - `NoData`: the name exists but has no records of the requested type or
- *   address family.
+ * - `NotFound`: no records were found, either because the name does not exist
+ *   or because it has no records of the requested type or address family.
+ *   Like Go's `DNSError.IsNotFound`, the two cases are not distinguished
+ *   because not every platform resolver can tell them apart.
  * - `Timeout`, `Temporary`, and `ServerFailure`: transient failures that may
  *   succeed when retried.
  * - `Refused`: the server refused the query or could not be reached.
@@ -512,7 +513,6 @@ export const reverseName = (address: NetAddress.IpAddress): Host.DomainName => {
  */
 export type DnsErrorReason =
   | "NotFound"
-  | "NoData"
   | "Timeout"
   | "Temporary"
   | "Refused"
@@ -648,7 +648,7 @@ const dedupe = <A>(values: ReadonlyArray<A>): Array<A> => {
   return out
 }
 
-const nonEmptyOrNoData = <A>(
+const nonEmptyOrNotFound = <A>(
   values: ReadonlyArray<A>,
   error: () => DnsError
 ): Effect.Effect<Arr.NonEmptyReadonlyArray<A>, DnsError> =>
@@ -661,7 +661,7 @@ const nonEmptyOrNoData = <A>(
  *
  * The constructor filters lookups by the requested address family, keeps only
  * records of the requested type, removes duplicates, and turns empty results
- * into `NoData` failures.
+ * into `NotFound` failures.
  *
  * @stability unstable
  * @category constructors
@@ -681,9 +681,9 @@ export const make = (impl: {
     return Effect.flatMap(
       impl.lookup(host, family),
       (addresses) =>
-        nonEmptyOrNoData(
+        nonEmptyOrNotFound(
           dedupe(addresses.filter((address) => matchesFamily(address, family))),
-          () => new DnsError({ reason: "NoData", method: "lookup", hostname: host })
+          () => new DnsError({ reason: "NotFound", method: "lookup", hostname: host })
         )
     ) as any
   },
@@ -691,18 +691,18 @@ export const make = (impl: {
     Effect.flatMap(
       impl.resolve(name, type),
       (records) =>
-        nonEmptyOrNoData(
+        nonEmptyOrNotFound(
           dedupe(records.filter((record) => record._tag === type)),
-          () => new DnsError({ reason: "NoData", method: "resolve", hostname: name, recordType: type })
+          () => new DnsError({ reason: "NotFound", method: "resolve", hostname: name, recordType: type })
         )
     ) as any,
   reverse: (address) =>
     Effect.flatMap(
       impl.reverse(address),
       (names) =>
-        nonEmptyOrNoData(
+        nonEmptyOrNotFound(
           dedupe(names),
-          () => new DnsError({ reason: "NoData", method: "reverse", hostname: NetAddress.formatIp(address) })
+          () => new DnsError({ reason: "NotFound", method: "reverse", hostname: NetAddress.formatIp(address) })
         )
     )
 })
@@ -734,7 +734,7 @@ const literalInet = <A extends NetAddress.InetAddress>(
 ): Effect.Effect<Arr.NonEmptyReadonlyArray<A>, DnsError> =>
   matchesFamily(address.address, family)
     ? Effect.succeed([address])
-    : Effect.fail(new DnsError({ reason: "NoData", method: "lookup", hostname: NetAddress.formatHost(address) }))
+    : Effect.fail(new DnsError({ reason: "NotFound", method: "lookup", hostname: NetAddress.formatHost(address) }))
 
 /**
  * Resolves an endpoint to every matching internet address.

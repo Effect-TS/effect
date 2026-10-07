@@ -6,6 +6,9 @@ import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as NodeDnsApi from "node:dns"
+import * as Fs from "node:fs/promises"
+import * as Os from "node:os"
+import * as Path from "node:path"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 import { afterAll, beforeAll } from "vitest"
 
@@ -111,12 +114,21 @@ export const startDnsServer = async (): Promise<{
   readonly nameServer: NetAddress.InetAddressV4
   readonly stop: () => Promise<void>
 }> => {
+  // The fixtures are bind-mounted rather than copied: under Bun, the archive
+  // testcontainers builds for copied content loses its last file.
+  const directory = await Fs.mkdtemp(Path.join(Os.tmpdir(), "effect-dns-"))
+  await Fs.chmod(directory, 0o755)
+  for (
+    const [file, content] of [
+      ["Corefile", corefile],
+      ["example.test.db", exampleZone],
+      ["2.0.192.in-addr.arpa.db", reverseZone]
+    ]
+  ) {
+    await Fs.writeFile(Path.join(directory, file), content, { mode: 0o644 })
+  }
   const container: StartedTestContainer = await new GenericContainer("coredns/coredns:1.14.7")
-    .withCopyContentToContainer([
-      { content: corefile, target: "/etc/coredns/Corefile" },
-      { content: exampleZone, target: "/etc/coredns/example.test.db" },
-      { content: reverseZone, target: "/etc/coredns/2.0.192.in-addr.arpa.db" }
-    ])
+    .withBindMounts([{ source: directory, target: "/etc/coredns", mode: "ro" }])
     .withCommand(["-conf", "/etc/coredns/Corefile"])
     .withExposedPorts("53/udp")
     .withWaitStrategy(Wait.forLogMessage(/CoreDNS-/))
@@ -129,25 +141,23 @@ export const startDnsServer = async (): Promise<{
     ) as NetAddress.InetAddressV4,
     stop: async () => {
       await container.stop()
+      await Fs.rm(directory, { recursive: true, force: true })
     }
   }
 }
 
+const isBun = typeof process !== "undefined" && process.versions.bun !== undefined
+const isDeno = "Deno" in globalThis
+
 /**
  * Runs end-to-end tests of a platform `Dns` service against a CoreDNS
- * container, recording how each runtime reports answers and failures.
+ * container. Every runtime must behave the same; the only skipped tests cover
+ * documented runtime bugs that the platform services cannot work around.
  */
+
 export const describeDnsServer = (
   label: string,
-  options: {
-    readonly make: (nameServer: NetAddress.InetAddressV4) => Dns.Dns
-    /** How the runtime reports a name that exists without records of the type. */
-    readonly noDataReason: Dns.DnsErrorReason
-    /** Whether the runtime returns each chunk of a TXT record as a record. */
-    readonly splitsTxtChunks?: boolean | undefined
-    /** How the runtime reports a query the name server refuses. */
-    readonly refusedReason: Dns.DnsErrorReason
-  }
+  make: (nameServer: NetAddress.InetAddressV4) => Dns.Dns
 ) =>
   describe(label, () => {
     let server: Awaited<ReturnType<typeof startDnsServer>>
@@ -158,7 +168,7 @@ export const describeDnsServer = (
       await server?.stop()
     })
 
-    const dns = () => options.make(server.nameServer)
+    const dns = () => make(server.nameServer)
 
     it.effect("looks up localhost from the hosts file", () =>
       Effect.gen(function*() {
@@ -176,12 +186,14 @@ export const describeDnsServer = (
         }
         assertRecords(yield* dns().resolve(name("www.example.test"), "CNAME"), expected.CNAME)
         assertRecords(yield* dns().resolve(name("_pg._tcp.example.test"), "SRV"), expected.SRV)
-        assertRecords(
-          yield* dns().resolve(name("example.test"), "TXT"),
-          options.splitsTxtChunks
-            ? expected.TXT[0].chunks.map((chunk) => Dns.makeRecordUnsafe("TXT", { chunks: [chunk] }))
-            : expected.TXT
-        )
+      }))
+
+    // Bun returns each character string of a TXT record as a separate record,
+    // so the chunks of a record cannot be reassembled:
+    // https://github.com/oven-sh/bun/issues/44692
+    it.effect.skipIf(isBun)("keeps the chunks of a TXT record together", () =>
+      Effect.gen(function*() {
+        assertRecords(yield* dns().resolve(name("example.test"), "TXT"), expected.TXT)
       }))
 
     it.effect("returns the root name for null targets", () =>
@@ -204,15 +216,17 @@ export const describeDnsServer = (
         assert.strictEqual(error.recordType, "A")
       }))
 
-    it.effect("reports refused queries", () =>
+    // `Deno.resolveDns` reports a refused query with the same `NotFound` error
+    // as a missing name, so the two cannot be told apart.
+    it.effect.skipIf(isDeno)("reports refused queries", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(dns().resolve(name("outside.invalid"), "A"))
-        assert.strictEqual(error.reason, options.refusedReason)
+        assert.strictEqual(error.reason, "Refused")
       }))
 
     it.effect("reports names without records of the requested type", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(dns().resolve(name("ns1.example.test"), "SRV"))
-        assert.strictEqual(error.reason, options.noDataReason)
+        assert.strictEqual(error.reason, "NotFound")
       }))
   })
