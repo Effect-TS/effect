@@ -7373,8 +7373,8 @@ export const slidingSize: {
             return Effect.succeed(chunks)
           },
           onFailure(cause_) {
-            if (emitted) MutableList.takeNVoid(list, windowSize - step)
-            if (list.length === 0) return Effect.failCause(cause_)
+            // The buffer has already advanced by step after a full window.
+            if (list.length === 0 || (emitted && list.length <= windowSize - step)) return Effect.failCause(cause_)
             cause = cause_
             return Effect.succeed(Arr.of(MutableList.takeAll(list) as any))
           }

@@ -5375,6 +5375,16 @@ describe("Stream", () => {
         ])
       }))
 
+    it.effect("slidingSize keeps all elements of the final partial window", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3, 4, 5, 6).pipe(
+          Stream.slidingSize(3, 2),
+          Stream.runCollect
+        )
+
+        deepStrictEqual(result, [[1, 2, 3], [3, 4, 5], [5, 6]])
+      }))
+
     it.effect("sliding - fails if upstream produces an error", () =>
       Effect.gen(function*() {
         const result = yield* pipe(
