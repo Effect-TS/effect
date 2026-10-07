@@ -1727,6 +1727,14 @@ Expected "Infinity" | "-Infinity" | "NaN"
           )
         })
 
+        it("supports an empty key-value separator", async () => {
+          await assertSuccess(
+            Config.Record(Schema.String, Schema.String, { keyValueSeparator: "" }),
+            ConfigProvider.fromUnknown("ab,cd"),
+            { a: "b", c: "d" }
+          )
+        })
+
         it("supports custom separators", async () => {
           const options = { separator: "&", keyValueSeparator: "==" }
           const input = "service.name==my-service&service.version==1.0.0&custom.attribute==a==b"
