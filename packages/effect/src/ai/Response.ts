@@ -49,6 +49,7 @@ export type AnyPart =
   | TextDeltaPart
   | TextEndPart
   | ReasoningPart
+  | CompactionPart
   | ReasoningStartPart
   | ReasoningDeltaPart
   | ReasoningEndPart
@@ -78,6 +79,7 @@ export type AnyPartEncoded =
   | TextDeltaPartEncoded
   | TextEndPartEncoded
   | ReasoningPartEncoded
+  | CompactionPartEncoded
   | ReasoningStartPartEncoded
   | ReasoningDeltaPartEncoded
   | ReasoningEndPartEncoded
@@ -107,6 +109,7 @@ export type AllParts<Tools extends Record<string, Tool.Any>> =
   | TextDeltaPart
   | TextEndPart
   | ReasoningPart
+  | CompactionPart
   | ReasoningStartPart
   | ReasoningDeltaPart
   | ReasoningEndPart
@@ -136,6 +139,7 @@ export type AllPartsEncoded =
   | TextDeltaPartEncoded
   | TextEndPartEncoded
   | ReasoningPartEncoded
+  | CompactionPartEncoded
   | ReasoningStartPartEncoded
   | ReasoningDeltaPartEncoded
   | ReasoningEndPartEncoded
@@ -215,6 +219,7 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
     toolResults.push(parts.toolResult)
   }
   return Schema.Union([
+    CompactionPart,
     TextPart,
     TextStartPart,
     TextDeltaPart,
@@ -256,6 +261,7 @@ export type Part<
 > =
   | TextPart
   | ReasoningPart
+  | CompactionPart
   | ToolCallParts<Tools, ParametersMode>
   | ToolResultParts<Tools>
   | ToolApprovalRequestPart
@@ -275,6 +281,7 @@ export type Part<
 export type PartEncoded =
   | TextPartEncoded
   | ReasoningPartEncoded
+  | CompactionPartEncoded
   | ReasoningDeltaPartEncoded
   | ReasoningEndPartEncoded
   | ToolCallPartEncoded
@@ -309,6 +316,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
     toolResults.push(parts.toolResult)
   }
   return Schema.Union([
+    CompactionPart,
     TextPart,
     ReasoningPart,
     ToolApprovalRequestPart,
@@ -337,6 +345,7 @@ export type StreamPart<
   Tools extends Record<string, Tool.Any>,
   ParametersMode extends ToolParametersMode = "decoded"
 > =
+  | CompactionPart
   | TextStartPart
   | TextDeltaPart
   | TextEndPart
@@ -364,6 +373,7 @@ export type StreamPart<
  * @since 4.0.0
  */
 export type StreamPartEncoded =
+  | CompactionPartEncoded
   | TextStartPartEncoded
   | TextDeltaPartEncoded
   | TextEndPartEncoded
@@ -406,6 +416,7 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
     toolResults.push(parts.toolResult)
   }
   return Schema.Union([
+    CompactionPart,
     TextStartPart,
     TextDeltaPart,
     TextEndPart,
@@ -615,6 +626,67 @@ export type ConstructorParams<Part extends AnyPart> =
      */
     readonly metadata?: Part["metadata"] | undefined
   }
+
+// =============================================================================
+// Compaction Part
+// =============================================================================
+
+/**
+ * Atomic opaque context issued by a provider for later requests to the same model.
+ *
+ * **Gotchas**
+ *
+ * The data is sensitive provider state, not text or a reasoning delta.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CompactionPart extends BasePart<"compaction", CompactionPartMetadata> {
+  readonly provider: string
+  readonly model: string
+  readonly data: string
+  readonly id?: string
+}
+
+/**
+ * Encoded representation of an atomic compaction response part.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CompactionPartEncoded extends BasePartEncoded<"compaction", CompactionPartMetadata> {
+  readonly provider: string
+  readonly model: string
+  readonly data: string
+  readonly id?: string
+}
+
+/**
+ * Provider metadata associated with an atomic compaction response part.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CompactionPartMetadata extends ProviderMetadata {}
+
+/**
+ * Schema for opaque compaction response parts, shared by complete and streaming responses.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const CompactionPart: Schema.Codec<CompactionPart, CompactionPartEncoded> = Schema.Struct({
+  ...BasePart.fields,
+  type: Schema.Literal("compaction"),
+  provider: Schema.NonEmptyString,
+  model: Schema.NonEmptyString,
+  data: Schema.NonEmptyString,
+  id: Schema.optionalKey(Schema.String)
+}).annotate({ identifier: "CompactionPart" })
 
 // =============================================================================
 // Text Part

@@ -25,6 +25,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as RcRef from "effect/RcRef"
@@ -58,6 +59,19 @@ export interface Service {
    * The transformed HTTP client used by this service.
    */
   readonly client: HttpClient.HttpClient
+
+  /**
+   * Compacts a complete input window using JSON over the stateless compact endpoint.
+   * Unsupported replacement items fail with available token usage preserved.
+   *
+   * @since 4.1.0
+   */
+  readonly compactResponse: (
+    options: typeof OpenAiSchema.CompactRequest.Encoded
+  ) => Effect.Effect<
+    readonly [body: typeof OpenAiSchema.CompactResponse.Type, response: HttpClientResponse.HttpClientResponse],
+    AiError.AiError
+  >
 
   /**
    * Create a response using the OpenAI responses endpoint.
@@ -265,6 +279,39 @@ export const make = Effect.fnUntraced(
         withRedactedHeaders
       )
 
+    const compactResponse: Service["compactResponse"] = Effect.fnUntraced(
+      function*(payload) {
+        const client = yield* resolveHttpClient
+        const response = yield* client.execute(HttpClientRequest.post("/responses/compact", {
+          body: HttpBody.jsonUnsafe(payload)
+        }))
+        const raw = yield* response.json.pipe(Effect.mapError(() =>
+          AiError.make({
+            module: "OpenAiClient",
+            method: "compactResponse",
+            reason: new AiError.InvalidOutputError({
+              description: "The compaction response could not be decoded; token usage is unavailable"
+            })
+          })
+        ))
+        const usage = getCompactErrorUsage(raw)
+        const invalid = () =>
+          AiError.make({
+            module: "OpenAiClient",
+            method: "compactResponse",
+            reason: new AiError.InvalidOutputError({
+              description: "The compaction response contains unsupported or malformed context or usage",
+              usage
+            })
+          })
+        yield* decodeCompactUsage(raw).pipe(Effect.mapError(invalid))
+        const body = yield* decodeCompactResponse(raw).pipe(Effect.mapError(invalid))
+        return [body, response] as const
+      },
+      Effect.catchTag("HttpClientError", (error) => Errors.mapHttpClientError(error, "compactResponse")),
+      withRedactedHeaders
+    )
+
     const buildResponseStream = (
       response: HttpClientResponse.HttpClientResponse
     ): [
@@ -334,12 +381,55 @@ export const make = Effect.fnUntraced(
     return OpenAiClient.of({
       client: httpClient,
       createResponse,
+      compactResponse,
       createResponseStream,
       createEmbedding
     })
   },
   withRedactedHeaders
 )
+
+const TokenCount = Schema.Int.check(
+  Schema.isGreaterThanOrEqualTo(0),
+  Schema.isLessThanOrEqualTo(Number.MAX_SAFE_INTEGER)
+)
+const decodeTokenCount = Schema.decodeUnknownOption(TokenCount)
+const decodeUsageRecord = Schema.decodeUnknownOption(Schema.Struct({
+  usage: Schema.Record(Schema.String, Schema.Unknown)
+}))
+const decodeCompactUsage = Schema.decodeUnknownEffect(Schema.Struct({
+  usage: Schema.Struct({
+    input_tokens: TokenCount,
+    output_tokens: TokenCount,
+    total_tokens: TokenCount,
+    input_tokens_details: Schema.optionalKey(Schema.Struct({
+      cached_tokens: Schema.optionalKey(TokenCount),
+      cache_write_tokens: Schema.optionalKey(TokenCount)
+    })),
+    output_tokens_details: Schema.optionalKey(Schema.Struct({
+      reasoning_tokens: Schema.optionalKey(TokenCount)
+    }))
+  }).check(Schema.makeFilter((usage) =>
+    usage.total_tokens === usage.input_tokens + usage.output_tokens &&
+    (usage.input_tokens_details?.cached_tokens ?? 0) + (usage.input_tokens_details?.cache_write_tokens ?? 0) <=
+      usage.input_tokens &&
+    (usage.output_tokens_details?.reasoning_tokens ?? 0) <= usage.output_tokens
+  ))
+}))
+const decodeCompactResponse = Schema.decodeUnknownEffect(OpenAiSchema.CompactResponse, {
+  onExcessProperty: "error"
+})
+
+const getCompactErrorUsage = (raw: unknown): typeof AiError.UsageInfo.Type | undefined => {
+  const record = decodeUsageRecord(raw)
+  if (Option.isNone(record)) return undefined
+  const usage = record.value.usage
+  return {
+    promptTokens: Option.getOrUndefined(decodeTokenCount(usage.input_tokens)),
+    completionTokens: Option.getOrUndefined(decodeTokenCount(usage.output_tokens)),
+    totalTokens: Option.getOrUndefined(decodeTokenCount(usage.total_tokens))
+  }
+}
 
 // =============================================================================
 // Layers

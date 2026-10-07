@@ -1,7 +1,7 @@
 import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAiTool } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
+import { Array, Context, Effect, Layer, Redacted, Ref, Result, Schema, SchemaGetter, Stream } from "effect"
 import { AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 
@@ -18,6 +18,55 @@ const fileSearchOutcomes = [
 ] as const
 
 describe("OpenAiLanguageModel", () => {
+  // Regression: 6f73f92291733dc1e970e222e63aba865183a072 omitted compaction from the handwritten decoder.
+  it.effect.each(["generateText", "streamText"] as const)(
+    "preserves completed compaction with %s",
+    (method) =>
+      Effect.gen(function*() {
+        const item = { type: "compaction", id: "cmp_item", encrypted_content: "synthetic-opaque-context" } as const
+        const response = makeDefaultResponse({ output: [item] })
+        const events = [
+          { type: "response.output_item.added", sequence_number: 1, output_index: 0, item },
+          { type: "response.output_item.done", sequence_number: 2, output_index: 0, item },
+          { type: "response.completed", sequence_number: 3, response }
+        ]
+        const client = makeRawResponseClient(
+          method === "generateText"
+            ? JSON.stringify(response)
+            : events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(""),
+          method === "generateText" ? "application/json" : "text/event-stream"
+        )
+        const result = yield* Effect.gen(function*() {
+          if (method === "generateText") return (yield* LanguageModel.generateText({ prompt: "Continue" })).content
+          return yield* LanguageModel.streamText({ prompt: "Continue" }).pipe(Stream.runCollect)
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-5.4")),
+          Effect.provide(OpenAiClient.layer({})),
+          Effect.provideService(HttpClient.HttpClient, client),
+          Effect.result
+        )
+        assert.isTrue(Result.isSuccess(result))
+        if (Result.isFailure(result)) return
+        const parts = result.success.filter((part) => part.type === "compaction")
+        strictEqual(parts.length, 1)
+        const part = parts[0]
+        strictEqual(part.provider, "openai")
+        strictEqual(part.model, "gpt-5.4")
+        strictEqual(part.id, item.id)
+        assert.isTrue(part.data === item.encrypted_content)
+        const prompt = Prompt.fromResponseParts(result.success)
+        const encoded = yield* Schema.encodeEffect(Prompt.Prompt)(prompt)
+        const decoded = yield* Schema.decodeEffect(Prompt.Prompt)(encoded)
+        assert.isTrue(JSON.stringify(Schema.encodeSync(Prompt.Prompt)(decoded)) === JSON.stringify(encoded))
+        strictEqual(decoded.content[0]?.role, "assistant")
+        assert.isTrue(
+          decoded.content.some((message) =>
+            message.role === "assistant" && message.content.some((part) => part.type === "compaction")
+          )
+        )
+      })
+  )
+
   describe("make", () => {
     it.effect("sends correct model in request", () =>
       Effect.gen(function*() {
@@ -2492,6 +2541,7 @@ const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStre
     OpenAiClient.OpenAiClient.of({
       client: undefined as any,
       createResponse: () => Effect.die(new Error("unexpected createResponse call")),
+      compactResponse: () => Effect.die(new Error("unexpected compactResponse call")),
       createResponseStream: () => Effect.succeed([response, Stream.fromIterable(events)]),
       createEmbedding: () => Effect.die(new Error("unexpected createEmbedding call"))
     })

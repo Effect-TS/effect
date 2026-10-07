@@ -98,7 +98,7 @@ export type TypeId = "~effect/ai/LanguageModel"
 export const TypeId: TypeId = "~effect/ai/LanguageModel"
 
 /**
- * Text generation, streaming, and structured output operations.
+ * Text generation, streaming, structured output, and native context compaction operations.
  *
  * @stability unstable
  * @category models
@@ -106,6 +106,13 @@ export const TypeId: TypeId = "~effect/ai/LanguageModel"
  */
 export interface LanguageModel {
   readonly [TypeId]: TypeId
+
+  /**
+   * Compacts context into a complete replacement prompt without executing tools or updating chat history.
+   *
+   * @since 4.1.0
+   */
+  readonly compact: (options: CompactOptions) => Effect.Effect<CompactResponse, AiError.AiError>
 
   /**
    * Whether the effective provider configuration supports system messages in
@@ -258,6 +265,58 @@ export type CodecTransformer = <T, E, RD, RE>(schema: Schema.ConstraintCodec<T, 
  * @since 4.0.0
  */
 export const defaultCodecTransformer: CodecTransformer = InternalCodecTransformer.defaultCodecTransformer
+
+/**
+ * Options for stateless provider-native context compaction.
+ *
+ * **Gotchas**
+ *
+ * The input must fit the selected model's context window before compaction.
+ *
+ * @stability unstable
+ * @category options
+ * @since 4.1.0
+ */
+export interface CompactOptions {
+  readonly prompt: Prompt.RawInput
+  readonly instructions?: string
+}
+
+/**
+ * Normalized context and tracing span passed to a provider's compaction hook.
+ *
+ * @stability unstable
+ * @category options
+ * @since 4.1.0
+ */
+export interface CompactProviderOptions {
+  readonly prompt: Prompt.Prompt
+  readonly instructions: string | undefined
+  readonly span: Span
+}
+
+/**
+ * Complete replacement input window and accounting for a native compaction call.
+ *
+ * **Gotchas**
+ *
+ * Replay the entire prompt in order, not just its compaction parts. Provider and
+ * model identify the effective request configuration; `responseId` is not a
+ * previous-response continuation identifier. Metadata must not contain context
+ * or opaque payloads.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CompactResponse {
+  readonly prompt: Prompt.Prompt
+  readonly usage: Response.Usage
+  readonly provider: string
+  readonly model: string
+  readonly responseId?: string
+  readonly metadata: Response.ProviderMetadata
+}
 
 /**
  * Configuration options for text generation.
@@ -799,9 +858,10 @@ export interface ProviderOptions {
  *
  * **Details**
  *
- * The returned service implements `generateText`, `generateObject`, and
- * `streamText`. It prepares `ProviderOptions` for each request, including the
- * normalized prompt, tools, tool choice, response format, tracing span, and
+ * The returned service implements `compact`, `generateText`, `generateObject`, and
+ * `streamText`. Compaction requires an optional provider hook. Generation prepares
+ * `ProviderOptions` for each request, including the normalized prompt, tools,
+ * tool choice, response format, tracing span, and
  * incremental response fields, before calling the supplied provider hook.
  * Structured object generation uses the `generateText` hook and the configured
  * `codecTransformer`, or `defaultCodecTransformer` when none is supplied.
@@ -821,6 +881,15 @@ export interface ProviderOptions {
  * @since 4.0.0
  */
 export const make: (params: {
+  /**
+   * Compacts a complete input window. Implementing this hook also commits the
+   * provider to validating affinity and replaying its native compaction parts.
+   * Without it, compaction and inference with opaque context fail as unsupported.
+   */
+  readonly compact?:
+    | ((options: CompactProviderOptions) => Effect.Effect<CompactResponse, AiError.AiError, IdGenerator>)
+    | undefined
+
   /**
    * A method that requests text generation from the large language model provider and returns the final result when generation finishes.
    */
@@ -856,6 +925,34 @@ export const make: (params: {
   const idGenerator = yield* Effect.serviceOption(IdGenerator).pipe(
     Effect.map(Option.getOrElse(() => defaultIdGenerator))
   )
+
+  const unsupported = (operation: string) =>
+    AiError.make({
+      module: "LanguageModel",
+      method: operation,
+      reason: new AiError.UnsupportedOperationError({
+        operation,
+        description: "The provider does not support native compaction context"
+      })
+    })
+
+  const compact: LanguageModel["compact"] = (options) =>
+    Effect.useSpan(
+      "LanguageModel.compact",
+      { kind: "client" },
+      Effect.fnUntraced(
+        function*(span) {
+          if (params.compact === undefined) return yield* unsupported("compact")
+          return yield* params.compact({
+            prompt: Prompt.make(options.prompt),
+            instructions: options.instructions,
+            span
+          })
+        },
+        (effect, span) => Effect.withParentSpan(effect, span, { captureStackTrace: false }),
+        Effect.provideService(IdGenerator, idGenerator)
+      )
+    )
 
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
@@ -1067,7 +1164,13 @@ export const make: (params: {
     options: Options & GenerateTextOptions<Tools>,
     providerOptions: Mutable<ProviderOptions>
   ) {
-    const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
+    const nativeContext = hasCompactionParts(providerOptions.prompt)
+    if (nativeContext && params.compact === undefined) {
+      return yield* unsupported(providerOptions.responseFormat.type === "json" ? "generateObject" : "generateText")
+    }
+    const tracker = nativeContext
+      ? undefined
+      : Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
     const concurrency = options.concurrency ?? "unbounded"
     annotateRequestOptions(providerOptions, toolChoice, concurrency)
@@ -1320,7 +1423,13 @@ export const make: (params: {
     options: Options & GenerateTextOptions<Tools>,
     providerOptions: Mutable<ProviderOptions>
   ) {
-    const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
+    const nativeContext = hasCompactionParts(providerOptions.prompt)
+    if (nativeContext && params.compact === undefined) {
+      return yield* unsupported("streamText")
+    }
+    const tracker = nativeContext
+      ? undefined
+      : Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
     const concurrency = options.concurrency ?? "unbounded"
     annotateRequestOptions(providerOptions, toolChoice, concurrency)
@@ -1747,6 +1856,7 @@ export const make: (params: {
   return LanguageModel.of({
     [TypeId]: TypeId,
     supportsSystemMessagesInHistory: params.supportsSystemMessagesInHistory,
+    compact,
     generateText: generateText as LanguageModel["generateText"],
     generateObject: generateObject as LanguageModel["generateObject"],
     streamText: streamText as LanguageModel["streamText"]
@@ -1756,6 +1866,22 @@ export const make: (params: {
 // =============================================================================
 // Accessors
 // =============================================================================
+
+/**
+ * Compacts context using the selected provider and returns the entire replacement prompt.
+ *
+ * **Gotchas**
+ *
+ * Unsupported providers fail with `AiError.UnsupportedOperationError`. This
+ * operation does not execute tools, mutate chat history, or update response-ID
+ * tracking. Persist and replay the complete result, including retained items.
+ *
+ * @stability unstable
+ * @category context compaction
+ * @since 4.1.0
+ */
+export const compact = (options: CompactOptions): Effect.Effect<CompactResponse, AiError.AiError, LanguageModel> =>
+  Effect.flatMap(LanguageModel, (model) => model.compact(options))
 
 /**
  * Generates text using a language model.
@@ -2471,6 +2597,11 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
   (Effect.isEffect(toolkit)
     ? toolkit
     : Effect.succeed(toolkit as unknown as Toolkit.WithHandler<Tools>)) as any
+
+const hasCompactionParts = (prompt: Prompt.Prompt): boolean =>
+  prompt.content.some((message) =>
+    message.role === "assistant" && message.content.some((part) => part.type === "compaction")
+  )
 
 const annotateRequestOptions = (
   { responseFormat, span }: ProviderOptions,

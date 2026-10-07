@@ -139,6 +139,51 @@ describe("OpenAiClient", () => {
   })
 
   describe("OpenAiClientGenerated", () => {
+    // Regression: c5a7327466 serialized structured compact input as URL parameters.
+    it.effect("serializes compact input as JSON", () => {
+      const payload = {
+        model: "gpt-5.4",
+        input: [{ role: "user", content: [{ type: "input_text", text: "Retain this context" }] }]
+      } as const
+      const httpClient = HttpClient.make((request) =>
+        Effect.sync(() => {
+          assert.strictEqual(request.method, "POST")
+          assert.strictEqual(request.url, "https://api.openai.com/v1/responses/compact")
+          assert.strictEqual(request.headers["content-type"], "application/json")
+          assert.strictEqual(request.body._tag, "Uint8Array")
+          if (request.body._tag === "Uint8Array") {
+            assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)), payload)
+          }
+          return HttpClientResponse.fromWeb(
+            request,
+            new Response(
+              JSON.stringify({
+                id: "cmp_1",
+                object: "response.compaction",
+                created_at: 1,
+                output: [],
+                usage: {
+                  input_tokens: 10,
+                  input_tokens_details: { cached_tokens: 0 },
+                  output_tokens: 2,
+                  output_tokens_details: { reasoning_tokens: 0 },
+                  total_tokens: 12
+                }
+              }),
+              { headers: { "content-type": "application/json" } }
+            )
+          )
+        })
+      )
+      return Effect.gen(function*() {
+        const client = yield* OpenAiClientGenerated.OpenAiClientGenerated
+        yield* client.Compactconversation({ payload })
+      }).pipe(
+        Effect.provide(OpenAiClientGenerated.layer({})),
+        Effect.provideService(HttpClient.HttpClient, httpClient)
+      )
+    })
+
     it.effect("sets Bearer token from apiKey", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClientGenerated.OpenAiClientGenerated

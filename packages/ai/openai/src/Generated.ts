@@ -32630,7 +32630,7 @@ export const make = (
       ),
     "Compactconversation": (options) =>
       HttpClientRequest.post(`/responses/compact`).pipe(
-        HttpClientRequest.bodyUrlParams(options.payload as any),
+        HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(options.config)(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Compactconversation200),
           orElse: unexpectedStatus

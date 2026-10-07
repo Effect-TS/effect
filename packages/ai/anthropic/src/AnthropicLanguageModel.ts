@@ -2955,7 +2955,8 @@ const getCacheControl = (
     | Prompt.UserMessagePart
     | Prompt.AssistantMessagePart
     | Prompt.ToolMessagePart
-): typeof Generated.CacheControlEphemeral.Encoded | null => part.options.anthropic?.cacheControl ?? null
+): typeof Generated.CacheControlEphemeral.Encoded | null =>
+  "type" in part && part.type === "compaction" ? null : part.options.anthropic?.cacheControl ?? null
 
 const getDocumentMetadata = (part: Prompt.FilePart): {
   readonly title: string | null

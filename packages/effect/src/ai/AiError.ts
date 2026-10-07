@@ -376,6 +376,15 @@ export interface StructuredOutputErrorMetadata extends ProviderMetadata {}
 export interface UnsupportedSchemaErrorMetadata extends ProviderMetadata {}
 
 /**
+ * Provider-specific metadata attached to `UnsupportedOperationError`.
+ *
+ * @stability unstable
+ * @category configuration
+ * @since 4.1.0
+ */
+export interface UnsupportedOperationErrorMetadata extends ProviderMetadata {}
+
+/**
  * Provider-specific metadata attached to `UnknownError`.
  *
  * @stability unstable
@@ -1050,6 +1059,32 @@ export class UnsupportedSchemaError extends Schema.Error<UnsupportedSchemaError>
 }
 
 /**
+ * Error indicating that the provider cannot perform an operation or replay native context.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.0
+ */
+export class UnsupportedOperationError extends Schema.Error<UnsupportedOperationError>(
+  "effect/ai/AiError/UnsupportedOperationError"
+)({
+  _tag: Schema.tag("UnsupportedOperationError"),
+  operation: Schema.String,
+  description: Schema.String,
+  metadata: providerMetadataWithDefaults<UnsupportedOperationErrorMetadata>()
+}) {
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  get isRetryable(): boolean {
+    return false
+  }
+
+  override get message(): string {
+    return `Unsupported operation '${this.operation}': ${this.description}`
+  }
+}
+
+/**
  * Error data for unknown or unexpected AI failures.
  *
  * **Details**
@@ -1523,6 +1558,7 @@ export type AiErrorReason =
   | InvalidOutputError
   | StructuredOutputError
   | UnsupportedSchemaError
+  | UnsupportedOperationError
   | UnknownError
   | ToolNotFoundError
   | ToolParameterValidationError
@@ -1560,6 +1596,7 @@ export const AiErrorReason: Schema.Union<[
   typeof InvalidOutputError,
   typeof StructuredOutputError,
   typeof UnsupportedSchemaError,
+  typeof UnsupportedOperationError,
   typeof UnknownError,
   typeof ToolNotFoundError,
   typeof ToolParameterValidationError,
@@ -1579,6 +1616,7 @@ export const AiErrorReason: Schema.Union<[
   InvalidOutputError,
   StructuredOutputError,
   UnsupportedSchemaError,
+  UnsupportedOperationError,
   UnknownError,
   ToolNotFoundError,
   ToolParameterValidationError,

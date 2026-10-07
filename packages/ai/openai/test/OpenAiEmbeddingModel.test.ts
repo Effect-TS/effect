@@ -284,6 +284,7 @@ const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
 const noopOpenAiClient: OpenAiClient.Service = {
   client: undefined as unknown as OpenAiClient.Service["client"],
   createResponse: () => Effect.die(new Error("noop")),
+  compactResponse: () => Effect.die(new Error("noop")),
   createResponseStream: () => Effect.die(new Error("noop")),
   createEmbedding: () => Effect.die(new Error("noop"))
 }

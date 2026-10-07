@@ -20,6 +20,8 @@ const MessageRole = Schema.Literals(["system", "developer", "user", "assistant"]
 
 const ImageDetail = Schema.Literals(["low", "high", "auto"])
 
+const MessagePhase = Schema.NullOr(Schema.Literals(["commentary", "final_answer"]))
+
 const PromptCacheBreakpoint = Schema.Struct({
   mode: Schema.Literal("explicit")
 })
@@ -252,7 +254,7 @@ const OutputTextContent = Schema.Struct({
   type: Schema.Literal("output_text"),
   text: Schema.String,
   annotations: Schema.Array(Annotation),
-  logprobs: Schema.optionalKey(Schema.Array(Schema.Unknown))
+  logprobs: Schema.optionalKey(Schema.Array(Schema.Json))
 })
 
 const OutputMessageContent = Schema.Union([
@@ -272,7 +274,8 @@ const OutputMessage = Schema.Struct({
   type: Schema.Literal("message"),
   role: Schema.Literal("assistant"),
   content: Schema.Array(OutputMessageContent),
-  status: MessageStatus
+  status: MessageStatus,
+  phase: Schema.optionalKey(MessagePhase)
 })
 
 /**
@@ -352,6 +355,84 @@ const FunctionCallOutput = Schema.Struct({
   ]),
   status: Schema.optionalKey(Schema.NullOr(MessageStatus))
 })
+
+/**
+ * Schema for opaque context issued by the native OpenAI compaction endpoint.
+ *
+ * **Gotchas**
+ *
+ * The encrypted content is sensitive context and must be replayed unchanged.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const CompactionItem = Schema.Struct({
+  type: Schema.Literal("compaction"),
+  encrypted_content: Schema.NonEmptyString,
+  id: Schema.optionalKey(Schema.String)
+})
+
+/**
+ * Opaque context issued by the native OpenAI compaction endpoint.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type CompactionItem = typeof CompactionItem.Type
+
+const CompactMessage = Schema.Struct({
+  type: Schema.optionalKey(Schema.Literal("message")),
+  id: Schema.optionalKey(Schema.String),
+  role: MessageRole,
+  content: Schema.Union([
+    Schema.String,
+    Schema.Array(Schema.Union([
+      InputTextContent.mapFields((fields) => ({
+        ...fields,
+        prompt_cache_breakpoint: Schema.optionalKey(PromptCacheBreakpoint)
+      })),
+      OutputTextContent,
+      TextContent,
+      SummaryTextContent,
+      ReasoningTextContent,
+      RefusalContent
+    ]))
+  ]),
+  status: Schema.optionalKey(MessageStatus),
+  phase: Schema.optionalKey(MessagePhase)
+})
+
+/**
+ * Schema for a losslessly replayable item in a compacted replacement input window.
+ *
+ * **Details**
+ *
+ * Supports retained text messages in all four roles, reasoning, ordinary function
+ * calls and string results, and opaque compaction items. The compact client
+ * rejects excess fields and unsupported item families instead of discarding them.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const CompactOutputItem = Schema.Union([
+  CompactMessage,
+  ReasoningItem,
+  FunctionCall,
+  FunctionCallOutput.mapFields((fields) => ({ ...fields, output: Schema.String })),
+  CompactionItem
+])
+
+/**
+ * Losslessly replayable item in a compacted replacement input window.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type CompactOutputItem = typeof CompactOutputItem.Type
 
 const ItemReference = Schema.Struct({
   type: Schema.Literal("item_reference"),
@@ -468,6 +549,8 @@ const InputWebSearchCall = Schema.Struct({
  * @since 4.0.0
  */
 export const InputItem = Schema.Union([
+  CompactMessage,
+  CompactionItem,
   RequestMessageItem,
   OutputMessage,
   FunctionCall,
@@ -812,6 +895,57 @@ export const ResponseUsage = Schema.StructWithRest(
  */
 export type ResponseUsage = typeof ResponseUsage.Type
 
+/**
+ * Schema for a stateless native compaction request containing the complete input window.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const CompactRequest = Schema.Struct({
+  model: Schema.NonEmptyString,
+  input: Schema.Array(InputItem),
+  instructions: Schema.optionalKey(Schema.String)
+})
+
+/**
+ * Stateless native compaction request containing the complete input window.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type CompactRequest = typeof CompactRequest.Type
+
+/**
+ * Schema for the complete replacement input window and compaction-call usage.
+ *
+ * **Gotchas**
+ *
+ * The output contains retained input as well as opaque state. Replay every item
+ * in order. The response ID is not a Responses continuation ID.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const CompactResponse = Schema.Struct({
+  id: Schema.String,
+  object: Schema.Literal("response.compaction"),
+  created_at: Schema.Int,
+  output: Schema.Array(CompactOutputItem),
+  usage: ResponseUsage
+})
+
+/**
+ * Complete replacement input window and compaction-call usage.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export type CompactResponse = typeof CompactResponse.Type
+
 const ApplyPatchOperation = Schema.Struct({
   type: Schema.String,
   path: Schema.String,
@@ -890,6 +1024,7 @@ const WebSearchCall = Schema.Struct({
 })
 
 const OutputItem = Schema.Union([
+  CompactionItem,
   ApplyPatchCall,
   CodeInterpreterCall,
   ComputerCall,
@@ -1041,7 +1176,10 @@ const ResponseOutputItemAddedEvent = Schema.Struct({
   type: Schema.Literal("response.output_item.added"),
   output_index: Schema.Int,
   sequence_number: Schema.optionalKey(Schema.Int),
-  item: OutputItem
+  item: Schema.Union([
+    ...OutputItem.members,
+    CompactionItem.mapFields((fields) => ({ ...fields, encrypted_content: Schema.String }))
+  ])
 })
 
 const ResponseOutputItemDoneEvent = Schema.Struct({

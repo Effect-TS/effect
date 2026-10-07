@@ -14,7 +14,7 @@ import * as IdGenerator from "effect/ai/IdGenerator"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import * as AiModel from "effect/ai/Model"
 import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
-import type * as Prompt from "effect/ai/Prompt"
+import * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import * as Tool from "effect/ai/Tool"
 import * as Context from "effect/Context"
@@ -36,7 +36,7 @@ import type { DeepMutable, Mutable, Simplify } from "effect/Types"
 import * as Generated from "./Generated.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
 import { OpenAiClient, OpenAiSocket } from "./OpenAiClient.ts"
-import type * as OpenAiSchema from "./OpenAiSchema.ts"
+import * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
 
@@ -58,6 +58,22 @@ export type Model = typeof ResponseModelIds.Encoded | typeof SharedModelIds.Enco
 type ImageDetail = "auto" | "low" | "high"
 
 type PromptCacheBreakpoint = { readonly mode: "explicit" }
+
+type CompactMessage = Extract<OpenAiSchema.CompactOutputItem, { readonly role: string }>
+type CompactTextContent = Exclude<CompactMessage["content"], string>[number]
+const RetainedMessageOptions = OpenAiSchema.CompactOutputItem.members[0].mapFields((
+  { content: _content, ...fields }
+) => ({
+  ...fields,
+  contentFormat: Schema.Literals(["string", "parts"])
+}))
+type RetainedMessageOptions = typeof RetainedMessageOptions.Type
+const RetainedReasoningOptions = Schema.Struct({
+  id: Schema.String,
+  status: Schema.optionalKey(OpenAiSchema.MessageStatus),
+  contentPresent: Schema.Boolean
+})
+type RetainedReasoningOptions = typeof RetainedReasoningOptions.Type
 
 // =============================================================================
 // Configuration
@@ -158,6 +174,35 @@ declare module "effect/ai/Prompt" {
        * option with earlier models.
        */
       readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
+      /**
+       * Original retained system/developer item; its content must match the system text.
+       */
+      readonly message?: CompactMessage
+    } | null
+  }
+
+  /**
+   * OpenAI-specific retained user-message boundaries.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.1.0
+   */
+  export interface UserMessageOptions extends ProviderOptions {
+    readonly openai?: { readonly message?: RetainedMessageOptions } | null
+  }
+
+  /**
+   * OpenAI-specific retained assistant-message and reasoning-item boundaries.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.1.0
+   */
+  export interface AssistantMessageOptions extends ProviderOptions {
+    readonly openai?: {
+      readonly message?: RetainedMessageOptions
+      readonly reasoning?: RetainedReasoningOptions
     } | null
   }
 
@@ -202,6 +247,10 @@ declare module "effect/ai/Prompt" {
        * parameter.
        */
       readonly encryptedContent?: string | null
+      /**
+       * Retained reasoning block kind; `empty` carries an item without text blocks.
+       */
+      readonly contentType?: "summary_text" | "reasoning_text" | "empty"
     } | null
   }
 
@@ -229,6 +278,10 @@ declare module "effect/ai/Prompt" {
        * The ID of the approval request.
        */
       readonly approvalRequestId?: string | null
+      /**
+       * Treats historical parameters as their original wire string without parsing or reformatting.
+       */
+      readonly argumentsFormat?: "json-string"
     } | null
   }
 
@@ -256,6 +309,10 @@ declare module "effect/ai/Prompt" {
        * The ID of the approval request.
        */
       readonly approvalId?: string | null
+      /**
+       * Preserves a retained string result, including absent versus null item fields.
+       */
+      readonly retained?: boolean
     } | null
   }
 
@@ -283,6 +340,14 @@ declare module "effect/ai/Prompt" {
        * A list of annotations that apply to the output text.
        */
       readonly annotations?: ReadonlyArray<typeof OpenAiSchema.Annotation.Encoded> | null
+      /**
+       * Original retained text block kind, including refusal text.
+       */
+      readonly contentType?: CompactTextContent["type"]
+      /**
+       * Original output-text log probabilities, when present.
+       */
+      readonly logprobs?: ReadonlyArray<Schema.Json>
       /**
        * Marks the input text as the end of a reusable prompt prefix.
        *
@@ -635,8 +700,17 @@ export const model = (
  *
  * The returned effect requires `OpenAiClient`. Request defaults from the
  * `config` option are merged with any `Config` service in the context, with
- * context values taking precedence. The service supports both `generateText`
- * and `streamText`.
+ * context values taking precedence. The service supports text, structured
+ * output, streaming, and stateless native compaction through `LanguageModel.compact`.
+ *
+ * **Gotchas**
+ *
+ * Native compaction accepts text, reasoning, ordinary function calls and string
+ * results in tool messages, and matching opaque context. Unsupported retained
+ * items or fields fail with available usage preserved. Replay the whole returned prompt using
+ * the same effective model; pinned model snapshots avoid mutable-alias drift.
+ * Conversation, previous-response configuration, and explicit item references
+ * cannot be combined with native context.
  *
  * @see {@link layer} for providing the service as a `Layer`
  * @see {@link model} for creating a model descriptor for `Effect.provide`
@@ -653,7 +727,11 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
 
   const makeConfig = Effect.gen(function*() {
     const services = yield* Effect.context<never>()
-    return { model, ...providerConfig, ...Context.getOrUndefined(services, Config) }
+    const config = { model, ...providerConfig, ...Context.getOrUndefined(services, Config) }
+    const effectiveModel = yield* Schema.decodeUnknownEffect(Schema.NonEmptyString)(config.model).pipe(
+      Effect.mapError(() => invalidCompactionInput("A nonempty effective request model is required"))
+    )
+    return { ...config, model: effectiveModel }
   })
 
   const makeRequest = Effect.fnUntraced(
@@ -697,13 +775,71 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       }
       if (tools) request.tools = tools
       if (toolChoice) request.tool_choice = toolChoice
-      if (options.previousResponseId) request.previous_response_id = options.previousResponseId
+      if (options.previousResponseId && !hasNativeContext(options.prompt)) {
+        request.previous_response_id = options.previousResponseId
+      }
       return request
     }
   )
 
   return yield* LanguageModel.make({
     codecTransformer: toCodecOpenAI,
+    compact: Effect.fnUntraced(function*(options) {
+      const config = yield* makeConfig
+      yield* validateStatelessConfig(config)
+      const toolNames = yield* validateCompactPrompt(options.prompt)
+      const providerOptions: LanguageModel.ProviderOptions = {
+        prompt: options.prompt,
+        tools: [],
+        toolChoice: "none",
+        responseFormat: { type: "text" },
+        previousResponseId: undefined,
+        incrementalPrompt: undefined,
+        span: options.span
+      }
+      const input = yield* prepareMessages({
+        config: { ...config, store: false, useItemReferences: false },
+        options: providerOptions,
+        capabilities: getModelCapabilities(config.model),
+        include: new Set(),
+        toolNameMapper: new Tool.NameMapper([])
+      }).pipe(
+        Effect.flatMap(decodeCompactItems),
+        Effect.catchTag(
+          "SchemaError",
+          () => Effect.fail(invalidCompactionInput("The input contains items unsupported by native compaction"))
+        )
+      )
+      options.span.attribute("gen_ai.operation.name", "compact")
+      options.span.attribute("gen_ai.provider.name", "openai")
+      options.span.attribute("gen_ai.request.model", config.model)
+      const instructions = options.instructions ?? config.instructions
+      const [body] = yield* client.compactResponse({
+        model: config.model,
+        input,
+        ...(instructions === undefined ? undefined : { instructions })
+      })
+      options.span.attribute("gen_ai.usage.input_tokens", body.usage.input_tokens)
+      options.span.attribute("gen_ai.usage.output_tokens", body.usage.output_tokens)
+      const invalid = () => invalidCompactionOutput(body.usage)
+      const prompt = yield* makeCompactedPrompt(body.output, config.model, toolNames).pipe(Effect.mapError(invalid))
+      const replay = yield* prepareMessages({
+        config,
+        options: { ...providerOptions, prompt },
+        capabilities: getModelCapabilities(config.model),
+        include: new Set(),
+        toolNameMapper: new Tool.NameMapper([])
+      }).pipe(Effect.flatMap(decodeCompactItems), Effect.mapError(invalid))
+      if (!compactItemsEquivalent(body.output, replay)) return yield* invalid()
+      return {
+        prompt,
+        usage: getCompactUsage(body.usage),
+        provider: "openai",
+        model: config.model,
+        responseId: body.id,
+        metadata: {}
+      }
+    }),
     generateText: Effect.fnUntraced(
       function*(options) {
         const config = yield* makeConfig
@@ -716,6 +852,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
           options,
           rawResponse,
           response,
+          model: config.model,
           toolNameMapper
         })
       }
@@ -843,11 +980,16 @@ const prepareMessages = Effect.fnUntraced(
     readonly capabilities: ModelCapabilities
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<ReadonlyArray<typeof OpenAiSchema.InputItem.Encoded>, AiError.AiError> {
+    const nativeContext = hasNativeContext(options.prompt)
+    if (nativeContext) {
+      yield* validateStatelessConfig(config)
+      yield* validateCompactionAffinity(options.prompt, config.model)
+    }
     const processedApprovalIds = new Set<string>()
     const websocketMode = Option.isSome(yield* Effect.serviceOption(OpenAiSocket))
 
     const hasConversation = Predicate.isNotNullish(config.conversation)
-    const useItemReferences = config.store === true &&
+    const useItemReferences = !nativeContext && config.store === true &&
       config.useItemReferences !== false &&
       options.incrementalFallback !== true
 
@@ -886,9 +1028,16 @@ const prepareMessages = Effect.fnUntraced(
     }
 
     const messages: Array<typeof OpenAiSchema.InputItem.Encoded> = []
-    const prompt = options.incrementalPrompt ?? options.prompt
+    const prompt = nativeContext ? options.prompt : options.incrementalPrompt ?? options.prompt
 
     for (const message of prompt.content) {
+      if (nativeContext) {
+        const retained = yield* replayRetainedMessage(message)
+        if (retained !== undefined) {
+          messages.push(yield* decodeRetainedItem(retained))
+          continue
+        }
+      }
       switch (message.role) {
         case "system": {
           messages.push({
@@ -986,6 +1135,15 @@ const prepareMessages = Effect.fnUntraced(
 
           for (const part of message.content) {
             switch (part.type) {
+              case "compaction": {
+                messages.push({
+                  type: "compaction",
+                  encrypted_content: part.data,
+                  ...(part.id === undefined ? undefined : { id: part.id })
+                })
+                break
+              }
+
               case "text": {
                 const id = getItemId(part)
 
@@ -1001,7 +1159,7 @@ const prepareMessages = Effect.fnUntraced(
                 }
 
                 messages.push({
-                  id: id!,
+                  ...(id === null ? undefined : { id }),
                   type: "message",
                   role: "assistant",
                   status: part.options.openai?.status ?? "completed",
@@ -1074,6 +1232,23 @@ const prepareMessages = Effect.fnUntraced(
               }
 
               case "tool-call": {
+                if (part.options.openai?.argumentsFormat === "json-string") {
+                  const { itemId, status } = part.options.openai
+                  if (typeof part.params !== "string" || part.providerExecuted || itemId === null || status === null) {
+                    return yield* invalidCompactionInput("Retained function arguments or item fields were modified")
+                  }
+                  messages.push(
+                    yield* decodeRetainedItem({
+                      type: "function_call",
+                      call_id: part.id,
+                      name: part.name,
+                      arguments: part.params,
+                      ...(itemId === undefined ? undefined : { id: itemId }),
+                      ...(status === undefined ? undefined : { status })
+                    })
+                  )
+                  break
+                }
                 const id = getItemId(part)
                 const status = getStatus(part)
 
@@ -1281,6 +1456,21 @@ const prepareMessages = Effect.fnUntraced(
 
         case "tool": {
           for (const part of message.content) {
+            if (part.type === "tool-result" && part.options.openai?.retained === true) {
+              if (typeof part.result !== "string" || part.providerExecuted) {
+                return yield* invalidCompactionInput("Retained function results must remain a wire string")
+              }
+              messages.push(
+                yield* decodeRetainedItem({
+                  type: "function_call_output",
+                  call_id: part.id,
+                  output: part.result,
+                  ...(part.options.openai.itemId === undefined ? undefined : { id: part.options.openai.itemId }),
+                  ...(part.options.openai.status === undefined ? undefined : { status: part.options.openai.status })
+                })
+              )
+              continue
+            }
             if (part.type === "tool-approval-response") {
               if (processedApprovalIds.has(part.approvalId)) {
                 continue
@@ -1366,6 +1556,372 @@ const prepareMessages = Effect.fnUntraced(
 )
 
 // =============================================================================
+// Native Compaction
+// =============================================================================
+
+const CompactItems = Schema.Array(OpenAiSchema.CompactOutputItem)
+const decodeCompactItems = Schema.decodeUnknownEffect(CompactItems, { onExcessProperty: "error" })
+const decodeCompactItem = Schema.decodeUnknownEffect(OpenAiSchema.CompactOutputItem, { onExcessProperty: "error" })
+const decodeRetainedItem = (item: unknown) =>
+  decodeCompactItem(item).pipe(
+    Effect.mapError(() => invalidCompactionInput("Retained context contains malformed or unsupported fields"))
+  )
+const decodeRetainedMessageOptions = Schema.decodeUnknownEffect(RetainedMessageOptions, { onExcessProperty: "error" })
+const decodeRetainedReasoningOptions = Schema.decodeUnknownEffect(RetainedReasoningOptions, {
+  onExcessProperty: "error"
+})
+const compactItemsEquivalent = Schema.toEquivalence(CompactItems)
+
+const invalidCompactionInput = (description: string) =>
+  AiError.make({
+    module: "OpenAiLanguageModel",
+    method: "compact",
+    reason: new AiError.InvalidRequestError({ description })
+  })
+
+const invalidCompactionOutput = (usage: OpenAiSchema.ResponseUsage) =>
+  AiError.make({
+    module: "OpenAiLanguageModel",
+    method: "compact",
+    reason: new AiError.InvalidOutputError({
+      description: "The compaction replacement window cannot be replayed losslessly",
+      usage: {
+        promptTokens: usage.input_tokens,
+        completionTokens: usage.output_tokens,
+        totalTokens: usage.total_tokens
+      }
+    })
+  })
+
+const hasNativeContext = (prompt: Prompt.Prompt): boolean =>
+  prompt.content.some((message) => {
+    if (message.role !== "tool" && message.options.openai?.message !== undefined) return true
+    if (message.role === "system") return false
+    if (message.role === "assistant" && message.options.openai?.reasoning !== undefined) return true
+    return message.content.some((part) =>
+      part.type === "compaction" ||
+      (part.type === "tool-call" && part.options.openai?.argumentsFormat === "json-string") ||
+      (part.type === "tool-result" && part.options.openai?.retained === true)
+    )
+  })
+
+const validateStatelessConfig = (config: typeof Config.Service) =>
+  config.conversation !== undefined || config.previous_response_id !== undefined || config.useItemReferences === true
+    ? Effect.fail(invalidCompactionInput("Native compaction context requires stateless requests"))
+    : Effect.void
+
+const validateCompactionAffinity = Effect.fnUntraced(function*(prompt: Prompt.Prompt, model: string | undefined) {
+  for (const message of prompt.content) {
+    if (message.role !== "assistant") continue
+    for (const part of message.content) {
+      if (part.type !== "compaction") continue
+      if (part.provider !== "openai" || part.model !== model || !Schema.is(Schema.NonEmptyString)(part.data)) {
+        return yield* AiError.make({
+          module: "OpenAiLanguageModel",
+          method: "prepareMessages",
+          reason: new AiError.UnsupportedOperationError({
+            operation: "replayCompaction",
+            description: "Opaque context must match the effective OpenAI request model"
+          })
+        })
+      }
+    }
+  }
+})
+
+const validateCompactPrompt = Effect.fnUntraced(function*(prompt: Prompt.Prompt) {
+  const toolNames = new Map<string, string>()
+  for (const message of prompt.content) {
+    if (message.role === "system") continue
+    for (const part of message.content) {
+      if (
+        part.type === "file" || part.type === "tool-approval-request" || part.type === "tool-approval-response" ||
+        ((part.type === "tool-call" || part.type === "tool-result") && part.providerExecuted) ||
+        (message.role === "assistant" && part.type === "tool-result") ||
+        (part.type === "reasoning" && getItemId(part) === null)
+      ) {
+        return yield* invalidCompactionInput("The prompt contains content unsupported by native compaction")
+      }
+      if (part.type === "tool-call" || part.type === "tool-result") {
+        const value = part.type === "tool-call" ? part.params : part.result
+        if (!Schema.is(Schema.Json)(value)) {
+          return yield* invalidCompactionInput("Tool context must be JSON serializable")
+        }
+        const previousName = toolNames.get(part.id)
+        if (previousName !== undefined && previousName !== part.name) {
+          return yield* invalidCompactionInput("Tool context contains conflicting call names")
+        }
+        toolNames.set(part.id, part.name)
+      }
+    }
+  }
+  return toolNames
+})
+
+const textContentValue = (part: CompactTextContent): string => part.type === "refusal" ? part.refusal : part.text
+const messageText = (content: CompactMessage["content"]): string =>
+  typeof content === "string" ? content : content.map(textContentValue).join("")
+
+const retainedTextPart = (part: CompactTextContent): Prompt.TextPart =>
+  Prompt.textPart({
+    text: textContentValue(part),
+    options: {
+      openai: {
+        contentType: part.type,
+        ...(part.type === "output_text" ? { annotations: part.annotations } : undefined),
+        ...(part.type === "output_text" && part.logprobs !== undefined ? { logprobs: part.logprobs } : undefined),
+        ...(part.type === "input_text" && part.prompt_cache_breakpoint !== undefined
+          ? { promptCacheBreakpoint: part.prompt_cache_breakpoint }
+          : undefined)
+      }
+    }
+  })
+
+const replayTextPart = Effect.fnUntraced(function*(
+  part: Prompt.TextPart
+): Effect.fn.Return<CompactTextContent, AiError.AiError> {
+  const options = part.options.openai
+  switch (options?.contentType) {
+    case "output_text":
+      if (options.annotations == null) {
+        return yield* invalidCompactionInput("Retained output text is missing annotations")
+      }
+      return {
+        type: "output_text",
+        text: part.text,
+        annotations: options.annotations,
+        ...(options.logprobs === undefined ? undefined : { logprobs: options.logprobs })
+      }
+    case "refusal":
+      return { type: "refusal", refusal: part.text }
+    case "text":
+    case "summary_text":
+    case "reasoning_text":
+      return { type: options.contentType, text: part.text }
+    case "input_text":
+      return { type: "input_text", text: part.text, ...getPromptCacheBreakpoint(part) }
+    default:
+      return yield* invalidCompactionInput("Retained text block kinds were modified")
+  }
+})
+
+const replayRetainedMessage = Effect.fnUntraced(function*(
+  message: Prompt.Message
+): Effect.fn.Return<OpenAiSchema.CompactOutputItem | undefined, AiError.AiError> {
+  if (message.role === "system") {
+    const original = message.options.openai?.message
+    if (original === undefined) return undefined
+    const item = yield* decodeCompactItem(original).pipe(
+      Effect.mapError(() => invalidCompactionInput("Retained system content is malformed"))
+    )
+    if (
+      !("role" in item) || (item.role !== "system" && item.role !== "developer") ||
+      messageText(item.content) !== message.content
+    ) {
+      return yield* invalidCompactionInput("Retained system content was modified")
+    }
+    return item
+  }
+  if (message.role === "tool") return undefined
+  const original = message.options.openai?.message
+  if (original !== undefined) {
+    const envelope = yield* decodeRetainedMessageOptions(original).pipe(
+      Effect.mapError(() => invalidCompactionInput("Retained message boundaries are malformed"))
+    )
+    if (envelope.role !== message.role || message.content.some((part) => part.type !== "text")) {
+      return yield* invalidCompactionInput("Retained message boundaries were modified")
+    }
+    const { contentFormat, ...fields } = envelope
+    if (contentFormat === "string") {
+      const part = message.content[0]
+      if (message.content.length !== 1 || part.type !== "text") {
+        return yield* invalidCompactionInput("Retained string content was modified")
+      }
+      return { ...fields, content: part.text }
+    }
+    const content: Array<CompactTextContent> = []
+    for (const part of message.content) {
+      if (part.type === "text") content.push(yield* replayTextPart(part))
+    }
+    return { ...fields, content }
+  }
+  const originalReasoning = message.role === "assistant" ? message.options.openai?.reasoning : undefined
+  if (originalReasoning === undefined) return undefined
+  const reasoning = yield* decodeRetainedReasoningOptions(originalReasoning).pipe(
+    Effect.mapError(() => invalidCompactionInput("Retained reasoning boundaries are malformed"))
+  )
+  const summary: Array<typeof OpenAiSchema.SummaryTextContent.Encoded> = []
+  const content: Array<{ readonly type: "reasoning_text"; readonly text: string }> = []
+  let encryptedContent: string | null | undefined
+  for (const part of message.content) {
+    if (part.type !== "reasoning") return yield* invalidCompactionInput("Retained reasoning boundaries were modified")
+    if (part.options.openai?.encryptedContent !== undefined) encryptedContent = part.options.openai.encryptedContent
+    switch (part.options.openai?.contentType) {
+      case "summary_text":
+        summary.push({ type: "summary_text", text: part.text })
+        break
+      case "reasoning_text":
+        content.push({ type: "reasoning_text", text: part.text })
+        break
+      case "empty":
+        if (part.text.length !== 0) return yield* invalidCompactionInput("Empty retained reasoning was modified")
+        break
+      default:
+        return yield* invalidCompactionInput("Retained reasoning block kinds were modified")
+    }
+  }
+  if (!reasoning.contentPresent && content.length > 0) {
+    return yield* invalidCompactionInput("Retained reasoning content was modified")
+  }
+  return {
+    type: "reasoning",
+    id: reasoning.id,
+    summary,
+    ...(reasoning.status === undefined ? undefined : { status: reasoning.status }),
+    ...(reasoning.contentPresent ? { content } : undefined),
+    ...(encryptedContent === undefined ? undefined : { encrypted_content: encryptedContent })
+  }
+})
+
+const makeCompactedPrompt = Effect.fnUntraced(function*(
+  items: ReadonlyArray<OpenAiSchema.CompactOutputItem>,
+  model: string,
+  knownTools: ReadonlyMap<string, string>
+): Effect.fn.Return<Prompt.Prompt, AiError.AiError> {
+  const messages: Array<Prompt.Message> = []
+  const toolNames = new Map(knownTools)
+  for (const item of items) {
+    if (item.type !== "function_call") continue
+    const previousName = toolNames.get(item.call_id)
+    if (previousName !== undefined && previousName !== item.name) {
+      return yield* invalidCompactionInput("Retained tool context contains conflicting call names")
+    }
+    toolNames.set(item.call_id, item.name)
+  }
+  for (const item of items) {
+    switch (item.type) {
+      case "compaction":
+        messages.push(Prompt.assistantMessage({
+          content: [Prompt.compactionPart({
+            provider: "openai",
+            model,
+            data: item.encrypted_content,
+            ...(item.id === undefined ? undefined : { id: item.id })
+          })]
+        }))
+        break
+      case "function_call":
+        messages.push(Prompt.assistantMessage({
+          content: [Prompt.toolCallPart({
+            id: item.call_id,
+            name: item.name,
+            params: item.arguments,
+            providerExecuted: false,
+            options: {
+              openai: {
+                argumentsFormat: "json-string",
+                ...(item.id === undefined ? undefined : { itemId: item.id }),
+                ...(item.status === undefined ? undefined : { status: item.status })
+              }
+            }
+          })]
+        }))
+        break
+      case "function_call_output": {
+        const name = toolNames.get(item.call_id)
+        if (name === undefined) return yield* invalidCompactionInput("A retained tool result has no represented call")
+        messages.push(Prompt.toolMessage({
+          content: [Prompt.toolResultPart({
+            id: item.call_id,
+            name,
+            result: item.output,
+            isFailure: false,
+            providerExecuted: false,
+            options: {
+              openai: {
+                retained: true,
+                ...(item.id === undefined ? undefined : { itemId: item.id }),
+                ...(item.status === undefined ? undefined : { status: item.status })
+              }
+            }
+          })]
+        }))
+        break
+      }
+      case "reasoning": {
+        const blocks = [...item.summary, ...(item.content ?? [])]
+        const content = (blocks.length === 0 ? [{ type: "empty" as const, text: "" }] : blocks).map((block, index) =>
+          Prompt.reasoningPart({
+            text: block.text,
+            options: {
+              openai: {
+                itemId: item.id,
+                contentType: block.type,
+                ...(index === 0 && item.encrypted_content !== undefined
+                  ? { encryptedContent: item.encrypted_content }
+                  : undefined)
+              }
+            }
+          })
+        )
+        messages.push(Prompt.assistantMessage({
+          content,
+          options: {
+            openai: {
+              reasoning: {
+                id: item.id,
+                contentPresent: item.content !== undefined,
+                ...(item.status === undefined ? undefined : { status: item.status })
+              }
+            }
+          }
+        }))
+        break
+      }
+      default: {
+        if (item.role === "system" || item.role === "developer") {
+          messages.push(
+            Prompt.systemMessage({ content: messageText(item.content), options: { openai: { message: item } } })
+          )
+          break
+        }
+        const { content, ...fields } = item
+        const parts = typeof content === "string" ? [Prompt.textPart({ text: content })] : content.map(retainedTextPart)
+        const options = {
+          openai: {
+            message: { ...fields, contentFormat: typeof content === "string" ? "string" as const : "parts" as const }
+          }
+        }
+        messages.push(
+          item.role === "user"
+            ? Prompt.userMessage({ content: parts, options })
+            : Prompt.assistantMessage({ content: parts, options })
+        )
+      }
+    }
+  }
+  return Prompt.fromMessages(messages)
+})
+
+const getCompactUsage = (usage: OpenAiSchema.ResponseUsage): Response.Usage => {
+  const cached = getUsageTokenDetail(usage.input_tokens_details, "cached_tokens")
+  const reasoning = getUsageTokenDetail(usage.output_tokens_details, "reasoning_tokens")
+  return {
+    inputTokens: {
+      total: usage.input_tokens,
+      uncached: cached === undefined ? undefined : usage.input_tokens - cached,
+      cacheRead: cached,
+      cacheWrite: getUsageTokenDetail(usage.input_tokens_details, "cache_write_tokens")
+    },
+    outputTokens: {
+      total: usage.output_tokens,
+      text: reasoning === undefined ? undefined : usage.output_tokens - reasoning,
+      reasoning
+    }
+  }
+}
+
+// =============================================================================
 // HTTP Details
 // =============================================================================
 
@@ -1446,11 +2002,13 @@ const makeResponse = Effect.fnUntraced(
     options,
     rawResponse,
     response,
+    model,
     toolNameMapper
   }: {
     readonly options: LanguageModel.ProviderOptions
     readonly rawResponse: OpenAiSchema.Response
     readonly response: HttpClientResponse.HttpClientResponse
+    readonly model: string
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<
     Array<Response.PartEncoded>,
@@ -1481,6 +2039,16 @@ const makeResponse = Effect.fnUntraced(
 
     for (const part of rawResponse.output) {
       switch (part.type) {
+        case "compaction": {
+          parts.push({
+            type: "compaction",
+            provider: "openai",
+            model,
+            data: part.encrypted_content,
+            ...(part.id === undefined ? undefined : { id: part.id })
+          })
+          break
+        }
         case "apply_patch_call": {
           const toolName = toolNameMapper.getCustomName("apply_patch")
           parts.push({
@@ -1860,7 +2428,7 @@ const makeStreamResponse = Effect.fnUntraced(
     options,
     toolNameMapper
   }: {
-    readonly config: typeof Config.Service
+    readonly config: typeof Config.Service & { readonly model: string }
     readonly stream: Stream.Stream<ResponseStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
     readonly options: LanguageModel.ProviderOptions
@@ -1875,6 +2443,7 @@ const makeStreamResponse = Effect.fnUntraced(
 
     const approvalRequests = getApprovalRequestIdMapping(options.prompt)
     const streamApprovalRequests = new Map<string, string>()
+    const completedCompactions = new Set<number>()
 
     let hasToolCalls = false
 
@@ -2220,6 +2789,18 @@ const makeStreamResponse = Effect.fnUntraced(
 
           case "response.output_item.done": {
             switch (event.item.type) {
+              case "compaction": {
+                if (completedCompactions.has(event.output_index)) break
+                completedCompactions.add(event.output_index)
+                parts.push({
+                  type: "compaction",
+                  provider: "openai",
+                  model: config.model,
+                  data: event.item.encrypted_content,
+                  ...(event.item.id === undefined ? undefined : { id: event.item.id })
+                })
+                break
+              }
               case "apply_patch_call": {
                 const toolCall = activeToolCalls[event.output_index]
                 if (

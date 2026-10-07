@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../../tools/ai-codegen/codegen.schema.json
-spec: https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml
+spec: https://raw.githubusercontent.com/openai/openai-openapi/18a43ed13461a01fce5b9cc93c86843c550734a3/openapi.json
 output: src/Generated.ts
 name: OpenAiClient
 header: |
@@ -8,7 +8,6 @@ header: |
    * @since 1.0.0
    */
 patches:
-  - '[{"op":"replace","path":"/openapi","value":"3.0.0"}]'
   - '[{"op":"add","path":"/components/schemas/ModelResponseProperties/properties/user/nullable","value":true}]'
   - '[{"op":"add","path":"/components/schemas/ModelResponseProperties/properties/safety_identifier/nullable","value":true}]'
   - '[{"op":"add","path":"/components/schemas/ModelResponseProperties/properties/prompt_cache_key/nullable","value":true}]'

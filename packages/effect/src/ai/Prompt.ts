@@ -3,9 +3,9 @@
  *
  * A prompt is an ordered list of messages. Messages can use roles such as
  * system, user, assistant, and tool, and their content can be split into typed
- * parts such as text, files, reasoning, tool calls, tool results, and approval
- * messages. This module helps build prompts, combine them, and convert raw
- * input or response parts into the shared prompt shape.
+ * parts such as text, files, reasoning, opaque compaction context, tool calls,
+ * tool results, and approval messages. This module helps build prompts, combine
+ * them, and convert raw input or response parts into the shared prompt shape.
  *
  * @stability unstable
  * @since 4.0.0
@@ -85,6 +85,7 @@ export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, PartTy
 export type Part =
   | TextPart
   | ReasoningPart
+  | CompactionPart
   | FilePart
   | ToolCallPart
   | ToolResultPart
@@ -101,6 +102,7 @@ export type Part =
 export type PartEncoded =
   | TextPartEncoded
   | ReasoningPartEncoded
+  | CompactionPartEncoded
   | FilePartEncoded
   | ToolCallPartEncoded
   | ToolResultPartEncoded
@@ -396,6 +398,77 @@ export const ReasoningPart: Schema.Struct<{
  */
 export const reasoningPart = (params: PartConstructorParams<ReasoningPart>): ReasoningPart =>
   makePart("reasoning", params as any)
+
+// =============================================================================
+// Compaction Part
+// =============================================================================
+
+/**
+ * Opaque provider-issued context that can only be replayed by its provider and model.
+ *
+ * **Gotchas**
+ *
+ * Treat `data` as sensitive context, not text to display, log, summarize, or edit.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CompactionPart extends BasePart<"compaction", CompactionPartOptions> {
+  readonly provider: string
+  readonly model: string
+  readonly data: string
+  readonly id?: string
+}
+
+/**
+ * Encoded representation of opaque compaction context.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface CompactionPartEncoded extends BasePartEncoded<"compaction", CompactionPartOptions> {
+  readonly provider: string
+  readonly model: string
+  readonly data: string
+  readonly id?: string
+}
+
+/**
+ * Provider-specific options for opaque compaction context.
+ *
+ * @stability unstable
+ * @category options
+ * @since 4.1.0
+ */
+export interface CompactionPartOptions extends ProviderOptions {}
+
+/**
+ * Schema for opaque compaction context with nonempty data and provider affinity.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.0
+ */
+export const CompactionPart: Schema.Codec<CompactionPart, CompactionPartEncoded> = Schema.Struct({
+  ...BasePart.fields,
+  type: Schema.Literal("compaction"),
+  provider: Schema.NonEmptyString,
+  model: Schema.NonEmptyString,
+  data: Schema.NonEmptyString,
+  id: Schema.optionalKey(Schema.String)
+}).annotate({ identifier: "CompactionPart" })
+
+/**
+ * Creates an atomic opaque compaction part for its issuing provider and model.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const compactionPart = (params: PartConstructorParams<CompactionPart>): CompactionPart =>
+  makePart("compaction", params)
 
 // =============================================================================
 // File Part
@@ -1024,6 +1097,7 @@ export const Part: Schema.Union<
   readonly [
     typeof TextPart,
     typeof ReasoningPart,
+    typeof CompactionPart,
     typeof FilePart,
     typeof ToolCallPart,
     typeof ToolResultPart,
@@ -1033,6 +1107,7 @@ export const Part: Schema.Union<
 > = Schema.Union([
   TextPart,
   ReasoningPart,
+  CompactionPart,
   FilePart,
   ToolCallPart,
   ToolResultPart,
@@ -1533,6 +1608,7 @@ export type AssistantMessagePart =
   | TextPart
   | FilePart
   | ReasoningPart
+  | CompactionPart
   | ToolCallPart
   | ToolResultPart
   | ToolApprovalRequestPart
@@ -1559,6 +1635,7 @@ export type AssistantMessagePartEncoded =
   | TextPartEncoded
   | FilePartEncoded
   | ReasoningPartEncoded
+  | CompactionPartEncoded
   | ToolCallPartEncoded
   | ToolResultPartEncoded
   | ToolApprovalRequestPartEncoded
@@ -1575,6 +1652,7 @@ export const AssistantMessagePart: Schema.Union<
     typeof TextPart,
     typeof FilePart,
     typeof ReasoningPart,
+    typeof CompactionPart,
     typeof ToolCallPart,
     typeof ToolResultPart,
     typeof ToolApprovalRequestPart
@@ -1583,6 +1661,7 @@ export const AssistantMessagePart: Schema.Union<
   TextPart,
   FilePart,
   ReasoningPart,
+  CompactionPart,
   ToolCallPart,
   ToolResultPart,
   ToolApprovalRequestPart
@@ -1604,7 +1683,7 @@ export interface AssistantMessageOptions extends ProviderOptions {}
  * **Details**
  *
  * Assistant content can be a string decoded through `ContentFromString` or an
- * array of text, file, reasoning, tool-call, tool-result, and
+ * array of text, file, reasoning, compaction, tool-call, tool-result, and
  * tool-approval-request parts.
  *
  * @stability unstable
@@ -1641,6 +1720,7 @@ export const AssistantMessage: Schema.Struct<{
             typeof TextPart,
             typeof FilePart,
             typeof ReasoningPart,
+            typeof CompactionPart,
             typeof ToolCallPart,
             typeof ToolResultPart,
             typeof ToolApprovalRequestPart
@@ -1667,6 +1747,7 @@ export const AssistantMessage: Schema.Struct<{
       TextPart,
       FilePart,
       ReasoningPart,
+      CompactionPart,
       ToolCallPart,
       ToolResultPart,
       ToolApprovalRequestPart
@@ -2161,6 +2242,15 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   const assistantParts: Array<AssistantMessagePart> = []
   const toolParts: Array<ToolMessagePart> = []
+  const messages: Array<Message> = []
+  const flush = () => {
+    if (assistantParts.length > 0) {
+      messages.push(makeMessage("assistant", { content: assistantParts.splice(0) }))
+    }
+    if (toolParts.length > 0) {
+      messages.push(makeMessage("tool", { content: toolParts.splice(0) }))
+    }
+  }
 
   const activeTextDeltas = new Map<string, { text: string; options: ProviderOptions }>()
   const activeReasoningDeltas = new Map<string, { text: string; options: ProviderOptions }>()
@@ -2192,6 +2282,20 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           active.options = mergeOptions(active.options, part.metadata)
           assistantParts.push(makePart("text", active))
         }
+        break
+      }
+
+      case "compaction": {
+        flush()
+        messages.push(assistantMessage({
+          content: [compactionPart({
+            provider: part.provider,
+            model: part.model,
+            data: part.data,
+            ...(part.id === undefined ? undefined : { id: part.id }),
+            options: part.metadata
+          })]
+        }))
         break
       }
 
@@ -2272,21 +2376,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     }
   }
 
-  if (assistantParts.length === 0 && toolParts.length === 0) {
-    return empty
-  }
-
-  const messages: Array<Message> = []
-
-  if (assistantParts.length > 0) {
-    messages.push(makeMessage("assistant", { content: assistantParts }))
-  }
-
-  if (toolParts.length > 0) {
-    messages.push(makeMessage("tool", { content: toolParts }))
-  }
-
-  return makePrompt(messages)
+  flush()
+  return messages.length === 0 ? empty : makePrompt(messages)
 }
 
 // =============================================================================
