@@ -1354,7 +1354,7 @@ export function Duration(name?: string) {
  * Decimal symbols such as `kB` use powers of 1,000, while binary symbols such
  * as `KiB` use powers of 1,024.
  *
- * @stability stable
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

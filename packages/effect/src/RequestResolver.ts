@@ -1248,7 +1248,7 @@ export const withCache: {
  * @see {@link withCache} for in-memory resolver caching that does not require persistable request values or a persistence store
  * @see {@link asCache} for exposing resolver results through a `Cache` instead of returning another resolver
  *
- * @stability stable
+ * @stability unstable
  * @category caching
  * @since 4.0.0
  */
