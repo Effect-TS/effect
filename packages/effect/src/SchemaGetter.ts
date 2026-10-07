@@ -1341,9 +1341,10 @@ export function splitKeyValue<E extends string>(options?: {
   return transform((input) =>
     input.split(separator).reduce((acc, pair) => {
       const index = pair.indexOf(keyValueSeparator)
+      if (index <= 0) return acc
       const key = pair.slice(0, index)
       const value = pair.slice(index + keyValueSeparator.length)
-      if (index !== -1 && key && value) {
+      if (value) {
         InternalRecord.assignProperty(acc, key, value)
       }
       return acc
