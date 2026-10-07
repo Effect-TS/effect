@@ -465,6 +465,14 @@ describe("Zsh completions", () => {
     )
   })
 
+  it("escapes a closing bracket in flag descriptions", () => {
+    const cmd = Command.make("deploy", {
+      level: Flag.Literals("level", ["debug", "info"]).pipe(Flag.withDescription("Log level [default: info]"))
+    })
+    const script = Zsh.generate("deploy", fromCommand(cmd))
+    assert.include(script, `'(--level)--level[Log level [default\\: info\\]]:value:(debug info)'`)
+  })
+
   it("uses alternative argument sets for positional arguments and subcommands", () => {
     const desc = fromCommand(withOptionalDirectoryAndSubcommands)
     const script = Zsh.generate("example", desc)

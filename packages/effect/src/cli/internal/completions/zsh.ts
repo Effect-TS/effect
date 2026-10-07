@@ -14,6 +14,9 @@ import type * as Completions from "../../Completions.ts"
 
 const escapeZsh = (s: string): string => s.replace(/\\/g, "\\\\").replace(/'/g, "'\\''").replace(/:/g, "\\:")
 
+/** Escape a flag explanation, where an unescaped `]` ends the `[...]` early. */
+const escapeZshExplanation = (s: string): string => escapeZsh(s).replace(/]/g, "\\]")
+
 /** Escape choices for the second parse of a Zsh `_arguments` action. */
 const escapeZshChoice = (s: string): string => s.replace(/[^A-Za-z0-9_.,/@%+-]/gu, "\\$&").replace(/'/g, "'\\''")
 
@@ -69,7 +72,7 @@ const argAction = (type: Completions.ArgumentType): string => {
  */
 const flagSpecs = (flag: Completions.FlagDescriptor): Array<string> => {
   const specs: Array<string> = []
-  const desc = flag.description ? `[${escapeZsh(flag.description)}]` : ""
+  const desc = flag.description ? `[${escapeZshExplanation(flag.description)}]` : ""
   const action = valueAction(flag.type)
   const excl = `(${allForms(flag).join(" ")})`
 
@@ -84,7 +87,7 @@ const flagSpecs = (flag: Completions.FlagDescriptor): Array<string> => {
 
   // Boolean negation
   if (flag.type._tag === "Boolean") {
-    const negDesc = flag.description ? `[${escapeZsh(`Disable ${flag.name}`)}]` : ""
+    const negDesc = flag.description ? `[${escapeZshExplanation(`Disable ${flag.name}`)}]` : ""
     specs.push(`'${excl}--no-${flag.name}${negDesc}'`)
   }
 
