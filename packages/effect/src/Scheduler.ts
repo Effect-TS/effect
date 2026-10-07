@@ -94,7 +94,9 @@ const setMicrotask = (f: () => void) => {
   }
 }
 
-const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
+const hasSetImmediate = "setImmediate" in globalThis
+
+const setTimer: (f: () => void) => () => void = hasSetImmediate
   ? (f) => {
     // @ts-ignore
     const timer = globalThis.setImmediate(f)
@@ -116,31 +118,22 @@ const setImmediate = (f: () => void) => {
   }
 }
 
-class PriorityBuckets {
-  buckets: Array<[priority: number, tasks: Array<() => void>]> = []
+type Bucket = [priority: number, tasks: Array<() => void>]
 
-  scheduleTask(task: () => void, priority: number): void {
-    const buckets = this.buckets
-    const len = buckets.length
-    let bucket: [number, Array<() => void>] | undefined
-    let index = 0
-    for (; index < len; index++) {
-      if (buckets[index][0] > priority) break
-      bucket = buckets[index]
-    }
-    if (bucket && bucket[0] === priority) {
-      bucket[1].push(task)
-    } else if (index === len) {
-      buckets.push([priority, [task]])
-    } else {
-      buckets.splice(index, 0, [priority, [task]])
-    }
+const insertBucket = (buckets: Array<Bucket>, task: () => void, priority: number): void => {
+  const len = buckets.length
+  let bucket: Bucket | undefined
+  let index = 0
+  for (; index < len; index++) {
+    if (buckets[index][0] > priority) break
+    bucket = buckets[index]
   }
-
-  drain() {
-    const buckets = this.buckets
-    this.buckets = []
-    return buckets
+  if (bucket && bucket[0] === priority) {
+    bucket[1].push(task)
+  } else if (index === len) {
+    buckets.push([priority, [task]])
+  } else {
+    buckets.splice(index, 0, [priority, [task]])
   }
 }
 
@@ -205,9 +198,40 @@ export class MixedScheduler implements Scheduler {
   }
 }
 
+// How the pending run of a dispatcher was requested, which determines how
+// `flush` cancels it
+const PendingNone = 0
+const PendingImmediate = 1
+const PendingTimeout = 2
+const PendingMicrotask = 3
+const PendingCancel = 4
+
+// Lanes above this capacity are dropped after their cycle instead of being
+// reused, so one large cycle does not pin a large array to the dispatcher
+const maxReusedLane = 64
+
+// Microtasks fire in FIFO order and a dispatcher only requests a new run after
+// the previous one fired or was cancelled, so its pending microtasks are always
+// `cancelledMicrotasks` cancelled ones followed by at most one live one.
+const runMicrotask = (dispatcher: MixedSchedulerDispatcher): void => {
+  if (dispatcher.cancelledMicrotasks > 0) {
+    dispatcher.cancelledMicrotasks--
+  } else {
+    dispatcher.afterScheduled()
+  }
+}
+
 class MixedSchedulerDispatcher implements SchedulerDispatcher {
-  private tasks = new PriorityBuckets()
-  private running: (() => void) | undefined = undefined
+  // While `buckets` is undefined every pending task has priority 0 and is
+  // stored in `lane[0..laneSize)`. The first task with another priority moves
+  // the lane into `buckets`, which then receives every task until it drains.
+  private lane: Array<(() => void) | undefined> | undefined = undefined
+  private laneSize = 0
+  private spareLane: Array<(() => void) | undefined> | undefined = undefined
+  private buckets: Array<Bucket> | undefined = undefined
+  private pending: number = PendingNone
+  private handle: any = undefined
+  cancelledMicrotasks = 0
   readonly setImmediate: (f: () => void) => () => void
 
   constructor(
@@ -220,17 +244,104 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   scheduleTask(task: () => void, priority: number) {
-    this.tasks.scheduleTask(task, priority)
-    if (this.running === undefined) {
-      this.running = this.setImmediate(this.afterScheduled)
+    if (this.buckets === undefined && priority === 0) {
+      const lane = this.lane
+      if (lane === undefined) {
+        this.lane = [task]
+      } else {
+        lane[this.laneSize] = task
+      }
+      this.laneSize++
+    } else {
+      this.scheduleBucket(task, priority)
     }
+    if (this.pending === PendingNone) {
+      this.requestRun()
+    }
+  }
+
+  private scheduleBucket(task: () => void, priority: number) {
+    let buckets = this.buckets
+    if (buckets === undefined) {
+      buckets = this.buckets = []
+      const size = this.laneSize
+      if (size > 0) {
+        const lane = this.lane!
+        // hand the lane over to the bucket instead of copying it
+        this.lane = undefined
+        this.laneSize = 0
+        buckets.push([0, (lane.length === size ? lane : lane.slice(0, size)) as Array<() => void>])
+      }
+    }
+    insertBucket(buckets, task, priority)
+  }
+
+  // Same behavior as calling `this.setImmediate(this.afterScheduled)`, but the
+  // built-in strategies keep their handle instead of allocating a cancel
+  // function for every run
+  private requestRun() {
+    const setImmediateFn = this.setImmediate
+    if (setImmediateFn === setImmediate) {
+      try {
+        if (hasSetImmediate) {
+          // @ts-ignore
+          this.handle = globalThis.setImmediate(this.afterScheduled)
+          this.pending = PendingImmediate
+        } else {
+          this.handle = setTimeout(this.afterScheduled, 0)
+          this.pending = PendingTimeout
+        }
+      } catch {
+        this.requestMicrotask()
+      }
+    } else if (setImmediateFn === setMicrotask) {
+      this.requestMicrotask()
+    } else {
+      // A custom function that returns no cancel function leaves nothing to
+      // cancel, as before
+      const cancel = setImmediateFn(this.afterScheduled)
+      if (cancel !== undefined) {
+        this.handle = cancel
+        this.pending = PendingCancel
+      }
+    }
+  }
+
+  private requestMicrotask() {
+    Promise.resolve(this).then(runMicrotask)
+    this.pending = PendingMicrotask
+  }
+
+  private cancelRun() {
+    switch (this.pending) {
+      case PendingImmediate: {
+        // @ts-ignore
+        globalThis.clearImmediate(this.handle)
+        break
+      }
+      case PendingTimeout: {
+        clearTimeout(this.handle)
+        break
+      }
+      case PendingMicrotask: {
+        this.cancelledMicrotasks++
+        break
+      }
+      case PendingCancel: {
+        this.handle()
+        break
+      }
+    }
+    this.pending = PendingNone
+    this.handle = undefined
   }
 
   /**
    * @since 2.0.0
    */
   afterScheduled = () => {
-    this.running = undefined
+    this.pending = PendingNone
+    this.handle = undefined
     this.runTasks()
   }
 
@@ -238,12 +349,39 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   runTasks() {
-    const buckets = this.tasks.drain()
-    for (let i = 0; i < buckets.length; i++) {
-      const toRun = buckets[i][1]
-      for (let j = 0; j < toRun.length; j++) {
-        toRun[j]()
+    const buckets = this.buckets
+    if (buckets !== undefined) {
+      this.buckets = undefined
+      for (let i = 0; i < buckets.length; i++) {
+        const toRun = buckets[i][1]
+        for (let j = 0; j < toRun.length; j++) {
+          toRun[j]()
+        }
       }
+    } else {
+      const lane = this.lane
+      if (lane === undefined) return
+      // Swap in the spare lane before running, so tasks scheduled while
+      // running go to the next cycle. A lane is only reused once all of its
+      // tasks ran; if a task throws, the rest of the cycle is dropped with it.
+      const size = this.laneSize
+      this.lane = this.spareLane
+      this.laneSize = 0
+      this.spareLane = undefined
+      for (let i = 0; i < size; i++) {
+        const task = lane[i]!
+        lane[i] = undefined
+        task()
+      }
+      if (this.laneSize > 0 && lane.length <= maxReusedLane) {
+        // The next cycle is already scheduled: keep this lane for the one after
+        this.spareLane = lane
+      }
+    }
+    if (this.laneSize === 0 && this.buckets === undefined) {
+      // Nothing is scheduled for the next cycle: keep no lanes while idle
+      this.lane = undefined
+      this.spareLane = undefined
     }
   }
 
@@ -251,10 +389,9 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   flush() {
-    while (this.tasks.buckets.length > 0) {
-      if (this.running !== undefined) {
-        this.running()
-        this.running = undefined
+    while (this.laneSize > 0 || this.buckets !== undefined) {
+      if (this.pending !== PendingNone) {
+        this.cancelRun()
       }
       this.runTasks()
     }
