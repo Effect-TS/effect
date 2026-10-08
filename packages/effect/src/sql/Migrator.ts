@@ -147,7 +147,14 @@ export const make = <RD = never>({
   migration_id integer primary key,
   created_at timestamp with time zone not null default now(),
   name text not null
-)`)
+)`).pipe(
+              Effect.catch((error) =>
+                Effect.flatMap(
+                  migrationsTableExists(sql, table),
+                  (exists) => exists ? Effect.void : Effect.fail(error)
+                )
+              )
+            )
         ),
       orElse: () =>
         sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
