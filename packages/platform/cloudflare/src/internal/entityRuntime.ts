@@ -378,6 +378,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // against a second execution from replay or duplicate delivery in the same
   // wake, the way `sessions` does for asks.
   const pendingRuns = new Set<string>()
+  // Sessions can retain queued replies after their handler has finished, and
+  // can also belong to non-persisted requests. Count persisted handler fibers
+  // separately so only transitions touch the recovery alarm.
+  let inFlightPersisted = 0
   const workerWaiters = new Map<string, Array<WorkerWaiter>>()
   const replyRegistry = makeReplyRegistry()
   const entitySql = makeEntitySql(storage)
@@ -419,12 +423,25 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // read and a `deleteAlarm`.
   const rearm = Effect.suspend(() => {
     const next = nextAlarmAt(sql, { now: Date.now(), heartbeatMillis: heartbeatMillis(), isRunning })
-    if (next !== undefined) return armAlarm(storage, next)
     return Effect.flatMap(
       Effect.promise(() => storage.getAlarm()),
-      (current) => current === null ? Effect.void : Effect.promise(() => storage.deleteAlarm())
+      (current) => {
+        if (next !== undefined) {
+          return current === next ? Effect.void : Effect.promise(() => storage.setAlarm(next))
+        }
+        return current === null ? Effect.void : Effect.promise(() => storage.deleteAlarm())
+      }
     )
   })
+
+  // Called under the entry permit, before forking the handler. Overlapping
+  // requests share the first heartbeat instead of reading the alarm per run.
+  const startPersisted = Effect.suspend(() => ++inFlightPersisted === 1 ? armHeartbeat : Effect.void)
+
+  // Handler finalizers hold the entry permit and finish mailbox writes before
+  // dropping the count. The last completion may move the alarm later to a
+  // scheduled delivery, retain keep-alive, or remove it entirely.
+  const finishPersisted = Effect.suspend(() => --inFlightPersisted === 0 ? rearm : Effect.void)
 
   const takeReply = (requestId: string, session: Session): Effect.Effect<ReadonlyArray<string>> =>
     Queue.take(session.queue).pipe(
@@ -507,6 +524,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       if (persisted) {
         if (pendingRuns.has(requestId)) return Effect.succeed([])
         pendingRuns.add(requestId)
+        yield* startPersisted
       }
       // No stream acks on this path, so a plain permit is enough.
       const execute = entityRuntime.run(envelope, lastSentChunk, discard, (reply) =>
@@ -524,16 +542,17 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           ? execute
           : Semaphore.withPermit(entityRuntime.handlerSemaphore, execute)).pipe(
             Effect.onExit((exit) =>
-              Effect.suspend(() => {
-                if (!persisted) return Effect.void
-                pendingRuns.delete(requestId)
-                return discard && Exit.isSuccess(exit) ? write(completeTell(sql, requestId)) : Effect.void
-              })
+              !persisted ? Effect.void : Semaphore.withPermit(
+                semaphore,
+                Effect.suspend(() => {
+                  pendingRuns.delete(requestId)
+                  return discard && Exit.isSuccess(exit) ? write(completeTell(sql, requestId)) : Effect.void
+                }).pipe(Effect.ensuring(finishPersisted))
+              )
             )
           )
       )
       options.waitUntil(Fiber.await(fiber))
-      if (persisted) yield* armHeartbeat
       return Effect.as(Fiber.join(fiber), [])
     }
 
@@ -557,6 +576,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       : Effect.void
     const session: Session = { queue, completeInterrupt, ack: undefined, fiber: undefined }
     sessions.set(requestId, session)
+    if (persisted) yield* startPersisted
     const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
     const respond = (reply: Reply.Reply<any>) =>
       Effect.gen(function*() {
@@ -578,19 +598,21 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       })
     session.fiber = yield* Effect.forkDetach(
       permit.acquire(entityRuntime.run(envelope, lastSentChunk, discard, respond)).pipe(
-        Effect.onExit((exit) =>
-          Effect.sync(() => {
+        Effect.onExit((exit) => {
+          const cleanup = Effect.sync(() => {
             if (Exit.isSuccess(exit)) Queue.endUnsafe(queue)
             else Queue.failCauseUnsafe(queue, exit.cause)
             if (Queue.sizeUnsafe(queue) === 0 && session.ack === undefined) {
               sessions.delete(requestId)
             }
           })
-        )
+          return persisted
+            ? Semaphore.withPermit(semaphore, Effect.andThen(cleanup, finishPersisted))
+            : cleanup
+        })
       )
     )
     options.waitUntil(Fiber.await(session.fiber))
-    if (persisted) yield* armHeartbeat
     return takeReply(requestId, session)
   })
 
@@ -880,7 +902,13 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
       Queue.endUnsafe(session.queue)
       const stop = session.fiber === undefined ? Effect.void : Effect.asVoid(Fiber.interrupt(session.fiber))
-      return Effect.andThen(stop, session.completeInterrupt)
+      return Effect.andThen(
+        stop,
+        Semaphore.withPermit(
+          semaphore,
+          Effect.andThen(session.completeInterrupt, Effect.suspend(() => inFlightPersisted === 0 ? rearm : Effect.void))
+        )
+      )
     })
 
   const reset = (requestId: string): Effect.Effect<void> => write(clearReplies(sql, requestId))
