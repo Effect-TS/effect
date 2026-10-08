@@ -799,9 +799,8 @@ describe("PowerShell completions", () => {
   it("registers a native completer with a context per subcommand path", () => {
     const script = PowerShell.generate("top", fromCommand(nested3Levels))
     assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'top'`)
-    assert.include(script, `  '' = @{`)
-    assert.include(script, `  'sub' = @{`)
-    assert.include(script, `  'sub action' = @{`)
+    assert.include(script, `['sub'] = @{`)
+    assert.include(script, `['sub action'] = @{`)
     assert.include(script, `@{ name = 'action'; description = 'Perform action' }`)
   })
 
@@ -831,10 +830,21 @@ describe("PowerShell completions", () => {
     assert.include(script, `if (-not $endOfOptions) {`)
   })
 
+  it("does not consume an option as a pending flag value", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.match(script, /\$expecting = \$null\s+if \(-not \$isOption\) \{ continue \}/)
+  })
+
   it("emits non-ASCII text as [char] code units", () => {
     const script = PowerShell.generate("deploy", fromCommand(withTrickyChoices))
     assert.notMatch(script, /[^\n\x20-\x7e]/)
     assert.include(script, `('a' + [char]0xD83D + [char]0xDE00 + 'b')`)
+  })
+
+  it("preserves line breaks in choice values", () => {
+    const cmd = Command.make("tool", { mode: Flag.Literals("mode", ["line\nbreak"]) })
+    const script = PowerShell.generate("tool", fromCommand(cmd))
+    assert.include(script, `values = @(('line' + [char]0x000A + 'break'))`)
   })
 
   it("escapes values for single-quoted PowerShell literals", () => {
@@ -845,11 +855,11 @@ describe("PowerShell completions", () => {
     assert.include(script, `'$HOME'`)
   })
 
-  it("emits case-insensitively colliding subcommand path keys once", () => {
-    const leaf = (name: string): Completions.CommandDescriptor => ({
+  it("keeps case-distinct subcommand contexts and emits a repeated path once", () => {
+    const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
       name,
       description: undefined,
-      flags: [],
+      flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
       arguments: [],
       subcommands: []
     })
@@ -858,10 +868,12 @@ describe("PowerShell completions", () => {
       description: undefined,
       flags: [],
       arguments: [],
-      subcommands: [leaf("config"), leaf("config"), leaf("Config")]
+      subcommands: [leaf("config", "lower"), leaf("config", "lower"), leaf("Config", "upper")]
     })
-    const keys = script.split("\n").filter((line) => /^ {2}'config' = @\{$/i.test(line))
-    assert.strictEqual(keys.length, 1)
+    assert.lengthOf(script.match(/\['config'\] = @\{/g) ?? [], 1)
+    assert.lengthOf(script.match(/\['Config'\] = @\{/g) ?? [], 1)
+    assert.lengthOf(script.match(/forms = @\('--lower'\)/g) ?? [], 1)
+    assert.lengthOf(script.match(/forms = @\('--upper'\)/g) ?? [], 1)
   })
 })
 
