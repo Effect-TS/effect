@@ -41,6 +41,8 @@ const roundTiesAwayFromZero = (input: number): bigint =>
 
 const roundMillisToNanos = (millis: number): bigint => roundTiesAwayFromZero(millis * 1_000_000)
 
+const fromNanosNumber = (nanos: number): Duration => make(Number.isFinite(nanos) ? roundTiesAwayFromZero(nanos) : nanos)
+
 const parseNanos = (input: string, scale: bigint): bigint => {
   const decimalIndex = input.indexOf(".")
   if (decimalIndex === -1) return BigInt(input) * scale
@@ -307,7 +309,7 @@ export const fromInputUnsafe = (input: Input): Duration => {
         if (input[0] === Infinity || input[1] === Infinity) {
           return infinity
         }
-        return make(roundTiesAwayFromZero(input[0] * 1_000_000_000 + input[1]))
+        return fromNanosNumber(input[0] * 1_000_000_000 + input[1])
       }
       const obj = input as DurationObject
       let millis = 0
@@ -319,9 +321,7 @@ export const fromInputUnsafe = (input: Input): Duration => {
       if (obj.seconds) millis += obj.seconds * 1_000
       if (obj.milliseconds) millis += obj.milliseconds
       if (!obj.microseconds && !obj.nanoseconds) return make(millis)
-      return make(roundTiesAwayFromZero(
-        millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0)
-      ))
+      return fromNanosNumber(millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0))
     }
   }
   return invalid(input)
