@@ -16,11 +16,10 @@ import { PGlite, type PGliteInterface, type PGliteOptions } from "@electric-sql/
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Reactivity from "effect/reactivity/Reactivity"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Client from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
@@ -226,17 +225,10 @@ export const fromClient = (
     const semaphore = Semaphore.makeUnsafe(1)
     // Statements, streams and transactions hold the permit until their scope
     // closes, so no other fiber can use the connection while they run.
-    const acquirer = Effect.uninterruptibleMask((restore) => {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      return Effect.as(
-        Effect.tap(
-          restore(semaphore.take(1)),
-          () => Scope.addFinalizer(scope, semaphore.release(1))
-        ),
-        connection
-      )
-    })
+    const acquirer = Effect.as(
+      Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
+      connection
+    )
 
     const config = options as PgliteClientConfig
     const client = yield* Client.make({
