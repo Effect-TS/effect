@@ -1553,6 +1553,27 @@ export interface NetworkInterfaceAddress {
 }
 
 /**
+ * Returns the IPv6 scope ID of a network interface from its addresses.
+ *
+ * **Details**
+ *
+ * The first IPv6 address with a positive scope ID supplies the result. Accepts
+ * the addresses of one interface, such as `os.networkInterfaces()[name]`,
+ * without performing any operating-system lookup itself.
+ *
+ * @see {@link scopeIdsFromInterfaces} for mapping every interface at once
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const scopeIdFromInterface = (
+  addresses: ReadonlyArray<NetworkInterfaceAddress> | undefined
+): Option.Option<number> => {
+  const address = addresses?.find((address) => address.family === "IPv6" && (address.scopeid ?? 0) > 0)
+  return address?.scopeid === undefined ? Option.none() : Option.some(address.scopeid)
+}
+
+/**
  * Creates a map from interface names to IPv6 scope IDs using supplied interface
  * entries.
  *
@@ -1574,8 +1595,8 @@ export const scopeIdsFromInterfaces = (
 ): Map<string, number> => {
   const scopeIds = new Map<string, number>()
   for (const [name, addresses] of interfaces) {
-    const address = addresses?.find((address) => address.family === "IPv6" && (address.scopeid ?? 0) > 0)
-    if (address?.scopeid !== undefined) scopeIds.set(name, address.scopeid)
+    const scopeId = scopeIdFromInterface(addresses)
+    if (Option.isSome(scopeId)) scopeIds.set(name, scopeId.value)
   }
   return scopeIds
 }

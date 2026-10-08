@@ -11,10 +11,11 @@ Add name resolution to `effect/net`:
 - `Host` models domain names, hosts, and unresolved `host:port` endpoints, including internationalized names.
 - `NetAddress` adds `ScopedIpv6Literal` for IPv6 literals with a named zone such as `fe80::1%eth0`.
 - `NetAddress` adds `IpFamily` (`"IPv4" | "IPv6"`), `FamilyAddress`, `familyOf`, and `isFamily` for working with address families.
+- `NetAddress` adds `scopeIdFromInterface` for reading the IPv6 scope ID of one network interface.
 - `Dns` provides the `Dns` service: `lookup` for the addresses of a host name, `resolve` for DNS records, and `reverse` for the names of an address.
 - `Dns` adds DNS record values and a static resolver for tests.
 - `NodeDns`, `BunDns`, and `DenoDns` provide the `Dns` service for each runtime.
-- `@effect/platform-node-shared/NodeDns` provides the `node:dns` building blocks `lookup` and `makeResolver` for runtimes that implement `node:dns`.
+- `NodeDns` also exposes `lookup` and `makeResolver`, the parts its `make` is built from, for other runtimes that implement `node:dns`.
 - `AddressResolver` provides the `AddressResolver` service, which resolves a `HostPort` into internet or socket addresses with `resolve`, using `Dns` for domain names.
 - `NodeAddressResolver`, `BunAddressResolver`, and `DenoAddressResolver` provide `AddressResolver` layers that look up named IPv6 zones such as `fe80::1%eth0` in the host's network interfaces each time they are resolved.
 - `Schema` adds `Port`, `DomainName`, `Host`, `HostPort`, `DnsRecord`, and `DnsRecordType`.

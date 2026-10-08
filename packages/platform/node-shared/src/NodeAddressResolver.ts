@@ -14,7 +14,6 @@ import type * as Layer from "effect/Layer"
 import * as AddressResolver from "effect/net/AddressResolver"
 import type * as Dns from "effect/net/Dns"
 import * as NetAddress from "effect/net/NetAddress"
-import * as Option from "effect/Option"
 import * as Os from "node:os"
 
 /**
@@ -27,8 +26,7 @@ import * as Os from "node:os"
  */
 export const scopeId: AddressResolver.ScopeIdLookup = (name) =>
   Effect.try({
-    try: () =>
-      Option.fromUndefinedOr(NetAddress.scopeIdsFromInterfaces([[name, Os.networkInterfaces()[name]]]).get(name)),
+    try: () => NetAddress.scopeIdFromInterface(Os.networkInterfaces()[name]),
     catch: (cause) => new NetAddress.NetAddressError({ input: name, message: "cannot list network interfaces", cause })
   })
 

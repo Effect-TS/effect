@@ -698,6 +698,9 @@ describe("NetAddress", () => {
       linkLocal.scopeid = 12
       assert.deepStrictEqual(scopeIds, new Map([["en0", 7], ["en3", 11]]))
       assert.deepStrictEqual(NetAddress.scopeIdsFromInterfaces([]), new Map())
+      assert.deepStrictEqual(NetAddress.scopeIdFromInterface(interfaces.en0), Option.some(12))
+      assert.deepStrictEqual(NetAddress.scopeIdFromInterface(interfaces.en2), Option.none())
+      assert.deepStrictEqual(NetAddress.scopeIdFromInterface(undefined), Option.none())
     })
 
     it("accepts the operating system's interface entries", () => {

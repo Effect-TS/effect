@@ -681,11 +681,6 @@ export interface StaticZone {
   readonly records?: { readonly [name: string]: ReadonlyArray<DnsRecord> } | undefined
 }
 
-interface StaticEntry {
-  readonly addresses: Array<NetAddress.IpAddress>
-  readonly records: Array<DnsRecord>
-}
-
 const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") ? name.slice(0, -1) : name
 
 /**
@@ -724,8 +719,11 @@ const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") 
  * @since 4.0.0
  */
 export const makeStatic = (zone: StaticZone): Result.Result<Dns["Service"], NetAddress.NetAddressError> => {
-  const entries = new Map<string, StaticEntry>()
-  const entry = (name: string): Result.Result<StaticEntry, NetAddress.NetAddressError> =>
+  const entries = new Map<
+    string,
+    { readonly addresses: Array<NetAddress.IpAddress>; readonly records: Array<DnsRecord> }
+  >()
+  const entry = (name: string) =>
     Result.map(Host.domainNameFromString(name), (domain) => {
       const key = zoneKey(domain)
       let current = entries.get(key)

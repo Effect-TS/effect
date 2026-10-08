@@ -5,8 +5,8 @@
  * the operating system resolver (`getaddrinfo`) and therefore also reads the
  * hosts file. Bun's `node:dns` lookup uses c-ares instead, which bypasses the
  * system's name service configuration. Record queries and reverse lookups use
- * the shared `node:dns` resolver from `@effect/platform-node-shared/NodeDns`;
- * unlike Node.js, Bun already decodes TXT and CAA character strings as UTF-8.
+ * `NodeDns.makeResolver` without the UTF-8 correction of `NodeDns.make`,
+ * because Bun already decodes TXT and CAA character strings as UTF-8.
  *
  * **Gotchas**
  *
@@ -24,27 +24,17 @@ import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
 import * as NetAddress from "effect/net/NetAddress"
 
-/**
- * Options for the Bun `Dns` service.
- *
- * **Details**
- *
- * `nameServers` replaces the system name servers for record queries and
- * reverse lookups; IP addresses without a port use port 53, and an empty list
- * keeps the system name servers. `timeout` is the time allowed for each attempt
- * and `tries` the number of attempts per name server. Address lookups always
- * use the operating system resolver.
- *
- * **Gotchas**
- *
- * IPv6 name servers with a scope ID, such as link-local addresses, are not
- * supported; record queries and reverse lookups fail with `Unsupported`.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface Options extends NodeDns.Options {}
+export type {
+  /**
+   * Options for the Bun `Dns` service: name servers, timeout, and tries for
+   * record queries and reverse lookups.
+   *
+   * @stability experimental
+   * @category re-exports
+   * @since 4.0.0
+   */
+  Options
+} from "@effect/platform-node-shared/NodeDns"
 
 const reasons: Record<string, Dns.DnsErrorReason> = {
   DNS_ENOTFOUND: "NotFound",
@@ -66,7 +56,7 @@ const toFamily = (family: NetAddress.IpFamily | undefined): 0 | 4 | 6 =>
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: Options): Dns.Dns["Service"] => {
+export const make = (options?: NodeDns.Options): Dns.Dns["Service"] => {
   const resolver = NodeDns.makeResolver(options)
   return Dns.make({
     lookup: (host, family) =>
@@ -112,5 +102,5 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * @category layers
  * @since 4.0.0
  */
-export const layerConfig = (options: Config.Wrap<Options>): Layer.Layer<Dns.Dns, Config.ConfigError> =>
+export const layerConfig = (options: Config.Wrap<NodeDns.Options>): Layer.Layer<Dns.Dns, Config.ConfigError> =>
   Layer.effect(Dns.Dns, Effect.map(Config.unwrap(options), make))
