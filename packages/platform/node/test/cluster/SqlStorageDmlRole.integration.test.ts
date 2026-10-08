@@ -1,7 +1,7 @@
 import { NodeCrypto } from "@effect/platform-node"
 import { PgClient } from "@effect/sql-pg"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Layer, Redacted } from "effect"
+import { Cause, Effect, Exit, Layer, Redacted, Result } from "effect"
 import {
   MessageStorage,
   Runner,
@@ -13,6 +13,7 @@ import {
   SqlRunnerStorage
 } from "effect/cluster"
 import { Migrator, SqlClient, SqlError } from "effect/sql"
+import { TestClock } from "effect/testing"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import { makeRequest } from "./MessageStorageTest.ts"
 
@@ -73,6 +74,50 @@ const assertAuthorizationError = (exit: Exit.Exit<unknown, unknown>) => {
   assert.strictEqual(error.reason._tag, "AuthorizationError")
 }
 
+// A typed failure, not a defect.
+const assertFail = (exit: Exit.Exit<unknown, unknown>): unknown => {
+  assert(Exit.isFailure(exit))
+  assert.isFalse(Cause.hasDies(exit.cause), `expected a typed failure, got ${exit.cause}`)
+  const error = Cause.findError(exit.cause)
+  assert(Result.isSuccess(error), `expected a typed failure, got ${exit.cause}`)
+  return error.success
+}
+
+const assertAuthorizationSqlError = (error: unknown) => {
+  assert(SqlError.isSqlError(error), `expected a SqlError, got ${error}`)
+  assert.strictEqual(error.reason._tag, "AuthorizationError")
+}
+
+const assertFailedMigration = (error: unknown) => {
+  assert(error instanceof Migrator.MigrationError, `expected a MigrationError, got ${error}`)
+  assert.strictEqual(error.kind, "Failed")
+  assertAuthorizationSqlError(error.cause)
+}
+
+// An owner-created, empty history table that the application role can use, so
+// the migrator gets past its own table and fails inside a migration.
+const provisionHistoryTable = (table: string) =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    yield* sql.unsafe(`CREATE TABLE ${table} (
+      migration_id integer primary key,
+      created_at timestamp with time zone not null default now(),
+      name text not null
+    )`)
+    yield* sql.unsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${table} TO ${appRole}`)
+  }).pipe(Effect.provide(OwnerClient))
+
+// Builds a layer as the application role. A build that does not finish, such
+// as one retrying forever, is reported instead of hitting the test timeout.
+const buildAsApp = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
+  asApp(Effect.scoped(Layer.build(layer))).pipe(
+    Effect.exit,
+    Effect.timeoutOrElse({
+      duration: 20_000,
+      orElse: () => Effect.die("layer build did not finish within 20 seconds")
+    })
+  )
+
 // Each test uses its own table prefix, so they share one container.
 const TestLayer = Layer.effectDiscard(Effect.provide(provisionAppRole, OwnerClient)).pipe(
   Layer.provideMerge(PgContainer.layer)
@@ -123,6 +168,25 @@ describe("cluster SQL storage with a DML-only role", () => {
         expect(yield* pendingIds(SqlRunnerStorage.migrations({ prefix: "fresh" }), "fresh_runner_migrations"))
           .toEqual([1])
       })))
+
+    it.effect("surfaces errors inside a migration as typed failures", () =>
+      Effect.gen(function*() {
+        yield* provisionHistoryTable("inside_runner_migrations")
+        yield* provisionHistoryTable("inside_migrations")
+
+        assertFailedMigration(assertFail(yield* buildAsApp(SqlRunnerStorage.layerMigrations({ prefix: "inside" }))))
+        assertFailedMigration(assertFail(yield* buildAsApp(SqlMessageStorage.layerMigrations({ prefix: "inside" }))))
+
+        // Runner storage layers keep failing with the SqlError, as they did
+        // before the runner tables moved into a migration.
+        assertAuthorizationSqlError(assertFail(yield* buildAsApp(SqlRunnerStorage.layerWith({ prefix: "inside" }))))
+
+        // Message storage layers turn migration errors into defects.
+        const messageExit = yield* buildAsApp(SqlMessageStorage.layerWith({ prefix: "inside" }))
+        assert(Exit.isFailure(messageExit))
+        assert.isTrue(Cause.hasDies(messageExit.cause), `expected a defect, got ${messageExit.cause}`)
+        assert.isFalse(Cause.hasFails(messageExit.cause))
+      }).pipe(TestClock.withLive), 120_000)
 
     it.effect("fails with an authorization error from the migrating layers", () =>
       Effect.gen(function*() {

@@ -94,6 +94,16 @@ describe("Migrator.pending", () => {
         assert.deepStrictEqual(ids(pending), [])
       }))
 
+    it.effect("finds a migrations table whose name needs quoting", () =>
+      Effect.gen(function*() {
+        const table = "MixedCase_pending_migrations"
+        yield* PgliteMigrator.run({ loader: recordingLoader, table })
+
+        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+
+        assert.deepStrictEqual(ids(pending), [])
+      }))
+
     it.effect("does not lock the migrations table or run pending migrations", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient
@@ -121,6 +131,21 @@ describe("Migrator.pending", () => {
 
         assert.deepStrictEqual(exclusiveLocks, [])
         assert.isFalse(yield* tableExists("pending_should_not_run"))
+      }))
+  })
+})
+
+describe("Migrator.make", () => {
+  layer(ClientLayer, { timeout: "30 seconds" })((it) => {
+    it.effect("reuses a migrations table whose name needs quoting", () =>
+      Effect.gen(function*() {
+        const table = "MixedCase_make_migrations"
+        const loader = Migrator.fromRecord({ "1_first": Effect.void })
+        yield* PgliteMigrator.run({ loader, table })
+
+        const completed = yield* PgliteMigrator.run({ loader, table })
+
+        assert.deepStrictEqual(completed, [])
       }))
   })
 })
