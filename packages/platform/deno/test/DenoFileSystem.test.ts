@@ -7,7 +7,8 @@ import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 describe("FileSystem", () =>
   testLayer(DenoFileSystem.layer, {
     accessOnDirectory: false,
-    tempFileScopedRemovesDirectory: false
+    tempFileScopedRemovesDirectory: false,
+    noFollow: false
   }))
 
 describe("truncate", () => {

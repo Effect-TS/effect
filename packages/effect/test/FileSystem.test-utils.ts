@@ -10,6 +10,8 @@ export interface TestLayerOptions {
   readonly accessOnDirectory?: boolean
   /** Whether a scoped temporary file removes its containing directory. Deno removes only the file. Defaults to `true`. */
   readonly tempFileScopedRemovesDirectory?: boolean
+  /** Whether `open` can refuse to follow a symlink at the final path component. Defaults to `true`. */
+  readonly noFollow?: boolean
 }
 
 export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: TestLayerOptions = {}) => {
@@ -561,5 +563,177 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       }).pipe(
         Effect.scoped
       )
+    })))
+
+  it.skipIf(options.noFollow === false)(
+    "open with noFollow rejects a symlink at the final path component",
+    () =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.gen(function*() {
+          const directory = yield* fs.makeTempDirectoryScoped()
+          yield* fs.writeFileString(`${directory}/target`, "target")
+          yield* fs.symlink(`${directory}/target`, `${directory}/link`)
+
+          const result = yield* Effect.result(fs.open(`${directory}/link`, { noFollow: true }))
+          expect(result).toMatchObject({
+            _tag: "Failure",
+            failure: {
+              _tag: "PlatformError",
+              reason: { _tag: "BadResource", module: "FileSystem", method: "open" }
+            }
+          })
+        }).pipe(Effect.scoped)
+      }))
+  )
+
+  it.skipIf(options.noFollow === false)(
+    "open with noFollow opens a regular file",
+    () =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.gen(function*() {
+          const file = yield* fs.open(`${__dirname}/fixtures/text.txt`, { noFollow: true })
+          const text = yield* file.readAlloc(5).pipe(
+            Effect.flatMap(Effect.fromOption),
+            Effect.map((_) => new TextDecoder().decode(_))
+          )
+          expect(text).toBe("lorem")
+        }).pipe(Effect.scoped)
+      }))
+  )
+
+  it.skipIf(options.noFollow !== false)(
+    "open with noFollow fails with BadArgument where unsupported",
+    () =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.gen(function*() {
+          const result = yield* Effect.result(fs.open(`${__dirname}/fixtures/text.txt`, { noFollow: true }))
+          expect(result).toMatchObject({
+            _tag: "Failure",
+            failure: {
+              _tag: "PlatformError",
+              reason: { _tag: "BadArgument", module: "FileSystem", method: "open" }
+            }
+          })
+        }).pipe(Effect.scoped)
+      }))
+  )
+
+  it("read with a position reads at that offset without moving the cursor", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        const buffer = new Uint8Array(5)
+        assert.strictEqual(yield* file.read(buffer), 5)
+        assert.strictEqual(new TextDecoder().decode(buffer), "lorem")
+
+        assert.strictEqual(yield* file.read(buffer, { position: BigInt(12) }), 5)
+        assert.strictEqual(new TextDecoder().decode(buffer), "dolar")
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(5))
+
+        assert.strictEqual(yield* file.read(buffer), 5)
+        assert.strictEqual(new TextDecoder().decode(buffer), " ipsu")
+      }).pipe(Effect.scoped)
+    })))
+
+  it("readAlloc with a position reads at that offset without moving the cursor", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        yield* file.seek(BigInt(6), "start")
+
+        const text = yield* file.readAlloc(4, { position: BigInt(18) }).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(text).toBe("sit ")
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(6))
+
+        const next = yield* file.readAlloc(5).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(next).toBe("ipsum")
+      }).pipe(Effect.scoped)
+    })))
+
+  it("positional reads at or past the end of the file return nothing", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+
+        assert.strictEqual(yield* file.read(new Uint8Array(5), { position: BigInt(27) }), 0)
+        assert.deepStrictEqual(yield* file.readAlloc(5, { position: BigInt(100) }), Option.none())
+        assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(0))
+      }).pipe(Effect.scoped)
+    })))
+
+  it.each(["read", "readAlloc"] as const)(
+    "%s with a negative position fails with BadArgument without moving the cursor",
+    (method) =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.gen(function*() {
+          const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+          yield* file.seek(BigInt(6), "start")
+
+          const result = yield* Effect.result(
+            method === "read"
+              ? Effect.asVoid(file.read(new Uint8Array(5), { position: BigInt(-1) }))
+              : Effect.asVoid(file.readAlloc(5, { position: BigInt(-1) }))
+          )
+          expect(result).toMatchObject({
+            _tag: "Failure",
+            failure: {
+              _tag: "PlatformError",
+              reason: { _tag: "BadArgument", module: "FileSystem", method }
+            }
+          })
+          assert.strictEqual(yield* file.seek(BigInt(0), "current"), BigInt(6))
+        }).pipe(Effect.scoped)
+      }))
+  )
+
+  it("concurrent positional reads on one handle do not interfere with each other or the cursor", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const path = yield* fs.makeTempFileScoped()
+        const data = Uint8Array.from({ length: 64 * 1024 }, (_, i) => (i * 31 + 7) % 251)
+        yield* fs.writeFile(path, data)
+        const file = yield* fs.open(path)
+        yield* file.seek(BigInt(1000), "start")
+
+        const chunkSize = 16
+        const offsets = [0, 4096, 8192, 12345, 30000, 45000, 50000, 65000]
+        for (let round = 0; round < 20; round++) {
+          const cursor = yield* file.seek(BigInt(0), "current")
+          const [cursorChunk, ...chunks] = yield* Effect.all([
+            file.readAlloc(chunkSize).pipe(Effect.flatMap(Effect.fromOption)),
+            ...offsets.map((offset) =>
+              file.readAlloc(chunkSize, { position: BigInt(offset) }).pipe(Effect.flatMap(Effect.fromOption))
+            )
+          ], { concurrency: "unbounded" })
+
+          assert.deepStrictEqual(
+            [cursorChunk, ...chunks],
+            [Number(cursor), ...offsets].map((offset) => data.subarray(offset, offset + chunkSize))
+          )
+          assert.strictEqual(yield* file.seek(BigInt(0), "current"), cursor + BigInt(chunkSize))
+        }
+      }).pipe(Effect.scoped)
     })))
 }
