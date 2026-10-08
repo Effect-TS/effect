@@ -458,9 +458,9 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: Effect.flatMap(acquirer, (connection) => connection.export),
+        export: Effect.scoped(Effect.flatMap(acquirer, (connection) => connection.export)),
         import(data: Uint8Array) {
-          return Effect.flatMap(acquirer, (connection) => connection.import(data))
+          return Effect.scoped(Effect.flatMap(acquirer, (connection) => connection.import(data)))
         }
       }
     )

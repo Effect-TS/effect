@@ -224,8 +224,9 @@ export const fromClient = (
 
     const connection = new PgliteConnection(pglite)
     const semaphore = Semaphore.makeUnsafe(1)
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
-    const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
+    // Statements, streams and transactions hold the permit until their scope
+    // closes, so no other fiber can use the connection while they run.
+    const acquirer = Effect.uninterruptibleMask((restore) => {
       const fiber = Fiber.getCurrent()!
       const scope = Context.getUnsafe(fiber.context, Scope.Scope)
       return Effect.as(
@@ -241,7 +242,6 @@ export const fromClient = (
     const client = yield* Client.make({
       acquirer,
       compiler,
-      transactionAcquirer,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       spanAttributes,
       transformRows

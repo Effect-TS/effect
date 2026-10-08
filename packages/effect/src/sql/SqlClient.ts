@@ -280,6 +280,12 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
  *
  * **Details**
  *
+ * Both acquirers lease the connection into the current scope and hold the
+ * semaphore until that scope closes, so a statement or stream keeps the
+ * connection until it finishes and another fiber cannot begin a transaction
+ * underneath it. Effects that use the connection directly, such as an export,
+ * have to run inside `Effect.scoped`.
+ *
  * SQLite can keep a transaction open after COMMIT fails, for example on a
  * deferred foreign key violation. `onCommitFailure` rolls it back before the
  * connection is reused. If that ROLLBACK fails, the connection is rejected, and
@@ -300,7 +306,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
   readonly semaphore: Semaphore.Semaphore
   readonly isTransaction?: ((conn: C) => boolean) | undefined
 }): {
-  readonly acquirer: Effect.Effect<C, SqlError>
+  readonly acquirer: Effect.Effect<C, SqlError, Scope.Scope>
   readonly transactionAcquirer: Effect.Effect<C, SqlError, Scope.Scope>
   readonly onCommitFailure: (conn: Connection.Connection) => Effect.Effect<void, SqlError>
 } => {
@@ -336,15 +342,17 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
+  const lease = Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(Effect.scope, (scope) =>
+      restore(semaphore.take(1)).pipe(
+        Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
+        Effect.andThen(available)
+      ))
+  )
+
   return {
-    acquirer: semaphore.withPermits(1)(available),
-    transactionAcquirer: Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(Effect.scope, (scope) =>
-        restore(semaphore.take(1)).pipe(
-          Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
-          Effect.andThen(available)
-        ))
-    ),
+    acquirer: lease,
+    transactionAcquirer: lease,
     onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause)))
   }
 }
