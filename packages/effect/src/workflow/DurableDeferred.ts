@@ -20,6 +20,7 @@ import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Exit from "../Exit.ts"
 import * as Filter from "../Filter.ts"
 import { dual } from "../Function.ts"
+import * as Latch from "../Latch.ts"
 import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
@@ -298,18 +299,46 @@ export const raceAll = <
     success: options.success,
     error: options.error
   })
-  return Effect.gen(function*() {
-    const engine = yield* EngineTag
-    const exit = yield* engine.deferredResult(deferred)
-    if (Option.isSome(exit)) {
-      return yield* exit.value
+  // Count the race as one activity of the enclosing workflow from the cached
+  // winner lookup until the winner is recorded, so a parked sibling cannot
+  // suspend the run before the continuation starts.
+  return Workflow.wrapActivityResult(
+    Effect.gen(function*() {
+      const engine = yield* EngineTag
+      const exit = yield* engine.deferredResult(deferred)
+      if (Option.isSome(exit)) {
+        return yield* exit.value
+      }
+      return yield* into(
+        withRaceActivityState(Effect.raceAll(options.effects)),
+        deferred
+      )
+    }),
+    () => false
+  )
+}
+
+/**
+ * Runs race arms with their own activity count, so an arm parked on a durable
+ * await only waits for its sibling arms instead of the race's own hold on the
+ * enclosing workflow. Awaited and completed deferred names stay shared.
+ */
+const withRaceActivityState = <A, E, R>(
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R | WorkflowInstance> =>
+  Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
+    const instance = Context.get(context, InstanceTag)
+    const local: WorkflowInstance["Service"] = {
+      ...instance,
+      activityState: { count: 0, latch: Latch.makeUnsafe() }
     }
-    return yield* into(
-      Effect.raceAll(options.effects),
-      deferred
+    return Effect.ensuring(
+      Effect.provideService(effect, InstanceTag, local),
+      Effect.sync(() => {
+        if (local.suspended) instance.suspended = true
+      })
     )
   })
-}
 
 /**
  * Runtime brand identifier for durable deferred tokens.
