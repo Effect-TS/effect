@@ -279,50 +279,49 @@ const recordExit = (
  * is set. The hold spans the lookup, `effect` and the write, so a parked
  * sibling cannot suspend the run before the continuation starts.
  */
-const recordHeld = <A, E, R>(
+const recordHeld = Effect.fnUntraced(function*<A, E, R>(
   effect: Effect.Effect<A, E, R>,
   self: DurableDeferred<any, any>,
   checkCache: boolean
-): Effect.Effect<A, E, R | WorkflowEngine | WorkflowInstance> =>
-  Effect.gen(function*() {
-    const engine = yield* EngineTag
-    const instance = yield* InstanceTag
-    const exit = yield* Workflow.wrapActivityResult(
-      Effect.gen(function*() {
-        if (checkCache) {
-          const cached = yield* engine.deferredResult(self)
-          if (Option.isSome(cached)) return cached
-        }
-        // `effect` counts on its own activity state, so a durable await inside
-        // it waits for its own siblings and not for the hold above. The copy
-        // starts unsuspended: a parked arm of an enclosing race leaves that
-        // copy marked suspended while only interrupting its own fiber.
-        const local: WorkflowInstance["Service"] = {
-          ...instance,
-          suspended: false,
-          activityState: { count: 0, latch: Latch.makeUnsafe() }
-        }
-        // A parked `effect` interrupts the fiber it runs on. The child fiber
-        // keeps that from skipping the suspension handling below.
-        const fiber = yield* effect.pipe(
-          Effect.provideService(InstanceTag, local),
-          Effect.onExit((exit) => recordExit(engine, instance, self, exit)),
-          Effect.forkChild({ startImmediately: true })
-        )
-        const exit = yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber))
-        return local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
-          ? Option.none()
-          : Option.some(exit)
-      }),
-      // Every branch of `effect` parked: release the hold and let the enclosing
-      // activities finish before suspending. External preemption does not wait.
-      Option.isNone
-    )
-    if (Option.isNone(exit)) {
-      return yield* Workflow.suspend(instance)
-    }
-    return yield* exit.value
-  })
+): Effect.fn.Return<A, E, R | WorkflowEngine | WorkflowInstance> {
+  const engine = yield* EngineTag
+  const instance = yield* InstanceTag
+  const exit = yield* Workflow.wrapActivityResult(
+    Effect.gen(function*() {
+      if (checkCache) {
+        const cached = yield* engine.deferredResult(self)
+        if (Option.isSome(cached)) return cached
+      }
+      // `effect` counts on its own activity state, so a durable await inside
+      // it waits for its own siblings and not for the hold above. The copy
+      // starts unsuspended: a parked arm of an enclosing race leaves that
+      // copy marked suspended while only interrupting its own fiber.
+      const local: WorkflowInstance["Service"] = {
+        ...instance,
+        suspended: false,
+        activityState: { count: 0, latch: Latch.makeUnsafe() }
+      }
+      // A parked `effect` interrupts the fiber it runs on. The child fiber
+      // keeps that from skipping the suspension handling below.
+      const fiber = yield* effect.pipe(
+        Effect.provideService(InstanceTag, local),
+        Effect.onExit((exit) => recordExit(engine, instance, self, exit)),
+        Effect.forkChild({ startImmediately: true })
+      )
+      const exit = yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber))
+      return local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+        ? Option.none()
+        : Option.some(exit)
+    }),
+    // Every branch of `effect` parked: release the hold and let the enclosing
+    // activities finish before suspending. External preemption does not wait.
+    Option.isNone
+  )
+  if (Option.isNone(exit)) {
+    return yield* Workflow.suspend(instance)
+  }
+  return yield* exit.value
+})
 
 /**
  * Runs effects as a durable race, returning a previously persisted result when
