@@ -25,10 +25,9 @@ import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Connection } from "../sql/SqlConnection.ts"
-import { isSqlError, type SqlError } from "../sql/SqlError.ts"
+import type { SqlError } from "../sql/SqlError.ts"
 import type * as Statement from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
-import { runMigrations } from "./internal/migrations.ts"
 import { ResourceRef } from "./internal/resourceRef.ts"
 import { effectiveInterval } from "./internal/shardLock.ts"
 import * as RunnerStorage from "./RunnerStorage.ts"
@@ -690,16 +689,7 @@ export const make = (options: {
   RunnerStorage.RunnerStorage["Service"],
   SqlError,
   SqlClient.SqlClient | ShardingConfig.ShardingConfig | Scope.Scope
-> =>
-  Effect.andThen(
-    // Preserve the constructor's typed SqlError failures.
-    Effect.catchTag(
-      runRunnerMigrations(options),
-      "MigrationError",
-      (error) => error.kind === "Failed" && isSqlError(error.cause) ? Effect.fail(error.cause) : Effect.die(error)
-    ),
-    makeStorage(options)
-  )
+> => Effect.andThen(runRunnerMigrations(options), makeStorage(options))
 
 /**
  * Migration loader for the SQL runner storage tables.
@@ -819,12 +809,12 @@ export const migrations = (options: {
 
 const runRunnerMigrations = (options: {
   readonly prefix?: string | undefined
-}): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  runMigrations({
+}): Effect.Effect<void, never, SqlClient.SqlClient> =>
+  Migrator.make({})({
     loader: migrations(options),
     // Message and runner migration ids overlap, so keep separate histories.
     table: `${options.prefix ?? "cluster"}_runner_migrations`
-  })
+  }).pipe(Effect.asVoid, Effect.orDie)
 
 /**
  * Runs the SQL runner storage migrations without providing storage.
@@ -833,7 +823,7 @@ const runRunnerMigrations = (options: {
  *
  * Use an owner connection in a deploy step, then use `layerStorage` with a
  * DML-only runtime connection. History is recorded in `<prefix>_runner_migrations`.
- * Migration errors are typed failures.
+ * Migration errors become defects.
  * This layer does not require `ShardingConfig`.
  *
  * @stability unstable
@@ -842,8 +832,7 @@ const runRunnerMigrations = (options: {
  */
 export const layerMigrations = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<never, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  Layer.effectDiscard(runRunnerMigrations(options))
+}): Layer.Layer<never, never, SqlClient.SqlClient> => Layer.effectDiscard(runRunnerMigrations(options))
 
 /**
  * Provides SQL-backed `RunnerStorage` without DDL or startup schema checks.

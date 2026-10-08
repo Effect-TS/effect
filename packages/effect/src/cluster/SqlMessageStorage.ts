@@ -37,7 +37,6 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
-import { runMigrations } from "./internal/migrations.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -78,7 +77,7 @@ export const makeEncoded: (options?: {
   MessageStorage.Encoded,
   never,
   SqlClient.SqlClient | Crypto.Crypto
-> = (options) => Effect.andThen(Effect.orDie(runMessageMigrations(options)), makeEncodedStorage(options))
+> = (options) => Effect.andThen(runMessageMigrations(options), makeEncodedStorage(options))
 
 const makeEncodedStorage = Effect.fnUntraced(function*(
   options: {
@@ -1123,11 +1122,11 @@ export const migrations = (options?: {
 
 const runMessageMigrations = (options?: {
   readonly prefix?: string | undefined
-}): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  runMigrations({
+}): Effect.Effect<void, never, SqlClient.SqlClient> =>
+  Migrator.make({})({
     loader: migrations(options),
     table: `${options?.prefix ?? "cluster"}_migrations`
-  })
+  }).pipe(Effect.asVoid, Effect.orDie)
 
 /**
  * Runs the SQL message storage migrations without providing storage.
@@ -1136,7 +1135,7 @@ const runMessageMigrations = (options?: {
  *
  * Use an owner connection in a deploy step, then use `layerStorage` with a
  * DML-only runtime connection. History is recorded in `<prefix>_migrations`.
- * Migration errors are typed failures.
+ * Migration errors become defects.
  *
  * On PostgreSQL, use the role's `search_path` to select a schema. A
  * schema-qualified prefix such as `app.cluster` produces an invalid index name.
@@ -1147,8 +1146,7 @@ const runMessageMigrations = (options?: {
  */
 export const layerMigrations = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<never, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  Layer.effectDiscard(runMessageMigrations(options))
+}): Layer.Layer<never, never, SqlClient.SqlClient> => Layer.effectDiscard(runMessageMigrations(options))
 
 /**
  * Provides SQL-backed `MessageStorage` without DDL or startup schema checks.
@@ -1189,7 +1187,7 @@ export const layerWith = (options: {
   readonly prefix?: string | undefined
 }): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
   layerStorage(options).pipe(
-    Layer.provide(Layer.orDie(layerMigrations(options)))
+    Layer.provide(layerMigrations(options))
   )
 
 /**
