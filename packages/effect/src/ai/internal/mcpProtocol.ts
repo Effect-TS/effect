@@ -377,12 +377,13 @@ export interface HandlerInstallationTarget {
  * @internal
  */
 export interface HandlerInstallationContext {
-  readonly getListChangeRevision?: () => number
   readonly subscribeServerNotifications: Effect.Effect<
     PubSub.Subscription<CanonicalServerNotification>,
     never,
     Scope.Scope
   >
+  /** Current list-change revision; subscriptions ignore changes emitted at or before it. */
+  readonly getListChangeRevision?: (() => number) | undefined
   readonly sendNotification?: (
     protocolVersion: string,
     clientId: number,

@@ -512,10 +512,8 @@ export const make = Effect.fnUntraced(function*(
     installHandlers: Effect.fnUntraced(function*(options) {
       const contextMap = new Map<string, unknown>()
       const installationContext: McpProtocol.HandlerInstallationContext = {
-        ...(options.getListChangeRevision === undefined
-          ? {}
-          : { getListChangeRevision: options.getListChangeRevision }),
         subscribeServerNotifications: options.subscribeServerNotifications,
+        getListChangeRevision: options.getListChangeRevision,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
         ...(options.markSubscriptionCancelled === undefined
           ? {}
