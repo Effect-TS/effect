@@ -53,8 +53,6 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
  */
 export type IpAddress = Ipv4Address | Ipv6Address
 
-const ScopedIpv6LiteralTypeId = "~effect/net/NetAddress/ScopedIpv6Literal" as const
-
 /**
  * An IPv6 literal with a zone, such as `fe80::1%eth0` or `fe80::1%3`.
  *
@@ -70,7 +68,7 @@ const ScopedIpv6LiteralTypeId = "~effect/net/NetAddress/ScopedIpv6Literal" as co
  * @category models
  * @since 4.0.0
  */
-export type ScopedIpv6Literal = Brand.Branded<string, typeof ScopedIpv6LiteralTypeId>
+export type ScopedIpv6Literal = Brand.Branded<string, "~effect/net/NetAddress/ScopedIpv6Literal">
 
 /**
  * An immutable 48-bit IEEE 802 MAC address.
