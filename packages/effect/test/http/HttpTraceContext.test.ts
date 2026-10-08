@@ -44,8 +44,12 @@ describe("HttpTraceContext", () => {
     it.each([
       { b3: `<script>-${spanId}-1` },
       { b3: `${traceId}-${spanId.slice(0, -1)}g-1` },
+      { b3: `${traceId.slice(0, -1)}-${spanId}-1` },
+      { b3: `${traceId}-${spanId.slice(0, -1)}-1` },
       { "X-B3-TraceId": "<script>", "X-B3-SpanId": spanId },
-      { "X-B3-TraceId": traceId, "X-B3-SpanId": `${spanId.slice(0, -1)}g` }
+      { "X-B3-TraceId": traceId, "X-B3-SpanId": `${spanId.slice(0, -1)}g` },
+      { "X-B3-TraceId": traceId.slice(0, -1), "X-B3-SpanId": spanId },
+      { "X-B3-TraceId": traceId, "X-B3-SpanId": spanId.slice(0, -1) }
     ])("rejects invalid B3 identifiers: %j", (headers) => {
       assertNone(HttpTraceContext.fromHeaders(Headers.fromInput(headers)))
     })
