@@ -144,7 +144,8 @@ export interface PipeOptions {
    * **Details**
    *
    * - `"stdin"` (default): Pipe to stdin of the destination
-   * - `"fd3"`, `"fd4"`, etc.: Pipe to a custom file descriptor
+   * - `"fd3"`, `"fd4"`, etc.: Pipe to a custom file descriptor. A descriptor
+   *   configured as `"duplex"` stays duplex.
    */
   readonly to?: PipeToOption | undefined
 }
@@ -384,6 +385,23 @@ export type AdditionalFdConfig =
      */
     readonly sink?: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
   }
+  | {
+    /**
+     * The direction of data flow for this file descriptor.
+     * - "duplex": Data flows in both directions over the same file descriptor
+     *   (writable and readable by parent)
+     */
+    readonly type: "duplex"
+    /**
+     * An optional stream to write into the file descriptor. The write side is
+     * ended when the stream completes.
+     */
+    readonly stream?: Stream.Stream<Uint8Array, PlatformError.PlatformError> | undefined
+    /**
+     * An optional sink which receives data read from the file descriptor.
+     */
+    readonly sink?: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
+  }
 
 /**
  * Options for command execution.
@@ -487,6 +505,27 @@ export interface CommandOptions extends KillOptions {
    * The file descriptor index is determined by the numeric suffix (i.e. `fd3`
    * has a file descriptor index of 3).
    *
+   * A `"duplex"` file descriptor is a single bidirectional channel. Write to it
+   * with `getInputFd` and read from it with `getOutputFd`; both use the same
+   * descriptor. When a `"duplex"` descriptor is the target of `pipeTo`, it
+   * stays duplex and the piped stream becomes its input.
+   *
+   * Platform support for `"duplex"` descriptors:
+   *
+   * - Verified on Linux with Node.js and Deno's `node:child_process`:
+   *   request/response on one descriptor, and half-close in both directions.
+   *   Ending the input sends EOF to the child, which can still reply.
+   * - Expected, not verified: the same behavior on macOS (POSIX socket pair),
+   *   and request/response on Windows (duplex named pipe).
+   * - Not supported: half-close on Windows (named pipes have no write-side
+   *   shutdown) and on Bun (ending the input closes the whole descriptor).
+   *   Keep the input open until every response has been read.
+   * - Unverified: any use of extra descriptors with Bun on Windows.
+   *
+   * In the child, open the descriptor as a socket, e.g. `new net.Socket({ fd: 3 })`
+   * in Node.js or Deno. Deno children cannot use `node:fs` on the raw
+   * descriptor, and Bun children cannot use `net.Socket` on it.
+   *
    * **Example** (Configuring additional file descriptors)
    *
    * ```ts import.meta.vitest
@@ -505,8 +544,18 @@ export interface CommandOptions extends KillOptions {
    *     fd3: { type: "input" }
    *   }
    * })
-   * const result = [cmd1.options.additionalFds?.fd3?.type, cmd2.options.additionalFds?.fd3?.type]
-   * result // => ["output", "input"]
+   * // Duplex fd3 - write and read over the same descriptor
+   * const cmd3 = ChildProcess.make("my-program", [], {
+   *   additionalFds: {
+   *     fd3: { type: "duplex" }
+   *   }
+   * })
+   * const result = [
+   *   cmd1.options.additionalFds?.fd3?.type,
+   *   cmd2.options.additionalFds?.fd3?.type,
+   *   cmd3.options.additionalFds?.fd3?.type
+   * ]
+   * result // => ["output", "input", "duplex"]
    * ```
    */
   readonly additionalFds?: Record<`fd${number}`, AdditionalFdConfig> | undefined
