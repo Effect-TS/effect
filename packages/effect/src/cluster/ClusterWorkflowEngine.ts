@@ -15,7 +15,6 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Headers from "../http/Headers.ts"
-import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
@@ -132,7 +131,6 @@ export const make = Effect.gen(function*() {
     readonly context: Context.Context<any>
   }>()
   const interruptedActivities = new Set<string>()
-  const activityLatches = new Map<string, Latch.Latch>()
   const deferredState = WorkflowEngine.makeDeferredState()
   // Rebuilds share an activation; overlapping activations have separate results.
   // Weak keys do not retain scopes, but contexts captured by clients, activities,
@@ -476,23 +474,19 @@ export const make = Effect.gen(function*() {
                 const activityId = `${executionId}/${payload.name}`
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
                 interruptedActivities.delete(activityId)
-                return Effect.gen(function*() {
-                  let entry = activities.get(activityId)
-                  while (!entry) {
-                    const latch = Latch.makeUnsafe()
-                    activityLatches.set(activityId, latch)
-                    yield* latch.await
-                    entry = activities.get(activityId)
-                  }
-                  const context = entry.context.pipe(
-                    Context.add(WorkflowEngine.WorkflowInstance, instance),
-                    Context.add(CurrentActivationScope, activation),
-                    Context.add(Activity.CurrentAttempt, payload.attempt)
-                  )
-                  return yield* entry.activity.executeEncoded.pipe(
-                    Effect.provideContext(context)
-                  )
-                }).pipe(
+                const entry = activities.get(activityId)
+                if (!entry) {
+                  // Replay may never register a losing race activity. Answer it
+                  // without waiting; a later registration can reset this reply.
+                  return Effect.succeed(new Workflow.Suspended({})).pipe(Rpc.wrap({ fork: true }))
+                }
+                const context = entry.context.pipe(
+                  Context.add(WorkflowEngine.WorkflowInstance, instance),
+                  Context.add(CurrentActivationScope, activation),
+                  Context.add(Activity.CurrentAttempt, payload.attempt)
+                )
+                return entry.activity.executeEncoded.pipe(
+                  Effect.provideContext(context),
                   Workflow.intoResult,
                   Effect.catchCause((cause) => {
                     // we only want to store interrupts as suspends when the
@@ -633,11 +627,6 @@ export const make = Effect.gen(function*() {
         while (true) {
           if (!activities.has(activityId)) {
             activities.set(activityId, { activity, context: services })
-            const latch = activityLatches.get(activityId)
-            if (latch) {
-              yield* latch.open
-              activityLatches.delete(activityId)
-            }
           }
           const result = yield* Effect.orDie(
             client.activity({
