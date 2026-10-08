@@ -2570,6 +2570,41 @@ describe("McpServer", () => {
   })
 
   describe("list-change notification scheduling", () => {
+    it.live("should not replay startup tool changes to the first HTTP subscription", () =>
+      Effect.gen(function*() {
+        const kit = Toolkit.make(Tool.make("ping", { success: Schema.String }))
+        const harness = yield* makeHttpHarness(
+          McpServer.toolkit(kit).pipe(
+            Layer.provide(kit.toLayer({ ping: () => Effect.succeed("pong") })),
+            Layer.provide(makeServerLayer({ name: "StartupNotifications", protocols: [McpProtocol.v2026_07_28] }))
+          )
+        )
+        const subscription = makeMcpSseReader(
+          yield* harness.post({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "subscriptions/listen",
+            params: {
+              notifications: { toolsListChanged: true },
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": { name: "test", version: "1.0.0" }
+              }
+            }
+          }, { "mcp-protocol-version": "2026-07-28", "mcp-method": "subscriptions/listen" })
+        )
+        yield* Effect.addFinalizer(() => subscription.cancel)
+        assert.deepInclude(yield* subscription.take(), {
+          method: "notifications/subscriptions/acknowledged",
+          params: {
+            notifications: { toolsListChanged: true },
+            _meta: { "io.modelcontextprotocol/subscriptionId": 2 }
+          }
+        })
+        assert.deepStrictEqual(yield* subscription.take().pipe(Effect.timeoutOption("100 millis")), Option.none())
+      }))
+
     it.effect("should coalesce notifications when one registration kind changes repeatedly in a scheduling window", () =>
       Effect.gen(function*() {
         const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28)
