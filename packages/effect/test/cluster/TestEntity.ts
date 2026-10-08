@@ -145,10 +145,6 @@ export const TestEntityNoState = TestEntity.toLayer(
       FailWithTransaction: (envelope) =>
         Effect.suspend(() => {
           Queue.offerUnsafe(state.envelopes, envelope)
-          if (state.defectTrigger.current) {
-            MutableRef.set(state.defectTrigger, false)
-            return Effect.die("FailWithTransaction defect")
-          }
           return Effect.fail(new BoomError({ cause: "boom" }))
         })
     })

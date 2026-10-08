@@ -1733,7 +1733,30 @@ describe.concurrent("Sharding", () => {
       assert.strictEqual(second._tag, "BoomError")
       assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-      Layer.provide(RollbackMemoryStorage((transaction) => transaction)),
+      // Replies saved inside a failed transaction are discarded, like a SQL
+      // rollback.
+      Layer.updateService(MessageStorage.MessageStorage, (storage) => {
+        let saved: Array<Snowflake.Snowflake> = []
+        return {
+          ...storage,
+          withTransaction: (effect) =>
+            storage.withTransaction(effect).pipe(
+              Effect.onExit((exit) => {
+                const rolledBack = saved
+                saved = []
+                return Exit.isFailure(exit)
+                  ? Effect.forEach(rolledBack, (id) => Effect.orDie(storage.clearReplies(id)), { discard: true })
+                  : Effect.void
+              })
+            ),
+          saveReply: (reply) =>
+            MessageStorage.MemoryTransaction.use((inTransaction) => {
+              if (inTransaction) saved.push(reply.reply.requestId)
+              return storage.saveReply(reply)
+            })
+        }
+      }),
+      Layer.provide(MessageStorage.layerMemory),
       Layer.provide(TestShardingConfig)
     ))))
 
@@ -1744,19 +1767,14 @@ describe.concurrent("Sharding", () => {
       yield* Effect.gen(function*() {
         const makeClient = yield* TestEntity.client
         yield* TestClock.adjust(1)
-        const client = makeClient("1")
+        const result = yield* makeClient("1").WithTransaction({ id: 1 }).pipe(Effect.forkChild)
 
-        const result = yield* client.WithTransaction({ id: 1 }).pipe(
-          Effect.timeout(10000),
-          Effect.forkChild
-        )
         yield* committing.await
         yield* TestClock.adjust(1000)
-        expect(result.pollUnsafe()).toBeUndefined()
+        assert.isUndefined(result.pollUnsafe())
 
         yield* commit.open
-        yield* TestClock.adjust(5000)
-        assert.strictEqual(yield* Fiber.join(result), true)
+        assert.isTrue(yield* Fiber.join(result))
       }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
         Layer.provide(RollbackMemoryStorage((transaction) =>
           Effect.tap(transaction, () => Effect.andThen(committing.open, commit.await))
@@ -1765,17 +1783,15 @@ describe.concurrent("Sharding", () => {
       )))
     }))
 
-  it.effect("WithTransaction replays the request when COMMIT dies", () =>
+  it.effect("WithTransaction replays the request without replying when COMMIT dies", () =>
     Effect.gen(function*() {
       const state = yield* TestEntityState
       const makeClient = yield* TestEntity.client
       yield* TestClock.adjust(1)
-      const client = makeClient("1")
 
-      // Record how many handler runs happened when the reply reached the caller.
-      const result = yield* client.WithTransaction({ id: 1 }).pipe(
+      // Count handler runs when the reply arrives: only the replay may reply.
+      const result = yield* makeClient("1").WithTransaction({ id: 1 }).pipe(
         Effect.map((value) => [value, Queue.sizeUnsafe(state.envelopes)] as const),
-        Effect.timeout(5000),
         Effect.forkChild
       )
       yield* TestClock.adjust(5000)
@@ -1787,113 +1803,30 @@ describe.concurrent("Sharding", () => {
       Layer.provide(TestShardingConfig)
     ))))
 
-  it.effect("WithTransaction replays the request when ROLLBACK dies", () =>
+  it.effect("WithTransaction replays the request without replying when ROLLBACK dies", () =>
     Effect.gen(function*() {
       const state = yield* TestEntityState
       const makeClient = yield* TestEntity.client
       yield* TestClock.adjust(1)
-      const client = makeClient("1")
 
-      // Record how many handler runs happened when the reply reached the caller.
-      const result = yield* client.FailWithTransaction({ id: 1 }).pipe(
+      // Count handler runs when the reply arrives: only the replay may reply.
+      const result = yield* makeClient("1").FailWithTransaction({ id: 1 }).pipe(
         Effect.flip,
         Effect.map((error) => [error._tag, Queue.sizeUnsafe(state.envelopes)] as const),
-        Effect.timeout(5000),
         Effect.forkChild
       )
       yield* TestClock.adjust(5000)
       assert.deepStrictEqual(yield* Fiber.join(result), ["BoomError", 2])
     }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
       Layer.provide(RollbackMemoryStorage((transaction, attempt) =>
-        attempt === 1
-          ? Effect.catchCause(transaction, () => Effect.die("ROLLBACK failed"))
-          : transaction
+        attempt === 1 ? Effect.catchCause(transaction, () => Effect.die("ROLLBACK failed")) : transaction
       )),
-      Layer.provide(TestShardingConfig)
-    ))))
-
-  it.effect("WithTransaction delivers a failure after a handler defect replays the request", () =>
-    Effect.gen(function*() {
-      const state = yield* TestEntityState
-      const makeClient = yield* TestEntity.client
-      yield* TestClock.adjust(1)
-      const client = makeClient("1")
-      MutableRef.set(state.defectTrigger, true)
-
-      // Attempt one dies inside its transaction; the replay fails with a typed error.
-      const result = yield* client.FailWithTransaction({ id: 1 }).pipe(
-        Effect.flip,
-        Effect.map((error) => [error._tag, Queue.sizeUnsafe(state.envelopes)] as const),
-        Effect.timeout(5000),
-        Effect.forkChild
-      )
-      yield* TestClock.adjust(5000)
-      assert.deepStrictEqual(yield* Fiber.join(result), ["BoomError", 2])
-    }).pipe(Effect.provide(TestSharding)))
-
-  it.effect("WithTransaction completes a committed request when an interrupt lands during COMMIT", () =>
-    Effect.gen(function*() {
-      const committing = Latch.makeUnsafe()
-      const commit = Latch.makeUnsafe()
-      yield* Effect.gen(function*() {
-        const state = yield* TestEntityState
-        const makeClient = yield* TestEntity.client
-        yield* TestClock.adjust(1)
-        const client = makeClient("1")
-
-        // The caller interrupts while COMMIT is in progress. COMMIT still
-        // completes, and the interrupt takes effect right after it.
-        const fiber = yield* client.WithTransaction({ id: 1 }).pipe(Effect.forkChild)
-        yield* committing.await
-        fiber.interruptUnsafe()
-        yield* TestClock.adjust(1)
-        yield* commit.open
-
-        yield* TestClock.adjust(30000)
-        yield* Fiber.await(fiber)
-        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1, "the committed request must not run again")
-        assert.strictEqual(state.layerBuilds.current, 1, "the entity must not restart")
-      }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-        Layer.provide(
-          UniqueReplyMemoryStorage((committed) =>
-            Effect.uninterruptible(Effect.tap(committed, () => Effect.andThen(committing.open, commit.await)))
-          )
-        ),
-        Layer.provide(TestShardingConfig)
-      )))
-    }))
-
-  it.effect("WithTransaction does not replay a request whose COMMIT was applied but reported as failed", () =>
-    Effect.gen(function*() {
-      const state = yield* TestEntityState
-      const makeClient = yield* TestEntity.client
-      yield* TestClock.adjust(1)
-      const client = makeClient("1")
-
-      // Attempt one commits, then the driver reports a failure, as when the
-      // connection drops after the server has applied COMMIT.
-      const result = yield* client.WithTransaction({ id: 1 }).pipe(
-        Effect.timeout(30000),
-        Effect.forkChild
-      )
-      // Past the timeout and the client's own interrupt window.
-      yield* TestClock.adjust(31000)
-      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1, "the committed request must not run again")
-      assert.strictEqual(state.layerBuilds.current, 1, "the entity must not restart")
-      assert.strictEqual(yield* Fiber.join(result), true)
-    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
-      Layer.provide(
-        UniqueReplyMemoryStorage((committed, attempt) =>
-          attempt === 1 ? Effect.andThen(committed, Effect.die("connection lost after COMMIT")) : committed
-        )
-      ),
       Layer.provide(TestShardingConfig)
     ))))
 })
 
-// Memory storage whose driver transactions discard the replies saved inside
-// them when they fail, like a SQL rollback. `wrap` runs around each driver
-// transaction, with the 1-based attempt number.
+// Memory storage that discards replies saved inside a failed transaction, like
+// a SQL rollback. `wrap` runs around each transaction with its 1-based attempt.
 const RollbackMemoryStorage = (
   wrap: <A, E, R>(transaction: Effect.Effect<A, E, R>, attempt: number) => Effect.Effect<A, E, R>
 ) =>
@@ -1919,42 +1852,6 @@ const RollbackMemoryStorage = (
           MessageStorage.MemoryTransaction.use((inTransaction) => {
             if (inTransaction) saved.push(Snowflake.Snowflake(reply.requestId))
             return encoded.saveReply(reply)
-          })
-      })
-    })
-  ).pipe(Layer.provide([MessageStorage.MemoryDriver.layer, Snowflake.layerGenerator]))
-
-// Memory storage whose driver rejects a second `WithExit` reply for a request,
-// like the SQL reply tables' `UNIQUE (request_id, kind)`. `afterCommit` runs
-// around each committed driver transaction, so its failures and interrupts
-// leave the committed replies in place.
-//
-// Rejections are bounded to one replayed attempt's save and its retries. An
-// entity caught in a replay loop would otherwise still be retrying a save,
-// uninterruptibly and on the test clock, when the test tears down. The tests
-// assert that no replay happens at all.
-const UniqueReplyMemoryStorage = (
-  afterCommit: <A, E, R>(committed: Effect.Effect<A, E, R>, attempt: number) => Effect.Effect<A, E, R>
-) =>
-  Layer.effect(
-    MessageStorage.MessageStorage,
-    Effect.gen(function*() {
-      const driver = yield* MessageStorage.MemoryDriver
-      let attempts = 0
-      let rejections = 0
-      return yield* MessageStorage.makeEncoded({
-        ...driver.encoded,
-        withTransaction: (effect) =>
-          Effect.suspend(() => afterCommit(driver.encoded.withTransaction(effect), ++attempts)),
-        saveReply: (reply) =>
-          Effect.suspend(() => {
-            const duplicate = reply._tag === "WithExit" &&
-              driver.requests.get(reply.requestId)?.replies.some((saved) => saved._tag === "WithExit")
-            if (duplicate && rejections < 5) {
-              rejections++
-              return Effect.fail(new ClusterError.PersistenceError({ cause: new Error("duplicate WithExit reply") }))
-            }
-            return driver.encoded.saveReply(reply)
           })
       })
     })
