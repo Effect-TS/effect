@@ -24,8 +24,8 @@ import * as readline from "node:readline"
 
 /**
  * Creates a scoped process-backed `Terminal` using Node `readline`, enabling
- * TTY raw mode while in scope and using the supplied predicate to decide when
- * key input should end.
+ * TTY raw mode while key input is read and using the supplied predicate to
+ * decide when key input should end.
  *
  * @stability unstable
  * @category constructors
@@ -65,10 +65,6 @@ export const make: (
           readline.emitKeypressEvents(stdin, rl)
           rl.on("line", onLine)
           rl.once("close", onClose)
-
-          if (stdin.isTTY) {
-            stdin.setRawMode(true)
-          }
           return { rl, onClose, onLine }
         }),
         ({ rl, onClose, onLine }) =>
@@ -76,12 +72,28 @@ export const make: (
             readlineActive = false
             rl.off("line", onLine)
             rl.off("close", onClose)
-            if (stdin.isTTY) {
-              stdin.setRawMode(false)
-            }
             rl.close()
             if (inputEnded) {
               Queue.endUnsafe(lines)
+            }
+          })
+      ),
+      idleTimeToLive: "10 millis"
+    })
+
+    // Only key input needs raw mode. `readLine` leaves the TTY in cooked mode,
+    // so the terminal echoes typed characters and turns Ctrl+C into SIGINT.
+    const rawModeRef = yield* RcRef.make({
+      acquire: Effect.acquireRelease(
+        Effect.sync(() => {
+          if (stdin.isTTY) {
+            stdin.setRawMode(true)
+          }
+        }),
+        () =>
+          Effect.sync(() => {
+            if (stdin.isTTY) {
+              stdin.setRawMode(false)
             }
           })
       ),
@@ -124,6 +136,7 @@ export const make: (
         handleEnd()
       } else {
         yield* RcRef.get(rlRef)
+        yield* RcRef.get(rawModeRef)
         stdin.once("end", handleEnd)
       }
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
