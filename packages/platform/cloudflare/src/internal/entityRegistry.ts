@@ -14,6 +14,8 @@ export interface EntityRegistration {
     readonly spanAttributes?: Record<string, string> | undefined
   } | undefined
   readonly context: Context.Context<never>
+  /** Interval of the keep-alive heartbeat alarm, in milliseconds. */
+  readonly keepAliveHeartbeat?: number | undefined
 }
 
 const registry = makeRegistry<EntityRegistration>()

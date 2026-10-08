@@ -21,8 +21,16 @@ import * as ShardId from "effect/cluster/ShardId"
 import * as Effect from "effect/Effect"
 import { decodeName, encodeName } from "./internal/clusterName.ts"
 import { makeEntityKeepAlive } from "./internal/entityKeepAlive.ts"
+import { getEntityRegistration } from "./internal/entityRegistry.ts"
 import { makeEntityManager } from "./internal/entityRuntime.ts"
-import { armAlarm, earliestDeliverAt, ensureEntityStorage } from "./internal/entityStorage.ts"
+import {
+  armAlarm,
+  defaultKeepAliveHeartbeatMillis,
+  earliestDeliverAt,
+  ensureEntityStorage,
+  loadEntityState,
+  rememberEntityName
+} from "./internal/entityStorage.ts"
 import { makeQueueRuntime } from "./internal/queueRuntime.ts"
 import { earliestLeaseExpiry } from "./internal/queueStorage.ts"
 import { getSingletonRegistration } from "./internal/singletonRegistry.ts"
@@ -134,20 +142,30 @@ export type ClusterEntityProgram = {
  * Run the returned Effect once per Durable Object activation, after the
  * Worker application (the entity handler registrations) is initialized. It
  * ensures the mailbox tables and re-arms the single alarm from the earliest
- * pending `deliver_at` before returning the handler object. The host class
- * must be exported from the Worker entry as `ClusterEntity`; keep-alive and
- * reply delivery resolve that export through `state.exports`.
+ * pending `deliver_at`, or the keep-alive heartbeat when that alarm is
+ * missing, before returning the handler object. The host class must be
+ * exported from the Worker entry as `ClusterEntity`; keep-alive and reply
+ * delivery resolve that export through `state.exports`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
 export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
-  const entityName = state.id.name ?? ""
+  const sql = state.storage.sql
+  ensureEntityStorage(sql)
+  const stored = loadEntityState(sql)
+  if (state.id.name !== undefined && decodeName(state.id.name) !== undefined) {
+    rememberEntityName(sql, state.id.name, stored)
+  }
+  // An alarm wake may carry no `id.name`; fall back to the name stored by an
+  // earlier activation, so heartbeat and `deliverAt` alarms still run.
+  const entityName = state.id.name ?? stored.name ?? ""
   const name = decodeName(entityName)
   if (name === undefined) {
     return yield* Effect.die(new Error("ClusterEntity requires a canonical entity Durable Object name"))
   }
+  const heartbeatMillis = () => getEntityRegistration(name.type)?.keepAliveHeartbeat ?? defaultKeepAliveHeartbeatMillis
   const keepAlive = makeEntityKeepAlive(() => {
     const namespace = exportedNamespace<{ readonly hold: () => Promise<void> }>(state, "ClusterEntity")
     if (namespace === undefined) {
@@ -156,6 +174,10 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
       )
     }
     return namespace.getByName(entityName).hold()
+  }, {
+    wanted: stored.keepAlive,
+    persist: (wanted) => manager.saveKeepAlive(wanted),
+    retryCapMillis: heartbeatMillis
   })
   const manager = makeEntityManager({
     storage: state.storage,
@@ -172,11 +194,16 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
         readonly deliverReply: (requestId: string, reply: string) => Promise<boolean>
       }>(state, "ClusterEntity")
   })
-  const sql = state.storage.sql
-  ensureEntityStorage(sql)
   const deliverAt = earliestDeliverAt(sql)
   if (deliverAt !== undefined) {
     yield* armAlarm(state.storage, deliverAt)
+  }
+  if (stored.keepAlive) {
+    // Repairs the heartbeat chain after Cloudflare dropped an alarm whose
+    // retries all failed, or after a crash between the flag write and
+    // `setAlarm`. Arming at `now` on every activation would fire one wasted
+    // alarm per wake.
+    yield* armAlarm(state.storage, Date.now() + heartbeatMillis())
   }
   const program: ClusterEntityProgram = {
     alarm: () => manager.alarm,
