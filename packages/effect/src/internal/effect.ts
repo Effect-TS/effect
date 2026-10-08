@@ -476,7 +476,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare readonly id: number
   declare interruptible: boolean
   declare currentOpCount: number
-  declare _stack: Array<Primitive>
+  // An `undefined` bottom slot is an empty stack (see `popFrame`)
+  declare _stack: Array<Primitive | undefined>
   declare _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
   declare _exit: Exit.Exit<A, E> | undefined
   declare _children: Set<FiberImpl<any, any>> | undefined
@@ -660,8 +661,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       return deferredInterruptCont
     }
     while (true) {
-      const op = this._stack.pop()
-      if (!op) return undefined
+      const op = popFrame(this._stack)
+      if (op === undefined) return undefined
       // ContImpl and generator frames only have a success continuation
       if ((op as any) instanceof ContImpl || (op as any) instanceof IteratorImpl) {
         if (symbol === contA) return op as any
@@ -747,6 +748,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const span = this.cache.span
     return span?._tag === "Span" ? span : undefined
   }
+}
+
+// Unoptimized `pop` releases the backing store of an array it empties, so the
+// next push reallocates it. The last frame is cleared in place instead, and an
+// `undefined` bottom slot is an empty stack.
+const popFrame = (stack: Array<Primitive | undefined>): Primitive | undefined => {
+  if (stack.length !== 1) return stack.pop()
+  const op = stack[0]
+  stack[0] = undefined
+  return op
 }
 
 /** @internal */
