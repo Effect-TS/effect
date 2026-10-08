@@ -377,6 +377,7 @@ export interface HandlerInstallationTarget {
  * @internal
  */
 export interface HandlerInstallationContext {
+  readonly getListChangeRevision?: () => number
   readonly subscribeServerNotifications: Effect.Effect<
     PubSub.Subscription<CanonicalServerNotification>,
     never,
@@ -419,6 +420,7 @@ export interface HandlerInstallationContext {
  */
 export interface CanonicalServerNotification {
   readonly notification: SubscriptionServerNotification
+  readonly listChangeRevision?: number | undefined
   readonly targetClientId?: number | undefined
 }
 

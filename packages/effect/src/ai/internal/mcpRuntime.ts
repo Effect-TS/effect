@@ -123,6 +123,7 @@ export type HttpAdmission =
  */
 export interface HandlerInstallationOptions {
   readonly core: McpCore.McpCore
+  readonly getListChangeRevision?: () => number
   readonly subscribeServerNotifications: McpProtocol.HandlerInstallationContext["subscribeServerNotifications"]
   readonly sendNotification?: NonNullable<McpProtocol.HandlerInstallationContext["sendNotification"]>
   readonly markSubscriptionCancelled?: NonNullable<
@@ -511,6 +512,9 @@ export const make = Effect.fnUntraced(function*(
     installHandlers: Effect.fnUntraced(function*(options) {
       const contextMap = new Map<string, unknown>()
       const installationContext: McpProtocol.HandlerInstallationContext = {
+        ...(options.getListChangeRevision === undefined
+          ? {}
+          : { getListChangeRevision: options.getListChangeRevision }),
         subscribeServerNotifications: options.subscribeServerNotifications,
         ...(options.sendNotification === undefined ? {} : { sendNotification: options.sendNotification }),
         ...(options.markSubscriptionCancelled === undefined

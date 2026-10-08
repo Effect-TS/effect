@@ -94,6 +94,7 @@ type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
 interface QueuedServerNotification {
   readonly notification: McpCore.ServerNotification
+  listChangeRevision?: number | undefined
   readonly targetClientId?: number | undefined
   readonly delivered: Deferred.Deferred<void>
   readonly requestContext?: McpRequestContext["Service"] | undefined
@@ -103,7 +104,7 @@ interface QueuedServerNotification {
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
-  readonly notificationDelivery: { consumers: number }
+  readonly notificationDelivery: { consumers: number; listChangeRevision: number }
 }>()
 type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
 type ServerNotificationRequest<
@@ -321,8 +322,8 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
-    const notificationDelivery = { consumers: 0 }
-    const pendingListChanges = new Set<string>()
+    const notificationDelivery = { consumers: 0, listChangeRevision: 0 }
+    const pendingListChanges = new Map<string, QueuedServerNotification>()
     const dispatcher = (yield* Scheduler).makeDispatcher()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
       spanPrefix: "McpServer/Notifications",
@@ -337,7 +338,7 @@ export class McpServer extends Context.Service<McpServer, {
             if (notification === undefined) {
               return Effect.void
             }
-            const queued = {
+            const queued: QueuedServerNotification = {
               notification,
               delivered,
               requestContext: Context.getOrUndefined(fiber.context, McpRequestContext),
@@ -345,14 +346,20 @@ export class McpServer extends Context.Service<McpServer, {
             }
             let enqueued = false
             if (message.tag.includes("list_changed")) {
-              if (!pendingListChanges.has(message.tag)) {
+              const revision = ++notificationDelivery.listChangeRevision
+              const pending = pendingListChanges.get(message.tag)
+              if (pending === undefined) {
+                queued.listChangeRevision = revision
                 enqueued = true
                 const tag = message.tag
                 dispatcher.scheduleTask(() => {
                   Queue.offerUnsafe(notificationsQueue, queued)
                   pendingListChanges.delete(message.tag)
                 }, 0)
-                pendingListChanges.add(tag)
+                pendingListChanges.set(tag, queued)
+              } else {
+                // A coalesced change may be newer than an intervening subscription.
+                pending.listChangeRevision = revision
               }
             } else {
               enqueued = true
@@ -812,6 +819,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
   const handlers = yield* runtime.installHandlers({
     core: internalState.get(server)!.core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
+    getListChangeRevision: () => internalState.get(server)!.notificationDelivery.listChangeRevision,
     ...(!protocol.supportsNotifications ? {} : {
       sendNotification,
       markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
@@ -1258,7 +1266,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
     Effect.flatMap(Effect.fnUntraced(function*(queued) {
       const { delivered, notification, targetClientId, requestContext, requestHeaders } = queued
       if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
-        yield* PubSub.publish(serverNotifications, { notification, targetClientId })
+        yield* PubSub.publish(serverNotifications, {
+          notification,
+          targetClientId,
+          listChangeRevision: queued.listChangeRevision
+        })
       }
       const clientIds = yield* patchedProtocol.clientIds
       for (const clientId of clientStates.keys()) {
