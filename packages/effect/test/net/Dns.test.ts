@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Equal, Hash, Result, Schema } from "effect"
+import { Duration, Effect, Equal, Exit, Hash, Result, Schema } from "effect"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
@@ -190,13 +190,24 @@ describe("Dns", () => {
       const json = Schema.encodeSync(codec)(records) as ReadonlyArray<unknown>
       assert.deepStrictEqual(json[0], { _tag: "A", address: "192.0.2.1" })
       assert.deepStrictEqual(json[2], { _tag: "SRV", target: "db.internal", port: 5432, priority: 10, weight: 5 })
-      assert.deepStrictEqual((json[4] as any).refresh, { _tag: "Millis", value: 3600000 })
+      assert.deepStrictEqual(json[4], {
+        _tag: "SOA",
+        primary: "ns.example.com",
+        admin: "hostmaster.example.com",
+        serial: 1,
+        refresh: 3600,
+        retry: 600,
+        expire: 604800,
+        minimum: 300
+      })
       const decoded = Schema.decodeUnknownSync(codec)(JSON.parse(JSON.stringify(json)))
       assert.strictEqual(decoded.length, records.length)
       decoded.forEach((record, index) => assert.isTrue(Equal.equals(record, records[index])))
-      assert.throws(() =>
-        Schema.decodeUnknownSync(codec)([{ _tag: "SRV", target: "db", port: 99999, priority: 0, weight: 0 }])
-      )
+      const invalid = Schema.decodeUnknownExit(codec)([
+        { _tag: "SRV", target: "db", port: 99999, priority: 0, weight: 0 }
+      ])
+      assert.isTrue(Exit.isFailure(invalid))
+      assert.include(String(invalid), `at [0]["port"]`)
       assert.isTrue(Schema.is(Schema.DnsRecordType)("SRV"))
       assert.isFalse(Schema.is(Schema.DnsRecordType)("ANY"))
     })

@@ -35,12 +35,17 @@ import * as NetAddress from "./NetAddress.ts"
  */
 export class AddressResolver extends Context.Service<AddressResolver, {
   /**
-   * Resolves an endpoint to every matching socket address. Socket addresses
-   * are returned as-is, a `Host.HostPort` with a numeric host is converted
-   * without a lookup, and a `Host.HostPort` with a domain name is looked up
-   * with `Dns.lookup`, attaching the port to every address. Results keep the
-   * resolver's order and are filtered by the requested family; the family does
-   * not apply to Unix-domain addresses.
+   * Resolves an endpoint to every matching socket address.
+   *
+   * **Details**
+   *
+   * - Socket addresses are returned as-is.
+   * - A `Host.HostPort` with a numeric host is converted without a lookup.
+   * - A `Host.HostPort` with a domain name is looked up with `Dns.lookup`, and
+   *   the port is attached to every address.
+   *
+   * Results keep the resolver's order and are filtered by the requested
+   * family, which does not apply to Unix-domain addresses.
    */
   resolve<F extends NetAddress.IpFamily>(
     target: NetAddress.InetAddress | Host.HostPort,

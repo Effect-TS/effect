@@ -572,9 +572,13 @@ export interface LookupOptions {
  */
 export class Dns extends Context.Service<Dns, {
   /**
-   * Looks up the addresses used to connect to a host name, in the
-   * implementation's preferred order. Platform implementations use the
-   * operating system resolver and keep the system's order.
+   * Looks up the addresses used to connect to a host name.
+   *
+   * **Details**
+   *
+   * Addresses are returned in the implementation's preferred order. Platform
+   * implementations use the operating system resolver and keep the system's
+   * order.
    */
   lookup<F extends NetAddress.IpFamily>(
     host: Host.DomainName,
@@ -586,7 +590,7 @@ export class Dns extends Context.Service<Dns, {
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.IpAddress>, DnsError>
 
   /**
-   * Queries DNS records of one type.
+   * Queries the DNS records of one type for a name.
    */
   resolve<T extends RecordType>(
     name: Host.DomainName,
@@ -594,7 +598,7 @@ export class Dns extends Context.Service<Dns, {
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<RecordFor<T>>, DnsError>
 
   /**
-   * Looks up the host names of an address.
+   * Looks up the host names of an address with a reverse DNS query.
    */
   reverse(address: NetAddress.IpAddress): Effect.Effect<Arr.NonEmptyReadonlyArray<Host.DomainName>, DnsError>
 }>()("effect/net/Dns") {}
