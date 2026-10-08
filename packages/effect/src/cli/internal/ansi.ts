@@ -106,13 +106,24 @@ export const blackBright = `${ESC}90m`
 export const cyanBright = `${ESC}96m`
 
 export const annotate = (text: string, ...styles: Array<string | Array<string>>) => {
-  // Read at render time so environment changes also apply to existing prompts.
-  const process = (globalThis as { readonly process?: { readonly env?: { readonly NO_COLOR?: string } } }).process
-  if (process?.env?.NO_COLOR) {
-    return text
-  }
   const flat = styles.flat()
   return `${flat.join("")}${text}${reset}`
+}
+
+/**
+ * Detects whether CLI output should use color and style escapes: stdout must
+ * be a TTY and `NO_COLOR` must be unset or empty.
+ *
+ * @internal
+ */
+export const detectColors = (): boolean => {
+  const globalProcess = (globalThis as any).process
+  return typeof globalProcess === "object" &&
+    globalProcess !== null &&
+    typeof globalProcess.stdout === "object" &&
+    globalProcess.stdout !== null &&
+    globalProcess.stdout.isTTY === true &&
+    !globalProcess.env?.NO_COLOR
 }
 
 export const combine = (...styles: Array<string>): Array<string> => styles
