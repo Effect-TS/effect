@@ -22,13 +22,8 @@ import { DurableObjectSqlClient } from "../CloudflareCluster.ts"
 
 /** @internal */
 export interface EntitySql {
-  /**
-   * Builds the client for one handler build. It is closed with the scope of
-   * that build; a registration `Reactivity` is reused when present.
-   */
-  readonly make: (
-    context: Context.Context<never>
-  ) => Effect.Effect<Context.Context<DurableObjectSqlClient>, never, Scope.Scope>
+  /** Builds the client for one handler build, closed with that build's scope. */
+  readonly make: Effect.Effect<Context.Context<DurableObjectSqlClient>, never, Scope.Scope>
   /** Runs a mailbox write once no user transaction is open. */
   readonly guard: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 }
@@ -42,25 +37,21 @@ const InUserTransaction = Context.Reference<boolean>(
 export const makeEntitySql = (storage: DurableObjectStorage): EntitySql => {
   const gate = Semaphore.makeUnsafe(1)
 
-  const make = Effect.fnUntraced(function*(context: Context.Context<never>) {
-    const reactivity = Context.getOption(context, Reactivity.Reactivity)
-    const client = yield* SqliteClient.make({ storage }).pipe(
-      reactivity._tag === "Some"
-        ? Effect.provideService(Reactivity.Reactivity, reactivity.value)
-        : Effect.provide(Reactivity.layer)
-    )
-    // Nested transactions reuse the outer storage transaction, so only the
-    // outermost one takes the gate.
-    const withTransaction = client.withTransaction
-    const gated: SqlClient.SqlClient["withTransaction"] = (effect) =>
-      Effect.withFiber((fiber) =>
-        fiber.getRef(InUserTransaction)
-          ? withTransaction(effect)
-          : Semaphore.withPermit(gate, withTransaction(Effect.provideService(effect, InUserTransaction, true)))
-      )
-    Object.assign(client, { withTransaction: gated })
-    return Context.make(DurableObjectSqlClient, client)
-  })
+  const make = Effect.map(
+    Effect.provideServiceEffect(SqliteClient.make({ storage }), Reactivity.Reactivity, Reactivity.make),
+    (client) => {
+      // Nested transactions reuse the outer storage transaction, so only the
+      // outermost one takes the gate.
+      const withTransaction = client.withTransaction
+      const gated: SqlClient.SqlClient["withTransaction"] = (effect) =>
+        Effect.withFiber((fiber) =>
+          fiber.getRef(InUserTransaction)
+            ? withTransaction(effect)
+            : Semaphore.withPermit(gate, withTransaction(Effect.provideService(effect, InUserTransaction, true)))
+        )
+      return Context.make(DurableObjectSqlClient, Object.assign(client, { withTransaction: gated }))
+    }
+  )
 
   return {
     make,
