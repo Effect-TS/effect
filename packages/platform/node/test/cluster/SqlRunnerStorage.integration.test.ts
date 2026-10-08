@@ -11,7 +11,7 @@ import {
   ShardingConfig,
   SqlRunnerStorage
 } from "effect/cluster"
-import { SqlClient, type SqlConnection, SqlError } from "effect/sql"
+import { Migrator, SqlClient, type SqlConnection, SqlError } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
@@ -468,7 +468,125 @@ describe("SqlRunnerStorage", () => {
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
+
+      it.effect("layerStorage uses the tables created by layerMigrations", () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          yield* Effect.scoped(Layer.build(SqlRunnerStorage.layerMigrations({ prefix: "split" })))
+
+          // Migrations must not depend on the advisory lock setting.
+          yield* sql`SELECT shard_id FROM ${sql("split_locks")}`
+          expect(yield* pendingRunnerMigrations("split")).toEqual([])
+
+          const runner = Runner.make({
+            address: runnerAddress1,
+            groups: ["default"],
+            weight: 1
+          })
+          yield* Effect.gen(function*() {
+            const storage = yield* RunnerStorage.RunnerStorage
+            yield* storage.register(runner, true)
+            expect(yield* storage.getRunners).toEqual([[runner, true]])
+            const acquired = yield* storage.acquire(runnerAddress1, [ShardId.make("default", 1)])
+            expect(acquired.map((_) => _.id)).toEqual([1])
+          }).pipe(
+            Effect.provide(SqlRunnerStorage.layerStorage({ prefix: "split" }).pipe(
+              Layer.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true }))
+            ))
+          )
+        }))
+
+      it.effect("layerStorage does not create tables", () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          yield* Effect.scoped(Layer.build(
+            SqlRunnerStorage.layerStorage({ prefix: "unmigrated" }).pipe(
+              Layer.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true }))
+            )
+          ))
+
+          for (const table of ["unmigrated_runners", "unmigrated_locks", "unmigrated_runner_migrations"]) {
+            const exit = yield* sql`SELECT 1 FROM ${sql(table)}`.pipe(Effect.exit)
+            assert(Exit.isFailure(exit), `${table} should not exist`)
+          }
+        }))
+
+      it.effect("runner migrations adopt existing tables without migration records", () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          yield* createLegacyRunnerTables("legacy")
+          yield* sql`INSERT INTO ${sql("legacy_runners")} (address, runner) VALUES ('legacy:1', 'legacy')`
+          expect(yield* pendingRunnerMigrations("legacy")).toEqual([[1, expect.any(String)]])
+
+          yield* Effect.scoped(Layer.build(SqlRunnerStorage.layerMigrations({ prefix: "legacy" })))
+
+          expect(yield* pendingRunnerMigrations("legacy")).toEqual([])
+          expect(yield* sql`SELECT address FROM ${sql("legacy_runners")}`).toEqual([{ address: "legacy:1" }])
+        }))
     })
+  })
+})
+
+const pendingRunnerMigrations = (prefix: string) =>
+  Migrator.pending({
+    loader: SqlRunnerStorage.migrations({ prefix }),
+    table: `${prefix}_runner_migrations`
+  }).pipe(Effect.map((pending) => pending.map(([id, name]) => [id, name])))
+
+// The runner and lock tables as created before runner storage used a migrator.
+const createLegacyRunnerTables = Effect.fnUntraced(function*(prefix: string) {
+  const sql = yield* SqlClient.SqlClient
+  const runners = sql(`${prefix}_runners`)
+  const locks = sql(`${prefix}_locks`)
+  yield* sql.onDialectOrElse({
+    mysql: () =>
+      Effect.andThen(
+        sql`CREATE TABLE ${runners} (
+          machine_id INT AUTO_INCREMENT PRIMARY KEY,
+          address VARCHAR(255) NOT NULL,
+          runner TEXT NOT NULL,
+          healthy BOOLEAN NOT NULL DEFAULT TRUE,
+          last_heartbeat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(address)
+        )`,
+        sql`CREATE TABLE ${locks} (
+          shard_id VARCHAR(50) PRIMARY KEY,
+          address VARCHAR(255) NOT NULL,
+          acquired_at DATETIME NOT NULL
+        )`
+      ),
+    pg: () =>
+      Effect.andThen(
+        sql`CREATE TABLE ${runners} (
+          machine_id SERIAL PRIMARY KEY,
+          address VARCHAR(255) NOT NULL,
+          runner TEXT NOT NULL,
+          healthy BOOLEAN NOT NULL DEFAULT TRUE,
+          last_heartbeat TIMESTAMP NOT NULL DEFAULT NOW(),
+          UNIQUE(address)
+        )`,
+        sql`CREATE TABLE ${locks} (
+          shard_id VARCHAR(50) PRIMARY KEY,
+          address VARCHAR(255) NOT NULL,
+          acquired_at TIMESTAMP NOT NULL
+        )`
+      ),
+    orElse: () =>
+      Effect.andThen(
+        sql`CREATE TABLE ${runners} (
+          machine_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          address TEXT NOT NULL,
+          runner TEXT NOT NULL,
+          healthy INTEGER NOT NULL DEFAULT 1,
+          last_heartbeat DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+          UNIQUE(address)
+        )`,
+        sql`CREATE TABLE ${locks} (
+          shard_id TEXT PRIMARY KEY,
+          address TEXT NOT NULL,
+          acquired_at DATETIME NOT NULL
+        )`
+      )
   })
 })
 

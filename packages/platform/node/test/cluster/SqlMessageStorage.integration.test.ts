@@ -19,7 +19,7 @@ import {
   Snowflake,
   SqlMessageStorage
 } from "effect/cluster"
-import { SqlClient } from "effect/sql"
+import { Migrator, SqlClient } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
@@ -142,6 +142,43 @@ describe("SqlMessageStorage", () => {
             expect(indexes).toHaveLength(1)
           }))
       }
+
+      it.effect("layerStorage uses the tables created by layerMigrations", () =>
+        Effect.gen(function*() {
+          expect(yield* pendingMessageMigrations("split")).toEqual([
+            [1, "create_tables"],
+            [2, "entity_type_size"],
+            [3, "pg_messages_rowid_index"]
+          ])
+          yield* Effect.scoped(Layer.build(SqlMessageStorage.layerMigrations({ prefix: "split" })))
+          expect(yield* pendingMessageMigrations("split")).toEqual([])
+
+          yield* Effect.gen(function*() {
+            const storage = yield* MessageStorage.MessageStorage
+            const request = yield* makeRequest()
+            expect((yield* storage.saveRequest(request))._tag).toEqual("Success")
+            expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+          }).pipe(
+            Effect.provide(SqlMessageStorage.layerStorage({ prefix: "split" }).pipe(
+              Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layer])
+            ))
+          )
+        }))
+
+      it.effect("layerStorage does not create tables", () =>
+        Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          yield* Effect.scoped(Layer.build(
+            SqlMessageStorage.layerStorage({ prefix: "unmigrated" }).pipe(
+              Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layer])
+            )
+          ))
+
+          for (const table of ["unmigrated_messages", "unmigrated_replies", "unmigrated_migrations"]) {
+            const exit = yield* sql`SELECT 1 FROM ${sql(table)}`.pipe(Effect.exit)
+            assert(Exit.isFailure(exit), `${table} should not exist`)
+          }
+        }))
 
       it.effect("resetRequests with no IDs leaves existing claims untouched", () =>
         Effect.gen(function*() {
@@ -699,6 +736,12 @@ describe("SqlMessageStorage", () => {
       Layer.provideMerge(SqliteLayer)
     ))), { timeout: 15_000 })
 })
+
+const pendingMessageMigrations = (prefix: string) =>
+  Migrator.pending({
+    loader: SqlMessageStorage.migrations({ prefix }),
+    table: `${prefix}_migrations`
+  }).pipe(Effect.map((pending) => pending.map(([id, name]) => [id, name])))
 
 const SqliteLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

@@ -1,6 +1,7 @@
 import { PgliteClient, PgliteMigrator } from "@effect/sql-pglite"
 import { assert, describe, layer } from "@effect/vitest"
 import { Effect, Layer } from "effect"
+import * as Migrator from "effect/sql/Migrator"
 import { SqlClient } from "effect/sql/SqlClient"
 
 const ClientLayer = PgliteClient.layer({})
@@ -40,6 +41,86 @@ describe("PgliteMigrator", () => {
           migrations.map((m) => [m.migration_id, m.name]),
           [[1, "init"], [2, "insert"]]
         )
+      }))
+  })
+})
+
+describe("Migrator.pending", () => {
+  const recordingLoader = Migrator.fromRecord({
+    "1_first": Effect.void,
+    "2_second": Effect.void,
+    "3_third": Effect.void
+  })
+  const ids = (migrations: ReadonlyArray<readonly [id: number, name: string, ...rest: Array<unknown>]>) =>
+    migrations.map(([id, name]) => [id, name])
+  const tableExists = (table: string) =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient
+      const rows = yield* sql<{ exists: boolean }>`SELECT to_regclass(${table}) IS NOT NULL AS exists`
+      return rows[0].exists
+    })
+
+  // Each test uses its own migrations table, so they share one database.
+  layer(ClientLayer, { timeout: "30 seconds" })((it) => {
+    it.effect("treats every migration as pending without creating a missing migrations table", () =>
+      Effect.gen(function*() {
+        const table = "pending_missing_migrations"
+        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+
+        assert.deepStrictEqual(ids(pending), [[1, "first"], [2, "second"], [3, "third"]])
+        assert.isFalse(yield* tableExists(table))
+      }))
+
+    it.effect("returns only migrations newer than the latest applied migration", () =>
+      Effect.gen(function*() {
+        const table = "pending_partial_migrations"
+        yield* PgliteMigrator.run({
+          loader: Migrator.fromRecord({ "1_first": Effect.void, "2_second": Effect.void }),
+          table
+        })
+
+        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+
+        assert.deepStrictEqual(ids(pending), [[3, "third"]])
+      }))
+
+    it.effect("returns nothing when every migration is applied", () =>
+      Effect.gen(function*() {
+        const table = "pending_complete_migrations"
+        yield* PgliteMigrator.run({ loader: recordingLoader, table })
+
+        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+
+        assert.deepStrictEqual(ids(pending), [])
+      }))
+
+    it.effect("does not lock the migrations table or run pending migrations", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient
+        const table = "pending_lock_migrations"
+        yield* PgliteMigrator.run({
+          loader: Migrator.fromRecord({ "1_first": Effect.void }),
+          table
+        })
+
+        // Locks taken in a transaction stay visible in pg_locks until it ends.
+        const exclusiveLocks = yield* sql.withTransaction(Effect.gen(function*() {
+          const pending = yield* Migrator.pending({
+            loader: Migrator.fromRecord({
+              "1_first": Effect.void,
+              "2_create_table": sql`CREATE TABLE pending_should_not_run (id INT)`
+            }),
+            table
+          })
+          assert.deepStrictEqual(ids(pending), [[2, "create_table"]])
+          return yield* sql<{ mode: string }>`
+            SELECT mode FROM pg_locks
+            WHERE relation = to_regclass(${table}) AND mode = 'AccessExclusiveLock'
+          `
+        }))
+
+        assert.deepStrictEqual(exclusiveLocks, [])
+        assert.isFalse(yield* tableExists("pending_should_not_run"))
       }))
   })
 })
