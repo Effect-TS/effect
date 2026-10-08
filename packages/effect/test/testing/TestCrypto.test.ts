@@ -17,8 +17,8 @@ describe("TestCrypto", () => {
         const crypto = yield* Crypto.Crypto
         const bytes = yield* crypto.randomBytes(8)
         const random = yield* crypto.random
-        const uuid1 = yield* crypto.randomUUIDv4
-        const uuid2 = yield* crypto.randomUUIDv4
+        const uuid1 = yield* crypto.randomUUIDv4()
+        const uuid2 = yield* crypto.randomUUIDv4()
         const digest = yield* crypto.digest("SHA-256", bytes)
         return { bytes, digest, random, uuid1, uuid2 }
       }).pipe(
