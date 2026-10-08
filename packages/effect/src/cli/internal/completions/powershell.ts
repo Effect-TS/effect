@@ -152,6 +152,7 @@ const completer = (dataName: string): string =>
   $addValues = {
     param($entry, [string]$typed, [string]$textPrefix)
     foreach ($value in $entry.values) {
+      if ($textPrefix -eq '' -and -not $endOfOptions -and (& $optionLike $value)) { continue }
       & $add $value 'ParameterValue' $entry.description $typed $textPrefix
     }
     if ($entry.pathType) {
