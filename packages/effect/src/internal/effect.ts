@@ -446,6 +446,9 @@ const captureAsyncContext = (): AsyncContext | undefined =>
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
+// JavaScriptCore is the engine whose errors carry a `line` property
+const isJavaScriptCore = typeof (new Error() as any).line === "number"
+
 /** @internal */
 export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   constructor(
@@ -582,10 +585,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         observers[i](exit)
       }
     }
-    // A stack popped back to empty keeps its grown backing store. Replacing
-    // it releases that store like `length = 0` does, without V8's length
-    // setter, which is a runtime call even for an empty array.
-    this._stack = []
+    // Release the stack's backing store. V8's length setter is a runtime call,
+    // so a new array is cheaper there, and JavaScriptCore truncates in place
+    // faster than it allocates.
+    if (isJavaScriptCore) {
+      this._stack.length = 0
+    } else {
+      this._stack = []
+    }
     this._children = undefined
     this.context = Context.empty()
   }
@@ -758,6 +765,45 @@ const popFrame = (stack: Array<Primitive | undefined>): Primitive | undefined =>
   const op = stack[0]
   stack[0] = undefined
   return op
+}
+
+// JavaScriptCore caches `instanceof` per receiver shape, so a check that sees
+// many frame types falls back to a runtime call, which costs more than the
+// frame fast paths in `getCont` and `continueWith` save. There they are
+// replaced by the generic versions. Checking a flag in the methods instead
+// costs V8 a few percent on interpreter-bound code, and also replacing
+// `runLoop` without its inline ContImpl step was slower overall in Bun.
+if (isJavaScriptCore) {
+  FiberImpl.prototype.getCont = function(this: FiberImpl, symbol: contA | contE) {
+    if (this._deferredInterrupt) {
+      this._deferredInterrupt = false
+      return deferredInterruptCont
+    }
+    while (true) {
+      const op = popFrame(this._stack)
+      if (op === undefined) return undefined
+      const all = op[contAll]
+      if (all !== undefined) {
+        const cont = all.call(op, this, symbol)
+        if (cont) {
+          ;(cont as any)[symbol] = cont
+          return cont as any
+        }
+      }
+      if (op[symbol]) return op as any
+    }
+  } as FiberImpl["getCont"]
+  FiberImpl.prototype.continueWith = function(
+    this: FiberImpl,
+    value: unknown,
+    exit: Exit.Exit<any, any> | undefined
+  ): Primitive | Yield {
+    const cont = this.getCont(contA)
+    if (cont === undefined) {
+      return this.yieldWith(exit ?? exitSucceed(value))
+    }
+    return exit === undefined ? cont[contA](value, this) : cont[contA](value, this, exit)
+  }
 }
 
 /** @internal */
