@@ -86,9 +86,8 @@ export interface Residency {
   readonly releaseUnsafe: () => void
 }
 
-// An open handler transaction. A failure reply waits here until rollback.
 interface RequestTransaction {
-  reply?: Effect.Effect<void> | undefined
+  settle?: ((outcome: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 }
 
 // Represents the entities managed by this entity manager
@@ -270,22 +269,23 @@ export const make = Effect.fnUntraced(function*<
                 // They will be retried when the entity is restarted.
                 // Also, if the request is uninterruptible, we ignore the
                 // interrupt.
+                const persisted = storageEnabled && Context.get(request.message.annotations, Persisted)
                 if (
-                  storageEnabled &&
-                  Context.get(request.message.annotations, Persisted) &&
+                  persisted &&
                   Exit.hasInterrupts(response.exit) &&
                   (isShuttingDown || isUninterruptibleForServer(request.message.annotations))
                 ) {
                   if (!isShuttingDown) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
+                      Effect.setContext(handlerContext),
                       Effect.forkIn(handlerScope)
                     )
                   }
                   activeRequests.delete(Snowflake.Snowflake(response.requestId))
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
-                const respond = retryRespond(
+                const save = retryRespond(
                   4,
                   Effect.suspend(() =>
                     request.message.respond(
@@ -296,27 +296,53 @@ export const make = Effect.fnUntraced(function*<
                       })
                     )
                   )
-                ).pipe(
-                  Effect.flatMap(() => {
-                    if (storageEnabled) {
-                      processedRequestIds.add(request.message.envelope.requestId)
-                    }
-                    activeRequests.delete(Snowflake.Snowflake(response.requestId))
-
-                    // Start the idle timer when the last request completes.
-                    if (activeRequests.size === 0) {
-                      state.lastActiveCheck = clock.currentTimeMillisUnsafe()
-                    }
-
-                    return Effect.void
-                  }),
-                  Effect.orDie
                 )
-                if (request.transaction && Exit.isFailure(response.exit)) {
-                  request.transaction.reply = respond
+                const complete = Effect.sync(() => {
+                  if (storageEnabled) {
+                    processedRequestIds.add(request.message.envelope.requestId)
+                  }
+                  activeRequests.delete(Snowflake.Snowflake(response.requestId))
+
+                  // Start the idle timer when the last request completes.
+                  if (activeRequests.size === 0) {
+                    state.lastActiveCheck = clock.currentTimeMillisUnsafe()
+                  }
+                })
+                const respond = Effect.orDie(Effect.andThen(save, complete))
+                const transaction = request.transaction
+                if (!transaction) return respond
+                const exit = response.exit
+
+                if (!persisted) {
+                  if (Exit.isSuccess(exit)) return respond
+                  transaction.settle = () => respond
                   return Effect.void
                 }
-                return respond
+
+                if (Exit.isSuccess(exit)) {
+                  transaction.settle = (outcome) =>
+                    Exit.isSuccess(outcome) ? complete : Effect.flatMap(
+                      hasStoredExit(request.message.envelope.requestId),
+                      (committed) => {
+                        if (!committed) return restartFrom(outcome.cause)
+                        // Commit succeeded despite the error; let callers read the saved reply.
+                        return Effect.andThen(
+                          complete,
+                          options.storage.unregisterReplyHandler(request.message.envelope.requestId)
+                        )
+                      }
+                    )
+                  return Effect.orDie(save)
+                }
+                transaction.settle = (outcome) =>
+                  // Transaction wrappers can add defects, but not typed errors; interrupts may be repeated.
+                  Exit.isSuccess(outcome) || !outcome.cause.reasons.some((reason) =>
+                      Cause.isDieReason(reason) &&
+                      !exit.cause.reasons.some((r) => Cause.isDieReason(r) && r.defect === reason.defect)
+                    )
+                    ? respond
+                    : restartFrom(outcome.cause)
+                return Effect.void
               }
               case "Chunk": {
                 const request = activeRequests.get(Snowflake.Snowflake(response.requestId))
@@ -341,10 +367,7 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                if (!isActive()) return endLatch.open
-                const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
-                if (!rebuild) return Effect.void
-                return Effect.forkIn(restart(Cause.die(response.defect), rebuild), managerScope)
+                return restartFrom(Cause.die(response.defect))
               }
               case "ClientEnd": {
                 return endLatch.open
@@ -355,6 +378,21 @@ export const make = Effect.fnUntraced(function*<
           Scope.provide(handlerScope),
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
+
+        // Replay if the stored reply cannot be read.
+        const hasStoredExit = (requestId: Snowflake.Snowflake): Effect.Effect<boolean> =>
+          options.storage.repliesForUnfiltered([requestId]).pipe(
+            Effect.map((replies) => replies.some((reply) => reply._tag === "WithExit")),
+            Effect.catchCause(() => Effect.succeed(false))
+          )
+
+        // Do not inherit the failed handler's transaction context.
+        const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
+          if (!isActive()) return endLatch.open
+          const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
+          if (!rebuild) return Effect.void
+          return Effect.forkIn(Effect.setContext(restart(cause, rebuild), handlerContext), managerScope)
+        }
 
         yield* Scope.addFinalizer(
           handlerScope,
@@ -613,21 +651,18 @@ export const make = Effect.fnUntraced(function*<
       transaction?: RequestTransaction | undefined
     }
   ): Parameters<EntityState["write"]>[2] => {
-    // Failure replies are saved after rollback, so the rollback cannot discard them.
-    const onTransaction = Context.get(entry.message.annotations, WithTransaction)
-      ? <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-        Effect.suspend(() => {
+    const onTransaction = !Context.get(entry.message.annotations, WithTransaction)
+      ? undefined
+      : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+        // Interrupts during commit must not hide the outcome from settle.
+        Effect.uninterruptibleMask((restore) => {
           const transaction: RequestTransaction = {}
           entry.transaction = transaction
-          return Effect.ensuring(
-            options.storage.withTransaction(effect),
-            Effect.suspend(() => {
-              if (entry.transaction === transaction) entry.transaction = undefined
-              return transaction.reply ?? Effect.void
-            })
-          )
+          return Effect.onExit(options.storage.withTransaction(restore(effect)), (outcome) => {
+            if (entry.transaction === transaction) entry.transaction = undefined
+            return transaction.settle ? transaction.settle(outcome) : Effect.void
+          })
         })
-      : undefined
     const onCaller = entry.callerScope && bindToCaller(entry.callerScope)
     if (!onCaller) return onTransaction && { onRequest: onTransaction }
     return { onRequest: onTransaction ? (effect) => onCaller(onTransaction(effect)) : onCaller }
