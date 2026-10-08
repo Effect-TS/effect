@@ -106,6 +106,11 @@ export const blackBright = `${ESC}90m`
 export const cyanBright = `${ESC}96m`
 
 export const annotate = (text: string, ...styles: Array<string | Array<string>>) => {
+  // Read at render time so environment changes also apply to existing prompts.
+  const process = (globalThis as { readonly process?: { readonly env?: { readonly NO_COLOR?: string } } }).process
+  if (process?.env?.NO_COLOR) {
+    return text
+  }
   const flat = styles.flat()
   return `${flat.join("")}${text}${reset}`
 }
