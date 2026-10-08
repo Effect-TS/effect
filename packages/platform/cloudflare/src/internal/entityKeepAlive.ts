@@ -35,8 +35,8 @@ export interface EntityKeepAliveOptions {
   /** The persisted flag, read when the Durable Object starts. */
   readonly wanted: boolean
   /**
-   * Persists the flag. Runs in a forked fiber with the value current at that
-   * point, and the hold is released only after a `false` write completes.
+   * Persists each requested flag in a forked fiber. The hold is released only
+   * after a successful `false` write while keep-alive is still unwanted.
    */
   readonly persist: (wanted: boolean) => Effect.Effect<void>
   /** Upper bound of the retry delay after a failed hold RPC. */
@@ -86,10 +86,11 @@ export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeep
     // Mailbox writes wait for an open user transaction, so writing inline
     // would deadlock `Entity.keepAlive` called inside `withTransaction`.
     Effect.runFork(
-      Effect.suspend(() => options.persist(wanted)).pipe(
-        Effect.ensuring(Effect.sync(() => {
-          if (!wanted) release()
-        }))
+      Effect.suspend(() => options.persist(next)).pipe(
+        Effect.andThen(Effect.sync(() => {
+          if (!next && !wanted) release()
+        })),
+        Effect.catchCause((cause) => Effect.logError("Entity keep-alive persistence failed", cause))
       )
     )
   }
