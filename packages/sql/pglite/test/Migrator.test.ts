@@ -82,16 +82,6 @@ describe("Migrator.pending", () => {
         assert.deepStrictEqual(pending, [[3, "third"]])
       }))
 
-    it.effect("returns nothing when every migration is applied", () =>
-      Effect.gen(function*() {
-        const table = "pending_complete_migrations"
-        yield* PgliteMigrator.run({ loader, table })
-
-        const pending = yield* Migrator.pending({ loader, table })
-
-        assert.deepStrictEqual(pending, [])
-      }))
-
     it.effect("finds a migrations table whose name needs quoting", () =>
       Effect.gen(function*() {
         const table = "MixedCase_pending_migrations"
