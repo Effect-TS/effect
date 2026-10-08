@@ -1142,7 +1142,7 @@ const makeResponse = Effect.fnUntraced(
             metadata: {
               openai: {
                 ...makeItemIdMetadata(toolCall.id),
-                ...makeExtraContentMetadata(toolCall.extra_content)
+                ...makeExtraContentMetadata(toolCall.extra_content ?? undefined)
               }
             }
           })
