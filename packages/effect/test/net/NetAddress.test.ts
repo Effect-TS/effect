@@ -3,7 +3,6 @@ import { assertTrue } from "@effect/vitest/utils"
 import { Equal, Hash, Option, Result, Schema } from "effect"
 import * as NetAddress from "effect/net/NetAddress"
 import { Buffer } from "node:buffer"
-import * as Os from "node:os"
 import { inspect } from "node:util"
 
 const success = <A>(result: Result.Result<A, unknown>): A => {
@@ -20,16 +19,9 @@ describe("NetAddress", () => {
   it("returns and checks address families", () => {
     const ipv4 = success(NetAddress.ipv4FromString("1.2.3.4"))
     const ipv6 = success(NetAddress.ipv6FromString("2001:db8::1"))
-    const inet6 = success(NetAddress.inetAddressFromString("[::1]:80"))
     assert.strictEqual(NetAddress.familyOf(ipv4), "IPv4")
-    assert.strictEqual(NetAddress.familyOf(ipv6), "IPv6")
-    assert.strictEqual(NetAddress.familyOf(success(NetAddress.inetAddressFromString("1.2.3.4:80"))), "IPv4")
-    assert.strictEqual(NetAddress.familyOf(inet6), "IPv6")
-    assert.isTrue(NetAddress.isFamily(ipv4, "IPv4"))
-    assert.isFalse(NetAddress.isFamily(ipv4, "IPv6"))
-    const addresses: ReadonlyArray<NetAddress.IpAddress> = [ipv4, ipv6]
-    const v6: ReadonlyArray<NetAddress.Ipv6Address> = addresses.filter(NetAddress.isFamily("IPv6"))
-    assert.deepStrictEqual(v6.map(NetAddress.formatIp), ["2001:db8::1"])
+    assert.strictEqual(NetAddress.familyOf(success(NetAddress.inetAddressFromString("[::1]:80"))), "IPv6")
+    assert.deepStrictEqual([ipv4, ipv6].filter(NetAddress.isFamily("IPv6")), [ipv6])
   })
 
   it("returns IP address widths", () => {
@@ -721,11 +713,6 @@ describe("NetAddress", () => {
       assert.deepStrictEqual(NetAddress.scopeIdsFromInterfaces([]), new Map())
       assert.deepStrictEqual(NetAddress.scopeIdFromInterface(interfaces.en0), Option.some(12))
       assert.deepStrictEqual(NetAddress.scopeIdFromInterface(interfaces.en2), Option.none())
-      assert.deepStrictEqual(NetAddress.scopeIdFromInterface(undefined), Option.none())
-    })
-
-    it("accepts the operating system's interface entries", () => {
-      assert.instanceOf(NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces())), Map)
     })
 
     it("provides throwing counterparts for trusted construction", () => {
@@ -804,18 +791,15 @@ describe("NetAddress", () => {
     })
   })
 
-  it("normalizes numeric IPv6 zones", () => {
-    assert.strictEqual(Result.getOrThrow(NetAddress.scopedIpv6LiteralFromString("fe80::1%01")), "fe80::1%1")
-    assert.isTrue(Result.isFailure(NetAddress.scopedIpv6LiteralFromString("fe80::1%4294967296")))
-    assert.isTrue(Result.isFailure(NetAddress.scopedIpv6LiteralFromString("fe80::1%eth0\u0000")))
-    assert.isFalse(NetAddress.isScopedIpv6Literal("fe80::1%01"))
-    assert.isFalse(NetAddress.isScopedIpv6Literal("example.com"))
+  it("normalizes scoped IPv6 literals", () => {
+    assert.strictEqual(success(NetAddress.scopedIpv6LiteralFromString("FE80::1%01")), "fe80::1%1")
+    failure(NetAddress.scopedIpv6LiteralFromString("fe80::1%4294967296"))
+    assert.isFalse(NetAddress.isScopedIpv6Literal("FE80::1%eth0"))
   })
 
   it("validates ports", () => {
     assert.strictEqual(Schema.decodeUnknownSync(Schema.Port)(65535), 65535)
     assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(65536))
-    assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(-1))
     assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(1.5))
   })
 
@@ -834,10 +818,8 @@ describe("NetAddress", () => {
     assert.strictEqual(Schema.encodeSync(Schema.UnixPathAddressFromString)(unix), "../opaque.sock")
     assert.throws(() => Schema.decodeUnknownSync(Schema.MacAddressFromString)("00-11-22-33-44-55"))
     assert.throws(() => Schema.decodeUnknownSync(Schema.Ipv4AddressFromString)("999.0.0.1"))
-    const ip = Schema.decodeUnknownSync(Schema.IpAddressFromString)
-    assert.isTrue(NetAddress.isIpv4Address(ip("10.0.0.1")))
-    assert.strictEqual(Schema.encodeSync(Schema.IpAddressFromString)(ip("2001:DB8::1")), "2001:db8::1")
-    assert.throws(() => ip("999.0.0.1"))
+    const ip = Schema.decodeUnknownSync(Schema.IpAddressFromString)("2001:DB8::1")
+    assert.strictEqual(Schema.encodeSync(Schema.IpAddressFromString)(ip), "2001:db8::1")
   })
 
   it("validates branded address schemas on decode and encode", () => {

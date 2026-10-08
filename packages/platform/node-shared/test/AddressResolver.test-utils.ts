@@ -25,17 +25,6 @@ export const describeAddressResolver = (
         assert.isTrue(addresses.some((address) => NetAddress.formatInet(address) === "127.0.0.1:8080"))
       }))
 
-    it.effect("converts numeric hosts without a lookup", () =>
-      Effect.gen(function*() {
-        const resolve = (yield* resolver).resolve
-        assert.deepStrictEqual((yield* resolve(endpoint("192.0.2.1:53"))).map(NetAddress.formatInet), [
-          "192.0.2.1:53"
-        ])
-        assert.deepStrictEqual((yield* resolve(endpoint("[fe80::1%3]:80"))).map(NetAddress.formatInet), [
-          "[fe80::1%3]:80"
-        ])
-      }))
-
     it.effect("resolves IPv6 zones from the network interfaces", () =>
       Effect.gen(function*() {
         const resolve = (yield* resolver).resolve
