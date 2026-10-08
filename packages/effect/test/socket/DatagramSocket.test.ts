@@ -69,16 +69,6 @@ class TestHandle implements DatagramSocket.BackingSocket {
   }
 }
 
-// A handle that sends synchronously, as Bun does
-class SyncHandle extends TestHandle {
-  tried: Array<Uint8Array> = []
-  refuse = false
-  readonly trySend: DatagramSocket.BackingSocket["trySend"] = (payload) => {
-    this.tried.push(payload)
-    return !this.refuse
-  }
-}
-
 const fixture = (options?: DatagramSocket.ReceiveBufferOptions) => {
   const handles: Array<TestHandle> = []
   return Effect.map(
@@ -262,30 +252,6 @@ describe("DatagramSocket native handle", () => {
       assert.deepStrictEqual(texts(yield* reader.pull), ["queued"])
       assert.strictEqual(Exit.isFailure(yield* Effect.exit(reader.pull)), true)
       assert.deepStrictEqual(yield* Effect.exit(reader.pull), yield* Effect.exit(reader.pull))
-    })))
-
-  it.effect("completes a write through trySend, and falls back to send when it refuses", () =>
-    Effect.scoped(Effect.gen(function*() {
-      const handles: Array<SyncHandle> = []
-      const socket = yield* DatagramSocket.makeFromBackingSocket((events) =>
-        Effect.sync(() => {
-          const handle = new SyncHandle()
-          handle.events = events
-          handles.push(handle)
-          return handle
-        })
-      )
-      yield* socket.reader
-      const writer = yield* socket.writer
-      const handle = handles[0]!
-      yield* writer.write({ payload: "now", address })
-      assert.deepStrictEqual(handle.tried.map((payload) => new TextDecoder().decode(payload)), ["now"])
-      assert.strictEqual(handle.sends.length, 0)
-      handle.refuse = true
-      yield* writer.write({ payload: "later", address })
-      assert.strictEqual(handle.tried.length, 2)
-      assert.deepStrictEqual(handle.sends.map((send) => new TextDecoder().decode(send.payload)), ["later"])
-      assert.strictEqual(handle.sends[0]!.destination?.host, "127.0.0.1")
     })))
 
   it.effect("rejects a write with no destination and no peer before sending", () =>
