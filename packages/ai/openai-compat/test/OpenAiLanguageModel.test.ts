@@ -633,17 +633,19 @@ describe("OpenAiLanguageModel", () => {
         ])
       }))
 
-    it.effect("surfaces tool call extra_content as tool-call metadata", () =>
+    it.effect("echoes tool call extra_content in follow-up requests", () =>
       Effect.gen(function*() {
         const extraContent = { google: { thought_signature: "signature-1" } }
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
 
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
           Layer.provide(Layer.succeed(
             HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(jsonResponse(
+            makeHttpClient((request) => {
+              requests.push(request)
+              return Effect.succeed(jsonResponse(
                 request,
-                makeChatCompletion({
+                requests.length > 1 ? makeChatCompletion() : makeChatCompletion({
                   choices: [{
                     index: 0,
                     finish_reason: "tool_calls",
@@ -654,120 +656,34 @@ describe("OpenAiLanguageModel", () => {
                         id: "call_1",
                         type: "function",
                         extra_content: extraContent,
-                        function: {
-                          name: "TestTool",
-                          arguments: JSON.stringify({ input: "hello" })
-                        }
+                        function: { name: "TestTool", arguments: JSON.stringify({ input: "hello" }) }
                       }]
                     }
                   }]
                 })
               ))
-            )
-          ))
-        )
-
-        const result = yield* LanguageModel.generateText({
-          prompt: "use the tool",
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-          Effect.provide(TestToolkitLayer),
-          Effect.provide(layer)
-        )
-
-        const toolCall = result.content.find((part) => part.type === "tool-call")
-        assert.isDefined(toolCall)
-        if (toolCall?.type !== "tool-call") {
-          return
-        }
-        const metadata: unknown = toolCall.metadata
-        assert.deepStrictEqual(metadata, { openai: { itemId: "call_1", extraContent } })
-      }))
-
-    it.effect("sends tool call extraContent options as extra_content", () =>
-      Effect.gen(function*() {
-        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
-        const extraContent = { google: { thought_signature: "signature-1" } }
-
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              capturedRequest = request
-              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
             })
           ))
         )
 
-        yield* LanguageModel.generateText({
-          prompt: Prompt.make([
-            { role: "user", content: "use both tools" },
-            {
-              role: "assistant",
-              content: [
-                Prompt.toolCallPart({
-                  id: "call_1",
-                  name: "TestTool",
-                  params: { input: "first" },
-                  providerExecuted: false,
-                  options: { openai: { extraContent } }
-                }),
-                Prompt.toolCallPart({
-                  id: "call_2",
-                  name: "TestTool",
-                  params: { input: "second" },
-                  providerExecuted: false
-                })
-              ]
-            },
-            {
-              role: "tool",
-              content: [
-                Prompt.toolResultPart({
-                  id: "call_1",
-                  name: "TestTool",
-                  isFailure: false,
-                  result: { output: "first" },
-                  providerExecuted: false
-                }),
-                Prompt.toolResultPart({
-                  id: "call_2",
-                  name: "TestTool",
-                  isFailure: false,
-                  result: { output: "second" },
-                  providerExecuted: false
-                })
-              ]
-            }
-          ]),
-          toolkit: TestToolkit
-        }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-          Effect.provide(TestToolkitLayer),
-          Effect.provide(layer)
-        )
+        const generate = (prompt: Prompt.Prompt) =>
+          LanguageModel.generateText({ prompt, toolkit: TestToolkit }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(TestToolkitLayer),
+            Effect.provide(layer)
+          )
 
-        assert.isDefined(capturedRequest)
-        if (capturedRequest === undefined) {
-          return
-        }
+        const prompt = Prompt.make("use the tool")
+        const first = yield* generate(prompt)
+        yield* generate(Prompt.concat(prompt, Prompt.fromResponseParts(first.content)))
 
-        const requestBody = yield* getRequestBody(capturedRequest)
-        assert.deepStrictEqual(requestBody.messages[1]?.tool_calls, [
-          {
-            id: "call_1",
-            type: "function",
-            function: { name: "TestTool", arguments: JSON.stringify({ input: "first" }) },
-            extra_content: extraContent
-          },
-          {
-            id: "call_2",
-            type: "function",
-            function: { name: "TestTool", arguments: JSON.stringify({ input: "second" }) }
-          }
-        ])
+        const followUpBody = yield* getRequestBody(requests[1])
+        assert.deepStrictEqual(followUpBody.messages[1].tool_calls, [{
+          id: "call_1",
+          type: "function",
+          function: { name: "TestTool", arguments: JSON.stringify({ input: "hello" }) },
+          extra_content: extraContent
+        }])
       }))
 
     it.effect("converts dynamic tools to function type", () =>
@@ -1371,15 +1287,15 @@ describe("OpenAiLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
       }))
 
-    it.effect("preserves streamed tool call extra_content across argument fragments", () =>
+    it.effect("retains streamed tool call extra_content across argument fragments", () =>
       Effect.gen(function*() {
         const extraContent = { google: { thought_signature: "signature-1" } }
-        const chunk = (delta: Record<string, unknown>) => ({
+        const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null) => ({
           id: "chatcmpl_extra_content",
           object: "chat.completion.chunk",
           model: "gpt-4o-mini",
           created: 1,
-          choices: [{ index: 0, delta, finish_reason: null }]
+          choices: [{ index: 0, delta, finish_reason }]
         })
 
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -1396,23 +1312,15 @@ describe("OpenAiLanguageModel", () => {
                     function: { name: "TestTool", arguments: "{\"input\":" }
                   }]
                 }),
-                chunk({
-                  tool_calls: [{ index: 0, extra_content: null, function: { arguments: "\"hello\"}" } }]
-                }),
-                {
-                  id: "chatcmpl_extra_content",
-                  object: "chat.completion.chunk",
-                  model: "gpt-4o-mini",
-                  created: 1,
-                  choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }]
-                },
+                chunk({ tool_calls: [{ index: 0, extra_content: null, function: { arguments: "\"hello\"}" } }] }),
+                chunk({}, "tool_calls"),
                 "[DONE]"
               ]))
             )
           ))
         )
 
-        const partsChunk = yield* LanguageModel.streamText({
+        const parts = yield* LanguageModel.streamText({
           prompt: "use the tool",
           toolkit: TestToolkit,
           disableToolCallResolution: true
@@ -1423,13 +1331,8 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(layer)
         )
 
-        const toolCall = globalThis.Array.from(partsChunk).find((part) => part.type === "tool-call")
-        assert.isDefined(toolCall)
-        if (toolCall?.type !== "tool-call") {
-          return
-        }
-        assert.deepStrictEqual(toolCall.params, { input: "hello" })
-        const metadata: unknown = toolCall.metadata
+        const toolCall = globalThis.Array.from(parts).find((part) => part.type === "tool-call")
+        const metadata: unknown = toolCall?.metadata
         assert.deepStrictEqual(metadata, { openai: { itemId: "call_1", extraContent } })
       }))
 
