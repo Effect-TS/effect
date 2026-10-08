@@ -10,7 +10,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Arr from "../Array.ts"
 import type { NonEmptyReadonlyArray } from "../Array.ts"
 import type * as Brand from "../Brand.ts"
 import * as Cause from "../Cause.ts"
@@ -18,8 +17,9 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Exit from "../Exit.ts"
-import * as Filter from "../Filter.ts"
+import * as Fiber from "../Fiber.ts"
 import { dual } from "../Function.ts"
+import * as Latch from "../Latch.ts"
 import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
@@ -180,6 +180,20 @@ export {
  * Runs an effect and records its exit into the durable deferred, resuming
  * workflows that are waiting on that deferred.
  *
+ * **Details**
+ *
+ * The effect and the write of its exit count as one in-flight activity of the
+ * workflow, so concurrent branches parked on durable waits do not suspend the
+ * run until the exit is recorded. This applies even when the effect itself is
+ * not an activity. If the effect parks on a durable wait, the run suspends
+ * once the other in-flight activities finish, and nothing is recorded.
+ *
+ * **Gotchas**
+ *
+ * A long-running effect keeps the run active instead of letting a parked
+ * sibling suspend it. Completing a deferred the run is waiting on still
+ * interrupts and replays the run.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -229,42 +243,85 @@ export const into: {
     | Error["DecodingServices"]
     | Success["EncodingServices"]
     | Error["EncodingServices"]
-  > =>
-    Effect.contextWith(
-      (context: Context.Context<WorkflowEngine | WorkflowInstance>) => {
-        const engine = Context.get(context, EngineTag)
-        const parentInstance = Context.get(context, InstanceTag)
-        const instance = { ...parentInstance }
-        return Effect.onExit(
-          Effect.provideService(effect, InstanceTag, instance),
-          Effect.fnUntraced(function*(exit) {
-            if (Exit.isFailure(exit)) {
-              const [interrupts, reasons] = Arr.partition(
-                exit.cause.reasons,
-                Filter.fromPredicate(Cause.isInterruptReason)
-              )
-              if (interrupts.length === exit.cause.reasons.length) {
-                // An interrupt-only exit is never a result: the effect was
-                // suspended, preempted or interrupted, so record nothing.
-                if (instance.suspended) {
-                  parentInstance.suspended = true
-                }
-                return
-              } else if (interrupts.length > 0) {
-                exit = Exit.failCause(Cause.fromReasons(reasons))
-              }
-            }
-            yield* engine.deferredDone(self, {
-              workflowName: instance.workflow._tag,
-              executionId: instance.executionId,
-              deferredName: self.name,
-              exit
-            })
-          })
-        )
-      }
-    )
+  > => recordHeld(effect, self, false)
 )
+
+/**
+ * Records `exit` into `self`. An interrupt-only exit is never a result: the
+ * effect was suspended, preempted or interrupted, so nothing is recorded.
+ * Interrupts mixed into a failure are dropped from the recorded cause.
+ */
+const recordExit = (
+  engine: WorkflowEngine["Service"],
+  instance: WorkflowInstance["Service"],
+  self: DurableDeferred<any, any>,
+  exit: Exit.Exit<any, any>
+) => {
+  if (Exit.isFailure(exit)) {
+    if (Cause.hasInterruptsOnly(exit.cause)) return Effect.void
+    if (Cause.hasInterrupts(exit.cause)) {
+      exit = Exit.failCause(Cause.fromReasons(
+        exit.cause.reasons.filter((reason) => !Cause.isInterruptReason(reason))
+      ))
+    }
+  }
+  return engine.deferredDone(self, {
+    workflowName: instance.workflow._tag,
+    executionId: instance.executionId,
+    deferredName: self.name,
+    exit
+  })
+}
+
+/**
+ * Runs `effect` as one activity of the enclosing workflow and records its exit
+ * into `self`, returning a previously recorded exit instead when `checkCache`
+ * is set. The hold spans the lookup, `effect` and the write, so a parked
+ * sibling cannot suspend the run before the continuation starts.
+ */
+const recordHeld = Effect.fnUntraced(function*<A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  self: DurableDeferred<any, any>,
+  checkCache: boolean
+): Effect.fn.Return<A, E, R | WorkflowEngine | WorkflowInstance> {
+  const engine = yield* EngineTag
+  const instance = yield* InstanceTag
+  const exit = yield* Workflow.wrapActivityResult(
+    Effect.gen(function*() {
+      if (checkCache) {
+        const cached = yield* engine.deferredResult(self)
+        if (Option.isSome(cached)) return cached
+      }
+      // `effect` counts on its own activity state, so a durable await inside
+      // it waits for its own siblings and not for the hold above. The copy
+      // starts unsuspended: a parked arm of an enclosing race leaves that
+      // copy marked suspended while only interrupting its own fiber.
+      const local: WorkflowInstance["Service"] = {
+        ...instance,
+        suspended: false,
+        activityState: { count: 0, latch: Latch.makeUnsafe() }
+      }
+      // A parked `effect` interrupts the fiber it runs on. The child fiber
+      // keeps that from skipping the suspension handling below.
+      const fiber = yield* effect.pipe(
+        Effect.provideService(InstanceTag, local),
+        Effect.onExit((exit) => recordExit(engine, instance, self, exit)),
+        Effect.forkChild({ startImmediately: true })
+      )
+      const exit = yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber))
+      return local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+        ? Option.none()
+        : Option.some(exit)
+    }),
+    // Every branch of `effect` parked: release the hold and let the enclosing
+    // activities finish before suspending. External preemption does not wait.
+    Option.isNone
+  )
+  if (Option.isNone(exit)) {
+    return yield* Workflow.suspend(instance)
+  }
+  return yield* exit.value
+})
 
 /**
  * Runs effects as a durable race, returning a previously persisted result when
@@ -298,17 +355,7 @@ export const raceAll = <
     success: options.success,
     error: options.error
   })
-  return Effect.gen(function*() {
-    const engine = yield* EngineTag
-    const exit = yield* engine.deferredResult(deferred)
-    if (Option.isSome(exit)) {
-      return yield* exit.value
-    }
-    return yield* into(
-      Effect.raceAll(options.effects),
-      deferred
-    )
-  })
+  return recordHeld(Effect.raceAll(options.effects), deferred, true)
 }
 
 /**
