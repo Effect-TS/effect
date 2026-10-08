@@ -820,6 +820,21 @@ describe("PowerShell completions", () => {
     const paths = PowerShell.generate("process", fromCommand(withPaths))
     assert.include(paths, `pathType = 'file'`)
     assert.include(paths, `pathType = 'directory'`)
+    assert.include(paths, `[System.Management.Automation.CompletionCompleters]::CompleteFilename($typed)`)
+    assert.include(paths, `$entry.pathType -eq 'directory' -and $file.ResultType -ne 'ProviderContainer'`)
+  })
+
+  it("offers only positional values after --", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.include(script, `if ($endOfOptions) { $position++; continue }`)
+    assert.include(script, `if ($word -ceq '--') { $endOfOptions = $true; continue }`)
+    assert.include(script, `if (-not $endOfOptions) {`)
+  })
+
+  it("emits non-ASCII text as [char] code units", () => {
+    const script = PowerShell.generate("deploy", fromCommand(withTrickyChoices))
+    assert.notMatch(script, /[^\n\x20-\x7e]/)
+    assert.include(script, `('a' + [char]0xD83D + [char]0xDE00 + 'b')`)
   })
 
   it("escapes values for single-quoted PowerShell literals", () => {
