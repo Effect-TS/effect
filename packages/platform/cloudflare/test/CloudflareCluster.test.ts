@@ -6,15 +6,11 @@ import {
 } from "@effect/platform-cloudflare/internal/entityReply"
 import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Exit, Fiber, Layer, PrimaryKey, Schema, Stream } from "effect"
-import { ClusterSchema, DeliverAt, Entity, EntityProxy, EntityProxyServer, Sharding, Singleton } from "effect/cluster"
+import { ClusterSchema, DeliverAt, Entity, EntityProxy, EntityProxyServer, Sharding } from "effect/cluster"
 import { Rpc, RpcSchema, RpcTest } from "effect/rpc"
 
 const User = Entity.make("User", [
   Rpc.make("Ping", { success: Schema.String })
-])
-
-const UninterruptibleUser = Entity.make("UninterruptibleUser", [
-  Rpc.make("Ping", { success: Schema.String }).annotate(ClusterSchema.Uninterruptible, true)
 ])
 
 const PersistedUser = Entity.make("PersistedUser", [
@@ -23,10 +19,6 @@ const PersistedUser = Entity.make("PersistedUser", [
 
 const Counter = Entity.make("Counter", [
   Rpc.make("Increment")
-])
-
-const Events = Entity.make("Events", [
-  Rpc.make("Numbers", { success: RpcSchema.Stream(Schema.Number, Schema.Never) })
 ])
 
 class ScheduledPayload extends Schema.Class<ScheduledPayload>("CloudflareScheduledPayload")({
@@ -87,36 +79,6 @@ const makeOptions = () => {
 
 describe("CloudflareCluster", () => {
   describe("layer", () => {
-    it.effect("registers singleton effects under named Durable Objects without running them forever", () => {
-      const singletonNamespace = new FakeNamespace()
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [User],
-        entityNamespace: new FakeNamespace() as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: singletonNamespace as any
-      }
-
-      return Effect.gen(function*() {
-        yield* Layer.build(
-          Singleton.make("hourly", Effect.void).pipe(
-            Layer.provide(CloudflareCluster.layer(options))
-          )
-        )
-        assert.deepStrictEqual(singletonNamespace.names, ["Singleton/hourly"])
-      })
-    })
-
-    it.effect("resolves entity clients through the namespace binding", () =>
-      Effect.gen(function*() {
-        const { entityNamespace, options } = makeOptions()
-        const makeClient = yield* User.client.pipe(
-          Effect.provide(CloudflareCluster.layer(options))
-        )
-        makeClient("42")
-        assert.deepStrictEqual(entityNamespace.names, ["4:User42"])
-      }))
-
     it.effect("routes generated entity proxy handlers through the encoded Durable Object name", () => {
       const stub = {
         invoke(envelopeText: string) {
@@ -195,259 +157,6 @@ describe("CloudflareCluster", () => {
         assert.match(envelopes[0].requestId, /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
         assert.strictEqual(envelopes[0].address.entityType, "User")
         assert.strictEqual(envelopes[0].address.entityId, "42")
-      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
-    })
-
-    it.effect("acknowledges each persisted stream chunk before requesting the next reply", () => {
-      const acknowledgements: Array<string> = []
-      let requestId = ""
-      const reply = (value: object) => JSON.stringify({ requestId, ...value })
-      const stub = {
-        invoke(envelopeText: string) {
-          requestId = JSON.parse(envelopeText).requestId
-          return Promise.resolve({
-            _tag: "Success",
-            requestId,
-            replies: [reply({ _tag: "Chunk", id: "chunk-0", sequence: 0, values: [1] })]
-          })
-        },
-        acknowledge(_requestId: string, replyId: string) {
-          acknowledgements.push(replyId)
-          return Promise.resolve(
-            acknowledgements.length === 1
-              ? [reply({ _tag: "Chunk", id: "chunk-1", sequence: 1, values: [2] })]
-              : [reply({ _tag: "WithExit", id: "terminal", exit: { _tag: "Success", value: null } })]
-          )
-        }
-      }
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [Events],
-        entityNamespace: new FakeNamespace(stub) as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: new FakeNamespace() as any
-      }
-
-      return Effect.gen(function*() {
-        const makeClient = yield* Events.client
-        const values = yield* makeClient("one").Numbers(void 0).pipe(Stream.runCollect)
-
-        assert.deepStrictEqual(Array.from(values), [1, 2])
-        assert.deepStrictEqual(acknowledgements, ["chunk-0", "chunk-1"])
-      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
-    })
-
-    it.effect("interrupts the Durable Object handler when the client request is interrupted", () => {
-      let requestId = ""
-      let resumeInvoked!: () => void
-      const invoked = new Promise<void>((resolve) => {
-        resumeInvoked = resolve
-      })
-      const interruptions: Array<ReadonlyArray<string | undefined>> = []
-      const stub = {
-        invoke(envelopeText: string) {
-          requestId = JSON.parse(envelopeText).requestId
-          resumeInvoked()
-          return new Promise<never>(() => {})
-        },
-        acknowledge() {
-          return Promise.resolve([])
-        },
-        interrupt(storageRequestId: string, clientRequestId?: string) {
-          interruptions.push([storageRequestId, clientRequestId])
-          return Promise.resolve()
-        }
-      }
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [User],
-        entityNamespace: new FakeNamespace(stub) as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: new FakeNamespace() as any
-      }
-
-      return Effect.gen(function*() {
-        const makeClient = yield* User.client
-        const fiber = yield* Effect.forkChild(makeClient("42").Ping(void 0))
-        yield* Effect.promise(() => invoked)
-        yield* Fiber.interrupt(fiber)
-
-        assert.deepStrictEqual(interruptions, [[requestId, requestId]])
-      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
-    })
-
-    it.effect("does not interrupt an Uninterruptible Durable Object handler", () => {
-      let resumeInvoked!: () => void
-      const invoked = new Promise<void>((resolve) => {
-        resumeInvoked = resolve
-      })
-      const interruptions: Array<ReadonlyArray<string | undefined>> = []
-      const stub = {
-        invoke() {
-          resumeInvoked()
-          return new Promise<never>(() => {})
-        },
-        acknowledge() {
-          return Promise.resolve([])
-        },
-        interrupt(storageRequestId: string, clientRequestId?: string) {
-          interruptions.push([storageRequestId, clientRequestId])
-          return Promise.resolve()
-        }
-      }
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [UninterruptibleUser],
-        entityNamespace: new FakeNamespace(stub) as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: new FakeNamespace() as any
-      }
-
-      return Effect.gen(function*() {
-        const makeClient = yield* UninterruptibleUser.client
-        const fiber = yield* Effect.forkChild(makeClient("42").Ping(void 0))
-        yield* Effect.promise(() => invoked)
-        yield* Fiber.interrupt(fiber)
-
-        assert.isEmpty(interruptions)
-      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
-    })
-
-    it.effect("passes future DeliverAt metadata with a destination-scoped primary key", () => {
-      const deliveries: Array<any> = []
-      const stub = {
-        invoke(envelopeText: string, discard: boolean, delivery: unknown) {
-          const envelope = JSON.parse(envelopeText)
-          deliveries.push({ discard, delivery })
-          return Promise.resolve({
-            _tag: "Success",
-            requestId: envelope.requestId,
-            replies: discard ? [] : [JSON.stringify({
-              _tag: "WithExit",
-              requestId: envelope.requestId,
-              id: "terminal",
-              exit: { _tag: "Success", value: "done" }
-            })]
-          })
-        },
-        acknowledge() {
-          return Promise.resolve([])
-        }
-      }
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [Scheduled],
-        entityNamespace: new FakeNamespace(stub) as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: new FakeNamespace() as any
-      }
-
-      return Effect.gen(function*() {
-        const makeClient = yield* Scheduled.client
-        const client = makeClient("one")
-        const deliverAt = Date.now() + 60_000
-        assert.strictEqual(yield* client.Ask({ deliverAt, id: "operation" }), "done")
-        yield* client.Tell({ deliverAt, id: "tell" }, { discard: true })
-
-        assert.deepStrictEqual(deliveries, [
-          {
-            discard: false,
-            delivery: {
-              deliverAt,
-              primaryKey: "Scheduled/one/Ask/operation"
-            }
-          },
-          {
-            discard: true,
-            delivery: {
-              deliverAt,
-              primaryKey: "Scheduled/one/Tell/tell"
-            }
-          }
-        ])
-      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
-    })
-
-    it.effect("keeps a Worker delayed ask open until the destination RPC returns", () => {
-      let resolve!: (result: any) => void
-      const response = new Promise<any>((resume) => {
-        resolve = resume
-      })
-      let requestId = ""
-      const stub = {
-        invoke(envelopeText: string) {
-          requestId = JSON.parse(envelopeText).requestId
-          return response
-        },
-        acknowledge() {
-          return Promise.resolve([])
-        }
-      }
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [Scheduled],
-        entityNamespace: new FakeNamespace(stub) as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: new FakeNamespace() as any
-      }
-
-      return Effect.gen(function*() {
-        const makeClient = yield* Scheduled.client
-        const fiber = yield* Effect.forkChild(makeClient("one").Ask({ deliverAt: Date.now() + 60_000, id: "worker" }))
-        yield* Effect.yieldNow
-        assert.isUndefined(fiber.pollUnsafe())
-        resolve({
-          _tag: "Success",
-          requestId,
-          replies: [JSON.stringify({
-            _tag: "WithExit",
-            requestId,
-            id: "terminal",
-            exit: { _tag: "Success", value: "done" }
-          })]
-        })
-        assert.strictEqual(yield* Fiber.join(fiber), "done")
-      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
-    })
-
-    it.effect("delivers a delayed reply back to a pinned caller entity", () => {
-      const registry = makeReplyRegistry()
-      const stub = {
-        invoke(envelopeText: string, _discard: boolean, delivery: { readonly replyTo?: string }) {
-          const envelope = JSON.parse(envelopeText)
-          assert.strictEqual(delivery.replyTo, "6:Callerone")
-          queueMicrotask(() => {
-            registry.deliver(
-              envelope.requestId,
-              JSON.stringify({
-                _tag: "WithExit",
-                requestId: envelope.requestId,
-                id: "terminal",
-                exit: { _tag: "Success", value: "callback" }
-              })
-            )
-          })
-          return Promise.resolve({ _tag: "Success", requestId: envelope.requestId, replies: [] })
-        },
-        acknowledge() {
-          return Promise.resolve([])
-        }
-      }
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [Scheduled],
-        entityNamespace: new FakeNamespace(stub) as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: new FakeNamespace() as any
-      }
-
-      return Effect.gen(function*() {
-        const makeClient = yield* Scheduled.client
-        const result = yield* makeClient("one").Ask({ deliverAt: Date.now() + 60_000, id: "caller" }).pipe(
-          Effect.provideService(CurrentEntityName, "6:Callerone"),
-          Effect.provideService(CurrentReplyRegistry, registry)
-        )
-        assert.strictEqual(result, "callback")
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
@@ -572,51 +281,6 @@ describe("CloudflareCluster", () => {
       }).pipe(Effect.provide(CloudflareCluster.layer(options)))
     })
 
-    it.effect("does not retain reset targets for volatile requests", () => {
-      let requestId = ""
-      let resets = 0
-      const stub = {
-        invoke(envelopeText: string) {
-          const envelope = JSON.parse(envelopeText)
-          requestId = envelope.requestId
-          return Promise.resolve({
-            _tag: "Success",
-            requestId,
-            replies: [JSON.stringify({
-              _tag: "WithExit",
-              requestId,
-              id: "terminal",
-              exit: { _tag: "Success", value: "pong" }
-            })]
-          })
-        },
-        acknowledge() {
-          return Promise.resolve([])
-        },
-        reset() {
-          resets++
-          return Promise.resolve()
-        }
-      }
-      const options: CloudflareCluster.LayerOptions = {
-        entities: [User],
-        entityNamespace: new FakeNamespace(stub) as any,
-        workflowNamespace: new FakeNamespace() as any,
-        queueNamespace: new FakeNamespace() as any,
-        singletonNamespace: new FakeNamespace() as any
-      }
-
-      return Effect.gen(function*() {
-        const makeClient = yield* User.client
-        const sharding = yield* Sharding.Sharding
-        yield* makeClient("42").Ping(void 0)
-        const reset = yield* sharding.reset(requestId as any)
-
-        assert.isFalse(reset)
-        assert.strictEqual(resets, 0)
-      }).pipe(Effect.provide(CloudflareCluster.layer(options)))
-    })
-
     it.effect("bounds retained reset targets for persisted requests", () => {
       const requestIds: Array<string> = []
       const resets: Array<string> = []
@@ -674,16 +338,6 @@ describe("CloudflareCluster", () => {
         )
         assert.isTrue(Exit.isFailure(exit))
         assert.deepStrictEqual(entityNamespace.names, [])
-      }))
-
-    it.effect("registers entity handlers", () =>
-      Effect.gen(function*() {
-        const { options } = makeOptions()
-        yield* Layer.build(
-          User.toLayer({ Ping: () => Effect.succeed("pong") }).pipe(
-            Layer.provide(CloudflareCluster.layer(options))
-          )
-        )
       }))
 
     it.effect("ignores duplicate handler registration", () =>

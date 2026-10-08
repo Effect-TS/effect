@@ -77,4 +77,15 @@ describe("Cloudflare cluster integration | DeliverAt", () => {
       const read = yield* cluster.fetchJson("/counter/get?id=ask")
       assert.strictEqual(read.value, 1, "The deduplicated delayed ask ran the handler twice")
     }), 60_000)
+
+  it.effect("delivers a delayed ask reply back to the calling entity", () =>
+    Effect.gen(function*() {
+      const cluster = yield* makeCluster
+
+      const result = yield* cluster.fetchJson("/relay/scheduled?id=caller&target=relay-delayed")
+      assert.strictEqual(result.value, 1, "The delayed reply did not reach the calling entity")
+      const state = yield* cluster.fetchJson("/state")
+      const delivery = state.deliveries["relay-delayed"][0]
+      assert.isAtLeast(delivery.deliveredAt, delivery.deliverAt, "The delayed ask ran before its deadline")
+    }), 60_000)
 })

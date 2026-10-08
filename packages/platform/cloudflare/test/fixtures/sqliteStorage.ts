@@ -3,9 +3,11 @@ import type { DatabaseSync, SQLInputValue } from "node:sqlite"
 
 // Durable Object storage over node:sqlite. Both transaction APIs use
 // savepoints so the cluster's `transactionSync` and `SqliteClient`'s
-// `transaction` can nest, as they do on SQLite-backed Durable Objects.
+// `transaction` can nest, as they do on SQLite-backed Durable Objects. The
+// alarm is only recorded; tests fire due work themselves.
 export class SqliteStorage {
   readonly sql: SqlStorage
+  alarm: number | null = null
   #savepoints = 0
 
   constructor(readonly database: DatabaseSync) {
@@ -61,5 +63,13 @@ export class SqliteStorage {
       this.#end(name, false)
       throw error
     }
+  }
+  getAlarm(): Promise<number | null> {
+    return Promise.resolve(this.alarm)
+  }
+
+  setAlarm(scheduledTime: number): Promise<void> {
+    this.alarm = scheduledTime
+    return Promise.resolve()
   }
 }

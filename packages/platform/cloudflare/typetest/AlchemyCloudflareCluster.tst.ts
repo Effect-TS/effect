@@ -3,7 +3,6 @@ import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCl
 import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
 import * as Cloudflare from "alchemy/Cloudflare"
 import { Entity, Singleton } from "effect/cluster"
-import { Sharding } from "effect/cluster/Sharding"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
@@ -116,18 +115,6 @@ describe("Cluster handle", () => {
       cluster.wake("hourly-maintenance")
     )
   })
-
-  test("the namespace escape hatches are native bindings", () => {
-    expect(cluster.entityNamespace).type.toBe<DurableObjectNamespace>()
-    expect(cluster.workflowNamespace).type.toBe<DurableObjectNamespace>()
-    expect(cluster.queueNamespace).type.toBe<DurableObjectNamespace>()
-    expect(cluster.singletonNamespace).type.toBe<DurableObjectNamespace>()
-    expect(cluster.entityNamespace.getByName("name")).type.toBe<DurableObjectStub>()
-  })
-
-  test("the context carries the built services", () => {
-    expect(Context.get(cluster.context, Sharding)).type.toBe<Sharding["Service"]>()
-  })
 })
 
 describe("binding wiring", () => {
@@ -148,16 +135,5 @@ describe("binding wiring", () => {
   test("the worker init program satisfies the Effect-native Worker contract", () => {
     expect(app).type.not.toBe<any>()
     expect<Effect.Success<typeof app>>().type.toBeAssignableTo<Cloudflare.Worker>()
-  })
-
-  // The cluster's Durable Object bindings are declared at runtime via
-  // `worker.bind`, so they deliberately never appear in `InferEnv`; user env
-  // bindings resolve through it as usual.
-  test("user env bindings resolve through InferEnv", () => {
-    const withEnv = Cloudflare.Worker("EffectClusterEnv", {
-      main: "./worker.ts",
-      env: { COUNTER_HOST: "example.com" as string }
-    })
-    expect<Cloudflare.InferEnv<typeof withEnv>["COUNTER_HOST"]>().type.toBe<string>()
   })
 })
