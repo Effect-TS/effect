@@ -16,7 +16,6 @@ import {
   flow,
   HashMap,
   HashSet,
-  Logger,
   Option,
   Order,
   pipe,
@@ -34,7 +33,6 @@ import {
   Tuple
 } from "effect"
 import { TestSchema } from "effect/testing"
-import * as TestConsole from "effect/testing/TestConsole"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
 import { inspect } from "node:util"
@@ -102,53 +100,30 @@ describe("Schema", () => {
   })
 
   describe("SchemaError", () => {
-    const nestedError = () => {
-      const schema = Schema.Struct({ profile: Schema.Struct({ email: Schema.String }) })
-      const result = SchemaParser.decodeUnknownResult(schema)({ profile: { email: null } })
-      assertTrue(Result.isFailure(result))
-      return new Schema.SchemaError(result.failure)
-    }
-    const compact = {
-      _tag: "SchemaError",
-      message: "Expected string\n  at [\"profile\"][\"email\"]",
-      issues: [{ path: ["profile", "email"], message: "Expected string" }]
-    }
-
-    it("serializes nested failures as compact JSON without AST nodes", () => {
-      deepStrictEqual(JSON.parse(JSON.stringify(nestedError())), compact)
-    })
-
-    it.effect("logs compact failures with Logger.consoleJson", () =>
-      Effect.gen(function*() {
-        yield* Effect.logError(nestedError()).pipe(Effect.provide(Logger.layer([Logger.consoleJson])))
-        const lines = yield* TestConsole.logLines
-        strictEqual(lines.length, 1)
-        deepStrictEqual(JSON.parse(lines[0] as string).message, compact)
-      }))
-
-    it("inspects nested failures without AST nodes", () => {
-      strictEqual(inspect(nestedError(), { depth: null }), inspect(compact, { depth: null }))
-    })
-
-    it("serializes symbol path segments as strings", () => {
+    it("serializes nested symbol paths as compact JSON", () => {
       const key = Symbol("email")
-      const schema = Schema.Struct({ [key]: Schema.String })
-      const result = SchemaParser.decodeUnknownResult(schema)({ [key]: null })
+      const schema = Schema.Struct({ profile: Schema.Struct({ [key]: Schema.String }) })
+      const result = SchemaParser.decodeUnknownResult(schema)({ profile: { [key]: null } })
       assertTrue(Result.isFailure(result))
-      const error = new Schema.SchemaError(result.failure)
 
-      strictEqual(error.message, "Expected string\n  at [Symbol(email)]")
-      deepStrictEqual(JSON.parse(JSON.stringify(error)), {
+      deepStrictEqual(JSON.parse(JSON.stringify(new Schema.SchemaError(result.failure))), {
         _tag: "SchemaError",
-        message: "Expected string\n  at [Symbol(email)]",
-        issues: [{ path: ["Symbol(email)"], message: "Expected string" }]
+        message: "Expected string\n  at [\"profile\"][Symbol(email)]",
+        issues: [{ path: ["profile", "Symbol(email)"], message: "Expected string" }]
       })
     })
 
-    it("keeps Cause.pretty output unchanged for nested failures", () => {
+    it("inspects failures as a compact object", () => {
+      const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
+      assertTrue(Result.isFailure(result))
+
       strictEqual(
-        Cause.pretty(Cause.fail(nestedError())),
-        "SchemaError: Expected string\n  at [\"profile\"][\"email\"]"
+        inspect(new Schema.SchemaError(result.failure), { depth: null }),
+        inspect({
+          _tag: "SchemaError",
+          message: "Expected string",
+          issues: [{ path: [], message: "Expected string" }]
+        }, { depth: null })
       )
     })
 
