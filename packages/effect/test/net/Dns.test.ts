@@ -78,6 +78,41 @@ describe("Dns", () => {
   })
 
   describe("service", () => {
+    for (const method of ["lookup", "resolve"] as const) {
+      it.effect(`normalizes string inputs before ${method}`, () =>
+        Effect.gen(function*() {
+          const dns = Dns.make({
+            lookup: (host) => Effect.succeed(host === "xn--bcher-kva.example." ? [ip("10.0.0.1")] : []),
+            resolve: (host) =>
+              Effect.succeed(
+                host === "xn--bcher-kva.example."
+                  ? [Dns.makeRecordUnsafe("TXT", { chunks: ["normalized"] })]
+                  : []
+              )
+          })
+          const result = method === "lookup"
+            ? yield* dns.lookup("Bücher.Example.").pipe(Effect.map((addresses) => addresses.map(NetAddress.formatIp)))
+            : yield* dns.resolve("Bücher.Example.", "TXT").pipe(Effect.map((records) => records.map(Dns.formatRecord)))
+          assert.deepStrictEqual(result, method === "lookup" ? ["10.0.0.1"] : ["TXT \"normalized\""])
+        }))
+
+      it.effect(`reports invalid ${method} string inputs as BadName`, () =>
+        Effect.gen(function*() {
+          const dns = Dns.make({
+            lookup: () => Effect.succeed([ip("10.0.0.1")]),
+            resolve: () => Effect.succeed([Dns.makeRecordUnsafe("TXT", { chunks: ["valid"] })])
+          })
+          const error = method === "lookup"
+            ? yield* Effect.flip(dns.lookup("not a name"))
+            : yield* Effect.flip(dns.resolve("not a name", "TXT"))
+          assert.strictEqual(error._tag, "DnsError")
+          assert.strictEqual(error.reason, "BadName")
+          assert.strictEqual(error.method, method)
+          assert.strictEqual(error.hostname, "not a name")
+          assert.strictEqual(error.recordType, method === "lookup" ? undefined : "TXT")
+        }))
+    }
+
     it.effect("filters and deduplicates results, and fails on empty results", () =>
       Effect.gen(function*() {
         const dns = Dns.make({

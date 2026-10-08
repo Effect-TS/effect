@@ -21,6 +21,22 @@ const resolver = (options?: AddressResolver.MakeOptions) =>
   )
 
 describe("AddressResolver", () => {
+  it.effect("parses string endpoints and normalizes domain names", () =>
+    Effect.gen(function*() {
+      const resolve = yield* resolver()
+      const addresses = yield* resolve.resolve("DB.internal.:5432", { family: "IPv4" })
+      assert.deepStrictEqual(addresses.map(NetAddress.formatInet), ["10.0.0.5:5432"])
+      const scoped = yield* resolve.resolve("[fe80::1%2]:80")
+      assert.deepStrictEqual(scoped.map(NetAddress.formatInet), ["[fe80::1%2]:80"])
+    }))
+
+  it.effect("reports invalid string endpoints as NetAddressError", () =>
+    Effect.gen(function*() {
+      const resolve = yield* resolver()
+      const error = yield* Effect.flip(resolve.resolve("db.internal:70000"))
+      assert.strictEqual(error._tag, "NetAddressError")
+    }))
+
   it.effect("returns concrete addresses without a lookup", () =>
     Effect.gen(function*() {
       const resolve = yield* resolver()
