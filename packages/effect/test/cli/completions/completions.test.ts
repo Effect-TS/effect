@@ -842,6 +842,11 @@ describe("PowerShell completions", () => {
     assert.include(script, "if ($typedIsOption) {")
   })
 
+  it("offers option-shaped choices only where the CLI reads them as values", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.include(script, "& $optionLike $value")
+  })
+
   it("tracks used flags case-sensitively", () => {
     const script = PowerShell.generate("server", fromCommand(withSubcommands))
     assert.notInclude(script, "$used = @{}")
