@@ -298,13 +298,25 @@ describe("Context", () => {
       deepStrictEqual([...assertMergeMatches(self2, that2).mapUnsafe], [[D.key, 0], [A.key, 4], [B.key, 2], [C.key, 3]])
     })
 
-    it("keeps the fiber cache of self unless that holds a cached key", () => {
+    it("reuses the fiber cache of self unless that holds a cached key", () => {
       const self = Context.make(A, 1).pipe(Context.add(Cached, 2))
       const plain = Context.make(B, 3).pipe(Context.add(A, 4))
       const withCached = Context.make(B, 3).pipe(Context.add(Cached, 5))
+      const fiberCache = (context: Context.Context<never>) => (context as any).cacheRoot._fiberCache
 
-      assertTrue(Context.hasSameCache(assertMergeMatches(self, plain), self))
-      assertFalse(Context.hasSameCache(assertMergeMatches(self, withCached), self))
+      // Nothing to reuse before a fiber has run with self
+      strictEqual(fiberCache(assertMergeMatches(self, plain)), undefined)
+      // A fiber running with self computes the fiber cache of its root
+      const fiber = new internalEffect.FiberImpl(self)
+      strictEqual(fiber.context, self)
+      const cache = fiberCache(self)
+      assertTrue(cache !== undefined)
+
+      const merged = assertMergeMatches(self, plain)
+      strictEqual(fiberCache(merged), cache)
+      // The merged context is its own root, so it does not keep self alive
+      assertFalse(Context.hasSameCache(merged, self))
+      strictEqual(fiberCache(assertMergeMatches(self, withCached)), undefined)
       // A derived context keeps its own cache
       const derived = Context.add(self, Cached, 6)
       assertTrue(Context.hasSameCache(assertMergeMatches(self, derived), derived))
