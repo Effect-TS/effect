@@ -315,10 +315,18 @@ const Pinned = Entity.make("Pinned", [
   Rpc.make("Unpin", { success: Schema.String })
 ])
 
-const PinnedLayer = Pinned.toLayer({
-  Pin: () => Effect.as(Entity.keepAlive(true), "pinned"),
-  Unpin: () => Effect.as(Entity.keepAlive(false), "unpinned")
-})
+// Builds are counted per entity id, so a restart test can see whether a
+// keep-alive entity was rebuilt without messaging it.
+const PinnedLayer = Pinned.toLayer(
+  Effect.gen(function*() {
+    const address = yield* Entity.CurrentAddress
+    bump(counts.builds, `Pinned/${address.entityId}`)
+    return Pinned.of({
+      Pin: () => Effect.as(Entity.keepAlive(true), "pinned"),
+      Unpin: () => Effect.as(Entity.keepAlive(false), "unpinned")
+    })
+  })
+)
 
 const Holder = Entity.make("Holder", [
   Rpc.make("Get", { success: Schema.Number }),
