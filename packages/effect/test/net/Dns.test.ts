@@ -92,6 +92,22 @@ describe("Dns", () => {
         assert.strictEqual(error.reason, "NotFound")
       }))
 
+    it.effect("reports record queries as unsupported without a resolve operation", () =>
+      Effect.gen(function*() {
+        const dns = Dns.make({ lookup: () => Effect.succeed([ip("10.0.0.1")]) })
+        const addresses = yield* dns.lookup(name("a.b"))
+        assert.deepStrictEqual(addresses.map(NetAddress.formatIp), ["10.0.0.1"])
+        const resolve = yield* Effect.flip(dns.resolve(name("a.b"), "TXT"))
+        assert.strictEqual(resolve.reason, "Unsupported")
+        assert.strictEqual(resolve.method, "resolve")
+        assert.strictEqual(resolve.hostname, "a.b")
+        assert.strictEqual(resolve.recordType, "TXT")
+        const reverse = yield* Effect.flip(dns.reverse(ip("192.0.2.1")))
+        assert.strictEqual(reverse.reason, "Unsupported")
+        assert.strictEqual(reverse.method, "reverse")
+        assert.strictEqual(reverse.hostname, "192.0.2.1")
+      }))
+
     it.effect("derives reverse lookups from PTR queries", () =>
       Effect.gen(function*() {
         const dns = Dns.make({
