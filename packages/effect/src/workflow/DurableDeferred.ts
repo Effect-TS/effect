@@ -18,6 +18,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Exit from "../Exit.ts"
+import * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
 import { dual } from "../Function.ts"
 import * as Latch from "../Latch.ts"
@@ -181,6 +182,20 @@ export {
  * Runs an effect and records its exit into the durable deferred, resuming
  * workflows that are waiting on that deferred.
  *
+ * **Details**
+ *
+ * The effect and the write of its exit count as one in-flight activity of the
+ * workflow, so concurrent branches parked on durable waits do not suspend the
+ * run until the exit is recorded. This applies even when the effect itself is
+ * not an activity. If the effect parks on a durable wait, the run suspends
+ * once the other in-flight activities finish, and nothing is recorded.
+ *
+ * **Gotchas**
+ *
+ * A long-running effect keeps the run active instead of letting a parked
+ * sibling suspend it. Completing a deferred the run is waiting on still
+ * interrupts and replays the run.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -230,15 +245,48 @@ export const into: {
     | Error["DecodingServices"]
     | Success["EncodingServices"]
     | Error["EncodingServices"]
-  > =>
-    Effect.contextWith(
-      (context: Context.Context<WorkflowEngine | WorkflowInstance>) => {
-        const engine = Context.get(context, EngineTag)
-        const parentInstance = Context.get(context, InstanceTag)
-        const instance = { ...parentInstance }
-        return Effect.onExit(
-          Effect.provideService(effect, InstanceTag, instance),
-          Effect.fnUntraced(function*(exit) {
+  > => recordHeld(effect, self, false)
+)
+
+/**
+ * Runs `effect` as one activity of the enclosing workflow and records its exit
+ * into `self`. With `checkCache`, a previously recorded exit is returned
+ * without running `effect`.
+ *
+ * The hold spans the cached lookup, `effect` and the result write, so a parked
+ * sibling cannot suspend the run before the continuation starts. `effect` runs
+ * in a child fiber with its own activity count, so a durable await inside it
+ * only waits for its own siblings. When `effect` parks, the hold is released
+ * and the enclosing activities finish before the run suspends. External
+ * preemption interrupts the run without that wait.
+ */
+const recordHeld = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  self: DurableDeferred<any, any>,
+  checkCache: boolean
+): Effect.Effect<A, E, R | WorkflowEngine | WorkflowInstance> =>
+  Effect.gen(function*() {
+    const engine = yield* EngineTag
+    const instance = yield* InstanceTag
+    const exit = yield* Workflow.wrapActivityResult(
+      Effect.gen(function*() {
+        if (checkCache) {
+          const cached = yield* engine.deferredResult(self)
+          if (Option.isSome(cached)) {
+            return cached as Option.Option<Exit.Exit<A, E>>
+          }
+        }
+        // A parked arm only interrupts its own fiber and leaves the enclosing
+        // copy marked suspended, so the local copy starts unsuspended.
+        const local: WorkflowInstance["Service"] = {
+          ...instance,
+          suspended: false,
+          activityState: { count: 0, latch: Latch.makeUnsafe() }
+        }
+        // A parked `effect` interrupts the fiber it runs on. The child fiber
+        // keeps that from skipping the suspension handling below.
+        const fiber = yield* Effect.provideService(effect, InstanceTag, local).pipe(
+          Effect.onExit(Effect.fnUntraced(function*(exit) {
             if (Exit.isFailure(exit)) {
               const [interrupts, reasons] = Arr.partition(
                 exit.cause.reasons,
@@ -247,9 +295,6 @@ export const into: {
               if (interrupts.length === exit.cause.reasons.length) {
                 // An interrupt-only exit is never a result: the effect was
                 // suspended, preempted or interrupted, so record nothing.
-                if (instance.suspended) {
-                  parentInstance.suspended = true
-                }
                 return
               } else if (interrupts.length > 0) {
                 exit = Exit.failCause(Cause.fromReasons(reasons))
@@ -261,11 +306,21 @@ export const into: {
               deferredName: self.name,
               exit
             })
-          })
+          })),
+          Effect.forkChild({ startImmediately: true })
         )
-      }
+        const exit = yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber))
+        return local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+          ? Option.none()
+          : Option.some(exit)
+      }),
+      Option.isNone
     )
-)
+    if (Option.isNone(exit)) {
+      return yield* Workflow.suspend(instance)
+    }
+    return yield* exit.value
+  })
 
 /**
  * Runs effects as a durable race, returning a previously persisted result when
@@ -299,40 +354,7 @@ export const raceAll = <
     success: options.success,
     error: options.error
   })
-  return Effect.gen(function*() {
-    const engine = yield* EngineTag
-    const instance = yield* InstanceTag
-    // Hold the enclosing activity count from the cached winner lookup until
-    // the winner is recorded, so a parked sibling cannot suspend the run
-    // before the continuation starts.
-    const exit = yield* Workflow.wrapActivityResult(
-      Effect.gen(function*() {
-        const cached = yield* engine.deferredResult(deferred)
-        if (Option.isSome(cached)) {
-          return cached
-        }
-        // The arms count on their own activity state, so an arm parked on a
-        // durable await only waits for its sibling arms and not for the hold
-        // above. `into` marks this copy suspended when every arm has parked.
-        const local: WorkflowInstance["Service"] = {
-          ...instance,
-          activityState: { count: 0, latch: Latch.makeUnsafe() }
-        }
-        const exit = yield* into(Effect.raceAll(options.effects), deferred).pipe(
-          Effect.provideService(InstanceTag, local),
-          Effect.exit
-        )
-        return local.suspended ? Option.none() : Option.some(exit)
-      }),
-      // Every arm parked: release the hold and let the enclosing activities
-      // finish before suspending. External preemption does not wait.
-      Option.isNone
-    )
-    if (Option.isNone(exit)) {
-      return yield* Workflow.suspend(instance)
-    }
-    return yield* exit.value
-  })
+  return recordHeld(Effect.raceAll(options.effects), deferred, true)
 }
 
 /**
