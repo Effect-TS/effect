@@ -1219,6 +1219,18 @@ export const withRateLimiter: {
     return budget.resetAt > now && available < tokens ? budget.resetAt - now : 0
   }
 
+  const consume = (key: string, tokens: number) => {
+    const state = getState(key)
+    return options.limiter.consume({
+      algorithm: options.algorithm,
+      onExceeded: "delay",
+      key,
+      limit: state.limit,
+      window: state.window,
+      tokens
+    })
+  }
+
   const onResponse = options.disableResponseInspection
     ? undefined
     : (clock: Clock, key: string, headers: Headers.Headers, tokens: number, sent: number) => {
@@ -1256,10 +1268,14 @@ export const withRateLimiter: {
     }
     // re-checked after the limiter delays, as responses may exhaust the budget meanwhile
     let sent = 0
-    const reserve: Effect.Effect<void> = Effect.suspend(() => {
+    const reserve: Effect.Effect<void, RateLimiter.RateLimiterError> = Effect.suspend(() => {
       const wait = budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
       if (wait > 0) {
-        return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => reserve)
+        // the local admission is stale after the wait, so acquire a new one
+        return Effect.sleep(Duration.millis(wait)).pipe(
+          Effect.flatMap(() => consume(key, tokens)),
+          Effect.flatMap(({ delay }) => Duration.isZero(delay) ? reserve : Effect.andThen(Effect.sleep(delay), reserve))
+        )
       }
       sent = getBudget(key).sent += tokens
       return Effect.void
@@ -1300,14 +1316,7 @@ export const withRateLimiter: {
       )
     }
     return Effect.flatMap(
-      options.limiter.consume({
-        algorithm: options.algorithm,
-        onExceeded: "delay",
-        key,
-        limit: current.limit,
-        window: current.window,
-        tokens
-      }),
+      consume(key, tokens),
       ({ delay }) => {
         const runAdaptive = (): Effect.Effect<
           HttpClientResponse.HttpClientResponse,
