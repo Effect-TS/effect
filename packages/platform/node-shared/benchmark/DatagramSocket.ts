@@ -1,31 +1,23 @@
 /**
  * DatagramSocket cost against raw `node:dgram` and an in-memory native handle.
  *
- * Tier (a) runs over loopback and compares each workload with the native
- * baseline that gives the same guarantee: `send` with a callback, and a
- * receive loop that doesn't look at the sender compared with ingest that
- * doesn't read `.address`. The `vs fastest` column compares with the fastest
- * native baseline (`send` without a callback); nothing passes or fails
- * against it. CPU per unit comes from `process.cpuUsage()` over the measured
- * phase, so it only counts this process.
+ * Tier (a): loopback against `node:dgram`. CPU counts this process only.
+ * Native baselines match send completion and payload retention guarantees;
+ * ingest compares paths that do not read the sender address. The `vs fastest`
+ * column is informational, not a pass/fail gate.
  *
- * - `ingest, fast consumer`: sender processes (3 by default) send to the
- *   receiver at full speed with native connected sends. A consumer that keeps
- *   up is woken inline for every packet, so its batches are one packet long.
- * - `ingest, slow consumer`: the consumer sleeps after every batch, so batches
- *   grow toward the queue capacity and the rest is dropped.
- * - `request/reply`: sequential round trips in this process, so the figures
- *   are same-order rather than absolute. The server replies either through
- *   the received datagram or with `write` to an explicit `InetAddress`.
- * - `write` and `writeAll ×N`: sequential writes to a sink process. `write`
- *   also compares the adapter's immediate `lookup` with Node's default.
+ * Fast ingest uses connected sender processes (default 3). Slow ingest sleeps
+ * between pulls to measure batching and overflow. Request/reply compares raw
+ * datagram replies with explicit addresses; writes target a sink process.
  *
- * Tier (b) uses a fake native handle that pushes packets synchronously and
- * completes sends synchronously, so it measures the core layer alone. Bytes
- * are measured in a separate pass of 2^18 operations with
- * `v8.getHeapStatistics().total_allocated_bytes`. `loop overhead` is the
- * write-shaped Effect loop with nothing in it; pull loops reuse one `flatMap`
- * and cost less.
+ * Native sends use callbacks; the fastest baseline omits them. `write` also
+ * compares the adapter's immediate lookup with Node's default.
+ *
+ * Tier (b): a fake backing socket pushes packets and completes sends
+ * synchronously, isolating core overhead. Allocation is measured over 2^18
+ * operations with `v8.getHeapStatistics().total_allocated_bytes`.
+ * `loop overhead` measures an empty write-shaped Effect loop; pull loops
+ * reuse one `flatMap` and cost less.
  *
  * Tier (b) baseline (node v26.7.0, Linux 6.18.48, Intel Xeon Platinum 8573C,
  * 64 B payloads, median of 3 runs; B/op is ±3 B). A later change fails if it

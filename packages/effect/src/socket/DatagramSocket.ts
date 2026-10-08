@@ -21,7 +21,6 @@
  * export const request = (payload: string) =>
  *   Effect.gen(function*() {
  *     const socket = yield* DatagramSocket.DatagramSocket
- *     // The reader owns the native socket, so acquire it even to send
  *     const reader = yield* socket.reader
  *     const writer = yield* socket.writer
  *     yield* writer.write({ payload, address: server })
@@ -67,14 +66,9 @@ export const DatagramSocket: Context.Service<DatagramSocket, DatagramSocket> = C
 )
 
 /**
- * A UDP socket with a scoped, exclusive reader.
- *
- * **Details**
- *
- * Acquiring `reader` opens and binds a new native socket owned by the
- * acquisition's scope. A second acquisition waits until the first reader's
- * scope closes. Acquiring `writer` cannot fail; its writes wait until a reader
- * is open.
+ * A UDP socket with a scoped, exclusive reader. Acquiring `reader` opens and
+ * binds a native socket; subsequent acquisitions wait for its scope to close.
+ * Acquiring `writer` cannot fail, but writes wait for an open reader.
  *
  * @stability unstable
  * @category models
@@ -181,9 +175,8 @@ export interface Reader {
  * `address`. After a terminal reader error, writes fail with that error until
  * the reader's scope closes, and then wait for the next reader.
  *
- * `writeAll` fails with the first error. Which of the remaining datagrams went
- * out is unspecified, nothing is resent, and the error does not say which
- * datagram failed. Its `address` may be absent, depending on the runtime.
+ * `writeAll` fails with the first error, without resending. Partial delivery is
+ * unspecified. The error has no packet index, and its `address` is absent on Bun.
  *
  * There is no built-in write timeout; use `Effect.timeout`.
  *
@@ -553,7 +546,7 @@ const makeFromBackingSocketWithContext = <R>(
 
   const abandon = (state: ReaderState, opening: Fiber.Fiber<BackingSocket, DatagramSocketError>) => {
     state.close()
-    // keep ownership until the orphaned open settles, then close its handle
+    // Release reader ownership only after the interrupted open settles.
     opening.addObserver((exit) => {
       if (exit._tag === "Success") exit.value.close()
       free.openUnsafe()
@@ -611,9 +604,7 @@ const emptyScopeIds: ReadonlyMap<string, number> = new Map()
 
 const closedError = () => new DatagramSocketError({ reason: new DatagramSocketClosedError() })
 
-// What `destination` returns for a write it rejects. A reference comparison
-// keeps `instanceof` off the write path; a duplicated copy of this module
-// would break it, and a type-ID check costs per datagram
+// Rejected writes return this sentinel, avoiding per-packet error type checks.
 const rejected: BackingAddress = { host: "", port: 0 }
 
 class DatagramImpl implements Datagram, BackingAddress {
@@ -643,7 +634,6 @@ class DatagramImpl implements Datagram, BackingAddress {
 const targetOf = (datagram: OutgoingDatagram): NetAddress.InetAddress | DatagramImpl | undefined =>
   "host" in datagram ? datagram as DatagramImpl : datagram.address as NetAddress.InetAddress | DatagramImpl | undefined
 
-// One reader acquisition owns the receive queue, parked pulls and write path.
 class ReaderState {
   readonly capacity: number
   readonly sliding: boolean
@@ -657,7 +647,6 @@ class ReaderState {
 
   // set when `open` completes; packets can arrive before that
   handle: BackingSocket | undefined = undefined
-  // Sticky failure shared by subsequent pulls and writes.
   failure: Effect.Effect<never, DatagramSocketError> | undefined = undefined
   // separate from `failure`: after a sticky read error the socket is still
   // open, so ICMP reports still reach `onError`
@@ -668,8 +657,7 @@ class ReaderState {
   head = 0
   dropped = 0
 
-  // oldest first: the oldest sits in the slot and the rest wait in
-  // `waiters`, so a single consumer never touches the array
+  // A single consumer uses the first waiter slot without touching the array.
   waiter: FiberImpl | undefined = undefined
   waiters: Array<FiberImpl> = []
   readonly unpark: Primitive = unpark(this)
@@ -678,7 +666,6 @@ class ReaderState {
   // one-entry cache for `write` to the same explicit address
   lastTarget: NetAddress.InetAddress | undefined = undefined
   lastDestination: BackingAddress | undefined = undefined
-  // the error behind the last `rejected` destination
   rejection: DatagramSocketError | undefined = undefined
 
   constructor(capacity: number, sliding: boolean, listener: ((error: DatagramSocketError) => void) | undefined) {
@@ -843,8 +830,7 @@ class ReaderState {
     }) as any
   }
 
-  // The backing address for a write, or `rejected` with the error in
-  // `rejection`, so the write path compares one reference per datagram
+  // Returns `rejected` on failure, with the error stored in `rejection`.
   destination(target: NetAddress.InetAddress | DatagramImpl | undefined): BackingAddress | undefined {
     const handle = this.handle!
     if (target === undefined) {

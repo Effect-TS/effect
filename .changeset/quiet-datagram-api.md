@@ -6,4 +6,4 @@
 "@effect/platform-deno": minor
 ---
 
-Add `DatagramSocket` UDP support for Node, Bun, and Deno, and `NetAddress.inetAddressFromNativeUnsafe` for native addresses.
+Add `DatagramSocket` for UDP on Node, Bun, and Deno, and `NetAddress.inetAddressFromNativeUnsafe` for runtime-reported addresses.

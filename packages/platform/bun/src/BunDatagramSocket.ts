@@ -55,7 +55,7 @@
  *     const socket = yield* BunDatagramSocket.make({
  *       connect: { address: "localhost", port: 9000 }
  *     })
- *     // writes wait for an open reader, even when nothing is read
+ *     // Required even for send-only clients.
  *     yield* socket.reader
  *     const writer = yield* socket.writer
  *     yield* writer.write({ payload })
@@ -92,13 +92,9 @@ import * as Net from "node:net"
 import * as Os from "node:os"
 
 /**
- * An endpoint given in open-time options.
- *
- * **Details**
- *
- * Hostnames are allowed here, and are resolved once per reader acquisition
- * with `node:dns` `lookup`, so Bun's synchronous `getaddrinfo` never runs. An
- * `InetAddress` satisfies this type, so it can be passed as is.
+ * An open-time endpoint. Hostnames resolve once per reader acquisition via
+ * `node:dns.lookup`, avoiding Bun's synchronous `getaddrinfo`.
+ * An `InetAddress` can be passed directly.
  *
  * @stability unstable
  * @category models
@@ -145,12 +141,9 @@ export interface AdoptOptions {
  * connects the socket when Bun creates it, so the kernel filters senders. The
  * two can't be combined.
  *
- * The family is the explicit `family`, else the family of an IP literal in
- * `bind`, else the family of the `peer` or `connect` address (resolved first
- * if it is a hostname), else the family a `bind` hostname resolves to, else
- * `"ipv4"`. A hostname lookup is limited to the family already fixed at that
- * point: `peer` or `connect` by `family` or a `bind` literal, and `bind` by
- * those or the `peer` or `connect` family. Otherwise IPv4 is preferred.
+ * Family selection, in order: explicit `family`, a `bind` IP literal, the
+ * `peer` or `connect` address, a `bind` hostname, then `"ipv4"`. Hostname
+ * lookups use the family selected so far, or prefer IPv4 if none is set.
  *
  * `reuseAddress` means `SO_REUSEADDR` on Linux and `SO_REUSEPORT` on BSD and
  * macOS.
