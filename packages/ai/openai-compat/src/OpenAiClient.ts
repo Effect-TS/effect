@@ -531,6 +531,7 @@ type FunctionCall = {
   readonly call_id: string
   readonly name: string
   readonly arguments: string
+  readonly extra_content?: JsonObject | undefined
   readonly status?: MessageStatus | undefined
 }
 
@@ -978,6 +979,7 @@ export type ChatCompletionRequestToolCall = {
     readonly name: string
     readonly arguments: string
   }
+  readonly extra_content?: JsonObject | undefined
 }
 /**
  * Message shapes accepted by the chat completions endpoint.
@@ -1135,6 +1137,7 @@ const ChatCompletionToolCall = Schema.Struct({
   id: Schema.optionalKey(Schema.String),
   index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
+  extra_content: Schema.optionalKey(Schema.Record(Schema.String, Schema.Json)),
   function: Schema.optionalKey(ChatCompletionToolFunction)
 })
 
@@ -1143,6 +1146,7 @@ const ChatCompletionToolCallDelta = Schema.Struct({
   id: Schema.optionalKey(Schema.NullOr(Schema.String)),
   index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
+  extra_content: Schema.optionalKey(Schema.NullOr(Schema.Record(Schema.String, Schema.Json))),
   function: Schema.optionalKey(ChatCompletionToolFunctionDelta)
 })
 
