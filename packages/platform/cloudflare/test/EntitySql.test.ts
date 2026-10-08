@@ -1,4 +1,4 @@
-import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
+import type { DurableObjectStorage } from "@cloudflare/workers-types"
 import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
 import { makeEntityKeepAlive } from "@effect/platform-cloudflare/internal/entityKeepAlive"
 import { registerEntity, unregisterEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
@@ -12,70 +12,8 @@ import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } f
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Rpc } from "effect/rpc"
 import { SqlClient } from "effect/sql"
-import { DatabaseSync, type SQLInputValue } from "node:sqlite"
-
-// Durable Object storage over node:sqlite. Both transaction APIs use
-// savepoints so the cluster's `transactionSync` and `SqliteClient`'s
-// `transaction` can nest, as they do on SQLite-backed Durable Objects.
-class SqliteStorage {
-  readonly sql: SqlStorage
-  #savepoints = 0
-
-  constructor(readonly database: DatabaseSync) {
-    this.sql = {
-      exec: (query: string, ...bindings: Array<unknown>) => {
-        const statement = database.prepare(query)
-        const columnNames = statement.columns().map((column) => column.name)
-        const rows = statement.all(...bindings as Array<SQLInputValue>) as Array<Record<string, unknown>>
-        return {
-          columnNames,
-          toArray: () => rows,
-          raw: () => rows.map((row) => columnNames.map((column) => row[column]))[Symbol.iterator]()
-        }
-      }
-    } as unknown as SqlStorage
-  }
-
-  #begin(): string {
-    const name = `sp_${this.#savepoints++}`
-    this.database.exec(`SAVEPOINT ${name}`)
-    return name
-  }
-
-  #end(name: string, commit: boolean): void {
-    if (!commit) this.database.exec(`ROLLBACK TO ${name}`)
-    this.database.exec(`RELEASE ${name}`)
-  }
-
-  transactionSync<A>(f: () => A): A {
-    const name = this.#begin()
-    try {
-      const value = f()
-      this.#end(name, true)
-      return value
-    } catch (error) {
-      this.#end(name, false)
-      throw error
-    }
-  }
-
-  async transaction<A>(f: (txn: { readonly rollback: () => void }) => Promise<A>): Promise<A> {
-    const name = this.#begin()
-    let rolledBack = false
-    try {
-      const value = await f({
-        rollback: () => {
-          rolledBack = true
-        }
-      })
-      this.#end(name, !rolledBack)
-      return value
-    } catch (error) {
-      this.#end(name, false)
-      throw error
-    }
-  }
-}
+import { DatabaseSync } from "node:sqlite"
+import { SqliteStorage } from "./fixtures/sqliteStorage.ts"
 
 const Notes = Entity.make("Notes", [
   Rpc.make("Save", {

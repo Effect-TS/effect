@@ -101,8 +101,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     }
     const handlers = yield* Effect.gen(function*() {
       if (entitySql !== undefined) {
-        const sqlContext = yield* Effect.provideService(entitySql.make(registration.context), Scope.Scope, scope)
-        context = Context.merge(context, sqlContext)
+        context = Context.merge(context, yield* Scope.provide(entitySql.make, scope))
       }
       return yield* Effect.provideContext(registration.build, context)
     }).pipe(
