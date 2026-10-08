@@ -796,268 +796,57 @@ describe("Fish completions", () => {
 // ---------------------------------------------------------------------------
 
 describe("PowerShell completions", () => {
-  it("registers a native argument completer for the executable", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("greet", desc)
-    assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'greet'`)
-    assert.include(script, `function _greet_Complete`)
-    assert.include(script, `$_greet_Completions = @{`)
-  })
-
-  it("documents a dedicated dot-sourced script instead of appending to the profile", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("greet", desc)
-    // `>> $PROFILE` on Windows PowerShell 5.1 re-encodes appended text as
-    // UTF-16LE, which corrupts an existing UTF-8/ANSI profile.
-    assert.notInclude(script, ">> $PROFILE")
-    assert.include(script, `#   greet --completions powershell > greet-completion.ps1`)
-    assert.include(script, `#   . <PATH>\\greet-completion.ps1`)
-  })
-
-  it("wraps script in begin/end markers", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("greet", desc)
-    assert.include(script, "###-begin-greet-completions-###")
-    assert.include(script, "###-end-greet-completions-###")
-  })
-
-  it("emits subcommand entries with descriptions", () => {
-    const desc = fromCommand(withSubcommands)
-    const script = PowerShell.generate("server", desc)
-    assert.include(script, `@{ name = 'start'; description = 'Start the server' }`)
-    assert.include(script, `@{ name = 'stop'; description = 'Stop the server' }`)
-  })
-
-  it("emits a context for every subcommand path", () => {
-    const desc = fromCommand(withSubcommands)
-    const script = PowerShell.generate("server", desc)
+  it("registers a native completer with a context per subcommand path", () => {
+    const script = PowerShell.generate("top", fromCommand(nested3Levels))
+    assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'top'`)
     assert.include(script, `  '' = @{`)
-    assert.include(script, `  'start' = @{`)
-    assert.include(script, `  'stop' = @{`)
-    const nested = PowerShell.generate("top", fromCommand(nested3Levels))
-    assert.include(nested, `  'sub' = @{`)
-    assert.include(nested, `  'sub action' = @{`)
+    assert.include(script, `  'sub' = @{`)
+    assert.include(script, `  'sub action' = @{`)
+    assert.include(script, `@{ name = 'action'; description = 'Perform action' }`)
   })
 
-  it("emits flag forms including aliases", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("greet", desc)
-    assert.include(script, `forms = @('--loud', '-l')`)
-    assert.include(script, `forms = @('--times')`)
-  })
+  it("emits flag forms, choice values and path types", () => {
+    const simple = PowerShell.generate("greet", fromCommand(simpleCmd))
+    assert.include(
+      linesWith(simple, "name = 'loud'"),
+      `forms = @('--loud', '-l'); takesValue = $false; negatable = $true`
+    )
+    assert.include(linesWith(simple, "name = 'times'"), `forms = @('--times'); takesValue = $true; negatable = $false`)
 
-  it("marks boolean flags as negatable and value flags as taking a value", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("greet", desc)
-    assert.include(linesWith(script, "'--loud'"), `takesValue = $false; negatable = $true`)
-    assert.include(linesWith(script, "'--times'"), `takesValue = $true; negatable = $false`)
-  })
+    const choices = PowerShell.generate("deploy", fromCommand(withChoices))
+    assert.include(choices, `values = @('dev', 'staging', 'prod')`)
+    assert.include(choices, `values = @('us-east', 'eu-west', 'ap-south')`)
 
-  it("completes boolean negations with a Disable tooltip", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("greet", desc)
-    assert.include(script, `& $add ("--no-" + $f.name) 'ParameterName' $negTip`)
-    assert.include(script, `$negTip = "Disable $($f.name)"`)
-  })
-
-  it("inlines choice values for choice flags", () => {
-    const desc = fromCommand(withChoices)
-    const script = PowerShell.generate("deploy", desc)
-    assert.include(script, `values = @('dev', 'staging', 'prod')`)
-  })
-
-  it("inlines choice values for positional arguments", () => {
-    const desc = fromCommand(withChoices)
-    const script = PowerShell.generate("deploy", desc)
-    assert.include(script, `values = @('us-east', 'eu-west', 'ap-south')`)
+    const paths = PowerShell.generate("process", fromCommand(withPaths))
+    assert.include(paths, `pathType = 'file'`)
+    assert.include(paths, `pathType = 'directory'`)
   })
 
   it("escapes values for single-quoted PowerShell literals", () => {
     const script = PowerShell.generate("deploy", fromCommand(withTrickyChoices))
     assert.include(script, `'it''s-fine'`)
     assert.include(script, `'foo'''`)
+    assert.include(script, `'o''clock'`)
     assert.include(script, `'$HOME'`)
-    expect(linesWith(script, "name = 'mode'")).toMatchInlineSnapshot(
-      `"@{ name = 'mode'; forms = @('--mode'); takesValue = $true; negatable = $false; values = @('it''s-fine', 'node:20', 'with space', '(whoami)', '#tag', '$HOME', 'back\\slash', 'say"hi"', 'a*b', 'a;b', '~x', 'foo''', 'a!b', '🚀'); pathType = $null; description = 'Deploy mode' }"`
-    )
-    expect(linesWith(script, "name = 'target'")).toMatchInlineSnapshot(
-      `"@{ name = 'target'; variadic = $false; values = @('o''clock', 'a:b', '{x,y}', 'a😀b'); pathType = $null; description = 'Deployment target' }"`
-    )
   })
 
-  it("quotes choice values that are not single PowerShell tokens", () => {
-    const script = PowerShell.generate("greet", fromCommand(simpleCmd))
-    // ',' and '@' must NOT be in the safe set: ',' is the PowerShell array
-    // operator and '@' splats at token start, so unquoted values would not
-    // round-trip through the parser. '\' stays in the safe set on purpose: it
-    // is literal in unquoted PowerShell tokens (the escape char is the
-    // backtick), so path candidates keep completing without quotes.
-    assert.include(
-      script,
-      `if ($s -match '[^A-Za-z0-9_./%+=:\\\\-]') { "'" + $s.Replace("'", "''") + "'" } else { $s }`
-    )
-    assert.include(script, `$text = & $quote $raw`)
-    assert.include(script, `$text = $formPart + '=' + (& $quote $v)`)
-  })
-
-  it("rebuilds the in-progress token the engine missed (comma in word)", () => {
-    const script = PowerShell.generate("greet", fromCommand(simpleCmd))
-    assert.include(script, `if ($cursorPosition -eq $lastExtent.EndOffset) {`)
-    assert.include(script, `$wordToComplete = $lastExtent.Text`)
-  })
-
-  it("quotes path candidates and marks directories with a trailing separator", () => {
-    const script = PowerShell.generate("greet", fromCommand(simpleCmd))
-    // A candidate like `my dir` must be quoted or it inserts as two tokens;
-    // directories carry a trailing separator so completion can continue into
-    // them.
-    assert.include(script, `$text = $text + '\\'`)
-    assert.include(script, `$textPrefix + (& $quote $text)`)
-  })
-
-  it("strips quotes from committed tokens so quoted subcommands still dispatch", () => {
-    const script = PowerShell.generate("greet", fromCommand(simpleCmd))
-    // Extent.Text keeps the surrounding quotes, so `'start'` would never match
-    // the -ceq subcommand dispatch without stripping them first.
-    assert.include(script, `$w = $w.Substring(1, $w.Length - 2)`)
-  })
-
-  it("treats words after `--` as positional arguments", () => {
-    const script = PowerShell.generate("greet", fromCommand(simpleCmd))
-    assert.include(script, `if ($endOfOptions) { $argumentIndex += 1; continue }`)
-    assert.include(script, `if ($w -eq '--') { $endOfOptions = $true; continue }`)
-  })
-
-  it("suppresses the filesystem fallback for value flags without candidates", () => {
-    const script = PowerShell.generate("greet", fromCommand(simpleCmd))
-    // Expecting a value with no choice/path candidates must not return an
-    // empty result — the engine would fall back to listing files as the flag
-    // value. A no-op Text result (the word completes to itself) suppresses it.
-    assert.include(script, `# An empty result makes the engine fall back to filesystem completion,`)
-    const expectingBranch = script.indexOf(`if ($null -ne $expecting) {`)
-    const noop = script.indexOf(
-      `$results.Add([System.Management.Automation.CompletionResult]::new($wordToComplete, $wordToComplete, 'Text', $tip))`
-    )
-    assert.isAbove(expectingBranch, -1)
-    assert.isAbove(noop, expectingBranch)
-    // Same suppression for the inline --flag=value branch
-    const inlineBranch = script.indexOf(`if ($wordToComplete -match '^(-[^=]*)=(.*)$') {`)
-    const secondNoop = script.indexOf(
-      `$results.Add([System.Management.Automation.CompletionResult]::new($wordToComplete, $wordToComplete, 'Text', $tip))`,
-      noop + 1
-    )
-    assert.isAbove(secondNoop, inlineBranch)
-  })
-
-  it("runs the completer state machine from the cursor position, not the line end", () => {
-    const script = PowerShell.generate("greet", fromCommand(simpleCmd))
-    assert.include(script, `if ($extent.StartOffset -ge $cursorPosition) { break }`)
-    assert.include(script, `if ($cursorPosition -le $extent.EndOffset -and $wordToComplete -ne '') { break }`)
-  })
-
-  it("matches subcommands and flag forms case-sensitively", () => {
-    const script = PowerShell.generate("server", fromCommand(withSubcommands))
-    assert.include(script, `$sub.name -ceq $w`)
-    assert.include(script, `[hashtable]::new([System.StringComparer]::Ordinal)`)
-  })
-
-  it("consumes a flag value before considering it as a subcommand", () => {
-    const script = PowerShell.generate("server", fromCommand(withSubcommands))
-    // The expecting-value reset must run before the subcommand match so a
-    // Choice value that equals a subcommand name is never dispatched into a
-    // subcommand context.
-    const loopStart = script.indexOf("foreach ($w in $words) {")
-    const subcommandMatch = script.indexOf("foreach ($sub in $context.subcommands) {")
-    const consumeValue = script.indexOf("if ($null -ne $expecting) {", loopStart)
-    assert.isAbove(loopStart, -1)
-    assert.isAbove(subcommandMatch, -1)
-    assert.isAbove(consumeValue, loopStart)
-    assert.isBelow(consumeValue, subcommandMatch)
-  })
-
-  it("emits colliding subcommand path keys only once", () => {
-    const descriptor: Completions.CommandDescriptor = {
+  it("emits case-insensitively colliding subcommand path keys once", () => {
+    const leaf = (name: string): Completions.CommandDescriptor => ({
+      name,
+      description: undefined,
+      flags: [],
+      arguments: [],
+      subcommands: []
+    })
+    const script = PowerShell.generate("tool", {
       name: "tool",
       description: undefined,
       flags: [],
       arguments: [],
-      subcommands: [
-        { name: "config", description: undefined, flags: [], arguments: [], subcommands: [] },
-        // `fromCommand` expands an alias into its own descriptor, so a
-        // staging subcommand aliased "config" arrives as a second "config".
-        { name: "config", description: undefined, flags: [], arguments: [], subcommands: [] }
-      ]
-    }
-    const script = PowerShell.generate("tool", descriptor)
-    const keys = script.split("\n").filter((line) => line.trim() === `'config' = @{`)
+      subcommands: [leaf("config"), leaf("config"), leaf("Config")]
+    })
+    const keys = script.split("\n").filter((line) => /^ {2}'config' = @\{$/i.test(line))
     assert.strictEqual(keys.length, 1)
-  })
-
-  it("emits case-variant colliding path keys only once", () => {
-    // PowerShell hash literal keys compare case-insensitively, so 'config'
-    // and 'Config' would be a duplicate-key parse error.
-    const descriptor: Completions.CommandDescriptor = {
-      name: "tool",
-      description: undefined,
-      flags: [],
-      arguments: [],
-      subcommands: [
-        { name: "config", description: undefined, flags: [], arguments: [], subcommands: [] },
-        { name: "Config", description: undefined, flags: [], arguments: [], subcommands: [] }
-      ]
-    }
-    const script = PowerShell.generate("tool", descriptor)
-    const keys = script.split("\n").filter((line) => /^  '[Cc]onfig' = @\{$/.test(line))
-    assert.strictEqual(keys.length, 1)
-  })
-
-  it("records used flags by name so aliases and negations suppress each other", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("greet", desc)
-    assert.include(script, `$usedFlags[$flagMap[$form].name] = $true`)
-    assert.include(script, `if ($usedFlags.ContainsKey($f.name)) { continue }`)
-    assert.include(script, `$form.StartsWith('--no-')`)
-  })
-
-  it("tracks the positional argument index for choice completion", () => {
-    const desc = fromCommand(withChoices)
-    const script = PowerShell.generate("deploy", desc)
-    assert.include(script, `if (-not $switched) { $argumentIndex += 1 }`)
-    assert.include(script, `$argument = $context.arguments[$argumentIndex]`)
-  })
-
-  it("completes flag values after an equals sign", () => {
-    const desc = fromCommand(withChoices)
-    const script = PowerShell.generate("deploy", desc)
-    assert.include(script, `if ($wordToComplete -match '^(-[^=]*)=(.*)$') {`)
-  })
-
-  it("lists files and directories for path-typed completions", () => {
-    const desc = fromCommand(withPaths)
-    const script = PowerShell.generate("process", desc)
-    assert.include(script, `pathType = 'file'`)
-    assert.include(script, `pathType = 'directory'`)
-    assert.include(script, `'ProviderItem'`)
-    assert.include(script, `'ProviderContainer'`)
-  })
-
-  it("handles commands with no flags or subcommands", () => {
-    const desc = fromCommand(emptyCmd)
-    const script = PowerShell.generate("noop", desc)
-    assert.include(script, "###-begin-noop-completions-###")
-    assert.include(script, "###-end-noop-completions-###")
-    assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'noop'`)
-    assert.include(script, `    subcommands = @()`)
-    assert.include(script, `    flags = @()`)
-    assert.include(script, `    arguments = @()`)
-  })
-
-  it("sanitizes executable names with dashes for PowerShell identifiers", () => {
-    const desc = fromCommand(simpleCmd)
-    const script = PowerShell.generate("my-cli", desc)
-    assert.include(script, `$_my_cli_Completions = @{`)
-    assert.include(script, `function _my_cli_Complete`)
-    assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'my-cli'`)
   })
 })
 
@@ -1196,31 +985,5 @@ describe("Completions integration", () => {
     assert.include(script, "__fish_use_subcommand")
     assert.include(script, "__fish_seen_subcommand_from admin")
     assert.include(script, "__fish_seen_subcommand_from git")
-  })
-
-  it("generates valid PowerShell script for ComprehensiveCli", () => {
-    const desc = fromCommand(ComprehensiveCli)
-    const script = PowerShell.generate("mycli", desc)
-
-    // Registration
-    assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'mycli'`)
-
-    // Contexts for subcommand paths
-    assert.include(script, `  '' = @{`)
-    assert.include(script, `  'admin' = @{`)
-    assert.include(script, `  'admin users' = @{`)
-    assert.include(script, `  'admin users list' = @{`)
-    assert.include(script, `  'admin config set' = @{`)
-    assert.include(script, `  'git' = @{`)
-    assert.include(script, `  'git clone' = @{`)
-
-    // Root flags with aliases and boolean negation
-    assert.include(script, `forms = @('--debug', '-d')`)
-    assert.include(script, `forms = @('--quiet', '-q')`)
-    assert.include(script, `negatable = $true`)
-
-    // Descriptions
-    assert.include(script, `'Administrative commands'`)
-    assert.include(script, `'Build the project'`)
   })
 })

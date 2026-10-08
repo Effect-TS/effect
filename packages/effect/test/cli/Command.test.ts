@@ -357,6 +357,16 @@ describe("Command", () => {
         )
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should print PowerShell completions for --completions pwsh", () =>
+      Effect.gen(function*() {
+        const command = Command.make("demo")
+
+        yield* Command.runWith(command, { version: "1.0.0" })(["--completions", "pwsh"])
+
+        const stdout = (yield* TestConsole.logLines).join("\n")
+        assert.include(stdout, "Register-ArgumentCompleter -Native -CommandName 'demo'")
+      }).pipe(Effect.provide(TestLayer)))
+
     const missingValueCases: ReadonlyArray<{
       readonly flag: Flag.Flag<unknown>
       readonly name: string
