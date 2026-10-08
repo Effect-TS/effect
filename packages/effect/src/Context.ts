@@ -1226,9 +1226,12 @@ export const merge: {
     map.set(key, value)
     if (!cached && cacheKeys.has(key)) cached = true
   })
+  const merged = makeImpl<Services | R1>(undefined, map, undefined, 0)
   // Without a cached key from `that`, the result resolves every cached key
-  // exactly like `self`, so it can share `self`'s fiber cache
-  return makeImpl(cached ? undefined : (self as ContextImpl<Services>).cacheRoot, map, undefined, 0)
+  // exactly like `self`, so it can reuse `self`'s computed fiber cache. It
+  // stays its own cache root so that it does not keep `self` alive.
+  if (!cached) merged._fiberCache = (self as ContextImpl<Services>).cacheRoot?._fiberCache
+  return merged
 })
 
 // Whether `that` is `self` with zero or more overlays added on top: both share
