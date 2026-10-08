@@ -1266,21 +1266,7 @@ export const withRateLimiter: {
     if (wait > 0) {
       return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => loop(effect, request, retries))
     }
-    // re-checked after the limiter delays, as responses may exhaust the budget meanwhile
     let sent = 0
-    const reserve: Effect.Effect<void, RateLimiter.RateLimiterError> = Effect.suspend(() => {
-      const wait = budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
-      if (wait > 0) {
-        // the local admission is stale after the wait, so acquire a new one
-        return Effect.sleep(Duration.millis(wait)).pipe(
-          Effect.flatMap(() => consume(key, tokens)),
-          Effect.flatMap(({ delay }) => Duration.isZero(delay) ? reserve : Effect.andThen(Effect.sleep(delay), reserve))
-        )
-      }
-      sent = getBudget(key).sent += tokens
-      return Effect.void
-    })
-    const send = onResponse === undefined ? effect : Effect.andThen(reserve, effect)
     const current = getState(key)
     const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
@@ -1324,7 +1310,7 @@ export const withRateLimiter: {
           R
         > => {
           const runRequest = (adaptive: RateLimiter.AdaptiveConsumeResult | undefined) => {
-            const request = Effect.matchEffect(send, {
+            const attempt = Effect.matchEffect(effect, {
               onSuccess(response) {
                 return Effect.flatMap(inspectResponse(response, adaptive), (retryAfter) => {
                   if (response.status !== 429 || !canRetry) return Effect.succeed(response)
@@ -1341,9 +1327,34 @@ export const withRateLimiter: {
                 return Effect.fail(error)
               }
             })
+            // re-checked after the limiter delays, as responses may exhaust the budget meanwhile
+            const dispatch: Effect.Effect<
+              HttpClientResponse.HttpClientResponse,
+              E | RateLimiter.RateLimiterError,
+              R
+            > = Effect.suspend(() => {
+              const wait = onResponse === undefined ? 0 : budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
+              if (wait === 0) {
+                if (onResponse !== undefined) {
+                  sent = getBudget(key).sent += tokens
+                }
+                return attempt
+              }
+              // admissions are stale after the wait. Learning admissions are kept,
+              // as they are already counted and do not pace requests.
+              if (adaptive !== undefined && adaptive.phase !== "learning") {
+                return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => loop(effect, request, retries))
+              }
+              return Effect.sleep(Duration.millis(wait)).pipe(
+                Effect.flatMap(() => consume(key, tokens)),
+                Effect.flatMap(({ delay }) =>
+                  Duration.isZero(delay) ? dispatch : Effect.andThen(Effect.sleep(delay), dispatch)
+                )
+              )
+            })
             return adaptive === undefined || Duration.isZero(adaptive.delay)
-              ? request
-              : Effect.delay(request, adaptive.delay)
+              ? dispatch
+              : Effect.delay(dispatch, adaptive.delay)
           }
           if (!adaptiveLearningEnabled) {
             return runRequest(undefined)
