@@ -11,7 +11,7 @@ import {
   ShardingConfig,
   SqlRunnerStorage
 } from "effect/cluster"
-import { Migrator, SqlClient, type SqlConnection, SqlError } from "effect/sql"
+import { SqlClient, type SqlConnection, SqlError } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
@@ -473,10 +473,6 @@ describe("SqlRunnerStorage", () => {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {
             const sql = yield* SqlClient.SqlClient
-            const pending = Migrator.pending({
-              loader: SqlRunnerStorage.migrations({ prefix: "legacy" }),
-              table: "legacy_runner_migrations"
-            })
 
             // Advisory-lock deployments had no locks table or migration history.
             yield* sql`CREATE TABLE legacy_runners (
@@ -489,11 +485,11 @@ describe("SqlRunnerStorage", () => {
             )`
             yield* sql`INSERT INTO legacy_runners (address, runner) VALUES ('legacy:1', 'legacy')`
             const rows = yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`
-            expect(yield* pending).toEqual([[1, "create_tables"]])
 
             yield* Effect.scoped(Layer.build(SqlRunnerStorage.layerMigrations({ prefix: "legacy" })))
 
-            expect(yield* pending).toEqual([])
+            expect(yield* sql`SELECT migration_id, name FROM legacy_runner_migrations ORDER BY migration_id`)
+              .toEqual([{ migration_id: 1, name: "create_tables" }])
             expect(yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`).toEqual(rows)
             expect(yield* sql`SELECT * FROM legacy_locks`).toEqual([])
           }))

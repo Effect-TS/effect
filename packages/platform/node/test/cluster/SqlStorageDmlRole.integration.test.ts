@@ -95,12 +95,14 @@ describe("cluster SQL storage with a DML-only role", () => {
 
         yield* asApp(
           Effect.gen(function*() {
-            expect(
-              yield* Migrator.pending({ loader: SqlMessageStorage.migrations({}), table: "cluster_migrations" })
-            ).toEqual([])
-            expect(
-              yield* Migrator.pending({ loader: SqlRunnerStorage.migrations({}), table: "cluster_runner_migrations" })
-            ).toEqual([])
+            const sql = yield* SqlClient.SqlClient
+            expect(yield* sql`SELECT migration_id, name FROM cluster_migrations ORDER BY migration_id`).toEqual([
+              { migration_id: 1, name: "create_tables" },
+              { migration_id: 2, name: "entity_type_size" },
+              { migration_id: 3, name: "pg_messages_rowid_index" }
+            ])
+            expect(yield* sql`SELECT migration_id, name FROM cluster_runner_migrations ORDER BY migration_id`)
+              .toEqual([{ migration_id: 1, name: "create_tables" }])
 
             const runners = yield* RunnerStorage.RunnerStorage
             const runner = Runner.make({
