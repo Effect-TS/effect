@@ -432,9 +432,8 @@ export class OtelSpan implements Tracer.Span {
     this.links = options.links
     this.kind = options.kind
     const active = contextApi.active()
-    this.parent = options.root !== true
-      ? Option.orElse(options.parent, () => getOtelParent(traceApi, active, options.annotations))
-      : options.parent
+    const fromActive = options.root !== true && Option.isNone(options.parent)
+    this.parent = fromActive ? getOtelParent(traceApi, active, options.annotations) : options.parent
     this.span = tracer.startSpan(
       options.name,
       {
@@ -447,9 +446,12 @@ export class OtelSpan implements Tracer.Span {
           : undefined as any,
         kind: kindMap[this.kind]
       },
-      Option.isSome(this.parent) ?
-        populateContext(active, this.parent.value, options.annotations) :
-        Otel.trace.deleteSpan(active)
+      Option.isNone(this.parent) ?
+        Otel.trace.deleteSpan(active) :
+        // Keep the active span object: some SDKs, such as Sentry, record children on it.
+        fromActive && !overridesTraceContext(options.annotations) ?
+        active :
+        populateContext(active, this.parent.value, options.annotations)
     )
     const spanContext = this.span.spanContext()
     this.spanId = spanContext.spanId
@@ -545,6 +547,10 @@ const getOtelParent = (
     annotations: Context.add(annotations, OtelParentSpanContext, otelParent)
   }))
 }
+
+const overridesTraceContext = (annotations: Context.Context<never>): boolean =>
+  Context.getOrUndefined(annotations, OtelTraceFlags) !== undefined ||
+  Context.getOrUndefined(annotations, OtelTraceState) !== undefined
 
 const makeSpanContext = (
   span: Tracer.AnySpan,

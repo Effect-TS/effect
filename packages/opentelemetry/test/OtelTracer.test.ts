@@ -194,7 +194,7 @@ describe("Tracer", () => {
         Effect.provide(TracingLayer)
       ))
 
-    it("preserves trace state and locality on an active OpenTelemetry parent", () => {
+    it("preserves identity, trace state and locality on an active OpenTelemetry parent", () => {
       const parent: OtelApi.SpanContext = {
         traceId: "1".repeat(32),
         spanId: "2".repeat(16),
@@ -206,6 +206,7 @@ describe("Tracer", () => {
       let receivedParent: OtelApi.SpanContext | undefined
       const tracer = {
         startSpan(_name: string, _options: unknown, context: OtelApi.Context) {
+          assert.strictEqual(OtelApi.trace.getSpan(context), OtelApi.trace.getSpan(active))
           receivedParent = OtelApi.trace.getSpanContext(context)
           return {
             spanContext: () => ({
