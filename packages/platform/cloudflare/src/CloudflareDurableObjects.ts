@@ -120,7 +120,8 @@ const blockOnInitialization = (
  * and re-arms the single alarm from the earliest pending `deliver_at`. User
  * handlers are never built in the constructor; requests and alarms wait for
  * the registered {@link setInitializer} callback, then handlers are built once
- * per wake.
+ * per wake. Each build gets a `DurableObjectSqlClient` on this object's SQLite
+ * storage; tables whose names start with `cluster_` are reserved for the mailbox.
  *
  * @category durable objects
  * @since 4.0.0

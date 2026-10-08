@@ -255,6 +255,94 @@ handlers, not parallelism.
 - Replayed mailbox rows and alarm-due runs draw from the same budget as live
   requests.
 
+## Entity SQL storage
+
+Each entity Durable Object provides `CloudflareCluster.DurableObjectSqlClient`
+to its handler build and handlers: an `SqlClient` on the object's own SQLite
+storage. It is a separate tag, so an app-wide `SqlClient` from the Worker layer
+(a D1 database, say) keeps working inside the handlers.
+
+Register handlers that use it with `CloudflareCluster.toLayer` instead of
+`Entity.toLayer`. The helper takes `DurableObjectSqlClient` out of the layer
+requirements, because the entity Durable Object provides it, and requires
+`CloudflareCluster.CloudflareSharding`, which only `CloudflareCluster.layer`
+provides.
+
+```ts
+import { CloudflareCluster } from "@effect/platform-cloudflare"
+import { Effect, Schema } from "effect"
+import { Entity } from "effect/cluster"
+import { Rpc } from "effect/rpc"
+
+const Journal = Entity.make("Journal", [
+  Rpc.make("Append", { payload: { entries: Schema.Array(Schema.String) } }),
+  Rpc.make("List", { success: Schema.Array(Schema.String) })
+])
+
+const build = Effect.gen(function*() {
+  const sql = yield* CloudflareCluster.DurableObjectSqlClient
+  yield* sql`CREATE TABLE IF NOT EXISTS journal (seq INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT NOT NULL)`
+  return Journal.of({
+    // Every entry commits together, or none do.
+    Append: ({ payload }) =>
+      sql.withTransaction(
+        Effect.forEach(payload.entries, (entry) => sql`INSERT INTO journal (entry) VALUES (${entry})`)
+      ).pipe(Effect.asVoid, Effect.orDie),
+    List: () =>
+      sql<{ readonly entry: string }>`SELECT entry FROM journal ORDER BY seq`.pipe(
+        Effect.map((rows) => rows.map((row) => row.entry)),
+        Effect.orDie
+      )
+  })
+}).pipe(Effect.orDie)
+
+const JournalLayer = CloudflareCluster.toLayer(Journal, build)
+```
+
+To run code written against `SqlClient.SqlClient`, such as `SqlSchema` or
+`Model.makeRepository`, provide the entity client as that service locally:
+`Effect.provideService(effect, SqlClient.SqlClient, sql)`.
+
+- Rows live and die with the entity's Durable Object. They cannot be queried
+  from outside it or from another entity.
+- Tables whose names start with `cluster_` are reserved. The entity mailbox
+  uses `cluster_messages` and `cluster_replies`, and `reset` / `clearReplies`
+  only touch those tables.
+- A row cannot exceed 2 MB, the same SQLite ceiling as an encoded message.
+- A storage transaction closes the Durable Object's input gate until it
+  finishes. Timers and I/O awaited inside `withTransaction` never resume, so
+  keep transactions to SQL work.
+- Mailbox writes wait for an open transaction to finish. At any `concurrency`,
+  a rollback cannot take another handler's stored reply with it.
+- The client is built once per handler build and closed with it, so a
+  terminal defect or a new wake opens a fresh client on the same storage.
+
+To test the handlers, register the same build with `Entity.toLayer` and run it
+with `Entity.makeTestClient`, providing `DurableObjectSqlClient` from any SQL
+layer, for example an in-memory `@effect/sql-sqlite-node` client:
+
+```ts
+import { SqliteClient } from "@effect/sql-sqlite-node"
+import { Effect, Layer } from "effect"
+import { Entity, ShardingConfig } from "effect/cluster"
+import { SqlClient } from "effect/sql"
+
+const EntitySqlTest = Layer.effect(
+  CloudflareCluster.DurableObjectSqlClient,
+  Effect.service(SqlClient.SqlClient)
+).pipe(Layer.provide(SqliteClient.layer({ filename: ":memory:" })))
+
+const program = Effect.gen(function*() {
+  const makeClient = yield* Entity.makeTestClient(Journal, Journal.toLayer(build))
+  const journal = yield* makeClient("one")
+  yield* journal.Append({ entries: ["a", "b"] })
+  return yield* journal.List()
+}).pipe(
+  Effect.scoped,
+  Effect.provide(Layer.merge(ShardingConfig.layer(), EntitySqlTest))
+)
+```
+
 ## v1 compatibility
 
 The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
@@ -277,6 +365,7 @@ The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
 | `Entity.keepAlive`                                                            | adapted      | Pins while holders exist; hibernation is allowed with no holders                                            |
 | `CurrentRunnerAddress`                                                        | adapted      | Synthetic address for identity and telemetry; no peer dialing                                               |
 | `EntityResource.make`                                                         | adapted      | External lifetimes such as a browser; close or idle TTL unpins                                              |
+| `DurableObjectSqlClient` in entity handlers (`CloudflareCluster.toLayer`)     | adapted      | The entity Durable Object's own SQLite; `cluster_` tables reserved, 2 MB rows, transactions per object      |
 | `EntityResource.makeK8sPod`                                                   | out of scope | Requires `K8sHttpClient`                                                                                    |
 | `Workflow` / `Activity` / `DurableDeferred` user APIs                         | maps 1:1     | Unchanged; the engine behind them changes                                                                   |
 | `CloudflareWorkflowEngine` (`WorkflowEngine.Encoded`)                         | adapted      | Dedicated workflow Durable Object, SQLite, and one alarm                                                    |
