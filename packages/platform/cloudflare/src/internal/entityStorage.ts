@@ -12,6 +12,13 @@ import * as Result from "effect/Result"
 /** @internal */
 export type EntityAlarm = Pick<DurableObjectStorage, "getAlarm" | "setAlarm">
 
+/**
+ * Default interval of the keep-alive heartbeat alarm.
+ *
+ * @internal
+ */
+export const defaultKeepAliveHeartbeatMillis = 30_000
+
 type DeliverAtRow = {
   readonly deliver_at: number | null
 }
@@ -56,7 +63,14 @@ const ddl = [
   `CREATE INDEX IF NOT EXISTS cluster_messages_deliver_at_idx
     ON cluster_messages (processed, deliver_at)`,
   `CREATE INDEX IF NOT EXISTS cluster_replies_unacked_idx
-    ON cluster_replies (request_id) WHERE kind = 'Chunk' AND acked = 0`
+    ON cluster_replies (request_id) WHERE kind = 'Chunk' AND acked = 0`,
+  // One row: whether the entity wants keep-alive across restarts, and the
+  // encoded name for wakes that arrive without one.
+  `CREATE TABLE IF NOT EXISTS cluster_entity_state (
+    id INTEGER PRIMARY KEY CHECK (id = 0),
+    keep_alive INTEGER NOT NULL DEFAULT 0,
+    name TEXT
+  )`
 ]
 
 /** @internal */
@@ -83,3 +97,87 @@ export const armAlarm = (alarm: EntityAlarm, deliverAt: number): Effect.Effect<v
         : Effect.void
     )
   )
+
+type EntityStateRow = {
+  readonly keep_alive: number
+  readonly name: string | null
+}
+
+/** @internal */
+export interface EntityState {
+  readonly keepAlive: boolean
+  readonly name: string | undefined
+}
+
+/** @internal */
+export const loadEntityState = (sql: SqlStorage): EntityState => {
+  const row = sql.exec<EntityStateRow>("SELECT keep_alive, name FROM cluster_entity_state WHERE id = 0").toArray()[0]
+  return { keepAlive: row?.keep_alive === 1, name: row?.name ?? undefined }
+}
+
+/** @internal */
+export const saveKeepAlive = (sql: SqlStorage, enabled: boolean): Effect.Effect<void> =>
+  Effect.sync(() => {
+    sql.exec(
+      `INSERT INTO cluster_entity_state (id, keep_alive) VALUES (0, ?)
+       ON CONFLICT (id) DO UPDATE SET keep_alive = excluded.keep_alive`,
+      enabled ? 1 : 0
+    )
+  })
+
+/**
+ * Stores the encoded entity name when it differs from the stored one, so an
+ * activation that already recorded it costs a read and no write.
+ *
+ * @internal
+ */
+export const rememberEntityName = (sql: SqlStorage, name: string, stored: EntityState): void => {
+  if (stored.name === name) return
+  sql.exec(
+    `INSERT INTO cluster_entity_state (id, name) VALUES (0, ?)
+     ON CONFLICT (id) DO UPDATE SET name = excluded.name`,
+    name
+  )
+}
+
+type UnprocessedRow = {
+  readonly request_id: string
+  readonly deliver_at: number | null
+}
+
+/**
+ * The single alarm time covering every reason to wake this entity: the
+ * earliest due row, `now` for an unprocessed row nothing is running, and a
+ * heartbeat while a row is in flight or keep-alive is wanted. An in-flight row
+ * counts as a heartbeat rather than `now`, so a long handler does not keep
+ * re-firing the alarm.
+ *
+ * @internal
+ */
+export const nextAlarmAt = (
+  sql: SqlStorage,
+  options: {
+    readonly now: number
+    readonly heartbeatMillis: number
+    readonly isRunning: (requestId: string) => boolean
+  }
+): number | undefined => {
+  let next: number | undefined
+  let heartbeat = loadEntityState(sql).keepAlive
+  const rows = sql.exec<UnprocessedRow>(
+    "SELECT request_id, deliver_at FROM cluster_messages WHERE processed = 0"
+  ).toArray()
+  for (const row of rows) {
+    if (options.isRunning(row.request_id)) {
+      heartbeat = true
+      continue
+    }
+    const at = row.deliver_at === null ? options.now : Math.max(row.deliver_at, options.now)
+    if (next === undefined || at < next) next = at
+  }
+  if (heartbeat) {
+    const at = options.now + options.heartbeatMillis
+    if (next === undefined || at < next) next = at
+  }
+  return next
+}

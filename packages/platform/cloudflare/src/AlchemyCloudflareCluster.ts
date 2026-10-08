@@ -43,6 +43,7 @@
 import * as Cloudflare from "alchemy/Cloudflare"
 import type * as Entity from "effect/cluster/Entity"
 import type { Sharding } from "effect/cluster/Sharding"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type { PersistedQueueFactory } from "effect/persistence/PersistedQueue"
@@ -104,6 +105,11 @@ export interface MakeOptions<ROut, E, RIn> {
    * handlers, and any services they need.
    */
   readonly layer: Layer.Layer<ROut, E, RIn>
+  /**
+   * Interval of the entity keep-alive heartbeat alarm, as in
+   * `CloudflareCluster.LayerOptions`. Defaults to 30 seconds.
+   */
+  readonly keepAliveHeartbeat?: Duration.Input | undefined
 }
 
 // One alchemy Durable Object class per cluster program. The outer effect
@@ -146,7 +152,8 @@ const makeUnsafe = Effect.fnUntraced(function*(options: MakeOptions<any, any, an
   return yield* makeClusterHandle({
     entities: options.entities,
     layer: options.layer,
-    env
+    env,
+    keepAliveHeartbeat: options.keepAliveHeartbeat
   })
 })
 
