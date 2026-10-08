@@ -1440,6 +1440,65 @@ Missing key
         strictEqual(yield* Ref.get(attempts), 7)
       }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
 
+    it.effect("keeps learned adaptive pacing for requests that wait for a reported reset", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const releaseHeld = yield* Deferred.make<void>()
+        const limiter = yield* RateLimiter.make
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) => {
+              const response = (status: number, headers: Record<string, string> = {}) =>
+                HttpClientResponse.fromWeb(request, new Response(null, { status, headers }))
+              if (attempt === 1 || attempt === 3) {
+                return Effect.succeed(response(429, { "retry-after": "10" }))
+              }
+              if (attempt === 5) {
+                return Effect.as(
+                  Deferred.await(releaseHeld),
+                  response(200, { "ratelimit-remaining": "0", "ratelimit-reset-after": "20" })
+                )
+              }
+              return Effect.succeed(response(200))
+            }
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter,
+            key: "learned-reset",
+            limit: 100,
+            window: "1 minute"
+          })
+        )
+
+        // two 429s learn a pace of 1 request per 10 seconds
+        const learn = yield* client.get("http://test/").pipe(
+          Effect.andThen(client.get("http://test/")),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust("20 seconds")
+        yield* Fiber.join(learn)
+        strictEqual(yield* Ref.get(attempts), 4)
+        yield* TestClock.adjust("20 seconds")
+
+        const held = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        const paced = yield* Effect.forEach(
+          [1, 2, 3],
+          () => client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        )
+        yield* Deferred.succeed(releaseHeld, undefined)
+        yield* Fiber.join(held)
+        strictEqual(yield* Ref.get(attempts), 5)
+
+        yield* TestClock.adjust("20 seconds")
+        strictEqual(yield* Ref.get(attempts), 6)
+
+        yield* TestClock.adjust("30 seconds")
+        yield* Fiber.joinAll(paced)
+        strictEqual(yield* Ref.get(attempts), 8)
+      }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
+
     it.effect("applies Retry-After feedback from HttpClientError response failures", () =>
       Effect.gen(function*() {
         const attemptsA = yield* Ref.make(0)
