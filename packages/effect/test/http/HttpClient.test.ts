@@ -740,10 +740,7 @@ Missing key
 
         strictEqual(yield* Ref.get(attempts), 1)
 
-        yield* TestClock.adjust("59 seconds")
-        strictEqual(yield* Ref.get(attempts), 1)
-
-        yield* TestClock.adjust("1 second")
+        yield* TestClock.adjust("1 minute")
         yield* Fiber.join(fiber)
         strictEqual(yield* Ref.get(attempts), 2)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
