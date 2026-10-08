@@ -177,6 +177,12 @@ const completer = (dataName: string): string =>
     }
   }
 
+  # Negative numbers and a lone '-' are values, as in the CLI lexer.
+  $optionLike = {
+    param([string]$word)
+    $word -match '^-.' -and $word -notmatch '^-(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$'
+  }
+
   # A typed value that has no candidates completes to itself, so the engine
   # does not fall back to listing files.
   $keepTyped = {
@@ -188,7 +194,7 @@ const completer = (dataName: string): string =>
   $path = ''
   $context = $spec[$path]
   $lookup = & $index $context
-  $used = @{}
+  $used = [hashtable]::new([System.StringComparer]::Ordinal)
   $expecting = $null
   $afterBoolean = $false
   $endOfOptions = $false
@@ -213,7 +219,7 @@ const completer = (dataName: string): string =>
     }
 
     # A pending flag value is never an option or '--'.
-    $isOption = $word -match '^-.' -and $word -notmatch '^-(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$'
+    $isOption = & $optionLike $word
     if ($null -ne $expecting) {
       $expecting = $null
       if (-not $isOption) { continue }
@@ -260,14 +266,15 @@ const completer = (dataName: string): string =>
         if ($path) { $path = $path + ' ' + $word } else { $path = $word }
         $context = $spec[$path]
         $lookup = & $index $context
-        $used = @{}
+        $used = [hashtable]::new([System.StringComparer]::Ordinal)
         continue
       }
     }
     $position++
   }
 
-  if ($null -ne $expecting) {
+  $typedIsOption = & $optionLike $typed
+  if ($null -ne $expecting -and -not $typedIsOption) {
     & $addValues $expecting $typed ''
     & $keepTyped
     return $results
