@@ -57,6 +57,8 @@ import { isSchemaError as isSchemaErrorInternal, SchemaErrorTypeId } from "./int
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import type * as JsonPatch from "./JsonPatch.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
+import * as Dns_ from "./net/Dns.ts"
+import * as Host_ from "./net/Host.ts"
 import * as IpInterface_ from "./net/IpInterface.ts"
 import * as IpNetwork_ from "./net/IpNetwork.ts"
 import * as NetAddress_ from "./net/NetAddress.ts"
@@ -11988,10 +11990,10 @@ export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedStr
   decodeTo(DateTimeZoned, dateTimeZonedFromString)
 )
 
-const netAddressFromString = <S extends declare<any>, E extends { readonly message: string }>(
+const netAddressFromString = <S extends Constraint, E extends { readonly message: string }>(
   declaration: S,
-  parse: (input: string) => Result_.Result<S["Type"], E>,
-  encode: (value: S["Type"]) => string,
+  parse: (input: string) => Result_.Result<S["Encoded"], E>,
+  encode: (value: S["Encoded"]) => string,
   identifier: string
 ) =>
   String.pipe(decodeTo(
@@ -12177,7 +12179,7 @@ export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
  * @category models
  * @since 4.0.0
  */
-export interface IpAddressFromString extends decodeTo<IpAddress, String> {
+export interface IpAddressFromString extends Union<readonly [Ipv4AddressFromString, Ipv6AddressFromString]> {
   readonly "Rebuild": IpAddressFromString
 }
 
@@ -12188,12 +12190,9 @@ export interface IpAddressFromString extends decodeTo<IpAddress, String> {
  * @category schemas
  * @since 4.0.0
  */
-export const IpAddressFromString: IpAddressFromString = netAddressFromString(
-  IpAddress,
-  NetAddress_.ipFromString,
-  NetAddress_.formatIp,
-  "IpAddressFromString"
-)
+export const IpAddressFromString: IpAddressFromString = Union([Ipv4AddressFromString, Ipv6AddressFromString]).annotate({
+  identifier: "IpAddressFromString"
+})
 
 const netAddressRefinement = <S extends Constraint, T extends S["Type"]>(
   schema: S,
@@ -13342,6 +13341,229 @@ export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress,
   identifier: "SocketAddress"
 })
 
+/**
+ * Type-level representation of {@link DomainName}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DomainName extends brand<String, "~effect/net/Host/DomainName"> {
+  readonly "Rebuild": DomainName
+}
+
+/**
+ * Schema for normalized DNS domain names.
+ *
+ * **Details**
+ *
+ * Only names already in normalized form (lowercase ASCII, with
+ * internationalized labels in `xn--` form) are accepted. Use
+ * {@link DomainNameFromString} to normalize arbitrary input.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DomainName: DomainName = String.check(
+  makeFilter(Host_.isDomainName, { expected: "a normalized domain name" })
+).pipe(brand("~effect/net/Host/DomainName")).annotate({ identifier: "DomainName" })
+
+/**
+ * Type-level representation of {@link DomainNameFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DomainNameFromString extends decodeTo<DomainName, String> {
+  readonly "Rebuild": DomainNameFromString
+}
+
+/**
+ * Schema for DNS domain names decoded from strings, normalizing case and
+ * converting internationalized names to their ASCII form.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DomainNameFromString: DomainNameFromString = netAddressFromString(
+  DomainName,
+  Host_.domainNameFromString,
+  (name) => name,
+  "DomainNameFromString"
+)
+
+/**
+ * Type-level representation of {@link ScopedIpv6Literal}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface ScopedIpv6Literal extends brand<String, "~effect/net/NetAddress/ScopedIpv6Literal"> {
+  readonly "Rebuild": ScopedIpv6Literal
+}
+
+/**
+ * Schema for canonical scoped IPv6 literals such as `fe80::1%eth0`.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ScopedIpv6Literal: ScopedIpv6Literal = String.check(
+  makeFilter(NetAddress_.isScopedIpv6Literal, { expected: "a canonical scoped IPv6 literal" })
+).pipe(brand("~effect/net/NetAddress/ScopedIpv6Literal")).annotate({ identifier: "ScopedIpv6Literal" })
+
+/**
+ * Type-level representation of {@link ScopedIpv6LiteralFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface ScopedIpv6LiteralFromString extends decodeTo<ScopedIpv6Literal, String> {
+  readonly "Rebuild": ScopedIpv6LiteralFromString
+}
+
+/**
+ * Schema for scoped IPv6 literals decoded from strings, normalizing the address
+ * and numeric zones.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ScopedIpv6LiteralFromString: ScopedIpv6LiteralFromString = netAddressFromString(
+  ScopedIpv6Literal,
+  NetAddress_.scopedIpv6LiteralFromString,
+  (literal) => literal,
+  "ScopedIpv6LiteralFromString"
+)
+
+/**
+ * Type-level representation of {@link Host}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Host extends Union<readonly [IpAddress, ScopedIpv6Literal, DomainName]> {
+  readonly "Rebuild": Host
+}
+
+/**
+ * Schema for hosts: numeric IP addresses, scoped IPv6 literals, or domain names.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Host: Host = Union([IpAddress, ScopedIpv6Literal, DomainName]).annotate({ identifier: "Host" })
+
+/**
+ * Type-level representation of {@link HostFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostFromString
+  extends Union<readonly [IpAddressFromString, ScopedIpv6LiteralFromString, DomainNameFromString]>
+{
+  readonly "Rebuild": HostFromString
+}
+
+/**
+ * Schema for hosts decoded from strings. Numeric IP strings decode to IP
+ * addresses; other strings decode to scoped IPv6 literals or domain names.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostFromString: HostFromString = Union([
+  IpAddressFromString,
+  ScopedIpv6LiteralFromString,
+  DomainNameFromString
+]).annotate({ identifier: "HostFromString" })
+
+/**
+ * Type-level representation of {@link HostPort}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPort extends declare<Host_.HostPort> {
+  readonly "Rebuild": HostPort
+}
+
+/**
+ * Schema for already-constructed unresolved host and port values.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostPort: HostPort = declare(Host_.isHostPort, {
+  identifier: "HostPort"
+})
+
+/**
+ * Type-level representation of {@link HostPortFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPortFromString extends decodeTo<HostPort, String> {
+  readonly "Rebuild": HostPortFromString
+}
+
+/**
+ * Schema for unresolved endpoints encoded as `host:port` or `[IPv6]:port`
+ * strings.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostPortFromString: HostPortFromString = netAddressFromString(
+  HostPort,
+  Host_.hostPortFromString,
+  Host_.formatHostPort,
+  "HostPortFromString"
+)
+
+/**
+ * Type-level representation of {@link Port}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Port extends Int {
+  readonly "Rebuild": Port
+}
+
+/**
+ * Schema for TCP and UDP port numbers from 0 through 65535.
+ *
+ * **Details**
+ *
+ * Port 0 is accepted because it asks the operating system to choose a port
+ * when binding, and it matches the port range of `InetAddress` and `HostPort`.
+ * `Config.Port` accepts only 1 through 65535.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Port: Port = Int.check(isBetween({ minimum: 0, maximum: 65535 }, { expected: "a port number" }))
+
 // -----------------------------------------------------------------------------
 // Duration schemas
 // -----------------------------------------------------------------------------
@@ -13558,6 +13780,392 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
 export const DurationFromMillis: DurationFromMillis = Number.pipe(
   decodeTo(Duration, durationFromMillis)
 )
+
+// -----------------------------------------------------------------------------
+// DNS schemas
+// -----------------------------------------------------------------------------
+
+/**
+ * Type-level representation of {@link DnsRecordType}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsRecordType extends Literals<ReadonlyArray<Dns_.RecordType>> {}
+
+/**
+ * Schema for supported DNS record types such as `"A"` or `"SRV"`.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsRecordType: DnsRecordType = Literals(Dns_.recordTypes)
+
+// Addresses in JSON records must already be canonical; normalizing input is
+// left to the `*FromString` schemas.
+const dnsCanonicalAddress = <A extends NetAddress_.IpAddress>(
+  schema: Codec<A>,
+  parse: (input: string) => Result_.Result<A, NetAddress_.NetAddressError>
+) =>
+  String.pipe(decodeTo(
+    schema,
+    SchemaTransformation.transformEffect({
+      decode: (input, options) => {
+        const result = parse(input)
+        if (Result_.isFailure(result)) {
+          return Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+        }
+        return NetAddress_.formatIp(result.success) === input
+          ? Effect.succeed(result.success)
+          : Effect.fail(new SchemaIssue.InvalidValue({ message: "expected a canonical address" }, input, options))
+      },
+      encode: (address) => Effect.succeed(NetAddress_.formatIp(address))
+    })
+  ))
+
+const dnsUint16 = Int.check(isBetween({ minimum: 0, maximum: 0xffff }))
+
+const dnsUint32 = Int.check(isBetween({ minimum: 0, maximum: 0xffffffff }))
+
+// SOA timers are written as whole seconds, as in zone files.
+const dnsSeconds = dnsUint32.pipe(decodeTo(
+  Duration,
+  SchemaTransformation.transform({ decode: Duration_.seconds, encode: Duration_.toSeconds })
+))
+
+// Each record type is an opaque value whose JSON form is a plain object tagged
+// by record type, such as `{ "_tag": "MX", "exchange": "mail.example.com", "priority": 10 }`.
+const dnsRecordOfType = <T extends Dns_.RecordType>(
+  type: T,
+  fields: { readonly [K in keyof Dns_.RecordFields<T>]-?: Codec<Dns_.RecordFields<T>[K], unknown> }
+) =>
+  declare((u): u is Dns_.RecordFor<T> => Dns_.isDnsRecord(u) && u._tag === type, {
+    identifier: `Dns${type.charAt(0)}${type.slice(1).toLowerCase()}Record`,
+    toCodecJson: () => {
+      const json = TaggedStruct(type, fields)
+      return link<Dns_.RecordFor<T>>()(
+        json,
+        SchemaTransformation.transformEffect({
+          decode: (input, options) => {
+            const { _tag, ...rest } = input as { readonly _tag: T }
+            const result = Dns_.makeRecord(type, rest as Dns_.RecordFields<T>)
+            return Result_.isSuccess(result)
+              ? Effect.succeed(result.success)
+              : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+          },
+          // Records hold only their tag and fields as own properties.
+          encode: (record) => Effect.succeed({ ...record } as unknown as typeof json["Type"])
+        })
+      )
+    }
+  })
+
+/**
+ * Type-level representation of {@link DnsARecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsARecord extends declare<Dns_.A> {
+  readonly "Rebuild": DnsARecord
+}
+
+/**
+ * Schema for already-constructed IPv4 address (`A`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsARecord: DnsARecord = dnsRecordOfType("A", {
+  address: dnsCanonicalAddress(Ipv4Address, NetAddress_.ipv4FromString)
+})
+
+/**
+ * Type-level representation of {@link DnsAaaaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsAaaaRecord extends declare<Dns_.Aaaa> {
+  readonly "Rebuild": DnsAaaaRecord
+}
+
+/**
+ * Schema for already-constructed IPv6 address (`AAAA`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsAaaaRecord: DnsAaaaRecord = dnsRecordOfType("AAAA", {
+  address: dnsCanonicalAddress(Ipv6Address, NetAddress_.ipv6FromString)
+})
+
+/**
+ * Type-level representation of {@link DnsCaaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsCaaRecord extends declare<Dns_.Caa> {
+  readonly "Rebuild": DnsCaaRecord
+}
+
+/**
+ * Schema for already-constructed certification authority authorization (`CAA`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsCaaRecord: DnsCaaRecord = dnsRecordOfType("CAA", {
+  critical: Boolean,
+  tag: String.check(isPattern(/^[a-z0-9]+$/i)),
+  value: String
+})
+
+/**
+ * Type-level representation of {@link DnsCnameRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsCnameRecord extends declare<Dns_.Cname> {
+  readonly "Rebuild": DnsCnameRecord
+}
+
+/**
+ * Schema for already-constructed canonical name (`CNAME`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsCnameRecord: DnsCnameRecord = dnsRecordOfType("CNAME", { target: DomainName })
+
+/**
+ * Type-level representation of {@link DnsMxRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsMxRecord extends declare<Dns_.Mx> {
+  readonly "Rebuild": DnsMxRecord
+}
+
+/**
+ * Schema for already-constructed mail exchange (`MX`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsMxRecord: DnsMxRecord = dnsRecordOfType("MX", { exchange: DomainName, priority: dnsUint16 })
+
+/**
+ * Type-level representation of {@link DnsNaptrRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsNaptrRecord extends declare<Dns_.Naptr> {
+  readonly "Rebuild": DnsNaptrRecord
+}
+
+/**
+ * Schema for already-constructed naming authority pointer (`NAPTR`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsNaptrRecord: DnsNaptrRecord = dnsRecordOfType("NAPTR", {
+  order: dnsUint16,
+  preference: dnsUint16,
+  flags: String,
+  service: String,
+  regexp: String,
+  replacement: DomainName
+})
+
+/**
+ * Type-level representation of {@link DnsNsRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsNsRecord extends declare<Dns_.Ns> {
+  readonly "Rebuild": DnsNsRecord
+}
+
+/**
+ * Schema for already-constructed name server (`NS`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsNsRecord: DnsNsRecord = dnsRecordOfType("NS", { host: DomainName })
+
+/**
+ * Type-level representation of {@link DnsPtrRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsPtrRecord extends declare<Dns_.Ptr> {
+  readonly "Rebuild": DnsPtrRecord
+}
+
+/**
+ * Schema for already-constructed pointer (`PTR`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsPtrRecord: DnsPtrRecord = dnsRecordOfType("PTR", { host: NonEmptyString })
+
+/**
+ * Type-level representation of {@link DnsSoaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsSoaRecord extends declare<Dns_.Soa> {
+  readonly "Rebuild": DnsSoaRecord
+}
+
+/**
+ * Schema for already-constructed start of authority (`SOA`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsSoaRecord: DnsSoaRecord = dnsRecordOfType("SOA", {
+  primary: DomainName,
+  admin: NonEmptyString,
+  serial: dnsUint32,
+  refresh: dnsSeconds,
+  retry: dnsSeconds,
+  expire: dnsSeconds,
+  minimum: dnsSeconds
+})
+
+/**
+ * Type-level representation of {@link DnsSrvRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsSrvRecord extends declare<Dns_.Srv> {
+  readonly "Rebuild": DnsSrvRecord
+}
+
+/**
+ * Schema for already-constructed service locator (`SRV`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsSrvRecord: DnsSrvRecord = dnsRecordOfType("SRV", {
+  target: DomainName,
+  port: dnsUint16,
+  priority: dnsUint16,
+  weight: dnsUint16
+})
+
+/**
+ * Type-level representation of {@link DnsTxtRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsTxtRecord extends declare<Dns_.Txt> {
+  readonly "Rebuild": DnsTxtRecord
+}
+
+/**
+ * Schema for already-constructed text (`TXT`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsTxtRecord: DnsTxtRecord = dnsRecordOfType("TXT", { chunks: NonEmptyArray(String) })
+
+/**
+ * Type-level representation of {@link DnsRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsRecord extends
+  Union<
+    readonly [
+      DnsARecord,
+      DnsAaaaRecord,
+      DnsCaaRecord,
+      DnsCnameRecord,
+      DnsMxRecord,
+      DnsNaptrRecord,
+      DnsNsRecord,
+      DnsPtrRecord,
+      DnsSoaRecord,
+      DnsSrvRecord,
+      DnsTxtRecord
+    ]
+  >
+{
+  readonly "Rebuild": DnsRecord
+}
+
+/**
+ * Schema for already-constructed DNS records of any supported record type.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes records as objects tagged by record type,
+ * with addresses and names as canonical strings and SOA timers as whole
+ * seconds, such as
+ * `{ "_tag": "SRV", "target": "db.internal", "port": 5432, "priority": 10, "weight": 5 }`.
+ * Decoding accepts only canonical addresses and normalized domain names, and
+ * reports invalid fields with their path.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsRecord: DnsRecord = Union([
+  DnsARecord,
+  DnsAaaaRecord,
+  DnsCaaRecord,
+  DnsCnameRecord,
+  DnsMxRecord,
+  DnsNaptrRecord,
+  DnsNsRecord,
+  DnsPtrRecord,
+  DnsSoaRecord,
+  DnsSrvRecord,
+  DnsTxtRecord
+]).annotate({ identifier: "DnsRecord" })
 
 // -----------------------------------------------------------------------------
 // Exit schemas

@@ -1,0 +1,298 @@
+/**
+ * Deno-backed implementation of Effect's `Dns` service.
+ *
+ * Address lookups use the operating system resolver through Deno's `node:dns`
+ * compatibility layer, so they also read the hosts file. Record queries and
+ * reverse lookups use `Deno.resolveDns` and can be cancelled by interruption.
+ * Records whose data cannot be represented, such as names that are not valid
+ * `Host.DomainName` values, are skipped.
+ *
+ * **Gotchas**
+ *
+ * `Deno.resolveDns` reports every error response from the name server with the
+ * same error as a missing name, so refused queries and server failures
+ * (`REFUSED`, `SERVFAIL`, `FORMERR`, `NOTIMP`) fail with `NotFound` instead of
+ * `Refused`, `ServerFailure`, `InvalidResponse`, or `Unsupported`. Server
+ * failures are therefore not reported as temporary. Queries require the
+ * `--allow-net` permission.
+ *
+ * @stability experimental
+ * @since 4.0.0
+ */
+import * as NodeDns from "@effect/platform-node-shared/NodeDns"
+import * as Arr from "effect/Array"
+import * as Config from "effect/Config"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Dns from "effect/net/Dns"
+import * as Host from "effect/net/Host"
+import * as NetAddress from "effect/net/NetAddress"
+import * as Result from "effect/Result"
+
+/**
+ * Options for the Deno `Dns` service.
+ *
+ * **Details**
+ *
+ * `nameServer` replaces the system name server for record queries and reverse
+ * lookups; an IP address without a port uses port 53. Address lookups always
+ * use the operating system resolver.
+ *
+ * **Gotchas**
+ *
+ * IPv6 name servers with a scope ID, such as link-local addresses, are not
+ * supported; creating the service fails with a `NetAddress.NetAddressError`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Options {
+  readonly nameServer?: NetAddress.IpAddress | NetAddress.InetAddress | undefined
+}
+
+const reasons: Record<string, Dns.DnsErrorReason> = {
+  NotFound: "NotFound",
+  TimedOut: "Timeout",
+  ConnectionRefused: "Refused",
+  InvalidData: "InvalidResponse",
+  NotSupported: "Unsupported"
+}
+
+const toDnsError = (
+  cause: unknown,
+  method: Dns.DnsError["method"],
+  hostname: string,
+  recordType?: Dns.RecordType
+): Dns.DnsError =>
+  new Dns.DnsError({
+    reason: (cause instanceof Error ? reasons[cause.name] : undefined) ?? "Unknown",
+    method,
+    hostname,
+    recordType,
+    cause
+  })
+
+const absoluteName = (name: string): string => name.endsWith(".") ? name : `${name}.`
+
+const recordName = (name: string): Host.DomainName => Host.domainNameFromStringUnsafe(absoluteName(name))
+
+const nameDecoder = new TextDecoder()
+
+// `Deno.resolveDns` escapes dots and backslashes inside a label as `\.` and `\\`, and
+// writes other bytes as octal `\DDD` escapes. Decoding those bytes as UTF-8 gives
+// the text of the name, keeping only the dot and backslash escapes.
+const nameText = (name: string): string => {
+  if (!/\\\d{3}/.test(name)) return name
+  const bytes: Array<number> = []
+  for (let i = 0; i < name.length; i++) {
+    const code = name.charCodeAt(i)
+    if (code !== 92 || i + 1 === name.length) {
+      bytes.push(code)
+    } else if (/^\d{3}$/.test(name.slice(i + 1, i + 4))) {
+      const byte = Number.parseInt(name.slice(i + 1, i + 4), 8)
+      if (byte === 46 || byte === 92) bytes.push(92)
+      bytes.push(byte)
+      i += 3
+    } else {
+      bytes.push(code, name.charCodeAt(i + 1))
+      i++
+    }
+  }
+  return nameDecoder.decode(Uint8Array.from(bytes))
+}
+
+const decoder = new TextDecoder()
+
+// Deno.resolveDns decodes each byte of a TXT character string as one Latin-1
+// character; re-decoding the bytes as UTF-8 matches other runtimes.
+const utf8FromLatin1 = (value: string): string =>
+  // oxlint-disable-next-line no-control-regex
+  /[^\x00-\x7f]/.test(value) ? decoder.decode(Uint8Array.from(value, (character) => character.charCodeAt(0))) : value
+
+// Deno.resolveDns reports SOA refresh, retry, and expire as signed 32-bit integers.
+const uint32Seconds = (value: number): Duration.Duration => Duration.seconds(value >>> 0)
+
+// Records whose data cannot be represented, such as names that are not valid
+// `Host.DomainName` values, are skipped.
+const queries: {
+  readonly [K in Dns.RecordType]: (
+    name: string,
+    options: Deno.ResolveDnsOptions
+  ) => Promise<Array<Dns.DnsRecord>>
+} = {
+  A: async (name, options) =>
+    Arr.filterMap(await Deno.resolveDns(name, "A", options), (address) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("A", {
+          address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv4Address
+        })
+      )),
+  AAAA: async (name, options) =>
+    Arr.filterMap(
+      await Deno.resolveDns(name, "AAAA", options),
+      (address) =>
+        Result.try(() =>
+          Dns.makeRecordUnsafe("AAAA", {
+            address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv6Address
+          })
+        )
+    ),
+  CAA: async (name, options) =>
+    Arr.filterMap(await Deno.resolveDns(name, "CAA", options), (caa) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("CAA", {
+          critical: caa.critical,
+          tag: caa.tag,
+          value: caa.value
+        })
+      )),
+  CNAME: async (name, options) =>
+    Arr.filterMap(
+      await Deno.resolveDns(name, "CNAME", options),
+      (target) =>
+        Result.try(() =>
+          Dns.makeRecordUnsafe("CNAME", {
+            target: recordName(target)
+          })
+        )
+    ),
+  MX: async (name, options) =>
+    Arr.filterMap(await Deno.resolveDns(name, "MX", options), (mx) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("MX", {
+          exchange: recordName(mx.exchange),
+          priority: mx.preference
+        })
+      )),
+  NAPTR: async (name, options) =>
+    Arr.filterMap(
+      await Deno.resolveDns(name, "NAPTR", options),
+      (naptr) =>
+        Result.try(() =>
+          Dns.makeRecordUnsafe("NAPTR", {
+            order: naptr.order,
+            preference: naptr.preference,
+            flags: naptr.flags,
+            service: naptr.services,
+            regexp: naptr.regexp,
+            replacement: recordName(naptr.replacement)
+          })
+        )
+    ),
+  NS: async (name, options) =>
+    Arr.filterMap(await Deno.resolveDns(name, "NS", options), (host) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("NS", {
+          host: recordName(host)
+        })
+      )),
+  PTR: async (name, options) =>
+    Arr.filterMap(await Deno.resolveDns(name, "PTR", options), (host) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("PTR", {
+          host: absoluteName(nameText(host))
+        })
+      )),
+  SOA: async (name, options) =>
+    Arr.filterMap(await Deno.resolveDns(name, "SOA", options), (soa) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("SOA", {
+          primary: recordName(soa.mname),
+          admin: absoluteName(nameText(soa.rname)),
+          serial: soa.serial,
+          refresh: uint32Seconds(soa.refresh),
+          retry: uint32Seconds(soa.retry),
+          expire: uint32Seconds(soa.expire),
+          minimum: Duration.seconds(soa.minimum)
+        })
+      )),
+  SRV: async (name, options) =>
+    Arr.filterMap(await Deno.resolveDns(name, "SRV", options), (srv) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("SRV", {
+          target: recordName(srv.target),
+          port: srv.port,
+          priority: srv.priority,
+          weight: srv.weight
+        })
+      )),
+  TXT: async (name, options) =>
+    Arr.filterMap(
+      await Deno.resolveDns(name, "TXT", options),
+      (chunks) =>
+        Result.try(() =>
+          Dns.makeRecordUnsafe("TXT", {
+            chunks: chunks.map(utf8FromLatin1) as unknown as readonly [string, ...Array<string>]
+          })
+        )
+    )
+}
+
+/**
+ * Creates a Deno `Dns` service.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = Effect.fnUntraced(function*(options?: Options) {
+  const server = options?.nameServer
+  if (server !== undefined && NetAddress.isInetAddressV6(server) && server.scopeId !== 0) {
+    return yield* new NetAddress.NetAddressError({
+      input: server,
+      message: "IPv6 name servers with a scope ID are not supported"
+    })
+  }
+  const nameServer: Deno.ResolveDnsOptions["nameServer"] = server === undefined
+    ? undefined
+    : NetAddress.isIpAddress(server)
+    ? { ipAddr: NetAddress.formatIp(server), port: 53 }
+    : { ipAddr: NetAddress.formatHost(server), port: server.port }
+
+  const query = (
+    name: string,
+    type: Dns.RecordType,
+    method: Dns.DnsError["method"],
+    hostname: string
+  ): Effect.Effect<Array<Dns.DnsRecord>, Dns.DnsError> => {
+    const recordType = method === "resolve" ? type : undefined
+    return Effect.tryPromise({
+      try: (signal) => queries[type](name, nameServer === undefined ? { signal } : { nameServer, signal }),
+      catch: (cause) => toDnsError(cause, method, hostname, recordType)
+    })
+  }
+
+  return Dns.make({
+    lookup: NodeDns.lookup,
+    resolve: (name, type) => query(name, type, "resolve", name),
+    reverse: (address) =>
+      query(Dns.reverseName(address), "PTR", "reverse", NetAddress.formatIp(address)).pipe(
+        Effect.map((records) => records.flatMap((record) => record._tag === "PTR" ? [record.host] : []))
+      )
+  })
+})
+
+/**
+ * Layer that provides the Deno `Dns` service using the system resolver
+ * configuration.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer: Layer.Layer<Dns.Dns> = Layer.effect(Dns.Dns, Effect.orDie(make()))
+
+/**
+ * Creates a layer that provides the Deno `Dns` service with options read
+ * from configuration.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerConfig = (
+  options: Config.Wrap<Options>
+): Layer.Layer<Dns.Dns, Config.ConfigError | NetAddress.NetAddressError> =>
+  Layer.effect(Dns.Dns, Effect.flatMap(Config.unwrap(options), make))
