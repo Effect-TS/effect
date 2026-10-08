@@ -114,7 +114,16 @@ export const dnsErrorFromCause = (
 
 // Resolvers write names without the trailing dot, and c-ares writes the root
 // name as an empty string.
-const absoluteName = (name: string): string => name.endsWith(".") ? name : `${name}.`
+const absoluteName = (name: string): string => {
+  if (name.endsWith(".")) {
+    let backslashes = 0
+    for (let i = name.length - 2; i >= 0 && name[i] === "\\"; i--) {
+      backslashes++
+    }
+    if (backslashes % 2 === 0) return name
+  }
+  return `${name}.`
+}
 
 /**
  * Converts a name returned by a resolver to a fully qualified
