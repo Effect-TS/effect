@@ -12,8 +12,7 @@ export const runMigrations = (options: {
 }): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
   Migrator.make({})(options).pipe(
     Effect.asVoid,
-    // `Migrator.make` reports an error raised inside a migration as a
-    // `MigrationError` defect. Fail with it instead, leaving other defects.
+    // Expose MigrationError defects as typed failures; preserve other causes.
     Effect.catchCauseFilter(
       Filter.composePassthrough(Cause.findDefect, Filter.instanceOf(Migrator.MigrationError)),
       Effect.fail

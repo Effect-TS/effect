@@ -48,7 +48,6 @@ const postgresLockNamespace = (prefix: string): number => {
   return hash | 0
 }
 
-// Builds the storage without issuing DDL; the tables must already exist.
 const makeStorage = Effect.fnUntraced(function*(options: {
   readonly prefix?: string | undefined
 }) {
@@ -693,8 +692,7 @@ export const make = (options: {
   SqlClient.SqlClient | ShardingConfig.ShardingConfig | Scope.Scope
 > =>
   Effect.andThen(
-    // Keep the typed SqlError these constructors failed with before the runner
-    // tables moved into a migration.
+    // Preserve the constructor's typed SqlError failures.
     Effect.catchTag(
       runRunnerMigrations(options),
       "MigrationError",
@@ -706,18 +704,11 @@ export const make = (options: {
 /**
  * Migration loader for the SQL runner storage tables.
  *
- * **When to use**
- *
- * Use with `Migrator.pending` to check whether the runner storage tables are
- * migrated, for example before starting `layerStorage`.
- *
  * **Details**
  *
- * The migrations create `<prefix>_runners` and `<prefix>_locks`, and are
- * recorded in `<prefix>_runner_migrations`. When `prefix` is omitted, `cluster`
- * is used. The locks table is created whatever the advisory lock setting is.
- *
- * @see {@link layerMigrations} for a layer that runs these migrations
+ * Use with `Migrator.pending` to check migration status before starting
+ * `layerStorage`. History is recorded in `<prefix>_runner_migrations`; the default
+ * prefix is `cluster`. The locks table is created regardless of advisory lock settings.
  *
  * @stability unstable
  * @category migrations
@@ -732,8 +723,7 @@ export const migrations = (options: {
   const locksTable = table("locks")
 
   return Migrator.fromRecord({
-    // Idempotent, so deployments that created these tables before runner
-    // storage used a migrator upgrade without errors.
+    // Existing deployments may have these tables but no migration history.
     "0001_create_tables": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
       const runnersTableSql = sql(runnersTable)
@@ -833,27 +823,19 @@ const runRunnerMigrations = (options: {
 }): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
   runMigrations({
     loader: migrations(options),
-    // Separate from the message storage history, which already records ids
-    // that would hide runner migrations with the same ids.
+    // Message and runner migration ids overlap, so keep separate histories.
     table: `${options.prefix ?? "cluster"}_runner_migrations`
   })
 
 /**
- * Layer that runs the SQL runner storage migrations without providing storage.
- *
- * **When to use**
- *
- * Use when a deploy step should migrate the tables with a connection that can
- * create them, so the runtime can use `layerStorage` with a connection that
- * can only read and write rows.
+ * Runs the SQL runner storage migrations without providing storage.
  *
  * **Details**
  *
- * The migrations are recorded in `<prefix>_runner_migrations`. This layer does
- * not need `ShardingConfig`.
- *
- * @see {@link migrations} for the migration loader
- * @see {@link layerStorage} for the storage layer that does not run migrations
+ * Use an owner connection in a deploy step, then use `layerStorage` with a
+ * DML-only runtime connection. History is recorded in `<prefix>_runner_migrations`.
+ * Migration errors are typed failures.
+ * This layer does not require `ShardingConfig`.
  *
  * @stability unstable
  * @category layers
@@ -865,21 +847,12 @@ export const layerMigrations = (options: {
   Layer.effectDiscard(runRunnerMigrations(options))
 
 /**
- * Layer that provides SQL-backed `RunnerStorage` without running migrations.
+ * Provides SQL-backed `RunnerStorage` without DDL or startup schema checks.
  *
- * **When to use**
+ * **Details**
  *
- * Use when the tables are migrated separately, for example by `layerMigrations`
- * in a deploy step, and the runtime connection cannot create tables.
- *
- * **Gotchas**
- *
- * This layer issues no DDL and does not check the schema at startup. Use
- * `Migrator.pending` with `migrations` if you want to check that the tables
- * are migrated.
- *
- * @see {@link layerMigrations} for the layer that runs the migrations
- * @see {@link layerWith} for a layer that runs the migrations first
+ * Run `layerMigrations` separately before using this layer. To check migration
+ * status, use `Migrator.pending` with `migrations`.
  *
  * @stability unstable
  * @category layers
@@ -891,17 +864,14 @@ export const layerStorage = (options: {
   Layer.effect(RunnerStorage.RunnerStorage)(makeStorage(options))
 
 /**
- * Layer that provides SQL-backed `RunnerStorage` using a custom table prefix,
- * running the runner storage migrations first.
+ * Provides SQL-backed `RunnerStorage` with a custom table prefix,
+ * running migrations first.
  *
  * **Details**
  *
- * Built from `make`, so the connection needs permission to create tables and,
- * on PostgreSQL, the migrator takes an exclusive lock on the migrations table
- * while it runs.
- *
- * @see {@link layerMigrations} for running the migrations in a deploy step
- * @see {@link layerStorage} for a storage layer that does not run migrations
+ * The connection needs DDL permissions. PostgreSQL takes an exclusive lock
+ * on the migration history table. Use `layerMigrations` and `layerStorage`
+ * to migrate separately.
  *
  * @stability unstable
  * @category layers

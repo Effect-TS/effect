@@ -317,23 +317,16 @@ export interface PendingOptions<R = never> {
 }
 
 /**
- * Lists the migrations that `make` would run, without changing the database.
- *
- * **When to use**
- *
- * Use to check at startup or in a deploy step that a schema is migrated, for
- * example when the runtime connection can read and write rows but cannot run
- * DDL.
+ * Lists the migrations that `make` would run, without DDL or locks.
  *
  * **Details**
  *
- * A migration is pending when its id is greater than the latest id recorded in
- * the migrations table, which is the rule `make` uses. When the migrations table
- * does not exist, every migration is pending.
+ * A migration is pending when its id exceeds the highest recorded id. If the
+ * history table is missing, all migrations are pending. Duplicate ids fail
+ * with `MigrationError`, as in `make`.
  *
- * Unlike `make`, this does not create the migrations table, lock it, load the
- * migration effects, or run anything. It only reads the table and the loader.
- * Duplicate migration ids fail with a `MigrationError`, as they do in `make`.
+ * Reads the history table and loader without loading or running migration
+ * effects. Use to check migration status with a DML-only connection.
  *
  * @stability unstable
  * @category constructors
@@ -362,7 +355,6 @@ const latestMigrationId = (sql: Client.SqlClient, table: string): Effect.Effect<
     (rows) => Number(rows[0]?.migration_id ?? 0)
   )
 
-// A migration is pending when its id is greater than the latest recorded id.
 const selectPending = (
   current: ReadonlyArray<ResolvedMigration>,
   latestId: number
@@ -376,17 +368,14 @@ const selectPending = (
     )
     : Effect.succeed(current.filter(([id]) => id > latestId))
 
-// Checks the catalog rather than reading the table and catching the error, so a
-// missing table does not abort an enclosing PostgreSQL transaction.
+// Catalog lookup avoids aborting a PostgreSQL transaction when the table is missing.
 const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Effect<boolean, SqlError> =>
   Effect.map(
     sql.onDialectOrElse({
       mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(N'${sql.literal(table)}', N'U') IS NOT NULL`,
       mysql: () =>
         sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
-      // `to_regclass` parses its argument as SQL and folds unquoted names to
-      // lower case, so pass the name quoted as the statements that read the
-      // table quote it.
+      // Match query quoting: to_regclass folds unquoted names to lowercase.
       pg: () => {
         const quotedTable = sql`${sql(table)}`.compile(true)[0]
         return sql`SELECT 1 AS found WHERE to_regclass(${quotedTable}) IS NOT NULL`

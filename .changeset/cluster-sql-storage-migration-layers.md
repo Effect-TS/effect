@@ -2,14 +2,8 @@
 "effect": minor
 ---
 
-Allow cluster SQL storage to run without DDL at runtime.
+Add `layerMigrations` and DDL-free `layerStorage` to `SqlMessageStorage` and `SqlRunnerStorage`, allowing migrations to run with an owner connection separately from a DML-only runtime. Existing constructors and layers still migrate on startup. Migration-only layers return typed migration errors.
 
-`SqlMessageStorage` and `SqlRunnerStorage` now export `layerMigrations`, which only runs the migrations, and `layerStorage`, which builds the storage without issuing DDL. Run `layerMigrations` with a connection that can create tables, for example in a deploy step, and use `layerStorage` with a connection that can only read and write rows. `layer`, `layerWith`, `make`, and `makeEncoded` still run the migrations first.
+Add `Migrator.pending` and storage migration loaders for read-only migration checks. Fix PostgreSQL history-table lookup for quoted names and message migrations retrying forever after a SQL error.
 
-Add `Migrator.pending`, which lists the migrations that have not been applied without creating or locking the migrations table. Use it with the new `SqlMessageStorage.migrations` and `SqlRunnerStorage.migrations` loaders to check that the cluster tables are migrated.
-
-`SqlRunnerStorage` now uses a migrator, recorded in `<prefix>_runner_migrations`. On upgrade, the default layers create `cluster_runner_migrations` and, on PostgreSQL, lock it while the migrations run at startup. The first migration keeps existing `cluster_runners` and `cluster_locks` tables. The locks table is now created on every dialect, whether or not advisory locks are disabled.
-
-`layerMigrations` fails with a typed `MigrationError` when a migration fails, and the runner storage constructors and layers keep failing with the `SqlError`. On PostgreSQL, a failing `SqlMessageStorage` migration now fails instead of retrying forever.
-
-`Migrator.make` and `Migrator.pending` now find a PostgreSQL migrations table whose name needs quoting, such as a mixed-case name, instead of trying to create it again.
+Runner storage now records migrations in `<prefix>_runner_migrations` and creates the locks table regardless of advisory lock settings. On upgrade, default layers create `cluster_runner_migrations` and lock it during PostgreSQL startup migrations. Existing runner and lock tables are preserved.
