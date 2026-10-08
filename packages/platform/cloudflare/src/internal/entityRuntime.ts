@@ -246,6 +246,7 @@ interface SessionReply {
 interface Session {
   readonly queue: Queue.Queue<SessionReply, Cause.Done>
   readonly completeInterrupt: Effect.Effect<void>
+  cancelling: boolean
   ack: {
     readonly replyId: string
     readonly deferred: Deferred.Deferred<void>
@@ -443,10 +444,14 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // scheduled delivery, retain keep-alive, or remove it entirely.
   const finishPersisted = Effect.suspend(() => --inFlightPersisted === 0 ? rearm : Effect.void)
 
+  const removeSession = (requestId: string, session: Session) => {
+    if (!session.cancelling && sessions.get(requestId) === session) sessions.delete(requestId)
+  }
+
   const takeReply = (requestId: string, session: Session): Effect.Effect<ReadonlyArray<string>> =>
     Queue.take(session.queue).pipe(
       Effect.map((reply) => {
-        if (reply.terminal) sessions.delete(requestId)
+        if (reply.terminal) removeSession(requestId, session)
         return [reply.text]
       }),
       Pull.catchDone(() => Effect.succeed([]))
@@ -574,7 +579,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           )
       )
       : Effect.void
-    const session: Session = { queue, completeInterrupt, ack: undefined, fiber: undefined }
+    const session: Session = { queue, completeInterrupt, cancelling: false, ack: undefined, fiber: undefined }
     sessions.set(requestId, session)
     if (persisted) yield* startPersisted
     const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
@@ -603,7 +608,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             if (Exit.isSuccess(exit)) Queue.endUnsafe(queue)
             else Queue.failCauseUnsafe(queue, exit.cause)
             if (Queue.sizeUnsafe(queue) === 0 && session.ack === undefined) {
-              sessions.delete(requestId)
+              removeSession(requestId, session)
             }
           })
           return persisted
@@ -817,7 +822,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         }
         const nextReply = yield* loadNextReply(sql, persisted.originalId)
         if (nextReply !== undefined) {
-          if (nextReply.kind === "WithExit") sessions.delete(persisted.originalId)
+          if (nextReply.kind === "WithExit") {
+            const session = sessions.get(persisted.originalId)
+            if (session !== undefined) removeSession(persisted.originalId, session)
+          }
           return Effect.succeed(success(persisted.originalId, [nextReply.reply]))
         }
         if (persisted.processed) {
@@ -895,18 +903,27 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
       const session = sessions.get(storageRequestId)
       if (session === undefined) return Effect.void
-      sessions.delete(storageRequestId)
+      // Keep ownership through handler finalization and the terminal write.
+      // A failed write must leave the row owned rather than replayable.
+      session.cancelling = true
       if (session.ack !== undefined) {
         Deferred.doneUnsafe(session.ack.deferred, Effect.void)
         session.ack = undefined
       }
       Queue.endUnsafe(session.queue)
       const stop = session.fiber === undefined ? Effect.void : Effect.asVoid(Fiber.interrupt(session.fiber))
+      // The handler finalizer takes this same permit. Interrupt outside it.
       return Effect.andThen(
         stop,
         Semaphore.withPermit(
           semaphore,
-          Effect.andThen(session.completeInterrupt, Effect.suspend(() => inFlightPersisted === 0 ? rearm : Effect.void))
+          Effect.andThen(
+            session.completeInterrupt,
+            Effect.suspend(() => {
+              if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
+              return inFlightPersisted === 0 ? rearm : Effect.void
+            })
+          )
         )
       )
     })
