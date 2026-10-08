@@ -1589,10 +1589,13 @@ const mcpStdioSerialization = (
  * holding a session id can end that session, so authenticate requests in the
  * surrounding router.
  *
- * Set `allowSubscriptions` to `false` to disable subscription handlers and
- * advertise subscription-related capabilities such as `listChanged` as false.
- * Request-scoped progress and log notifications remain available. Subscriptions
- * are enabled by default when supported by the transport and protocol.
+ * Set `allowSubscriptions` to `false` to disable the explicit subscription
+ * mechanism in `v2026_07_28`: subscription handlers are omitted and
+ * subscription-related capabilities such as `listChanged` are advertised as
+ * false in `server/discover`. Legacy protocol capabilities and notification
+ * behavior are unchanged. Request-scoped progress and log notifications remain
+ * available. Subscriptions are enabled by default when supported by the
+ * transport and protocol.
  *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
