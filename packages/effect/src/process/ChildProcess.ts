@@ -144,7 +144,8 @@ export interface PipeOptions {
    * **Details**
    *
    * - `"stdin"` (default): Pipe to stdin of the destination
-   * - `"fd3"`, `"fd4"`, etc.: Pipe to a custom file descriptor
+   * - `"fd3"`, `"fd4"`, etc.: Pipe to a custom file descriptor. A descriptor
+   *   configured as `"duplex"` stays duplex.
    */
   readonly to?: PipeToOption | undefined
 }
@@ -384,6 +385,23 @@ export type AdditionalFdConfig =
      */
     readonly sink?: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
   }
+  | {
+    /**
+     * The direction of data flow for this file descriptor.
+     * - "duplex": Data flows in both directions over the same file descriptor
+     *   (writable and readable by parent)
+     */
+    readonly type: "duplex"
+    /**
+     * An optional stream to write into the file descriptor. The write side is
+     * ended when the stream completes.
+     */
+    readonly stream?: Stream.Stream<Uint8Array, PlatformError.PlatformError> | undefined
+    /**
+     * An optional sink which receives data read from the file descriptor.
+     */
+    readonly sink?: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
+  }
 
 /**
  * Options for command execution.
@@ -481,11 +499,21 @@ export interface CommandOptions extends KillOptions {
    *
    * **Details**
    *
-   * Keys must be in the format `"fd3"`, `"fd4"`, etc. with a file descriptor
-   * index >= 3.
+   * Keys use the descriptor index: `"fd3"`, `"fd4"`, etc. (index >= 3).
    *
-   * The file descriptor index is determined by the numeric suffix (i.e. `fd3`
-   * has a file descriptor index of 3).
+   * For `"duplex"`, use `getInputFd` to write and `getOutputFd` to read the same
+   * descriptor. `pipeTo` preserves duplex targets, replacing only their input.
+   *
+   * Duplex request/response and half-close are verified on Linux with Node.js
+   * and raw Deno `node:child_process` (not Effect's spawner). The same behavior
+   * is expected on macOS; Windows request/response is expected but unverified.
+   * Half-close is unsupported on Windows and Bun: keep the input open until
+   * all responses are read. Bun extra descriptors on Windows are unverified.
+   * Native `DenoChildProcessSpawner` does not support additional descriptors.
+   *
+   * Node.js and Deno children can use `new net.Socket({ fd: 3 })`. Deno children
+   * cannot use `node:fs` on the raw descriptor; Bun children cannot use
+   * `net.Socket` on it.
    *
    * **Example** (Configuring additional file descriptors)
    *
@@ -505,8 +533,18 @@ export interface CommandOptions extends KillOptions {
    *     fd3: { type: "input" }
    *   }
    * })
-   * const result = [cmd1.options.additionalFds?.fd3?.type, cmd2.options.additionalFds?.fd3?.type]
-   * result // => ["output", "input"]
+   * // Duplex fd3 - write and read over the same descriptor
+   * const cmd3 = ChildProcess.make("my-program", [], {
+   *   additionalFds: {
+   *     fd3: { type: "duplex" }
+   *   }
+   * })
+   * const result = [
+   *   cmd1.options.additionalFds?.fd3?.type,
+   *   cmd2.options.additionalFds?.fd3?.type,
+   *   cmd3.options.additionalFds?.fd3?.type
+   * ]
+   * result // => ["output", "input", "duplex"]
    * ```
    */
   readonly additionalFds?: Record<`fd${number}`, AdditionalFdConfig> | undefined
