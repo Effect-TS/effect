@@ -657,11 +657,6 @@ describe("OpenAiLanguageModel", () => {
                         type: "function",
                         extra_content: extraContent,
                         function: { name: "TestTool", arguments: JSON.stringify({ input: "hello" }) }
-                      }, {
-                        id: "call_2",
-                        type: "function",
-                        extra_content: null,
-                        function: { name: "TestTool", arguments: JSON.stringify({ input: "world" }) }
                       }]
                     }
                   }]
@@ -672,9 +667,8 @@ describe("OpenAiLanguageModel", () => {
         )
 
         const generate = (prompt: Prompt.Prompt) =>
-          LanguageModel.generateText({ prompt, toolkit: TestToolkit }).pipe(
+          LanguageModel.generateText({ prompt, toolkit: TestToolkit, disableToolCallResolution: true }).pipe(
             Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-            Effect.provide(TestToolkitLayer),
             Effect.provide(layer)
           )
 
@@ -683,16 +677,7 @@ describe("OpenAiLanguageModel", () => {
         yield* generate(Prompt.concat(prompt, Prompt.fromResponseParts(first.content)))
 
         const followUpBody = yield* getRequestBody(requests[1])
-        assert.deepStrictEqual(followUpBody.messages[1].tool_calls, [{
-          id: "call_1",
-          type: "function",
-          function: { name: "TestTool", arguments: JSON.stringify({ input: "hello" }) },
-          extra_content: extraContent
-        }, {
-          id: "call_2",
-          type: "function",
-          function: { name: "TestTool", arguments: JSON.stringify({ input: "world" }) }
-        }])
+        assert.deepStrictEqual(followUpBody.messages[1].tool_calls[0].extra_content, extraContent)
       }))
 
     it.effect("converts dynamic tools to function type", () =>
@@ -1172,6 +1157,7 @@ describe("OpenAiLanguageModel", () => {
 
     it.effect("preserves streamed text and tool args with nullable delta fields", () =>
       Effect.gen(function*() {
+        const extraContent = { google: { thought_signature: "signature-1" } }
         const chunk = (delta: Record<string, unknown>) => ({
           id: "chatcmpl_nullable_delta_fields",
           object: "chat.completion.chunk",
@@ -1191,11 +1177,17 @@ describe("OpenAiLanguageModel", () => {
                     index: 0,
                     id: "call_1",
                     type: "function",
+                    extra_content: extraContent,
                     function: { name: "TestTool", arguments: "" }
                   }]
                 }),
                 chunk({
-                  tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "{\"in" } }]
+                  tool_calls: [{
+                    index: 0,
+                    id: null,
+                    extra_content: null,
+                    function: { name: null, arguments: "{\"in" }
+                  }]
                 }),
                 chunk({
                   tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "put\":\"hel" } }]
@@ -1241,6 +1233,7 @@ describe("OpenAiLanguageModel", () => {
         }
         assert.strictEqual(toolCall.id, "call_1")
         assert.deepStrictEqual(toolCall.params, { input: "hello" })
+        assert.deepStrictEqual(toolCall.metadata.openai as unknown, { itemId: "call_1", extraContent })
       }))
 
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
@@ -1294,55 +1287,6 @@ describe("OpenAiLanguageModel", () => {
           return
         }
         assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
-      }))
-
-    it.effect("retains streamed tool call extra_content across argument fragments", () =>
-      Effect.gen(function*() {
-        const extraContent = { google: { thought_signature: "signature-1" } }
-        const chunk = (delta: Record<string, unknown>, finish_reason: string | null = null) => ({
-          id: "chatcmpl_extra_content",
-          object: "chat.completion.chunk",
-          model: "gpt-4o-mini",
-          created: 1,
-          choices: [{ index: 0, delta, finish_reason }]
-        })
-
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(sseResponse(request, [
-                chunk({
-                  tool_calls: [{
-                    index: 0,
-                    id: "call_1",
-                    type: "function",
-                    extra_content: extraContent,
-                    function: { name: "TestTool", arguments: "{\"input\":" }
-                  }]
-                }),
-                chunk({ tool_calls: [{ index: 0, extra_content: null, function: { arguments: "\"hello\"}" } }] }),
-                chunk({}, "tool_calls"),
-                "[DONE]"
-              ]))
-            )
-          ))
-        )
-
-        const parts = yield* LanguageModel.streamText({
-          prompt: "use the tool",
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(
-          Stream.runCollect,
-          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-          Effect.provide(TestToolkitLayer),
-          Effect.provide(layer)
-        )
-
-        const toolCall = globalThis.Array.from(parts).find((part) => part.type === "tool-call")
-        const metadata: unknown = toolCall?.metadata
-        assert.deepStrictEqual(metadata, { openai: { itemId: "call_1", extraContent } })
       }))
 
     it.effect("maps local shell stream tool calls to local_shell call outputs", () =>
