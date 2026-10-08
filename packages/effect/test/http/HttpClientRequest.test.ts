@@ -1,10 +1,16 @@
-import { describe, it } from "@effect/vitest"
+import { describe, expectTypeOf, it } from "@effect/vitest"
 import { assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { ByteSize, Effect, FileSystem, Stream } from "effect"
 import { Headers, HttpBody, HttpClientRequest } from "effect/http"
 import * as Option from "effect/Option"
 
 describe("HttpClientRequest", () => {
+  it("preserves an extension method from a web request without claiming it is a known method", () => {
+    const request = HttpClientRequest.fromWeb(new Request("http://localhost/", { method: "PROPFIND" }))
+    expectTypeOf(request.method).toEqualTypeOf<string>()
+    strictEqual(request.method, "PROPFIND")
+  })
+
   describe("bodyFile", () => {
     const oversized = 9007199254740993n
     const fileSystem = (size: bigint) =>

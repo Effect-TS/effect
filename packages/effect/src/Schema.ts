@@ -37,6 +37,7 @@ import * as HashSet_ from "./HashSet.ts"
 import * as Cookies_ from "./http/Cookies.ts"
 import * as Headers_ from "./http/Headers.ts"
 import * as UrlParams_ from "./http/UrlParams.ts"
+import { NodeInspectSymbol } from "./Inspectable.ts"
 import * as core from "./internal/core.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
@@ -1218,6 +1219,15 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
   }
   override get message() {
     return SchemaIssue.defaultFormatter(this.issue)
+  }
+  override toJSON() {
+    return {
+      _tag: this._tag,
+      message: this.message
+    }
+  }
+  override [NodeInspectSymbol]() {
+    return this.toJSON()
   }
   override toString() {
     return `SchemaError(${this.message})`

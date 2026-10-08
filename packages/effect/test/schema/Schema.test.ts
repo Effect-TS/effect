@@ -35,6 +35,7 @@ import {
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
+import { inspect } from "node:util"
 import {
   assertExitSuccess,
   assertFalse,
@@ -99,6 +100,35 @@ describe("Schema", () => {
   })
 
   describe("SchemaError", () => {
+    it("serializes as a tagged formatted message", () => {
+      const schema = Schema.Struct({ profile: Schema.Struct({ email: Schema.String }) })
+      const result = Schema.decodeUnknownResult(schema)({ profile: { email: null } })
+      assertTrue(Result.isFailure(result))
+      const error = result.failure
+      const expected = {
+        _tag: "SchemaError",
+        message: "Expected string\n  at [\"profile\"][\"email\"]"
+      }
+
+      deepStrictEqual(error.toJSON(), expected)
+      deepStrictEqual(JSON.parse(JSON.stringify(error)), expected)
+    })
+
+    it("inspects as a tagged formatted message", () => {
+      const result = Schema.decodeUnknownResult(Schema.String)(null)
+      assertTrue(Result.isFailure(result))
+      const error = result.failure
+      const expected = {
+        _tag: "SchemaError",
+        message: "Expected string"
+      }
+
+      strictEqual(
+        inspect(error, { depth: null }),
+        inspect(expected, { depth: null })
+      )
+    })
+
     it("extends Error and exposes the issue", () => {
       const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
       assertTrue(Result.isFailure(result))

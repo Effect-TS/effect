@@ -39,6 +39,12 @@ export * as DenoCrypto from "./DenoCrypto.ts"
  * @stability experimental
  * @since 4.0.0
  */
+export * as DenoDatagramSocket from "./DenoDatagramSocket.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.0
+ */
 export * as DenoDns from "./DenoDns.ts"
 
 /**

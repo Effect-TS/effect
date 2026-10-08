@@ -33,6 +33,12 @@ export * as NodeCrypto from "./NodeCrypto.ts"
  * @stability experimental
  * @since 4.0.0
  */
+export * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.0
+ */
 export * as NodeDns from "./NodeDns.ts"
 
 /**
