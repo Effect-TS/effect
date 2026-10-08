@@ -9,6 +9,12 @@
  * @stability unstable
  * @since 4.0.0
  */
+export * as BunAddressResolver from "./BunAddressResolver.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as BunChildProcessSpawner from "./BunChildProcessSpawner.ts"
 
 /**

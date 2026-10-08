@@ -1,13 +1,14 @@
 /**
- * Network name resolution: the effectful path from host names to `NetAddress`
- * values, plus DNS record values and queries.
+ * Name resolution and DNS queries: the effectful path from host names to
+ * `NetAddress` values, plus DNS record values.
  *
- * Runtime packages provide the `Dns` service from the host platform's resolver.
- * `lookup` uses the operating system resolver (`getaddrinfo`), so it also reads
- * the hosts file and other system sources, not only DNS. `resolve` sends DNS
- * queries for a record type, and `reverse` looks up the names of an address.
- * The service's `resolveInet` converts an unresolved `Host.HostPort` into
- * concrete internet addresses, skipping the lookup for numeric hosts.
+ * `lookup` resolves a host name to the addresses used to connect to it,
+ * `resolve` queries DNS records of one type, and `reverse` looks up the names
+ * of an address. Runtime packages provide the `Dns` service from the host
+ * platform's resolver, whose `lookup` uses the operating system resolver
+ * (`getaddrinfo`) and therefore also reads the hosts file and other system
+ * sources, not only DNS. `AddressResolver` builds on `lookup` to resolve
+ * `host:port` endpoints.
  *
  * @stability unstable
  * @since 4.0.0
@@ -573,8 +574,9 @@ export interface Dns {
   readonly [TypeId]: typeof TypeId
 
   /**
-   * Looks up the addresses of a host name with the operating system resolver,
-   * keeping the system's preferred order.
+   * Looks up the addresses used to connect to a host name, in the
+   * implementation's preferred order. Platform implementations use the
+   * operating system resolver and keep the system's order.
    */
   lookup<F extends NetAddress.IpFamily>(
     host: Host.DomainName,
@@ -597,51 +599,6 @@ export interface Dns {
    * Looks up the host names of an address.
    */
   reverse(address: NetAddress.IpAddress): Effect.Effect<Arr.NonEmptyReadonlyArray<Host.DomainName>, DnsError>
-
-  /**
-   * Resolves an endpoint to every matching internet address. An `InetAddress`
-   * is returned as-is, a `Host.HostPort` with a numeric host is converted with
-   * `Host.toInetAddress`, and a `Host.HostPort` with a domain name is looked up
-   * with `lookup`, attaching the port to every address. Results keep the
-   * resolver's order and are filtered by the requested family.
-   */
-  resolveInet<F extends NetAddress.IpFamily>(
-    target: NetAddress.InetAddress | Host.HostPort,
-    options: ResolveOptions & { readonly family: F }
-  ): Effect.Effect<
-    Arr.NonEmptyReadonlyArray<NetAddress.Inet<NetAddress.FamilyAddress<F>>>,
-    DnsError | NetAddress.NetAddressError
-  >
-  resolveInet(
-    target: NetAddress.InetAddress | Host.HostPort,
-    options?: ResolveOptions
-  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>, DnsError | NetAddress.NetAddressError>
-
-  /**
-   * Resolves an endpoint like `resolveInet`, passing Unix-domain addresses
-   * through unchanged.
-   */
-  resolveSocketAddress(
-    target: NetAddress.SocketAddress | Host.HostPort,
-    options?: ResolveOptions
-  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, DnsError | NetAddress.NetAddressError>
-}
-
-/**
- * Options for resolving endpoints to internet addresses.
- *
- * **Details**
- *
- * `scopeIds` maps network interface names to IPv6 scope IDs for hosts with a
- * named zone such as `fe80::1%eth0`. It can be built with
- * `NetAddress.scopeIdsFromInterfaces`. Numeric zones need no map.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface ResolveOptions extends LookupOptions {
-  readonly scopeIds?: ReadonlyMap<string, number> | undefined
 }
 
 /**
@@ -669,8 +626,7 @@ const notFound = (method: DnsError["method"], hostname: string, recordType?: Rec
  *
  * The constructor filters lookups by the requested address family, keeps only
  * records of the requested type, removes duplicates, and turns empty results
- * into `NotFound` failures. `resolveInet` and `resolveSocketAddress` are
- * derived from `lookup`.
+ * into `NotFound` failures.
  *
  * @stability unstable
  * @category constructors
@@ -684,9 +640,8 @@ export const make = (impl: {
   readonly resolve: (name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>
   readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<Host.DomainName>, DnsError>
 }): Dns => {
-  const inFamily =
-    (family: NetAddress.IpFamily | undefined) => (address: NetAddress.IpAddress | NetAddress.InetAddress): boolean =>
-      family === undefined || NetAddress.isFamily(address, family)
+  const inFamily = (family: NetAddress.IpFamily | undefined) => (address: NetAddress.IpAddress): boolean =>
+    family === undefined || NetAddress.isFamily(address, family)
 
   const lookup = (host: Host.DomainName, options?: LookupOptions) =>
     impl.lookup(host, options?.family).pipe(
@@ -697,22 +652,6 @@ export const make = (impl: {
         })
       )
     )
-
-  const resolveInet = (target: NetAddress.InetAddress | Host.HostPort, options?: ResolveOptions) => {
-    if (NetAddress.isInetAddress(target) || !Host.isDomainName(target.host)) {
-      return Effect.fromResult(
-        NetAddress.isInetAddress(target) ? Result.succeed(target) : Host.toInetAddress(target, options?.scopeIds)
-      ).pipe(
-        Effect.flatMap((address) =>
-          inFamily(options?.family)(address)
-            ? Effect.succeed(Arr.of(address))
-            : notFound("lookup", NetAddress.formatHost(address))
-        )
-      )
-    }
-    const { host, port } = target
-    return Effect.map(lookup(host, options), Arr.map((address) => NetAddress.inetAddressUnsafe(address, port)))
-  }
 
   return {
     [TypeId]: TypeId,
@@ -734,10 +673,7 @@ export const make = (impl: {
             onNonEmpty: Effect.succeed
           })
         )
-      ),
-    resolveInet,
-    resolveSocketAddress: (target, options) =>
-      NetAddress.isUnixPathAddress(target) ? Effect.succeed([target]) : resolveInet(target, options)
+      )
   }
 }
 
@@ -784,7 +720,7 @@ const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") 
  * Names without matching addresses or records fail with `NotFound`. CNAME
  * records are returned by `CNAME` queries but are not followed.
  *
- * **Example** (Resolving an endpoint with a static resolver)
+ * **Example** (Looking up a name with a static resolver)
  *
  * ```ts import.meta.vitest
  * import { Effect, Result } from "effect"
@@ -794,11 +730,11 @@ const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") 
  *   hosts: { "db.internal": [NetAddress.ipFromStringUnsafe("10.0.0.5")] }
  * }))
  *
- * const program = dns.resolveInet(Host.hostPortFromStringUnsafe("db.internal:5432")).pipe(
- *   Effect.map((addresses) => addresses.map(NetAddress.formatInet))
+ * const program = dns.lookup(Host.domainNameFromStringUnsafe("db.internal")).pipe(
+ *   Effect.map((addresses) => addresses.map(NetAddress.formatIp))
  * )
  *
- * await Effect.runPromise(program) // => ["10.0.0.5:5432"]
+ * await Effect.runPromise(program) // => ["10.0.0.5"]
  * ```
  *
  * @see {@link layerStatic}

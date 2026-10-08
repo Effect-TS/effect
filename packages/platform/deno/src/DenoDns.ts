@@ -192,7 +192,6 @@ const convert = <A>(
  * @since 4.0.0
  */
 export const make = (options?: Options): Dns.Dns => {
-  const system = NodeDns.make()
   const server = options?.nameServer
   const nameServer: Deno.ResolveDnsOptions["nameServer"] = server === undefined
     ? undefined
@@ -230,7 +229,7 @@ export const make = (options?: Options): Dns.Dns => {
   }
 
   return Dns.make({
-    lookup: (host, family) => system.lookup(host, { family }),
+    lookup: NodeDns.lookup,
     resolve: (name, type) => query(name, type, "resolve", name),
     reverse: (address) =>
       query(Dns.reverseName(address), "PTR", "reverse", NetAddress.formatIp(address)).pipe(

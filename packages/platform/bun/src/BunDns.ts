@@ -4,8 +4,9 @@
  * Address lookups use `Bun.dns.lookup` with the `system` backend, which calls
  * the operating system resolver (`getaddrinfo`) and therefore also reads the
  * hosts file. Bun's `node:dns` lookup uses c-ares instead, which bypasses the
- * system's name service configuration. Record queries and reverse lookups reuse
- * the shared Node-compatible implementation.
+ * system's name service configuration. Record queries and reverse lookups use
+ * `NodeDns.makeResolver`; Bun already decodes TXT and CAA character strings as
+ * UTF-8.
  *
  * **Gotchas**
  *
@@ -66,8 +67,7 @@ const toFamily = (family: NetAddress.IpFamily | undefined): 0 | 4 | 6 =>
  * @since 4.0.0
  */
 export const make = (options?: Options): Dns.Dns => {
-  // Bun's `node:dns` already decodes TXT and CAA character strings as UTF-8.
-  const queries = NodeDns.makeWith(options, "utf8")
+  const resolver = NodeDns.makeResolver(options)
   return Dns.make({
     lookup: (host, family) =>
       Effect.tryPromise({
@@ -89,8 +89,8 @@ export const make = (options?: Options): Dns.Dns => {
           })
         )
       ),
-    resolve: queries.resolve,
-    reverse: queries.reverse
+    resolve: resolver.resolve,
+    reverse: resolver.reverse
   })
 }
 

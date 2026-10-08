@@ -1,0 +1,192 @@
+/**
+ * Resolution of unresolved endpoints into concrete socket addresses.
+ *
+ * The `AddressResolver` service turns a `Host.HostPort` into socket
+ * addresses. Numeric hosts are converted without a lookup, IPv6 literals with
+ * a named zone such as `fe80::1%eth0` get their scope ID from the host's
+ * network interfaces, and domain names are looked up with the `Dns` service.
+ * Runtime packages provide layers that look up network interfaces; the layer
+ * in this module needs only `Dns` and supports numeric zones only.
+ *
+ * @stability unstable
+ * @since 4.0.0
+ */
+import * as Arr from "../Array.ts"
+import * as Context from "../Context.ts"
+import * as Effect from "../Effect.ts"
+import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
+import * as Dns from "./Dns.ts"
+import type * as Host from "./Host.ts"
+import * as NetAddress from "./NetAddress.ts"
+
+const TypeId = "~effect/net/AddressResolver" as const
+
+/**
+ * Service that resolves endpoints to internet and socket addresses.
+ *
+ * **Details**
+ *
+ * Every operation either returns at least one address or fails. Lookups fail
+ * with a `Dns.DnsError`, and hosts that cannot be converted, such as IPv6
+ * literals with an unknown zone, fail with a `NetAddress.NetAddressError`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface AddressResolver {
+  readonly [TypeId]: typeof TypeId
+
+  /**
+   * Resolves an endpoint to every matching socket address. Socket addresses
+   * are returned as-is, a `Host.HostPort` with a numeric host is converted
+   * without a lookup, and a `Host.HostPort` with a domain name is looked up
+   * with `Dns.lookup`, attaching the port to every address. Results keep the
+   * resolver's order and are filtered by the requested family; the family does
+   * not apply to Unix-domain addresses.
+   */
+  resolve<F extends NetAddress.IpFamily>(
+    target: NetAddress.InetAddress | Host.HostPort,
+    options: ResolveOptions & { readonly family: F }
+  ): Effect.Effect<
+    Arr.NonEmptyReadonlyArray<NetAddress.Inet<NetAddress.FamilyAddress<F>>>,
+    Dns.DnsError | NetAddress.NetAddressError
+  >
+  resolve(
+    target: NetAddress.InetAddress | Host.HostPort,
+    options?: ResolveOptions
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>, Dns.DnsError | NetAddress.NetAddressError>
+  resolve(
+    target: NetAddress.SocketAddress | Host.HostPort,
+    options?: ResolveOptions
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, Dns.DnsError | NetAddress.NetAddressError>
+}
+
+/**
+ * Options for resolving an endpoint. Without a `family`, addresses of both
+ * families are returned.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface ResolveOptions {
+  readonly family?: NetAddress.IpFamily | undefined
+}
+
+/**
+ * Options for creating an `AddressResolver`.
+ *
+ * **Details**
+ *
+ * `scopeId` returns the IPv6 scope ID of a network interface name and is called
+ * whenever an IPv6 literal with a named zone such as `fe80::1%eth0` is
+ * resolved, so interfaces added or recreated while the program runs are found.
+ * Without it, only numeric zones such as `fe80::1%2` are supported.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Options {
+  readonly scopeId?:
+    | ((name: string) => Effect.Effect<Option.Option<number>, NetAddress.NetAddressError>)
+    | undefined
+}
+
+/**
+ * Service tag for the {@link AddressResolver} service.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const AddressResolver: Context.Service<AddressResolver, AddressResolver> = Context.Service(
+  "effect/net/AddressResolver"
+)
+
+const isScoped = (host: Host.Host): host is NetAddress.ScopedIpv6Literal =>
+  typeof host === "string" && host.includes("%")
+
+const inFamily = (
+  address: NetAddress.InetAddress,
+  family: NetAddress.IpFamily | undefined
+): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>, Dns.DnsError> =>
+  family === undefined || NetAddress.isFamily(address, family)
+    ? Effect.succeed(Arr.of(address))
+    : Effect.fail(new Dns.DnsError({ reason: "NotFound", method: "lookup", hostname: NetAddress.formatHost(address) }))
+
+/**
+ * Creates an `AddressResolver` that looks up domain names with a `Dns`
+ * service.
+ *
+ * **Example** (Resolving an endpoint with a static resolver)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Result } from "effect"
+ * import { AddressResolver, Dns, Host, NetAddress } from "effect/net"
+ *
+ * const dns = Result.getOrThrow(Dns.makeStatic({
+ *   hosts: { "db.internal": [NetAddress.ipFromStringUnsafe("10.0.0.5")] }
+ * }))
+ * const resolver = AddressResolver.make(dns)
+ *
+ * const program = resolver.resolve(Host.hostPortFromStringUnsafe("db.internal:5432")).pipe(
+ *   Effect.map((addresses) => addresses.map(NetAddress.formatInet))
+ * )
+ *
+ * await Effect.runPromise(program) // => ["10.0.0.5:5432"]
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (dns: Dns.Dns, options?: Options): AddressResolver => {
+  const scopeId = options?.scopeId
+
+  const fromLiteral = (
+    host: NetAddress.IpAddress | NetAddress.ScopedIpv6Literal,
+    port: number
+  ): Effect.Effect<NetAddress.InetAddress, NetAddress.NetAddressError> => {
+    if (NetAddress.isIpAddress(host)) return Effect.fromResult(NetAddress.inetAddress(host, port))
+    const zone = host.slice(host.indexOf("%") + 1)
+    if (scopeId === undefined || /^\d+$/.test(zone)) {
+      return Effect.fromResult(NetAddress.inetAddressFromHostString(host, port))
+    }
+    return Effect.flatMap(scopeId(zone), (id) =>
+      Effect.fromResult(
+        NetAddress.inetAddressFromHostString(host, port, Option.isSome(id) ? new Map([[zone, id.value]]) : undefined)
+      ))
+  }
+
+  const resolve = (
+    target: NetAddress.SocketAddress | Host.HostPort,
+    options?: ResolveOptions
+  ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, Dns.DnsError | NetAddress.NetAddressError> => {
+    const family = options?.family
+    if (NetAddress.isUnixPathAddress(target)) return Effect.succeed(Arr.of(target))
+    if (NetAddress.isInetAddress(target)) return inFamily(target, family)
+    const { host, port } = target
+    if (NetAddress.isIpAddress(host) || isScoped(host)) {
+      return Effect.flatMap(fromLiteral(host, port), (address) => inFamily(address, family))
+    }
+    return Effect.map(dns.lookup(host, { family }), Arr.map((address) => NetAddress.inetAddressUnsafe(address, port)))
+  }
+
+  return {
+    [TypeId]: TypeId,
+    resolve: resolve as AddressResolver["resolve"]
+  }
+}
+
+/**
+ * Creates a layer that provides an `AddressResolver` using the `Dns` service.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer = (options?: Options): Layer.Layer<AddressResolver, never, Dns.Dns> =>
+  Layer.effect(AddressResolver, Effect.map(Effect.service(Dns.Dns), (dns) => make(dns, options)))

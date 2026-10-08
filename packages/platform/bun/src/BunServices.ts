@@ -2,8 +2,8 @@
  * Aggregate Bun platform services layer.
  *
  * This module defines the `BunServices` union and a single `layer` that
- * provides Bun-backed child process spawning, crypto, DNS, filesystem, path, stdio,
- * and terminal services. Use the layer when a Bun program wants the standard
+ * provides Bun-backed address resolution, child process spawning, crypto, DNS,
+ * filesystem, path, stdio, and terminal services. Use the layer when a Bun program wants the standard
  * platform services from one place.
  *
  * @stability unstable
@@ -12,11 +12,13 @@
 import type { Crypto } from "effect/Crypto"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import type { AddressResolver } from "effect/net/AddressResolver"
 import type { Dns } from "effect/net/Dns"
 import type { Path } from "effect/Path"
 import type { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import type { Stdio } from "effect/Stdio"
 import type { Terminal } from "effect/Terminal"
+import * as BunAddressResolver from "./BunAddressResolver.ts"
 import * as BunChildProcessSpawner from "./BunChildProcessSpawner.ts"
 import * as BunCrypto from "./BunCrypto.ts"
 import * as BunDns from "./BunDns.ts"
@@ -33,11 +35,20 @@ import * as BunTerminal from "./BunTerminal.ts"
  * @category models
  * @since 4.0.0
  */
-export type BunServices = ChildProcessSpawner | Crypto | Dns | FileSystem | Path | Terminal | Stdio
+export type BunServices =
+  | AddressResolver
+  | ChildProcessSpawner
+  | Crypto
+  | Dns
+  | FileSystem
+  | Path
+  | Terminal
+  | Stdio
 
 /**
  * Provides the default Bun implementations for child process spawning,
- * crypto, DNS, filesystem, path, stdio, and terminal services.
+ * crypto, DNS, address resolution, filesystem, path, stdio, and terminal
+ * services.
  *
  * @stability unstable
  * @category layers
@@ -47,7 +58,7 @@ export const layer: Layer.Layer<BunServices> = BunChildProcessSpawner.layer.pipe
   Layer.provideMerge(Layer.mergeAll(
     BunFileSystem.layer,
     BunCrypto.layer,
-    BunDns.layer,
+    Layer.provideMerge(BunAddressResolver.layer, BunDns.layer),
     BunPath.layer,
     BunStdio.layer,
     BunTerminal.layer

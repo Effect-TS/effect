@@ -2,6 +2,8 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
+import * as Layer from "effect/Layer"
+import * as AddressResolver from "effect/net/AddressResolver"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
@@ -178,14 +180,15 @@ const isBun = typeof process !== "undefined" && process.versions.bun !== undefin
 const isDeno = "Deno" in globalThis
 
 /**
- * Runs end-to-end tests of a platform `Dns` service against a CoreDNS
- * container. Every runtime must behave the same; the only skipped tests cover
+ * Runs end-to-end tests of a platform `Dns` service, and the platform
+ * `AddressResolver` layer on top of it, against a CoreDNS container. Every runtime must behave the same; the only skipped tests cover
  * documented runtime bugs that the platform services cannot work around.
  */
 
 export const describeDnsServer = (
   label: string,
-  make: (nameServer: NetAddress.InetAddress) => Dns.Dns
+  make: (nameServer: NetAddress.InetAddress) => Dns.Dns,
+  addressResolver: Layer.Layer<AddressResolver.AddressResolver, never, Dns.Dns>
 ) =>
   describe(label, () => {
     let server: Awaited<ReturnType<typeof startDnsServer>>
@@ -197,13 +200,34 @@ export const describeDnsServer = (
     })
 
     const dns = () => make(server.nameServer)
+    const resolver = () =>
+      Effect.service(AddressResolver.AddressResolver).pipe(
+        Effect.provide(addressResolver.pipe(Layer.provide(Layer.succeed(Dns.Dns, dns()))))
+      )
 
     it.effect("looks up localhost from the hosts file", () =>
       Effect.gen(function*() {
         const addresses = yield* dns().lookup(name("localhost"), { family: "IPv4" })
         assert.isTrue(addresses.some((address) => NetAddress.formatIp(address) === "127.0.0.1"))
-        const endpoints = yield* dns().resolveInet(Host.hostPortFromStringUnsafe("localhost:8080"), { family: "IPv4" })
+        const endpoints = yield* (yield* resolver()).resolve(Host.hostPortFromStringUnsafe("localhost:8080"), {
+          family: "IPv4"
+        })
         assert.isTrue(endpoints.some((address) => NetAddress.formatInet(address) === "127.0.0.1:8080"))
+      }))
+
+    it.effect("resolves IPv6 zones from the network interfaces", () =>
+      Effect.gen(function*() {
+        const resolve = yield* resolver()
+        const [name, scopeId] = [...NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces()))][0] ??
+          []
+        if (name !== undefined) {
+          const endpoints = yield* resolve.resolve(Host.hostPortFromStringUnsafe(`[fe80::1%${name}]:80`))
+          assert.deepStrictEqual(endpoints.map(NetAddress.formatInet), [`[fe80::1%${scopeId}]:80`])
+        }
+        const unknown = yield* Effect.flip(
+          resolve.resolve(Host.hostPortFromStringUnsafe("[fe80::1%nonexistent0]:80"))
+        )
+        assert.strictEqual(unknown._tag, "NetAddressError")
       }))
 
     it.effect("queries every record type", () =>

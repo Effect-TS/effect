@@ -1,16 +1,26 @@
 /**
- * Node-compatible implementation of Effect's `Dns` service.
+ * Node.js implementation of Effect's `Dns` service, and `node:dns` building
+ * blocks shared with other runtimes.
  *
- * Address lookups use `dns.lookup`, which calls the operating system resolver
- * (`getaddrinfo`) and therefore also reads the hosts file. Record queries and
- * reverse lookups send DNS queries with pooled `dns.Resolver` instances, each
- * used by one operation at a time, so interrupting a query cancels it. Records
- * whose data cannot be represented, such as names that are not valid
- * `Host.DomainName` values, are skipped.
+ * `lookup` resolves addresses with `dns.lookup`, which calls the operating
+ * system resolver (`getaddrinfo`) and therefore also reads the hosts file.
+ * `makeResolver` sends record queries and reverse lookups with pooled
+ * `dns.Resolver` instances, each used by one operation at a time, so
+ * interrupting a query cancels it. Records whose data cannot be represented,
+ * such as names that are not valid `Host.DomainName` values, are skipped. `make`
+ * combines both into the Node.js `Dns` service; other runtimes combine them
+ * with their own lookups or corrections.
+ *
+ * **Gotchas**
+ *
+ * Node.js decodes each byte of TXT and CAA character strings as one Latin-1
+ * character. `make` decodes those bytes as UTF-8, but `makeResolver` returns
+ * strings as the runtime's `node:dns` decodes them.
  *
  * @stability unstable
  * @since 4.0.0
  */
+import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -21,7 +31,7 @@ import * as NetAddress from "effect/net/NetAddress"
 import * as NodeDns from "node:dns"
 
 /**
- * Options for the Node.js `Dns` service.
+ * Options for `make` and `makeResolver`.
  *
  * **Details**
  *
@@ -91,19 +101,10 @@ const recordName = (name: string): Host.DomainName => Host.domainNameFromStringU
 // c-ares reports SOA refresh, retry, and expire as signed 32-bit integers.
 const uint32Seconds = (value: number): Duration.Duration => Duration.seconds(value >>> 0)
 
-const decoder = new TextDecoder()
-
-// Node's `node:dns` decodes each byte of TXT and CAA character strings as one
-// Latin-1 character; re-decoding the bytes as UTF-8 matches other runtimes.
-const utf8FromLatin1 = (value: string): string =>
-  // oxlint-disable-next-line no-control-regex
-  /[^\x00-\x7f]/.test(value) ? decoder.decode(Uint8Array.from(value, (character) => character.charCodeAt(0))) : value
-
 const queries: {
   readonly [K in Dns.RecordType]: (
     resolver: NodeDns.promises.Resolver,
-    name: string,
-    text: (value: string) => string
+    name: string
   ) => Promise<ReadonlyArray<() => Dns.DnsRecord>>
 } = {
   A: async (resolver, name) =>
@@ -114,7 +115,7 @@ const queries: {
     (await resolver.resolve6(name)).map((address) => () =>
       Dns.makeRecordUnsafe("AAAA", { address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv6Address })
     ),
-  CAA: async (resolver, name, text) =>
+  CAA: async (resolver, name) =>
     (await resolver.resolveCaa(name)).map((caa) => () => {
       const tag = Object.keys(caa).find((key) => key !== "critical" && key !== "type")
       if (tag === undefined) throw new Error("CAA record without a property tag")
@@ -122,7 +123,7 @@ const queries: {
       return Dns.makeRecordUnsafe("CAA", {
         critical: (caa.critical & 0x80) !== 0,
         tag,
-        value: text(String((caa as any)[tag]))
+        value: String((caa as any)[tag])
       })
     }),
   CNAME: async (resolver, name) =>
@@ -170,9 +171,9 @@ const queries: {
         weight: srv.weight
       })
     ),
-  TXT: async (resolver, name, text) =>
+  TXT: async (resolver, name) =>
     (await resolver.resolveTxt(name)).map((chunks) => () =>
-      Dns.makeRecordUnsafe("TXT", { chunks: chunks.map(text) as unknown as readonly [string, ...Array<string>] })
+      Dns.makeRecordUnsafe("TXT", { chunks: chunks as unknown as Arr.NonEmptyReadonlyArray<string> })
     )
 }
 
@@ -203,16 +204,58 @@ const convert = <A>(
     return out.length === 0 && failure !== undefined ? Effect.fail(onError(failure.cause)) : Effect.succeed(out)
   })
 
+/**
+ * Looks up the addresses of a host name with `dns.lookup`, keeping the order
+ * returned by the operating system resolver.
+ *
+ * @stability unstable
+ * @category resolving
+ * @since 4.0.0
+ */
+export const lookup = (
+  host: string,
+  family?: NetAddress.IpFamily | undefined
+): Effect.Effect<Array<NetAddress.IpAddress>, Dns.DnsError> =>
+  Effect.tryPromise({
+    // `verbatim` keeps the system order on Node versions without `order`.
+    try: () =>
+      NodeDns.promises.lookup(host, { all: true, family: toFamily(family), order: "verbatim", verbatim: true }),
+    catch: (cause) => toDnsError(cause, "lookup", host)
+  }).pipe(Effect.flatMap((entries) =>
+    convert(
+      entries.map((entry) => () => NetAddress.ipFromStringUnsafe(stripZone(entry.address))),
+      invalidResponse("lookup", host)
+    )
+  ))
+
+/**
+ * Record queries and reverse lookups sent with `dns.Resolver`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Resolver {
+  readonly resolve: (name: string, type: Dns.RecordType) => Effect.Effect<Array<Dns.DnsRecord>, Dns.DnsError>
+  readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<Array<Host.DomainName>, Dns.DnsError>
+}
+
 const maxIdleResolvers = 8
 
 /**
- * Creates a `Dns` service for a runtime's `node:dns` module, given how it
- * decodes TXT and CAA character strings.
+ * Creates a `Resolver` backed by the runtime's `node:dns` module.
  *
- * @internal
+ * **Details**
+ *
+ * Names in records are fully qualified, and character strings in TXT and CAA
+ * records are returned as the runtime decodes them. Pass the operations to
+ * `Dns.make`, together with a lookup, to build a `Dns` service.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
  */
-export const makeWith = (options: Options | undefined, strings: "latin1" | "utf8"): Dns.Dns => {
-  const text = strings === "latin1" ? utf8FromLatin1 : (value: string) => value
+export const makeResolver = (options?: Options): Resolver => {
   const resolverOptions: NodeDns.ResolverOptions = {
     ...(options?.timeout !== undefined && { timeout: Duration.toMillis(options.timeout) }),
     ...(options?.tries !== undefined && { tries: options.tries })
@@ -266,21 +309,9 @@ export const makeWith = (options: Options | undefined, strings: "latin1" | "utf8
         catch: (cause) => toDnsError(cause, method, hostname, recordType)
       })
 
-  return Dns.make({
-    lookup: (host, family) =>
-      Effect.tryPromise({
-        // `verbatim` keeps the system order on Node versions without `order`.
-        try: () =>
-          NodeDns.promises.lookup(host, { all: true, family: toFamily(family), order: "verbatim", verbatim: true }),
-        catch: (cause) => toDnsError(cause, "lookup", host)
-      }).pipe(Effect.flatMap((entries) =>
-        convert(
-          entries.map((entry) => () => NetAddress.ipFromStringUnsafe(stripZone(entry.address))),
-          invalidResponse("lookup", host)
-        )
-      )),
+  return {
     resolve: (name, type) =>
-      withResolver("resolve", name, type, (resolver) => queries[type](resolver, name, text)).pipe(
+      withResolver("resolve", name, type, (resolver) => queries[type](resolver, name)).pipe(
         Effect.flatMap((thunks) => convert(thunks, invalidResponse("resolve", name, type)))
       ),
     reverse: (address) => {
@@ -292,8 +323,23 @@ export const makeWith = (options: Options | undefined, strings: "latin1" | "utf8
           )
         )
     }
-  })
+  }
 }
+
+const decoder = new TextDecoder()
+
+const utf8FromLatin1 = (value: string): string =>
+  // oxlint-disable-next-line no-control-regex
+  /[^\x00-\x7f]/.test(value) ? decoder.decode(Uint8Array.from(value, (character) => character.charCodeAt(0))) : value
+
+// Node.js decodes each byte of TXT and CAA character strings as one Latin-1
+// character; decoding the bytes as UTF-8 matches other runtimes.
+const utf8Strings = (record: Dns.DnsRecord): Dns.DnsRecord =>
+  record._tag === "TXT"
+    ? Dns.makeRecordUnsafe("TXT", { chunks: Arr.map(record.chunks, utf8FromLatin1) })
+    : record._tag === "CAA"
+    ? Dns.makeRecordUnsafe("CAA", { critical: record.critical, tag: record.tag, value: utf8FromLatin1(record.value) })
+    : record
 
 /**
  * Creates a Node.js `Dns` service.
@@ -302,7 +348,14 @@ export const makeWith = (options: Options | undefined, strings: "latin1" | "utf8
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: Options): Dns.Dns => makeWith(options, "latin1")
+export const make = (options?: Options): Dns.Dns => {
+  const resolver = makeResolver(options)
+  return Dns.make({
+    lookup,
+    resolve: (name, type) => Effect.map(resolver.resolve(name, type), Arr.map(utf8Strings)),
+    reverse: resolver.reverse
+  })
+}
 
 /**
  * Layer that provides the Node.js `Dns` service using the system resolver

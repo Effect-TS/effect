@@ -9,6 +9,12 @@
  * @stability unstable
  * @since 4.0.0
  */
+export * as AddressResolver from "./AddressResolver.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as Dns from "./Dns.ts"
 
 /**
