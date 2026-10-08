@@ -17,6 +17,19 @@ const assertNotDelivered = <A, E>(fiber: Fiber.Fiber<A, E>) =>
     assert.isUndefined(fiber.pollUnsafe())
   })
 
+// advance both clocks until the forked take completes. Keep advancing while
+// it is pending: an SQL poll can still be in flight during an adjust and miss
+// that virtual-clock wakeup
+const awaitDelivery = <A, E>(fiber: Fiber.Fiber<A, E>) =>
+  Effect.gen(function*() {
+    for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
+      yield* TestClock.adjust(1000)
+      yield* Effect.sleep(700).pipe(TestClock.withLive)
+    }
+    assert.isDefined(fiber.pollUnsafe())
+    return yield* Fiber.join(fiber)
+  })
+
 // move both the virtual clock and real time past a 1 second ttl. The virtual
 // jump is kept small: a large jump can fire the SQL clients' pool timers and
 // time out in-flight connection acquisitions
@@ -135,6 +148,81 @@ export const suiteWith = <R>(
         }
         assert.isDefined(fiber.pollUnsafe())
         assert.strictEqual(yield* Fiber.join(fiber), 2)
+      }), testOptions)
+
+    it.effect("delays first delivery with the offer delay", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-offer-delay",
+          schema: Item
+        })
+
+        // SQL stores round to whole seconds, so keep the delay well clear of
+        // the one second checked by assertNotDelivered
+        yield* queue.offer({ n: 42n }, { delay: "3 seconds" })
+
+        const fiber = yield* queue.take((value, { attempts }) => Effect.succeed({ value, attempts })).pipe(
+          Effect.forkScoped
+        )
+
+        yield* assertNotDelivered(fiber)
+
+        // the delay does not consume an attempt
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { value: { n: 42n }, attempts: 1 })
+      }), testOptions)
+
+    it.effect("delivers zero and negative offer delays immediately", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-offer-delay-immediate",
+          schema: Item
+        })
+
+        yield* queue.offer({ n: 1n }, { delay: 0 })
+        yield* queue.offer({ n: 2n }, { delay: Duration.seconds(-5) })
+
+        const first = yield* queue.take(Effect.succeed)
+        const second = yield* queue.take(Effect.succeed)
+        assert.deepStrictEqual([first.n, second.n].sort(), [1n, 2n])
+      }), testOptions)
+
+    it.effect("an infinite offer delay writes nothing", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-offer-delay-infinite",
+          schema: Item
+        })
+
+        const id = yield* queue.offer({ n: 1n }, { id: "infinite-delay-id", delay: Duration.infinity })
+        assert.strictEqual(id, "infinite-delay-id")
+        const generatedId = yield* queue.offer({ n: 2n }, { delay: Duration.infinity })
+        assert.isNotEmpty(generatedId)
+
+        // no dedupe record was written, so the id can be offered again
+        yield* queue.offer({ n: 3n }, { id: "infinite-delay-id" })
+        assert.deepStrictEqual(yield* queue.take(Effect.succeed), { n: 3n })
+
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(fiber)
+      }), testOptions)
+
+    it.effect("ignores the delay of a duplicate offer", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-offer-delay-duplicate",
+          schema: Item
+        })
+
+        yield* queue.offer({ n: 1n }, { id: "delayed-duplicate-id", delay: "3 seconds" })
+        yield* queue.offer({ n: 2n }, { id: "delayed-duplicate-id" })
+
+        // the undelayed duplicate does not make the element available early
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(fiber)
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 1n })
+
+        const fiber2 = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(fiber2)
       }), testOptions)
 
     it.effect("idempotent offer", () =>
