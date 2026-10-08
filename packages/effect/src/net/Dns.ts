@@ -29,6 +29,10 @@ import * as NetAddress from "./NetAddress.ts"
 
 const RecordTypeId = "~effect/net/Dns/DnsRecord" as const
 
+// =============================================================================
+// Records
+// =============================================================================
+
 interface RecordProto<Tag extends RecordType> extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: Tag
   readonly [RecordTypeId]: typeof RecordTypeId
@@ -521,6 +525,10 @@ export const reverseName = (address: NetAddress.IpAddress): Host.DomainName => {
   return `${nibbles.reverse().join(".")}.ip6.arpa` as Host.DomainName
 }
 
+// =============================================================================
+// Errors
+// =============================================================================
+
 /**
  * The normalized reason for a failed name resolution.
  *
@@ -587,6 +595,10 @@ export class DnsError extends Data.TaggedError("DnsError")<{
     return this.reason === "Timeout" || this.reason === "Temporary" || this.reason === "ServerFailure"
   }
 }
+
+// =============================================================================
+// Service
+// =============================================================================
 
 /**
  * Options for address lookups. Without a `family`, addresses of both families
@@ -768,6 +780,10 @@ export const make = (impl: {
       )
   })
 }
+
+// =============================================================================
+// Static resolver
+// =============================================================================
 
 /**
  * Fixed names, addresses, and records for a static resolver.
