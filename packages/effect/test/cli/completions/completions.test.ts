@@ -836,6 +836,12 @@ describe("PowerShell completions", () => {
     assert.match(script, /if \(\$null -ne \$expecting -and -not \$\w+\) \{/)
   })
 
+  it("completes a negative number as a value, not a flag", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.notInclude(script, "$typed.StartsWith('-')")
+    assert.include(script, "if ($typedIsOption) {")
+  })
+
   it("tracks used flags case-sensitively", () => {
     const script = PowerShell.generate("server", fromCommand(withSubcommands))
     assert.notInclude(script, "$used = @{}")
