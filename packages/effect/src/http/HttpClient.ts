@@ -1150,6 +1150,8 @@ export declare namespace WithRateLimiter {
  * It can update limits by inspecting common rate limit response headers and
  * automatically retries HTTP `429` responses (or `HttpClientError` values
  * wrapping a `429` response) by forcing the retry back through the limiter.
+ * When a response reports the remaining budget, requests wait for the
+ * reported reset once that budget is exhausted.
  *
  * **Gotchas**
  *
@@ -1200,13 +1202,35 @@ export const withRateLimiter: {
     return initialState
   }
 
+  const budgets = new Map<string, RateLimitBudget>()
+  const getBudget = (key: string): RateLimitBudget => {
+    let budget = budgets.get(key)
+    if (budget === undefined) {
+      budget = { sent: 0, observed: 0, remaining: 0, resetAt: 0 }
+      budgets.set(key, budget)
+    }
+    return budget
+  }
+
   const onResponse = options.disableResponseInspection
     ? undefined
-    : (clock: Clock, key: string, headers: Headers.Headers, tokens: number) => {
+    : (clock: Clock, key: string, headers: Headers.Headers, tokens: number, sent: number) => {
       const current = getState(key)
       const next = parseRateLimiterState(current, clock, headers, tokens, headerNames)
       if (next.limit !== current.limit || !Duration.equals(next.window, current.window)) {
         states.set(key, next)
+      }
+      const remaining = parseRateLimitRemaining(headers, headerNames)
+      const budget = getBudget(key)
+      // responses to earlier requests carry stale counts
+      if (remaining === undefined || sent <= budget.observed) {
+        return
+      }
+      const resetAfter = parseRateLimitWindow(clock, headers, headerNames)
+      budget.observed = sent
+      budget.remaining = remaining
+      if (resetAfter !== undefined) {
+        budget.resetAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(resetAfter)
       }
     }
 
@@ -1219,6 +1243,15 @@ export const withRateLimiter: {
     const clock = fiber.getRef(Clock)
     const key = resolveKey(request)
     const tokens = Math.max(resolveTokens(request), 1)
+    const budget = getBudget(key)
+    const now = clock.currentTimeMillisUnsafe()
+    // requests admitted after the observed one are not reflected in its count
+    if (budget.resetAt > now && budget.remaining - (budget.sent - budget.observed) < tokens) {
+      return Effect.flatMap(Effect.sleep(budget.resetAt - now), () => loop(effect, request, retries))
+    }
+    // counted at admission, so requests already admitted are sent even if a
+    // later response exhausts the budget
+    const sent = budget.sent += tokens
     const current = getState(key)
     const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
@@ -1230,7 +1263,7 @@ export const withRateLimiter: {
       response: HttpClientResponse.HttpClientResponse,
       adaptive: RateLimiter.AdaptiveConsumeResult | undefined
     ) => {
-      onResponse?.(clock, key, response.headers, tokens)
+      onResponse?.(clock, key, response.headers, tokens, sent)
       if (options.disableResponseInspection || response.status !== 429) {
         return Effect.succeed<Duration.Duration | undefined>(undefined)
       }
@@ -1346,6 +1379,17 @@ interface RateLimiterState {
   readonly limit: number
   readonly window: Duration.Duration
   readonly initial: boolean
+}
+
+interface RateLimitBudget {
+  /** Total tokens admitted for the key. */
+  sent: number
+  /** The `sent` total of the request whose remaining count was last applied. */
+  observed: number
+  /** The remaining count reported in response to the `observed` request. */
+  remaining: number
+  /** When the server budget resets, in epoch milliseconds. */
+  resetAt: number
 }
 
 const parseRateLimiterState = (
