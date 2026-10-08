@@ -1,4 +1,4 @@
-import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
+import type { DurableObjectStorage } from "@cloudflare/workers-types"
 import { makeEntityKeepAlive } from "@effect/platform-cloudflare/internal/entityKeepAlive"
 import { loadNextReply } from "@effect/platform-cloudflare/internal/entityMailbox"
 import { registerEntity, unregisterEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
@@ -9,32 +9,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Schema, Stream } from "effect"
 import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import { Rpc, RpcSchema } from "effect/rpc"
-import { DatabaseSync, type SQLInputValue } from "node:sqlite"
-
-class SqliteStorage {
-  readonly sql: SqlStorage
-
-  constructor(readonly database: DatabaseSync) {
-    this.sql = {
-      exec: (query: string, ...bindings: Array<unknown>) => {
-        const rows = database.prepare(query).all(...bindings as Array<SQLInputValue>) as Array<Record<string, unknown>>
-        return { toArray: () => rows }
-      }
-    } as SqlStorage
-  }
-
-  transactionSync<A>(f: () => A): A {
-    this.database.exec("BEGIN")
-    try {
-      const value = f()
-      this.database.exec("COMMIT")
-      return value
-    } catch (error) {
-      this.database.exec("ROLLBACK")
-      throw error
-    }
-  }
-}
+import { DatabaseSync } from "node:sqlite"
+import { SqliteStorage } from "./fixtures/sqliteStorage.ts"
 
 const InterruptedStream = Entity.make("InterruptedStream", [
   Rpc.make("Watch", {
