@@ -1261,11 +1261,10 @@ export const withRateLimiter: {
     const clock = fiber.getRef(Clock)
     const key = resolveKey(request)
     const tokens = Math.max(resolveTokens(request), 1)
-    const wait = onResponse === undefined ? 0 : budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
+    const wait = budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
     if (wait > 0) {
-      return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => loop(effect, request, retries))
+      return Effect.flatMap(Effect.sleep(wait), () => loop(effect, request, retries))
     }
-    let sent = 0
     const current = getState(key)
     const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
@@ -1275,7 +1274,8 @@ export const withRateLimiter: {
     }
     const inspectResponse = (
       response: HttpClientResponse.HttpClientResponse,
-      adaptive: RateLimiter.AdaptiveConsumeResult | undefined
+      adaptive: RateLimiter.AdaptiveConsumeResult | undefined,
+      sent: number
     ) => {
       onResponse?.(clock, key, response.headers, tokens, sent)
       if (options.disableResponseInspection || response.status !== 429) {
@@ -1309,42 +1309,42 @@ export const withRateLimiter: {
           R
         > => {
           const runRequest = (adaptive: RateLimiter.AdaptiveConsumeResult | undefined) => {
-            const attempt = Effect.matchEffect(effect, {
-              onSuccess(response) {
-                return Effect.flatMap(inspectResponse(response, adaptive), (retryAfter) => {
-                  if (response.status !== 429 || !canRetry) return Effect.succeed(response)
-                  return retry(retryAfter)
-                })
-              },
-              onFailure(error) {
-                if (isTooManyRequestsHttpClientError(error)) {
-                  return Effect.flatMap(
-                    inspectResponse(error.reason.response, adaptive),
-                    (retryAfter) => canRetry ? retry(retryAfter) : Effect.fail(error)
-                  )
+            const attempt = (sent: number) =>
+              Effect.matchEffect(effect, {
+                onSuccess(response) {
+                  return Effect.flatMap(inspectResponse(response, adaptive, sent), (retryAfter) => {
+                    if (response.status !== 429 || !canRetry) return Effect.succeed(response)
+                    return retry(retryAfter)
+                  })
+                },
+                onFailure(error) {
+                  if (isTooManyRequestsHttpClientError(error)) {
+                    return Effect.flatMap(
+                      inspectResponse(error.reason.response, adaptive, sent),
+                      (retryAfter) => canRetry ? retry(retryAfter) : Effect.fail(error)
+                    )
+                  }
+                  return Effect.fail(error)
                 }
-                return Effect.fail(error)
-              }
-            })
+              })
             // re-checked after the limiter delays, as responses may exhaust the budget meanwhile
             const dispatch: Effect.Effect<
               HttpClientResponse.HttpClientResponse,
               E | RateLimiter.RateLimiterError,
               R
             > = Effect.suspend(() => {
-              const wait = onResponse === undefined ? 0 : budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
+              const wait = budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
               if (wait === 0) {
-                if (onResponse !== undefined) {
-                  sent = getBudget(key).sent += tokens
-                }
-                return attempt
+                const budget = getBudget(key)
+                budget.sent += tokens
+                return attempt(budget.sent)
               }
-              // renew admissions after waiting, except learning admissions, which
-              // are already counted and do not pace requests
-              if (adaptive !== undefined && adaptive.phase !== "learning") {
-                return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => loop(effect, request, retries))
+              // restart to wait for the reset and renew every admission, unless this is
+              // a learning admission, which is already counted and does not pace requests
+              if (adaptive?.phase !== "learning") {
+                return loop(effect, request, retries)
               }
-              return Effect.sleep(Duration.millis(wait)).pipe(
+              return Effect.sleep(wait).pipe(
                 Effect.flatMap(() => consume(key, tokens)),
                 Effect.flatMap(({ delay }) =>
                   Duration.isZero(delay) ? dispatch : Effect.andThen(Effect.sleep(delay), dispatch)
