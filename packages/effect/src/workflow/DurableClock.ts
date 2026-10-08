@@ -73,6 +73,7 @@ const InstanceTag = Context.Service<
  * Durable Object engine) provide `Duration.zero` so every `sleep` without an
  * explicit `inMemoryThreshold` schedules a durable clock.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

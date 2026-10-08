@@ -820,6 +820,7 @@ export class KeepAliveLatch extends Context.Service<KeepAliveLatch, Latch.Latch>
  * `false` once the last holder is released. When the service is absent,
  * `keepAlive` is a no-op.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

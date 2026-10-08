@@ -3,6 +3,8 @@
  * singleton, and one user-declared Cron Trigger.
  *
  * Deploy with `alchemy deploy` from this directory (see `alchemy.run.ts`).
+ *
+ * @stability unstable
  */
 import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
 import * as Cloudflare from "alchemy/Cloudflare"
@@ -34,6 +36,9 @@ const MaintenanceLayer = Singleton.make(
   Effect.logInfo("Running hourly maintenance")
 )
 
+/**
+ * @stability unstable
+ */
 export default Cloudflare.Worker(
   "EffectCluster",
   {

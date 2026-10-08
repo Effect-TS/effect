@@ -8,6 +8,7 @@
  * message storage; `layer` provides the cluster `Sharding` service on top of
  * the Durable Object namespace bindings instead of `Sharding.layer`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { Clock } from "effect/Clock"
@@ -50,6 +51,7 @@ import { registerSingleton as registerSingletonHandler, unregisterSingleton } fr
 /**
  * A Durable Object name decoded back into its entity address parts.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -69,6 +71,7 @@ export interface ClusterName {
  * characters an entity id may contain. Workflow, queue, and singleton names use
  * the same scheme on their own namespaces.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -84,6 +87,7 @@ export const encodeName: (type: string, id: string) => string = Internal.encodeN
  * including non-canonical length prefixes. A Durable Object uses this to
  * recover its own address from `ctx.id.name`.
  *
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -100,6 +104,7 @@ export const decodeName: (name: string) => ClusterName | undefined = Internal.de
  * handler registration for an entity type outside this set fails at the
  * Worker, before any Durable Object is contacted.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -505,6 +510,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  * wake; workflow handlers registered with `Workflow.toLayer` follow the same
  * pattern on the workflow class.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -530,6 +536,7 @@ export const layer = (
  * with it can only run where each entity Durable Object provides
  * {@link DurableObjectSqlClient}.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -569,6 +576,7 @@ export class CloudflareSharding extends Context.Service<CloudflareSharding, Shar
  * - Mailbox writes wait for an open transaction to finish, so a rollback never
  *   takes another handler's stored reply with it.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -587,6 +595,7 @@ export class DurableObjectSqlClient extends Context.Service<DurableObjectSqlClie
  * `mailboxCapacity` are accepted for parity and have no effect: hibernation
  * owns idle entities and the mailbox capacity is fixed at 4096.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -619,6 +628,7 @@ export interface ToLayerOptions {
  * from any SQL layer, for example an in-memory `@effect/sql-sqlite-node`
  * client.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

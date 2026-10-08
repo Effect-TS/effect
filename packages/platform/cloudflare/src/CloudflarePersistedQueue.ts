@@ -22,6 +22,7 @@
  * `PersistedQueue.layerCleanup` is unsupported because the namespace binding
  * cannot enumerate queue objects. Completed rows remain retained for deduplication.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -36,6 +37,7 @@ import type { QueueItem } from "./internal/queueStorage.ts"
 /**
  * The queue Durable Object namespace binding the store is built from.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -68,6 +70,7 @@ const finalize = (run: () => Promise<void>): Effect.Effect<void> => Effect.orDie
  * Creates the `PersistedQueueStore` backed by the queue Durable Object
  * namespace binding.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -148,6 +151,7 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
  * `CloudflareCluster.layer` already includes this layer; use it directly only
  * when persisted queues are needed without the rest of the cluster.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
