@@ -133,7 +133,6 @@ export const xb3: FromHeaders = (headers) => {
 const w3cTraceId = /^[0-9a-f]{32}$/i
 const w3cSpanId = /^[0-9a-f]{16}$/i
 
-// B3 trace ids are 64 or 128 bits, span ids are 64 bits, both hex encoded.
 const b3TraceId = /^(?:[0-9a-f]{16}|[0-9a-f]{32})$/i
 const isB3Ids = (traceId: string, spanId: string): boolean => b3TraceId.test(traceId) && w3cSpanId.test(spanId)
 
