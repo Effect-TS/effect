@@ -2207,7 +2207,7 @@ describe("McpServer", () => {
         false
       )
       const response = yield* post("subscriptions/listen", { notifications: { toolsListChanged: true } })
-      // Read only the first frame so an unexpected live subscription fails without waiting for EOF.
+      // A live subscription never reaches EOF; inspect only its first frame.
       if (response.headers.get("content-type")?.includes("text/event-stream")) {
         const reader = makeMcpSseReader(response)
         yield* Effect.addFinalizer(() => reader.cancel)

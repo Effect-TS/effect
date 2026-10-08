@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `allowSubscriptions` to `McpServer.layerHttp` so stateless servers can disable subscriptions without disabling request-scoped progress and log notifications.
+Add `McpServer.layerHttp({ allowSubscriptions: false })` to disable `v2026_07_28` subscriptions while keeping request-scoped progress and log notifications.
