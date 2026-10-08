@@ -839,6 +839,51 @@ Missing key
         strictEqual(yield* Ref.get(attempts), 2)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
+    it.effect("paces requests started while remaining is exhausted with the limiter after reset", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              HttpClientResponse.fromWeb(
+                request,
+                attempt === 1
+                  ? new Response(null, {
+                    status: 200,
+                    headers: {
+                      "ratelimit-limit": "2",
+                      "ratelimit-remaining": "0",
+                      "ratelimit-reset-after": "60"
+                    }
+                  })
+                  : new Response(null, { status: 200 })
+              )
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "exhausted-pacing",
+            limit: 2,
+            window: "1 minute",
+            disableAdaptiveLearning: true
+          })
+        )
+
+        yield* client.get("http://test/")
+        const fibers = yield* Effect.forEach(
+          [1, 2, 3],
+          () => client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        )
+
+        yield* TestClock.adjust("60 seconds")
+        strictEqual(yield* Ref.get(attempts), 3)
+
+        yield* TestClock.adjust("60 seconds")
+        yield* Fiber.joinAll(fibers)
+        strictEqual(yield* Ref.get(attempts), 4)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
     it.effect("inspects custom remaining and reset-after headers", () =>
       Effect.gen(function*() {
         const attempts = yield* Ref.make(0)
