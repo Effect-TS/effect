@@ -240,6 +240,63 @@ describe("Tracer", () => {
       )
     })
 
+    it("keeps the ids of an active OpenTelemetry parent whose span context reads them through getters", () => {
+      class GetterSpanContext implements OtelApi.SpanContext {
+        get traceId() {
+          return "1".repeat(32)
+        }
+        get spanId() {
+          return "2".repeat(16)
+        }
+        get traceFlags() {
+          return OtelApi.TraceFlags.SAMPLED
+        }
+      }
+      const active = OtelApi.trace.setSpanContext(OtelApi.ROOT_CONTEXT, new GetterSpanContext())
+      const parentOf = (annotations: EffectContext.Context<never>) => {
+        let receivedParent: OtelApi.SpanContext | undefined
+        const tracer = {
+          startSpan(_name: string, _options: unknown, context: OtelApi.Context) {
+            receivedParent = OtelApi.trace.getSpanContext(context)
+            return {
+              spanContext: () => ({
+                traceId: "3".repeat(32),
+                spanId: "4".repeat(16),
+                traceFlags: OtelApi.TraceFlags.SAMPLED
+              })
+            } as OtelApi.Span
+          }
+        } as OtelApi.Tracer
+        const child = new OtelTracer.OtelSpan(
+          { active: () => active } as OtelApi.ContextAPI,
+          OtelApi.trace,
+          tracer,
+          {
+            name: "child",
+            parent: Option.none(),
+            annotations,
+            links: [],
+            startTime: 0n,
+            kind: "internal",
+            root: false,
+            sampled: true
+          }
+        )
+        assert.instanceOf(child, OtelTracer.OtelSpan)
+        return [receivedParent?.traceId, receivedParent?.spanId, receivedParent?.traceFlags]
+      }
+
+      assert.deepStrictEqual(parentOf(EffectContext.empty()), [
+        "1".repeat(32),
+        "2".repeat(16),
+        OtelApi.TraceFlags.SAMPLED
+      ])
+      assert.deepStrictEqual(
+        parentOf(EffectContext.make(OtelTracer.OtelTraceFlags, OtelApi.TraceFlags.NONE)),
+        ["1".repeat(32), "2".repeat(16), OtelApi.TraceFlags.NONE]
+      )
+    })
+
     it.effect("records every pretty error", () =>
       Effect.gen(function*() {
         const exporter = new InMemorySpanExporter()

@@ -555,8 +555,12 @@ const makeSpanContext = (
     if (annotations === undefined) return otelParent
     const traceFlags = extractTraceService(span, annotations, OtelTraceFlags)
     const traceState = extractTraceService(span, annotations, OtelTraceState)
+    if (traceFlags === undefined && traceState === undefined) return otelParent
+    // manual bind instead of spreading in case parent span uses getters
     return {
-      ...otelParent,
+      traceId: otelParent.traceId,
+      spanId: otelParent.spanId,
+      isRemote: otelParent.isRemote ?? false,
       traceFlags: traceFlags ?? otelParent.traceFlags,
       traceState: traceState ?? otelParent.traceState!
     }
