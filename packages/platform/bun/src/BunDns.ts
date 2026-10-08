@@ -18,13 +18,11 @@
  * @since 4.0.0
  */
 import * as NodeDns from "@effect/platform-node-shared/NodeDns"
-import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
-import * as NetAddress from "effect/net/NetAddress"
-import * as Result from "effect/Result"
+import type * as NetAddress from "effect/net/NetAddress"
 
 export type {
   /**
@@ -52,21 +50,8 @@ export const make = Effect.fnUntraced(function*(options?: NodeDns.Options) {
       Effect.tryPromise({
         try: () => Bun.dns.lookup(host, { family: NodeDns.toFamily(family), backend: "system" }),
         catch: (cause) => NodeDns.dnsErrorFromCause(cause, "lookup", host)
-      }).pipe(
-        // Like `NodeDns.lookup`, drop zones and skip addresses that cannot be parsed.
-        Effect.map((entries) =>
-          Arr.filterMap(
-            entries,
-            (entry) => Result.try(() => NetAddress.ipFromStringUnsafe(entry.address.split("%")[0]))
-          )
-        )
-      ),
-    resolve,
-    reverse: (address) =>
-      Effect.map(
-        resolve(Dns.reverseName(address), "PTR", "reverse", NetAddress.formatIp(address)),
-        Arr.flatMap((record) => record._tag === "PTR" ? [record.host] : [])
-      )
+      }).pipe(Effect.map(NodeDns.addressesFromLookup)),
+    resolve
   })
 })
 

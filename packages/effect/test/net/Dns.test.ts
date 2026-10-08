@@ -31,6 +31,7 @@ const zone = Dns.layerStatic({
       Dns.makeRecordUnsafe("PTR", { host: "not a host.example.com." })
     ],
     "3.2.0.192.in-addr.arpa": [Dns.makeRecordUnsafe("PTR", { host: "not a host.example.com." })],
+    "4.2.0.192.in-addr.arpa": [Dns.makeRecordUnsafe("PTR", { host: "café.example.com." })],
     "_ipp._tcp.example.com": [Dns.makeRecordUnsafe("PTR", { host: "Office Printer._ipp._tcp.example.com." })]
   }
 })
@@ -146,6 +147,29 @@ describe("Dns", () => {
           minimum: Duration.minutes(5)
         })),
         "SOA ns.example.com hostmaster.example.com 2024010101 3600 600 604800 300"
+      )
+    })
+
+    it("escapes names held as text", () => {
+      assert.strictEqual(
+        Dns.formatRecord(Dns.makeRecordUnsafe("PTR", { host: "Printer (Office); \\.x\\\\._ipp._tcp.local." })),
+        "PTR Printer\\032\\(Office\\)\\;\\032\\.x\\\\._ipp._tcp.local."
+      )
+      assert.strictEqual(
+        Dns.formatRecord(Dns.makeRecordUnsafe("PTR", { host: "Café\\x.local." })),
+        "PTR Caf\\195\\169\\\\x.local."
+      )
+      assert.strictEqual(
+        Dns.formatRecord(Dns.makeRecordUnsafe("SOA", {
+          primary: name("ns.example.com"),
+          admin: "john\\.doe@x.example.com.",
+          serial: 1,
+          refresh: Duration.zero,
+          retry: Duration.zero,
+          expire: Duration.zero,
+          minimum: Duration.zero
+        })),
+        "SOA ns.example.com john\\.doe\\@x.example.com. 1 0 0 0 0"
       )
     })
 
@@ -266,6 +290,28 @@ describe("Dns", () => {
         assert.strictEqual(noNames.reason, "NotFound")
       }))
 
+    it.effect("derives reverse lookups from PTR queries", () =>
+      Effect.gen(function*() {
+        const dns = Dns.make({
+          lookup: () => Effect.succeed([]),
+          resolve: (name, type) =>
+            name === "1.2.0.192.in-addr.arpa" && type === "PTR"
+              ? Effect.succeed([
+                Dns.makeRecordUnsafe("PTR", { host: "web.example.com." }),
+                Dns.makeRecordUnsafe("PTR", { host: "café.example.com." })
+              ])
+              : Effect.fail(
+                new Dns.DnsError({ reason: "ServerFailure", method: "resolve", hostname: name, recordType: type })
+              )
+        })
+        assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns.reverse(ip("192.0.2.1")), ["web.example.com."])
+        const error = yield* Effect.flip(dns.reverse(ip("192.0.2.2")))
+        assert.strictEqual(error.reason, "ServerFailure")
+        assert.strictEqual(error.method, "reverse")
+        assert.strictEqual(error.hostname, "192.0.2.2")
+        assert.isUndefined(error.recordType)
+      }))
+
     it.effect("answers from a static zone", () =>
       Effect.gen(function*() {
         const dns = yield* Dns.Dns
@@ -285,6 +331,8 @@ describe("Dns", () => {
         assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns.reverse(ip("192.0.2.2")), ["web.example.com."])
         const noHosts = yield* Effect.flip(dns.reverse(ip("192.0.2.3")))
         assert.strictEqual(noHosts.reason, "InvalidResponse")
+        const utf8 = yield* Effect.flip(dns.reverse(ip("192.0.2.4")))
+        assert.strictEqual(utf8.reason, "InvalidResponse")
         const instances = yield* dns.resolve(name("_ipp._tcp.example.com"), "PTR")
         assert.deepStrictEqual(instances.map((record) => record.host), ["Office Printer._ipp._tcp.example.com."])
 

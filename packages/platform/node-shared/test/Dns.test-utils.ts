@@ -101,6 +101,9 @@ null-mx     IN MX    0 .
 _pg._tcp    IN SRV   10 5 5432 db1.example.test.
 _none._tcp  IN SRV   0 0 0 .
 _ipp._tcp   IN PTR   EPSON\\032TM-m30III._ipp._tcp.example.test.
+bad-mx      IN MX    10 bad\\032host.example.test.
+mixed-mx    IN MX    10 bad\\032host.example.test.
+mixed-mx    IN MX    20 mail.example.test.
 `
 
 const reverseZone = `
@@ -112,12 +115,14 @@ $TTL 300
 2           IN PTR   good.example.test.
 2           IN PTR   bad\\032host.example.test.
 3           IN PTR   only\\032bad.example.test.
+4           IN PTR   caf\\195\\169.example.test.
 `
 
 // Records that platform resolvers report in unusual forms: a root primary name,
 // a mailbox with an escaped dot, timers of 2^31 seconds or more, a CAA record
-// with only a reserved flag set, UTF-8 text, and a PTR name whose label holds a
-// dot, a space, UTF-8, and a backslash.
+// with only a reserved flag set, UTF-8 text, a PTR name whose label holds a
+// dot, a space, UTF-8, and a backslash, and a PTR name with characters that
+// are special in presentation format.
 const edgeZone = `
 $ORIGIN edge.test.
 $TTL 300
@@ -126,6 +131,7 @@ $TTL 300
 @           IN CAA   1 issue "ca.example.test"
 @           IN TXT   "gr\\195\\188\\195\\159"
 _svc._tcp   IN PTR   v2\\.0\\032Caf\\195\\169\\092x._svc._tcp.edge.test.
+_ipp._tcp   IN PTR   Printer\\032\\(Office\\)\\;\\"1\\"._ipp._tcp.edge.test.
 `
 
 /**
@@ -264,6 +270,9 @@ export const describeDnsServer = (
         assertRecords(yield* (yield* dns()).resolve(name("_svc._tcp.edge.test"), "PTR"), [
           Dns.makeRecordUnsafe("PTR", { host: "v2\\.0 Café\\\\x._svc._tcp.edge.test." })
         ])
+        assertRecords(yield* (yield* dns()).resolve(name("_ipp._tcp.edge.test"), "PTR"), [
+          Dns.makeRecordUnsafe("PTR", { host: "Printer (Office);\"1\"._ipp._tcp.edge.test." })
+        ])
       }))
 
     it.effect("rejects name servers with a scope ID", () =>
@@ -288,6 +297,30 @@ export const describeDnsServer = (
       Effect.gen(function*() {
         const error = yield* Effect.flip((yield* dns()).reverse(ip("192.0.2.3")))
         assert.strictEqual(error.reason, "InvalidResponse")
+      }))
+
+    it.effect("skips names with UTF-8 labels", () =>
+      Effect.gen(function*() {
+        const error = yield* Effect.flip((yield* dns()).reverse(ip("192.0.2.4")))
+        assert.strictEqual(error.reason, "InvalidResponse")
+      }))
+
+    it.effect("skips records whose data cannot be represented", () =>
+      Effect.gen(function*() {
+        assertRecords(yield* (yield* dns()).resolve(name("mixed-mx.example.test"), "MX"), [
+          Dns.makeRecordUnsafe("MX", { exchange: name("mail.example.test."), priority: 20 })
+        ])
+        const error = yield* Effect.flip((yield* dns()).resolve(name("bad-mx.example.test"), "MX"))
+        assert.strictEqual(error.reason, "InvalidResponse")
+        assert.strictEqual(error.recordType, "MX")
+      }))
+
+    it.effect("reports failed reverse lookups", () =>
+      Effect.gen(function*() {
+        const error = yield* Effect.flip((yield* dns()).reverse(ip("192.0.2.9")))
+        assert.strictEqual(error.reason, "NotFound")
+        assert.strictEqual(error.method, "reverse")
+        assert.strictEqual(error.hostname, "192.0.2.9")
       }))
 
     it.effect("returns service instance names from PTR records", () =>

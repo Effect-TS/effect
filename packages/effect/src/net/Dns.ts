@@ -420,6 +420,8 @@ export const makeRecordUnsafe = <T extends RecordType>(type: T, fields: RecordFi
 
 const encoder = new TextEncoder()
 
+const decimalEscape = (byte: number): string => `\\${byte.toString().padStart(3, "0")}`
+
 // Quotes a character string in DNS presentation format (RFC 1035, section 5.1):
 // `"` and `\` are escaped, and bytes outside printable ASCII are written as `\DDD`.
 const quote = (value: string): string => {
@@ -428,10 +430,39 @@ const quote = (value: string): string => {
     out += byte === 0x22 || byte === 0x5c
       ? `\\${String.fromCharCode(byte)}`
       : byte < 0x20 || byte > 0x7e
-      ? `\\${byte.toString().padStart(3, "0")}`
+      ? decimalEscape(byte)
       : String.fromCharCode(byte)
   }
   return out + "\""
+}
+
+// The characters `"`, `$`, `(`, `)`, `;`, and `@`, which are special in names
+// written in presentation format.
+const nameSpecials = [0x22, 0x24, 0x28, 0x29, 0x3b, 0x40]
+
+// Writes a name held as text, such as `Ptr.host`, in DNS presentation format:
+// its `\.` and `\\` escapes are kept, other special characters are escaped, and
+// spaces and bytes outside printable ASCII are written as `\DDD`.
+const formatName = (text: string): string => {
+  const bytes = encoder.encode(text)
+  let out = ""
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i]
+    if (byte === 0x5c) {
+      const next = bytes[i + 1]
+      if (next === 0x2e || next === 0x5c) {
+        out += `\\${String.fromCharCode(next)}`
+        i++
+      } else {
+        out += "\\\\"
+      }
+    } else if (byte <= 0x20 || byte > 0x7e) {
+      out += decimalEscape(byte)
+    } else {
+      out += nameSpecials.includes(byte) ? `\\${String.fromCharCode(byte)}` : String.fromCharCode(byte)
+    }
+  }
+  return out
 }
 
 /**
@@ -457,10 +488,11 @@ export const formatRecord = (self: DnsRecord): string => {
         quote(self.regexp)
       } ${self.replacement}`
     case "NS":
+      return `NS ${self.host}`
     case "PTR":
-      return `${self._tag} ${self.host}`
+      return `PTR ${formatName(self.host)}`
     case "SOA":
-      return `SOA ${self.primary} ${self.admin} ${self.serial} ${Duration.toSeconds(self.refresh)} ${
+      return `SOA ${self.primary} ${formatName(self.admin)} ${self.serial} ${Duration.toSeconds(self.refresh)} ${
         Duration.toSeconds(self.retry)
       } ${Duration.toSeconds(self.expire)} ${Duration.toSeconds(self.minimum)}`
     case "SRV":
@@ -634,14 +666,18 @@ export class Dns extends Context.Service<Dns, {
    *
    * **Details**
    *
-   * Names that are not valid host names are skipped. When every returned name
-   * is skipped, the lookup fails with `InvalidResponse`.
+   * Names that are not valid host names are skipped, including names with
+   * non-ASCII labels, which are not converted to their ASCII (`xn--`) form
+   * because that form is a different DNS name. When every returned name is
+   * skipped, the lookup fails with `InvalidResponse`.
    */
   reverse(address: NetAddress.IpAddress): Effect.Effect<Arr.NonEmptyReadonlyArray<Host.DomainName>, DnsError>
 }>()("effect/net/Dns") {}
 
 const notFound = (method: DnsError["method"], hostname: string, recordType?: RecordType) =>
   Effect.fail(new DnsError({ reason: "NotFound", method, hostname, recordType }))
+
+const asciiName = /^[\w.-]+$/
 
 /**
  * Creates a `Dns` service from platform resolver operations.
@@ -650,9 +686,11 @@ const notFound = (method: DnsError["method"], hostname: string, recordType?: Rec
  *
  * The constructor filters lookups by the requested address family, keeps only
  * records of the requested type, removes duplicates, and turns empty results
- * into `NotFound` failures. `reverse` receives the names of the PTR records
- * and keeps those that are valid host names, failing with `InvalidResponse`
- * when there are names but none is valid.
+ * into `NotFound` failures. `reverse` receives the names of an address and
+ * keeps those that are valid host names, failing with `InvalidResponse` when
+ * there are names but none is valid. Without a `reverse` operation, the names
+ * are those of the PTR records at the address's `reverseName`, and failures of
+ * that query are reported as failures of `reverse`.
  *
  * @stability experimental
  * @category constructors
@@ -664,10 +702,26 @@ export const make = (impl: {
     family: NetAddress.IpFamily | undefined
   ) => Effect.Effect<ReadonlyArray<NetAddress.IpAddress>, DnsError>
   readonly resolve: (name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>
-  readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<string>, DnsError>
+  readonly reverse?:
+    | ((address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<string>, DnsError>)
+    | undefined
 }): Dns["Service"] => {
   const inFamily = (family: NetAddress.IpFamily | undefined) => (address: NetAddress.IpAddress): boolean =>
     family === undefined || NetAddress.isFamily(address, family)
+
+  const reverseNames = impl.reverse ??
+    ((address: NetAddress.IpAddress) =>
+      impl.resolve(reverseName(address), "PTR").pipe(
+        Effect.map(Arr.flatMap((record) => record._tag === "PTR" ? [record.host] : [])),
+        Effect.mapError((error) =>
+          new DnsError({
+            reason: error.reason,
+            method: "reverse",
+            hostname: NetAddress.formatIp(address),
+            cause: error.cause
+          })
+        )
+      ))
 
   const lookup = (host: Host.DomainName, options?: LookupOptions) =>
     impl.lookup(host, options?.family).pipe(
@@ -691,10 +745,14 @@ export const make = (impl: {
         )
       ),
     reverse: (address) =>
-      impl.reverse(address).pipe(
+      reverseNames(address).pipe(
         Effect.flatMap((names) => {
           const hostname = NetAddress.formatIp(address)
-          const hosts = Arr.dedupe(Arr.filterMap(names, Host.domainNameFromString))
+          // Only ASCII names: `domainNameFromString` would convert UTF-8 labels
+          // to a different, `xn--` name.
+          const hosts = Arr.dedupe(
+            Arr.filterMap(names.filter((name) => asciiName.test(name)), Host.domainNameFromString)
+          )
           return Arr.isReadonlyArrayNonEmpty(hosts)
             ? Effect.succeed(hosts)
             : names.length > 0
