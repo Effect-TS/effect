@@ -7,6 +7,7 @@
  * namespace bindings only; none of these classes serve a public route, and any
  * direct `fetch` of an object is rejected.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { DurableObject } from "cloudflare:workers"
@@ -37,6 +38,7 @@ const notExposed = (className: string) => () => {
  * Object handles requests or alarms. The initializer is shared by all four
  * Durable Object classes and runs at most once per Worker isolate.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -65,6 +67,7 @@ let initialization: {
  * failure is cached and propagated to every waiter in the isolate. The
  * returned function joins the same readiness state from Worker handlers.
  *
+ * @stability unstable
  * @category initialization
  * @since 4.0.0
  */
@@ -123,6 +126,7 @@ const blockOnInitialization = (
  * per wake. Each build gets a `DurableObjectSqlClient` on this object's SQLite
  * storage; tables whose names start with `cluster_` are reserved for the mailbox.
  *
+ * @stability unstable
  * @category durable objects
  * @since 4.0.0
  */
@@ -187,6 +191,7 @@ export class ClusterEntity extends DurableObject<unknown> {
  * before handlers are looked up in the module-level registry and built once
  * per wake.
  *
+ * @stability unstable
  * @category durable objects
  * @since 4.0.0
  */
@@ -255,6 +260,7 @@ export class ClusterWorkflow extends DurableObject<unknown> {
  * leases so an item whose worker died is redelivered. Requests and alarms wait
  * for the registered {@link setInitializer} callback first.
  *
+ * @stability unstable
  * @category durable objects
  * @since 4.0.0
  */
@@ -324,6 +330,7 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
  * and alarms wait for the registered {@link setInitializer} callback before
  * consulting the singleton registry.
  *
+ * @stability unstable
  * @category durable objects
  * @since 4.0.0
  */
