@@ -274,12 +274,13 @@ export const protocol = McpProtocol.make({
       "tools/list": Effect.fnUntraced(function*() {
         const request = yield* PublicMcpSchema.McpServerClient
         const tools = yield* core.tools.list(McpProtocol.profileFromClient(request))
+
         return McpSchema.ListToolsResult.make({
           tools: tools.map((tool) =>
             McpSchema.Tool.make({
               name: tool.name,
               description: tool.description,
-              inputSchema: tool.inputSchema,
+              inputSchema: McpProtocol.projectLegacyToolInputSchema(tool.inputSchema),
               annotations: tool.title === undefined && tool.annotations === undefined
                 ? undefined
                 : McpSchema.ToolAnnotations.make({

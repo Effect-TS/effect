@@ -257,7 +257,7 @@ export const protocol = McpProtocol.make({
                 McpSchema.Tool.make({
                   name: tool.name,
                   description: tool.description,
-                  inputSchema: tool.inputSchema
+                  inputSchema: McpProtocol.projectLegacyToolInputSchema(tool.inputSchema)
                 })
               )
             })

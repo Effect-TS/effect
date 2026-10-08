@@ -218,7 +218,7 @@ export class Initialize extends Rpc.make("initialize", {
 const ToolJsonSchema = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
-    properties: optional(Schema.Record(Schema.String, JsonObject)),
+    properties: optional(Schema.Record(Schema.String, Schema.Union([JsonObject, Schema.Boolean]))),
     required: optional(Schema.Array(Schema.String))
   }),
   [Schema.JsonObject]
