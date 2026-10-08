@@ -236,25 +236,29 @@ const make = Effect.gen(function*() {
     const inputSinks = new Map<number, Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError>>()
     const outputStreams = new Map<number, Stream.Stream<Uint8Array, PlatformError.PlatformError>>()
 
-    const setupInput = Effect.fnUntraced(function*(
+    const setupInput = (
       fd: number,
       nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
       stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> | undefined
-    ) {
-      let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
-      if (nodeStream && "write" in nodeStream) {
-        sink = NodeSink.fromWritable({
-          evaluate: () => nodeStream,
-          onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
-        })
-      }
+    ) =>
+      Effect.suspend(() => {
+        let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
+        if (nodeStream && "write" in nodeStream) {
+          sink = NodeSink.fromWritable({
+            evaluate: () => nodeStream,
+            onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
+          })
+        }
 
-      if (stream) {
-        yield* Effect.forkScoped(Stream.run(stream, sink))
-      }
+        if (stream) {
+          return Effect.map(Effect.forkScoped(Stream.run(stream, sink)), () => {
+            inputSinks.set(fd, sink)
+          })
+        }
 
-      inputSinks.set(fd, sink)
-    })
+        inputSinks.set(fd, sink)
+        return Effect.void
+      })
 
     const setupOutput = (
       fd: number,
