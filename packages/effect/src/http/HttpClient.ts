@@ -1211,6 +1211,13 @@ export const withRateLimiter: {
     }
     return budget
   }
+  // milliseconds until the reported budget covers `tokens`
+  const budgetWait = (key: string, tokens: number, now: number): number => {
+    const budget = getBudget(key)
+    // requests sent after the observed one are not reflected in its count
+    const available = budget.remaining - (budget.sent - budget.observed)
+    return budget.resetAt > now && available < tokens ? budget.resetAt - now : 0
+  }
 
   const onResponse = options.disableResponseInspection
     ? undefined
@@ -1243,20 +1250,21 @@ export const withRateLimiter: {
     const clock = fiber.getRef(Clock)
     const key = resolveKey(request)
     const tokens = Math.max(resolveTokens(request), 1)
-    let sent = 0
-    if (onResponse !== undefined) {
-      const budget = getBudget(key)
-      const now = clock.currentTimeMillisUnsafe()
-      // requests sent after the observed one are not reflected in its count
-      const available = budget.remaining - (budget.sent - budget.observed)
-      if (budget.resetAt > now && available < tokens) {
-        return Effect.flatMap(
-          Effect.sleep(Duration.millis(budget.resetAt - now)),
-          () => loop(effect, request, retries)
-        )
-      }
-      sent = budget.sent += tokens
+    const wait = onResponse === undefined ? 0 : budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
+    if (wait > 0) {
+      return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => loop(effect, request, retries))
     }
+    // re-checked after the limiter delays, as responses may exhaust the budget meanwhile
+    let sent = 0
+    const reserve: Effect.Effect<void> = Effect.suspend(() => {
+      const wait = budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
+      if (wait > 0) {
+        return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => reserve)
+      }
+      sent = getBudget(key).sent += tokens
+      return Effect.void
+    })
+    const send = onResponse === undefined ? effect : Effect.andThen(reserve, effect)
     const current = getState(key)
     const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
@@ -1307,7 +1315,7 @@ export const withRateLimiter: {
           R
         > => {
           const runRequest = (adaptive: RateLimiter.AdaptiveConsumeResult | undefined) => {
-            const request = Effect.matchEffect(effect, {
+            const request = Effect.matchEffect(send, {
               onSuccess(response) {
                 return Effect.flatMap(inspectResponse(response, adaptive), (retryAfter) => {
                   if (response.status !== 429 || !canRetry) return Effect.succeed(response)
