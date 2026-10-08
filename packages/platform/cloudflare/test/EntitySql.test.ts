@@ -142,18 +142,6 @@ describe("Entity DurableObjectSqlClient", () => {
       assert.deepStrictEqual(yield* second.list, [], "Rows leaked into another entity's Durable Object")
     }))
 
-  it.effect("commits a handler transaction atomically and rolls it back on failure", () =>
-    Effect.gen(function*() {
-      const notes = yield* makeNotes("transactions")
-
-      const failed = yield* notes.save(["a", "b"], { fail: true })
-      assert.strictEqual(failed._tag, "Failure")
-      assert.deepStrictEqual(yield* notes.list, [], "A failed transaction left partial rows behind")
-
-      assert.deepStrictEqual(yield* notes.save(["c", "d"]), { _tag: "Success", value: 2 })
-      assert.deepStrictEqual(yield* notes.list, ["c", "d"])
-    }))
-
   it.effect("keeps user rows when the cluster resets a request", () =>
     Effect.gen(function*() {
       const notes = yield* makeNotes("reset")

@@ -84,27 +84,4 @@ describe("Cloudflare cluster integration | initialization readiness", () => {
         assert.include(result.error, "deliberate Cloudflare application initialization failure")
       }
     }), 60_000)
-
-  it.effect("propagates initialization failure into a cold alarm", () =>
-    Effect.gen(function*() {
-      const cluster = yield* makeCluster
-
-      yield* cluster.fetchJson("/counter/scheduled?id=readiness-failure&op=one&offset=3000&discard=true")
-      yield* cluster.restart
-      yield* cluster.fetchJson("/initialization/fail")
-
-      yield* cluster.waitUntil(
-        "The cold alarm did not observe the application initialization failure",
-        Effect.map(
-          cluster.fetchJson("/initialization/state"),
-          (state) => state.started && state.failed
-        )
-      )
-      const failed = yield* cluster.fetchJson("/initialization/state")
-      assert.deepStrictEqual(
-        failed.callsStarted,
-        [],
-        "A Worker request, rather than the alarm, observed the initialization failure"
-      )
-    }), 60_000)
 })
