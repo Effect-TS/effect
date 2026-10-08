@@ -43,7 +43,11 @@ import * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 import * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
 import { setWithEviction } from "./internal/boundedMap.ts"
 import * as Internal from "./internal/clusterName.ts"
-import { registerEntity as registerEntityHandler, unregisterEntity } from "./internal/entityRegistry.ts"
+import {
+  defaultKeepAliveHeartbeatMillis,
+  registerEntity as registerEntityHandler,
+  unregisterEntity
+} from "./internal/entityRegistry.ts"
 import { CurrentEntityName, CurrentReplyRegistry } from "./internal/entityReply.ts"
 import { decodeInvokeResult, decodeReplyFor, encodeRequest } from "./internal/entityWire.ts"
 import { registerSingleton as registerSingletonHandler, unregisterSingleton } from "./internal/singletonRegistry.ts"
@@ -183,9 +187,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     entities.set(entity.type, entity)
   }
   const clock = yield* Clock
-  const keepAliveHeartbeat = options.keepAliveHeartbeat === undefined
-    ? undefined
-    : Duration.toMillis(options.keepAliveHeartbeat)
+  const keepAliveHeartbeat = Duration.toMillis(options.keepAliveHeartbeat ?? defaultKeepAliveHeartbeatMillis)
   const requestTargets = new Map<string, { readonly stub: EntityStub; storageRequestId: string }>()
 
   const unknownEntity = (entity: Entity.Entity<any, any>) =>

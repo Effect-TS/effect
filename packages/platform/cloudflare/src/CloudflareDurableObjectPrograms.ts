@@ -21,11 +21,10 @@ import * as ShardId from "effect/cluster/ShardId"
 import * as Effect from "effect/Effect"
 import { decodeName, encodeName } from "./internal/clusterName.ts"
 import { makeEntityKeepAlive } from "./internal/entityKeepAlive.ts"
-import { getEntityRegistration } from "./internal/entityRegistry.ts"
+import { keepAliveHeartbeatMillis } from "./internal/entityRegistry.ts"
 import { makeEntityManager } from "./internal/entityRuntime.ts"
 import {
   armAlarm,
-  defaultKeepAliveHeartbeatMillis,
   earliestDeliverAt,
   ensureEntityStorage,
   loadEntityState,
@@ -155,9 +154,6 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
   const sql = state.storage.sql
   ensureEntityStorage(sql)
   const stored = loadEntityState(sql)
-  if (state.id.name !== undefined && decodeName(state.id.name) !== undefined) {
-    rememberEntityName(sql, state.id.name, stored)
-  }
   // An alarm wake may carry no `id.name`; fall back to the name stored by an
   // earlier activation, so heartbeat and `deliverAt` alarms still run.
   const entityName = state.id.name ?? stored.name ?? ""
@@ -165,19 +161,21 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
   if (name === undefined) {
     return yield* Effect.die(new Error("ClusterEntity requires a canonical entity Durable Object name"))
   }
-  const heartbeatMillis = () => getEntityRegistration(name.type)?.keepAliveHeartbeat ?? defaultKeepAliveHeartbeatMillis
-  const keepAlive = makeEntityKeepAlive(() => {
-    const namespace = exportedNamespace<{ readonly hold: () => Promise<void> }>(state, "ClusterEntity")
-    if (namespace === undefined) {
-      return Promise.reject(
-        new Error("CloudflareCluster: ClusterEntity export is unavailable for keep-alive")
-      )
-    }
-    return namespace.getByName(entityName).hold()
-  }, {
+  // Written only when it changes, so a repeat activation costs no write.
+  if (entityName !== stored.name) rememberEntityName(sql, entityName)
+  const keepAlive = makeEntityKeepAlive({
+    startHold: () => {
+      const namespace = exportedNamespace<{ readonly hold: () => Promise<void> }>(state, "ClusterEntity")
+      if (namespace === undefined) {
+        return Promise.reject(
+          new Error("CloudflareCluster: ClusterEntity export is unavailable for keep-alive")
+        )
+      }
+      return namespace.getByName(entityName).hold()
+    },
     wanted: stored.keepAlive,
     persist: (wanted) => manager.saveKeepAlive(wanted),
-    retryCapMillis: heartbeatMillis
+    retryCapMillis: () => keepAliveHeartbeatMillis(name.type)
   })
   const manager = makeEntityManager({
     storage: state.storage,
@@ -194,16 +192,16 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
         readonly deliverReply: (requestId: string, reply: string) => Promise<boolean>
       }>(state, "ClusterEntity")
   })
+  // A stored keep-alive flag arms the heartbeat too. That repairs the chain
+  // after Cloudflare dropped an alarm whose retries all failed, or after a
+  // crash between the flag write and `setAlarm`. Arming at `now` on every
+  // activation would fire one wasted alarm per wake.
   const deliverAt = earliestDeliverAt(sql)
-  if (deliverAt !== undefined) {
-    yield* armAlarm(state.storage, deliverAt)
-  }
-  if (stored.keepAlive) {
-    // Repairs the heartbeat chain after Cloudflare dropped an alarm whose
-    // retries all failed, or after a crash between the flag write and
-    // `setAlarm`. Arming at `now` on every activation would fire one wasted
-    // alarm per wake.
-    yield* armAlarm(state.storage, Date.now() + heartbeatMillis())
+  const alarmAt = stored.keepAlive
+    ? Math.min(deliverAt ?? Infinity, Date.now() + keepAliveHeartbeatMillis(name.type))
+    : deliverAt
+  if (alarmAt !== undefined) {
+    yield* armAlarm(state.storage, alarmAt)
   }
   const program: ClusterEntityProgram = {
     alarm: () => manager.alarm,

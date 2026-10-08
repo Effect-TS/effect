@@ -12,13 +12,6 @@ import * as Result from "effect/Result"
 /** @internal */
 export type EntityAlarm = Pick<DurableObjectStorage, "getAlarm" | "setAlarm">
 
-/**
- * Default interval of the keep-alive heartbeat alarm.
- *
- * @internal
- */
-export const defaultKeepAliveHeartbeatMillis = 30_000
-
 type DeliverAtRow = {
   readonly deliver_at: number | null
 }
@@ -125,14 +118,8 @@ export const saveKeepAlive = (sql: SqlStorage, enabled: boolean): Effect.Effect<
     )
   })
 
-/**
- * Stores the encoded entity name when it differs from the stored one, so an
- * activation that already recorded it costs a read and no write.
- *
- * @internal
- */
-export const rememberEntityName = (sql: SqlStorage, name: string, stored: EntityState): void => {
-  if (stored.name === name) return
+/** @internal */
+export const rememberEntityName = (sql: SqlStorage, name: string): void => {
   sql.exec(
     `INSERT INTO cluster_entity_state (id, name) VALUES (0, ?)
      ON CONFLICT (id) DO UPDATE SET name = excluded.name`,
@@ -162,7 +149,7 @@ export const nextAlarmAt = (
     readonly isRunning: (requestId: string) => boolean
   }
 ): number | undefined => {
-  let next: number | undefined
+  let next = Infinity
   let heartbeat = loadEntityState(sql).keepAlive
   const rows = sql.exec<UnprocessedRow>(
     "SELECT request_id, deliver_at FROM cluster_messages WHERE processed = 0"
@@ -172,12 +159,10 @@ export const nextAlarmAt = (
       heartbeat = true
       continue
     }
-    const at = row.deliver_at === null ? options.now : Math.max(row.deliver_at, options.now)
-    if (next === undefined || at < next) next = at
+    next = Math.min(next, row.deliver_at === null ? options.now : Math.max(row.deliver_at, options.now))
   }
   if (heartbeat) {
-    const at = options.now + options.heartbeatMillis
-    if (next === undefined || at < next) next = at
+    next = Math.min(next, options.now + options.heartbeatMillis)
   }
-  return next
+  return Number.isFinite(next) ? next : undefined
 }

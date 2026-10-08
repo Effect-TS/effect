@@ -3,15 +3,18 @@
  * state:
  *
  * - `wanted` mirrors the persisted `keep_alive` flag that a restart restores.
- * - `holding` tracks whether the self `hold()` RPC is in flight.
+ * - `hold` is the fiber running the self `hold()` RPC while one is in flight.
  * - The holder count belongs to the current handler build only. Persisting it
  *   would break on restart: an `EntityResource` re-acquired by the rebuild
  *   adds a holder on top of the stored count, which then never returns to 0.
  *
  * @internal
  */
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import type * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
+import * as Schedule from "effect/Schedule"
 
 /** @internal */
 export interface EntityKeepAlive {
@@ -19,7 +22,6 @@ export interface EntityKeepAlive {
   readonly update: (enabled: boolean) => Effect.Effect<void>
   /** The body of the self `hold()` RPC; resolves once the hold is released. */
   readonly await: Effect.Effect<void>
-  readonly holderCount: () => number
   /** Forgets the holders of a closed handler build. The hold stays. */
   readonly resetHolders: () => void
   /** Starts the self hold when keep-alive is wanted and none is in flight. */
@@ -28,73 +30,63 @@ export interface EntityKeepAlive {
 
 /** @internal */
 export interface EntityKeepAliveOptions {
+  /** Starts the self `hold()` RPC; the promise settles when the hold ends. */
+  readonly startHold: () => Promise<void>
   /** The persisted flag, read when the Durable Object starts. */
-  readonly wanted?: boolean | undefined
+  readonly wanted: boolean
   /**
    * Persists the flag. Runs in a forked fiber with the value current at that
    * point, and the hold is released only after a `false` write completes.
    */
-  readonly persist?: ((wanted: boolean) => Effect.Effect<void>) | undefined
+  readonly persist: (wanted: boolean) => Effect.Effect<void>
   /** Upper bound of the retry delay after a failed hold RPC. */
-  readonly retryCapMillis?: (() => number) | undefined
+  readonly retryCapMillis: () => number
 }
 
 /** @internal */
-export const makeEntityKeepAlive = (
-  startHold: () => Promise<void>,
-  options?: EntityKeepAliveOptions
-): EntityKeepAlive => {
+export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeepAlive => {
   const latch = Latch.makeUnsafe(true)
   let holders = 0
-  let wanted = options?.wanted ?? false
-  let holding = false
-  let generation = 0
+  let wanted = options.wanted
+  let hold: Fiber.Fiber<void, unknown> | undefined
 
-  const attempt = (current: number, failures: number): void => {
-    startHold().then(
-      () => {
-        if (current === generation) holding = false
-      },
-      (error) => {
-        if (current !== generation) return
-        // A safeguard only: production probes never saw a rejected hold.
-        const cap = options?.retryCapMillis?.() ?? 30_000
-        const delay = Math.random() * Math.min(cap, 100 * 2 ** failures)
-        void Effect.runFork(Effect.logWarning("Entity keep-alive hold failed, retrying", error))
-        setTimeout(() => {
-          if (current === generation) attempt(current, failures + 1)
-        }, delay)
-      }
+  // A safeguard only: production probes never saw a rejected hold.
+  const runHold = Effect.tryPromise(() => options.startHold()).pipe(
+    Effect.tapError((error) => Effect.logWarning("Entity keep-alive hold failed, retrying", error)),
+    Effect.retry(
+      Schedule.exponential(100).pipe(
+        Schedule.modifyDelay(({ duration }) =>
+          Effect.succeed(Duration.min(duration, Duration.millis(options.retryCapMillis())))
+        ),
+        Schedule.jittered
+      )
     )
-  }
+  )
 
   const restore = () => {
-    if (!wanted || holding) return
-    holding = true
+    if (!wanted || hold !== undefined) return
     latch.closeUnsafe()
-    attempt(++generation, 0)
+    const fiber = Effect.runFork(runHold)
+    hold = fiber
+    fiber.addObserver(() => {
+      if (hold === fiber) hold = undefined
+    })
   }
 
   const release = () => {
-    if (!holding) return
-    holding = false
-    generation++
+    if (hold === undefined) return
+    hold.interruptUnsafe()
+    hold = undefined
     latch.openUnsafe()
   }
 
   const setWanted = (next: boolean) => {
     if (wanted === next) return
     wanted = next
-    if (next) restore()
-    const persist = options?.persist
-    if (persist === undefined) {
-      if (!next) release()
-      return
-    }
     // Mailbox writes wait for an open user transaction, so writing inline
     // would deadlock `Entity.keepAlive` called inside `withTransaction`.
-    void Effect.runFork(
-      Effect.suspend(() => persist(wanted)).pipe(
+    Effect.runFork(
+      Effect.suspend(() => options.persist(wanted)).pipe(
         Effect.ensuring(Effect.sync(() => {
           if (!wanted) release()
         }))
@@ -107,7 +99,7 @@ export const makeEntityKeepAlive = (
       if (enabled) {
         holders++
         setWanted(true)
-        // A hold that ended without a release is started again.
+        // Also restarts a hold that ended without a release.
         restore()
         return
       }
@@ -120,7 +112,6 @@ export const makeEntityKeepAlive = (
   return {
     update,
     await: latch.await,
-    holderCount: () => holders,
     resetHolders: () => {
       holders = 0
     },
