@@ -302,20 +302,25 @@ export const raceAll = <
   // Count the race as one activity of the enclosing workflow from the cached
   // winner lookup until the winner is recorded, so a parked sibling cannot
   // suspend the run before the continuation starts.
-  return Workflow.wrapActivityResult(
-    Effect.gen(function*() {
-      const engine = yield* EngineTag
-      const exit = yield* engine.deferredResult(deferred)
-      if (Option.isSome(exit)) {
-        return yield* exit.value
-      }
-      return yield* into(
-        withRaceActivityState(Effect.raceAll(options.effects)),
-        deferred
-      )
-    }),
-    () => false
-  )
+  return Effect.suspend(() => {
+    const race = { suspended: false }
+    return Workflow.wrapActivityResult(
+      Effect.exit(Effect.gen(function*() {
+        const engine = yield* EngineTag
+        const exit = yield* engine.deferredResult(deferred)
+        if (Option.isSome(exit)) {
+          return yield* exit.value
+        }
+        return yield* into(
+          withRaceActivityState(Effect.raceAll(options.effects), race),
+          deferred
+        )
+      })),
+      // When every arm parked, release the hold and let the enclosing activities
+      // finish before suspending. External preemption does not wait.
+      () => race.suspended
+    ).pipe(Effect.flatten)
+  })
 }
 
 /**
@@ -324,7 +329,8 @@ export const raceAll = <
  * enclosing workflow. Awaited and completed deferred names stay shared.
  */
 const withRaceActivityState = <A, E, R>(
-  effect: Effect.Effect<A, E, R>
+  effect: Effect.Effect<A, E, R>,
+  race: { suspended: boolean }
 ): Effect.Effect<A, E, R | WorkflowInstance> =>
   Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
@@ -335,7 +341,9 @@ const withRaceActivityState = <A, E, R>(
     return Effect.ensuring(
       Effect.provideService(effect, InstanceTag, local),
       Effect.sync(() => {
-        if (local.suspended) instance.suspended = true
+        if (!local.suspended) return
+        race.suspended = true
+        instance.suspended = true
       })
     )
   })
