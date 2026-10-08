@@ -75,7 +75,8 @@ export const Persisted = Context.Reference<boolean>("effect/cluster/ClusterSchem
  *
  * Stream chunks are saved and delivered immediately, even if the transaction
  * later rolls back. A handler returning a `Deferred` commits before its reply
- * is saved. Non-persisted requests deliver replies as soon as the handler exits.
+ * is saved. Non-persisted requests save no reply; successes are delivered when
+ * the handler exits, and failures after the transaction exits.
  *
  * @stability unstable
  * @category services

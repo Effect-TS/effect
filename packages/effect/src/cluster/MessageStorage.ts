@@ -210,14 +210,9 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    * Wraps requests in storage transactions.
    *
    * `WithExit` replies saved in a transaction notify callers after the outermost
-   * commit. Persisted `WithTransaction` requests save and deliver handler failures
-   * after clean rollback, and mark requests processed only after either outcome.
-   * If commit reports failure, a stored success reply is recovered. Otherwise,
-   * commit or rollback failures retry the request without delivering a reply.
-   *
-   * Stream chunks notify callers immediately. A handler returning a `Deferred`
-   * commits before its reply is saved. Non-persisted requests save no reply
-   * and deliver it as soon as the handler exits.
+   * commit; stream chunks notify immediately. Replies saved in a failed
+   * transaction must be discarded. The wrapper may fail only with the wrapped
+   * effect's own failure or a defect.
    */
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>

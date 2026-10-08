@@ -269,9 +269,9 @@ export const make = Effect.fnUntraced(function*<
                 // They will be retried when the entity is restarted.
                 // Also, if the request is uninterruptible, we ignore the
                 // interrupt.
+                const persisted = storageEnabled && Context.get(request.message.annotations, Persisted)
                 if (
-                  storageEnabled &&
-                  Context.get(request.message.annotations, Persisted) &&
+                  persisted &&
                   Exit.hasInterrupts(response.exit) &&
                   (isShuttingDown || isUninterruptibleForServer(request.message.annotations))
                 ) {
@@ -313,6 +313,12 @@ export const make = Effect.fnUntraced(function*<
                 if (!transaction) return respond
                 const exit = response.exit
 
+                if (!persisted) {
+                  if (Exit.isSuccess(exit)) return respond
+                  transaction.settle = () => respond
+                  return Effect.void
+                }
+
                 if (Exit.isSuccess(exit)) {
                   transaction.settle = (outcome) =>
                     Exit.isSuccess(outcome) ? complete : Effect.flatMap(
@@ -329,7 +335,11 @@ export const make = Effect.fnUntraced(function*<
                   return Effect.orDie(save)
                 }
                 transaction.settle = (outcome) =>
-                  Exit.isSuccess(outcome) || Equal.equals(outcome.cause, exit.cause)
+                  // Transaction wrappers can add defects, but not typed errors; interrupts may be repeated.
+                  Exit.isSuccess(outcome) || !outcome.cause.reasons.some((reason) =>
+                      Cause.isDieReason(reason) &&
+                      !exit.cause.reasons.some((r) => Cause.isDieReason(r) && r.defect === reason.defect)
+                    )
                     ? respond
                     : restartFrom(outcome.cause)
                 return Effect.void
@@ -643,8 +653,6 @@ export const make = Effect.fnUntraced(function*<
   ): Parameters<EntityState["write"]>[2] => {
     const onTransaction = !Context.get(entry.message.annotations, WithTransaction)
       ? undefined
-      : !Context.get(entry.message.annotations, Persisted)
-      ? options.storage.withTransaction
       : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         // Interrupts during commit must not hide the outcome from settle.
         Effect.uninterruptibleMask((restore) => {
