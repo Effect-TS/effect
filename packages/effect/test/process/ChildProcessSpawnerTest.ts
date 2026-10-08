@@ -950,6 +950,33 @@ export const suite = (
               })
           )
 
+          it.effect("should report a write failure to a later reader without an uncaught error", () =>
+            Effect.gen(function*() {
+              const uncaught: Array<unknown> = []
+              const onUncaught = (error: unknown) => uncaught.push(error)
+              yield* Effect.acquireRelease(
+                Effect.sync(() => process.on("uncaughtException", onUncaught)),
+                () => Effect.sync(() => process.off("uncaughtException", onUncaught))
+              )
+
+              // The child closes fd3 before signalling readiness on stdout
+              const handle = yield* ChildProcess.make("sh", ["-c", "exec 3>&-; echo ready; exec sleep 10"], {
+                additionalFds: { fd3: { type: "duplex" } }
+              })
+              yield* Stream.runDrain(Stream.take(handle.stdout, 1))
+
+              // Write before anyone reads fd3, and start reading only later
+              const writeError = yield* Effect.flip(Stream.run(Stream.make(encode("request")), handle.getInputFd(3)))
+              yield* TestClock.withLive(Effect.sleep("100 millis"))
+              const readError = yield* Effect.flip(
+                Stream.runDrain(handle.getOutputFd(3)).pipe(Effect.timeout("2 seconds"), TestClock.withLive)
+              )
+
+              assert.strictEqual(writeError._tag, "PlatformError")
+              assert.deepStrictEqual(uncaught, [])
+              assert.strictEqual(readError._tag, "PlatformError")
+            }))
+
           it.effect("should keep a duplex fd duplex when targeted by pipeTo", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make("echo", ["ping"]).pipe(
