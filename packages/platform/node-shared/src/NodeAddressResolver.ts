@@ -21,16 +21,11 @@ import * as Os from "node:os"
  * Looks up the IPv6 scope ID of a network interface with
  * `os.networkInterfaces()`.
  *
- * **Details**
- *
- * Returns `None` for interfaces that do not exist or have no IPv6 address with
- * a scope ID, and fails when the interfaces cannot be listed.
- *
  * @stability experimental
  * @category resolving
  * @since 4.0.0
  */
-export const scopeId = (name: string): Effect.Effect<Option.Option<number>, NetAddress.NetAddressError> =>
+export const scopeId: AddressResolver.ScopeIdLookup = (name) =>
   Effect.try({
     try: () =>
       Option.fromUndefinedOr(NetAddress.scopeIdsFromInterfaces([[name, Os.networkInterfaces()[name]]]).get(name)),

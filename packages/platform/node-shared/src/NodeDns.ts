@@ -1,21 +1,14 @@
 /**
- * Node.js implementation of Effect's `Dns` service, and `node:dns` building
- * blocks shared with other runtimes.
+ * Node.js implementation of Effect's `Dns` service.
  *
- * `lookup` resolves addresses with `dns.lookup`, which calls the operating
- * system resolver (`getaddrinfo`) and therefore also reads the hosts file.
- * `makeResolver` sends record queries and reverse lookups with pooled
- * `dns.Resolver` instances, each used by one operation at a time, so
- * interrupting a query cancels it. Records whose data cannot be represented,
- * such as names that are not valid `Host.DomainName` values, are skipped. `make`
- * combines both into the Node.js `Dns` service; other runtimes combine them
- * with their own lookups or corrections.
- *
- * **Gotchas**
- *
- * Node.js decodes each byte of TXT and CAA character strings as one Latin-1
- * character. `make` decodes those bytes as UTF-8, but `makeResolver` returns
- * strings as the runtime's `node:dns` decodes them.
+ * Address lookups use `dns.lookup`, which calls the operating system resolver
+ * (`getaddrinfo`) and therefore also reads the hosts file. Record queries and
+ * reverse lookups send DNS queries with pooled `dns.Resolver` instances, each
+ * used by one operation at a time, so interrupting a query cancels it. Records
+ * whose data cannot be represented, such as names that are not valid
+ * `Host.DomainName` values, are skipped. Node.js decodes each byte of TXT and
+ * CAA character strings as one Latin-1 character; this service decodes those
+ * bytes as UTF-8.
  *
  * @stability experimental
  * @since 4.0.0
@@ -31,7 +24,7 @@ import * as NetAddress from "effect/net/NetAddress"
 import * as NodeDns from "node:dns"
 
 /**
- * Options for `make` and `makeResolver`.
+ * Options for the Node.js `Dns` service.
  *
  * **Details**
  *
@@ -228,34 +221,16 @@ export const lookup = (
     )
   ))
 
-/**
- * Record queries and reverse lookups sent with `dns.Resolver`.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface Resolver {
-  readonly resolve: (name: string, type: Dns.RecordType) => Effect.Effect<Array<Dns.DnsRecord>, Dns.DnsError>
-  readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<Array<Host.DomainName>, Dns.DnsError>
-}
-
 const maxIdleResolvers = 8
 
 /**
- * Creates a `Resolver` backed by the runtime's `node:dns` module.
+ * Record queries and reverse lookups backed by the runtime's `node:dns` module,
+ * returning TXT and CAA character strings as the runtime decodes them. Shared
+ * with `BunDns`.
  *
- * **Details**
- *
- * Names in records are fully qualified, and character strings in TXT and CAA
- * records are returned as the runtime decodes them. Pass the operations to
- * `Dns.make`, together with a lookup, to build a `Dns` service.
- *
- * @stability experimental
- * @category constructors
- * @since 4.0.0
+ * @internal
  */
-export const makeResolver = (options?: Options): Resolver => {
+export const makeResolver = (options?: Options) => {
   const resolverOptions: NodeDns.ResolverOptions = {
     ...(options?.timeout !== undefined && { timeout: Duration.toMillis(options.timeout) }),
     ...(options?.tries !== undefined && { tries: options.tries })
@@ -310,11 +285,11 @@ export const makeResolver = (options?: Options): Resolver => {
       })
 
   return {
-    resolve: (name, type) =>
+    resolve: (name: string, type: Dns.RecordType): Effect.Effect<Array<Dns.DnsRecord>, Dns.DnsError> =>
       withResolver("resolve", name, type, (resolver) => queries[type](resolver, name)).pipe(
         Effect.flatMap((thunks) => convert(thunks, invalidResponse("resolve", name, type)))
       ),
-    reverse: (address) => {
+    reverse: (address: NetAddress.IpAddress): Effect.Effect<Array<Host.DomainName>, Dns.DnsError> => {
       const hostname = NetAddress.formatIp(address)
       return withResolver("reverse", hostname, undefined, (resolver) => resolver.resolvePtr(Dns.reverseName(address)))
         .pipe(

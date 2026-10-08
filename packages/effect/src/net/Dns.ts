@@ -599,13 +599,7 @@ export class Dns extends Context.Service<Dns, {
 }>()("effect/net/Dns") {}
 
 const notFound = (method: DnsError["method"], hostname: string, recordType?: RecordType) =>
-  Effect.fail(
-    new DnsError(
-      recordType === undefined
-        ? { reason: "NotFound", method, hostname }
-        : { reason: "NotFound", method, hostname, recordType }
-    )
-  )
+  Effect.fail(new DnsError({ reason: "NotFound", method, hostname, recordType }))
 
 /**
  * Creates a `Dns` service from platform resolver operations.

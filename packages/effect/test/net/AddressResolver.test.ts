@@ -15,7 +15,7 @@ const zone = Dns.layerStatic({
   }
 })
 
-const resolver = (options?: AddressResolver.Options) =>
+const resolver = (options?: AddressResolver.MakeOptions) =>
   Effect.service(Dns.Dns).pipe(
     Effect.map((dns) => AddressResolver.make(dns, options)),
     Effect.provide(zone),

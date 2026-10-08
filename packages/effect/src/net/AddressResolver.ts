@@ -72,23 +72,35 @@ export interface ResolveOptions {
 }
 
 /**
- * Options for creating an `AddressResolver`.
+ * Looks up the IPv6 scope ID of a network interface by name.
  *
  * **Details**
  *
- * `scopeId` returns the IPv6 scope ID of a network interface name and is called
- * whenever an IPv6 literal with a named zone such as `fe80::1%eth0` is
- * resolved, so interfaces added or recreated while the program runs are found.
- * Without it, only numeric zones such as `fe80::1%2` are supported.
+ * Returns `None` for interfaces that do not exist or have no IPv6 scope ID, and
+ * fails when the interfaces cannot be listed.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export interface Options {
-  readonly scopeId?:
-    | ((name: string) => Effect.Effect<Option.Option<number>, NetAddress.NetAddressError>)
-    | undefined
+export type ScopeIdLookup = (name: string) => Effect.Effect<Option.Option<number>, NetAddress.NetAddressError>
+
+/**
+ * Options for creating an `AddressResolver`.
+ *
+ * **Details**
+ *
+ * `scopeId` is called whenever an IPv6 literal with a named zone such as
+ * `fe80::1%eth0` is resolved, so interfaces added or recreated while the
+ * program runs are found. Without it, only numeric zones such as `fe80::1%2`
+ * are supported.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface MakeOptions {
+  readonly scopeId?: ScopeIdLookup | undefined
 }
 
 const inFamily = (
@@ -125,7 +137,7 @@ const inFamily = (
  * @category constructors
  * @since 4.0.0
  */
-export const make = (dns: Dns.Dns["Service"], options?: Options): AddressResolver["Service"] => {
+export const make = (dns: Dns.Dns["Service"], options?: MakeOptions): AddressResolver["Service"] => {
   const scopeId = options?.scopeId
 
   const fromLiteral = (
@@ -167,5 +179,5 @@ export const make = (dns: Dns.Dns["Service"], options?: Options): AddressResolve
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options?: Options): Layer.Layer<AddressResolver, never, Dns.Dns> =>
+export const layer = (options?: MakeOptions): Layer.Layer<AddressResolver, never, Dns.Dns> =>
   Layer.effect(AddressResolver, Effect.map(Effect.service(Dns.Dns), (dns) => make(dns, options)))

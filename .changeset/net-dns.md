@@ -14,7 +14,7 @@ Add name resolution to `effect/net`:
 - `Dns` provides the `Dns` service: `lookup` for the addresses of a host name, `resolve` for DNS records, and `reverse` for the names of an address.
 - `Dns` adds DNS record values and a static resolver for tests.
 - `NodeDns`, `BunDns`, and `DenoDns` provide the `Dns` service for each runtime.
-- `NodeDns` exposes `lookup` and `makeResolver` as building blocks for other runtimes that implement `node:dns`.
+- `NodeDns` exposes `lookup`, an address lookup with `dns.lookup`, for other runtimes that implement `node:dns`.
 - `AddressResolver` provides the `AddressResolver` service, which resolves a `HostPort` into internet or socket addresses with `resolve`, using `Dns` for domain names.
 - `NodeAddressResolver`, `BunAddressResolver`, and `DenoAddressResolver` provide `AddressResolver` layers that look up named IPv6 zones such as `fe80::1%eth0` in the host's network interfaces each time they are resolved.
 - `Schema` adds `Port`, `DomainName`, `Host`, `HostPort`, `DnsRecord`, and `DnsRecordType`.
