@@ -657,6 +657,11 @@ describe("OpenAiLanguageModel", () => {
                         type: "function",
                         extra_content: extraContent,
                         function: { name: "TestTool", arguments: JSON.stringify({ input: "hello" }) }
+                      }, {
+                        id: "call_2",
+                        type: "function",
+                        extra_content: null,
+                        function: { name: "TestTool", arguments: JSON.stringify({ input: "world" }) }
                       }]
                     }
                   }]
@@ -683,6 +688,10 @@ describe("OpenAiLanguageModel", () => {
           type: "function",
           function: { name: "TestTool", arguments: JSON.stringify({ input: "hello" }) },
           extra_content: extraContent
+        }, {
+          id: "call_2",
+          type: "function",
+          function: { name: "TestTool", arguments: JSON.stringify({ input: "world" }) }
         }])
       }))
 
