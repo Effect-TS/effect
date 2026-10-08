@@ -30,6 +30,7 @@ const streamRuns = new Map<string, number>()
 
 const registration: EntityRegistration = {
   entity: Mailbox,
+  keepAliveHeartbeat: 30_000,
   build: Effect.succeed(Mailbox.of({
     Watch: ({ address }) => {
       streamRuns.set(address.entityId, (streamRuns.get(address.entityId) ?? 0) + 1)
