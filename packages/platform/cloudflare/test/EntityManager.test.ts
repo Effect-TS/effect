@@ -6,7 +6,7 @@ import type { EntityRegistration } from "@effect/platform-cloudflare/internal/en
 import { makeEntityManager } from "@effect/platform-cloudflare/internal/entityRuntime"
 import { ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
 import { afterAll, assert, beforeAll, describe, it } from "@effect/vitest"
-import { Context, Effect, type Fiber, Schema, Stream } from "effect"
+import { Context, Deferred, Effect, Fiber, Schema, Stream } from "effect"
 import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import { Rpc, RpcSchema } from "effect/rpc"
 import { TestClock } from "effect/testing"
@@ -54,7 +54,7 @@ const settle = Effect.promise(() => new Promise((resolve) => setTimeout(resolve,
 let requestCount = 0
 const nextRequestId = () => `0198bd72-6a80-72f1-8d87-${String(requestCount++).padStart(12, "0")}`
 
-const makeMailbox = Effect.fnUntraced(function*(entityId: string) {
+const makeMailbox = Effect.fnUntraced(function*(entityId: string, entityType = Mailbox.type) {
   const database = yield* Effect.acquireRelease(
     Effect.sync(() => new DatabaseSync(":memory:")),
     (database) => Effect.sync(() => database.close())
@@ -63,29 +63,30 @@ const makeMailbox = Effect.fnUntraced(function*(entityId: string) {
   ensureEntityStorage(storage.sql)
   const address = EntityAddress.make({
     shardId: ShardId.make("default", 1),
-    entityType: EntityType.make(Mailbox.type),
+    entityType: EntityType.make(entityType),
     entityId: EntityId.make(entityId)
   })
   const waitUntilFibers: Array<Fiber.Fiber<unknown>> = []
-  const manager = makeEntityManager({
-    storage: storage as unknown as DurableObjectStorage,
-    address,
-    entityName: `${Mailbox.type.length}:${Mailbox.type}${entityId}`,
-    keepAlive: makeEntityKeepAlive({
-      startHold: () => Promise.resolve(),
-      wanted: false,
-      persist: () => Effect.void,
-      retryCapMillis: () => 0
-    }),
-    waitUntil: (effect) => {
-      waitUntilFibers.push(Effect.runFork(effect))
-    },
-    getNamespace: () => undefined
-  })
+  const restart = () =>
+    makeEntityManager({
+      storage: storage as unknown as DurableObjectStorage,
+      address,
+      entityName: `${entityType.length}:${entityType}${entityId}`,
+      keepAlive: makeEntityKeepAlive({
+        startHold: () => Promise.resolve(),
+        wanted: false,
+        persist: () => Effect.void,
+        retryCapMillis: () => 0
+      }),
+      waitUntil: (effect) => {
+        waitUntilFibers.push(Effect.runFork(effect))
+      },
+      getNamespace: () => undefined
+    })
   const envelope = (tag: "Watch" | "Add" | "Get", payload: unknown = null, requestId = nextRequestId()) =>
     JSON.stringify({ _tag: "Request", requestId, address, tag, payload, headers: {} })
   const exitOf = (reply: string) => JSON.parse(reply).exit
-  return { storage, manager, envelope, exitOf, waitUntilFibers }
+  return { storage, manager: restart(), restart, envelope, exitOf, waitUntilFibers }
 })
 
 describe("EntityManager", () => {
@@ -131,6 +132,109 @@ describe("EntityManager", () => {
       const next = yield* manager.acknowledge(streamRequestId, chunk.id)
       assert.deepStrictEqual(JSON.parse(next[0]).values, [2])
     }))
+
+  for (const window of ["handler finalization", "terminal reply persistence"] as const) {
+    it.effect(
+      `does not replay cancellation during ${window} or after restart`,
+      () =>
+        Effect.gen(function*() {
+          const finalizing = yield* Deferred.make<void>()
+          const releaseFinalizer = yield* Deferred.make<void>()
+          const settlingAlarm = yield* Deferred.make<void>()
+          const releaseAlarm = yield* Deferred.make<void>()
+          let runs = 0
+          const entity = Entity.make(`CancellingMailbox-${window}`, [
+            Rpc.make("Watch", {
+              success: RpcSchema.Stream(Schema.Number, Schema.Never)
+            }).annotate(ClusterSchema.Persisted, true)
+          ])
+          const handlers: EntityRegistration = {
+            entity,
+            keepAliveHeartbeat: 30_000,
+            build: Effect.succeed(entity.of({
+              Watch: () => {
+                runs++
+                // A replay finishes immediately so a regression cannot leave
+                // another detached stream waiting for acknowledgement.
+                if (runs > 1) return Stream.empty
+                return Stream.make(1).pipe(
+                  Stream.concat(Stream.never),
+                  Stream.ensuring(Effect.andThen(
+                    Deferred.succeed(finalizing, undefined),
+                    Deferred.await(releaseFinalizer)
+                  ))
+                )
+              }
+            })),
+            options: undefined,
+            context: Context.empty()
+          }
+          yield* Effect.acquireRelease(
+            Effect.sync(() => assert.isTrue(registerEntity(entity.type, handlers))),
+            () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+          )
+          const { envelope, manager, restart, storage } = yield* makeMailbox(window, entity.type)
+          const requestId = nextRequestId()
+          const first = yield* manager.invoke(envelope("Watch", null, requestId), false)
+          assert.strictEqual(first._tag === "Success" ? JSON.parse(first.replies[0])._tag : first._tag, "Chunk")
+          const heartbeat = storage.alarm!
+          let cleanupDeadline: number | undefined
+
+          const cancelling = yield* Effect.forkChild(manager.interrupt(requestId))
+          yield* Deferred.await(finalizing)
+          const getAlarm = storage.getAlarm.bind(storage)
+          let gated = false
+          storage.getAlarm = () => {
+            if (gated) return getAlarm()
+            gated = true
+            Deferred.doneUnsafe(settlingAlarm, Effect.void)
+            return Effect.runPromise(Effect.andThen(
+              Deferred.await(releaseAlarm),
+              Effect.promise(getAlarm)
+            ))
+          }
+          if (window === "handler finalization") {
+            // The original handler is still inside its interruption finalizer.
+            const alarm = yield* Effect.forkChild(manager.alarm)
+            yield* Deferred.await(settlingAlarm)
+            yield* Deferred.succeed(releaseAlarm, undefined)
+            yield* Deferred.succeed(releaseFinalizer, undefined)
+            yield* Fiber.join(alarm)
+          } else {
+            const setAlarm = storage.setAlarm.bind(storage)
+            storage.setAlarm = (deadline) => {
+              cleanupDeadline ??= deadline
+              return setAlarm(deadline)
+            }
+            yield* Deferred.succeed(releaseFinalizer, undefined)
+            yield* Deferred.await(settlingAlarm)
+            // The handler has ended, but its durable reply is still a chunk.
+            assert.strictEqual((yield* loadNextReply(storage.sql, requestId))?.kind, "Chunk")
+            // Race an alarm against the terminal write once cleanup releases
+            // the entry permit. Cleanup must not arm immediate replay meanwhile.
+            const alarm = yield* Effect.forkChild(manager.alarm, { startImmediately: true })
+            yield* Deferred.succeed(releaseAlarm, undefined)
+            yield* Fiber.join(alarm)
+          }
+          yield* Fiber.join(cancelling)
+          const reply = yield* loadNextReply(storage.sql, requestId)
+          assert.strictEqual(reply?.kind, "WithExit")
+          assert.strictEqual(JSON.parse(reply!.reply).exit._tag, "Failure")
+
+          // A fresh manager shares durable storage, but none of the old sessions.
+          yield* restart().alarm
+          assert.strictEqual(storage.alarm, null)
+          assert.strictEqual(runs, 1, "Cancellation allowed the persisted handler to execute again")
+          if (window === "terminal reply persistence" && cleanupDeadline !== undefined) {
+            assert.isAtLeast(
+              cleanupDeadline,
+              heartbeat,
+              "Cleanup armed replay before the interruption reply was durable"
+            )
+          }
+        })
+    )
+  }
 
   it.effect("skips an undecodable replay row and keeps serving requests", () =>
     Effect.gen(function*() {
