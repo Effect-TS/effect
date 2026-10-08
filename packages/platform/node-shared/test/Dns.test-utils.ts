@@ -121,6 +121,7 @@ $TTL 300
 @           IN NS    ns1.example.test.
 @           IN TXT   "gr\\195\\188\\195\\159"
 _svc._tcp   IN PTR   v2\\.0\\032Caf\\195\\169\\092x._svc._tcp.edge.test.
+_dot._tcp   IN PTR   printer\\..
 `
 
 /**
@@ -243,6 +244,12 @@ export const describeDnsServer = (
         assertRecords(yield* resolver.resolve(name("_svc._tcp.edge.test"), "PTR"), [
           Dns.makeRecordUnsafe("PTR", { host: "v2\\.0 Café\\\\x._svc._tcp.edge.test." })
         ])
+      }))
+
+    it.effect("keeps the root after a label ending with an escaped dot", () =>
+      Effect.gen(function*() {
+        const records = yield* (yield* dns()).resolve(name("_dot._tcp.edge.test"), "PTR")
+        assert.deepStrictEqual(records.map(Dns.formatRecord), ["PTR printer\\.."])
       }))
 
     it.effect("looks up the host names of an address, skipping invalid names", () =>
