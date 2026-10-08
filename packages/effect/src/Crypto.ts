@@ -66,7 +66,7 @@ export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
  * const program = Effect.gen(function*() {
  *   const crypto = yield* Crypto.Crypto
  *   const bytes = yield* crypto.randomBytes(16)
- *   const uuidv4 = yield* crypto.randomUUIDv4
+ *   const uuidv4 = yield* crypto.randomUUIDv4()
  *   const hash = yield* crypto.digest("SHA-256", bytes)
  *   return [bytes.length, uuidv4.length, hash.length]
  * })
@@ -148,14 +148,42 @@ export interface Crypto {
   randomShuffle<A>(elements: Iterable<A>): Effect.Effect<Array<A>>
 
   /**
-   * Generates a cryptographically secure UUIDv4 string.
+   * Generates a cryptographically secure UUIDv4.
+   *
+   * **Details**
+   *
+   * The default `"hex"` format returns a lowercase, hyphenated UUID string
+   * (36 characters), not a bare hexadecimal string. The `"bytes"` format
+   * returns the 16 UUID bytes, including the version and variant bits.
    */
-  readonly randomUUIDv4: Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv4(options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv4<Format extends "hex" | "bytes">(options: {
+    readonly format: Format
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError>
+  randomUUIDv4(options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Generates a cryptographically secure UUIDv7 string.
+   * Generates a cryptographically secure UUIDv7 using the `Clock` timestamp.
+   *
+   * **Details**
+   *
+   * The default `"hex"` format returns a lowercase, hyphenated UUID string
+   * (36 characters), not a bare hexadecimal string. The `"bytes"` format
+   * returns the 16 UUID bytes, including the timestamp, version and variant bits.
    */
-  readonly randomUUIDv7: Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv7(options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv7<Format extends "hex" | "bytes">(options: {
+    readonly format: Format
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError>
+  randomUUIDv7(options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError>
 
   /**
    * Generates a cryptographically secure ULID string.
@@ -293,10 +321,16 @@ export const make = (
         }
         return buffer
       }),
-    randomUUIDv4: Effect.sync(() => Uuid.v4String(randomBytesUnsafe(16))),
-    randomUUIDv7: Effect.clockWith((clock) =>
-      Effect.succeed(Uuid.v7String(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16)))
-    ),
+    randomUUIDv4: ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
+      Effect.sync(() => {
+        const bytes = Uuid.v4Bytes(randomBytesUnsafe(16))
+        return options?.format === "bytes" ? bytes : Uuid.stringify(bytes)
+      })) as Crypto["randomUUIDv4"],
+    randomUUIDv7: ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
+      Effect.clockWith((clock) => {
+        const bytes = Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16))
+        return Effect.succeed(options?.format === "bytes" ? bytes : Uuid.stringify(bytes))
+      })) as Crypto["randomUUIDv7"],
     randomULID: Effect.clockWith((clock) =>
       Effect.succeed(Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(10)))
     )
