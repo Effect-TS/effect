@@ -209,13 +209,11 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   /**
    * Wraps requests in storage transactions.
    *
-   * `WithExit` replies saved inside a transaction notify callers only after
-   * the outermost COMMIT. For persisted `WithTransaction` requests, handler
-   * failures are saved and delivered after a clean rollback. If COMMIT applied
-   * but reported failure, callers recover a stored terminal reply found after
-   * a successful handler. Otherwise, COMMIT or ROLLBACK failures replay the
-   * request without delivering a terminal reply. Request bookkeeping waits
-   * for the transaction outcome.
+   * `WithExit` replies saved in a transaction notify callers after the outermost
+   * commit. Persisted `WithTransaction` requests save and deliver handler failures
+   * after clean rollback, and mark requests processed only after either outcome.
+   * If commit reports failure, a stored success reply is recovered. Otherwise,
+   * commit or rollback failures retry the request without delivering a reply.
    *
    * Stream chunks notify callers immediately. A handler returning a `Deferred`
    * commits before its reply is saved. Non-persisted requests save no reply
@@ -571,8 +569,7 @@ export const make = (
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
       ...storage,
-      // Merge notifications on inner success; discard them on rollback.
-      // Only the outermost COMMIT notifies callers.
+      // Nested transactions defer notifications to the outermost commit.
       withTransaction: (effect) =>
         TransactionNotifications.use((outer) => {
           const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []

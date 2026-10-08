@@ -62,13 +62,11 @@ export const Persisted = Context.Reference<boolean>("effect/cluster/ClusterSchem
  * The default value is `false`. When `true`, entity handling wraps server
  * writes with the configured storage transaction.
  *
- * Persisted requests deliver terminal replies and complete bookkeeping only
- * after the transaction settles. Success replies are saved in the transaction
- * and delivered after COMMIT; failures are saved and delivered after a clean
- * rollback. If COMMIT applied but reported failure, callers recover a stored
- * terminal reply found after a successful handler. Otherwise, COMMIT or ROLLBACK
- * failures replay the request without delivering a terminal reply. Handlers
- * must tolerate reruns.
+ * Persisted requests deliver terminal replies and mark requests processed only
+ * after commit or clean rollback. Success replies are saved in the transaction;
+ * failures are saved after rollback. If commit reports failure, a stored success
+ * reply is recovered. Otherwise, commit or rollback failures retry the request
+ * without delivering a reply. Handlers must tolerate retries.
  *
  * **Gotchas**
  *

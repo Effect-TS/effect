@@ -313,16 +313,13 @@ export const make = Effect.fnUntraced(function*<
                 if (!transaction) return respond
                 const exit = response.exit
 
-                // Save success in the transaction; save failure after a clean
-                // rollback. Wrapper failures replay without completing the request.
                 if (Exit.isSuccess(exit)) {
                   transaction.settle = (outcome) =>
                     Exit.isSuccess(outcome) ? complete : Effect.flatMap(
                       hasStoredExit(request.message.envelope.requestId),
                       (committed) => {
                         if (!committed) return restartFrom(outcome.cause)
-                        // COMMIT applied but was reported as failed. Callers
-                        // missed the notification, so they read the reply from storage.
+                        // Commit succeeded despite the error; let callers read the saved reply.
                         return Effect.andThen(
                           complete,
                           options.storage.unregisterReplyHandler(request.message.envelope.requestId)
@@ -372,15 +369,14 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
-        // Whether storage holds a terminal reply for the request. Lookup failures
-        // count as none, so the request is replayed.
+        // Replay if the stored reply cannot be read.
         const hasStoredExit = (requestId: Snowflake.Snowflake): Effect.Effect<boolean> =>
           options.storage.repliesForUnfiltered([requestId]).pipe(
             Effect.map((replies) => replies.some((reply) => reply._tag === "WithExit")),
             Effect.catchCause(() => Effect.succeed(false))
           )
 
-        // Restart without inheriting the failed handler's transaction context.
+        // Do not inherit the failed handler's transaction context.
         const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
           if (!isActive()) return endLatch.open
           const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
@@ -650,8 +646,7 @@ export const make = Effect.fnUntraced(function*<
       : !Context.get(entry.message.annotations, Persisted)
       ? options.storage.withTransaction
       : <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-        // Only the handler is interruptible. An interrupt arriving during
-        // COMMIT must not hide the outcome from settle.
+        // Interrupts during commit must not hide the outcome from settle.
         Effect.uninterruptibleMask((restore) => {
           const transaction: RequestTransaction = {}
           entry.transaction = transaction
