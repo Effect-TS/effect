@@ -9,7 +9,8 @@ const runFixture = (mode: string, input: string) =>
   spawnSync(process.execPath, [fixture, mode], {
     encoding: "utf8",
     input,
-    timeout: 2_000
+    // Includes Node startup and loading the fixture imports under CI worker load.
+    timeout: 10_000
   })
 
 const assertResult = (mode: string, input: string, expected: string) => {
@@ -43,7 +44,7 @@ const assertOpenResult = (mode: string, input: string, expected: string) =>
 
 // spawnSync blocks the Vitest worker; concurrent tests share a running timeout
 // while waiting for other fixture processes to finish.
-describe("NodeTerminal", { concurrent: false }, () => {
+describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
   it("does not install a readline interface until the terminal is used", () => {
     assertResult("unused", "", "{\"dataListeners\":0}")
   })
