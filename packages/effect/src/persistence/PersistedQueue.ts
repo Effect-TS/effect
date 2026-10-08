@@ -85,9 +85,12 @@ export interface PersistedQueue<in out A, out R = never> {
    * De-duplication survives completion until the id is removed by
    * `layerCleanup`.
    *
-   * `delay` postpones the first delivery. The element is never delivered
-   * before the delay elapses, and is typically delivered within the store's
-   * `pollInterval` after. The SQL store rounds delays up to whole seconds.
+   * `delay` postpones the first delivery. Measured by the store's clock, the
+   * element is never delivered before the delay elapses, and is typically
+   * delivered within the store's `pollInterval` after. The SQL store uses the
+   * database clock and rounds delays up to whole seconds. The Redis store
+   * compares the offering process's clock with the polling worker's, so it
+   * relies on those clocks agreeing.
    * Retries still use the queue's `retrySchedule`, and the delay does not
    * count an attempt. A zero, negative or omitted delay enqueues the element
    * immediately.
@@ -1422,6 +1425,20 @@ export const makeStoreSql: (
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
   const secondsFromNow = (seconds: number) => secondsOffset(Math.max(Math.ceil(seconds), 0))
+  // Deadline for a delayed offer, which must never land before the delay
+  // elapses. pg reads clock_timestamp() since NOW() is fixed at transaction
+  // start. mysql and sqlite clocks drop the fraction of the current second, so
+  // add a second whenever there was one.
+  const delayedVisibleAt = (delay: Duration.Duration) => {
+    const s = sql.literal(Math.ceil(Duration.toSeconds(delay)).toString())
+    return sql.onDialectOrElse({
+      pg: () => sql`clock_timestamp() + INTERVAL '${s} seconds'`,
+      mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${s} + (NOW(6) > ${sqlNow}) SECOND)`,
+      mssql: () => sql`DATEADD(SECOND, ${s}, ${sqlNow})`,
+      orElse: () =>
+        sql`datetime(${sqlNow}, '${s} seconds', CASE WHEN CAST(strftime('%f', 'now') AS REAL) > CAST(strftime('%S', 'now') AS REAL) THEN '+1 seconds' ELSE '+0 seconds' END)`
+    })
+  }
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
 
   const offer = sql.onDialectOrElse({
@@ -1765,7 +1782,7 @@ export const makeStoreSql: (
             id,
             name,
             JSON.stringify(element),
-            delay === undefined ? sqlNow : secondsFromNow(Duration.toSeconds(delay))
+            delay === undefined ? sqlNow : delayedVisibleAt(delay)
           )
         ),
         (cause) =>
