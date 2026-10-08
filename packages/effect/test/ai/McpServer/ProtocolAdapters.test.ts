@@ -342,6 +342,21 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
 
       yield* server.addTool({
         tool: new McpSchema.Tool({
+          name: "boolean-properties",
+          inputSchema: {
+            type: "object",
+            properties: {
+              anything: true,
+              forbidden: false,
+              nested: { type: "object", properties: { unchanged: false } }
+            }
+          }
+        }),
+        annotations: Context.empty(),
+        handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+      })
+      yield* server.addTool({
+        tool: new McpSchema.Tool({
           name: "title-precedence",
           title: "Canonical title",
           icons: [ToolIcon],
@@ -1398,13 +1413,39 @@ describe("McpServer protocol adapters", () => {
         assert.strictEqual(error.operation, operation)
         assert.strictEqual(error.protocolVersion, protocol.protocolVersion)
       }
+
       assert.strictEqual(sends, 0)
     }).pipe(Effect.scoped))
+
+  // Old wire projections map true to {} and false to { not: {} } without changing nested semantics.
+  // https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.2
+  it.effect("should preserve boolean property semantics when projecting old tool descriptors", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+
+      for (const protocolVersion of ["2024-11-05", "2025-03-26"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+
+        const tool = listedTools(yield* client.request("tools/list"))
+          .find((tool) => tool.name === "boolean-properties")
+
+        assert.isDefined(tool)
+        assert.deepStrictEqual(tool.inputSchema, {
+          type: "object",
+          properties: {
+            anything: {},
+            forbidden: { not: {} },
+            nested: { type: "object", properties: { unchanged: false } }
+          }
+        })
+      }
+    }))
 
   it.effect("should omit June fields when projecting a March tool descriptor", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
       const client = yield* initialize(fixture.post, "2025-03-26")
+
       const shared = listedTools(yield* client.request("tools/list"))
         .find((tool) => tool.name === "shared")
 

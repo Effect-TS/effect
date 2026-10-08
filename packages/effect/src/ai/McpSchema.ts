@@ -1629,8 +1629,9 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  *
  * **Details**
  *
- * Property definitions and additional root keywords are constrained to JSON
- * values. The open root supports generated keywords such as `$defs`.
+ * Property schemas may be objects or booleans. Additional root keywords are
+ * constrained to JSON values. The open root supports generated keywords such
+ * as `$defs`.
  *
  * @stability unstable
  * @category tools
@@ -1638,7 +1639,7 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  */
 export type ToolJson = Schema.JsonObject & {
   readonly type: "object"
-  readonly properties?: Readonly<Record<string, Schema.JsonObject>> | undefined
+  readonly properties?: Readonly<Record<string, Schema.JsonObject | boolean>> | undefined
   readonly required?: ReadonlyArray<string> | undefined
 }
 
@@ -1652,7 +1653,7 @@ export type ToolJson = Schema.JsonObject & {
 export const ToolJson: Schema.Codec<ToolJson> = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
-    properties: optional(Schema.Record(Schema.String, Schema.JsonObject)),
+    properties: optional(Schema.Record(Schema.String, Schema.Union([Schema.JsonObject, Schema.Boolean]))),
     required: optional(Schema.Array(Schema.String))
   }),
   [Schema.JsonObject]
