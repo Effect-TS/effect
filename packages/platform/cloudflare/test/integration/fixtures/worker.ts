@@ -11,6 +11,7 @@ import {
   Cause,
   Cron,
   DateTime,
+  Deferred,
   Effect,
   Exit,
   Fiber,
@@ -331,6 +332,92 @@ const HolderLayer = Holder.toLayer(
   })
 )
 
+// Entity that keeps its own rows in the entity Durable Object's SQLite through
+// `DurableObjectSqlClient`. `Append` writes every entry in one transaction and
+// fails after the writes when asked to, so a rollback is observable.
+const Journal = Entity.make("Journal", [
+  Rpc.make("Append", {
+    payload: { entries: Schema.Array(Schema.String), fail: Schema.Boolean },
+    success: Schema.Number,
+    error: Schema.String
+  }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("List", { success: Schema.Array(Schema.String) })
+])
+
+const JournalLayer = CloudflareCluster.toLayer(
+  Journal,
+  Effect.gen(function*() {
+    const sql = yield* CloudflareCluster.DurableObjectSqlClient
+    yield* sql`CREATE TABLE IF NOT EXISTS journal (seq INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT NOT NULL)`
+    return Journal.of({
+      Append: ({ payload }) =>
+        sql.withTransaction(Effect.gen(function*() {
+          for (const entry of payload.entries) {
+            yield* sql`INSERT INTO journal (entry) VALUES (${entry})`
+          }
+          if (payload.fail) return yield* Effect.fail("rejected")
+          return payload.entries.length
+        })).pipe(Effect.catchTag("SqlError", Effect.die)),
+      List: () =>
+        sql<{ readonly entry: string }>`SELECT entry FROM journal ORDER BY seq`.pipe(
+          Effect.map((rows) => rows.map((row) => row.entry)),
+          Effect.orDie
+        )
+    })
+  }).pipe(Effect.orDie)
+)
+
+// Two handlers of one entity, interleaved through a user transaction. `Wait`
+// blocks on a deferred that `ReleaseThenFail` completes from inside its
+// transaction, which then rolls back. `Wait` resumes while the transaction is
+// still open, so its stored reply must not land inside it.
+const releases = new Map<string, Deferred.Deferred<void>>()
+const releaseFor = (entityId: string) => {
+  let release = releases.get(entityId)
+  if (release === undefined) {
+    release = Deferred.makeUnsafe<void>()
+    releases.set(entityId, release)
+  }
+  return release
+}
+
+const Coordinated = Entity.make("Coordinated", [
+  Rpc.make("Wait", {
+    payload: { op: Schema.String },
+    primaryKey: ({ op }) => op,
+    success: Schema.String
+  }).annotate(ClusterSchema.Persisted, true),
+  Rpc.make("ReleaseThenFail", { error: Schema.String, success: Schema.String })
+])
+
+const CoordinatedLayer = CloudflareCluster.toLayer(
+  Coordinated,
+  Effect.gen(function*() {
+    const sql = yield* CloudflareCluster.DurableObjectSqlClient
+    yield* sql`CREATE TABLE IF NOT EXISTS coordinated (entry TEXT NOT NULL)`
+    return Coordinated.of({
+      Wait: (request) =>
+        Effect.gen(function*() {
+          bump(counts.entered, `coordinated/${request.address.entityId}`)
+          yield* Deferred.await(releaseFor(request.address.entityId))
+          return "released"
+        }),
+      ReleaseThenFail: (request) =>
+        sql.withTransaction(Effect.gen(function*() {
+          yield* sql`INSERT INTO coordinated (entry) VALUES ('rolled back')`
+          Deferred.doneUnsafe(releaseFor(request.address.entityId), Effect.void)
+          // Microtask turns only: timers never fire inside a storage
+          // transaction. They give the woken handler room to run.
+          for (let i = 0; i < 50; i++) {
+            yield* Effect.promise(() => Promise.resolve())
+          }
+          return yield* Effect.fail("rejected")
+        })).pipe(Effect.catchTag("SqlError", Effect.die))
+    })
+  }).pipe(Effect.orDie),
+  { concurrency: 2 }
+)
+
 // ---------------------------------------------------------------------------
 // Workflows, durable clock/deferred, durable queue.
 // ---------------------------------------------------------------------------
@@ -433,6 +520,8 @@ const makeAppLayer = (env: Record<string, any>) =>
     RelayLayer,
     PinnedLayer,
     HolderLayer,
+    JournalLayer,
+    CoordinatedLayer,
     EmailWorkflowLayer,
     ClockWorkflowLayer,
     DoorWorkflowLayer,
@@ -441,7 +530,7 @@ const makeAppLayer = (env: Record<string, any>) =>
     CronLayer
   ).pipe(
     Layer.provideMerge(CloudflareCluster.layer({
-      entities: [Counter, Blocker, Serial, Flaky, Relay, Pinned, Holder],
+      entities: [Counter, Blocker, Serial, Flaky, Relay, Pinned, Holder, Journal, Coordinated],
       entityNamespace: env.CLUSTER_ENTITY,
       workflowNamespace: env.CLUSTER_WORKFLOW,
       queueNamespace: env.CLUSTER_QUEUE,
@@ -727,6 +816,32 @@ const handle = Effect.fnUntraced(function*(url: URL) {
     case "/holder/close": {
       const makeClient = yield* Holder.client
       return { value: yield* makeClient(id).Close(void 0) }
+    }
+
+    case "/journal/append": {
+      const makeClient = yield* Journal.client
+      const entries = (params.get("entries") ?? "").split(",").filter((entry) => entry.length > 0)
+      return serializeExit(
+        yield* Effect.exit(makeClient(id).Append({ entries, fail: params.get("fail") === "true" }))
+      )
+    }
+    case "/journal/list": {
+      const makeClient = yield* Journal.client
+      return { entries: yield* makeClient(id).List(void 0) }
+    }
+
+    case "/coordinated/release": {
+      const makeClient = yield* Coordinated.client
+      const client = makeClient(id)
+      const wait = yield* Effect.forkChild(client.Wait({ op: "wait" }))
+      yield* until(
+        `The Wait handler for ${id} did not start`,
+        () => (counts.entered.get(`coordinated/${id}`) ?? 0) > 0
+      )
+      const released = serializeExit(yield* Effect.exit(client.ReleaseThenFail(void 0)))
+      const waited = yield* Fiber.join(wait)
+      const stub = bindings.CLUSTER_ENTITY.getByName(CloudflareCluster.encodeName("Coordinated", id))
+      return { released, waited, rows: yield* Effect.promise(() => stub.mailboxRows()) }
     }
 
     case "/queue/drain": {
