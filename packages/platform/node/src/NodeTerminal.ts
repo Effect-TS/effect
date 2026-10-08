@@ -17,6 +17,9 @@ import type { Terminal, UserInput } from "effect/Terminal"
 /**
  * Creates a scoped `Terminal` service backed by process stdin/stdout, using the
  * optional predicate to decide when key input should end the input stream.
+ * By default, bare Esc, Ctrl+C, and Ctrl+D end key input. A supplied predicate
+ * replaces this default. The triggering key is delivered before input ends,
+ * causing CLI prompts to fail with `Terminal.QuitError`.
  *
  * @stability unstable
  * @category constructors
@@ -26,7 +29,7 @@ export const make: (shouldQuit?: (input: UserInput) => boolean) => Effect<Termin
 
 /**
  * Provides the default process-backed `Terminal` service, ending key input on
- * the default quit keys.
+ * bare Esc, Ctrl+C, or Ctrl+D.
  *
  * @stability unstable
  * @category layers
