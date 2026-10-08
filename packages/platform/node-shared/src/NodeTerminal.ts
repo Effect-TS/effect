@@ -23,12 +23,9 @@ import * as Terminal from "effect/Terminal"
 import * as readline from "node:readline"
 
 /**
- * Creates a scoped process-backed `Terminal` using Node `readline`, enabling
- * TTY raw mode while in scope and using the supplied predicate to decide when
- * key input should end.
- * By default, bare Esc, Ctrl+C, and Ctrl+D end key input. The triggering key
- * is delivered before the input queue ends; CLI prompts then fail with
- * `Terminal.QuitError`. A supplied `shouldQuit` predicate replaces this default.
+ * Creates a scoped process-backed `Terminal` using Node `readline` and TTY raw mode.
+ * By default, Esc, Ctrl+C, and Ctrl+D end key input. Supply `shouldQuit` to
+ * override these quit keys.
  *
  * @stability unstable
  * @category constructors
@@ -181,7 +178,6 @@ export const layer: Layer.Layer<Terminal.Terminal> = Layer.effect(Terminal.Termi
 
 function defaultShouldQuit(input: Terminal.UserInput) {
   const key = input.key
-  // Node readline marks even bare Esc as meta, so match the parsed key name.
   return key.name === "escape" ||
     (key.ctrl && (key.name === "c" || key.name === "d"))
 }

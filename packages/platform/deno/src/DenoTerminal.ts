@@ -15,11 +15,9 @@ import type { Scope } from "effect/Scope"
 import type { Terminal, UserInput } from "effect/Terminal"
 
 /**
- * Creates a scoped `Terminal` service backed by process stdin/stdout, using the
- * optional predicate to decide when key input should end the input stream.
- * By default, bare Esc, Ctrl+C, and Ctrl+D end key input. A supplied predicate
- * replaces this default. The triggering key is delivered before input ends,
- * causing CLI prompts to fail with `Terminal.QuitError`.
+ * Creates a scoped `Terminal` service backed by process stdin/stdout.
+ * By default, Esc, Ctrl+C, and Ctrl+D end key input. Supply `shouldQuit` to
+ * override these quit keys.
  *
  * @stability unstable
  * @category constructors
