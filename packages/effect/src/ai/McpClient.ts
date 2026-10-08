@@ -1,7 +1,7 @@
 /**
  * Connects to MCP servers with scoped Effect clients.
  *
- * Clients discover and call tools using the protocol revision selected by their transport.
+ * Clients discover tools, prompts and resources using the protocol revision selected by their transport.
  * `callTool` preserves tool-reported errors as results; supplying a schema fails with
  * reason `ToolError` and retains the original result. Transport and protocol failures
  * fail the Effect. Initial discovery can retry one rejection of the selected revision.
@@ -312,10 +312,33 @@ export interface CallOptions {
  * @category models
  * @since 4.0.0
  */
-export interface CallToolParams<S extends Schema.Top = typeof McpSchema.CallToolResult> {
+export interface CallToolParams<S extends Schema.Top = never> {
   readonly tool: McpSchema.Tool
   readonly schema?: S | undefined
   readonly arguments?: typeof McpSchema.CallTool.payloadSchema.Type["arguments"]
+}
+
+/**
+ * Prompt invocation carrying its discovered definition and string arguments.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface GetPromptParams {
+  readonly prompt: McpSchema.Prompt
+  readonly arguments?: typeof McpSchema.GetPrompt.payloadSchema.Type["arguments"]
+}
+
+/**
+ * Resource URI to read from the server.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface ReadResourceParams {
+  readonly uri: string
 }
 
 /**
@@ -332,15 +355,32 @@ export interface Client extends Pipeable {
   readonly instructions?: string | undefined
   /** Returns every tool page as one snapshot, bounded by the deadline, 100 pages and 10,000 tools. */
   readonly listTools: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
-  /**
-   * Returns the full tool result, or decodes structured content when a schema is supplied.
-   * With a schema, tool-reported errors fail with reason `ToolError` before decoding
-   * and retain the full result in `reason.result`. Decoder services belong to the caller.
-   */
-  readonly callTool: <S extends Schema.Top = typeof McpSchema.CallToolResult>(
-    params: CallToolParams<S>,
+  /** Returns all prompt pages as one bounded snapshot. */
+  readonly listPrompts: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+  /** Gets the messages for a discovered prompt. */
+  readonly getPrompt: (
+    params: GetPromptParams,
     options?: CallOptions
-  ) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+  ) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
+  /** Returns all resource pages as one bounded snapshot. */
+  readonly listResources: (options?: CallOptions) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  /** Reads the complete contents of a resource URI. */
+  readonly readResource: (
+    params: ReadResourceParams,
+    options?: CallOptions
+  ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+  /** Calls a discovered tool, optionally decoding with a schema. Errors retain the full result. */
+  readonly callTool: {
+    (params: CallToolParams, options?: CallOptions): Effect.Effect<McpSchema.CallToolResult, McpClientError>
+    <S extends Schema.Top>(
+      params: CallToolParams<S> & { readonly schema: S },
+      options?: CallOptions
+    ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+    <S extends Schema.Top = never>(
+      params: CallToolParams<S>,
+      options?: CallOptions
+    ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
+  }
 }
 
 /**
@@ -353,16 +393,92 @@ export interface Client extends Pipeable {
  * @since 4.0.0
  */
 export const callTool: {
-  <S extends Schema.Top = typeof McpSchema.CallToolResult>(
-    params: CallToolParams<S>,
+  (
+    params: CallToolParams,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult, McpClientError>
+  (self: Client, params: CallToolParams, options?: CallOptions): Effect.Effect<McpSchema.CallToolResult, McpClientError>
+  <S extends Schema.Top>(
+    params: CallToolParams<S> & { readonly schema: S },
     options?: CallOptions
   ): (self: Client) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
-  <S extends Schema.Top = typeof McpSchema.CallToolResult>(
+  <S extends Schema.Top = never>(
+    params: CallToolParams<S>,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
+  <S extends Schema.Top>(
+    self: Client,
+    params: CallToolParams<S> & { readonly schema: S },
+    options?: CallOptions
+  ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+  <S extends Schema.Top = never>(
     self: Client,
     params: CallToolParams<S>,
     options?: CallOptions
-  ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+  ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
 } = internal.callTool
+
+/**
+ * Returns all prompt pages as one bounded snapshot.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const listPrompts: {
+  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+} = internal.listPrompts
+
+/**
+ * Gets the messages for a discovered prompt.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const getPrompt: {
+  (
+    params: GetPromptParams,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
+  (
+    self: Client,
+    params: GetPromptParams,
+    options?: CallOptions
+  ): Effect.Effect<McpSchema.GetPromptResult, McpClientError>
+} = internal.getPrompt
+
+/**
+ * Returns all resource pages as one bounded snapshot.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const listResources: {
+  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+} = internal.listResources
+
+/**
+ * Reads the complete contents of a resource URI.
+ *
+ * @stability unstable
+ * @category operations
+ * @since 4.0.0
+ */
+export const readResource: {
+  (
+    params: ReadResourceParams,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+  (
+    self: Client,
+    params: ReadResourceParams,
+    options?: CallOptions
+  ): Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+} = internal.readResource
 
 /**
  * Service tag for applications that provide one default MCP connection.

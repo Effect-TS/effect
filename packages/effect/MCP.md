@@ -795,3 +795,44 @@ implies that a previous tool call is safe to repeat.
 The HTTP path uses web request and response APIs and needs no subprocess service. A browser host
 closes its connection generation when the owning component or application is disposed. Node hosts
 also close the stdio generation to release their child processes.
+
+### Discover and retrieve prompts and resources
+
+Prompt and resource discovery returns complete snapshots. Each list operation follows pagination
+within one deadline, with limits of 100 pages and 10,000 entries. An absent server capability
+returns an empty list; retrieval without that capability fails with reason `UnsupportedError`.
+
+```ts
+import { Effect } from "effect"
+import type { McpClient } from "effect/ai"
+
+export const loadContext = (client: McpClient.Client) =>
+  Effect.gen(function*() {
+    const prompts = yield* client.listPrompts()
+    const prompt = prompts.find((prompt) => prompt.name === "review")
+    if (prompt !== undefined) {
+      const result = yield* client.getPrompt({
+        prompt,
+        arguments: { code: "const answer = 42" }
+      })
+      // The MCP result retains its messages, description and metadata.
+      yield* Effect.log(result.messages)
+    }
+
+    const resources = yield* client.listResources()
+    for (const resource of resources) {
+      const result = yield* client.readResource({ uri: resource.uri })
+      yield* Effect.log(result.contents)
+    }
+  })
+```
+
+`getPrompt` takes a discovered `McpSchema.Prompt` and optional string arguments.
+`readResource` takes a URI, including URIs obtained outside resource discovery.
+Their results reuse `McpSchema.GetPromptResult` and `McpSchema.ReadResourceResult`,
+the same types used by the server. Resource results can contain multiple text or binary contents.
+
+All four operations accept `CallOptions` for a timeout override and have module helpers
+supporting both data-first and piped calls. Retrieval preserves MCP results rather than converting
+them to `ai/Prompt.Prompt`. Resource templates, subscriptions and argument completion are outside
+the client MVP.

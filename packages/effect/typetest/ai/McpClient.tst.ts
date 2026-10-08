@@ -10,6 +10,42 @@ const tool = McpSchema.Tool.make({ name: "read", inputSchema: { type: "object" }
 class Policy extends Context.Service<Policy, string>()("test/McpClientPolicy") {}
 
 describe("McpClient", () => {
+  it("should reuse MCP prompt and resource types in methods and both dual forms", () => {
+    const client = {} as McpClient.Client
+    const prompt = McpSchema.Prompt.make({ name: "review" })
+    const params = { prompt, arguments: { code: "example" } }
+    expect(client.listPrompts()).type.toBe<Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>>()
+    expect(McpClient.listPrompts(client, { timeout: "1 second" })).type.toBe<
+      Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+    >()
+    expect(client.pipe(McpClient.listPrompts())).type.toBe<
+      Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+    >()
+    expect(client.getPrompt(params)).type.toBe<Effect.Effect<McpSchema.GetPromptResult, McpClientError>>()
+    expect(McpClient.getPrompt(client, params)).type.toBe<Effect.Effect<McpSchema.GetPromptResult, McpClientError>>()
+    expect(client.pipe(McpClient.getPrompt(params, { timeout: "1 second" }))).type.toBe<
+      Effect.Effect<McpSchema.GetPromptResult, McpClientError>
+    >()
+    expect<{ prompt: McpSchema.Prompt; arguments: { code: number } }>().type.not.toBeAssignableTo<
+      McpClient.GetPromptParams
+    >()
+    expect(client.listResources()).type.toBe<Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>>()
+    expect(McpClient.listResources(client)).type.toBe<
+      Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+    >()
+    expect(client.pipe(McpClient.listResources({ timeout: "1 second" }))).type.toBe<
+      Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+    >()
+    expect(client.readResource({ uri: "test://document" })).type.toBe<
+      Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+    >()
+    expect(McpClient.readResource(client, { uri: "test://document" })).type.toBe<
+      Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+    >()
+    expect(client.pipe(McpClient.readResource({ uri: "test://document" }, { timeout: "1 second" }))).type.toBe<
+      Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+    >()
+  })
   it("should configure the protocol only on the transport", () => {
     expect<"protocol" extends keyof McpClient.Options ? true : false>().type.toBe<false>()
     expect<typeof McpProtocol.v2025_11_25>().type.toBeAssignableTo<

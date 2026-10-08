@@ -32,11 +32,70 @@ import * as Scope from "../../Scope.ts"
 import * as Semaphore from "../../Semaphore.ts"
 import * as Stream from "../../Stream.ts"
 import { McpClient, McpClientError, Transport } from "../McpClient.ts"
-import type { CallOptions, CallToolParams, Client, Options, ProtocolVersion } from "../McpClient.ts"
+import type {
+  CallOptions,
+  CallToolParams,
+  Client,
+  GetPromptParams,
+  Options,
+  ProtocolVersion,
+  ReadResourceParams
+} from "../McpClient.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 import * as Tool from "../Tool.ts"
 import * as Toolkit from "../Toolkit.ts"
+
+const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
+const DEFAULT_TIMEOUT = Duration.seconds(60)
+const SHUTDOWN_GRACE_PERIOD = Duration.seconds(5)
+const SHUTDOWN_FORCE_PERIOD = Duration.seconds(5)
+const HTTP_CLOSE_TIMEOUT = Duration.seconds(5)
+const MAX_CONCURRENT_REQUESTS = 64
+const MAX_DISCOVERY_PAGES = 100
+const MAX_DISCOVERY_ITEMS = 10_000
+const SSE_FRAMING_ALLOWANCE = 7
+const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022
+
+const decodeMessageBytes = Schema.decodeUnknownEffect(Schema.Int.check(Schema.isGreaterThan(0)))
+const decodeJsonRpcError = Schema.decodeUnknownOption(McpSchema.JsonRpcResponse.members[1])
+const decodeJson = Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)
+const encodeJson = Schema.encodeEffect(Schema.UnknownFromJsonString)
+const decodeToolArguments = Schema.decodeUnknownEffect(Schema.JsonObject)
+const decodePing = Schema.decodeUnknownEffect(McpSchema.Ping.payloadSchema)
+const decodeEnvelope = Schema.decodeUnknownEffect(McpSchema.JsonRpcMessage, { onExcessProperty: "error" })
+
+// RPC groups erase schema service requirements. Restore the codec view only here;
+// all values still pass the selected runtime schema before reaching callers.
+const payloadCodecs = memoize((schema: Schema.Constraint): McpProtocol.PayloadCodecs => {
+  const codec = schema as Schema.ConstraintCodec<unknown, unknown>
+
+  return {
+    decode: Schema.decodeUnknownEffect(codec),
+    encode: Schema.encodeUnknownEffect(codec)
+  }
+})
+
+const decodePayload = Effect.fnUntraced(function*(schema: Schema.Constraint, value: unknown) {
+  return yield* payloadCodecs(schema).decode(value)
+})
+const encodePayload = Effect.fnUntraced(function*(schema: Schema.Constraint, value: unknown) {
+  return yield* payloadCodecs(schema).encode(value)
+})
+
+const encodeImplementation = Schema.encodeUnknownEffect(McpSchema.Implementation)
+const encodeClientCapabilities = Schema.encodeUnknownEffect(McpSchema.ClientCapabilities)
+const decodeToolsPage = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
+const decodeToolExecution = Schema.decodeUnknownEffect(Schema.Struct({
+  taskSupport: Schema.optionalKey(Schema.Literals(["forbidden", "optional", "required"]))
+}))
+
+const decodeServerCapabilities = Schema.decodeUnknownEffect(McpSchema.ServerCapabilities)
+const decodeImplementation = Schema.decodeUnknownEffect(McpSchema.Implementation)
+const decodeVersionRejection = Schema.decodeUnknownOption(Schema.Struct({
+  requested: Schema.Literals(["2025-11-25", "2026-07-28"]),
+  supported: Schema.Array(Schema.String)
+}))
 
 export const TransportTypeId = "~effect/ai/McpClient/Transport" as const
 
@@ -94,13 +153,14 @@ const makeSharedTransport = Effect.fnUntraced(function*(options: {
 
   const close = Effect.gen(function*() {
     const error = yield* Ref.modify(state, (current): readonly [McpClientError | undefined, State] => {
-      if (current._tag === "Closed") return [undefined, current]
-
-      const error = current._tag === "Failed"
-        ? current.error
-        : new McpClientError({ reason: { _tag: "ClosedError", message: "MCP transport scope closed" } })
-
-      return [error, State.Closed({ error })]
+      return State.$match(current, {
+        Open: () => {
+          const error = new McpClientError({ reason: { _tag: "ClosedError", message: "MCP transport scope closed" } })
+          return [error, State.Closed({ error })] as const
+        },
+        Failed: ({ error }) => [error, State.Closed({ error })] as const,
+        Closed: (current) => [undefined, current] as const
+      })
     })
 
     if (error === undefined) return
@@ -118,13 +178,13 @@ const makeSharedTransport = Effect.fnUntraced(function*(options: {
     send: Effect.fnUntraced(function*(message) {
       const current = yield* Ref.get(state)
 
-      if (current._tag !== "Open") return yield* current.error
+      if (!State.$is("Open")(current)) return yield* current.error
       yield* options.write(message)
     }),
     request: Effect.fnUntraced(function*(message, receive) {
       const current = yield* Ref.get(state)
 
-      if (current._tag !== "Open") return yield* current.error
+      if (!State.$is("Open")(current)) return yield* current.error
 
       if (MutableHashMap.has(pending, message.id)) {
         return yield* new McpClientError({
@@ -140,7 +200,7 @@ const makeSharedTransport = Effect.fnUntraced(function*(options: {
         Effect.onInterrupt(Effect.fnUntraced(function*() {
           const current = yield* Ref.get(state)
 
-          if (entry.terminalSeen || current._tag !== "Open" || message.method === "initialize") return
+          if (entry.terminalSeen || !State.$is("Open")(current) || message.method === "initialize") return
           yield* options.write({
             jsonrpc: "2.0",
             method: "notifications/cancelled",
@@ -174,7 +234,11 @@ const makeSharedTransport = Effect.fnUntraced(function*(options: {
       Effect.tapError(Effect.fnUntraced(function*(error) {
         yield* Ref.update(
           state,
-          (current): State => current._tag === "Open" ? State.Failed({ error }) : current
+          State.$match({
+            Open: () => State.Failed({ error }),
+            Failed: (current) => current,
+            Closed: (current) => current
+          })
         )
 
         for (const entry of MutableHashMap.values(pending)) yield* Deferred.fail(entry.done, error)
@@ -301,10 +365,8 @@ const headerValue = (value: string) =>
     ? value :
     `=?base64?${Base64.encode(value)}?=`
 
-const decodeMessageBytes = Schema.decodeUnknownEffect(Schema.Int.check(Schema.isGreaterThan(0)))
-
 const limit = Effect.fnUntraced(function*(value: ByteSize.Input | undefined) {
-  const parsed = value === undefined ? Option.some(ByteSize.mebibytes(16)) : ByteSize.fromInput(value)
+  const parsed = value === undefined ? Option.some(DEFAULT_MAX_MESSAGE_BYTES) : ByteSize.fromInput(value)
 
   if (Option.isNone(parsed)) {
     return yield* new McpClientError({
@@ -312,7 +374,7 @@ const limit = Effect.fnUntraced(function*(value: ByteSize.Input | undefined) {
     })
   }
 
-  return yield* decodeMessageBytes(Number(ByteSize.toBigInt(parsed.value))).pipe(
+  return yield* decodeMessageBytes(Option.getOrUndefined(ByteSize.toNumber(parsed.value))).pipe(
     Effect.mapError((cause) =>
       new McpClientError({
         reason: { _tag: "ConfigurationError", message: "maxMessageBytes must be a positive safe integer", cause }
@@ -320,8 +382,6 @@ const limit = Effect.fnUntraced(function*(value: ByteSize.Input | undefined) {
     )
   )
 })
-
-const decodeJsonRpcError = Schema.decodeUnknownOption(McpSchema.JsonRpcResponse.members[1])
 
 type HttpState = Data.TaggedEnum<{
   Open: { readonly session: string | undefined }
@@ -335,10 +395,6 @@ interface ActiveRequest {
   readonly done: Deferred.Deferred<void>
   fiberId: number | undefined
 }
-
-const decodeJson = Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)
-
-const encodeJson = Schema.encodeEffect(Schema.UnknownFromJsonString)
 
 const parse = Effect.fnUntraced(function*(text: string, bytes: number) {
   if (new TextEncoder().encode(text).length > bytes) {
@@ -379,8 +435,8 @@ export const stdio = Effect.fnUntraced(function*(options: {
   const bytes = yield* limit(options.maxMessageBytes)
 
   const shutdown = {
-    grace: Duration.millis(5000),
-    force: Duration.millis(5000)
+    grace: SHUTDOWN_GRACE_PERIOD,
+    force: SHUTDOWN_FORCE_PERIOD
   }
 
   const spawner = yield* ChildProcessSpawner
@@ -488,7 +544,7 @@ export const http = Effect.fnUntraced(function*(options: {
   readonly maxMessageBytes?: ByteSize.Input | undefined
 }): Effect.fn.Return<TransportService, McpClientError, HttpClient.HttpClient | Scope.Scope> {
   const bytes = yield* limit(options.maxMessageBytes)
-  const closeTimeout = Duration.millis(5000)
+  const closeTimeout = HTTP_CLOSE_TIMEOUT
   const client = HttpClient.withScope(yield* HttpClient.HttpClient)
   const state = yield* Ref.make<HttpState>(HttpState.Open({ session: undefined }))
   const closed = yield* Deferred.make<never, McpClientError>()
@@ -527,10 +583,12 @@ export const http = Effect.fnUntraced(function*(options: {
     if (modern && message && "method" in message) {
       result["mcp-method"] = message.method
 
-      if (
-        message.method === "tools/call" &&
-        typeof message.params?.name === "string"
-      ) result["mcp-name"] = headerValue(message.params.name)
+      const name = message.method === "tools/call" || message.method === "prompts/get"
+        ? message.params?.name
+        : message.method === "resources/read"
+        ? message.params?.uri
+        : undefined
+      if (typeof name === "string") result["mcp-name"] = headerValue(name)
     }
 
     return result
@@ -599,12 +657,12 @@ export const http = Effect.fnUntraced(function*(options: {
   const execute = Effect.fnUntraced(function*(request: HttpClientRequest.HttpClientRequest, cleanup = false) {
     const current = yield* Ref.get(state)
 
-    if (current._tag !== "Open" && !(cleanup && current._tag === "Closed")) {
+    if (!HttpState.$is("Open")(current) && !(cleanup && HttpState.$is("Closed")(current))) {
       return yield* new McpClientError({
         reason: {
           _tag: "ClosedError",
           message: "MCP HTTP session expired",
-          sessionExpired: current._tag === "Expired"
+          sessionExpired: HttpState.$is("Expired")(current)
         }
       })
     }
@@ -625,7 +683,7 @@ export const http = Effect.fnUntraced(function*(options: {
     }))
 
     if (!modern && response.status === 404 && current.session) {
-      yield* Ref.update(state, (current): HttpState => current._tag === "Open" ? HttpState.Expired() : current)
+      yield* Ref.update(state, (current): HttpState => HttpState.$is("Open")(current) ? HttpState.Expired() : current)
 
       return yield* new McpClientError({
         reason: {
@@ -645,7 +703,7 @@ export const http = Effect.fnUntraced(function*(options: {
     if (!modern && next) {
       yield* Ref.update(
         state,
-        (current): HttpState => current._tag === "Open" ? HttpState.Open({ session: next }) : current
+        (current): HttpState => HttpState.$is("Open")(current) ? HttpState.Open({ session: next }) : current
       )
     }
 
@@ -699,7 +757,7 @@ export const http = Effect.fnUntraced(function*(options: {
         }, {
           // Allow an incomplete "data: " prefix and the parser's retained newline.
           // The decoded JSON keeps its separate UTF-8 byte limit below.
-          maxEventSize: bytes + 7
+          maxEventSize: bytes + SSE_FRAMING_ALLOWANCE
         })
 
         return response.stream.pipe(
@@ -835,7 +893,7 @@ export const http = Effect.fnUntraced(function*(options: {
     const current = yield* Ref.get(state)
 
     const mirrored = headers(
-      current._tag === "Open" || (cleanup && current._tag === "Closed") ? current.session : undefined,
+      HttpState.$is("Open")(current) || (cleanup && HttpState.$is("Closed")(current)) ? current.session : undefined,
       message
     )
 
@@ -893,12 +951,12 @@ export const http = Effect.fnUntraced(function*(options: {
   const close = Effect.withFiber(Effect.fnUntraced(function*(fiber) {
     const previous = yield* Ref.modify(state, (current): readonly [HttpState, HttpState] => [
       current,
-      current._tag === "Closed" ?
+      HttpState.$is("Closed")(current) ?
         current :
-        HttpState.Closed({ session: current._tag === "Open" ? current.session : undefined })
+        HttpState.Closed({ session: HttpState.$is("Open")(current) ? current.session : undefined })
     ])
 
-    if (previous._tag === "Closed") return
+    if (HttpState.$is("Closed")(previous)) return
     yield* Deferred.fail(
       closed,
       new McpClientError({ reason: { _tag: "ClosedError", message: "MCP HTTP transport closed" } })
@@ -909,7 +967,7 @@ export const http = Effect.fnUntraced(function*(options: {
       { discard: true }
     )
 
-    if (previous._tag !== "Open" || previous.session === undefined) return
+    if (!HttpState.$is("Open")(previous) || previous.session === undefined) return
     yield* Effect.scoped(
       client.execute(
         HttpClientRequest.make("DELETE")(options.url).pipe(
@@ -980,41 +1038,6 @@ export const layerHttp = (options: Options & Parameters<typeof http>[0]): Layer.
 > => layer(options).pipe(Layer.provide(Layer.effect(Transport)(http(options))))
 
 type Protocol = McpProtocol.ProtocolAdapter<ProtocolVersion>
-
-/** @internal */
-const decodeEnvelope = Schema.decodeUnknownEffect(
-  McpSchema.JsonRpcMessage,
-  { onExcessProperty: "error" }
-)
-
-// RPC groups erase schema service requirements. Restore the codec view only here;
-// all values still pass the selected runtime schema before reaching callers.
-const payloadCodecs = memoize((schema: Schema.Constraint): McpProtocol.PayloadCodecs => {
-  const codec = schema as Schema.ConstraintCodec<unknown, unknown>
-
-  return {
-    decode: Schema.decodeUnknownEffect(codec),
-    encode: Schema.encodeUnknownEffect(codec)
-  }
-})
-
-const decodePayload = Effect.fnUntraced(function*(schema: Schema.Constraint, value: unknown) {
-  return yield* payloadCodecs(schema).decode(value)
-})
-
-const encodePayload = Effect.fnUntraced(function*(schema: Schema.Constraint, value: unknown) {
-  return yield* payloadCodecs(schema).encode(value)
-})
-
-const encodeImplementation = Schema.encodeUnknownEffect(McpSchema.Implementation)
-
-const encodeClientCapabilities = Schema.encodeUnknownEffect(McpSchema.ClientCapabilities)
-
-const decodeToolsPage = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
-
-const decodeToolExecution = Schema.decodeUnknownEffect(Schema.Struct({
-  taskSupport: Schema.optionalKey(Schema.Literals(["forbidden", "optional", "required"]))
-}))
 
 const payloadRecord = (value: unknown): Record<string, unknown> => Predicate.isReadonlyObject(value) ? value : {}
 
@@ -1149,27 +1172,39 @@ const toText = Effect.fnUntraced(function*(result: McpSchema.CallToolResult) {
   const parts: Array<string> = []
 
   for (const block of result.content) {
-    switch (block.type) {
-      case "text":
-        parts.push(block.text)
-        break
-      case "resource_link":
-        parts.push(
-          `${block.title ?? block.name}: ${block.uri}${block.description === undefined ? "" : `\n${block.description}`}`
-        )
-        break
-      case "resource":
-        if ("text" in block.resource) parts.push(block.resource.text)
-        else return yield* unsupported("MCP binary resources require an application text converter", result)
-        break
-      case "image":
-      case "audio":
-        return yield* unsupported(`MCP ${block.type} content requires an application text converter`, result)
-    }
+    yield* Match.value(block).pipe(
+      Match.when({ type: "text" }, (block) =>
+        Effect.sync(() => {
+          parts.push(block.text)
+        })),
+      Match.when({ type: "resource_link" }, (block) =>
+        Effect.sync(() => {
+          parts.push(
+            `${block.title ?? block.name}: ${block.uri}${
+              block.description === undefined ? "" : `\n${block.description}`
+            }`
+          )
+        })),
+      Match.when({ type: "resource" }, (block) =>
+        Match.value(block.resource).pipe(
+          Match.when({ text: Match.string }, (resource) =>
+            Effect.sync(() => {
+              parts.push(resource.text)
+            })),
+          Match.orElse(() =>
+            Effect.fail(unsupported("MCP binary resources require an application text converter", result))
+          )
+        )),
+      Match.when(
+        { type: Match.is("image", "audio") },
+        (block) => Effect.fail(unsupported(`MCP ${block.type} content requires an application text converter`, result))
+      ),
+      Match.exhaustive
+    )
   }
 
   if (parts.length === 0 && result.structuredContent !== undefined) {
-    return yield* Schema.encodeEffect(Schema.UnknownFromJsonString)(result.structuredContent).pipe(
+    return yield* encodeJson(result.structuredContent).pipe(
       Effect.mapError((cause) =>
         new McpClientError({
           reason: { _tag: "ValidationError", message: "Cannot encode MCP structured content", cause }
@@ -1208,7 +1243,7 @@ export const toolkit = Effect.fnUntraced(function*(client: Client, prefix = "") 
       }).annotate(Tool.Strict, false)
     )
     handlers[name] = Effect.fnUntraced(function*(params: unknown) {
-      const arguments_ = yield* Schema.decodeUnknownEffect(Schema.JsonObject)(params).pipe(
+      const arguments_ = yield* decodeToolArguments(params).pipe(
         Effect.mapError((cause) =>
           new McpClientError({
             reason: { _tag: "ValidationError", message: "MCP tool arguments must be a JSON object", cause }
@@ -1232,18 +1267,32 @@ export const toolkit = Effect.fnUntraced(function*(client: Client, prefix = "") 
 export const TypeId = "~effect/ai/McpClient" as const
 export const isClient = (value: unknown): value is Client => Predicate.hasProperty(value, TypeId)
 export const callTool: {
-  <S extends Schema.Top = typeof McpSchema.CallToolResult>(
-    params: CallToolParams<S>,
+  (
+    params: CallToolParams,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult, McpClientError>
+  (self: Client, params: CallToolParams, options?: CallOptions): Effect.Effect<McpSchema.CallToolResult, McpClientError>
+  <S extends Schema.Top>(
+    params: CallToolParams<S> & { readonly schema: S },
     options?: CallOptions
   ): (self: Client) => Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
-  <S extends Schema.Top = typeof McpSchema.CallToolResult>(
+  <S extends Schema.Top = never>(
+    params: CallToolParams<S>,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
+  <S extends Schema.Top>(
+    self: Client,
+    params: CallToolParams<S> & { readonly schema: S },
+    options?: CallOptions
+  ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+  <S extends Schema.Top = never>(
     self: Client,
     params: CallToolParams<S>,
     options?: CallOptions
-  ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+  ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
 } = dual(
   (args) => isClient(args[0]),
-  Effect.fnUntraced(function*<S extends Schema.Top = typeof McpSchema.CallToolResult>(
+  Effect.fnUntraced(function*<S extends Schema.Top = never>(
     self: Client,
     params: CallToolParams<S>,
     options?: CallOptions
@@ -1252,35 +1301,73 @@ export const callTool: {
   })
 )
 
-const PositiveDuration = Schema.Duration.check(Schema.makeFilter((duration) => {
-  const millis = Duration.toMillis(duration)
-
-  return Number.isFinite(millis) && millis > 0
-}, { expected: "a positive finite duration" }))
-
-const decodeClientDuration = Schema.decodeUnknownEffect(PositiveDuration)
-
-const validateTimeout = Effect.fnUntraced(
-  function*(input: Duration.Input) {
-    return yield* decodeClientDuration(Option.getOrUndefined(Duration.fromInput(input)))
-  },
-  Effect.mapError((cause) =>
-    new McpClientError({
-      reason: { _tag: "ConfigurationError", message: "Timeout must be a positive finite duration", cause }
-    })
-  )
+export const listPrompts: {
+  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Prompt>, McpClientError>
+} = dual(
+  (args) => isClient(args[0]),
+  Effect.fnUntraced(function*(self: Client, options?: CallOptions) {
+    return yield* self.listPrompts(options)
+  })
 )
 
-const decodeServerCapabilities = Schema.decodeUnknownEffect(McpSchema.ServerCapabilities)
+export const getPrompt: {
+  (
+    params: GetPromptParams,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.GetPromptResult, McpClientError>
+  (
+    self: Client,
+    params: GetPromptParams,
+    options?: CallOptions
+  ): Effect.Effect<McpSchema.GetPromptResult, McpClientError>
+} = dual(
+  (args) => isClient(args[0]),
+  Effect.fnUntraced(function*(self: Client, params: GetPromptParams, options?: CallOptions) {
+    return yield* self.getPrompt(params, options)
+  })
+)
 
-const decodeImplementation = Schema.decodeUnknownEffect(McpSchema.Implementation)
+export const listResources: {
+  (options?: CallOptions): (self: Client) => Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+  (self: Client, options?: CallOptions): Effect.Effect<ReadonlyArray<McpSchema.Resource>, McpClientError>
+} = dual(
+  (args) => isClient(args[0]),
+  Effect.fnUntraced(function*(self: Client, options?: CallOptions) {
+    return yield* self.listResources(options)
+  })
+)
 
-const decodeVersionRejection = Schema.decodeUnknownOption(Schema.Struct({
-  requested: Schema.Literals(["2025-11-25", "2026-07-28"]),
-  supported: Schema.Array(Schema.String)
-}))
+export const readResource: {
+  (
+    params: ReadResourceParams,
+    options?: CallOptions
+  ): (self: Client) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+  (
+    self: Client,
+    params: ReadResourceParams,
+    options?: CallOptions
+  ): Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
+} = dual(
+  (args) => isClient(args[0]),
+  Effect.fnUntraced(function*(self: Client, params: ReadResourceParams, options?: CallOptions) {
+    return yield* self.readResource(params, options)
+  })
+)
 
-const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022
+const validateTimeout = Effect.fnUntraced(function*(input: Duration.Input) {
+  const duration = Option.getOrUndefined(Duration.fromInput(input))
+  const millis = duration === undefined ? NaN : Duration.toMillis(duration)
+
+  if (duration === undefined || !Number.isFinite(millis) || millis <= 0) {
+    return yield* new McpClientError({
+      reason: { _tag: "ConfigurationError", message: "Timeout must be a positive finite duration" }
+    })
+  }
+
+  return duration
+})
+
 export const make = Effect.fnUntraced(function*(options: Options): Effect.fn.Return<
   Client,
   McpClientError,
@@ -1304,7 +1391,7 @@ const connectClient = Effect.fnUntraced(function*(
 
   const version = protocol.protocolVersion
 
-  const timeout = yield* validateTimeout(options.timeout ?? "60 seconds")
+  const timeout = yield* validateTimeout(options.timeout ?? DEFAULT_TIMEOUT)
   const capabilities = McpSchema.ClientCapabilities.make({})
 
   const shutdown = yield* Deferred.make<never, McpClientError>()
@@ -1317,7 +1404,7 @@ const connectClient = Effect.fnUntraced(function*(
     { method: string; response: Deferred.Deferred<unknown, McpClientError> }
   >()
 
-  const permits = Semaphore.makeUnsafe(64)
+  const permits = Semaphore.makeUnsafe(MAX_CONCURRENT_REQUESTS)
 
   const assertOpen = Effect.gen(function*() {
     const error = yield* Ref.get(closed)
@@ -1362,17 +1449,16 @@ const connectClient = Effect.fnUntraced(function*(
         }
 
         if (message.method === "ping") {
-          const params = yield* Schema.decodeUnknownEffect(McpSchema.Ping.payloadSchema)(message.params).pipe(
-            Effect.result
-          )
-          yield* transport.send(
-            params._tag === "Success"
-              ? { jsonrpc: "2.0", id: message.id, result: {} }
-              : {
-                jsonrpc: "2.0",
-                id: message.id,
-                error: { code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Invalid ping parameters" }
-              }
+          yield* decodePing(message.params).pipe(
+            Effect.matchEffect({
+              onSuccess: () => transport.send({ jsonrpc: "2.0", id: message.id, result: {} }),
+              onFailure: () =>
+                transport.send({
+                  jsonrpc: "2.0",
+                  id: message.id,
+                  error: { code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "Invalid ping parameters" }
+                })
+            })
           )
         } else {
           yield* transport.send({
@@ -1463,9 +1549,15 @@ const connectClient = Effect.fnUntraced(function*(
   const ensureCapability = Effect.fnUntraced(function*(method: string) {
     const serverCapabilities = yield* Ref.get(capabilitiesRef)
 
-    if (method.startsWith("tools/") && serverCapabilities.tools === undefined) {
+    const capability = Match.value(method).pipe(
+      Match.when((method) => method.startsWith("tools/"), () => "tools" as const),
+      Match.when((method) => method.startsWith("prompts/"), () => "prompts" as const),
+      Match.when((method) => method.startsWith("resources/"), () => "resources" as const),
+      Match.orElse(() => undefined)
+    )
+    if (capability !== undefined && serverCapabilities[capability] === undefined) {
       return yield* new McpClientError({
-        reason: { _tag: "UnsupportedError", message: "Server does not advertise tools" }
+        reason: { _tag: "UnsupportedError", message: `Server does not advertise ${capability}` }
       })
     }
   })
@@ -1476,23 +1568,27 @@ const connectClient = Effect.fnUntraced(function*(
     function*(method: string, params: unknown, tool?: McpSchema.Tool) {
       yield* ensureCapability(method)
       return yield* exchange(method, params ?? {}, tool).pipe(
-        Effect.catch(Effect.fnUntraced(function*(error) {
-          const rejection = error.reason._tag === "ProtocolError" || error.reason._tag === "HttpError"
-            ? decodeVersionRejection(error.reason.data)
-            : Option.none()
-
-          if (
-            !initialized && version === "2026-07-28" && method === "server/discover" &&
-            (error.reason._tag === "ProtocolError" || error.reason._tag === "HttpError") &&
-            error.reason.code === UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE &&
-            Option.isSome(rejection) && rejection.value.requested === version &&
-            rejection.value.supported.includes(version)
-          ) {
-            return yield* exchange(method, params ?? {}, tool)
-          }
-
-          return yield* error
-        }))
+        Effect.catch((error) =>
+          Match.value(error.reason).pipe(
+            Match.tag(
+              "ProtocolError",
+              "HttpError",
+              Effect.fnUntraced(function*(reason) {
+                const rejection = decodeVersionRejection(reason.data)
+                if (
+                  !initialized && version === "2026-07-28" && method === "server/discover" &&
+                  reason.code === UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE &&
+                  Option.isSome(rejection) && rejection.value.requested === version &&
+                  rejection.value.supported.includes(version)
+                ) {
+                  return yield* exchange(method, params ?? {}, tool)
+                }
+                return yield* error
+              })
+            ),
+            Match.orElse(() => Effect.fail(error))
+          )
+        )
       )
     }
   )
@@ -1641,57 +1737,127 @@ const connectClient = Effect.fnUntraced(function*(
     )
   })
 
-  const listTools = Effect.fnUntraced(function*(options?: CallOptions) {
-    const duration = options?.timeout === undefined ? timeout : yield* validateTimeout(options.timeout)
-    const deadlineFailure = yield* Ref.make<McpClientError | undefined>(undefined)
-    return yield* Effect.gen(function*() {
-      yield* assertOpen
-      if (!serverCapabilities.tools) return []
+  const listAll = <A>(
+    kind: "tools" | "prompts" | "resources",
+    select: (page: unknown) => { readonly items: ReadonlyArray<A>; readonly nextCursor?: string | undefined },
+    transform?: (items: ReadonlyArray<A>) => Effect.Effect<ReadonlyArray<A>, McpClientError>
+  ) =>
+    Effect.fnUntraced(function*(options?: CallOptions) {
+      const duration = options?.timeout === undefined ? timeout : yield* validateTimeout(options.timeout)
+      const deadlineFailure = yield* Ref.make<McpClientError | undefined>(undefined)
+      return yield* Effect.gen(function*() {
+        yield* assertOpen
+        if (!serverCapabilities[kind]) return []
 
-      const tools: Array<McpSchema.Tool> = []
-      const cursors = new Set<string>()
-      let cursor: string | undefined
+        const items: Array<A> = []
+        const cursors = new Set<string>()
+        let cursor: string | undefined
 
-      for (let pageCount = 0;; pageCount++) {
-        if (pageCount >= 100) {
-          return yield* new McpClientError({
-            reason: { _tag: "LimitError", message: "MCP tools discovery exceeded its page limit" }
-          })
+        for (let pageCount = 0;; pageCount++) {
+          if (pageCount >= MAX_DISCOVERY_PAGES) {
+            return yield* new McpClientError({
+              reason: { _tag: "LimitError", message: `MCP ${kind} discovery exceeded its page limit` }
+            })
+          }
+          const page = select(
+            yield* operation(
+              `${kind}/list`,
+              cursor === undefined ? {} : { cursor },
+              options
+            )
+          )
+          if (items.length + page.items.length > MAX_DISCOVERY_ITEMS) {
+            return yield* new McpClientError({
+              reason: { _tag: "LimitError", message: `MCP ${kind} discovery exceeded its item limit` }
+            })
+          }
+          items.push(...page.items)
+          cursor = page.nextCursor
+          if (cursor === undefined) break
+          if (cursors.has(cursor)) {
+            return yield* new McpClientError({
+              reason: { _tag: "LimitError", message: `MCP ${kind} discovery repeated a cursor` }
+            })
+          }
+          cursors.add(cursor)
         }
-        const page = yield* operation<McpSchema.ListToolsResult>(
-          "tools/list",
-          cursor === undefined ? {} : { cursor },
-          options
-        )
-        if (tools.length + page.tools.length > 10_000) {
-          return yield* new McpClientError({
-            reason: { _tag: "LimitError", message: "MCP tools discovery exceeded its tool limit" }
-          })
-        }
-        tools.push(...page.tools)
-        cursor = page.nextCursor
-        if (cursor === undefined) break
-        if (cursors.has(cursor)) {
-          return yield* new McpClientError({
-            reason: { _tag: "LimitError", message: "MCP tools discovery repeated a cursor" }
-          })
-        }
-        cursors.add(cursor)
-      }
 
-      return transport.filterTools ? yield* transport.filterTools(tools) : tools
-    }).pipe(
-      Effect.provideService(DeadlineFailure, deadlineFailure),
-      Effect.timeoutOrElse({
-        duration,
-        orElse: Effect.fnUntraced(function*() {
-          const knownFailure = yield* Ref.get(deadlineFailure)
-          return yield* knownFailure ??
-            new McpClientError({ reason: { _tag: "TimeoutError", message: "MCP tools discovery deadline exceeded" } })
+        return transform ? yield* transform(items) : items
+      }).pipe(
+        Effect.provideService(DeadlineFailure, deadlineFailure),
+        Effect.timeoutOrElse({
+          duration,
+          orElse: Effect.fnUntraced(function*() {
+            const knownFailure = yield* Ref.get(deadlineFailure)
+            return yield* knownFailure ??
+              new McpClientError({
+                reason: { _tag: "TimeoutError", message: `MCP ${kind} discovery deadline exceeded` }
+              })
+          })
         })
+      )
+    })
+
+  const listTools = listAll("tools", (page) => {
+    const result = page as McpSchema.ListToolsResult
+    return { items: result.tools, nextCursor: result.nextCursor }
+  }, transport.filterTools)
+  const listPrompts = listAll("prompts", (page) => {
+    const result = page as McpSchema.ListPromptsResult
+    return { items: result.prompts, nextCursor: result.nextCursor }
+  })
+  const listResources = listAll("resources", (page) => {
+    const result = page as McpSchema.ListResourcesResult
+    return { items: result.resources, nextCursor: result.nextCursor }
+  })
+
+  const callToolImpl = Effect.fnUntraced(function*<S extends Schema.Top>(
+    params: CallToolParams<S>,
+    opts?: CallOptions
+  ): Effect.fn.Return<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]> {
+    if (params.schema === undefined) return yield* invokeTool(params, opts)
+
+    const decode = Schema.decodeUnknownEffect(params.schema)
+
+    return yield* invokeTool(
+      params,
+      opts,
+      Effect.fnUntraced(function*(result) {
+        if (result.isError === true) {
+          return yield* new McpClientError({
+            reason: { _tag: "ToolError", message: "MCP tool reported an execution error", result }
+          })
+        }
+
+        return yield* decode(result.structuredContent).pipe(
+          Effect.mapError((cause) =>
+            new McpClientError({
+              reason: { _tag: "ValidationError", message: "MCP structured result validation failed", cause }
+            })
+          )
+        )
       })
     )
   })
+
+  function callTool(
+    params: CallToolParams,
+    options?: CallOptions
+  ): Effect.Effect<McpSchema.CallToolResult, McpClientError>
+  function callTool<S extends Schema.Top>(
+    params: CallToolParams<S> & { readonly schema: S },
+    options?: CallOptions
+  ): Effect.Effect<S["Type"], McpClientError, S["DecodingServices"]>
+  function callTool<S extends Schema.Top = never>(
+    params: CallToolParams<S>,
+    options?: CallOptions
+  ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]>
+  function callTool<S extends Schema.Top>(
+    params: CallToolParams<S>,
+    options?: CallOptions
+  ): Effect.Effect<McpSchema.CallToolResult | S["Type"], McpClientError, S["DecodingServices"]> {
+    return callToolImpl(params, options)
+  }
 
   const client: Client = {
     [TypeId]: TypeId,
@@ -1702,34 +1868,16 @@ const connectClient = Effect.fnUntraced(function*(
     serverInfo,
     instructions: profile.instructions,
     listTools,
-    callTool: Effect.fnUntraced(function*<S extends Schema.Top = typeof McpSchema.CallToolResult>(
-      params: CallToolParams<S>,
-      opts?: CallOptions
-    ): Effect.fn.Return<S["Type"], McpClientError, S["DecodingServices"]> {
-      if (params.schema === undefined) return yield* invokeTool<S["Type"], S["DecodingServices"]>(params, opts)
-
-      const decode = Schema.decodeUnknownEffect(params.schema)
-
-      return yield* invokeTool(
-        params,
-        opts,
-        Effect.fnUntraced(function*(result) {
-          if (result.isError === true) {
-            return yield* new McpClientError({
-              reason: { _tag: "ToolError", message: "MCP tool reported an execution error", result }
-            })
-          }
-
-          return yield* decode(result.structuredContent).pipe(
-            Effect.mapError((cause) =>
-              new McpClientError({
-                reason: { _tag: "ValidationError", message: "MCP structured result validation failed", cause }
-              })
-            )
-          )
-        })
-      )
-    })
+    listPrompts,
+    listResources,
+    getPrompt: (params, options) =>
+      operation<McpSchema.GetPromptResult>(
+        "prompts/get",
+        { name: params.prompt.name, ...(params.arguments === undefined ? {} : { arguments: params.arguments }) },
+        options
+      ),
+    readResource: (params, options) => operation<McpSchema.ReadResourceResult>("resources/read", params, options),
+    callTool
   }
 
   return client
