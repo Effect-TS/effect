@@ -41,7 +41,6 @@ const roundTiesAwayFromZero = (input: number): bigint =>
 
 const roundMillisToNanos = (millis: number): bigint => roundTiesAwayFromZero(millis * 1_000_000)
 
-// a non-finite total cannot become a bigint, `make` maps it to an infinite or zero duration
 const fromNanosNumber = (nanos: number): Duration => make(Number.isFinite(nanos) ? roundTiesAwayFromZero(nanos) : nanos)
 
 const parseNanos = (input: string, scale: bigint): bigint => {
