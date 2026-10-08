@@ -1,5 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Data, DateTime, Deferred, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
+import {
+  Data,
+  DateTime,
+  Deferred,
+  Effect,
+  Fiber,
+  FileSystem,
+  Layer,
+  Match,
+  Path,
+  Queue,
+  Redacted,
+  Terminal
+} from "effect"
 import { Prompt } from "effect/cli"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
@@ -113,6 +126,31 @@ describe("Prompt.Date", () => {
       const result = yield* Prompt.run(Prompt.Date({ message: "When", initial, dateMask: "DD" }))
 
       assert.deepStrictEqual(result, new Date(2024, 0, 5, 12))
+    }).pipe(Effect.provide(TestLayer)))
+})
+
+describe("Prompt.succeed", () => {
+  it.effect("does not acquire terminal input", () =>
+    Effect.gen(function*() {
+      const terminal = yield* Terminal.Terminal
+      let acquisitions = 0
+      const result = yield* Prompt.run(Prompt.succeed("x")).pipe(
+        Effect.provideService(
+          Terminal.Terminal,
+          Terminal.make({
+            ...terminal,
+            readInput: Effect.andThen(
+              Effect.sync(() => {
+                acquisitions++
+              }),
+              terminal.readInput
+            )
+          })
+        )
+      )
+
+      assert.strictEqual(result, "x")
+      assert.strictEqual(acquisitions, 0)
     }).pipe(Effect.provide(TestLayer)))
 })
 
