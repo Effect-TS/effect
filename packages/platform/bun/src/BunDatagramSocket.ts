@@ -84,6 +84,7 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
+import * as Predicate from "effect/Predicate"
 import type * as Scope from "effect/Scope"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
 import * as Dns from "node:dns"
@@ -256,8 +257,8 @@ type Family = "ipv4" | "ipv6"
 const noScopeIds: ReadonlyMap<string, number> = new Map()
 
 // Windows reports numeric zones, which parse and format without a map
-const interfaceScopeIds = (): ReadonlyMap<string, number> => {
-  if (process.platform === "win32") return noScopeIds
+const scopeIdsFor = (family: Family): ReadonlyMap<string, number> => {
+  if (family === "ipv4" || process.platform === "win32") return noScopeIds
   try {
     return NetAddress.scopeIdsFromInterfaces(Object.entries(Os.networkInterfaces()))
   } catch {
@@ -265,17 +266,14 @@ const interfaceScopeIds = (): ReadonlyMap<string, number> => {
   }
 }
 
-const scopeIdsFor = (family: Family): ReadonlyMap<string, number> =>
-  family === "ipv6" ? interfaceScopeIds() : noScopeIds
-
-const familyOfLiteral = (address: string | NetAddress.IpAddress): Family | undefined => {
+const familyOf = (address: string | NetAddress.IpAddress): Family | undefined => {
   if (typeof address !== "string") return NetAddress.isIpv4Address(address) ? "ipv4" : "ipv6"
   const version = Net.isIP(address)
   return version === 4 ? "ipv4" : version === 6 ? "ipv6" : undefined
 }
 
-// `endpoint` may be a whole `InetAddress`, whose IPv6 scope must survive
-const formatEndpoint = (
+// An endpoint may be a whole `InetAddress`, whose IPv6 scope must survive
+const formatHost = (
   endpoint: { readonly address?: string | NetAddress.IpAddress | undefined },
   scopeIds: ReadonlyMap<string, number>
 ): string | undefined =>
@@ -290,90 +288,57 @@ interface Resolved {
   readonly family: Family
 }
 
-// Prefer IPv4 unless the family is fixed; IP literals resolve synchronously.
+// Resolves a hostname with one `lookup`, preferring IPv4 unless `family` is
+// fixed. IP literals and `IpAddress` values need no lookup.
 const resolve = (
   address: string | NetAddress.IpAddress | undefined,
-  family: Family | undefined,
-  onError: (error: unknown) => void,
-  next: (resolved: Resolved | undefined) => void
-): void => {
-  if (typeof address !== "string") return next(undefined)
-  const literal = familyOfLiteral(address)
-  if (literal !== undefined) return next({ host: address, family: literal })
-  try {
-    Dns.lookup(address, { all: true, family: family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0 }, (error, results) => {
-      if (error) return onError(error)
-      const result = results.find((result) => result.family === 4) ?? results[0]
-      if (result === undefined) return onError(new Error(`${address} has no addresses`))
-      next({ host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" })
-    })
-  } catch (error) {
-    onError(error)
-  }
-}
-
-interface OpenPlan {
-  readonly family: Family
-  readonly scopeIds: ReadonlyMap<string, number>
-  readonly bindHost: string
-  readonly remote: DatagramSocket.BackingAddress | undefined
-}
-
-/**
- * Picks the socket's family and resolves `bind` and the remote endpoint
- * (`peer` or `connect`) to IP literals. The family is the explicit `family`,
- * else an IP literal in `bind`, else the remote's family, else a `bind`
- * hostname's, else `"ipv4"`. IP literals answer synchronously.
- */
-const planOpen = (
-  options: {
-    readonly family?: Family | undefined
-    readonly bind?: { readonly address?: string | NetAddress.IpAddress | undefined } | undefined
-    readonly remote?: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined
-  },
-  scopeIdsOf: (family: Family) => ReadonlyMap<string, number>,
-  onLookupError: (error: unknown) => void,
-  next: (plan: OpenPlan) => void
-): void => {
-  const { bind, remote } = options
-  const fixed = options.family ?? (bind?.address === undefined ? undefined : familyOfLiteral(bind.address))
-  resolve(remote?.address, fixed, onLookupError, (resolvedRemote) => {
-    const remoteFamily = resolvedRemote?.family ?? (remote === undefined ? undefined : familyOfLiteral(remote.address))
-    resolve(bind?.address, fixed ?? remoteFamily, onLookupError, (resolvedBind) => {
-      const family = fixed ?? remoteFamily ?? resolvedBind?.family ?? "ipv4"
-      const scopeIds = scopeIdsOf(family)
-      next({
-        family,
-        scopeIds,
-        bindHost: resolvedBind?.host ??
-          (bind === undefined ? undefined : formatEndpoint(bind, scopeIds)) ??
-          (family === "ipv6" ? "::" : "0.0.0.0"),
-        remote: remote === undefined ? undefined : {
-          host: resolvedRemote?.host ?? formatEndpoint(remote, scopeIds)!,
-          port: remote.port
+  family: Family | undefined
+): Effect.Effect<Resolved | undefined, DatagramSocket.DatagramSocketError> => {
+  if (typeof address !== "string") return Effect.undefined
+  const literal = familyOf(address)
+  if (literal !== undefined) return Effect.succeed({ host: address, family: literal })
+  return Effect.callback((resume) => {
+    const fail = (error: unknown) => resume(Effect.fail(openError(error, "AddressNotAvailable")))
+    try {
+      Dns.lookup(
+        address,
+        { all: true, family: family === "ipv4" ? 4 : family === "ipv6" ? 6 : 0 },
+        (error, results) => {
+          if (error) return fail(error)
+          const result = results.find((result) => result.family === 4) ?? results[0]
+          if (result === undefined) return fail(new Error(`${address} has no addresses`))
+          resume(Effect.succeed({ host: result.address, family: result.family === 6 ? "ipv6" : "ipv4" }))
         }
-      })
-    })
+      )
+    } catch (error) {
+      fail(error)
+    }
   })
 }
 
-/**
- * Resolves an adopted socket's `peer` in the family the socket is bound to.
- */
-const resolvePeer = (
-  peer: { readonly address: string | NetAddress.IpAddress; readonly port: number } | undefined,
-  family: Family,
-  scopeIds: ReadonlyMap<string, number>,
-  onLookupError: (error: unknown) => void,
-  next: (peer: DatagramSocket.BackingAddress | undefined) => void
-): void => {
-  if (peer === undefined) return next(undefined)
-  if (typeof peer.address !== "string") return next({ host: formatEndpoint(peer, scopeIds)!, port: peer.port })
-  resolve(peer.address, family, onLookupError, (resolved) => next({ host: resolved!.host, port: peer.port }))
-}
+// Picks the family as documented on `Options` and turns `bind` and the remote
+// endpoint into IP literals
+const resolveOpen = Effect.fnUntraced(function*(options: Options) {
+  const bind = options.bind
+  const remote = options.connect ?? options.peer
+  const fixed = options.family ?? (bind?.address === undefined ? undefined : familyOf(bind.address))
+  const resolvedRemote = yield* resolve(remote?.address, fixed)
+  const remoteFamily = resolvedRemote?.family ?? (remote === undefined ? undefined : familyOf(remote.address))
+  const resolvedBind = yield* resolve(bind?.address, fixed ?? remoteFamily)
+  const family = fixed ?? remoteFamily ?? resolvedBind?.family ?? "ipv4"
+  const scopeIds = scopeIdsFor(family)
+  return {
+    scopeIds,
+    host: resolvedBind?.host ?? (bind === undefined ? undefined : formatHost(bind, scopeIds)) ??
+      (family === "ipv6" ? "::" : "0.0.0.0"),
+    remote: remote === undefined ? undefined : {
+      host: resolvedRemote?.host ?? formatHost(remote, scopeIds)!,
+      port: remote.port
+    }
+  }
+})
 
-const errorCode = (error: unknown): unknown =>
-  typeof error === "object" && error !== null ? (error as NodeJS.ErrnoException).code : undefined
+const errorCode = (error: unknown): unknown => Predicate.hasProperty(error, "code") ? error.code : undefined
 
 const openError = (
   error: unknown,
@@ -416,21 +381,19 @@ const ioKind = (error: unknown): DatagramSocket.IoErrorKind => {
 const closedError = (): DatagramSocket.DatagramSocketError =>
   new DatagramSocket.DatagramSocketError({ reason: new DatagramSocket.DatagramSocketClosedError() })
 
-const writeError = (
-  error: unknown,
-  kind: DatagramSocket.IoErrorKind = ioKind(error)
-): DatagramSocket.DatagramSocketError =>
+const writeError = (error: unknown): DatagramSocket.DatagramSocketError =>
   new DatagramSocket.DatagramSocketError({
-    reason: new DatagramSocket.DatagramSocketWriteError({ kind, cause: error })
+    reason: new DatagramSocket.DatagramSocketWriteError({ kind: ioKind(error), cause: error })
   })
 
-const readError = (
-  error: unknown,
-  kind: DatagramSocket.IoErrorKind = ioKind(error)
-): DatagramSocket.DatagramSocketError =>
+const readError = (error: unknown): DatagramSocket.DatagramSocketError =>
   new DatagramSocket.DatagramSocketError({
-    reason: new DatagramSocket.DatagramSocketReadError({ kind, cause: error })
+    reason: new DatagramSocket.DatagramSocketReadError({ kind: ioKind(error), cause: error })
   })
+
+// Bun throws a plain `Error` with this message when sending on a closed socket
+const isClosedError = (error: unknown): boolean =>
+  Predicate.hasProperty(error, "message") && error.message === "Socket is closed"
 
 // uSockets `LIBUS_SOCKET_*` flags, not part of Bun's public API. Bun's own
 // `node:dgram` passes them the same way.
@@ -439,278 +402,242 @@ const LIBUS_SOCKET_REUSE_PORT = 4
 const LIBUS_SOCKET_IPV6_ONLY = 8
 const LIBUS_SOCKET_REUSE_ADDR = 16
 
-// Bun throws a plain `Error` with this message when sending on a closed socket
-const isClosedError = (error: unknown): boolean => error instanceof Error && error.message === "Socket is closed"
-
-const open = (
-  options: Options,
-  events: DatagramSocket.BackingEvents
-): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
-  // Core lets uncancellable lookups finish and closes abandoned sockets.
-  Effect.callback((resume) => {
-    planOpen(
-      { family: options.family, bind: options.bind, remote: options.connect ?? options.peer },
-      scopeIdsFor,
-      (error) => resume(Effect.fail(openError(error, "AddressNotAvailable"))),
-      (plan) => create(options, events, plan, resume)
-    )
-  })
-
-const create = (
-  options: Options,
-  events: DatagramSocket.BackingEvents,
-  { bindHost: host, remote, scopeIds }: OpenPlan,
-  resume: (effect: Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError>) => void
-) => {
-  const native = new NativeSocket(events)
+const open = Effect.fnUntraced(function*(options: Options, events: DatagramSocket.BackingEvents) {
+  const { host, remote, scopeIds } = yield* resolveOpen(options)
+  const backing = new BunBackingSocket(events)
   const flags = (options.reusePort ? LIBUS_SOCKET_REUSE_PORT : 0) |
     (options.ipv6Only ? LIBUS_SOCKET_IPV6_ONLY : 0) |
     (options.reuseAddress ? LIBUS_SOCKET_REUSE_ADDR : 0)
-  const connected = options.connect !== undefined
-  const socketOptions: Record<string, unknown> = {
-    hostname: host,
-    port: options.bind?.port ?? 0,
-    socket: native.handlers
-  }
-  if (flags !== 0) socketOptions.flags = flags
-  if (connected) socketOptions.connect = { hostname: remote!.host, port: remote!.port }
-  let opening: Promise<UdpSocket>
-  try {
-    opening = Bun.udpSocket(socketOptions as Bun.udp.SocketOptions<"buffer">)
-  } catch (error) {
-    return resume(Effect.fail(openError(error)))
-  }
-  opening.then(
-    (socket) => {
-      native.socket = socket
-      try {
-        if (options.broadcast !== undefined) socket.setBroadcast(options.broadcast)
-        if (options.ttl !== undefined) socket.setTTL(options.ttl)
-        const multicast = options.multicast
-        if (multicast?.ttl !== undefined) socket.setMulticastTTL(multicast.ttl)
-        if (multicast?.loopback !== undefined) socket.setMulticastLoopback(multicast.loopback)
-        if (multicast?.interface !== undefined) {
-          socket.setMulticastInterface(
-            NetAddress.formatMulticastInterface(multicast.interface, scopeIds)
-          )
-        }
-      } catch (error) {
-        native.close()
-        return resume(Effect.fail(openError(error)))
+  const connect = options.connect === undefined ? undefined : { hostname: remote!.host, port: remote!.port }
+  const socket = yield* Effect.tryPromise({
+    try: () =>
+      Bun.udpSocket({
+        hostname: host,
+        port: options.bind?.port ?? 0,
+        socket: backing.handlers,
+        ...(flags === 0 ? undefined : { flags }),
+        ...(connect === undefined ? undefined : { connect })
+      } as Bun.udp.SocketOptions<"buffer">),
+    catch: (error) => openError(error)
+  })
+  // closes the new socket if `attach` or an option fails
+  backing.socket = socket
+  yield* Effect.try({
+    try: () => {
+      backing.attach(socket, scopeIds, remote, connect !== undefined)
+      if (options.broadcast !== undefined) socket.setBroadcast(options.broadcast)
+      if (options.ttl !== undefined) socket.setTTL(options.ttl)
+      const multicast = options.multicast
+      if (multicast?.ttl !== undefined) socket.setMulticastTTL(multicast.ttl)
+      if (multicast?.loopback !== undefined) socket.setMulticastLoopback(multicast.loopback)
+      if (multicast?.interface !== undefined) {
+        socket.setMulticastInterface(NetAddress.formatMulticastInterface(multicast.interface, scopeIds))
       }
-      resume(Effect.succeed(native.open(scopeIds, remote, connected)))
     },
-    (error) => resume(Effect.fail(openError(error)))
-  )
-}
+    catch: (error) => openError(error)
+  }).pipe(Effect.onError(() => Effect.sync(() => backing.close())))
+  return backing
+})
 
 const adopt = (
   socket: UdpSocket,
   options: AdoptOptions,
   events: DatagramSocket.BackingEvents
-): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> =>
-  Effect.callback((resume) => {
-    const native = new NativeSocket(events)
-    native.socket = socket
-    const fail = (error: DatagramSocket.DatagramSocketError) => {
-      native.close()
-      resume(Effect.fail(error))
-    }
-    if (socket.closed) return fail(openError(new Error("The adopted Bun UDP socket is closed")))
-    let family: Family
-    try {
-      // the runtime expects `{ socket }`, although the types declare the
-      // handler itself
-      socket.reload({ socket: native.handlers } as any)
-      family = socket.address.family === "IPv6" ? "ipv6" : "ipv4"
-    } catch (error) {
-      return fail(openError(error))
-    }
+): Effect.Effect<DatagramSocket.BackingSocket, DatagramSocket.DatagramSocketError> => {
+  const backing = new BunBackingSocket(events)
+  backing.socket = socket
+  return Effect.gen(function*() {
+    if (socket.closed) return yield* Effect.fail(openError(new Error("The adopted Bun UDP socket is closed")))
+    const family: Family = yield* Effect.try({
+      try: () => {
+        // Bun reads `{ socket }`, although the types declare the handler itself
+        socket.reload({ socket: backing.handlers } as any)
+        return socket.address.family === "IPv6" ? "ipv6" : "ipv4"
+      },
+      catch: (error) => openError(error)
+    })
     const scopeIds = scopeIdsFor(family)
+    // an unconnected socket has the property, set to `undefined`
     const remote = "remoteAddress" in socket ? socket.remoteAddress : undefined
     if (remote !== undefined) {
-      return resume(Effect.succeed(native.open(scopeIds, { host: remote.address, port: remote.port }, true)))
+      return backing.attach(socket, scopeIds, { host: remote.address, port: remote.port }, true)
     }
-    resolvePeer(
-      options.peer,
-      family,
+    const peer = options.peer
+    const resolved = yield* resolve(peer?.address, family)
+    return backing.attach(
+      socket,
       scopeIds,
-      (error) => fail(openError(error, "AddressNotAvailable")),
-      (peer) => resume(Effect.succeed(native.open(scopeIds, peer, false)))
+      peer === undefined ? undefined : { host: resolved?.host ?? formatHost(peer, scopeIds)!, port: peer.port },
+      false
     )
-  })
-
-// `trySend` found the kernel's send buffer full
-const kernelFull = Symbol("kernelFull")
-
-// A send waiting for `drain`, in `sendMany`'s flat form: `[data, port, host]`
-// per datagram, or plain payloads when connected
-class PendingSend {
-  readonly packets: ReadonlyArray<Uint8Array | string | number>
-  readonly count: number
-  sent: number
-  readonly done: (error?: DatagramSocket.DatagramSocketError) => void
-  constructor(
-    packets: ReadonlyArray<Uint8Array | string | number>,
-    count: number,
-    sent: number,
-    done: (error?: DatagramSocket.DatagramSocketError) => void
-  ) {
-    this.packets = packets
-    this.count = count
-    this.sent = sent
-    this.done = done
-  }
+  }).pipe(Effect.onError(() => Effect.sync(() => backing.close())))
 }
 
-class NativeSocket {
-  socket: UdpSocket | undefined = undefined
+// Sends the kernel refused while its buffer was full, in `sendMany`'s flat
+// form: `[data, port, host]` per datagram, or plain payloads when connected
+interface Waiting {
+  entries: ReadonlyArray<Uint8Array | string | number>
+  readonly done: (error?: DatagramSocket.DatagramSocketError) => void
+}
+
+class BunBackingSocket implements DatagramSocket.BackingSocket {
   readonly events: DatagramSocket.BackingEvents
+  // installed when the socket is created, so packets can arrive before `attach`
   readonly handlers: Bun.udp.SocketHandler<"buffer">
-  // sends the kernel refused with a full buffer, oldest first. Later sends
-  // queue behind them, so datagrams keep their order
-  pending: Array<PendingSend> = []
-  // entries per datagram in `sendMany`'s list
+  socket: UdpSocket | undefined = undefined
+  address: DatagramSocket.BackingAddress = { host: "", port: 0 }
+  scopeIds: ReadonlyMap<string, number> = noScopeIds
+  peer: DatagramSocket.BackingAddress | undefined = undefined
+  connected = false
+  // entries per datagram in `sendMany`'s flat list
   stride = 3
-  // why the last `trySend` returned `false`, for the `send` that follows it
-  refusal: unknown = undefined
+  // waiting sends, oldest first; later sends queue behind them to keep order
+  waiting: Array<Waiting> = []
   closing = false
 
   constructor(events: DatagramSocket.BackingEvents) {
     this.events = events
     this.handlers = {
       data: (_socket, payload, port, host) => events.onPacket(payload, host, port),
-      // also fires once right after creation, when nothing is pending
+      // also fires once right after creation, when nothing is waiting
       drain: () => this.flush(),
-      // Bun crashes the process without an `error` handler, so one is always
-      // installed. It receives the error alone, despite the declared types.
+      // Bun crashes the process without an `error` handler. It passes the
+      // error alone, despite the declared `(socket, error)`.
       error: ((first: unknown, second?: unknown) => this.onNativeError(second === undefined ? first : second)) as any
     }
   }
 
-  open(
+  attach(
+    socket: UdpSocket,
     scopeIds: ReadonlyMap<string, number>,
     peer: DatagramSocket.BackingAddress | undefined,
     connected: boolean
-  ): DatagramSocket.BackingSocket {
-    const socket = this.socket!
-    const bound = socket.address
-    const stride = this.stride = connected ? 1 : 3
-    return {
-      address: { host: bound.address, port: bound.port },
-      scopeIds,
-      peer,
-      connected,
-      trySend: (payload, destination) => {
-        if (this.pending.length !== 0) return false
-        try {
-          const sent = connected
-            ? (socket as Bun.udp.ConnectedSocket<"buffer">).send(payload)
-            : (socket as Bun.udp.Socket<"buffer">).send(payload, destination!.port, destination!.host)
-          if (sent) return true
-          this.refusal = kernelFull
-        } catch (error) {
-          this.refusal = error
-        }
-        return false
-      },
-      // Reuse the `trySend` result; do not send the datagram twice.
-      send: (payload, destination, done) => {
-        const refusal = this.refusal
-        this.refusal = undefined
-        if (refusal !== undefined && refusal !== kernelFull) return done(this.sendError(refusal))
-        this.waitOne(payload, destination, done)
-      },
-      sendMany: (payloads, destinations, done) => {
-        const count = payloads.length
-        let packets: ReadonlyArray<Uint8Array | string | number> = payloads
-        if (!connected) {
-          const flat = new Array<Uint8Array | string | number>(count * stride)
-          for (let i = 0, j = 0; i < count; i++, j += stride) {
-            const destination = destinations[i]!
-            flat[j] = payloads[i]
-            flat[j + 1] = destination.port
-            flat[j + 2] = destination.host
-          }
-          packets = flat
-        }
-        if (this.pending.length !== 0) return this.wait(packets, count, 0, done)
-        let sent: number
-        try {
-          sent = socket.sendMany(packets as any)
-        } catch (error) {
-          return done(this.sendError(error))
-        }
-        if (sent === count) return done()
-        this.wait(packets, count, sent, done)
-      },
-      joinMulticast: ({ group, interface: ingress, source }) =>
-        Effect.try({
-          try: () => {
-            const groupHost = NetAddress.formatIp(group)
-            const interfaceHost = ingress === undefined
-              ? undefined
-              : NetAddress.formatMulticastInterface(ingress, scopeIds)
-            if (source === undefined) {
-              if (!socket.addMembership(groupHost, interfaceHost)) throw new Error(`Could not join ${groupHost}`)
-              return () => Effect.sync(() => socket.dropMembership(groupHost, interfaceHost))
-            }
-            const sourceHost = NetAddress.formatIp(source)
-            if (!socket.addSourceSpecificMembership(sourceHost, groupHost, interfaceHost)) {
-              throw new Error(`Could not join ${groupHost} from ${sourceHost}`)
-            }
-            return () => Effect.sync(() => socket.dropSourceSpecificMembership(sourceHost, groupHost, interfaceHost))
-          },
-          catch: (error) => openError(error)
-        }),
-      close: () => this.close()
-    }
+  ): this {
+    this.socket = socket
+    this.address = { host: socket.address.address, port: socket.address.port }
+    this.scopeIds = scopeIds
+    this.peer = peer
+    this.connected = connected
+    this.stride = connected ? 1 : 3
+    return this
   }
 
-  waitOne(
+  send(
     payload: Uint8Array,
     destination: DatagramSocket.BackingAddress | undefined,
     done: (error?: DatagramSocket.DatagramSocketError) => void
   ) {
-    this.wait(destination === undefined ? [payload] : [payload, destination.port, destination.host], 1, 0, done)
+    const entries = destination === undefined ? [payload] : [payload, destination.port, destination.host]
+    if (this.waiting.length !== 0) return this.wait(entries, done)
+    let sent: boolean
+    try {
+      sent = destination === undefined
+        ? (this.socket as Bun.udp.ConnectedSocket<"buffer">).send(payload)
+        : (this.socket as Bun.udp.Socket<"buffer">).send(payload, destination.port, destination.host)
+    } catch (error) {
+      return done(this.sendError(error))
+    }
+    if (sent) return done()
+    this.wait(entries, done)
+  }
+
+  sendMany(
+    payloads: ReadonlyArray<Uint8Array>,
+    destinations: ReadonlyArray<DatagramSocket.BackingAddress | undefined>,
+    done: (error?: DatagramSocket.DatagramSocketError, index?: number) => void
+  ) {
+    let entries: ReadonlyArray<Uint8Array | string | number> = payloads
+    if (!this.connected) {
+      const flat = new Array<Uint8Array | string | number>(payloads.length * 3)
+      for (let i = 0; i < payloads.length; i++) {
+        flat[i * 3] = payloads[i]
+        flat[i * 3 + 1] = destinations[i]!.port
+        flat[i * 3 + 2] = destinations[i]!.host
+      }
+      entries = flat
+    }
+    if (this.waiting.length !== 0) return this.wait(entries, done)
+    let sent: number
+    try {
+      sent = this.socket!.sendMany(entries as any)
+    } catch (error) {
+      // Bun throws for the whole call, so no index is known
+      return done(this.sendError(error))
+    }
+    if (sent === payloads.length) return done()
+    this.wait(entries.slice(sent * this.stride), done)
+  }
+
+  joinMulticast<A extends NetAddress.IpAddress>({ group, interface: ingress, source }: {
+    readonly group: NetAddress.MulticastAddress<A>
+    readonly interface?: NetAddress.MulticastInterface<A> | undefined
+    readonly source?: A | undefined
+  }): Effect.Effect<() => Effect.Effect<void>, DatagramSocket.DatagramSocketError> {
+    return Effect.try({
+      try: () => {
+        const socket = this.socket!
+        const groupHost = NetAddress.formatIp(group)
+        const interfaceHost = ingress === undefined
+          ? undefined
+          : NetAddress.formatMulticastInterface(ingress, this.scopeIds)
+        if (source === undefined) {
+          if (!socket.addMembership(groupHost, interfaceHost)) throw new Error(`Could not join ${groupHost}`)
+          return () => Effect.sync(() => socket.dropMembership(groupHost, interfaceHost))
+        }
+        const sourceHost = NetAddress.formatIp(source)
+        if (!socket.addSourceSpecificMembership(sourceHost, groupHost, interfaceHost)) {
+          throw new Error(`Could not join ${groupHost} from ${sourceHost}`)
+        }
+        return () => Effect.sync(() => socket.dropSourceSpecificMembership(sourceHost, groupHost, interfaceHost))
+      },
+      catch: (error) => openError(error)
+    })
+  }
+
+  close() {
+    if (this.closing) return
+    this.closing = true
+    this.failWaiting()
+    try {
+      this.socket?.close()
+    } catch {
+      // already closed
+    }
   }
 
   wait(
-    packets: ReadonlyArray<Uint8Array | string | number>,
-    count: number,
-    sent: number,
+    entries: ReadonlyArray<Uint8Array | string | number>,
     done: (error?: DatagramSocket.DatagramSocketError) => void
   ) {
-    // a closed socket fires no event and never drains, so check before queueing
+    // a closed socket fires no event and never drains
     if (this.socket?.closed) {
       this.closedUnderneath()
       return done(closedError())
     }
-    this.pending.push(new PendingSend(packets, count, sent, done))
+    this.waiting.push({ entries, done })
   }
 
   // on `drain`, send what the kernel refused, in order, until it refuses again
   flush() {
     const socket = this.socket
     if (socket === undefined) return
-    const stride = this.stride
-    // Re-read the queue: a completion can close the socket and replace it.
-    while (!this.closing && this.pending.length !== 0) {
-      const pending = this.pending
-      const next = pending[0]
+    // re-read `waiting`: a completion can close the socket and replace it
+    while (!this.closing && this.waiting.length !== 0) {
+      const next = this.waiting[0]
       let sent: number
       try {
-        sent = socket.sendMany(
-          (next.sent === 0 ? next.packets : next.packets.slice(next.sent * stride)) as any
-        )
+        sent = socket.sendMany(next.entries as any)
       } catch (error) {
-        pending.shift()
+        this.waiting.shift()
         next.done(this.sendError(error))
         continue
       }
-      next.sent += sent
-      if (next.sent < next.count) return
-      pending.shift()
+      const rest = sent * this.stride
+      if (rest < next.entries.length) {
+        next.entries = next.entries.slice(rest)
+        return
+      }
+      this.waiting.shift()
       next.done()
     }
   }
@@ -734,24 +661,13 @@ class NativeSocket {
   closedUnderneath() {
     if (this.closing) return
     this.closing = true
-    this.failPending()
+    this.failWaiting()
     this.events.onClose()
   }
 
-  failPending() {
-    const pending = this.pending
-    if (pending.length === 0) return
-    this.pending = []
-    for (let i = 0; i < pending.length; i++) pending[i].done(closedError())
-  }
-
-  close() {
-    if (this.closing) return
-    this.closing = true
-    this.failPending()
-    try {
-      this.socket?.close()
-    } catch {
-    }
+  failWaiting() {
+    const waiting = this.waiting
+    this.waiting = []
+    for (let i = 0; i < waiting.length; i++) waiting[i].done(closedError())
   }
 }
