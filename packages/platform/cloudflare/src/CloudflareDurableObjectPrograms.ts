@@ -8,6 +8,7 @@
  * in `AlchemyCloudflareCluster`) runs these programs instead and forwards its
  * class methods to the returned handles.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
@@ -41,6 +42,7 @@ import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./int
  * SQLite storage, resolves same-Worker class exports, and extends the current
  * event with `waitUntil`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -62,6 +64,7 @@ const exportedNamespace = <Stub>(
 /**
  * Delivery options accepted by the cluster entity transport program.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -74,6 +77,7 @@ export interface EntityDeliveryOptions {
 /**
  * Result returned by the cluster entity transport program.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -98,6 +102,7 @@ export type EntityInvokeResult = {
  * typed failures as envelopes, but the native namespace transport expects
  * plain results and rejected defects.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -133,6 +138,7 @@ export type ClusterEntityProgram = {
  * must be exported from the Worker entry as `ClusterEntity`; keep-alive and
  * reply delivery resolve that export through `state.exports`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -187,6 +193,7 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
 /**
  * Execution options accepted by the workflow program's `run`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -198,6 +205,7 @@ export interface ClusterWorkflowRunOptions {
 /**
  * Effect-valued program for one workflow execution Durable Object.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -230,6 +238,7 @@ export type ClusterWorkflowProgram = {
  * exported from the Worker entry as `ClusterWorkflow`; child and parent
  * workflow delivery resolves that export through `state.exports`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -293,6 +302,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
 /**
  * Item leased from the durable queue program.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -305,6 +315,7 @@ export interface DurableQueueItem {
 /**
  * Effect-valued program for one durable queue Durable Object.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -334,6 +345,7 @@ export type ClusterDurableQueueProgram = {
  * queue table and re-arms the single alarm from the earliest pending lease
  * expiry before returning the handler object.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -367,6 +379,7 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
 /**
  * Effect-valued program for one cluster singleton Durable Object.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -391,6 +404,7 @@ export type ClusterSingletonProgram = {
  * the singleton state table and re-arms the watchdog alarm for a wake
  * interrupted by isolate loss before returning the handler object.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
