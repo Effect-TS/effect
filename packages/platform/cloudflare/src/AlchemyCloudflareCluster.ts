@@ -46,6 +46,7 @@ import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type { PersistedQueueFactory } from "effect/persistence/PersistedQueue"
 import type { WorkflowEngine } from "effect/workflow/WorkflowEngine"
+import type { CloudflareSharding } from "./CloudflareCluster.ts"
 import {
   type DurableObjectProgramState,
   makeClusterDurableQueueProgram,
@@ -58,12 +59,13 @@ import type { Cluster } from "./internal/cluster.ts"
 
 /**
  * The services `make` builds on top of the user layer: the cluster `Sharding`
- * service, the workflow engine, and the persisted queue factory.
+ * service (also as `CloudflareSharding`, for `CloudflareCluster.toLayer`), the
+ * workflow engine, and the persisted queue factory.
  *
  * @category models
  * @since 4.0.0
  */
-export type ClusterServices = Sharding | WorkflowEngine | PersistedQueueFactory
+export type ClusterServices = Sharding | CloudflareSharding | WorkflowEngine | PersistedQueueFactory
 
 export type {
   /**
