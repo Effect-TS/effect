@@ -3,9 +3,14 @@
  *
  * The SQL-backed `RunnerStorage` records runners, health flags, machine ids,
  * and shard locks so multiple processes can coordinate which runner owns each
- * shard. This module creates the required runner and lock tables, supports an
+ * shard. This module migrates the required runner and lock tables, supports an
  * optional table prefix, uses advisory locks for PostgreSQL and MySQL when
  * enabled, and provides constructors and layers for the storage service.
+ *
+ * `layer`, `layerWith`, and `make` run the migrations before building the
+ * storage. To run migrations with a different connection, such as a schema
+ * owner in a deploy step, use `layerMigrations` there and `layerStorage` in the
+ * runtime.
  *
  * @stability unstable
  * @since 4.0.0
@@ -17,6 +22,7 @@ import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
+import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Connection } from "../sql/SqlConnection.ts"
 import type { SqlError } from "../sql/SqlError.ts"
@@ -41,36 +47,8 @@ const postgresLockNamespace = (prefix: string): number => {
   return hash | 0
 }
 
-/**
- * Creates a SQL-backed `RunnerStorage` implementation for registered runners and
- * shard locks, using the configured table prefix and advisory locks where
- * supported and enabled.
- *
- * **When to use**
- *
- * Use to create a SQL-backed `RunnerStorage` value directly when building
- * custom service or layer composition around the storage implementation.
- *
- * **Details**
- *
- * When `prefix` is omitted, `make` uses the `cluster` prefix, creating
- * `cluster_runners` and `cluster_locks`. PostgreSQL and MySQL use advisory
- * locks unless `ShardingConfig.shardLockDisableAdvisory` is enabled; other
- * dialects use rows in the locks table.
- *
- * **Gotchas**
- *
- * Changing `prefix` changes both generated table names, so runners using
- * different prefixes do not share registrations or shard locks.
- *
- * @see {@link layer} for the default SQL-backed storage layer
- * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const make = Effect.fnUntraced(function*(options: {
+// Builds the storage without issuing DDL; the tables must already exist.
+const makeStorage = Effect.fnUntraced(function*(options: {
   readonly prefix?: string | undefined
 }) {
   const config = yield* ShardingConfig.ShardingConfig
@@ -183,98 +161,8 @@ export const make = Effect.fnUntraced(function*(options: {
   const runnersTable = table("runners")
   const runnersTableSql = sql(runnersTable)
 
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF OBJECT_ID(N'${runnersTableSql}', N'U') IS NULL
-        CREATE TABLE ${runnersTableSql} (
-          machine_id INT IDENTITY PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          runner TEXT NOT NULL,
-          healthy BIT NOT NULL DEFAULT 1,
-          last_heartbeat DATETIME NOT NULL DEFAULT GETDATE(),
-          UNIQUE(address)
-        )
-      `,
-    mysql: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
-          machine_id INT AUTO_INCREMENT PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          runner TEXT NOT NULL,
-          healthy BOOLEAN NOT NULL DEFAULT TRUE,
-          last_heartbeat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(address)
-        )
-      `,
-    pg: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
-          machine_id SERIAL PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          runner TEXT NOT NULL,
-          healthy BOOLEAN NOT NULL DEFAULT TRUE,
-          last_heartbeat TIMESTAMP NOT NULL DEFAULT NOW(),
-          UNIQUE(address)
-        )
-      `,
-    orElse: () =>
-      // sqlite
-      sql`
-        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
-          machine_id INTEGER PRIMARY KEY AUTOINCREMENT,
-          address TEXT NOT NULL,
-          runner TEXT NOT NULL,
-          healthy INTEGER NOT NULL DEFAULT 1,
-          last_heartbeat DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-          UNIQUE(address)
-        )
-      `
-  })
-
   const locksTable = table("locks")
   const locksTableSql = sql(locksTable)
-
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF OBJECT_ID(N'${locksTableSql}', N'U') IS NULL
-        CREATE TABLE ${locksTableSql} (
-          shard_id VARCHAR(50) PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          acquired_at DATETIME NOT NULL
-        )
-      `,
-    mysql: () =>
-      disableAdvisoryLocks ?
-        sql`
-          CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-            shard_id VARCHAR(50) PRIMARY KEY,
-            address VARCHAR(255) NOT NULL,
-            acquired_at DATETIME NOT NULL
-          )
-        ` :
-        Effect.void,
-    pg: () =>
-      disableAdvisoryLocks ?
-        sql`
-          CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-            shard_id VARCHAR(50) PRIMARY KEY,
-            address VARCHAR(255) NOT NULL,
-            acquired_at TIMESTAMP NOT NULL
-          )
-        ` :
-        Effect.void,
-    orElse: () =>
-      // sqlite
-      sql`
-        CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-          shard_id TEXT PRIMARY KEY,
-          address TEXT NOT NULL,
-          acquired_at DATETIME NOT NULL
-        )
-      `
-  })
 
   const sqlNowString = sql.onDialectOrElse({
     pg: () => "NOW()",
@@ -765,7 +653,269 @@ export const make = Effect.fnUntraced(function*(options: {
 }, withTracerDisabled)
 
 /**
- * Layer that provides SQL-backed `RunnerStorage` using the default table prefix.
+ * Creates a SQL-backed `RunnerStorage` implementation for registered runners and
+ * shard locks, using the configured table prefix and advisory locks where
+ * supported and enabled.
+ *
+ * **When to use**
+ *
+ * Use to create a SQL-backed `RunnerStorage` value directly when building
+ * custom service or layer composition around the storage implementation.
+ *
+ * **Details**
+ *
+ * `make` first runs the runner storage migrations, so the connection needs
+ * permission to create tables. When `prefix` is omitted, `make` uses the
+ * `cluster` prefix, creating `cluster_runners`, `cluster_locks`, and the
+ * `cluster_runner_migrations` history table. PostgreSQL and MySQL use advisory
+ * locks unless `ShardingConfig.shardLockDisableAdvisory` is enabled; other
+ * dialects use rows in the locks table.
+ *
+ * **Gotchas**
+ *
+ * Changing `prefix` changes all generated table names, so runners using
+ * different prefixes do not share registrations or shard locks.
+ *
+ * @see {@link layer} for the default SQL-backed storage layer
+ * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix
+ * @see {@link layerStorage} for a storage layer that does not run migrations
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (options: {
+  readonly prefix?: string | undefined
+}): Effect.Effect<
+  RunnerStorage.RunnerStorage["Service"],
+  SqlError,
+  SqlClient.SqlClient | ShardingConfig.ShardingConfig | Scope.Scope
+> => Effect.andThen(runMigrationsOrDie(options), makeStorage(options))
+
+/**
+ * Migration loader for the SQL runner storage tables.
+ *
+ * **When to use**
+ *
+ * Use with `Migrator.pending` to check whether the runner storage tables are
+ * migrated, for example before starting `layerStorage`.
+ *
+ * **Details**
+ *
+ * The migrations create `<prefix>_runners` and `<prefix>_locks`, and are
+ * recorded in `<prefix>_runner_migrations`. When `prefix` is omitted, `cluster`
+ * is used. The locks table is created whatever the advisory lock setting is.
+ *
+ * @see {@link layerMigrations} for a layer that runs these migrations
+ *
+ * @stability unstable
+ * @category migrations
+ * @since 4.1.0
+ */
+export const migrations = (options: {
+  readonly prefix?: string | undefined
+}): Migrator.Loader => {
+  const prefix = options?.prefix ?? "cluster"
+  const table = (name: string) => `${prefix}_${name}`
+  const runnersTable = table("runners")
+  const locksTable = table("locks")
+
+  return Migrator.fromRecord({
+    // Idempotent, so deployments that created these tables before runner
+    // storage used a migrator upgrade without errors.
+    "0001_create_tables": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const runnersTableSql = sql(runnersTable)
+      const locksTableSql = sql(locksTable)
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF OBJECT_ID(N'${runnersTableSql}', N'U') IS NULL
+            CREATE TABLE ${runnersTableSql} (
+              machine_id INT IDENTITY PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              runner TEXT NOT NULL,
+              healthy BIT NOT NULL DEFAULT 1,
+              last_heartbeat DATETIME NOT NULL DEFAULT GETDATE(),
+              UNIQUE(address)
+            )
+          `,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
+              machine_id INT AUTO_INCREMENT PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              runner TEXT NOT NULL,
+              healthy BOOLEAN NOT NULL DEFAULT TRUE,
+              last_heartbeat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(address)
+            )
+          `,
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
+              machine_id SERIAL PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              runner TEXT NOT NULL,
+              healthy BOOLEAN NOT NULL DEFAULT TRUE,
+              last_heartbeat TIMESTAMP NOT NULL DEFAULT NOW(),
+              UNIQUE(address)
+            )
+          `,
+        orElse: () =>
+          // sqlite
+          sql`
+            CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
+              machine_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              address TEXT NOT NULL,
+              runner TEXT NOT NULL,
+              healthy INTEGER NOT NULL DEFAULT 1,
+              last_heartbeat DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+              UNIQUE(address)
+            )
+          `
+      })
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF OBJECT_ID(N'${locksTableSql}', N'U') IS NULL
+            CREATE TABLE ${locksTableSql} (
+              shard_id VARCHAR(50) PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              acquired_at DATETIME NOT NULL
+            )
+          `,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+              shard_id VARCHAR(50) PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              acquired_at DATETIME NOT NULL
+            )
+          `,
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+              shard_id VARCHAR(50) PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              acquired_at TIMESTAMP NOT NULL
+            )
+          `,
+        orElse: () =>
+          // sqlite
+          sql`
+            CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+              shard_id TEXT PRIMARY KEY,
+              address TEXT NOT NULL,
+              acquired_at DATETIME NOT NULL
+            )
+          `
+      })
+    })
+  })
+}
+
+const runMigrations = (options: {
+  readonly prefix?: string | undefined
+}): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
+  Effect.asVoid(
+    Migrator.make({})({
+      loader: migrations(options),
+      // Separate from the message storage history, which already records ids
+      // that would hide runner migrations with the same ids.
+      table: `${options?.prefix ?? "cluster"}_runner_migrations`
+    })
+  )
+
+const runMigrationsOrDie = (options: {
+  readonly prefix?: string | undefined
+}): Effect.Effect<void, SqlError, SqlClient.SqlClient> =>
+  Effect.catchTag(runMigrations(options), "MigrationError", Effect.die)
+
+/**
+ * Layer that runs the SQL runner storage migrations without providing storage.
+ *
+ * **When to use**
+ *
+ * Use when a deploy step should migrate the tables with a connection that can
+ * create them, so the runtime can use `layerStorage` with a connection that
+ * can only read and write rows.
+ *
+ * **Details**
+ *
+ * The migrations are recorded in `<prefix>_runner_migrations`. This layer does
+ * not need `ShardingConfig`.
+ *
+ * @see {@link migrations} for the migration loader
+ * @see {@link layerStorage} for the storage layer that does not run migrations
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerMigrations = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<never, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
+  Layer.effectDiscard(runMigrations(options))
+
+/**
+ * Layer that provides SQL-backed `RunnerStorage` without running migrations.
+ *
+ * **When to use**
+ *
+ * Use when the tables are migrated separately, for example by `layerMigrations`
+ * in a deploy step, and the runtime connection cannot create tables.
+ *
+ * **Gotchas**
+ *
+ * This layer issues no DDL and does not check the schema at startup. Use
+ * `Migrator.pending` with `migrations` if you want to check that the tables
+ * are migrated.
+ *
+ * @see {@link layerMigrations} for the layer that runs the migrations
+ * @see {@link layerWith} for a layer that runs the migrations first
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerStorage = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<RunnerStorage.RunnerStorage, never, SqlClient.SqlClient | ShardingConfig.ShardingConfig> =>
+  Layer.effect(RunnerStorage.RunnerStorage)(makeStorage(options))
+
+/**
+ * Layer that provides SQL-backed `RunnerStorage` using a custom table prefix,
+ * running the runner storage migrations first.
+ *
+ * **Details**
+ *
+ * This is `layerStorage` with `layerMigrations` provided, except that
+ * migration errors other than `SqlError` are defects. The connection needs
+ * permission to create tables; on PostgreSQL the migrator also takes an
+ * exclusive lock on the migrations table while it runs.
+ *
+ * @see {@link layerMigrations} for running the migrations in a deploy step
+ * @see {@link layerStorage} for a storage layer that does not run migrations
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerWith = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<RunnerStorage.RunnerStorage, SqlError, SqlClient.SqlClient | ShardingConfig.ShardingConfig> =>
+  layerStorage(options).pipe(
+    Layer.provide(Layer.effectDiscard(runMigrationsOrDie(options)))
+  )
+
+/**
+ * Layer that provides SQL-backed `RunnerStorage` using the default table prefix,
+ * running the runner storage migrations first.
+ *
+ * @see {@link layerWith} for the same layer with a custom table prefix
  *
  * @stability unstable
  * @category layers
@@ -775,16 +925,4 @@ export const layer: Layer.Layer<
   RunnerStorage.RunnerStorage,
   SqlError,
   SqlClient.SqlClient | ShardingConfig.ShardingConfig
-> = Layer.effect(RunnerStorage.RunnerStorage)(make({}))
-
-/**
- * Layer that provides SQL-backed `RunnerStorage` using a custom table prefix.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerWith = (options: {
-  readonly prefix?: string | undefined
-}): Layer.Layer<RunnerStorage.RunnerStorage, SqlError, SqlClient.SqlClient | ShardingConfig.ShardingConfig> =>
-  Layer.effect(RunnerStorage.RunnerStorage)(make(options))
+> = layerWith({})
