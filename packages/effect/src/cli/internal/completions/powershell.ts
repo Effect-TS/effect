@@ -1,24 +1,18 @@
 /**
  * Static PowerShell completion script generator.
  *
- * Produces a self-contained completion script from a `CommandDescriptor` —
- * no re-invocation of the CLI at runtime. The script only uses syntax and
- * APIs available in Windows PowerShell 5.1.
+ * Produces a self-contained completion script from a `CommandDescriptor`,
+ * without invoking the CLI at runtime. The script sticks to Windows
+ * PowerShell 5.1 syntax and APIs.
  *
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /**
- * Encode a string as an ASCII-only PowerShell expression. Windows PowerShell
- * 5.1 reads a script without a BOM, and native command output, in the ANSI
- * code page, where UTF-8 bytes can decode to the typographic quotes PowerShell
- * also treats as string delimiters. Non-ASCII and control characters are
- * therefore emitted as `[char]` code units.
+ * Encode non-ASCII and control characters as `[char]` code units. Windows
+ * PowerShell 5.1 can misread BOM-less UTF-8 as ANSI, turning some bytes into
+ * PowerShell quote delimiters.
  */
 const quotePs = (s: string): string => {
   const parts: Array<string> = []
@@ -79,10 +73,9 @@ const pushList = (lines: Array<string>, field: string, entries: ReadonlyArray<st
 }
 
 /**
- * Emit one context per command, keyed by its space-joined subcommand path.
- * Subcommands are case-sensitive, so the contexts go in an ordinal hashtable
- * rather than a hash literal, whose keys compare case-insensitively. A path
- * repeated in a hand-built descriptor is emitted once.
+ * Emit one context per subcommand path. Subcommands are case-sensitive, so
+ * contexts go in an ordinal hashtable instead of a hash literal, whose keys
+ * ignore case.
  */
 const generateContexts = (
   dataName: string,
@@ -111,11 +104,9 @@ const generateContexts = (
 }
 
 /**
- * The completer replays the committed words with the CLI's own rules: `--`
- * ends option parsing, short flags cluster (`-abc`), `--flag=value` carries
- * its value inline, a boolean flag may consume a following boolean literal,
- * negative numbers are values, and only the first value at a level can select
- * a subcommand.
+ * Replay the committed words with the CLI lexer and parser rules: `--`, short
+ * flag clusters, inline values, boolean literals, negative numbers, and
+ * subcommand selection by the first value only.
  */
 const completer = (dataName: string): string =>
   String.raw`  param($wordToComplete, $commandAst, $cursorPosition)
@@ -332,8 +323,8 @@ export const generate = (
   lines.push(`# Static completion script for PowerShell`)
   lines.push(`#`)
   lines.push(`# Installation:`)
-  // Appending with `>>` on Windows PowerShell 5.1 writes UTF-16LE, which
-  // corrupts an existing UTF-8 profile, so the script goes in its own file.
+  // `>>` on Windows PowerShell 5.1 appends UTF-16LE to the profile, so the
+  // script goes in its own file.
   lines.push(`#   ${executableName} --completions powershell > ${executableName}-completion.ps1`)
   lines.push(`#   then add this line to your $PROFILE (use the full path to the file):`)
   lines.push(`#   . <PATH>\\${executableName}-completion.ps1`)
