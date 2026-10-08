@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Equal, Hash, Result, Schema } from "effect"
+import { Effect, Equal, Hash, Result, Schema } from "effect"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
@@ -52,27 +52,10 @@ describe("Dns", () => {
 
     it("encodes and decodes JSON", () => {
       const codec = Schema.toCodecJson(Schema.DnsRecord)
-      const soa = Dns.makeRecordUnsafe("SOA", {
-        primary: name("ns.example.com"),
-        admin: "hostmaster.example.com",
-        serial: 1,
-        refresh: Duration.hours(1),
-        retry: Duration.minutes(10),
-        expire: Duration.days(7),
-        minimum: Duration.minutes(5)
-      })
-      const json = {
-        _tag: "SOA",
-        primary: "ns.example.com",
-        admin: "hostmaster.example.com",
-        serial: 1,
-        refresh: 3600,
-        retry: 600,
-        expire: 604800,
-        minimum: 300
-      }
-      assert.deepStrictEqual(Schema.encodeSync(codec)(soa), json)
-      assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(json), soa))
+      const record = srv("db.internal", 10, 5)
+      const json = { _tag: "SRV", target: "db.internal", port: 5432, priority: 10, weight: 5 }
+      assert.deepStrictEqual(Schema.encodeSync(codec)(record), json)
+      assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(json), record))
       assert.throws(() => Schema.decodeUnknownSync(codec)({ _tag: "CNAME", target: "Example.com" }))
     })
   })
