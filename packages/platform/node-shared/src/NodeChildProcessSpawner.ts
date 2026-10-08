@@ -264,12 +264,20 @@ const make = Effect.gen(function*() {
       let stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> = Stream.empty
       if (nodeStream && "read" in nodeStream) {
         const passThrough = new PassThrough()
-        nodeStream.on("error", (error) => passThrough.destroy(error))
-        nodeStream.pipe(passThrough)
-        stream = NodeStream.fromReadable({
-          evaluate: () => passThrough,
-          onError: (error) => toPlatformError(`fromReadable(fd${fd})`, toError(error), command)
+        // Retain errors raised before anyone reads, e.g. a failed write on a
+        // duplex fd, so they neither go uncaught nor leave later readers hanging
+        let error: unknown = undefined
+        passThrough.on("error", (cause) => {
+          error ??= cause
         })
+        nodeStream.on("error", (cause) => passThrough.destroy(cause))
+        nodeStream.pipe(passThrough)
+        const onError = (cause: unknown) => toPlatformError(`fromReadable(fd${fd})`, toError(cause), command)
+        stream = Stream.suspend(() =>
+          error === undefined
+            ? NodeStream.fromReadable({ evaluate: () => passThrough, onError })
+            : Stream.fail(onError(error))
+        )
       }
 
       if (sink) {
