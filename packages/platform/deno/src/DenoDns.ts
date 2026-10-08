@@ -16,7 +16,7 @@
  * failures are therefore not reported as temporary. Queries require the
  * `--allow-net` permission.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as NodeDns from "@effect/platform-node-shared/NodeDns"
@@ -42,7 +42,7 @@ import * as NetAddress from "effect/net/NetAddress"
  * IPv6 name servers with a scope ID, such as link-local addresses, are not
  * supported; record queries and reverse lookups fail with `Unsupported`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -187,11 +187,11 @@ const convert = <A>(
 /**
  * Creates a Deno `Dns` service.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: Options): Dns.Dns => {
+export const make = (options?: Options): Dns.Dns["Service"] => {
   const server = options?.nameServer
   const nameServer: Deno.ResolveDnsOptions["nameServer"] = server === undefined
     ? undefined
@@ -242,7 +242,7 @@ export const make = (options?: Options): Dns.Dns => {
  * Layer that provides the Deno `Dns` service using the system resolver
  * configuration.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */
@@ -252,7 +252,7 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * Creates a layer that provides the Deno `Dns` service with options read
  * from configuration.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

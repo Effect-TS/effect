@@ -6,7 +6,7 @@
  * into `NetAddress` values. The `AddressResolver` service turns a `HostPort`
  * into internet addresses, looking up domain names with the `Dns` service.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import type * as Brand from "../Brand.ts"
@@ -35,7 +35,7 @@ const DomainNameTypeId = "~effect/net/Host/DomainName" as const
  * Internationalized names are stored in their ASCII (`xn--`) form.
  *
  * @see {@link domainNameFromString} for parsing and normalizing domain names
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -46,7 +46,7 @@ export type DomainName = Brand.Branded<string, typeof DomainNameTypeId>
  * a scoped IPv6 literal, or a domain name.
  *
  * @see {@link hostFromString} for parsing hosts
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -57,7 +57,7 @@ export type Host = NetAddress.IpAddress | NetAddress.ScopedIpv6Literal | DomainN
  *
  * @see {@link hostPortFromString} for parsing `host:port` strings
  * @see {@link formatHostPort} for formatting `host:port` strings
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -114,7 +114,7 @@ const toAsciiDomainName = (input: string): string | undefined => {
 /**
  * Returns `true` when a value is a valid, normalized domain name.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.0
  */
@@ -124,7 +124,7 @@ export const isDomainName = (u: unknown): u is DomainName =>
 /**
  * Returns `true` when a value is a host.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.0
  */
@@ -134,7 +134,7 @@ export const isHost = (u: unknown): u is Host =>
 /**
  * Returns `true` when a value is an unresolved host and port.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.0
  */
@@ -160,7 +160,7 @@ export const isHostPort = (u: unknown): u is HostPort => hasProperty(u, TypeId)
  * Result.isFailure(Host.domainNameFromString("1.2.3.4")) // => true
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.0
  */
@@ -174,7 +174,7 @@ export const domainNameFromString = (input: string): Result.Result<DomainName, N
 /**
  * Parses a trusted domain name, throwing on failure.
  *
- * @stability unstable
+ * @stability experimental
  * @category unsafe
  * @since 4.0.0
  */
@@ -195,7 +195,7 @@ export const domainNameFromStringUnsafe = (input: string): DomainName => Result.
  * Result.getOrThrow(Host.hostFromString("DB.internal")) // => "db.internal"
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.0
  */
@@ -213,7 +213,7 @@ export const hostFromString = (input: string): Result.Result<Host, NetAddress.Ne
 /**
  * Parses a trusted host, throwing on failure.
  *
- * @stability unstable
+ * @stability experimental
  * @category unsafe
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const hostFromStringUnsafe = (input: string): Host => Result.getOrThrow(h
 /**
  * Formats a host without brackets.
  *
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.0.0
  */
@@ -232,7 +232,7 @@ export const formatHost = (self: Host): string => typeof self === "string" ? sel
  * Returns `true` when a domain name ends with a dot, which excludes it from
  * resolver search domains.
  *
- * @stability unstable
+ * @stability experimental
  * @category predicates
  * @since 4.0.0
  */
@@ -268,7 +268,7 @@ const makeHostPort = (host: Host, port: number): HostPort => {
 /**
  * Creates a checked host and port.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -281,7 +281,7 @@ export const hostPort = (host: Host, port: number): Result.Result<HostPort, NetA
 /**
  * Creates a trusted host and port, throwing on failure.
  *
- * @stability unstable
+ * @stability experimental
  * @category unsafe
  * @since 4.0.0
  */
@@ -308,7 +308,7 @@ export const hostPortUnsafe = (host: Host, port: number): HostPort => Result.get
  * ```
  *
  * @see {@link formatHostPort} for the inverse operation
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.0
  */
@@ -339,7 +339,7 @@ export const hostPortFromString = (input: string): Result.Result<HostPort, NetAd
 /**
  * Parses a trusted `host:port` string, throwing on failure.
  *
- * @stability unstable
+ * @stability experimental
  * @category unsafe
  * @since 4.0.0
  */
@@ -349,7 +349,7 @@ export const hostPortFromStringUnsafe = (input: string): HostPort => Result.getO
  * Formats a host and port, bracketing IPv6 hosts.
  *
  * @see {@link hostPortFromString} for the inverse operation
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.0.0
  */

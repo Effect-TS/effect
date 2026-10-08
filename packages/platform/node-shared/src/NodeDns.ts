@@ -17,7 +17,7 @@
  * character. `make` decodes those bytes as UTF-8, but `makeResolver` returns
  * strings as the runtime's `node:dns` decodes them.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Arr from "effect/Array"
@@ -47,7 +47,7 @@ import * as NodeDns from "node:dns"
  * supported because the resolver drops the scope; record queries and reverse
  * lookups fail with `Unsupported`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -208,7 +208,7 @@ const convert = <A>(
  * Looks up the addresses of a host name with `dns.lookup`, keeping the order
  * returned by the operating system resolver.
  *
- * @stability unstable
+ * @stability experimental
  * @category resolving
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export const lookup = (
 /**
  * Record queries and reverse lookups sent with `dns.Resolver`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -251,7 +251,7 @@ const maxIdleResolvers = 8
  * records are returned as the runtime decodes them. Pass the operations to
  * `Dns.make`, together with a lookup, to build a `Dns` service.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -344,11 +344,11 @@ const utf8Strings = (record: Dns.DnsRecord): Dns.DnsRecord =>
 /**
  * Creates a Node.js `Dns` service.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: Options): Dns.Dns => {
+export const make = (options?: Options): Dns.Dns["Service"] => {
   const resolver = makeResolver(options)
   return Dns.make({
     lookup,
@@ -361,7 +361,7 @@ export const make = (options?: Options): Dns.Dns => {
  * Layer that provides the Node.js `Dns` service using the system resolver
  * configuration.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */
@@ -371,7 +371,7 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * Creates a layer that provides the Node.js `Dns` service with options read
  * from configuration.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

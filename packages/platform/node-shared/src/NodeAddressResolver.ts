@@ -6,7 +6,7 @@
  * `os.networkInterfaces()`. Interfaces are listed each time a named zone is
  * resolved, so interfaces added or recreated while the program runs are found.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -26,7 +26,7 @@ import * as Os from "node:os"
  * Returns `None` for interfaces that do not exist or have no IPv6 address with
  * a scope ID, and fails when the interfaces cannot be listed.
  *
- * @stability unstable
+ * @stability experimental
  * @category resolving
  * @since 4.0.0
  */
@@ -41,7 +41,7 @@ export const scopeId = (name: string): Effect.Effect<Option.Option<number>, NetA
  * Layer that provides the Node.js `AddressResolver` service using the `Dns`
  * service.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

@@ -66,7 +66,7 @@ const ScopedIpv6LiteralTypeId = "~effect/net/NetAddress/ScopedIpv6Literal" as co
  * and the address part is stored in canonical form.
  *
  * @see {@link scopedIpv6LiteralFromString} for parsing scoped IPv6 literals
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -363,7 +363,7 @@ export type Family<A extends IpAddress | InetAddress> = A extends Ipv4Address | 
  *
  * @see {@link familyOf} for reading the family of an address
  * @see {@link FamilyAddress} for the address type of a family
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -374,7 +374,7 @@ export type IpFamily = "IPv4" | "IPv6"
  * is `IpAddress`.
  *
  * @see {@link Family} for the inverse mapping from an address type
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -498,7 +498,7 @@ export const width = (address: IpAddress): 32 | 128 => isIpv4Address(address) ? 
  * NetAddress.familyOf(NetAddress.inetAddressFromStringUnsafe("[::1]:80")) // => "IPv6"
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category getters
  * @since 4.0.0
  */
@@ -509,7 +509,7 @@ export const familyOf = (self: IpAddress | InetAddress): IpFamily =>
  * Returns `true` when an IP address or internet address belongs to a family,
  * narrowing it to that family.
  *
- * @stability unstable
+ * @stability experimental
  * @category predicates
  * @since 4.0.0
  */
@@ -963,7 +963,7 @@ export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThro
 /**
  * Returns `true` when a value is a canonical scoped IPv6 literal.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.0
  */
@@ -976,7 +976,7 @@ export const isScopedIpv6Literal = (u: unknown): u is ScopedIpv6Literal => {
 /**
  * Parses an IPv6 literal with a numeric or named zone, such as `fe80::1%eth0`.
  *
- * @stability unstable
+ * @stability experimental
  * @category decoding
  * @since 4.0.0
  */
@@ -1548,7 +1548,7 @@ export const inetAddressFromHostString = (
  * @since 4.0.0
  */
 export interface NetworkInterfaceAddress {
-  readonly family: IpFamily
+  readonly family: string
   readonly scopeid?: number | undefined
 }
 

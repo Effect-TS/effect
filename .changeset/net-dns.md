@@ -20,7 +20,4 @@ Add name resolution to `effect/net`:
 - `Schema` adds `Port`, `DomainName`, `Host`, `HostPort`, `DnsRecord`, and `DnsRecordType`.
 - The network address schemas now serialize to and from JSON, as canonical strings or, for Unix-domain addresses, `{ path }` objects, and support arbitrary generation.
 
-### Breaking changes
-
-- The `NodeServices`, `BunServices`, and `DenoServices` layers and types now include `Dns` and `AddressResolver`. Layers built by hand and annotated with one of these types must also provide the runtime's `Dns` and `AddressResolver` layers, such as `NodeAddressResolver.layer.pipe(Layer.provideMerge(NodeDns.layer))`.
-- `NetAddress.NetworkInterfaceAddress.family` is now typed as `IpFamily` instead of `string`. Values typed with `family: string` must be narrowed to `"IPv4" | "IPv6"` before being passed to `scopeIdsFromInterfaces`; results of `os.networkInterfaces()` already have the narrower type.
+The new `AddressResolver`, `Dns`, and `Host` modules, their runtime modules, the new `NetAddress` APIs, and the new schemas are experimental and may change in patch releases. The `Dns` and `AddressResolver` services are not part of `NodeServices`, `BunServices`, or `DenoServices`; provide them explicitly, for example with `NodeAddressResolver.layer.pipe(Layer.provideMerge(NodeDns.layer))`.

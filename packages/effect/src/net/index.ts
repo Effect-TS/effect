@@ -6,19 +6,19 @@
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 export * as AddressResolver from "./AddressResolver.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 export * as Dns from "./Dns.ts"
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 export * as Host from "./Host.ts"

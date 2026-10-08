@@ -7,12 +7,12 @@
  * lookup does not stop the underlying `getaddrinfo` call, which keeps a libuv
  * thread pool worker busy until it returns.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 
 /**
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 export * from "@effect/platform-node-shared/NodeDns"

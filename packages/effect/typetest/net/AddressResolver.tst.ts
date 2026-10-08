@@ -6,7 +6,7 @@ import type * as Host from "effect/net/Host"
 import type * as NetAddress from "effect/net/NetAddress"
 import { describe, expect, it } from "tstyche"
 
-declare const resolver: AddressResolver.AddressResolver
+declare const resolver: AddressResolver.AddressResolver["Service"]
 declare const hostPort: Host.HostPort
 declare const inet: NetAddress.InetAddress
 declare const socket: NetAddress.SocketAddress

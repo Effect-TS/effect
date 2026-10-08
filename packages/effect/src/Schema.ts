@@ -13508,7 +13508,7 @@ export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress,
 /**
  * Type-level representation of {@link DomainName}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13519,7 +13519,7 @@ export interface DomainName extends declare<Host_.DomainName> {
 /**
  * Schema for normalized DNS domain names.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13546,7 +13546,7 @@ export const DomainName: DomainName = declare(Host_.isDomainName, {
 /**
  * Type-level representation of {@link DomainNameFromString}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13558,7 +13558,7 @@ export interface DomainNameFromString extends decodeTo<DomainName, String> {
  * Schema for DNS domain names decoded from strings, normalizing case and
  * converting internationalized names to their ASCII form.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13572,7 +13572,7 @@ export const DomainNameFromString: DomainNameFromString = netAddressFromString(
 /**
  * Type-level representation of {@link Host}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13583,7 +13583,7 @@ export interface Host extends declare<Host_.Host> {
 /**
  * Schema for hosts: numeric IP addresses, scoped IPv6 literals, or domain names.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13609,7 +13609,7 @@ export const Host: Host = declare(Host_.isHost, {
 /**
  * Type-level representation of {@link HostFromString}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13621,7 +13621,7 @@ export interface HostFromString extends decodeTo<Host, String> {
  * Schema for hosts decoded from strings. Numeric IP strings decode to IP
  * addresses; other strings decode to scoped IPv6 literals or domain names.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13635,7 +13635,7 @@ export const HostFromString: HostFromString = netAddressFromString(
 /**
  * Type-level representation of {@link HostPort}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13646,7 +13646,7 @@ export interface HostPort extends declare<Host_.HostPort> {
 /**
  * Schema for already-constructed unresolved host and port values.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13662,7 +13662,7 @@ export const HostPort: HostPort = declare(Host_.isHostPort, {
 /**
  * Type-level representation of {@link HostPortFromString}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13674,7 +13674,7 @@ export interface HostPortFromString extends decodeTo<HostPort, String> {
  * Schema for unresolved endpoints encoded as `host:port` or `[IPv6]:port`
  * strings.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13688,7 +13688,7 @@ export const HostPortFromString: HostPortFromString = netAddressFromString(
 /**
  * Type-level representation of {@link Port}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13705,7 +13705,7 @@ export interface Port extends Int {
  * when binding, and it matches the port range of `InetAddress` and `HostPort`.
  * `Config.Port` accepts only 1 through 65535.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13935,7 +13935,7 @@ export const DurationFromMillis: DurationFromMillis = Number.pipe(
 /**
  * Type-level representation of {@link DnsRecordType}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -13944,7 +13944,7 @@ export interface DnsRecordType extends Literals<ReadonlyArray<Dns_.RecordType>> 
 /**
  * Schema for supported DNS record types such as `"A"` or `"SRV"`.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */
@@ -13986,7 +13986,7 @@ type DnsRecordJson = ReturnType<typeof dnsRecordJson>["Type"]
 /**
  * Type-level representation of {@link DnsRecord}.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -14003,7 +14003,7 @@ export interface DnsRecord extends declare<Dns_.DnsRecord> {
  * with IP addresses and names as strings, such as
  * `{ "_tag": "SRV", "target": "db.internal", "port": 5432, "priority": 10, "weight": 5 }`.
  *
- * @stability unstable
+ * @stability experimental
  * @category schemas
  * @since 4.0.0
  */

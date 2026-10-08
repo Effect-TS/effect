@@ -8,7 +8,7 @@
  * Runtime packages provide layers that look up network interfaces; the layer
  * in this module needs only `Dns` and supports numeric zones only.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -20,8 +20,6 @@ import * as Dns from "./Dns.ts"
 import type * as Host from "./Host.ts"
 import * as NetAddress from "./NetAddress.ts"
 
-const TypeId = "~effect/net/AddressResolver" as const
-
 /**
  * Service that resolves endpoints to internet and socket addresses.
  *
@@ -31,13 +29,11 @@ const TypeId = "~effect/net/AddressResolver" as const
  * with a `Dns.DnsError`, and hosts that cannot be converted, such as IPv6
  * literals with an unknown zone, fail with a `NetAddress.NetAddressError`.
  *
- * @stability unstable
- * @category models
+ * @stability experimental
+ * @category services
  * @since 4.0.0
  */
-export interface AddressResolver {
-  readonly [TypeId]: typeof TypeId
-
+export class AddressResolver extends Context.Service<AddressResolver, {
   /**
    * Resolves an endpoint to every matching socket address. Socket addresses
    * are returned as-is, a `Host.HostPort` with a numeric host is converted
@@ -61,13 +57,13 @@ export interface AddressResolver {
     target: NetAddress.SocketAddress | Host.HostPort,
     options?: ResolveOptions
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, Dns.DnsError | NetAddress.NetAddressError>
-}
+}>()("effect/net/AddressResolver") {}
 
 /**
  * Options for resolving an endpoint. Without a `family`, addresses of both
  * families are returned.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -85,7 +81,7 @@ export interface ResolveOptions {
  * resolved, so interfaces added or recreated while the program runs are found.
  * Without it, only numeric zones such as `fe80::1%2` are supported.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -94,17 +90,6 @@ export interface Options {
     | ((name: string) => Effect.Effect<Option.Option<number>, NetAddress.NetAddressError>)
     | undefined
 }
-
-/**
- * Service tag for the {@link AddressResolver} service.
- *
- * @stability unstable
- * @category services
- * @since 4.0.0
- */
-export const AddressResolver: Context.Service<AddressResolver, AddressResolver> = Context.Service(
-  "effect/net/AddressResolver"
-)
 
 const isScoped = (host: Host.Host): host is NetAddress.ScopedIpv6Literal =>
   typeof host === "string" && host.includes("%")
@@ -139,11 +124,11 @@ const inFamily = (
  * await Effect.runPromise(program) // => ["10.0.0.5:5432"]
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = (dns: Dns.Dns, options?: Options): AddressResolver => {
+export const make = (dns: Dns.Dns["Service"], options?: Options): AddressResolver["Service"] => {
   const scopeId = options?.scopeId
 
   const fromLiteral = (
@@ -175,16 +160,13 @@ export const make = (dns: Dns.Dns, options?: Options): AddressResolver => {
     return Effect.map(dns.lookup(host, { family }), Arr.map((address) => NetAddress.inetAddressUnsafe(address, port)))
   }
 
-  return {
-    [TypeId]: TypeId,
-    resolve: resolve as AddressResolver["resolve"]
-  }
+  return AddressResolver.of({ resolve: resolve as AddressResolver["Service"]["resolve"] })
 }
 
 /**
  * Creates a layer that provides an `AddressResolver` using the `Dns` service.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

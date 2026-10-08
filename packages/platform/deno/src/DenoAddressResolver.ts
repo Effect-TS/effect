@@ -11,7 +11,7 @@
  * Listing network interfaces requires the `--allow-sys` permission; without it,
  * resolving a named zone fails with a `NetAddress.NetAddressError`.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -30,7 +30,7 @@ import * as Option from "effect/Option"
  * Returns `None` for interfaces that do not exist or have no IPv6 address with
  * a scope ID, and fails when the interfaces cannot be listed.
  *
- * @stability unstable
+ * @stability experimental
  * @category resolving
  * @since 4.0.0
  */
@@ -48,7 +48,7 @@ export const scopeId = (name: string): Effect.Effect<Option.Option<number>, NetA
  * Layer that provides the Deno `AddressResolver` service using the `Dns`
  * service.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

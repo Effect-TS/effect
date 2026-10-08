@@ -10,7 +10,7 @@
  * sources, not only DNS. `AddressResolver` builds on `lookup` to resolve
  * `host:port` endpoints.
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
@@ -27,7 +27,6 @@ import * as Result from "../Result.ts"
 import * as Host from "./Host.ts"
 import * as NetAddress from "./NetAddress.ts"
 
-const TypeId = "~effect/net/Dns" as const
 const RecordTypeId = "~effect/net/Dns/DnsRecord" as const
 
 // =============================================================================
@@ -42,7 +41,7 @@ interface RecordProto<Tag extends RecordType> extends Equal.Equal, Hash.Hash, In
 /**
  * An IPv4 address record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -53,7 +52,7 @@ export interface A extends RecordProto<"A"> {
 /**
  * An IPv6 address record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -64,7 +63,7 @@ export interface Aaaa extends RecordProto<"AAAA"> {
 /**
  * A certification authority authorization record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -77,7 +76,7 @@ export interface Caa extends RecordProto<"CAA"> {
 /**
  * A canonical name (alias) record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -88,7 +87,7 @@ export interface Cname extends RecordProto<"CNAME"> {
 /**
  * A mail exchange record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -100,7 +99,7 @@ export interface Mx extends RecordProto<"MX"> {
 /**
  * A naming authority pointer record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -116,7 +115,7 @@ export interface Naptr extends RecordProto<"NAPTR"> {
 /**
  * A name server record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -127,7 +126,7 @@ export interface Ns extends RecordProto<"NS"> {
 /**
  * A pointer record, used for reverse lookups.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -145,7 +144,7 @@ export interface Ptr extends RecordProto<"PTR"> {
  * as in `john\.doe.example.com`, so `admin` is a plain string rather than a
  * `Host.DomainName`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -162,7 +161,7 @@ export interface Soa extends RecordProto<"SOA"> {
 /**
  * A service location record.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -184,7 +183,7 @@ export interface Srv extends RecordProto<"SRV"> {
  * that are not valid UTF-8 with U+FFFD, and `formatRecord` writes chunks back
  * as UTF-8 bytes.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -203,7 +202,7 @@ export interface Txt extends RecordProto<"TXT"> {
  * returned by platform services are fully qualified and end with a dot, so
  * passing them back to the resolver does not apply search domains.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -212,7 +211,7 @@ export type DnsRecord = A | Aaaa | Caa | Cname | Mx | Naptr | Ns | Ptr | Soa | S
 /**
  * The type of a DNS record, such as `"A"` or `"SRV"`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -221,7 +220,7 @@ export type RecordType = "A" | "AAAA" | "CAA" | "CNAME" | "MX" | "NAPTR" | "NS" 
 /**
  * The record value for a record type.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -231,7 +230,7 @@ export type RecordFor<T extends RecordType> = Extract<DnsRecord, { readonly _tag
  * The fields of a record type, without its `_tag`.
  *
  * @see {@link makeRecord}
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -287,7 +286,7 @@ const recordFields: {
 /**
  * Every supported record type.
  *
- * @stability unstable
+ * @stability experimental
  * @category constants
  * @since 4.0.0
  */
@@ -296,7 +295,7 @@ export const recordTypes: Arr.NonEmptyReadonlyArray<RecordType> = Object.keys(re
 /**
  * Returns `true` when a value is a supported record type.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.0
  */
@@ -305,7 +304,7 @@ export const isRecordType = (u: unknown): u is RecordType => recordTypes.include
 /**
  * Returns `true` when a value is a DNS record.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.0
  */
@@ -356,7 +355,7 @@ const RecordPrototype = {
  * Dns.formatRecord(record) // => "SRV 10 5 5432 db.internal"
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -384,7 +383,7 @@ export const makeRecord = <T extends RecordType>(
  * Creates a trusted DNS record of a record type from its fields, throwing on
  * failure.
  *
- * @stability unstable
+ * @stability experimental
  * @category unsafe
  * @since 4.0.0
  */
@@ -410,7 +409,7 @@ const quote = (value: string): string => {
 /**
  * Formats a record in DNS presentation format, prefixed by its type.
  *
- * @stability unstable
+ * @stability experimental
  * @category encoding
  * @since 4.0.0
  */
@@ -455,7 +454,7 @@ export const formatRecord = (self: DnsRecord): string => {
  * Dns.reverseName(NetAddress.ipFromStringUnsafe("192.0.2.1")) // => "1.2.0.192.in-addr.arpa"
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @category converting
  * @since 4.0.0
  */
@@ -491,7 +490,7 @@ export const reverseName = (address: NetAddress.IpAddress): Host.DomainName => {
  *   into record values.
  * - `Unsupported`: the platform does not support the operation or record type.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -509,7 +508,7 @@ export type DnsErrorReason =
 /**
  * A failed lookup, query, or reverse lookup.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -549,7 +548,7 @@ export class DnsError extends Data.TaggedError("DnsError")<{
  * Options for address lookups. Without a `family`, addresses of both families
  * are returned.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -566,13 +565,11 @@ export interface LookupOptions {
  * Every operation either returns at least one result or fails with a
  * {@link DnsError}.
  *
- * @stability unstable
- * @category models
+ * @stability experimental
+ * @category services
  * @since 4.0.0
  */
-export interface Dns {
-  readonly [TypeId]: typeof TypeId
-
+export class Dns extends Context.Service<Dns, {
   /**
    * Looks up the addresses used to connect to a host name, in the
    * implementation's preferred order. Platform implementations use the
@@ -599,16 +596,7 @@ export interface Dns {
    * Looks up the host names of an address.
    */
   reverse(address: NetAddress.IpAddress): Effect.Effect<Arr.NonEmptyReadonlyArray<Host.DomainName>, DnsError>
-}
-
-/**
- * Service tag for the {@link Dns} service.
- *
- * @stability unstable
- * @category services
- * @since 4.0.0
- */
-export const Dns: Context.Service<Dns, Dns> = Context.Service("effect/net/Dns")
+}>()("effect/net/Dns") {}
 
 const notFound = (method: DnsError["method"], hostname: string, recordType?: RecordType) =>
   Effect.fail(
@@ -628,7 +616,7 @@ const notFound = (method: DnsError["method"], hostname: string, recordType?: Rec
  * records of the requested type, removes duplicates, and turns empty results
  * into `NotFound` failures.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -639,7 +627,7 @@ export const make = (impl: {
   ) => Effect.Effect<ReadonlyArray<NetAddress.IpAddress>, DnsError>
   readonly resolve: (name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>
   readonly reverse: (address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<Host.DomainName>, DnsError>
-}): Dns => {
+}): Dns["Service"] => {
   const inFamily = (family: NetAddress.IpFamily | undefined) => (address: NetAddress.IpAddress): boolean =>
     family === undefined || NetAddress.isFamily(address, family)
 
@@ -653,8 +641,7 @@ export const make = (impl: {
       )
     )
 
-  return {
-    [TypeId]: TypeId,
+  return Dns.of({
     lookup,
     resolve: <T extends RecordType>(name: Host.DomainName, type: T) =>
       impl.resolve(name, type).pipe(
@@ -674,7 +661,7 @@ export const make = (impl: {
           })
         )
       )
-  }
+  })
 }
 
 // =============================================================================
@@ -691,7 +678,7 @@ export const make = (impl: {
  * is used by all three operations. Names are normalized like
  * `Host.domainNameFromString`, and a trailing dot is ignored.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -738,11 +725,11 @@ const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") 
  * ```
  *
  * @see {@link layerStatic}
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const makeStatic = (zone: StaticZone): Result.Result<Dns, NetAddress.NetAddressError> => {
+export const makeStatic = (zone: StaticZone): Result.Result<Dns["Service"], NetAddress.NetAddressError> => {
   const entries = new Map<string, StaticEntry>()
   const entry = (name: string): Result.Result<StaticEntry, NetAddress.NetAddressError> =>
     Result.map(Host.domainNameFromString(name), (domain) => {
@@ -799,7 +786,7 @@ export const makeStatic = (zone: StaticZone): Result.Result<Dns, NetAddress.NetA
  * Creates a layer that provides a `Dns` service answering from fixed data.
  *
  * @see {@link makeStatic} for the resolution rules
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

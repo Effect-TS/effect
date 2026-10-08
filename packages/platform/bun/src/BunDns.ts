@@ -14,7 +14,7 @@
  * a record made of several strings arrives as several TXT records whose chunks
  * cannot be reassembled (https://github.com/oven-sh/bun/issues/44692).
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as NodeDns from "@effect/platform-node-shared/NodeDns"
@@ -40,7 +40,7 @@ import * as NetAddress from "effect/net/NetAddress"
  * IPv6 name servers with a scope ID, such as link-local addresses, are not
  * supported; record queries and reverse lookups fail with `Unsupported`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -62,11 +62,11 @@ const toFamily = (family: NetAddress.IpFamily | undefined): 0 | 4 | 6 =>
 /**
  * Creates a Bun `Dns` service.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: Options): Dns.Dns => {
+export const make = (options?: Options): Dns.Dns["Service"] => {
   const resolver = NodeDns.makeResolver(options)
   return Dns.make({
     lookup: (host, family) =>
@@ -98,7 +98,7 @@ export const make = (options?: Options): Dns.Dns => {
  * Layer that provides the Bun `Dns` service using the system resolver
  * configuration.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */
@@ -108,7 +108,7 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * Creates a layer that provides the Bun `Dns` service with options read
  * from configuration.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

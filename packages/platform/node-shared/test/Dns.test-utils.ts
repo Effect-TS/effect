@@ -187,7 +187,7 @@ const isDeno = "Deno" in globalThis
 
 export const describeDnsServer = (
   label: string,
-  make: (nameServer: NetAddress.InetAddress) => Dns.Dns,
+  make: (nameServer: NetAddress.InetAddress) => Dns.Dns["Service"],
   addressResolver: Layer.Layer<AddressResolver.AddressResolver, never, Dns.Dns>
 ) =>
   describe(label, () => {
