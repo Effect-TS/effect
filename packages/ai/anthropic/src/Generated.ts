@@ -979,6 +979,26 @@ export const BetaResponseCodeExecutionOutputBlock = Schema.Struct({
   "file_id": Schema.String.annotate({ "title": "File Id" }),
   "type": Schema.Literal("code_execution_output").annotate({ "title": "Type", "default": "code_execution_output" })
 }).annotate({ "title": "ResponseCodeExecutionOutputBlock" })
+/**
+ * Marks where a fallback model took over a refused reply. Hand-written: mirrors
+ * `BetaFallbackBlock` in `@anthropic-ai/sdk` (beta/messages); see
+ * https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback.
+ * `trigger` is kept optional because the docs' example block omits it.
+ */
+export type BetaResponseFallbackBlock = {
+  readonly "type": "fallback"
+  readonly "from": { readonly "model": string }
+  readonly "to": { readonly "model": string }
+  readonly "trigger"?: { readonly "type": string; readonly "category"?: string | null }
+}
+export const BetaResponseFallbackBlock = Schema.Struct({
+  "type": Schema.Literal("fallback"),
+  "from": Schema.Struct({ "model": Schema.String }),
+  "to": Schema.Struct({ "model": Schema.String }),
+  "trigger": Schema.optionalKey(
+    Schema.Struct({ "type": Schema.String, "category": Schema.optionalKey(Schema.NullOr(Schema.String)) })
+  )
+})
 export type BetaResponseCompactionBlock = { readonly "content": string | null; readonly "type": "compaction" }
 export const BetaResponseCompactionBlock = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -3345,6 +3365,7 @@ export type BetaMessageIterationUsage = {
   readonly "input_tokens": number
   readonly "output_tokens": number
   readonly "type": "message"
+  readonly "model"?: string | null
 }
 export const BetaMessageIterationUsage = Schema.Struct({
   "cache_creation": Schema.Union([BetaCacheCreation, Schema.Null]).annotate({
@@ -3373,7 +3394,9 @@ export const BetaMessageIterationUsage = Schema.Struct({
     "title": "Type",
     "description": "Usage for a sampling iteration",
     "default": "message"
-  })
+  }),
+  // Hand-written: the model that ran this iteration (`model` on `BetaMessageIterationUsage` in `@anthropic-ai/sdk`).
+  "model": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]))
 }).annotate({ "title": "MessageIterationUsage", "description": "Token usage for a sampling iteration." })
 export type BetaRequestCodeExecutionToolResultError = {
   readonly "error_code": BetaCodeExecutionToolResultErrorCode
@@ -6672,9 +6695,27 @@ export const BetaRequestToolSearchToolSearchResultBlock = Schema.Struct({
   "tool_references": Schema.Array(BetaRequestToolReferenceBlock).annotate({ "title": "Tool References" }),
   "type": Schema.Literal("tool_search_tool_search_result").annotate({ "title": "Type" })
 }).annotate({ "title": "RequestToolSearchToolSearchResultBlock" })
-export type BetaIterationsUsage = ReadonlyArray<BetaMessageIterationUsage | BetaCompactionIterationUsage> | null
+/**
+ * Usage for an iteration the API served with a fallback model. Hand-written:
+ * mirrors `BetaFallbackMessageIterationUsage` in `@anthropic-ai/sdk`
+ * (beta/messages); see https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback.
+ */
+export type BetaFallbackMessageIterationUsage = Omit<BetaMessageIterationUsage, "type"> & {
+  readonly "type": "fallback_message"
+  readonly "model"?: string | null
+}
+export const BetaFallbackMessageIterationUsage = Schema.Struct({
+  ...BetaMessageIterationUsage.fields,
+  "type": Schema.Literal("fallback_message"),
+  "model": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]))
+})
+export type BetaIterationsUsage =
+  | ReadonlyArray<BetaMessageIterationUsage | BetaCompactionIterationUsage | BetaFallbackMessageIterationUsage>
+  | null
 export const BetaIterationsUsage = Schema.Union([
-  Schema.Array(Schema.Union([BetaMessageIterationUsage, BetaCompactionIterationUsage])),
+  Schema.Array(
+    Schema.Union([BetaMessageIterationUsage, BetaCompactionIterationUsage, BetaFallbackMessageIterationUsage])
+  ),
   Schema.Null
 ]).annotate({
   "title": "Iterations",
@@ -7554,6 +7595,7 @@ export type BetaContentBlockStartEvent = {
     | BetaResponseMCPToolResultBlock
     | BetaResponseContainerUploadBlock
     | BetaResponseCompactionBlock
+    | BetaResponseFallbackBlock
   readonly "index": number
   readonly "type": "content_block_start"
 }
@@ -7573,7 +7615,8 @@ export const BetaContentBlockStartEvent = Schema.Struct({
     BetaResponseMCPToolUseBlock,
     BetaResponseMCPToolResultBlock,
     BetaResponseContainerUploadBlock,
-    BetaResponseCompactionBlock
+    BetaResponseCompactionBlock,
+    BetaResponseFallbackBlock
   ], { mode: "oneOf" }).annotate({ "title": "Content Block" }),
   "index": Schema.Number.annotate({ "title": "Index" }).check(Schema.isInt()),
   "type": Schema.Literal("content_block_start").annotate({ "title": "Type", "default": "content_block_start" })
@@ -7594,6 +7637,7 @@ export type BetaContentBlock =
   | BetaResponseMCPToolResultBlock
   | BetaResponseContainerUploadBlock
   | BetaResponseCompactionBlock
+  | BetaResponseFallbackBlock
 export const BetaContentBlock = Schema.Union([
   BetaResponseTextBlock,
   BetaResponseThinkingBlock,
@@ -7609,7 +7653,8 @@ export const BetaContentBlock = Schema.Union([
   BetaResponseMCPToolUseBlock,
   BetaResponseMCPToolResultBlock,
   BetaResponseContainerUploadBlock,
-  BetaResponseCompactionBlock
+  BetaResponseCompactionBlock,
+  BetaResponseFallbackBlock
 ], { mode: "oneOf" })
 export type BetaRequestWebFetchResultBlock = {
   readonly "content": BetaRequestDocumentBlock

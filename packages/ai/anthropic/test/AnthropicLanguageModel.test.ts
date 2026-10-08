@@ -660,9 +660,175 @@ describe("AnthropicLanguageModel", () => {
 
         assert.strictEqual(text.delta, "Hello")
       }))
+
+    it.effect("names the fallback model that took over a refused reply, and decodes its usage iterations", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-opus-4-8",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 100 },
+                      cache_creation_input_tokens: 100,
+                      cache_read_input_tokens: 0,
+                      input_tokens: 2,
+                      output_tokens: 2,
+                      service_tier: "standard"
+                    }
+                  }
+                },
+                {
+                  type: "content_block_start",
+                  index: 0,
+                  content_block: {
+                    type: "fallback",
+                    from: { model: "claude-opus-5-5" },
+                    to: { model: "claude-opus-4-8" },
+                    trigger: { type: "refusal", category: "cyber" }
+                  }
+                },
+                { type: "content_block_stop", index: 0 },
+                { type: "content_block_start", index: 1, content_block: { type: "text", text: "" } },
+                { type: "content_block_delta", index: 1, delta: { type: "text_delta", text: "Hello" } },
+                { type: "content_block_stop", index: 1 },
+                {
+                  type: "message_delta",
+                  delta: { stop_reason: "end_turn", stop_sequence: null },
+                  usage: {
+                    cache_creation_input_tokens: 100,
+                    cache_read_input_tokens: 0,
+                    input_tokens: 2,
+                    output_tokens: 5,
+                    iterations: [
+                      {
+                        type: "message",
+                        model: "claude-opus-5-5",
+                        input_tokens: 2,
+                        output_tokens: 0,
+                        cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 97 },
+                        cache_creation_input_tokens: 97,
+                        cache_read_input_tokens: 0
+                      },
+                      {
+                        type: "fallback_message",
+                        model: "claude-opus-4-8",
+                        input_tokens: 2,
+                        output_tokens: 5,
+                        cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 100 },
+                        cache_creation_input_tokens: 100,
+                        cache_read_input_tokens: 0
+                      }
+                    ]
+                  }
+                },
+                { type: "message_stop" }
+              ]))
+            )
+          ))
+        )
+
+        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-opus-5-5")),
+          Effect.provide(layer)
+        )
+        const metadata = Array.from(parts).filter((part) => part.type === "response-metadata")
+        assert.deepStrictEqual(metadata.map((part) => part.modelId), ["claude-opus-4-8", "claude-opus-4-8"])
+        assert.deepStrictEqual(metadata[1].metadata.anthropic?.fallback, {
+          type: "fallback",
+          from: { model: "claude-opus-5-5" },
+          to: { model: "claude-opus-4-8" },
+          trigger: { type: "refusal", category: "cyber" }
+        })
+        assert.isTrue(parts.some((part) => part.type === "text-delta" && part.delta === "Hello"))
+        const finish = parts.find((part) => part.type === "finish")
+        assertDefined(finish)
+        assert.deepStrictEqual(
+          finish.metadata.anthropic?.usage?.iterations?.map((i) => [i.type, "model" in i ? i.model : undefined]),
+          [["message", "claude-opus-5-5"], ["fallback_message", "claude-opus-4-8"]]
+        )
+      }))
   })
 
   describe("generateText", () => {
+    it.effect("names the fallback model when a message response carries a fallback block", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-opus-4-8",
+                content: [
+                  {
+                    type: "fallback",
+                    from: { model: "claude-opus-5-5" },
+                    to: { model: "claude-opus-4-8" },
+                    trigger: { type: "refusal", category: "cyber" }
+                  },
+                  { type: "text", text: "Hello" }
+                ],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  input_tokens: 10,
+                  output_tokens: 5,
+                  service_tier: null,
+                  iterations: [
+                    {
+                      type: "message",
+                      model: "claude-opus-5-5",
+                      input_tokens: 2,
+                      output_tokens: 0,
+                      cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 97 },
+                      cache_creation_input_tokens: 97,
+                      cache_read_input_tokens: 0
+                    },
+                    {
+                      type: "fallback_message",
+                      model: "claude-opus-4-8",
+                      input_tokens: 2,
+                      output_tokens: 5,
+                      cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 100 },
+                      cache_creation_input_tokens: 100,
+                      cache_read_input_tokens: 0
+                    }
+                  ]
+                }
+              }))
+            )
+          ))
+        )
+
+        const response = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-opus-5-5")),
+          Effect.provide(layer)
+        )
+        const fallback = response.content.find((part) =>
+          part.type === "response-metadata" && part.metadata.anthropic?.fallback !== undefined
+        )
+        assertDefined(fallback)
+        assert.strictEqual(fallback.type === "response-metadata" ? fallback.modelId : undefined, "claude-opus-4-8")
+        assert.isTrue(response.content.some((part) => part.type === "text" && part.text === "Hello"))
+      }))
+
     for (
       const [label, geo] of [
         ["missing", {}],

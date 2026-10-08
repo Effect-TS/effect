@@ -659,6 +659,26 @@ declare module "effect/ai/Response" {
       requestId?: string | null
     } | null
   }
+
+  /**
+   * Anthropic metadata attached to response metadata parts.
+   *
+   * **Details**
+   *
+   * When the API hands a refused reply to a fallback model, the stream (or the
+   * message content) carries a `fallback` block naming both models and the
+   * refusal; the response metadata part emitted for it names the fallback
+   * model as `modelId` and keeps the block here.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.3
+   */
+  export interface ResponseMetadataPartMetadata extends ProviderMetadata {
+    readonly anthropic?: {
+      readonly fallback?: typeof Generated.BetaResponseFallbackBlock.Encoded
+    } | null
+  }
 }
 
 // =============================================================================
@@ -1044,7 +1064,10 @@ const prepareMessages = Effect.fnUntraced(
             pendingSystem = []
           }
 
-          const content: Array<typeof Generated.BetaContentBlock.Encoded> = []
+          // A fallback block only appears in responses; it is never sent back.
+          const content: Array<
+            Exclude<typeof Generated.BetaContentBlock.Encoded, typeof Generated.BetaResponseFallbackBlock.Encoded>
+          > = []
           const mcpToolIds = new Set<string>()
 
           for (let j = 0; j < group.messages.length; j++) {
@@ -1651,6 +1674,16 @@ const makeResponse = Effect.fnUntraced(
 
     for (const part of rawResponse.content) {
       switch (part.type) {
+        case "fallback": {
+          // A fallback model took over a refused reply: name it, as in the stream.
+          parts.push({
+            type: "response-metadata",
+            modelId: part.to.model,
+            timestamp: DateTime.formatIso(yield* DateTime.now),
+            metadata: { anthropic: { fallback: part } }
+          })
+          break
+        }
         case "text": {
           // The response tool supplies the JSON payload. Accompanying prose
           // must not be concatenated with it during structured output decoding.
@@ -2258,6 +2291,17 @@ const makeStreamResponse = Effect.fnUntraced(
 
           case "content_block_start": {
             blockType = event.content_block.type
+
+            if (event.content_block.type === "fallback") {
+              // A fallback model takes over from here: name it, as message_start named the first.
+              parts.push({
+                type: "response-metadata",
+                modelId: event.content_block.to.model,
+                timestamp: DateTime.formatIso(yield* DateTime.now),
+                metadata: { anthropic: { fallback: event.content_block } }
+              })
+              break
+            }
 
             switch (event.content_block.type) {
               case "text": {
