@@ -32,6 +32,41 @@ describe("HttpTraceContext", () => {
       }, true)
     })
 
+    it("accepts a 64-bit B3 trace-id", () => {
+      const span = Option.getOrThrow(HttpTraceContext.fromHeaders(Headers.fromInput({
+        b3: `${traceId.slice(16)}-${spanId}-1`
+      })))
+      strictEqual(span.traceId, traceId.slice(16))
+    })
+
+    it("rejects a single-header B3 trace-id that is not hex", () => {
+      strictEqual(
+        Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
+          b3: `<script>-${spanId}-1`
+        }))),
+        true
+      )
+    })
+
+    it("rejects a single-header B3 span-id that is not hex", () => {
+      strictEqual(
+        Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
+          b3: `${traceId}-<script>-1`
+        }))),
+        true
+      )
+    })
+
+    it("rejects an X-B3-TraceId that is not hex", () => {
+      strictEqual(
+        Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
+          "X-B3-TraceId": "<script>",
+          "X-B3-SpanId": spanId
+        }))),
+        true
+      )
+    })
+
     it("rejects an all-zero W3C trace-id", () => {
       strictEqual(
         Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
