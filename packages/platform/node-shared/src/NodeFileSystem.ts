@@ -239,8 +239,7 @@ const openFlagBits = (flag: FileSystem.OpenFlag): number => {
   }
 }
 
-// Windows lacks O_NOFOLLOW and libuv silently drops unknown open flags there,
-// so refuse instead of opening through a symlink.
+// Reject unsupported platforms: libuv silently ignores unknown flags on Windows.
 const noFollowFlags = (method: string, flag: FileSystem.OpenFlag) =>
   Effect.suspend(() => {
     const { O_NOFOLLOW } = NFS.constants

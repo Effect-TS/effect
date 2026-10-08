@@ -183,12 +183,9 @@ const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
 })
 
 /**
- * Deno has no positional read, so reads and writes seek the shared native
- * offset first. `native` serializes those seek-then-I/O sequences so
- * positional reads can run concurrently. A started sequence holds the queue
- * until it settles, even if its fiber was interrupted; a queued sequence
- * whose fiber was interrupted before its turn is skipped.
- * Cursor operations must still not be used concurrently with each other.
+ * Deno lacks positional reads, so `native` serializes seek + I/O. Cancelled
+ * entries are skipped; started I/O holds the queue until it settles, even
+ * after interruption. Cursor operations must not run concurrently.
  */
 class FileImpl implements FileSystem.File {
   readonly [FileSystem.FileTypeId]: typeof FileSystem.FileTypeId = FileSystem.FileTypeId
@@ -370,7 +367,6 @@ class FileImpl implements FileSystem.File {
 
 const open: FileSystem.FileSystem["open"] = (path, options) => {
   if (options?.noFollow === true) {
-    // Deno.OpenOptions has no way to pass O_NOFOLLOW.
     return Effect.fail(PlatformError.badArgument({
       module: "FileSystem",
       method: "open",
