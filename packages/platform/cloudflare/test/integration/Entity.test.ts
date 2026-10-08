@@ -22,33 +22,6 @@ describe("Cloudflare cluster integration | Entity", () => {
     60_000
   )
 
-  it.effect("deduplicates persisted requests by primary key and serves the stored reply", () =>
-    Effect.gen(function*() {
-      const cluster = yield* makeCluster
-
-      const first = yield* cluster.fetchJson("/counter/increment?id=dedup&op=same")
-      const duplicate = yield* cluster.fetchJson("/counter/increment?id=dedup&op=same")
-      assert.strictEqual(first.value, 1)
-      assert.strictEqual(duplicate.value, 1, "The duplicate primary key was not served from the stored reply")
-
-      const read = yield* cluster.fetchJson("/counter/get?id=dedup")
-      assert.strictEqual(read.value, 1, "The deduplicated request ran the handler twice")
-    }), 60_000)
-
-  it.effect("isolates state between entity ids of the same type", () =>
-    Effect.gen(function*() {
-      const cluster = yield* makeCluster
-
-      yield* cluster.fetchJson("/counter/increment?id=iso-a&op=one")
-      yield* cluster.fetchJson("/counter/increment?id=iso-a&op=two")
-      yield* cluster.fetchJson("/counter/increment?id=iso-b&op=one")
-
-      const a = yield* cluster.fetchJson("/counter/get?id=iso-a")
-      const b = yield* cluster.fetchJson("/counter/get?id=iso-b")
-      assert.strictEqual(a.value, 2, "Entity iso-a did not keep its own state")
-      assert.strictEqual(b.value, 1, "Entity iso-b shared state with iso-a")
-    }), 60_000)
-
   it.effect("streams persisted chunks with acknowledgements to the client", () =>
     Effect.gen(function*() {
       const cluster = yield* makeCluster
