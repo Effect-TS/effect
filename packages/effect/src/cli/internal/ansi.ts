@@ -105,9 +105,16 @@ export const blackBright = `${ESC}90m`
  */
 export const cyanBright = `${ESC}96m`
 
-export const annotate = (text: string, ...styles: Array<string | Array<string>>) => {
-  const flat = styles.flat()
-  return `${flat.join("")}${text}${reset}`
+/**
+ * Wraps `text` in the given styles followed by a reset. When `colors` is
+ * `false` the text is returned unchanged, so callers gate color and style
+ * escapes in one place while cursor and erase controls stay untouched.
+ *
+ * @internal
+ */
+export const annotate = (colors: boolean, text: string, ...styles: Array<string | Array<string>>): string => {
+  if (!colors) return text
+  return `${styles.flat().join("")}${text}${reset}`
 }
 
 /**
