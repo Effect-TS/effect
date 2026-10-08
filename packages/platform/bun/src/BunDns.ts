@@ -1,5 +1,5 @@
 /**
- * The `BunDns` module provides Bun's `Dns` service for Effect programs.
+ * Bun implementation of Effect's `Dns` service.
  *
  * Address lookups use `Bun.dns.lookup` with the `system` backend, which calls
  * the operating system resolver (`getaddrinfo`) and therefore also reads the

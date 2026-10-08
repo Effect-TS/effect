@@ -1,5 +1,5 @@
 /**
- * Pure, platform-neutral host names and unresolved host and port endpoints.
+ * Host names and unresolved host and port endpoints.
  *
  * A `Host` is either a numeric IP address, an IPv6 literal with a zone such as
  * `fe80::1%eth0`, or a DNS domain name. Numeric addresses are parsed directly
@@ -201,7 +201,6 @@ export const domainNameFromStringUnsafe = (input: string): DomainName => Result.
 export const hostFromString = (input: string): Result.Result<Host, NetAddress.NetAddressError> => {
   if (input.includes("%")) return NetAddress.scopedIpv6LiteralFromString(input)
   if (input.includes(":")) return NetAddress.ipFromString(input)
-  // Only digits and dots can form an IPv4 address; anything else is a domain name.
   if (/^[\d.]+$/.test(input)) {
     const address = NetAddress.ipFromString(input)
     if (Result.isSuccess(address)) return address

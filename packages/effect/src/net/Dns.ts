@@ -1,6 +1,5 @@
 /**
- * Name resolution and DNS queries: the effectful path from host names to
- * `NetAddress` values, plus DNS record values.
+ * Host name resolution, DNS queries, and DNS record values.
  *
  * `lookup` resolves a host name to the addresses used to connect to it,
  * `resolve` queries DNS records of one type, and `reverse` looks up the names
@@ -253,7 +252,6 @@ const isString = (u: unknown): u is string => typeof u === "string"
 const isTimer = (u: unknown): boolean =>
   Duration.isDuration(u) && Duration.isFinite(u) && isUint32(Duration.toSeconds(u))
 
-// The fields of every record type, in canonical order, with their checks.
 const recordFields: {
   readonly [K in RecordType]: { readonly [F in keyof RecordFields<K>]-?: (u: unknown) => boolean }
 } = {
@@ -436,8 +434,6 @@ const quote = (value: string): string => {
   return out + "\""
 }
 
-// The characters `"`, `$`, `(`, `)`, `;`, and `@`, which are special in names
-// written in presentation format.
 const nameSpecials = [0x22, 0x24, 0x28, 0x29, 0x3b, 0x40]
 
 // Writes a name held as text, such as `Ptr.host`, in DNS presentation format:

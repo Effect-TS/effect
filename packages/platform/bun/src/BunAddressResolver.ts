@@ -1,6 +1,5 @@
 /**
- * The `BunAddressResolver` module provides Bun's `AddressResolver` service for
- * Effect programs.
+ * Bun implementation of Effect's `AddressResolver` service.
  *
  * IPv6 literals with a named zone such as `fe80::1%eth0` get their scope ID
  * from `os.networkInterfaces()`, listed each time a named zone is resolved.

@@ -1,20 +1,15 @@
 /**
  * Node.js implementation of Effect's `Dns` service.
  *
- * Address lookups use `lookup`, which calls the operating system resolver
- * (`getaddrinfo`) through `dns.lookup` and therefore also reads the hosts file.
- * Record queries and reverse lookups use the `resolve` function created by
- * `resolver`, which sends DNS queries with one shared `dns.Resolver`.
- * Node.js cannot cancel a single query, so an interrupted query keeps running
- * until it is answered or times out, and its result is discarded; closing the
- * service's scope cancels the queries that are still running. Records whose
- * data cannot be represented, such as names that are not valid
- * `Host.DomainName` values, are skipped, and a query fails with
- * `InvalidResponse` when every record is skipped. Node.js decodes each byte
- * of TXT and CAA character strings as one Latin-1 character; `make` decodes
- * those bytes as UTF-8. Other runtimes that implement `node:dns` reuse
- * `lookup`, `resolver`, and the conversions below, and assemble their own
- * service.
+ * Address lookups use the operating system resolver through `dns.lookup`,
+ * including the hosts file. Record queries and reverse lookups share one
+ * `dns.Resolver`. Interruption discards a query's result but cannot cancel
+ * that query; closing the scope cancels all pending queries.
+ *
+ * Unrepresentable records, such as invalid `Host.DomainName` values, are
+ * skipped. If every record is skipped, the query fails with `InvalidResponse`.
+ * `make` decodes Node.js's Latin-1 TXT and CAA strings as UTF-8. Other runtimes
+ * reuse `lookup`, `resolver`, and the conversion helpers to build their services.
  *
  * @stability experimental
  * @since 4.0.0
@@ -112,8 +107,7 @@ export const dnsErrorFromCause = (
   })
 }
 
-// Resolvers write names without the trailing dot, and c-ares writes the root
-// name as an empty string.
+// c-ares omits the root dot and represents the root name as an empty string.
 const absoluteName = (name: string): string => {
   if (name.endsWith(".")) {
     let backslashes = 0
@@ -139,7 +133,6 @@ export const domainNameFromResolverUnsafe = (name: string): Host.DomainName =>
 const decoder = new TextDecoder()
 const encoder = new TextEncoder()
 
-// A `\DDD` escape, a backslash escape of one character, or unescaped text.
 const nameParts = /\\(\d{3})|\\(.)|[^\\]+|\\/gsu
 
 /**
@@ -370,8 +363,7 @@ export const lookup = (
     catch: (cause) => dnsErrorFromCause(cause, "lookup", host)
   }).pipe(Effect.map(addressesFromLookup))
 
-// `dns.Resolver` throws for `timeout` and `tries` values that are not 32-bit
-// integers, and for `tries` below 1. Values below 1, including `NaN`, become 1.
+// Clamp resolver options to positive signed 32-bit integers; NaN becomes 1.
 const resolverInt = (value: number): number => value >= 1 ? Math.min(value, 2 ** 31 - 1) : 1
 
 /**
@@ -405,8 +397,6 @@ export const resolver = Effect.fnUntraced(function*(options?: Options) {
     })
   }
 
-  // Node.js can only cancel every query of a resolver, so all queries share one
-  // resolver and closing the scope cancels those still running.
   const resolver = yield* Effect.acquireRelease(
     Effect.sync(() => {
       const resolver = new NodeDns.promises.Resolver(resolverOptions)
@@ -429,8 +419,6 @@ export const resolver = Effect.fnUntraced(function*(options?: Options) {
     }).pipe(Effect.flatMap(Effect.fromResult))
 })
 
-// Node.js decodes each byte of TXT and CAA character strings as one Latin-1
-// character; decoding the bytes as UTF-8 matches other runtimes.
 const utf8Strings = (record: Dns.DnsRecord): Dns.DnsRecord => {
   switch (record._tag) {
     case "TXT":

@@ -3,8 +3,7 @@
  *
  * Domain names are looked up with the `Dns` service, and IPv6 literals with a
  * named zone such as `fe80::1%eth0` get their scope ID from
- * `os.networkInterfaces()`. Interfaces are listed each time a named zone is
- * resolved, so interfaces added or recreated while the program runs are found.
+ * `os.networkInterfaces()`, queried each time to reflect interface changes.
  *
  * @stability experimental
  * @since 4.0.0

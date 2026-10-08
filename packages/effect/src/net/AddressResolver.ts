@@ -1,12 +1,12 @@
 /**
- * Resolution of unresolved endpoints into concrete socket addresses.
+ * Resolves host and port endpoints to socket addresses.
  *
  * The `AddressResolver` service turns a `Host.HostPort` into socket
  * addresses. Numeric hosts are converted without a lookup, IPv6 literals with
  * a named zone such as `fe80::1%eth0` get their scope ID from the host's
  * network interfaces, and domain names are looked up with the `Dns` service.
- * Runtime packages provide layers that look up network interfaces; the layer
- * in this module needs only `Dns` and supports numeric zones only.
+ * Runtime layers look up network interfaces; this module's layer requires
+ * only `Dns` and supports numeric zones only.
  *
  * @stability experimental
  * @since 4.0.0
