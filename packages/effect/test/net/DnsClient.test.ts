@@ -1,0 +1,773 @@
+import { assert, describe, it } from "@effect/vitest"
+import { Duration, Effect, Exit, Fiber, Layer, Queue, Result } from "effect"
+import * as DnsMessage from "effect/internal/dnsMessage"
+import * as Dns from "effect/net/Dns"
+import * as DnsClient from "effect/net/DnsClient"
+import * as Host from "effect/net/Host"
+import * as NetAddress from "effect/net/NetAddress"
+import * as DatagramSocket from "effect/socket/DatagramSocket"
+import * as Socket from "effect/socket/Socket"
+import { TestClock } from "effect/testing"
+
+const name = Host.domainNameFromStringUnsafe
+const inet = NetAddress.inetAddressFromStringUnsafe
+
+const primary = inet("192.0.2.53:53")
+const secondary = inet("[2001:db8::53]:53")
+
+const encodeName = (input: string): Array<number> => [
+  ...(input === "." ? [] : input.replace(/\.$/, "").split(".")).flatMap((label) => [
+    label.length,
+    ...Array.from(label, (character) => character.charCodeAt(0))
+  ]),
+  0
+]
+
+const u16 = (value: number) => [value >> 8, value & 0xff]
+
+/**
+ * Builds a response with A records for 192.0.2.1, 192.0.2.2, ...
+ */
+const response = (options: {
+  readonly id: number
+  readonly question?: readonly [string, number] | undefined
+  readonly rcode?: number | undefined
+  readonly truncated?: boolean | undefined
+  readonly isResponse?: boolean | undefined
+  readonly answers?: number | undefined
+}): Uint8Array => {
+  const answers = options.answers ?? 0
+  const flags = (options.isResponse === false ? 0 : 0x8000) | 0x0180 | (options.truncated ? 0x0200 : 0) |
+    (options.rcode ?? 0)
+  const owner = options.question?.[0] ?? "example.test"
+  return Uint8Array.from([
+    ...u16(options.id),
+    ...u16(flags),
+    ...u16(options.question === undefined ? 0 : 1),
+    ...u16(answers),
+    0,
+    0,
+    0,
+    0,
+    ...(options.question === undefined ? [] : [...encodeName(options.question[0]), ...u16(options.question[1]), 0, 1]),
+    ...Array.from({ length: answers }, (_, i) => [
+      ...encodeName(owner),
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0x0e,
+      0x10,
+      0,
+      4,
+      192,
+      0,
+      2,
+      i + 1
+    ]).flat()
+  ])
+}
+
+interface Request {
+  readonly server: NetAddress.InetAddress
+  readonly transport: "udp" | "tcp"
+  readonly header: DnsMessage.Header
+  readonly payload: Uint8Array
+}
+
+interface Reply {
+  readonly payload: Uint8Array
+  readonly from?: NetAddress.InetAddress | undefined
+}
+
+/**
+ * In-memory UDP and TCP transports whose name servers answer with `handle`.
+ * Requests without replies time out.
+ */
+const fakeNetwork = (handle: (request: Request) => ReadonlyArray<Reply>) => {
+  const requests: Array<Request> = []
+  const state = { open: 0, opened: 0 }
+  const receive = (server: NetAddress.InetAddress, transport: Request["transport"], payload: Uint8Array) => {
+    const request = { server, transport, header: Result.getOrThrow(DnsMessage.decodeHeader(payload)), payload }
+    requests.push(request)
+    return handle(request)
+  }
+
+  const udp = (server: NetAddress.InetAddress) =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<DatagramSocket.Datagram, DatagramSocket.DatagramSocketError>()
+      return DatagramSocket.make({
+        reader: Effect.acquireRelease(
+          Effect.sync(() => {
+            state.open++
+            state.opened++
+            return {
+              pull: Queue.takeAll(queue),
+              address: inet("0.0.0.0:40000"),
+              dropped: () => 0,
+              joinMulticast: () => Effect.void
+            }
+          }),
+          () => Effect.sync(() => state.open--)
+        ),
+        writer: Effect.succeed({
+          write: (datagram) =>
+            Effect.sync(() => {
+              for (const reply of receive(server, "udp", datagram.payload as Uint8Array)) {
+                Queue.offerUnsafe(queue, { payload: reply.payload, address: reply.from ?? server })
+              }
+            }),
+          writeAll: () => Effect.die("unused")
+        })
+      })
+    })
+
+  const tcp = (server: NetAddress.InetAddress) =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<Uint8Array, Socket.SocketError>()
+      return Socket.make({
+        reader: Effect.succeed({ pull: Queue.takeAll(queue), upgrade: () => Effect.void }),
+        writer: Effect.succeed({
+          write: (chunk) =>
+            Effect.sync(() => {
+              const frame = chunk as Uint8Array
+              assert.strictEqual((frame[0] << 8) | frame[1], frame.length - 2)
+              for (const reply of receive(server, "tcp", frame.subarray(2))) {
+                const length = reply.payload.length
+                // Split the framed reply to exercise reassembly.
+                Queue.offerUnsafe(queue, Uint8Array.of(length >> 8))
+                Queue.offerUnsafe(queue, Uint8Array.from([length & 0xff, ...reply.payload]))
+              }
+            }),
+          writeAll: () => Effect.die("unused")
+        })
+      })
+    })
+
+  return { udp, tcp, requests, state }
+}
+
+const answer = (request: Request, options?: Omit<Parameters<typeof response>[0], "id" | "question">): Reply => ({
+  payload: response({
+    id: request.header.id,
+    question: [request.header.questions[0].name, request.header.questions[0].type],
+    answers: 1,
+    ...options
+  })
+})
+
+const run = (
+  network: ReturnType<typeof fakeNetwork>,
+  options?: Partial<Parameters<typeof DnsClient.make>[0]>,
+  query: { readonly name?: string; readonly type?: Dns.RecordType } = {}
+) =>
+  Effect.gen(function*() {
+    const client = yield* DnsClient.make({
+      nameServers: [primary, secondary],
+      udp: network.udp,
+      tcp: network.tcp,
+      ...options
+    })
+    const fiber = yield* Effect.forkChild(client.query(name(query.name ?? "example.test"), query.type ?? "A"))
+    yield* TestClock.adjust("1 minute")
+    return yield* Fiber.await(fiber)
+  })
+
+const reasonOf = (exit: Exit.Exit<DnsClient.Response, Dns.DnsError>): Dns.DnsErrorReason | undefined =>
+  Result.getOrUndefined(Exit.findError(exit))?.reason
+
+describe("DnsClient", () => {
+  it.effect("sends a query and returns the response", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request, { answers: 2 })])
+      const exit = yield* run(network)
+      assert.isTrue(Exit.isSuccess(exit))
+      const response = Exit.isSuccess(exit) ? exit.value : undefined!
+      assert.deepStrictEqual(response.answer.map((record) => [record.owner, Duration.toSeconds(record.ttl)]), [
+        ["example.test.", 3600],
+        ["example.test.", 3600]
+      ])
+      assert.strictEqual(network.requests.length, 1)
+      const [request] = network.requests
+      assert.strictEqual(request.server, primary)
+      assert.isTrue(request.header.flags.recursionDesired)
+      assert.deepStrictEqual(request.header.questions, [{ name: "example.test.", type: 1, class: 1 }])
+      // The query advertises the default EDNS(0) UDP payload size.
+      assert.deepStrictEqual([...request.payload.subarray(-11)], [0, 0, 41, 0x04, 0xd0, 0, 0, 0, 0, 0, 0])
+      assert.strictEqual(network.state.open, 0)
+    }))
+
+  it.effect("uses a new socket and a random ID for every attempt", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      yield* run(network, { attempts: 3 })
+      assert.strictEqual(network.requests.length, 6)
+      assert.strictEqual(network.state.opened, 6)
+      assert.strictEqual(network.state.open, 0)
+      assert.isAbove(new Set(network.requests.map((request) => request.header.id)).size, 1)
+    }))
+
+  it.effect("ignores responses that do not match the query", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => {
+        const id = request.header.id
+        const question = ["example.test.", 1] as const
+        return [
+          { payload: response({ id: id ^ 1, question, answers: 1 }) },
+          { payload: response({ id, question, answers: 1 }), from: inet("192.0.2.66:53") },
+          { payload: response({ id, question, answers: 1 }), from: inet("192.0.2.53:5353") },
+          { payload: response({ id, question: ["other.test.", 1], answers: 1 }) },
+          { payload: response({ id, question: ["example.test.", 28], answers: 1 }) },
+          { payload: response({ id, question, isResponse: false, answers: 1 }) },
+          { payload: Uint8Array.of(id >> 8, id & 0xff, 0x80) },
+          // Name servers may change the letter case of the question.
+          { payload: response({ id, question: ["Example.TEST.", 1], answers: 2 }) }
+        ]
+      })
+      const exit = yield* run(network)
+      assert.isTrue(Exit.isSuccess(exit))
+      assert.strictEqual(Exit.isSuccess(exit) ? exit.value.answer.length : 0, 2)
+      assert.strictEqual(network.requests.length, 1)
+    }))
+
+  it.effect("retries truncated responses over TCP", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) =>
+        request.transport === "udp" ? [answer(request, { truncated: true })] : [answer(request, { answers: 3 })]
+      )
+      const exit = yield* run(network)
+      assert.strictEqual(Exit.isSuccess(exit) ? exit.value.answer.length : 0, 3)
+      assert.deepStrictEqual(network.requests.map((request) => [request.transport, request.server]), [
+        ["udp", primary],
+        ["tcp", primary]
+      ])
+      assert.notStrictEqual(network.requests[0].header.id, network.requests[1].header.id)
+    }))
+
+  it.effect("rejects TCP responses that do not match the query", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) =>
+        request.transport === "udp"
+          ? [answer(request, { truncated: true })]
+          : [{ payload: response({ id: request.header.id ^ 1, question: ["example.test.", 1] }) }]
+      )
+      assert.strictEqual(reasonOf(yield* run(network, { attempts: 1 })), "InvalidResponse")
+    }))
+
+  it.effect("tries the next name server after a timeout", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => request.server === primary ? [] : [answer(request)])
+      const exit = yield* run(network)
+      assert.isTrue(Exit.isSuccess(exit))
+      assert.deepStrictEqual(network.requests.map((request) => request.server), [primary, secondary])
+    }))
+
+  it.effect("fails with Timeout when no name server answers", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      assert.strictEqual(reasonOf(yield* run(network)), "Timeout")
+      assert.deepStrictEqual(network.requests.map((request) => request.server), [
+        primary,
+        secondary,
+        primary,
+        secondary
+      ])
+    }))
+
+  it.effect("waits the timeout for each attempt", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      const client = yield* DnsClient.make({
+        nameServers: [primary],
+        udp: network.udp,
+        tcp: network.tcp,
+        timeout: "2 seconds",
+        attempts: 2
+      })
+      const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
+      yield* TestClock.adjust("1999 millis")
+      assert.strictEqual(network.requests.length, 1)
+      yield* TestClock.adjust("1 millis")
+      assert.strictEqual(network.requests.length, 2)
+      yield* TestClock.adjust("2 seconds")
+      assert.isTrue(Exit.isFailure(yield* Fiber.await(fiber)))
+    }))
+
+  it.effect("maps response codes and tries the next name server", () =>
+    Effect.gen(function*() {
+      for (
+        const [rcode, reason] of [
+          [1, "InvalidResponse"],
+          [2, "ServerFailure"],
+          [4, "Unsupported"],
+          [5, "Refused"],
+          [9, "Unknown"]
+        ] as const
+      ) {
+        const network = fakeNetwork((request) => [answer(request, { rcode, answers: 0 })])
+        const exit = yield* run(network, { attempts: 1 })
+        assert.strictEqual(reasonOf(exit), reason)
+        assert.strictEqual(network.requests.length, 2)
+      }
+      const recovered = fakeNetwork((
+        request
+      ) => [answer(request, request.server === primary ? { rcode: 2, answers: 0 } : {})])
+      assert.isTrue(Exit.isSuccess(yield* run(recovered)))
+    }))
+
+  it.effect("accepts format errors without a question", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [{ payload: response({ id: request.header.id, rcode: 1 }) }])
+      assert.strictEqual(reasonOf(yield* run(network, { attempts: 1 })), "InvalidResponse")
+      // Responses without a question are otherwise ignored.
+      const ignored = fakeNetwork((request) => [{ payload: response({ id: request.header.id }) }])
+      assert.strictEqual(reasonOf(yield* run(ignored, { attempts: 1 })), "Timeout")
+    }))
+
+  it.effect("returns NXDOMAIN responses without trying other name servers", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request, { rcode: 3, answers: 0 })])
+      const exit = yield* run(network)
+      assert.strictEqual(Exit.isSuccess(exit) ? exit.value.rcode : undefined, 3)
+      assert.strictEqual(network.requests.length, 1)
+    }))
+
+  it.effect("reports malformed responses", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => {
+        const { payload } = answer(request)
+        return [{ payload: payload.subarray(0, payload.length - 1) }]
+      })
+      const exit = yield* run(network)
+      assert.strictEqual(reasonOf(exit), "InvalidResponse")
+      assert.strictEqual(network.requests.length, 4)
+    }))
+
+  it.effect("reports transport errors as Refused", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      const udp = (server: NetAddress.InetAddress) =>
+        Effect.map(network.udp(server), (socket) =>
+          DatagramSocket.make({
+            reader: socket.reader,
+            writer: Effect.succeed({
+              write: () =>
+                Effect.fail(
+                  new DatagramSocket.DatagramSocketError({
+                    reason: new DatagramSocket.DatagramSocketWriteError({ kind: "Unreachable", cause: new Error("") })
+                  })
+                ),
+              writeAll: () => Effect.die("unused")
+            })
+          }))
+      const exit = yield* run(network, { udp, attempts: 1 })
+      assert.strictEqual(reasonOf(exit), "Refused")
+      assert.strictEqual(network.state.open, 0)
+    }))
+
+  it.effect("rotates the first name server when rotate is set", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request)])
+      const client = yield* DnsClient.make({
+        nameServers: [primary, secondary],
+        udp: network.udp,
+        tcp: network.tcp,
+        rotate: true
+      })
+      for (let i = 0; i < 3; i++) yield* client.query(name("example.test"), "A")
+      assert.deepStrictEqual(network.requests.map((request) => request.server), [primary, secondary, primary])
+    }))
+
+  it.effect("closes the socket when the query is interrupted", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      const client = yield* DnsClient.make({ nameServers: [primary], udp: network.udp, tcp: network.tcp })
+      const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
+      yield* TestClock.adjust("1 second")
+      assert.strictEqual(network.state.open, 1)
+      yield* Fiber.interrupt(fiber)
+      assert.strictEqual(network.state.open, 0)
+    }))
+
+  it.effect("uses port 53 for name servers given as IP addresses", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request)])
+      const exit = yield* run(network, { nameServers: [NetAddress.ipFromStringUnsafe("192.0.2.53")] })
+      assert.isTrue(Exit.isSuccess(exit))
+      assert.deepStrictEqual(network.requests.map((request) => NetAddress.formatInet(request.server)), [
+        "192.0.2.53:53"
+      ])
+    }))
+
+  it.effect("sends queries without recursion when requested", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request)])
+      const client = yield* DnsClient.make({ nameServers: [primary], udp: network.udp, tcp: network.tcp })
+      yield* client.query(name("example.test."), "A", { recursionDesired: false })
+      assert.isFalse(network.requests[0].header.flags.recursionDesired)
+    }))
+
+  it.effect("rejects invalid options when the service is created", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      for (
+        const options of [
+          { attempts: 0 },
+          { attempts: 1.5 },
+          { timeout: Duration.zero },
+          { timeout: Duration.infinity },
+          { udpPayloadSize: 511 },
+          { udpPayloadSize: 65536 },
+          { nameServers: [] as any }
+        ]
+      ) {
+        const exit = yield* Effect.exit(
+          DnsClient.make({ nameServers: [primary], udp: network.udp, tcp: network.tcp, ...options })
+        )
+        assert.isTrue(Exit.hasDies(exit), JSON.stringify(options))
+      }
+    }))
+})
+
+describe("parseResolvConf", () => {
+  it("reads name servers, search domains, and options", () => {
+    const config = DnsClient.parseResolvConf([
+      "# generated",
+      "; comment",
+      "nameserver 192.0.2.1",
+      "nameserver 2001:db8::1",
+      "nameserver fe80::1%2",
+      "nameserver 192.0.2.4",
+      "domain ignored.example",
+      "search Corp.Example example. bad..name",
+      "options ndots:3 timeout:2 attempts:4 rotate edns0 unknown:1",
+      "sortlist 192.0.2.0/24",
+      ""
+    ].join("\r\n"))
+    assert.deepStrictEqual(config.nameServers.map(NetAddress.formatInet), [
+      "192.0.2.1:53",
+      "[2001:db8::1]:53",
+      "[fe80::1%2]:53"
+    ])
+    assert.deepStrictEqual<ReadonlyArray<string> | undefined>(config.search, ["corp.example", "example."])
+    assert.strictEqual(config.ndots, 3)
+    assert.deepStrictEqual(config.timeout, Duration.seconds(2))
+    assert.strictEqual(config.attempts, 4)
+    assert.isTrue(config.rotate)
+  })
+
+  it("leaves missing values undefined", () => {
+    assert.deepStrictEqual(DnsClient.parseResolvConf(""), {
+      nameServers: [],
+      search: undefined,
+      ndots: undefined,
+      timeout: undefined,
+      attempts: undefined,
+      rotate: undefined
+    })
+  })
+
+  it("skips invalid name servers", () => {
+    const config = DnsClient.parseResolvConf("nameserver fe80::1%eth0\nnameserver example.com\nnameserver\n")
+    assert.deepStrictEqual(config.nameServers, [])
+  })
+
+  it("uses the last search or domain line", () => {
+    assert.deepStrictEqual<ReadonlyArray<string> | undefined>(
+      DnsClient.parseResolvConf("search a.example b.example\ndomain c.example").search,
+      [
+        "c.example"
+      ]
+    )
+  })
+
+  it("clamps options like glibc and ignores invalid values", () => {
+    const config = DnsClient.parseResolvConf("options ndots:99 timeout:0 attempts:9\noptions ndots:x attempts:-1")
+    assert.strictEqual(config.ndots, 15)
+    assert.deepStrictEqual(config.timeout, Duration.seconds(1))
+    assert.strictEqual(config.attempts, 5)
+  })
+})
+
+describe("parseHosts", () => {
+  it("reads addresses and aliases", () => {
+    const hosts = DnsClient.parseHosts([
+      "127.0.0.1   localhost",
+      "::1         localhost ip6-localhost # loopback",
+      "# 192.0.2.9 commented.example",
+      "192.0.2.1   DB.Example.  db",
+      "192.0.2.1   db",
+      "fe80::1%eth0 router",
+      "not-an-ip   ignored.example",
+      "192.0.2.2   bad..name good.example",
+      "192.0.2.3"
+    ].join("\n"))
+    assert.deepStrictEqual(
+      Object.fromEntries([...hosts].map(([name, addresses]) => [name, addresses.map(NetAddress.formatIp)])),
+      {
+        localhost: ["127.0.0.1", "::1"],
+        "ip6-localhost": ["::1"],
+        "db.example": ["192.0.2.1"],
+        db: ["192.0.2.1"],
+        "good.example": ["192.0.2.2"]
+      }
+    )
+  })
+})
+
+describe("layerDns", () => {
+  const a = (address: string) =>
+    Dns.makeRecordUnsafe("A", { address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv4Address })
+  const aaaa = (address: string) =>
+    Dns.makeRecordUnsafe("AAAA", { address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv6Address })
+  const cname = (target: string) => Dns.makeRecordUnsafe("CNAME", { target: name(target) })
+  const ptr = (host: string) => Dns.makeRecordUnsafe("PTR", { host: name(host) })
+
+  /**
+   * A client answering from fixed records by owner name. The answer to a
+   * query holds every record of its name, and of the names its CNAME records
+   * point to when `chains` is set.
+   */
+  const staticClient = (options: {
+    readonly records: Record<string, ReadonlyArray<Dns.DnsRecord | DnsClient.RawRecord>>
+    readonly search?: ReadonlyArray<string>
+    readonly ndots?: number
+    readonly hosts?: string
+    readonly chains?: boolean
+    readonly failures?: Record<string, Dns.DnsErrorReason>
+  }) => {
+    const queries: Array<string> = []
+    const client = DnsClient.DnsClient.of({
+      query: (queried, type) =>
+        Effect.suspend(() => {
+          queries.push(`${queried} ${type}`)
+          const key = queried.endsWith(".") ? queried : `${queried}.`
+          const reason = options.failures?.[key]
+          if (reason !== undefined) {
+            return Effect.fail(new Dns.DnsError({ reason, method: "resolve", hostname: queried, recordType: type }))
+          }
+          const answer: Array<DnsClient.ResourceRecord> = []
+          let owner: string | undefined = key
+          for (let hops = 0; owner !== undefined && hops < 20; hops++) {
+            const records: ReadonlyArray<Dns.DnsRecord | DnsClient.RawRecord> = options.records[owner] ?? []
+            for (const data of records) {
+              if (data._tag === type || data._tag === "CNAME" || data._tag === "Raw") {
+                answer.push({ owner: owner.toUpperCase(), ttl: Duration.seconds(60), class: 1, data })
+              }
+            }
+            const alias = records.find((record): record is Dns.Cname => record._tag === "CNAME")
+            owner = options.chains && type !== "CNAME" && alias !== undefined ? alias.target : undefined
+          }
+          return Effect.succeed({
+            flags: {
+              authoritative: true,
+              truncated: false,
+              recursionDesired: true,
+              recursionAvailable: true,
+              authenticData: false,
+              checkingDisabled: false
+            },
+            rcode: key in options.records ? 0 : 3,
+            answer,
+            authority: [],
+            additional: [],
+            edns: undefined
+          })
+        }),
+      search: (options.search ?? []).map(name),
+      ndots: options.ndots ?? 1,
+      hosts: Effect.succeed(DnsClient.parseHosts(options.hosts ?? ""))
+    })
+    const dns = Effect.service(Dns.Dns).pipe(
+      Effect.provide(DnsClient.layerDns.pipe(Layer.provide(Layer.succeed(DnsClient.DnsClient, client))))
+    )
+    return { dns, queries }
+  }
+
+  const formatIps = (addresses: ReadonlyArray<NetAddress.IpAddress>) => addresses.map(NetAddress.formatIp)
+
+  it.effect("looks up names in the hosts table before DNS", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        hosts: "192.0.2.1 db.internal\n2001:db8::1 db.internal",
+        records: { "v6.internal.": [aaaa("2001:db8::6")] }
+      })
+      const service = yield* dns
+      assert.deepStrictEqual(formatIps(yield* service.lookup(name("db.internal."))), ["192.0.2.1", "2001:db8::1"])
+      assert.deepStrictEqual(formatIps(yield* service.lookup(name("db.internal"), { family: "IPv6" })), [
+        "2001:db8::1"
+      ])
+      assert.deepStrictEqual(queries, [])
+    }))
+
+  it.effect("queries DNS when the hosts table has no address of the family", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        hosts: "192.0.2.1 db.internal",
+        records: { "db.internal.": [aaaa("2001:db8::6")] }
+      })
+      assert.deepStrictEqual(formatIps(yield* (yield* dns).lookup(name("db.internal"), { family: "IPv6" })), [
+        "2001:db8::6"
+      ])
+      assert.deepStrictEqual(queries, ["db.internal. AAAA"])
+    }))
+
+  it.effect("returns IPv4 addresses before IPv6 addresses", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        records: { "example.test.": [aaaa("2001:db8::1"), a("192.0.2.1")] }
+      })
+      assert.deepStrictEqual(formatIps(yield* (yield* dns).lookup(name("example.test"))), [
+        "192.0.2.1",
+        "2001:db8::1"
+      ])
+      assert.deepStrictEqual(queries.sort(), ["example.test. A", "example.test. AAAA"])
+    }))
+
+  it.effect("tries search domains after names with fewer than ndots dots", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        search: ["corp.example", "example."],
+        records: { "db.example.": [a("192.0.2.1")] }
+      })
+      assert.deepStrictEqual(formatIps(yield* (yield* dns).lookup(name("db"), { family: "IPv4" })), ["192.0.2.1"])
+      assert.deepStrictEqual(queries, ["db.corp.example. A", "db.example. A"])
+    }))
+
+  it.effect("tries names with at least ndots dots as given first", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        search: ["corp.example"],
+        ndots: 1,
+        records: { "db.internal.corp.example.": [a("192.0.2.1")] }
+      })
+      assert.deepStrictEqual(formatIps(yield* (yield* dns).lookup(name("db.internal"), { family: "IPv4" })), [
+        "192.0.2.1"
+      ])
+      assert.deepStrictEqual(queries, ["db.internal. A", "db.internal.corp.example. A"])
+    }))
+
+  it.effect("tries fully qualified names only as given", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({ search: ["corp.example"], records: {} })
+      const error = yield* Effect.flip((yield* dns).lookup(name("db."), { family: "IPv4" }))
+      assert.strictEqual(error.reason, "NotFound")
+      assert.strictEqual(error.method, "lookup")
+      assert.deepStrictEqual(queries, ["db. A"])
+    }))
+
+  it.effect("reports failed queries when no name has addresses", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        search: ["corp.example"],
+        records: {},
+        failures: { "db.corp.example.": "Timeout" }
+      })
+      const error = yield* Effect.flip((yield* dns).lookup(name("db"), { family: "IPv4" }))
+      assert.strictEqual(error.reason, "Timeout")
+      assert.strictEqual(error.method, "lookup")
+      assert.strictEqual(error.hostname, "db")
+      assert.deepStrictEqual(queries, ["db.corp.example. A", "db. A"])
+    }))
+
+  it.effect("ignores a failed query when another name has addresses", () =>
+    Effect.gen(function*() {
+      const { dns } = staticClient({
+        search: ["corp.example"],
+        records: { "db.": [a("192.0.2.1")] },
+        failures: { "db.corp.example.": "ServerFailure" }
+      })
+      assert.deepStrictEqual(formatIps(yield* (yield* dns).lookup(name("db"), { family: "IPv4" })), ["192.0.2.1"])
+    }))
+
+  it.effect("follows CNAME records in the answer", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        chains: true,
+        records: { "www.example.test.": [cname("cdn.example.test.")], "cdn.example.test.": [a("192.0.2.1")] }
+      })
+      assert.deepStrictEqual(formatIps(yield* (yield* dns).lookup(name("www.example.test"), { family: "IPv4" })), [
+        "192.0.2.1"
+      ])
+      assert.deepStrictEqual(queries, ["www.example.test. A"])
+    }))
+
+  it.effect("queries the target of a CNAME record the answer does not resolve", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        records: { "www.example.test.": [cname("cdn.example.test.")], "cdn.example.test.": [a("192.0.2.1")] }
+      })
+      assert.deepStrictEqual(formatIps(yield* (yield* dns).lookup(name("www.example.test"), { family: "IPv4" })), [
+        "192.0.2.1"
+      ])
+      assert.deepStrictEqual(queries, ["www.example.test. A", "cdn.example.test. A"])
+    }))
+
+  it.effect("follows up to 8 CNAME records", () =>
+    Effect.gen(function*() {
+      const chain = (aliases: number) => {
+        const records: Record<string, ReadonlyArray<Dns.DnsRecord>> = {}
+        for (let i = 0; i < aliases; i++) records[`a${i}.example.test.`] = [cname(`a${i + 1}.example.test.`)]
+        records[`a${aliases}.example.test.`] = [a("192.0.2.1")]
+        return staticClient({ records })
+      }
+      const eight = chain(8)
+      assert.deepStrictEqual(yield* (yield* eight.dns).resolve(name("a0.example.test."), "A"), [a("192.0.2.1")])
+      assert.strictEqual(eight.queries.length, 9)
+      const nine = chain(9)
+      const error = yield* Effect.flip((yield* nine.dns).resolve(name("a0.example.test."), "A"))
+      assert.strictEqual(error.reason, "NotFound")
+      assert.strictEqual(nine.queries.length, 9)
+      // A loop ends the same way.
+      const loop = staticClient({
+        chains: true,
+        records: { "a.example.test.": [cname("b.example.test.")], "b.example.test.": [cname("a.example.test.")] }
+      })
+      assert.strictEqual(
+        (yield* Effect.flip((yield* loop.dns).resolve(name("a.example.test."), "A"))).reason,
+        "NotFound"
+      )
+    }))
+
+  it.effect("resolves records and skips raw records", () =>
+    Effect.gen(function*() {
+      const { dns } = staticClient({
+        records: { "example.test.": [ptr("good.example.test."), { _tag: "Raw", type: 12, data: Uint8Array.of(0) }] }
+      })
+      assert.deepStrictEqual(yield* (yield* dns).resolve(name("example.test"), "PTR"), [ptr("good.example.test.")])
+      const error = yield* Effect.flip((yield* dns).resolve(name("missing.test"), "PTR"))
+      assert.strictEqual(error.reason, "NotFound")
+      assert.strictEqual(error.recordType, "PTR")
+    }))
+
+  it.effect("returns CNAME records when they are queried", () =>
+    Effect.gen(function*() {
+      const { dns } = staticClient({
+        chains: true,
+        records: { "www.example.test.": [cname("example.test.")], "example.test.": [a("192.0.2.1")] }
+      })
+      assert.deepStrictEqual(yield* (yield* dns).resolve(name("www.example.test"), "CNAME"), [cname("example.test.")])
+    }))
+
+  it.effect("looks up the names of an address through classless delegations", () =>
+    Effect.gen(function*() {
+      const { dns } = staticClient({
+        chains: true,
+        records: {
+          "1.2.0.192.in-addr.arpa.": [cname("1.0-25.2.0.192.in-addr.arpa.")],
+          "1.0-25.2.0.192.in-addr.arpa.": [ptr("host.example.test.")]
+        }
+      })
+      assert.deepStrictEqual<ReadonlyArray<string>>(
+        yield* (yield* dns).reverse(NetAddress.ipFromStringUnsafe("192.0.2.1")),
+        [
+          "host.example.test."
+        ]
+      )
+      const failing = staticClient({ records: {}, failures: { "2.2.0.192.in-addr.arpa.": "Refused" } })
+      const error = yield* Effect.flip((yield* failing.dns).reverse(NetAddress.ipFromStringUnsafe("192.0.2.2")))
+      assert.deepStrictEqual([error.reason, error.method, error.hostname], ["Refused", "reverse", "192.0.2.2"])
+    }))
+})

@@ -5,6 +5,7 @@ import * as Equal from "effect/Equal"
 import * as Layer from "effect/Layer"
 import * as AddressResolver from "effect/net/AddressResolver"
 import * as Dns from "effect/net/Dns"
+import type * as DnsClient from "effect/net/DnsClient"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import type * as Scope from "effect/Scope"
@@ -83,8 +84,11 @@ edge.test {
 }
 `
 
-// Mirrors `expected`, plus names for root targets, missing records, and
-// missing names. Names outside both zones are refused.
+// TXT records that do not fit in a 512-byte UDP response.
+const bigTxt = Array.from({ length: 16 }, (_, i) => `big         IN TXT   "record ${i} ${"x".repeat(24)}"`).join("\n")
+
+// Mirrors `expected`, plus names for root targets, missing records, missing
+// names, and a large record set. Names outside both zones are refused.
 const exampleZone = `
 $ORIGIN example.test.
 $TTL 300
@@ -102,6 +106,7 @@ www         IN CNAME example.test.
 null-mx     IN MX    0 .
 _pg._tcp    IN SRV   10 5 5432 db1.example.test.
 _none._tcp  IN SRV   0 0 0 .
+${bigTxt}
 `
 
 const reverseZone = `
@@ -127,11 +132,12 @@ $TTL 300
 `
 
 /**
- * Starts a CoreDNS container serving the fixture zones and returns the address
- * of its UDP listener.
+ * Starts a CoreDNS container serving the fixture zones and returns the
+ * addresses of its UDP and TCP listeners, which are mapped to different ports.
  */
 export const startDnsServer = async (): Promise<{
   readonly nameServer: NetAddress.InetAddressV4
+  readonly tcpNameServer: NetAddress.InetAddressV4
   readonly stop: () => Promise<void>
 }> => {
   // The fixtures are bind-mounted rather than copied: under Bun, the archive
@@ -160,38 +166,38 @@ export const startDnsServer = async (): Promise<{
     container = await new GenericContainer("coredns/coredns:1.14.7")
       .withBindMounts([{ source: directory, target: "/etc/coredns", mode: "ro" }])
       .withCommand(["-conf", "/etc/coredns/Corefile"])
-      .withExposedPorts("53/udp")
+      .withExposedPorts("53/udp", "53/tcp")
       .withWaitStrategy(Wait.forLogMessage(/CoreDNS-/))
       .start()
     // The resolver APIs accept only IP addresses for name servers.
     const { address } = await NodeDnsApi.promises.lookup(container.getHost(), { family: 4 })
-    return {
-      nameServer: NetAddress.inetAddressFromStringUnsafe(
-        `${address}:${container.getMappedPort("53/udp")}`
-      ) as NetAddress.InetAddressV4,
-      stop
-    }
+    const mapped = (port: "53/udp" | "53/tcp") =>
+      NetAddress.inetAddressFromStringUnsafe(`${address}:${container!.getMappedPort(port)}`) as NetAddress.InetAddressV4
+    return { nameServer: mapped("53/udp"), tcpNameServer: mapped("53/tcp"), stop }
   } catch (error) {
     await stop()
     throw error
   }
 }
 
-const isBun = typeof process !== "undefined" && process.versions.bun !== undefined
-const isDeno = "Deno" in globalThis
-
 /**
- * Runs end-to-end tests of a platform `Dns` service, and the platform
- * `AddressResolver` layer on top of it, against a CoreDNS container. Every runtime must behave the same; the only skipped tests cover
- * documented runtime bugs that the platform services cannot work around.
+ * Runs end-to-end tests of a `Dns` service, and the platform `AddressResolver`
+ * layer on top of it, against a CoreDNS container. Every implementation must
+ * behave the same; `skip` only covers documented runtime bugs that an
+ * implementation cannot work around.
  */
-
 export const describeDnsServer = (
   label: string,
   make: (
     nameServer: NetAddress.InetAddress
   ) => Effect.Effect<Dns.Dns["Service"], NetAddress.NetAddressError, Scope.Scope>,
-  addressResolver: Layer.Layer<AddressResolver.AddressResolver, never, Dns.Dns>
+  addressResolver: Layer.Layer<AddressResolver.AddressResolver, never, Dns.Dns>,
+  options?: {
+    // The runtime returns each character string of a TXT record as a separate record.
+    readonly splitsTxtRecords?: boolean | undefined
+    // The runtime reports refused queries as missing names.
+    readonly refusedAsNotFound?: boolean | undefined
+  }
 ) =>
   describe(label, () => {
     let server: Awaited<ReturnType<typeof startDnsServer>>
@@ -242,10 +248,7 @@ export const describeDnsServer = (
         assertRecords(yield* (yield* dns()).resolve(name("_pg._tcp.example.test"), "SRV"), expected.SRV)
       }))
 
-    // Bun returns each character string of a TXT record as a separate record,
-    // so the chunks of a record cannot be reassembled:
-    // https://github.com/oven-sh/bun/issues/44692
-    it.effect.skipIf(isBun)("keeps the chunks of a TXT record together", () =>
+    it.effect.skipIf(options?.splitsTxtRecords === true)("keeps the chunks of a TXT record together", () =>
       Effect.gen(function*() {
         assertRecords(yield* (yield* dns()).resolve(name("example.test."), "TXT"), expected.TXT)
       }))
@@ -310,9 +313,7 @@ export const describeDnsServer = (
         assert.strictEqual(error.recordType, "A")
       }))
 
-    // `Deno.resolveDns` reports every error response, including refused
-    // queries, with the same `NotFound` error as a missing name.
-    it.effect.skipIf(isDeno)("reports refused queries", () =>
+    it.effect.skipIf(options?.refusedAsNotFound === true)("reports refused queries", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip((yield* dns()).resolve(name("outside.invalid"), "A"))
         assert.strictEqual(error.reason, "Refused")
@@ -322,5 +323,109 @@ export const describeDnsServer = (
       Effect.gen(function*() {
         const error = yield* Effect.flip((yield* dns()).resolve(name("ns1.example.test."), "SRV"))
         assert.strictEqual(error.reason, "NotFound")
+      }))
+  })
+
+/**
+ * Runs end-to-end tests of a `DnsClient` against a CoreDNS container. The
+ * client's TCP connections must go to `tcpNameServer`, since the container
+ * maps its UDP and TCP listeners to different ports.
+ */
+export const describeDnsClient = (
+  label: string,
+  make: (options: {
+    readonly nameServer: NetAddress.InetAddress
+    readonly tcpNameServer: NetAddress.InetAddress
+    readonly udpPayloadSize?: number | undefined
+  }) => Effect.Effect<DnsClient.DnsClient["Service"]>
+) =>
+  describe(label, () => {
+    let server: Awaited<ReturnType<typeof startDnsServer>>
+    beforeAll(async () => {
+      server = await startDnsServer()
+    }, 120_000)
+    afterAll(async () => {
+      await server?.stop()
+    })
+
+    const client = (udpPayloadSize?: number) => make({ ...server, udpPayloadSize })
+    const ttl = (record: DnsClient.ResourceRecord) => Duration.toSeconds(record.ttl)
+
+    it.effect("returns the sections, TTLs, and flags of a response", () =>
+      Effect.gen(function*() {
+        const response = yield* (yield* client()).query(name("example.test."), "A")
+        assert.strictEqual(response.rcode, 0)
+        assert.isTrue(response.flags.authoritative)
+        assert.isFalse(response.flags.truncated)
+        assert.isTrue(response.flags.recursionDesired)
+        assertRecords(response.answer.map((record) => record.data as Dns.DnsRecord), expected.A)
+        for (const record of response.answer) {
+          assert.strictEqual(record.owner, "example.test.")
+          assert.strictEqual(record.class, 1)
+          assert.strictEqual(ttl(record), 300)
+        }
+        assert.deepStrictEqual(response.authority.map((record) => [record.owner, ttl(record), record.data]), [
+          ["example.test.", 300, expected.NS[0]]
+        ])
+        assert.deepStrictEqual(response.edns, { udpPayloadSize: 1232, version: 0, dnssecOk: false })
+      }))
+
+    it.effect("decodes every record type", () =>
+      Effect.gen(function*() {
+        const dns = yield* client()
+        const data = (response: DnsClient.Response) => response.answer.map((record) => record.data as Dns.DnsRecord)
+        for (const type of ["A", "AAAA", "CAA", "MX", "NAPTR", "NS", "SOA", "TXT"] as const) {
+          assertRecords(data(yield* dns.query(name("example.test."), type)), expected[type])
+        }
+        assertRecords(data(yield* dns.query(name("www.example.test."), "CNAME")), expected.CNAME)
+        assertRecords(data(yield* dns.query(name("_pg._tcp.example.test."), "SRV")), expected.SRV)
+        assertRecords(data(yield* dns.query(name("1.2.0.192.in-addr.arpa."), "PTR")), expected.PTR)
+        assertRecords(data(yield* dns.query(name("edge.test."), "TXT")), [
+          Dns.makeRecordUnsafe("TXT", { chunks: ["grüß"] })
+        ])
+      }))
+
+    it.effect("returns aliases with the records of their targets", () =>
+      Effect.gen(function*() {
+        const response = yield* (yield* client()).query(name("www.example.test."), "A")
+        assert.deepStrictEqual(response.answer[0], {
+          owner: "www.example.test.",
+          ttl: Duration.seconds(300),
+          class: 1,
+          data: expected.CNAME[0]
+        })
+        assertRecords(response.answer.slice(1).map((record) => record.data as Dns.DnsRecord), expected.A)
+      }))
+
+    it.effect("keeps records with invalid names as raw data", () =>
+      Effect.gen(function*() {
+        const response = yield* (yield* client()).query(name("2.2.0.192.in-addr.arpa."), "PTR")
+        assert.deepStrictEqual(response.answer.map((record) => record.data._tag).sort(), ["PTR", "Raw"])
+      }))
+
+    it.effect("returns NXDOMAIN responses with the zone's SOA record", () =>
+      Effect.gen(function*() {
+        const response = yield* (yield* client()).query(name("missing.example.test."), "A")
+        assert.strictEqual(response.rcode, 3)
+        assert.deepStrictEqual(response.answer, [])
+        assert.deepStrictEqual(response.authority.map((record) => [record.owner, ttl(record), record.data]), [
+          ["example.test.", 300, expected.SOA[0]]
+        ])
+      }))
+
+    it.effect("reports refused queries", () =>
+      Effect.gen(function*() {
+        const error = yield* Effect.flip((yield* client()).query(name("outside.invalid."), "A"))
+        assert.strictEqual(error.reason, "Refused")
+        assert.strictEqual(error.recordType, "A")
+      }))
+
+    it.effect("retries truncated responses over TCP", () =>
+      Effect.gen(function*() {
+        const udp = yield* (yield* client()).query(name("big.example.test."), "TXT")
+        assert.strictEqual(udp.answer.length, 16)
+        const tcp = yield* (yield* client(512)).query(name("big.example.test."), "TXT")
+        assert.isFalse(tcp.flags.truncated)
+        assert.strictEqual(tcp.answer.length, 16)
       }))
   })
