@@ -12179,7 +12179,7 @@ export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
  * @category models
  * @since 4.0.0
  */
-export interface IpAddressFromString extends Union<readonly [Ipv4AddressFromString, Ipv6AddressFromString]> {
+export interface IpAddressFromString extends decodeTo<IpAddress, String> {
   readonly "Rebuild": IpAddressFromString
 }
 
@@ -12190,9 +12190,12 @@ export interface IpAddressFromString extends Union<readonly [Ipv4AddressFromStri
  * @category schemas
  * @since 4.0.0
  */
-export const IpAddressFromString: IpAddressFromString = Union([Ipv4AddressFromString, Ipv6AddressFromString]).annotate({
-  identifier: "IpAddressFromString"
-})
+export const IpAddressFromString: IpAddressFromString = netAddressFromString(
+  IpAddress,
+  NetAddress_.ipFromString,
+  NetAddress_.formatIp,
+  "IpAddressFromString"
+)
 
 const netAddressRefinement = <S extends Constraint, T extends S["Type"]>(
   schema: S,
