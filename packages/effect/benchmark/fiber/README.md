@@ -125,15 +125,21 @@ initialized module state are not counted. The default is 5 repeats; the tool rep
 
 Scenarios (default `--n 50000`; `peak-fanout` defaults to 100000):
 
-| scenario            | measures                                                                                                                          |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `suspended`         | heapUsed/RSS per fiber blocked on `Deferred.await`, then retained bytes after the deferred completes                              |
-| `suspended-never`   | the same for fibers on `Effect.never`, released by interrupting the parent                                                        |
-| `completed-handles` | bytes retained per completed `Fiber` handle, with the handle array cost measured separately                                       |
-| `released`          | fork N, interrupt, drop everything, settle repeatedly: retained delta, plus the `settleSeries`                                    |
-| `peak-fanout`       | `forEach` unbounded with yieldNow: heapUsed at the top of the fan-out (latch when the last fiber starts), 1 ms sampler peaks, RSS |
-| `--child-yields k`  | option for `suspended` and `completed-handles`: children yield k times first, so each owns a scheduler dispatcher                 |
-| `allocation`        | `--workload <name> --iterations 20`: allocated bytes per iteration, scavenge and major GC counts                                  |
+| scenario                | measures                                                                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `suspended`             | heapUsed/RSS per fiber blocked on `Deferred.await`, then retained bytes after the deferred completes                                                |
+| `suspended-never`       | the same for fibers on `Effect.never`, released by interrupting the parent                                                                          |
+| `completed-handles`     | bytes retained per completed `Fiber` handle, with the handle array cost measured separately                                                         |
+| `released`              | fork N, interrupt, drop everything, settle repeatedly: retained delta, plus the `settleSeries`                                                      |
+| `peak-fanout`           | `forEach` unbounded with yieldNow: heapUsed at the top of the fan-out (latch when the last fiber starts), 1 ms sampler peaks, RSS                   |
+| `--child-yields k`      | option for `suspended` and `completed-handles`: children yield k times first, so each owns a scheduler dispatcher                                   |
+| `allocation`            | `--workload <name> --iterations 20`: allocated bytes per iteration, scavenge and major GC counts                                                    |
+| `--rewarm-iterations k` | option for `allocation`: run k unmeasured iterations after the forced GCs, which can discard optimized code, so the measured window is steady state |
+
+The forced GCs before an `allocation` window can deoptimize the interpreter, so
+without `--rewarm-iterations` the first measured iterations include cold-code
+allocation (an unoptimized `pop` that empties an array releases its store, for
+example) and recompilation. Report both windows when comparing.
 
 Known result on the baseline: `released` and `suspended-never` retain about
 125 B/fiber, scaling linearly. A heap-snapshot retainer chain shows this is the

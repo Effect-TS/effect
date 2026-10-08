@@ -4,7 +4,7 @@
 //
 // Single root:  node memory.mts [--root <dir>] --scenario <name> [--n 50000] [--repeats 5] [--child-yields k] [--json]
 // Paired:       node memory.mts --base <dir> --head <dir> --scenario <name> [--n 50000] [--repeats 5]
-// allocation:   node memory.mts --scenario allocation --workload <name> [--iterations 20] [--size k=v]
+// allocation:   node memory.mts --scenario allocation --workload <name> [--iterations 20] [--rewarm-iterations 0] [--size k=v]
 //
 // Scenarios: suspended, suspended-never, completed-handles, released, peak-fanout, allocation
 import { spawnSync } from "node:child_process"
@@ -221,10 +221,15 @@ const runChild = async (options) => {
       const workload = findWorkload(options.workload)
       const iterations = numberOption(options, "iterations", 20)
       const warmupIterations = numberOption(options, "warmup-iterations", 5)
+      // The forced GCs in settle() can discard optimized code, so the first
+      // measured iterations otherwise include recompilation and cold-code
+      // allocation. Re-warming measures steady state instead.
+      const rewarmIterations = numberOption(options, "rewarm-iterations", 0)
       const instance = workload.make(E, { ...workload.size, ...parseSizeOverrides(options.size) })
       for (let i = 0; i < warmupIterations; i++) await instance.run()
       instance.validate()
       await settle()
+      for (let i = 0; i < rewarmIterations; i++) await instance.run()
       const gcCounts = { scavenges: 0, majors: 0, other: 0 }
       let counting = true
       const observer = new PerformanceObserver((list) => {
@@ -268,7 +273,8 @@ const runChild = async (options) => {
         scavenges: gcCounts.scavenges,
         majorGcs: gcCounts.majors,
         otherGcs: gcCounts.other,
-        iterations
+        iterations,
+        rewarmIterations
       })
       measurements.method = allocatedStart === undefined
         ? "total_allocated_bytes unavailable; use gcProfilerEstimatePerIteration"
@@ -298,7 +304,7 @@ const runChild = async (options) => {
 const scriptPath = fileURLToPath(import.meta.url)
 
 const spawnChild = (root, options) => {
-  const forwarded = ["scenario", "n", "workload", "iterations", "warmup-iterations", "size", "settles", "child-yields"]
+  const forwarded = ["scenario", "n", "workload", "iterations", "warmup-iterations", "rewarm-iterations", "size", "settles", "child-yields"]
   const args = ["--expose-gc", scriptPath, "--child", "--root", root]
   for (const key of forwarded) {
     if (typeof options[key] === "string") args.push(`--${key}`, options[key])
@@ -325,7 +331,7 @@ const summarize = (runs) => {
   return summary
 }
 
-const isBytes = (key) => !/durationMs|Samples|scavenges|Gcs|iterations/.test(key)
+const isBytes = (key) => !/durationMs|Samples|scavenges|Gcs|[iI]terations/.test(key)
 const fmt = (key, value) => isBytes(key) ? formatBytes(value) : Number(value).toFixed(2)
 
 const options = parseArgs()
