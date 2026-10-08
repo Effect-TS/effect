@@ -1,6 +1,6 @@
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, References } from "effect"
+import { Deferred, Effect, Exit, Fiber, References } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type { SqlClient } from "effect/sql/SqlClient"
 import type { SqlError } from "effect/sql/SqlError"
@@ -53,4 +53,25 @@ describe("Client", () => {
       }
       assert.deepStrictEqual(lost, [])
     }))
+
+  it.live("holds a reserved connection until its scope closes", () =>
+    Effect.gen(function*() {
+      const sql = yield* LibsqlClient.make({ url: ":memory:" })
+      const reserved = yield* Deferred.make<void>()
+      const holder = yield* Effect.scoped(
+        Effect.andThen(sql.reserve, Effect.andThen(Deferred.succeed(reserved, undefined), Effect.never))
+      ).pipe(Effect.forkChild)
+      yield* Deferred.await(reserved)
+
+      const cancelled = yield* Effect.forkChild(sql`SELECT 1`)
+      const transaction = yield* Effect.forkChild(sql.withTransaction(sql`SELECT 1 AS n`))
+      yield* Effect.sleep("50 millis")
+      assert.isUndefined(cancelled.pollUnsafe())
+      assert.isUndefined(transaction.pollUnsafe())
+
+      yield* Fiber.interrupt(cancelled)
+      yield* Fiber.interrupt(holder)
+      assert.deepStrictEqual(yield* Fiber.join(transaction).pipe(Effect.timeout("1 second")), [{ n: 1 }])
+      assert.deepStrictEqual(yield* sql`SELECT 2 AS n`.pipe(Effect.timeout("1 second")), [{ n: 2 }])
+    }).pipe(Effect.provide(Reactivity.layer)))
 })

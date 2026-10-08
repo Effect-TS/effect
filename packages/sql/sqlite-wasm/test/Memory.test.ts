@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, References, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, References, Stream } from "effect"
 import { Reactivity } from "effect/reactivity"
 import type { SqlClient } from "effect/sql/SqlClient"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
@@ -122,4 +122,25 @@ describe("Memory", () => {
         assert.deepStrictEqual(dirty, [])
       })
   )
+
+  it.live.skipIf(!isBun)("releases the connection when a stream stops early", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeRaceClient
+      yield* sql`INSERT INTO race VALUES ('a'), ('b'), ('c')`
+      const rows = sql<{ kind: string }>`SELECT kind FROM race`.stream
+
+      assert.deepStrictEqual(yield* Stream.runCollect(Stream.take(rows, 1)), [{ kind: "a" }])
+      yield* sql.withTransaction(sql`INSERT INTO race VALUES ('d')`).pipe(Effect.timeout("1 second"))
+
+      const started = yield* Deferred.make<void>()
+      const consumer = yield* rows.pipe(
+        Stream.tap(() => Effect.andThen(Deferred.succeed(started, undefined), Effect.never)),
+        Stream.runDrain,
+        Effect.forkChild
+      )
+      yield* Deferred.await(started)
+      yield* Fiber.interrupt(consumer)
+      yield* sql.withTransaction(sql`INSERT INTO race VALUES ('e')`).pipe(Effect.timeout("1 second"))
+      assert.deepStrictEqual(yield* sql`SELECT count(*) AS n FROM race`, [{ n: 5 }])
+    }).pipe(Effect.scoped))
 })
