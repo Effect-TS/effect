@@ -156,9 +156,15 @@ export interface Crypto {
    * (36 characters), not a bare hexadecimal string. The `"bytes"` format
    * returns the 16 UUID bytes, including the version and variant bits.
    */
-  randomUUIDv4<Format extends "hex" | "bytes" = "hex">(options?: {
-    readonly format?: Format | undefined
+  randomUUIDv4(options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv4<Format extends "hex" | "bytes">(options: {
+    readonly format: Format
   }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError>
+  randomUUIDv4(options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError>
 
   /**
    * Generates a cryptographically secure UUIDv7 using the `Clock` timestamp.
@@ -169,9 +175,15 @@ export interface Crypto {
    * (36 characters), not a bare hexadecimal string. The `"bytes"` format
    * returns the 16 UUID bytes, including the timestamp, version and variant bits.
    */
-  randomUUIDv7<Format extends "hex" | "bytes" = "hex">(options?: {
-    readonly format?: Format | undefined
+  randomUUIDv7(options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError>
+  randomUUIDv7<Format extends "hex" | "bytes">(options: {
+    readonly format: Format
   }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError>
+  randomUUIDv7(options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError>
 
   /**
    * Generates a cryptographically secure ULID string.
@@ -309,12 +321,12 @@ export const make = (
         }
         return buffer
       }),
-    randomUUIDv4: ((options) =>
+    randomUUIDv4: ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
       Effect.sync(() => {
         const bytes = Uuid.v4Bytes(randomBytesUnsafe(16))
         return options?.format === "bytes" ? bytes : Uuid.stringify(bytes)
       })) as Crypto["randomUUIDv4"],
-    randomUUIDv7: ((options) =>
+    randomUUIDv7: ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
       Effect.clockWith((clock) => {
         const bytes = Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16))
         return Effect.succeed(options?.format === "bytes" ? bytes : Uuid.stringify(bytes))
