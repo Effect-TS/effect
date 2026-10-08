@@ -213,6 +213,46 @@ const makeTempDirectoryScoped = ((): FileSystem.FileSystem["makeTempDirectorySco
 
 // == open
 
+const openFlagBits = (flag: FileSystem.OpenFlag): number => {
+  const { O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY } = NFS.constants
+  switch (flag) {
+    case "r":
+      return O_RDONLY
+    case "r+":
+      return O_RDWR
+    case "w":
+      return O_TRUNC | O_CREAT | O_WRONLY
+    case "wx":
+      return O_TRUNC | O_CREAT | O_WRONLY | O_EXCL
+    case "w+":
+      return O_TRUNC | O_CREAT | O_RDWR
+    case "wx+":
+      return O_TRUNC | O_CREAT | O_RDWR | O_EXCL
+    case "a":
+      return O_APPEND | O_CREAT | O_WRONLY
+    case "ax":
+      return O_APPEND | O_CREAT | O_WRONLY | O_EXCL
+    case "a+":
+      return O_APPEND | O_CREAT | O_RDWR
+    case "ax+":
+      return O_APPEND | O_CREAT | O_RDWR | O_EXCL
+  }
+}
+
+// Reject unsupported platforms: libuv silently ignores unknown flags on Windows.
+const noFollowFlags = (method: string, flag: FileSystem.OpenFlag) =>
+  Effect.suspend(() => {
+    const { O_NOFOLLOW } = NFS.constants
+    if (process.platform === "win32" || typeof O_NOFOLLOW !== "number" || O_NOFOLLOW === 0) {
+      return Effect.fail(Error.badArgument({
+        module: "FileSystem",
+        method,
+        description: "noFollow is not supported on this platform"
+      }))
+    }
+    return Effect.succeed(openFlagBits(flag) | O_NOFOLLOW)
+  })
+
 const openFactory = (method: string): FileSystem.FileSystem["open"] => {
   const nodeOpen = effectify(
     NFS.open,
@@ -228,13 +268,22 @@ const openFactory = (method: string): FileSystem.FileSystem["open"] => {
   return (path, options) =>
     pipe(
       Effect.acquireRelease(
-        nodeOpen(path, options?.flag ?? "r", options?.mode),
+        options?.noFollow === true
+          ? Effect.flatMap(noFollowFlags(method, options.flag ?? "r"), (flags) => nodeOpen(path, flags, options.mode))
+          : nodeOpen(path, options?.flag ?? "r", options?.mode),
         (fd) => Effect.orDie(nodeClose(fd))
       ),
       Effect.map((fd) => makeFile(fd, options?.flag?.startsWith("a") ?? false))
     )
 }
 const open = openFactory("open")
+
+const negativePosition = (method: string) =>
+  Error.badArgument({
+    module: "FileSystem",
+    method,
+    description: "Cannot read before the start of the file"
+  })
 
 const makeFile = (() => {
   const nodeReadFactory = (method: string) =>
@@ -310,8 +359,14 @@ const makeFile = (() => {
       })
     }
 
-    read(buffer: Uint8Array) {
+    read(buffer: Uint8Array, options?: FileSystem.File.ReadOptions) {
       return Effect.suspend(() => {
+        const explicit = options?.position
+        if (explicit !== undefined) {
+          return explicit < BigInt(0)
+            ? Effect.fail(negativePosition("read"))
+            : nodeRead(this.fd, { buffer, position: explicit })
+        }
         const position = this.position
         return Effect.map(
           nodeRead(this.fd, { buffer, position }),
@@ -323,14 +378,18 @@ const makeFile = (() => {
       })
     }
 
-    readAlloc(size: number) {
+    readAlloc(size: number, options?: FileSystem.File.ReadOptions) {
       return Effect.suspend(() => {
         try {
           if (!Number.isInteger(size) || size < 0) {
             throw new RangeError("size must be a non-negative integer")
           }
+          const explicit = options?.position
+          if (explicit !== undefined && explicit < BigInt(0)) {
+            return Effect.fail(negativePosition("readAlloc"))
+          }
           const buffer = Buffer.allocUnsafeSlow(size)
-          const position = this.position
+          const position = explicit ?? this.position
           return Effect.map(
             nodeReadAlloc(this.fd, { buffer, position }),
             (bytesRead): Option.Option<Buffer> => {
@@ -338,7 +397,9 @@ const makeFile = (() => {
                 return Option.none()
               }
 
-              this.position = position + BigInt(bytesRead)
+              if (explicit === undefined) {
+                this.position = position + BigInt(bytesRead)
+              }
               if (bytesRead === size) {
                 return Option.some(buffer)
               }
