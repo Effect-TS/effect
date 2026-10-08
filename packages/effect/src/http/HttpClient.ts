@@ -1150,6 +1150,8 @@ export declare namespace WithRateLimiter {
  * It can update limits by inspecting common rate limit response headers and
  * automatically retries HTTP `429` responses (or `HttpClientError` values
  * wrapping a `429` response) by forcing the retry back through the limiter.
+ * Reported remaining counts are reserved locally so requests wait when the
+ * server's budget is exhausted.
  *
  * **Gotchas**
  *
@@ -1176,7 +1178,9 @@ export const withRateLimiter: {
   const initialState: RateLimiterState = {
     initial: true,
     limit: options.limit,
-    window: Duration.max(Duration.fromInputUnsafe(options.window), Duration.millis(1))
+    window: Duration.max(Duration.fromInputUnsafe(options.window), Duration.millis(1)),
+    requestSequence: 0,
+    responseSequence: 0
   }
   const states = new Map<string, RateLimiterState>()
 
@@ -1202,13 +1206,38 @@ export const withRateLimiter: {
 
   const onResponse = options.disableResponseInspection
     ? undefined
-    : (clock: Clock, key: string, headers: Headers.Headers, tokens: number) => {
+    : (clock: Clock, key: string, headers: Headers.Headers, tokens: number, sequence: number) => {
       const current = getState(key)
-      const next = parseRateLimiterState(current, clock, headers, tokens, headerNames)
-      if (next.limit !== current.limit || !Duration.equals(next.window, current.window)) {
+      const next = parseRateLimiterState(current, clock, headers, tokens, sequence, headerNames)
+      if (next !== current) {
         states.set(key, next)
       }
     }
+
+  const reserve = (clock: Clock, key: string, tokens: number): RateLimiterReservation => {
+    const current = getState(key)
+    const now = clock.currentTimeMillisUnsafe()
+    const remaining = current.remaining
+    const resetAt = current.resetAt
+    if (
+      remaining !== undefined &&
+      resetAt !== undefined &&
+      resetAt > now &&
+      remaining < tokens
+    ) {
+      return { _tag: "Delay", duration: Duration.millis(resetAt - now) }
+    }
+    const sequence = current.requestSequence + 1
+    const active = remaining !== undefined && resetAt !== undefined && resetAt > now
+    const state: RateLimiterState = {
+      ...current,
+      remaining: active ? remaining - tokens : undefined,
+      resetAt: active ? resetAt : undefined,
+      requestSequence: sequence
+    }
+    states.set(key, state)
+    return { _tag: "Ready", sequence, state }
+  }
 
   return transform(self, function loop(effect, request, retries = 0): Effect.Effect<
     HttpClientResponse.HttpClientResponse,
@@ -1219,7 +1248,11 @@ export const withRateLimiter: {
     const clock = fiber.getRef(Clock)
     const key = resolveKey(request)
     const tokens = Math.max(resolveTokens(request), 1)
-    const current = getState(key)
+    const reservation = reserve(clock, key, tokens)
+    if (reservation._tag === "Delay") {
+      return Effect.flatMap(Effect.sleep(reservation.duration), () => loop(effect, request, retries))
+    }
+    const current = reservation.state
     const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
       return retryAfter
@@ -1230,7 +1263,7 @@ export const withRateLimiter: {
       response: HttpClientResponse.HttpClientResponse,
       adaptive: RateLimiter.AdaptiveConsumeResult | undefined
     ) => {
-      onResponse?.(clock, key, response.headers, tokens)
+      onResponse?.(clock, key, response.headers, tokens, reservation.sequence)
       if (options.disableResponseInspection || response.status !== 429) {
         return Effect.succeed<Duration.Duration | undefined>(undefined)
       }
@@ -1346,21 +1379,44 @@ interface RateLimiterState {
   readonly limit: number
   readonly window: Duration.Duration
   readonly initial: boolean
+  readonly remaining?: number | undefined
+  readonly resetAt?: number | undefined
+  readonly requestSequence: number
+  readonly responseSequence: number
 }
+
+type RateLimiterReservation =
+  | { readonly _tag: "Delay"; readonly duration: Duration.Duration }
+  | { readonly _tag: "Ready"; readonly sequence: number; readonly state: RateLimiterState }
 
 const parseRateLimiterState = (
   state: RateLimiterState,
   clock: Clock,
   headers: Headers.Headers,
   tokens: number,
+  sequence: number,
   headerNames: RateLimiterHeaderNames
 ): RateLimiterState => {
-  const limit = parseRateLimitLimit(state, headers, tokens, headerNames) ?? state.limit
-  const window = parseRateLimitWindow(clock, headers, headerNames) ?? state.window
-  if (limit === state.limit && Duration.equals(window, state.window)) {
+  const parsedLimit = parseRateLimitLimit(state, headers, tokens, headerNames)
+  const parsedWindow = parseRateLimitWindow(clock, headers, headerNames)
+  const parsedRemaining = parseRateLimitRemaining(headers, headerNames)
+  const hasNewerBudget = sequence >= state.responseSequence && parsedRemaining !== undefined
+  const resetAt = parsedWindow === undefined
+    ? state.resetAt
+    : clock.currentTimeMillisUnsafe() + Duration.toMillis(parsedWindow)
+  const canUpdateBudget = hasNewerBudget && resetAt !== undefined
+  if (parsedLimit === undefined && parsedWindow === undefined && !canUpdateBudget) {
     return state
   }
-  return { limit, window, initial: false }
+  return {
+    limit: parsedLimit ?? state.limit,
+    window: parsedWindow ?? state.window,
+    initial: false,
+    remaining: canUpdateBudget ? parsedRemaining : state.remaining,
+    resetAt: canUpdateBudget ? resetAt : state.resetAt,
+    requestSequence: state.requestSequence,
+    responseSequence: canUpdateBudget ? sequence : state.responseSequence
+  }
 }
 
 const parseRateLimitLimit = (
