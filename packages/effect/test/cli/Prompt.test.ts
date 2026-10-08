@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Data, DateTime, Deferred, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/cli"
+import { afterEach, beforeEach, vi } from "vitest"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
 const FileSystemLayer = FileSystem.layerNoop({})
@@ -48,6 +49,44 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
     .filter((line) => stripAnsi(line).split(bell).join("").trim().length > 0)
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
+
+describe("Prompt NO_COLOR", { concurrent: false }, () => {
+  beforeEach(() => {
+    vi.stubEnv("NO_COLOR", "1")
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  for (const emptyColors of [false, true]) {
+    it.effect(`omits styles but preserves redraw controls with ${emptyColors ? "empty" : "default"} theme colors`, () =>
+      Effect.gen(function*() {
+        yield* MockTerminal.inputKey("down")
+        yield* MockTerminal.inputKey("enter")
+
+        const result = yield* Prompt.run(Prompt.Select({
+          message: "Choose a color",
+          choices: [
+            { title: "Red", value: "red" },
+            { title: "Blue", value: "blue" }
+          ],
+          theme: emptyColors
+            ? { primaryColor: "", mutedColor: "", successColor: "", errorColor: "", submittedColor: "" }
+            : {}
+        }))
+
+        assert.strictEqual(result, "blue")
+        const output = (yield* MockTerminal.displayLines).join("\n")
+        assert.include(stripAnsi(output), "Choose a color")
+        assert.include(stripAnsi(output), "Blue")
+        assert.include(output, `${escape}[?25l`)
+        assert.include(output, `${escape}[?25h`)
+        assert.include(output, `${escape}[2K`)
+        assert.notMatch(output, new RegExp(`${escape}\\[[0-9;]*m`))
+      }).pipe(Effect.provide(TestLayer)))
+  }
+})
 
 describe("Prompt.Date", () => {
   it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>

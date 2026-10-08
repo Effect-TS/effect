@@ -4,6 +4,7 @@ import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag } f
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
 import { TestConsole } from "effect/testing"
+import { afterEach, beforeEach, vi } from "vitest"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
 import * as MockTerminal from "./services/MockTerminal.ts"
 import * as TestActions from "./services/TestActions.ts"
@@ -47,6 +48,68 @@ const TestLayerWithoutFormatter = Layer.mergeAll(
 )
 
 describe("Command", () => {
+  describe("wizard NO_COLOR", { concurrent: false }, () => {
+    beforeEach(() => {
+      vi.stubEnv("NO_COLOR", "1")
+    })
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    it.effect("omits styles from headings, command blocks and prompts while preserving redraw controls", () =>
+      Effect.gen(function*() {
+        const captured: Array<string> = []
+        const command = Command.make(
+          "greet",
+          { name: Flag.String("name") },
+          ({ name }) => Effect.sync(() => captured.push(name))
+        )
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText("Alice")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, ["Alice"])
+        const logs = (yield* TestConsole.logLines).join("\n")
+        const terminal = (yield* MockTerminal.displayLines).join("\n")
+        assert.include(logs, "Command wizard")
+        assert.include(logs, "FLAGS")
+        assert.include(logs, "Current command")
+        assert.include(logs, "Command ready")
+        assert.include(logs, "$ greet --name Alice")
+        assert.include(terminal, "Run this command?")
+        const escape = String.fromCharCode(27)
+        assert.include(terminal, `${escape}[?25l`)
+        assert.include(terminal, `${escape}[?25h`)
+        assert.include(terminal, `${escape}[2K`)
+        const sgr = new RegExp(`${escape}\\[[0-9;]*m`)
+        assert.notMatch(logs, sgr)
+        assert.notMatch(terminal, sgr)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("omits styles from the cancellation message", () =>
+      Effect.gen(function*() {
+        let invoked = false
+        const command = Command.make("greet", { name: Flag.String("name") }, () =>
+          Effect.sync(() => {
+            invoked = true
+          }))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputKey("c", { ctrl: true })
+        yield* Fiber.join(fiber)
+
+        assert.isFalse(invoked)
+        const logs = yield* TestConsole.logLines
+        const cancellation = logs.find((line) => String(line).includes("Wizard cancelled."))
+        assert.isDefined(cancellation)
+        assert.notMatch(String(cancellation), new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`))
+      }).pipe(Effect.provide(TestLayer)))
+  })
+
   describe("annotations", () => {
     it.effect("should expose annotations in help docs", () =>
       Effect.gen(function*() {
