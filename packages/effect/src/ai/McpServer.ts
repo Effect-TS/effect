@@ -1580,6 +1580,14 @@ const mcpStdioSerialization = (
  * holding a session id can end that session, so authenticate requests in the
  * surrounding router.
  *
+ * Set `sessionMode: "stateless"` to serve legacy Streamable HTTP without
+ * issuing session IDs. Later POSTs derive a conservative client profile from
+ * `MCP-Protocol-Version`, defaulting to `2025-03-26` when the header is absent.
+ * Client capabilities are empty and client info is unknown after initialize.
+ * Persistent logging settings, list-change notifications, resource subscriptions,
+ * and cancellation across separate POSTs are unavailable in this mode.
+ * The default is `"stateful"`. Modern stateless protocols are unaffected.
+ *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
@@ -1604,8 +1612,9 @@ export const layerHttp = (options: {
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
-  const runtime = McpRuntime.layer(options.protocols)
+  const runtime = McpRuntime.layer(options.protocols, { sessionMode: options.sessionMode })
   return layerWithRuntime(options, "http").pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
@@ -1617,6 +1626,7 @@ const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly sessionMode?: "stateful" | "stateless" | undefined
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
@@ -1628,7 +1638,7 @@ const layerMcpProtocolHttp = (options: {
       Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
     )
     const router = yield* HttpRouter.HttpRouter
-    const allowSessionTermination = options.allowSessionTermination === true &&
+    const allowSessionTermination = options.sessionMode !== "stateless" && options.allowSessionTermination === true &&
       runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
     const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
     const withAllowedOrigin = (
