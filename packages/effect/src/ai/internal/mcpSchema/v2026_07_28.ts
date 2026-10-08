@@ -6,6 +6,7 @@
 import * as Rpc from "../../../rpc/Rpc.ts"
 import * as RpcGroup from "../../../rpc/RpcGroup.ts"
 import * as Schema from "../../../Schema.ts"
+import * as Public from "../../McpSchema.ts"
 import * as Previous from "./v2025_11_25.ts"
 
 export * from "./v2025_11_25.ts"
@@ -16,24 +17,29 @@ export * from "./v2025_11_25.ts"
 export const protocolVersion = "2026-07-28"
 
 const optional = Previous.optional
+
 const Meta = optional(Schema.JsonObject)
 
 /**
  * @internal
  */
 export const RequestId = Schema.Union([Schema.String, Schema.Int])
+
 /**
  * @internal
  */
 export const ProgressToken = RequestId
+
 /**
  * @internal
  */
 export const Role = Previous.Role
+
 /**
  * @internal
  */
 export const LoggingLevel = Previous.LoggingLevel
+
 /**
  * @internal
  */
@@ -106,6 +112,7 @@ export const NotificationMetaObject = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -116,17 +123,19 @@ export const NotificationParams = Schema.Struct({ _meta: optional(NotificationMe
  */
 export const ResultMetaObject = Schema.StructWithRest(
   Schema.Struct({
-    "io.modelcontextprotocol/serverInfo": Implementation
+    "io.modelcontextprotocol/serverInfo": optional(Implementation)
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
 export const ResultMeta = {
-  _meta: ResultMetaObject,
+  _meta: optional(ResultMetaObject),
   resultType: Schema.Literal("complete")
 }
+
 /**
  * @internal
  */
@@ -135,6 +144,7 @@ export const McpError = Schema.Struct({
   message: Schema.String,
   data: optional(Schema.Json)
 })
+
 /**
  * @internal
  */
@@ -171,30 +181,37 @@ export const Resource = Schema.Struct({
  * @internal
  */
 export const ResourceTemplate = Previous.ResourceTemplate
+
 /**
  * @internal
  */
 export const ResourceContents = Previous.ResourceContents
+
 /**
  * @internal
  */
 export const TextContent = Previous.TextContent
+
 /**
  * @internal
  */
 export const ImageContent = Previous.ImageContent
+
 /**
  * @internal
  */
 export const AudioContent = Previous.AudioContent
+
 /**
  * @internal
  */
 export const ResourceLink = Schema.Struct({ ...Resource.fields, type: Schema.Literal("resource_link") })
+
 /**
  * @internal
  */
 export const EmbeddedResource = Previous.EmbeddedResource
+
 /**
  * @internal
  */
@@ -210,6 +227,7 @@ export const ContentBlock = Schema.Union([
  * @internal
  */
 export const Prompt = Previous.Prompt
+
 /**
  * @internal
  */
@@ -222,14 +240,17 @@ const ToolInputSchema = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 const ToolOutputSchema = Schema.StructWithRest(
   Schema.Struct({ $schema: optional(Schema.String) }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
 export const ToolAnnotations = Previous.ToolAnnotations
+
 /**
  * @internal
  */
@@ -244,6 +265,7 @@ export const Tool = Schema.Struct({
  * @internal
  */
 export const ToolUseContent = Previous.ToolUseContent
+
 /**
  * @internal
  */
@@ -255,6 +277,7 @@ export const ToolResultContent = Schema.Struct({
   isError: optional(Schema.Boolean),
   _meta: Meta
 })
+
 /**
  * @internal
  */
@@ -265,6 +288,7 @@ export const SamplingMessageContentBlock = Schema.Union([
   ToolUseContent,
   ToolResultContent
 ])
+
 /**
  * @internal
  */
@@ -273,6 +297,7 @@ export const SamplingMessage = Schema.Struct({
   content: Schema.Union([SamplingMessageContentBlock, Schema.Array(SamplingMessageContentBlock)]),
   _meta: Meta
 })
+
 /**
  * @internal
  */
@@ -280,7 +305,9 @@ export const ModelHint = Schema.StructWithRest(
   Schema.Struct({ name: optional(Schema.String) }),
   [Schema.JsonObject]
 )
+
 const ModelPriority = Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))
+
 /**
  * @internal
  */
@@ -291,6 +318,7 @@ export const ModelPreferences = Schema.Struct({
   speedPriority: optional(ModelPriority),
   intelligencePriority: optional(ModelPriority)
 })
+
 /**
  * @internal
  */
@@ -314,6 +342,7 @@ export const CreateMessageRequest = Schema.Struct({
     toolChoice: optional(ToolChoice)
   })
 })
+
 /**
  * @internal
  */
@@ -327,6 +356,7 @@ export const CreateMessageResult = Schema.Struct({
  * @internal
  */
 export const Root = Previous.Root
+
 /**
  * @internal
  */
@@ -334,6 +364,7 @@ export const ListRootsRequest = Schema.Struct({
   method: Schema.Literal("roots/list"),
   params: optional(Schema.Struct({ _meta: Meta }))
 })
+
 /**
  * @internal
  */
@@ -343,26 +374,32 @@ export const ListRootsResult = Schema.Struct({ roots: Schema.Array(Root) })
  * @internal
  */
 export const StringSchema = Previous.StringSchema
+
 /**
  * @internal
  */
 export const NumberSchema = Previous.NumberSchema
+
 /**
  * @internal
  */
 export const BooleanSchema = Previous.BooleanSchema
+
 /**
  * @internal
  */
 export const SingleSelectEnumSchema = Previous.SingleSelectEnumSchema
+
 /**
  * @internal
  */
 export const MultiSelectEnumSchema = Previous.MultiSelectEnumSchema
+
 /**
  * @internal
  */
 export const LegacyTitledEnumSchema = Previous.LegacyTitledEnumSchema
+
 /**
  * @internal
  */
@@ -371,6 +408,7 @@ export const EnumSchema = Schema.Union([
   SingleSelectEnumSchema,
   MultiSelectEnumSchema
 ])
+
 /**
  * @internal
  */
@@ -380,6 +418,7 @@ export const PrimitiveSchemaDefinition = Schema.Union([
   NumberSchema,
   BooleanSchema
 ])
+
 /**
  * @internal
  */
@@ -389,6 +428,7 @@ export const RequestedSchema = Schema.Struct({
   properties: Schema.Record(Schema.String, PrimitiveSchemaDefinition),
   required: optional(Schema.Array(Schema.String))
 })
+
 /**
  * @internal
  */
@@ -397,6 +437,7 @@ export const ElicitRequestFormParams = Schema.Struct({
   message: Schema.String,
   requestedSchema: RequestedSchema
 })
+
 /**
  * @internal
  */
@@ -405,10 +446,12 @@ export const ElicitRequestURLParams = Schema.Struct({
   message: Schema.String,
   url: Schema.String
 })
+
 /**
  * @internal
  */
 export const ElicitRequestParams = Schema.Union([ElicitRequestFormParams, ElicitRequestURLParams])
+
 /**
  * @internal
  */
@@ -416,6 +459,7 @@ export const ElicitRequest = Schema.Struct({
   method: Schema.Literal("elicitation/create"),
   params: ElicitRequestParams
 })
+
 /**
  * @internal
  */
@@ -431,22 +475,27 @@ export const ElicitResult = Schema.Struct({
  * @internal
  */
 export const InputRequest = Schema.Union([CreateMessageRequest, ListRootsRequest, ElicitRequest])
+
 /**
  * @internal
  */
 export const InputResponse = Schema.Union([CreateMessageResult, ListRootsResult, ElicitResult])
+
 /**
  * @internal
  */
 export const InputRequests = Schema.Record(Schema.String, InputRequest)
+
 /**
  * @internal
  */
 export const InputResponses = Schema.Record(Schema.String, InputResponse)
+
 const InputRequiredResultMeta = {
-  _meta: ResultMetaObject,
+  _meta: optional(ResultMetaObject),
   resultType: Schema.Literal("input_required")
 }
+
 /**
  * @internal
  */
@@ -468,6 +517,7 @@ export const InputRequiredResult = Schema.Union([
     [Schema.JsonObject]
   )
 ])
+
 /**
  * @internal
  */
@@ -485,6 +535,7 @@ export const CacheableResult = {
   ttlMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   cacheScope: Schema.Literals(["public", "private"])
 }
+
 /**
  * @internal
  */
@@ -492,6 +543,7 @@ export const PaginatedRequestParams = {
   ...RequestParams.fields,
   cursor: optional(Schema.String)
 }
+
 /**
  * @internal
  */
@@ -512,6 +564,7 @@ export const DiscoverResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -532,6 +585,7 @@ export const ListResourcesResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -552,6 +606,7 @@ export const ListResourceTemplatesResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -571,6 +626,7 @@ export const ReadResourceResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -591,6 +647,7 @@ export const ListPromptsResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -611,6 +668,7 @@ export const GetPromptResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -635,6 +693,7 @@ export const ListToolsResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -673,10 +732,12 @@ export class CallTool extends Rpc.make("tools/call", {
  * @internal
  */
 export const PromptReference = Previous.PromptReference
+
 /**
  * @internal
  */
 export const ResourceTemplateReference = Previous.ResourceTemplateReference
+
 /**
  * @internal
  */
@@ -691,6 +752,7 @@ export const CompleteResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -710,22 +772,19 @@ export class Complete extends Rpc.make("completion/complete", {
 /**
  * @internal
  */
-export const SubscriptionFilter = Schema.Struct({
-  toolsListChanged: optional(Schema.Boolean),
-  promptsListChanged: optional(Schema.Boolean),
-  resourcesListChanged: optional(Schema.Boolean),
-  resourceSubscriptions: optional(Schema.Array(Schema.String))
-})
+export const SubscriptionFilter = Public.SubscriptionFilter
+
 /**
  * @internal
  */
 export const SubscriptionsListenResultMetaObject = Schema.StructWithRest(
   Schema.Struct({
-    "io.modelcontextprotocol/serverInfo": Implementation,
+    "io.modelcontextprotocol/serverInfo": optional(Implementation),
     "io.modelcontextprotocol/subscriptionId": RequestId
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -736,6 +795,7 @@ export const SubscriptionsListenResult = Schema.StructWithRest(
   }),
   [Schema.JsonObject]
 )
+
 /**
  * @internal
  */
@@ -755,6 +815,7 @@ export class CancelledNotification extends Rpc.make("notifications/cancelled", {
     reason: optional(Schema.String)
   }
 }) {}
+
 /**
  * @internal
  */
@@ -767,6 +828,7 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
     message: optional(Schema.String)
   }
 }) {}
+
 /**
  * @internal
  */
@@ -778,30 +840,35 @@ export class LoggingMessageNotification extends Rpc.make("notifications/message"
     data: Schema.Json
   }
 }) {}
+
 /**
  * @internal
  */
 export class ResourceUpdatedNotification extends Rpc.make("notifications/resources/updated", {
   payload: { ...NotificationParams.fields, uri: Schema.String }
 }) {}
+
 /**
  * @internal
  */
 export class ResourceListChangedNotification extends Rpc.make("notifications/resources/list_changed", {
   payload: Schema.UndefinedOr(NotificationParams)
 }) {}
+
 /**
  * @internal
  */
 export class ToolListChangedNotification extends Rpc.make("notifications/tools/list_changed", {
   payload: Schema.UndefinedOr(NotificationParams)
 }) {}
+
 /**
  * @internal
  */
 export class PromptListChangedNotification extends Rpc.make("notifications/prompts/list_changed", {
   payload: Schema.UndefinedOr(NotificationParams)
 }) {}
+
 /**
  * @internal
  */
@@ -830,6 +897,7 @@ export class ClientRequestRpcs extends RpcGroup.make(
  * @internal
  */
 export class ClientNotificationRpcs extends RpcGroup.make(CancelledNotification) {}
+
 /**
  * @internal
  */
