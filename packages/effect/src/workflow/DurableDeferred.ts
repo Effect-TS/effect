@@ -299,54 +299,41 @@ export const raceAll = <
     success: options.success,
     error: options.error
   })
-  // Count the race as one activity of the enclosing workflow from the cached
-  // winner lookup until the winner is recorded, so a parked sibling cannot
-  // suspend the run before the continuation starts.
-  return Effect.suspend(() => {
-    const race = { suspended: false }
-    return Workflow.wrapActivityResult(
-      Effect.exit(Effect.gen(function*() {
-        const engine = yield* EngineTag
-        const exit = yield* engine.deferredResult(deferred)
-        if (Option.isSome(exit)) {
-          return yield* exit.value
+  return Effect.gen(function*() {
+    const engine = yield* EngineTag
+    const instance = yield* InstanceTag
+    // Hold the enclosing activity count from the cached winner lookup until
+    // the winner is recorded, so a parked sibling cannot suspend the run
+    // before the continuation starts.
+    const exit = yield* Workflow.wrapActivityResult(
+      Effect.gen(function*() {
+        const cached = yield* engine.deferredResult(deferred)
+        if (Option.isSome(cached)) {
+          return cached
         }
-        return yield* into(
-          withRaceActivityState(Effect.raceAll(options.effects), race),
-          deferred
+        // The arms count on their own activity state, so an arm parked on a
+        // durable await only waits for its sibling arms and not for the hold
+        // above. `into` marks this copy suspended when every arm has parked.
+        const local: WorkflowInstance["Service"] = {
+          ...instance,
+          activityState: { count: 0, latch: Latch.makeUnsafe() }
+        }
+        const exit = yield* into(Effect.raceAll(options.effects), deferred).pipe(
+          Effect.provideService(InstanceTag, local),
+          Effect.exit
         )
-      })),
-      // When every arm parked, release the hold and let the enclosing activities
+        return local.suspended ? Option.none() : Option.some(exit)
+      }),
+      // Every arm parked: release the hold and let the enclosing activities
       // finish before suspending. External preemption does not wait.
-      () => race.suspended
-    ).pipe(Effect.flatten)
+      Option.isNone
+    )
+    if (Option.isNone(exit)) {
+      return yield* Workflow.suspend(instance)
+    }
+    return yield* exit.value
   })
 }
-
-/**
- * Runs race arms with their own activity count, so an arm parked on a durable
- * await only waits for its sibling arms instead of the race's own hold on the
- * enclosing workflow. Awaited and completed deferred names stay shared.
- */
-const withRaceActivityState = <A, E, R>(
-  effect: Effect.Effect<A, E, R>,
-  race: { suspended: boolean }
-): Effect.Effect<A, E, R | WorkflowInstance> =>
-  Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
-    const instance = Context.get(context, InstanceTag)
-    const local: WorkflowInstance["Service"] = {
-      ...instance,
-      activityState: { count: 0, latch: Latch.makeUnsafe() }
-    }
-    return Effect.ensuring(
-      Effect.provideService(effect, InstanceTag, local),
-      Effect.sync(() => {
-        if (!local.suspended) return
-        race.suspended = true
-        instance.suspended = true
-      })
-    )
-  })
 
 /**
  * Runtime brand identifier for durable deferred tokens.
