@@ -90,28 +90,30 @@ describe("cluster SQL storage with a DML-only role", () => {
           yield* grantDml
         }).pipe(Effect.provide(OwnerClient))
 
-        yield* asApp(Effect.gen(function*() {
-          expect(yield* pendingIds(SqlMessageStorage.migrations({}), "cluster_migrations")).toEqual([])
-          expect(yield* pendingIds(SqlRunnerStorage.migrations({}), "cluster_runner_migrations")).toEqual([])
+        yield* asApp(
+          Effect.gen(function*() {
+            expect(yield* pendingIds(SqlMessageStorage.migrations({}), "cluster_migrations")).toEqual([])
+            expect(yield* pendingIds(SqlRunnerStorage.migrations({}), "cluster_runner_migrations")).toEqual([])
 
-          const runners = yield* RunnerStorage.RunnerStorage
-          const runner = Runner.make({
-            address: RunnerAddress.make("localhost", 1234),
-            groups: ["default"],
-            weight: 1
-          })
-          yield* runners.register(runner, true)
-          expect(yield* runners.getRunners).toEqual([[runner, true]])
+            const runners = yield* RunnerStorage.RunnerStorage
+            const runner = Runner.make({
+              address: RunnerAddress.make("localhost", 1234),
+              groups: ["default"],
+              weight: 1
+            })
+            yield* runners.register(runner, true)
+            expect(yield* runners.getRunners).toEqual([[runner, true]])
 
-          const messages = yield* MessageStorage.MessageStorage
-          const request = yield* makeRequest()
-          expect((yield* messages.saveRequest(request))._tag).toEqual("Success")
-        }).pipe(
-          Effect.provide(Layer.mergeAll(
-            SqlMessageStorage.layerStorage({}),
-            SqlRunnerStorage.layerStorage({})
-          ))
-        ))
+            const messages = yield* MessageStorage.MessageStorage
+            const request = yield* makeRequest()
+            expect((yield* messages.saveRequest(request))._tag).toEqual("Success")
+          }).pipe(
+            Effect.provide(Layer.mergeAll(
+              SqlMessageStorage.layerStorage({}),
+              SqlRunnerStorage.layerStorage({})
+            ))
+          )
+        )
       }))
 
     it.effect("reports unmigrated tables as pending without creating anything", () =>

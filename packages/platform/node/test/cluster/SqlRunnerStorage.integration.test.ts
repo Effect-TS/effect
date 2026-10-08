@@ -490,9 +490,11 @@ describe("SqlRunnerStorage", () => {
             const acquired = yield* storage.acquire(runnerAddress1, [ShardId.make("default", 1)])
             expect(acquired.map((_) => _.id)).toEqual([1])
           }).pipe(
-            Effect.provide(SqlRunnerStorage.layerStorage({ prefix: "split" }).pipe(
-              Layer.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true }))
-            ))
+            Effect.provide(
+              SqlRunnerStorage.layerStorage({ prefix: "split" }).pipe(
+                Layer.provide(ShardingConfig.layer({ shardLockDisableAdvisory: true }))
+              )
+            )
           )
         }))
 

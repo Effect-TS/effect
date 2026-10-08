@@ -159,9 +159,11 @@ describe("SqlMessageStorage", () => {
             expect((yield* storage.saveRequest(request))._tag).toEqual("Success")
             expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
           }).pipe(
-            Effect.provide(SqlMessageStorage.layerStorage({ prefix: "split" }).pipe(
-              Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layer])
-            ))
+            Effect.provide(
+              SqlMessageStorage.layerStorage({ prefix: "split" }).pipe(
+                Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layer])
+              )
+            )
           )
         }))
 
