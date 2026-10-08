@@ -51,8 +51,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         success: Schema.Void,
         idempotencyKey: () => "one"
       })
-      const shared = yield* Layer.build(MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults)))
-      const storage = Context.get(shared, MessageStorage.MessageStorage)
+      const storage = yield* makeSharedStorage
       const storageLayer = Layer.succeed(MessageStorage.MessageStorage, storage)
       const layer = (crash = false) =>
         workflow.toLayer(() => DurableDeferred.await(release)).pipe(
@@ -98,8 +97,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         success: Schema.Number,
         execute: Effect.sync(() => ++executions)
       })
-      const shared = yield* Layer.build(MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults)))
-      const storage = Context.get(shared, MessageStorage.MessageStorage)
+      const storage = yield* makeSharedStorage
       const storageLayer = Layer.succeed(MessageStorage.MessageStorage, storage)
       const executionId = yield* workflow.executionId({})
       const requestId = yield* sendUnregisteredActivity(workflow._tag, executionId).pipe(Effect.provide(
@@ -122,11 +120,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         // Registration must reset the stored Suspended reply, not allocate a new attempt.
         assert.deepStrictEqual(
           yield* activityReply(storage, requestId),
-          Exit.succeed(
-            new Workflow.Complete({
-              exit: Exit.succeed(1)
-            })
-          )
+          Exit.succeed(new Workflow.Complete({ exit: Exit.succeed(1) }))
         )
       }).pipe(Effect.provide(
         workflow.toLayer(() => register.await.pipe(Effect.andThen(activity))).pipe(
@@ -1963,6 +1957,12 @@ const RecoveryActivityRpc = Rpc.make("activity", {
   primaryKey: ({ name, attempt }) => `${name}/${attempt}`,
   success: Workflow.Result({ success: Schema.Any, error: Schema.Any })
 }).annotate(ClusterSchema.Persisted, true)
+
+// Shared across runners so a later runner sees the previous runner's residue.
+const makeSharedStorage = Effect.map(
+  Layer.build(MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))),
+  (context) => Context.get(context, MessageStorage.MessageStorage)
+)
 
 // Preserve the unanswered request across runner teardown, even once recovery is fixed.
 const unansweredActivityStorage = (storage: MessageStorage.MessageStorage["Service"]) =>

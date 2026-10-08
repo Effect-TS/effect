@@ -474,40 +474,39 @@ export const make = Effect.gen(function*() {
                 const activityId = `${executionId}/${payload.name}`
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
                 interruptedActivities.delete(activityId)
-                return Effect.suspend(() => {
-                  const entry = activities.get(activityId)
-                  if (!entry) {
-                    // Replay may never register a losing race activity. Answer it
-                    // without waiting; a later registration can reset this reply.
-                    return Effect.succeed(new Workflow.Suspended({}))
-                  }
-                  const context = entry.context.pipe(
-                    Context.add(WorkflowEngine.WorkflowInstance, instance),
-                    Context.add(CurrentActivationScope, activation),
-                    Context.add(Activity.CurrentAttempt, payload.attempt)
-                  )
-                  return entry.activity.executeEncoded.pipe(
-                    Effect.provideContext(context),
-                    Workflow.intoResult,
-                    Effect.catchCause((cause) => {
-                      // we only want to store interrupts as suspends when the
-                      // client requested it
-                      const suspend = cause.reasons.some((f) =>
-                        f._tag === "Interrupt" && f.annotations.has(ClientAbort.key)
-                      )
-                      if (suspend) {
-                        interruptedActivities.add(activityId)
-                        return Effect.succeed(new Workflow.Suspended({}))
-                      }
-                      return Effect.failCause(cause)
-                    }),
-                    Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
-                    Effect.provideService(Activity.CurrentAttempt, payload.attempt),
-                    Effect.ensuring(Effect.sync(() => {
-                      activities.delete(activityId)
-                    }))
-                  )
-                }).pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
+                const entry = activities.get(activityId)
+                if (!entry) {
+                  // Replay may never register a losing race activity. Answer it
+                  // without waiting; a later registration can reset this reply.
+                  return Effect.succeed(new Workflow.Suspended({})).pipe(Rpc.wrap({ fork: true }))
+                }
+                const context = entry.context.pipe(
+                  Context.add(WorkflowEngine.WorkflowInstance, instance),
+                  Context.add(CurrentActivationScope, activation),
+                  Context.add(Activity.CurrentAttempt, payload.attempt)
+                )
+                return entry.activity.executeEncoded.pipe(
+                  Effect.provideContext(context),
+                  Workflow.intoResult,
+                  Effect.catchCause((cause) => {
+                    // we only want to store interrupts as suspends when the
+                    // client requested it
+                    const suspend = cause.reasons.some((f) =>
+                      f._tag === "Interrupt" && f.annotations.has(ClientAbort.key)
+                    )
+                    if (suspend) {
+                      interruptedActivities.add(activityId)
+                      return Effect.succeed(new Workflow.Suspended({}))
+                    }
+                    return Effect.failCause(cause)
+                  }),
+                  Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
+                  Effect.provideService(Activity.CurrentAttempt, payload.attempt),
+                  Effect.ensuring(Effect.sync(() => {
+                    activities.delete(activityId)
+                  })),
+                  Rpc.wrap({ fork: true, uninterruptible: true })
+                )
               },
 
               deferred: (request: Entity.Request<any>) => {
