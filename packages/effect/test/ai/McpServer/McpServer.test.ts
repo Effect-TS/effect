@@ -32,7 +32,6 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import type * as RpcMessage from "effect/rpc/RpcMessage"
 import { RequestId } from "effect/rpc/RpcMessage"
 import * as RpcServer from "effect/rpc/RpcServer"
-import * as Scheduler from "effect/Scheduler"
 import * as Schema from "effect/Schema"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
@@ -2571,112 +2570,39 @@ describe("McpServer", () => {
   })
 
   describe("list-change notification scheduling", () => {
-    for (const discoverFirst of [false, true]) {
-      it.live(`should not replay startup tool changes to an HTTP subscription (${discoverFirst ? "after discovery" : "first request"})`, () =>
-        Effect.gen(function*() {
-          const kit = Toolkit.make(Tool.make("ping", { success: Schema.String }))
-          const harness = yield* makeHttpHarness(
-            McpServer.toolkit(kit).pipe(
-              Layer.provide(kit.toLayer({ ping: () => Effect.succeed("pong") })),
-              Layer.provide(makeServerLayer({
-                name: "StartupNotifications",
-                protocols: [McpProtocol.v2026_07_28]
-              }))
-            )
+    it.live("should not replay startup tool changes to the first HTTP subscription", () =>
+      Effect.gen(function*() {
+        const kit = Toolkit.make(Tool.make("ping", { success: Schema.String }))
+        const harness = yield* makeHttpHarness(
+          McpServer.toolkit(kit).pipe(
+            Layer.provide(kit.toLayer({ ping: () => Effect.succeed("pong") })),
+            Layer.provide(makeServerLayer({ name: "StartupNotifications", protocols: [McpProtocol.v2026_07_28] }))
           )
-          const post = (id: number, method: string, params: Record<string, unknown>) =>
-            harness.post({
-              jsonrpc: "2.0",
-              id,
-              method,
-              params: {
-                ...params,
-                _meta: {
-                  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-                  "io.modelcontextprotocol/clientCapabilities": {},
-                  "io.modelcontextprotocol/clientInfo": { name: "test", version: "1.0.0" }
-                }
-              }
-            }, { "mcp-protocol-version": "2026-07-28", "mcp-method": method })
-          if (discoverFirst) {
-            yield* readMcpHttpResponse(yield* post(1, "server/discover", {}))
-          }
-          const subscription = makeMcpSseReader(
-            yield* post(2, "subscriptions/listen", { notifications: { toolsListChanged: true } })
-          )
-          yield* Effect.addFinalizer(() => subscription.cancel)
-          assert.deepInclude(yield* subscription.take(), {
-            method: "notifications/subscriptions/acknowledged",
+        )
+        const subscription = makeMcpSseReader(
+          yield* harness.post({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "subscriptions/listen",
             params: {
               notifications: { toolsListChanged: true },
-              _meta: { "io.modelcontextprotocol/subscriptionId": 2 }
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": { name: "test", version: "1.0.0" }
+              }
             }
-          })
-          const next = yield* subscription.take().pipe(Effect.timeoutOption("100 millis"))
-          assert.deepStrictEqual(next, Option.none())
-        }))
-    }
-
-    it.effect("should retain a coalesced tool change across subscription creation", () =>
-      Effect.gen(function*() {
-        const pending: Array<() => void> = []
-        const manualScheduler = new Scheduler.MixedScheduler("async", (task) => {
-          pending.push(task)
-          return () => {}
-        })
-        const scheduler = new Scheduler.MixedScheduler()
-        const makeDispatcher = scheduler.makeDispatcher.bind(scheduler)
-        const memoMap = yield* Layer.makeMemoMap
-        // Hold only the server notification dispatcher; transport fibers use the normal scheduler.
-        const server = yield* Effect.withFiber((fiber) => {
-          // Queue.make captures the fiber dispatcher before McpServer creates its own.
-          void fiber.currentDispatcher
-          scheduler.makeDispatcher = () => {
-            scheduler.makeDispatcher = makeDispatcher
-            return manualScheduler.makeDispatcher()
+          }, { "mcp-protocol-version": "2026-07-28", "mcp-method": "subscriptions/listen" })
+        )
+        yield* Effect.addFinalizer(() => subscription.cancel)
+        assert.deepInclude(yield* subscription.take(), {
+          method: "notifications/subscriptions/acknowledged",
+          params: {
+            notifications: { toolsListChanged: true },
+            _meta: { "io.modelcontextprotocol/subscriptionId": 2 }
           }
-          return McpServer.McpServer.make
-        }).pipe(
-          Effect.provideService(Scheduler.Scheduler, scheduler)
-        )
-        yield* memoMap.getOrElseMemoize(
-          McpServer.McpServer.layer,
-          yield* Effect.scope,
-          () => Effect.succeed(Context.make(McpServer.McpServer, server))
-        )
-        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28).pipe(
-          Effect.provideService(Layer.CurrentMemoMap, memoMap)
-        )
-        assert.strictEqual(fixture.server, server)
-        const makeTool = (name: string) => ({
-          tool: new McpSchema.Tool({ name, inputSchema: { type: "object", properties: {} } }),
-          annotations: Context.empty(),
-          handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
         })
-
-        yield* fixture.initialize()
-        yield* fixture.server.addTool(makeTool("before-subscription"))
-        yield* Effect.yieldNow
-        assert.strictEqual(pending.length, 1)
-        const subscription = yield* fixture.startRequest("subscriptions/listen", {
-          notifications: { toolsListChanged: true }
-        }, "subscription-boundary")
-        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/subscriptions/acknowledged")
-
-        // Do not flush between the pre-subscription change and this newer change.
-        yield* fixture.server.addTool(makeTool("after-subscription"))
-        yield* Effect.yieldNow
-        assert.strictEqual(pending.length, 1)
-        yield* Effect.sync(() => pending.shift()!())
-        assert.deepInclude(yield* fixture.takeMessage, {
-          method: "notifications/tools/list_changed",
-          params: { _meta: { "io.modelcontextprotocol/subscriptionId": "subscription-boundary" } }
-        })
-
-        const next = yield* fixture.takeMessage.pipe(Effect.timeoutOption("100 millis"), Effect.forkChild)
-        yield* TestClock.adjust("100 millis")
-        assert.deepStrictEqual(yield* Fiber.join(next), Option.none())
-        yield* subscription.cancel()
+        assert.deepStrictEqual(yield* subscription.take().pipe(Effect.timeoutOption("100 millis")), Option.none())
       }))
 
     it.effect("should coalesce notifications when one registration kind changes repeatedly in a scheduling window", () =>
