@@ -224,19 +224,19 @@ export const Wizard: Action<boolean> = Action({
  *
  * **Details**
  *
- * Accepted values are `bash`, `zsh`, `fish`, and `sh`; `sh` is normalized to
- * `bash`.
+ * Accepted values are `bash`, `zsh`, `fish`, `powershell`, `sh`, and `pwsh`;
+ * `sh` is normalized to `bash` and `pwsh` to `powershell`.
  *
  * @stability unstable
  * @category references
  * @since 4.0.0
  */
-export const Completions: Action<Option.Option<"bash" | "zsh" | "fish">> = Action({
-  flag: Flag.Literals("completions", ["bash", "zsh", "fish", "sh"] as const)
+export const Completions: Action<Option.Option<"bash" | "zsh" | "fish" | "powershell">> = Action({
+  flag: Flag.Literals("completions", ["bash", "zsh", "fish", "powershell", "sh", "pwsh"] as const)
     .pipe(
       Flag.optional,
-      Flag.map((v) => Option.map(v, (s) => s === "sh" ? "bash" : s)),
-      Flag.withMetavar("<bash|zsh|fish|sh>"),
+      Flag.map((v) => Option.map(v, (s) => s === "sh" ? "bash" : s === "pwsh" ? "powershell" : s)),
+      Flag.withMetavar("<bash|zsh|fish|powershell|sh|pwsh>"),
       Flag.withDescription("Print shell completion script")
     ),
   run: Effect.fnUntraced(function*(shell, { command }) {
@@ -317,7 +317,7 @@ export const BuiltIns: readonly [
   Action<boolean>,
   Action<boolean>,
   Action<boolean>,
-  Action<Option.Option<"bash" | "zsh" | "fish">>,
+  Action<Option.Option<"bash" | "zsh" | "fish" | "powershell">>,
   Setting<"log-level", Option.Option<LogLevelType>>
 ] = [Help, Version, Wizard, Completions, LogLevel]
 

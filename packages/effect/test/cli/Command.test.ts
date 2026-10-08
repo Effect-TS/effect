@@ -350,7 +350,9 @@ describe("Command", () => {
         assert.isFalse(invoked)
         assert.isTrue(
           stderr.some((line) =>
-            String(line).includes("Missing value for flag --completions. Expected: bash | zsh | fish | sh")
+            String(line).includes(
+              "Missing value for flag --completions. Expected: bash | zsh | fish | powershell | sh | pwsh"
+            )
           )
         )
       }).pipe(Effect.provide(TestLayer)))
