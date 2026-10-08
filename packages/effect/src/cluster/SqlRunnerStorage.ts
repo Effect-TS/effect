@@ -25,9 +25,10 @@ import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Connection } from "../sql/SqlConnection.ts"
-import type { SqlError } from "../sql/SqlError.ts"
+import { isSqlError, type SqlError } from "../sql/SqlError.ts"
 import type * as Statement from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
+import { failOnMigrationDefect } from "./internal/migrations.ts"
 import { ResourceRef } from "./internal/resourceRef.ts"
 import { effectiveInterval } from "./internal/shardLock.ts"
 import * as RunnerStorage from "./RunnerStorage.ts"
@@ -827,12 +828,18 @@ const runMigrations = (options: {
       // that would hide runner migrations with the same ids.
       table: `${options?.prefix ?? "cluster"}_runner_migrations`
     })
-  )
+  ).pipe(failOnMigrationDefect)
 
 const runMigrationsOrDie = (options: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, SqlError, SqlClient.SqlClient> =>
-  Effect.catchTag(runMigrations(options), "MigrationError", Effect.die)
+  // Keep the typed SqlError these constructors failed with before the runner
+  // tables moved into a migration.
+  Effect.catchTag(
+    runMigrations(options),
+    "MigrationError",
+    (error) => error.kind === "Failed" && isSqlError(error.cause) ? Effect.fail(error.cause) : Effect.die(error)
+  )
 
 /**
  * Layer that runs the SQL runner storage migrations without providing storage.

@@ -29,7 +29,6 @@ import * as Hex from "../encoding/Hex.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as PlatformError from "../PlatformError.ts"
-import * as Schedule from "../Schedule.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Row } from "../sql/SqlConnection.ts"
@@ -38,6 +37,7 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
+import { failOnMigrationDefect } from "./internal/migrations.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -850,7 +850,7 @@ const runMigrations = (options?: {
       loader: migrations(options),
       table: `${options?.prefix ?? "cluster"}_migrations`
     })
-  ).pipe(Effect.asVoid)
+  ).pipe(Effect.asVoid, failOnMigrationDefect)
 
 /**
  * Layer that runs the SQL message storage migrations without providing
@@ -996,6 +996,10 @@ const makeMigrations = (options?: {
   const messagesTable = table("messages")
   const repliesTable = table("replies")
 
+  // On PostgreSQL these run in the migrator's transaction, which holds an
+  // exclusive lock on the history table, so runners cannot race to create the
+  // tables. Errors must propagate: a failed statement aborts the transaction,
+  // so ignoring or retrying it can never succeed.
   return Migrator.fromRecord({
     "0001_create_tables": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
@@ -1079,7 +1083,7 @@ const makeMigrations = (options?: {
               deliver_at BIGINT,
               UNIQUE (message_id)
             )
-          `.pipe(Effect.ignore),
+          `,
         orElse: () =>
           // sqlite
           sql`
@@ -1139,18 +1143,7 @@ const makeMigrations = (options?: {
               CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
               ON ${messagesTableSql} (request_id)
             `
-          }).pipe(
-            sql.withTransaction,
-            Effect.tapDefect((error) =>
-              Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
-                package: "@effect/cluster",
-                module: "SqlMessageStorage"
-              })
-            ),
-            Effect.retry({
-              schedule: Schedule.spaced(1000)
-            })
-          ),
+          }),
         orElse: () =>
           // sqlite
           Effect.all([
@@ -1244,17 +1237,7 @@ const makeMigrations = (options?: {
           sql`
             CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
-          `.pipe(
-            Effect.tapDefect((error) =>
-              Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
-                package: "@effect/cluster",
-                module: "SqlMessageStorage"
-              })
-            ),
-            Effect.retry({
-              schedule: Schedule.spaced(1000)
-            })
-          ),
+          `,
         orElse: () =>
           // sqlite
           sql`

@@ -9,3 +9,7 @@ Allow cluster SQL storage to run without DDL at runtime.
 Add `Migrator.pending`, which lists the migrations that have not been applied without creating or locking the migrations table. Use it with the new `SqlMessageStorage.migrations` and `SqlRunnerStorage.migrations` loaders to check that the cluster tables are migrated.
 
 `SqlRunnerStorage` now uses a migrator, recorded in `<prefix>_runner_migrations`. On upgrade, the default layers create `cluster_runner_migrations` and, on PostgreSQL, lock it while the migrations run at startup. The first migration keeps existing `cluster_runners` and `cluster_locks` tables. The locks table is now created on every dialect, whether or not advisory locks are disabled.
+
+`layerMigrations` fails with a typed `MigrationError` when a migration fails, and the runner storage constructors and layers keep failing with the `SqlError`. On PostgreSQL, a failing `SqlMessageStorage` migration now fails instead of retrying forever.
+
+`Migrator.make` and `Migrator.pending` now find a PostgreSQL migrations table whose name needs quoting, such as a mixed-case name, instead of trying to create it again.

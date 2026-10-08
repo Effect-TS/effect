@@ -140,14 +140,14 @@ export const make = <RD = never>({
   PRIMARY KEY (migration_id)
 )`,
       pg: () =>
-        Effect.catch(
-          sql`select ${table}::regclass`,
-          () =>
-            sql`CREATE TABLE ${sql(table)} (
+        Effect.flatMap(
+          migrationsTableExists(sql, table),
+          (exists) =>
+            exists ? Effect.void : Effect.asVoid(sql`CREATE TABLE ${sql(table)} (
   migration_id integer primary key,
   created_at timestamp with time zone not null default now(),
   name text not null
-)`
+)`)
         ),
       orElse: () =>
         sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
@@ -375,18 +375,7 @@ export const pending = <R = never>({
   Effect.gen(function*() {
     const sql = yield* Client.SqlClient
 
-    // Check the catalog rather than reading the table and catching the error,
-    // so a missing table does not abort an enclosing PostgreSQL transaction.
-    const tableExists = yield* Effect.map(
-      sql.onDialectOrElse({
-        mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(N'${sql.literal(table)}', N'U') IS NOT NULL`,
-        mysql: () =>
-          sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
-        pg: () => sql`SELECT 1 AS found WHERE to_regclass(${table}) IS NOT NULL`,
-        orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
-      }).withoutTransform,
-      (rows) => rows.length > 0
-    )
+    const tableExists = yield* migrationsTableExists(sql, table)
 
     const latestMigrationId = tableExists
       ? yield* Effect.map(
@@ -409,6 +398,23 @@ export const pending = <R = never>({
       .filter(([id]) => id > latestMigrationId)
       .map(([id, name]) => [id, name] as const)
   })
+
+// Checks the catalog rather than reading the table and catching the error, so a
+// missing table does not abort an enclosing PostgreSQL transaction.
+const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Effect<boolean, SqlError> =>
+  Effect.map(
+    sql.onDialectOrElse({
+      mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(N'${sql.literal(table)}', N'U') IS NOT NULL`,
+      mysql: () =>
+        sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
+      // `to_regclass` parses its argument as SQL and folds unquoted names to
+      // lower case, so pass the name quoted as statements quote it, without
+      // transforms, like the queries that read the table.
+      pg: () => sql`SELECT 1 AS found WHERE to_regclass(${sql`${sql(table)}`.compile(true)[0]}) IS NOT NULL`,
+      orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
+    }).withoutTransform,
+    (rows) => rows.length > 0
+  )
 
 const migrationOrder = Order.make<ResolvedMigration>(([a], [b]) => Order.Number(a, b))
 
