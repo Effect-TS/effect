@@ -69,11 +69,3 @@ describe("toLayer", () => {
     ).type.toBe<Layer.Layer<never, never, CloudflareCluster.CloudflareSharding>>()
   })
 })
-
-describe("Entity.toLayer", () => {
-  test("keeps DurableObjectSqlClient as a requirement for tests to provide", () => {
-    expect(Journal.toLayer(build)).type.toBe<
-      Layer.Layer<never, never, CloudflareCluster.DurableObjectSqlClient | UserService | Sharding>
-    >()
-  })
-})

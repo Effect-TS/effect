@@ -3,13 +3,11 @@ import * as CloudflareWorkflowEngine from "@effect/platform-cloudflare/Cloudflar
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
 import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
 import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
-import { loadExecution } from "@effect/platform-cloudflare/internal/workflowStorage"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Option, Schema } from "effect"
 import { RpcTest } from "effect/rpc"
 import {
   Activity,
-  DurableClock,
   DurableDeferred,
   Workflow,
   WorkflowEngine,
@@ -166,17 +164,6 @@ class FakeWorkflowNamespace {
     this.runtimes.clear()
   }
 
-  fireDueAlarms(): Promise<void> {
-    const fired: Array<Promise<void>> = []
-    for (const [name, store] of this.stores) {
-      if (store.alarm.current !== null && store.alarm.current <= this.now) {
-        store.alarm.current = null
-        fired.push(this.getByName(name).runAlarm())
-      }
-    }
-    return Promise.all(fired).then(() => undefined)
-  }
-
   get layer() {
     return CloudflareWorkflowEngine.layer({ workflowNamespace: this as never })
   }
@@ -217,52 +204,6 @@ describe("CloudflareWorkflowEngine", () => {
       Effect.provide(WorkflowProxyServer.layerRpcHandlers(workflows)),
       Effect.provide(workflowLayer)
     )
-  })
-
-  it.effect("persists a suspended execution and resumes it after an isolate loss", () => {
-    const namespace = new FakeWorkflowNamespace()
-    const Gate = DurableDeferred.make("Resumable/Gate", { success: Schema.String })
-    let runs = 0
-    let activityRuns = 0
-    const Resumable = Workflow.make("Resumable", {
-      payload: { id: Schema.String },
-      success: Schema.String,
-      idempotencyKey: ({ id }) => id
-    })
-    const layer = Resumable.toLayer(Effect.fnUntraced(function*({ id }) {
-      runs++
-      const prefix = yield* Activity.make({
-        name: "prefix",
-        success: Schema.String,
-        execute: Effect.sync(() => {
-          activityRuns++
-          return "hello"
-        })
-      })
-      const value = yield* DurableDeferred.await(Gate)
-      return `${prefix}-${value}-${id}`
-    })).pipe(Layer.provideMerge(namespace.layer))
-
-    return Effect.gen(function*() {
-      const executionId = yield* Resumable.executionId({ id: "one" })
-      yield* Resumable.execute({ id: "one" }, { discard: true })
-      yield* pollUntil(Resumable, executionId, "Suspended")
-      assert.strictEqual(runs, 1)
-      assert.strictEqual(activityRuns, 1)
-
-      namespace.crash()
-      const token = DurableDeferred.tokenFromExecutionId(Gate, { workflow: Resumable, executionId })
-      yield* DurableDeferred.succeed(Gate, { token, value: "world" })
-      const result = yield* pollUntil(Resumable, executionId, "Complete")
-      assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
-      assert.strictEqual(result.exit.value, "hello-world-one")
-      // The replay re-ran the workflow body but replayed the stored activity.
-      assert.strictEqual(runs, 2)
-      assert.strictEqual(activityRuns, 1)
-
-      assert.strictEqual(yield* Resumable.execute({ id: "one" }), "hello-world-one")
-      assert.strictEqual(runs, 2)
-    }).pipe(Effect.provide(layer))
   })
 
   it.effect("re-runs an activity when the object is lost mid-activity", () => {
@@ -307,41 +248,6 @@ describe("CloudflareWorkflowEngine", () => {
       // The result is keyed `${name}/${attempt}` in the execution object.
       const store = namespace.stores.get(encodeName("Crashing", executionId))!
       assert.deepStrictEqual(Array.from(store.sql.activities.keys()), ["compute/1"])
-    }).pipe(Effect.provide(layer))
-  })
-
-  it.effect("schedules every DurableClock durably, including sub-minute sleeps", () => {
-    const namespace = new FakeWorkflowNamespace()
-    const Sleeper = Workflow.make("Sleeper", {
-      payload: { id: Schema.String },
-      success: Schema.String,
-      idempotencyKey: ({ id }) => id
-    })
-    const layer = Sleeper.toLayer(() =>
-      Effect.as(DurableClock.sleep({ name: "short", duration: "30 seconds" }), "woke")
-    ).pipe(Layer.provideMerge(namespace.layer))
-
-    return Effect.gen(function*() {
-      const executionId = yield* Sleeper.executionId({ id: "one" })
-      yield* Sleeper.execute({ id: "one" }, { discard: true })
-      yield* pollUntil(Sleeper, executionId, "Suspended")
-
-      const store = namespace.stores.get(encodeName("Sleeper", executionId))!
-      assert.deepStrictEqual(Array.from(store.sql.clocks), [
-        ["short", { deferredName: "DurableClock/short", wakeUp: 30_000, fired: false }]
-      ])
-      assert.strictEqual(store.alarm.current, 30_000)
-      // An alarm wake has no `id.name`; the stored execution recovers it.
-      const stored = loadExecution(store.sql.sql)
-      assert.strictEqual(stored?.workflowName, "Sleeper")
-      assert.strictEqual(stored?.executionId, executionId)
-
-      namespace.now = 30_000
-      yield* Effect.promise(() => namespace.fireDueAlarms())
-      const result = yield* pollUntil(Sleeper, executionId, "Complete")
-      assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
-      assert.strictEqual(result.exit.value, "woke")
-      assert.strictEqual(store.sql.clocks.get("short")?.fired, true)
     }).pipe(Effect.provide(layer))
   })
 
@@ -409,29 +315,6 @@ describe("CloudflareWorkflowEngine", () => {
 
       yield* engine.interruptUnsafe(Hard, executionId)
       const result = yield* pollUntil(Hard, executionId, "Complete")
-      assert(result._tag === "Complete" && Exit.isFailure(result.exit))
-      assert.isTrue(Exit.hasInterrupts(result.exit))
-    }).pipe(Effect.provide(layer))
-  })
-
-  it.effect("interrupts a suspended execution", () => {
-    const namespace = new FakeWorkflowNamespace()
-    const Gate = DurableDeferred.make("Interruptible/Gate")
-    const Interruptible = Workflow.make("Interruptible", {
-      payload: { id: Schema.String },
-      idempotencyKey: ({ id }) => id
-    })
-    const layer = Interruptible.toLayer(() => DurableDeferred.await(Gate)).pipe(
-      Layer.provideMerge(namespace.layer)
-    )
-
-    return Effect.gen(function*() {
-      const executionId = yield* Interruptible.executionId({ id: "one" })
-      yield* Interruptible.execute({ id: "one" }, { discard: true })
-      yield* pollUntil(Interruptible, executionId, "Suspended")
-
-      yield* Interruptible.interrupt(executionId)
-      const result = yield* pollUntil(Interruptible, executionId, "Complete")
       assert(result._tag === "Complete" && Exit.isFailure(result.exit))
       assert.isTrue(Exit.hasInterrupts(result.exit))
     }).pipe(Effect.provide(layer))

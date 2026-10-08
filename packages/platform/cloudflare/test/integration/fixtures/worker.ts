@@ -287,15 +287,24 @@ const FlakyLayer = Flaky.toLayer(
 )
 
 // Entity whose handler asks another entity through the public client.
+// `AskScheduled` makes a delayed ask from inside an entity, so the reply is
+// delivered back to this entity's Durable Object through `replyTo`.
 const Relay = Entity.make("Relay", [
-  Rpc.make("AskCounter", { payload: { target: Schema.String }, success: Schema.Number })
+  Rpc.make("AskCounter", { payload: { target: Schema.String }, success: Schema.Number }),
+  Rpc.make("AskScheduled", { payload: { target: Schema.String }, success: Schema.Number })
 ])
 
 const RelayLayer = Relay.toLayer(
   Effect.gen(function*() {
     const makeCounter = yield* Counter.client
     return Relay.of({
-      AskCounter: (request) => Effect.orDie(makeCounter(request.payload.target).Get(void 0))
+      AskCounter: (request) => Effect.orDie(makeCounter(request.payload.target).Get(void 0)),
+      AskScheduled: (request) =>
+        Effect.orDie(
+          makeCounter(request.payload.target).ScheduledIncrement(
+            new ScheduledPayload({ deliverAt: Date.now() + 300, op: "relayed" })
+          )
+        )
     })
   })
 )
@@ -551,7 +560,6 @@ const ensureApp = (env: unknown) => {
 let initializationStarted = false
 let initializationCompleted = false
 let initializationFailure = false
-let initializationFailed = false
 let initializationOpen = true
 const initializationCallsStarted = new Set<string>()
 const initializationCallsCompleted = new Set<string>()
@@ -567,7 +575,6 @@ const blockInitialization = () => {
 const initializeApp = CloudflareDurableObjects.setInitializer(async (env) => {
   initializationStarted = true
   if (initializationFailure) {
-    initializationFailed = true
     throw new Error("deliberate Cloudflare application initialization failure")
   }
   while (!isInitializationOpen()) await waitForInitializationControl()
@@ -795,6 +802,10 @@ const handle = Effect.fnUntraced(function*(url: URL) {
       const makeClient = yield* Relay.client
       return { value: yield* makeClient(id).AskCounter({ target: params.get("target")! }) }
     }
+    case "/relay/scheduled": {
+      const makeClient = yield* Relay.client
+      return { value: yield* makeClient(id).AskScheduled({ target: params.get("target")! }) }
+    }
 
     case "/pinned/pin": {
       const makeClient = yield* Pinned.client
@@ -921,7 +932,6 @@ export default {
       return Response.json({
         started: initializationStarted,
         completed: initializationCompleted,
-        failed: initializationFailed,
         callsStarted: Array.from(initializationCallsStarted).sort(),
         callsCompleted: Array.from(initializationCallsCompleted).sort()
       })
