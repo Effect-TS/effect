@@ -5,7 +5,7 @@
  * `stdin` and `stdout` streams into {@link Terminal.Terminal}. The service can
  * display output, read a line, stream key input, and read terminal dimensions.
  * `make` manages readline and TTY raw mode in a scope, while `layer` provides
- * the default service that ends key input on Ctrl+C or Ctrl+D.
+ * the default service that ends key input on bare Esc, Ctrl+C, or Ctrl+D.
  *
  * @stability unstable
  * @since 4.0.0
@@ -23,9 +23,9 @@ import * as Terminal from "effect/Terminal"
 import * as readline from "node:readline"
 
 /**
- * Creates a scoped process-backed `Terminal` using Node `readline`, enabling
- * TTY raw mode while in scope and using the supplied predicate to decide when
- * key input should end.
+ * Creates a scoped process-backed `Terminal` using Node `readline` and TTY raw mode.
+ * By default, Esc, Ctrl+C, and Ctrl+D end key input. Supply `shouldQuit` to
+ * override these quit keys.
  *
  * @stability unstable
  * @category constructors
@@ -168,7 +168,7 @@ export const make: (
 
 /**
  * Provides the default process-backed `Terminal` service, ending key input on
- * Ctrl+C or Ctrl+D.
+ * bare Esc, Ctrl+C, or Ctrl+D.
  *
  * @stability unstable
  * @category layers
@@ -177,5 +177,7 @@ export const make: (
 export const layer: Layer.Layer<Terminal.Terminal> = Layer.effect(Terminal.Terminal, make(defaultShouldQuit))
 
 function defaultShouldQuit(input: Terminal.UserInput) {
-  return input.key.ctrl && (input.key.name === "c" || input.key.name === "d")
+  const key = input.key
+  return key.name === "escape" ||
+    (key.ctrl && (key.name === "c" || key.name === "d"))
 }
