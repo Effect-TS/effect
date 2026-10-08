@@ -679,7 +679,17 @@ export const Theme: Context.Reference<Theme> = Context.Reference("effect/cli/Pro
 })
 
 const getTheme = (options: ThemeOptions): Effect.Effect<Theme> =>
-  Effect.map(Theme, (theme) => ({ ...theme, ...options.theme }))
+  Effect.map(Theme, (theme) => {
+    const resolved = { ...theme, ...options.theme }
+    return {
+      ...resolved,
+      primaryColor: Ansi.color(resolved.primaryColor),
+      mutedColor: Ansi.color(resolved.mutedColor),
+      successColor: Ansi.color(resolved.successColor),
+      errorColor: Ansi.color(resolved.errorColor),
+      submittedColor: Ansi.color(resolved.submittedColor)
+    }
+  })
 
 /**
  * Type alias for any `Prompt`, regardless of its output type.
