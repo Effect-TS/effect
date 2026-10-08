@@ -57,6 +57,12 @@ export * as LanguageModel from "./LanguageModel.ts"
  * @stability unstable
  * @since 4.0.0
  */
+export * as McpClient from "./McpClient.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as McpProtocol from "./McpProtocol.ts"
 
 /**

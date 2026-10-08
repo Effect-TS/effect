@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
+import * as Modern from "effect/ai/internal/mcpSchema/v2026_07_28"
 import * as McpSchema from "effect/ai/McpSchema"
 
 describe("McpSchema", () => {
@@ -81,3 +82,17 @@ describe("McpSchema", () => {
     )
   })
 })
+
+// Server encoding requires resultType; only client decoding supplies the compatibility default.
+// https://modelcontextprotocol.io/specification/2026-07-28/schema#result
+it.effect("should encode a modern complete result when its discriminator is explicit", () =>
+  Effect.gen(function*() {
+    const encoded = yield* Schema.encodeUnknownEffect(Modern.CallToolResult)({ content: [], resultType: "complete" })
+    assert.deepStrictEqual(encoded, { content: [], resultType: "complete" })
+  }))
+
+it.effect("should reject modern server result encoding when the complete discriminator is omitted", () =>
+  Effect.gen(function*() {
+    const missing = yield* Schema.encodeUnknownEffect(Modern.CallToolResult)({ content: [] }).pipe(Effect.flip)
+    assert.strictEqual(missing._tag, "SchemaError")
+  }))

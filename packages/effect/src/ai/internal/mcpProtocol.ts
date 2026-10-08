@@ -21,6 +21,9 @@ import * as McpCore from "./mcpCore.ts"
 const LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE = -32002
 const BASE64_SENTINEL_PREFIX = "=?base64?"
 const BASE64_SENTINEL_SUFFIX = "?="
+
+const encodeJsonString = Schema.encodeSync(Schema.fromJsonString(Schema.String))
+
 // A leading U+FEFF belongs to the header value and must survive comparison with the JSON body.
 const routingHeaderDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
@@ -49,13 +52,17 @@ export const mcpLogLevels: Readonly<
 export const decodeRoutingHeader = (value: string): string | undefined => {
   const startsWithSentinel = value.startsWith(BASE64_SENTINEL_PREFIX)
   const endsWithSentinel = value.endsWith(BASE64_SENTINEL_SUFFIX)
+
   if (!startsWithSentinel || !endsWithSentinel) {
     return /^[\t\x20-\x7e]*$/.test(value) ? value : undefined
   }
+
   const decoded = Base64.decode(
     value.slice(BASE64_SENTINEL_PREFIX.length, -BASE64_SENTINEL_SUFFIX.length)
   )
+
   if (Result.isFailure(decoded)) return undefined
+
   try {
     return routingHeaderDecoder.decode(decoded.success)
   } catch {
@@ -147,9 +154,11 @@ export const unwrapStringStructuredContent = (
   result: PublicMcpSchema.CallToolResult
 ): PublicMcpSchema.CallToolResult["content"] => {
   const { content, structuredContent } = result
+
   if (typeof structuredContent !== "string" || content.length !== 1) return content
   const [block] = content
-  return block.type === "text" && block.text === JSON.stringify(structuredContent)
+
+  return block.type === "text" && block.text === encodeJsonString(structuredContent)
     ? [{ ...block, text: structuredContent }]
     : content
 }
@@ -162,11 +171,15 @@ const isSamplingToolContent = (content: unknown): boolean =>
  */
 export const samplingRequestRequiresTools = (request: unknown): boolean => {
   if (!Predicate.isReadonlyObject(request)) return false
+
   if (request.tools !== undefined || request.toolChoice !== undefined) return true
+
   if (!Array.isArray(request.messages)) return false
+
   return request.messages.some((message) => {
     if (!Predicate.isReadonlyObject(message)) return false
     const content = message.content
+
     return Array.isArray(content) ? content.some(isSamplingToolContent) : isSamplingToolContent(content)
   })
 }
@@ -223,6 +236,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
       }),
       Match.exhaustive
     )
+
     return new ProtocolError({
       code: error._tag === "ToolExecutionError"
         ? PublicMcpSchema.INTERNAL_ERROR_CODE
@@ -239,6 +253,7 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
           message: `Prompt '${error.name}' not found`
         })
       }
+
       if (error._tag === "ResourceNotFound" && Predicate.hasProperty(error, "uri") && Predicate.isString(error.uri)) {
         return new ProtocolError({
           code: LEGACY_RESOURCE_NOT_FOUND_ERROR_CODE,
@@ -246,7 +261,9 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
         })
       }
     }
+
     const decoded = decodeProtocolErrorFields(error)
+
     return Result.isSuccess(decoded)
       ? new ProtocolError(decoded.success)
       : new ProtocolError({
@@ -562,8 +579,10 @@ export const make = <
   RpcGroup.HandlersServices<HandlerRpcs, Handlers>
 > => {
   const payloadCodecsCache = new WeakMap<Rpc.AnyWithProps, PublicMcpProtocol.PayloadCodecs>()
+
   const payloadCodecs = (rpc: Rpc.AnyWithProps): PublicMcpProtocol.PayloadCodecs => {
     let codecs = payloadCodecsCache.get(rpc)
+
     if (codecs === undefined) {
       const schema = Schema.toCodecJson(rpc.payloadSchema)
       codecs = {
@@ -572,6 +591,7 @@ export const make = <
       }
       payloadCodecsCache.set(rpc, codecs)
     }
+
     return codecs
   }
 
