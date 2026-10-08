@@ -3,6 +3,7 @@ import {
   Cause,
   Context,
   DateTime,
+  Deferred,
   Duration,
   Effect,
   Exit,
@@ -202,6 +203,95 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         assert.deepStrictEqual({ beforeRelease, afterRelease: activations }, { beforeRelease: 1, afterRelease: 2 })
       }).pipe(Effect.provide(context))
     }))
+
+  for (const mode of ["timer", "cancel"] as const) {
+    it.effect(
+      `advances a durable race continuation while a sibling is parked (${mode} wins)`,
+      () =>
+        Effect.gen(function*() {
+          const cancel = DurableDeferred.make(`ParkedSiblingRace/${mode}/Cancel`)
+          const event = DurableDeferred.make(`ParkedSiblingRace/${mode}/Event`)
+          const workflow = Workflow.make(`ParkedSiblingRace/${mode}`, {
+            payload: {},
+            success: Schema.String,
+            idempotencyKey: () => "one"
+          })
+          const nextStepRuns: Array<string> = []
+          const context = yield* Layer.build(
+            workflow.toLayer(() =>
+              Effect.gen(function*() {
+                const engine = yield* WorkflowEngine
+                // Keep the activity count above zero until the race starts, so
+                // the sibling cannot suspend during the cached winner lookup.
+                const hold = yield* Deferred.make<void>()
+                yield* Workflow.wrapActivityResult(Deferred.await(hold), () => false).pipe(
+                  Effect.forkChild({ startImmediately: true })
+                )
+                const timer = Deferred.succeed(hold, undefined).pipe(
+                  Effect.andThen(Effect.sleep(1000)),
+                  Effect.as("timer"),
+                  (effect) => Workflow.wrapActivityResult(effect, () => false)
+                )
+                const raced = DurableDeferred.raceAll({
+                  name: "race",
+                  success: Schema.String,
+                  error: Schema.Never,
+                  effects: [timer, DurableDeferred.await(cancel).pipe(Effect.as("cancel"))]
+                }).pipe(
+                  Effect.ensuring(Deferred.succeed(hold, undefined)),
+                  // Stand in for a persistence round trip on the winner write.
+                  Effect.provideService(WorkflowEngine, {
+                    ...engine,
+                    deferredDone: (deferred, options) =>
+                      engine.deferredDone(deferred, options).pipe(
+                        Effect.delay(deferred.name === "raceAll/race" ? 10 : 0)
+                      )
+                  }),
+                  Effect.flatMap((winner) =>
+                    Activity.make({
+                      name: "next-step",
+                      success: Schema.String,
+                      execute: Effect.sync(() => {
+                        nextStepRuns.push(winner)
+                        return `${winner}:next`
+                      })
+                    })
+                  )
+                )
+                const [result] = yield* Effect.all([raced, DurableDeferred.await(event)], {
+                  concurrency: "unbounded"
+                })
+                return result
+              })
+            ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+          )
+          yield* Effect.gen(function*() {
+            const executionId = yield* workflow.execute({}, { discard: true })
+            if (mode === "cancel") {
+              yield* TestClock.adjust(300)
+              yield* DurableDeferred.succeed(cancel, {
+                token: DurableDeferred.tokenFromExecutionId(cancel, { workflow, executionId }),
+                value: undefined
+              })
+            }
+            // The race winner is persisted by this run. Its continuation must run
+            // without waiting for the unrelated event the sibling is parked on.
+            yield* advanceUntil(() => nextStepRuns.length > 0, `next-step must run once ${mode} wins`, 10, 300)
+            assert.deepStrictEqual(nextStepRuns, [mode])
+            yield* DurableDeferred.succeed(event, {
+              token: DurableDeferred.tokenFromExecutionId(event, { workflow, executionId }),
+              value: undefined
+            })
+            assert.deepStrictEqual(
+              yield* pollUntil(workflow, executionId, "Complete"),
+              new Workflow.Complete({ exit: Exit.succeed(`${mode}:next`) })
+            )
+            assert.deepStrictEqual(nextStepRuns, [mode])
+          }).pipe(Effect.provide(context))
+        }),
+      20_000
+    )
+  }
 
   it.effect("retries a deferred wake after a transient run reset failure", () =>
     Effect.gen(function*() {
