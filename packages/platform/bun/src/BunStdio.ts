@@ -6,6 +6,7 @@
  * is read from `process.stdin`, and output and error output write to
  * `process.stdout` and `process.stderr`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeStdio from "@effect/platform-node-shared/NodeStdio"
@@ -16,6 +17,7 @@ import type { Stdio } from "effect/Stdio"
  * Provides the `Stdio` service backed by the current process arguments,
  * stdin, stdout, and stderr streams.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

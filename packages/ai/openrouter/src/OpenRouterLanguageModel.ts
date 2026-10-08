@@ -1669,7 +1669,7 @@ const annotateRequest = (
   request: typeof Generated.ChatRequest.Encoded
 ): void => {
   addGenAIAnnotations(span, {
-    system: "openrouter",
+    provider: { name: "openrouter" },
     operation: { name: "chat" },
     request: {
       model: request.model,

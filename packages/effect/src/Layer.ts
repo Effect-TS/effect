@@ -7,6 +7,7 @@
  * combine with other layers, provide services to effects or streams, and attach
  * error handling, tracing, or lifecycle hooks.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "./Array.ts"
@@ -48,6 +49,7 @@ const TypeId = "~effect/Layer"
  * provides, `E` as the possible errors during layer construction, and `RIn` as
  * the services this layer requires as dependencies.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -68,6 +70,7 @@ export interface Layer<in ROut, out E = never, out RIn = never> extends Variance
  * This is used by Effect's pipe and unification machinery to preserve the
  * provided services, error, and requirements of a `Layer`.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -84,6 +87,7 @@ export interface LayerUnify<A extends { [Unify.typeSymbol]?: any }> {
  * Type-level marker used by `Unify` for `Layer` types that should be ignored
  * during unification.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -92,6 +96,7 @@ export interface LayerUnifyIgnore {}
 /**
  * The variance interface for Layer type parameters.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -121,6 +126,7 @@ export interface Variance<in ROut, out E, out RIn> {
  * @see {@link Error} for extracting construction errors from a layer type
  * @see {@link Success} for extracting provided services from a layer type
  *
+ * @stability stable
  * @category utility types
  * @since 3.9.0
  */
@@ -142,6 +148,7 @@ export interface Any {
  * @see {@link Success} for extracting the services provided by the same `Layer`
  * @see {@link Error} for extracting the construction failure type from the same `Layer`
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -159,6 +166,7 @@ export type Services<T extends Any> = T extends infer L
  * @see {@link Success} for extracting the services provided by the same `Layer`
  * @see {@link Services} for extracting the dependency requirements of the same `Layer`
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -174,6 +182,7 @@ export type Error<T extends Any> = T extends Layer<infer _ROut, infer _E, infer 
  * @see {@link Error} for extracting the layer construction error type instead
  * @see {@link Services} for extracting the layer input service requirements instead
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -216,6 +225,7 @@ const MemoMapTypeId = "~effect/Layer/MemoMap"
  * Effect.runSync(database.query("SELECT 1")) // => "result"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -285,6 +295,7 @@ const memoMapObserve = (entry: MemoMapEntry, scope: Scope.Scope): boolean => {
  * Layer.isLayer(notALayer) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -342,6 +353,7 @@ const fromBuildUnsafe = <ROut, E, RIn>(
  * Effect.runSync(Effect.provide(program, databaseLayer)) // => "result"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -389,6 +401,7 @@ export const fromBuild = <ROut, E, RIn>(
  * Effect.runSync(Effect.provide(program, databaseLayer)) // => "result"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -484,6 +497,7 @@ class MemoMapImpl implements MemoMap {
  * Effect.runSync(database.query("SELECT 1")) // => "result"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -503,6 +517,7 @@ export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
  * @see {@link forkMemoMap} for allocating the child memo map inside `Effect`
  * @see {@link makeMemoMapUnsafe} for creating a root memo map without a parent
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -537,6 +552,7 @@ export const forkMemoMapUnsafe = (parent: MemoMap): MemoMap => new MemoMapImpl(p
  * Effect.runSync(database.query("SELECT 1")) // => "result"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -556,6 +572,7 @@ export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsaf
  * @see {@link forkMemoMapUnsafe} for the synchronous constructor variant
  * @see {@link buildWithMemoMap} for building layers with an explicit memo map
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -576,6 +593,7 @@ export const forkMemoMap = (parent: MemoMap): Effect<MemoMap> => internalEffect.
  *
  * @see {@link MemoMap} the memoization map type wrapped by this service
  *
+ * @stability stable
  * @category services
  * @since 3.13.0
  */
@@ -637,6 +655,7 @@ export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("
  * logs // => ["ready"]
  * ```
  *
+ * @stability stable
  * @category destructors
  * @since 2.0.0
  */
@@ -656,7 +675,7 @@ export const buildWithMemoMap: {
   scope: Scope.Scope
 ): Effect<Context.Context<ROut>, E, RIn> =>
   internalEffect.provideService(
-    internalEffect.map(self.build(memoMap, scope), Context.add(CurrentMemoMap, memoMap)),
+    internalEffect.map(internalEffect.suspend(() => self.build(memoMap, scope)), Context.add(CurrentMemoMap, memoMap)),
     CurrentMemoMap,
     memoMap
   ))
@@ -691,6 +710,7 @@ export const buildWithMemoMap: {
  * Effect.runSync(Effect.scoped(program)) // => "result"
  * ```
  *
+ * @stability stable
  * @category destructors
  * @since 2.0.0
  */
@@ -754,6 +774,7 @@ export const build = <RIn, E, ROut>(
  * logs // => ["Initializing database...", "Database closed"]
  * ```
  *
+ * @stability stable
  * @category destructors
  * @since 2.0.0
  */
@@ -799,6 +820,7 @@ export const buildWithScope: {
  *
  * @see {@link sync} for constructing layers from lazy values
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -856,6 +878,7 @@ export const succeed: {
  *
  * @see {@link succeed} for providing a single service from a value
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -882,6 +905,7 @@ export const succeedContext = <A>(context: Context.Context<A>): Layer<A> =>
  *
  * @see {@link effectDiscard} for running an effect while providing no services
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -918,6 +942,7 @@ export const empty: Layer<never> = succeedContext(Context.empty())
  *
  * @see {@link succeed} for constructing layers from static values
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -965,6 +990,7 @@ export const sync: {
  * @see {@link sync} for lazily providing a single service
  * @see {@link succeedContext} for providing an already available context
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1006,6 +1032,7 @@ export const syncContext = <A>(evaluate: LazyArg<Context.Context<A>>): Layer<A> 
  * @see {@link effectContext} for effectfully providing multiple services
  * @see {@link effectDiscard} for running construction work without providing services
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1065,6 +1092,7 @@ const effectImpl = <I, S, E, R>(
  *
  * @see {@link effect} for effectfully providing a single service
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1098,6 +1126,7 @@ export const effectContext = <A, E, R>(
  *
  * @see {@link empty} for a no-op layer that performs no construction work
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1129,6 +1158,7 @@ export const effectDiscard = <X, E, R>(effect: Effect<X, E, R>): Layer<never, E,
  * Effect.runSync(Effect.provide(Config, layer)) // => "https://api.example.com"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1168,6 +1198,7 @@ const unwrapKey = Context.Service<Layer<any, any, any>>("effect/Layer/unwrap")
  * Effect.runSync(Effect.provide(program, unwrappedLayer)) // => "result"
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1237,6 +1268,7 @@ const mergeAllEffect = <Layers extends [Layer<never, any, any>, ...Array<Layer<n
  *
  * @see {@link merge} for merging one layer with another layer or array
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -1290,6 +1322,7 @@ export const mergeAll = <Layers extends [Layer<never, any, any>, ...Array<Layer<
  *
  * @see {@link mergeAll} for merging several layers at once
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -1423,6 +1456,7 @@ const provideWith = (
  *
  * @see {@link provideMerge} for retaining the dependency services
  *
+ * @stability stable
  * @category providing services
  * @since 2.0.0
  */
@@ -1541,6 +1575,7 @@ export const provide: {
  *
  * @see {@link provide} for keeping dependency services private
  *
+ * @stability stable
  * @category providing services
  * @since 2.0.0
  */
@@ -1653,6 +1688,7 @@ export const provideMerge: {
  * logs // => ["[DEBUG] Starting database query"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1692,6 +1728,7 @@ export const flatMap: {
  * @see {@link tapError} for running an effect when layer construction fails with a typed error
  * @see {@link tapCause} for running an effect when layer construction fails with any cause
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1731,6 +1768,7 @@ export const tap: {
  * @see {@link tap} for running an effect when layer construction succeeds
  * @see {@link tapCause} for inspecting the full failure cause, including defects and interruption
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1774,6 +1812,7 @@ export const tapError: {
  * @see {@link tapError} for observing only typed layer construction errors
  * @see {@link catchCause} for recovering from a layer construction failure by switching to another layer
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -1842,6 +1881,7 @@ export const tapCause: {
  * Effect.runSync(Effect.exit(program)) // => Exit.die(error)
  * ```
  *
+ * @stability stable
  * @category error handling
  * @since 2.0.0
  */
@@ -1879,6 +1919,7 @@ export {
    * @see {@link catchTag} for recovering from specific tagged errors
    * @see {@link catchCause} for recovering with access to the full cause
    *
+   * @stability stable
    * @category error handling
    * @since 4.0.0
    */
@@ -1916,6 +1957,7 @@ export {
  *
  * @see {@link catchCause} for recovering with access to the full cause
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -2022,6 +2064,7 @@ export const catchTag: {
  *
  * @see {@link catchTag} for recovering from specific tagged errors
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -2059,6 +2102,7 @@ export const catchCause: {
  * transformation function `f`, and replaces the old service with the
  * transformed one.
  *
+ * @stability stable
  * @category providing services
  * @since 3.13.0
  */
@@ -2156,6 +2200,7 @@ export const updateService: {
  * await Effect.runPromise(program) // => { shared: true, fresh: false }
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 2.0.0
  */
@@ -2203,6 +2248,7 @@ export const fresh = <A, E, R>(self: Layer<A, E, R>): Layer<A, E, R> =>
  * await Effect.runPromise(program) // => ["Starting HTTP server..."]
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -2226,6 +2272,7 @@ export const launch = <RIn, E, ROut>(self: Layer<ROut, E, RIn>): Effect<never, E
  *
  * @see {@link mock} for creating a mock layer from a partial service implementation
  *
+ * @stability stable
  * @category testing
  * @since 3.17.0
  */
@@ -2300,6 +2347,7 @@ type AnyEffectOrStream =
  * Effect.runSync(testProgram) // => "Test User"
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 3.17.0
  */
@@ -2383,6 +2431,7 @@ const ChannelTypeId: Channel.TypeId = "~effect/Channel"
  * const validLayer = satisfiesNumber(numberLayer)
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -2411,6 +2460,7 @@ export const satisfiesSuccessType =
  * const validLayer = satisfiesError(typeErrorLayer)
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -2440,6 +2490,7 @@ export const satisfiesErrorType =
  * const validLayer = satisfiesNumber(numberLayer)
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -2468,6 +2519,7 @@ export const satisfiesServicesType =
  * @see {@link span} for creating a layer span
  * @see {@link withSpan} for wrapping layer construction in a span
  *
+ * @stability stable
  * @category options
  * @since 4.0.0
  */
@@ -2528,6 +2580,7 @@ export interface SpanOptions extends Tracer.SpanOptions {
  * logs // => ["Connecting to database", "Database connected", "database-init", "Span database-init ended with: Success"]
  * ```
  *
+ * @stability stable
  * @category tracing
  * @since 2.0.0
  */
@@ -2586,6 +2639,7 @@ export const span = (
  * Effect.runSync(Effect.provide(program, databaseLayer)) // => { spanId: "42", result: "Result: SELECT 1" }
  * ```
  *
+ * @stability stable
  * @category tracing
  * @since 2.0.0
  */
@@ -2649,6 +2703,7 @@ export const parentSpan = (span: Tracer.AnySpan): Layer<Tracer.ParentSpan> =>
  * logs // => ["Application ready", "Application initialization completed: Success"]
  * ```
  *
+ * @stability stable
  * @category tracing
  * @since 2.0.0
  */
@@ -2759,6 +2814,7 @@ export const withSpan: {
  * Effect.runSync(Effect.scoped(program)) // => { dbResult: "DB: SELECT * FROM users", cacheResult: "Cache: user:123" }
  * ```
  *
+ * @stability stable
  * @category tracing
  * @since 2.0.0
  */

@@ -30,13 +30,21 @@ patchedDependencies:
   '@changesets/get-github-info@1.0.1': patches/@changesets__get-github-info@1.0.1.patch
 
 minimumReleaseAgeExclude:
+  - '@effect/tsgo-darwin-arm64@0.51.0'
+  - '@effect/tsgo-darwin-x64@0.51.0'
+  - '@effect/tsgo-linux-arm64@0.51.0'
+  - '@effect/tsgo-linux-arm@0.51.0'
+  - '@effect/tsgo-linux-x64@0.51.0'
+  - '@effect/tsgo-win32-arm64@0.51.0'
+  - '@effect/tsgo-win32-x64@0.51.0'
+  - '@effect/tsgo@0.51.0'
   - '@alchemy.run/*'
   - alchemy
-  - '@effect/platform-bun@4.0.0-rc.116 || 4.0.0'
-  - '@effect/platform-node-shared@4.0.0-rc.116 || 4.0.0'
-  - '@effect/platform-node@4.0.0-rc.116 || 4.0.0'
-  - '@effect/sql-mysql2@4.0.0-rc.116 || 4.0.0'
-  - '@effect/sql-pg@4.0.0-rc.116 || 4.0.0'
+  - '@effect/platform-bun@4.0.0-rc.116 || 4.0.0 || 4.0.2'
+  - '@effect/platform-node-shared@4.0.0-rc.116 || 4.0.0 || 4.0.2'
+  - '@effect/platform-node@4.0.0-rc.116 || 4.0.0 || 4.0.2'
+  - '@effect/sql-mysql2@4.0.0-rc.116 || 4.0.0 || 4.0.2'
+  - '@effect/sql-pg@4.0.0-rc.116 || 4.0.0 || 4.0.2'
 
 # alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
 # otherwise join the shared tests compilation and clash with the workspace
@@ -47,4 +55,4 @@ overrides:
   # Upstream changes: https://github.com/jsdom/jsdom/compare/v30.0.1...v30.1.0
   jsdom: ~30.0.1
 
-  '@types/ssh2>@types/node': ^26.6.3
+  '@types/ssh2>@types/node': ^26.6.4

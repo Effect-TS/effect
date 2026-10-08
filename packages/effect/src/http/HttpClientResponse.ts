@@ -315,7 +315,9 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
     if (this.cachedCookies) {
       return this.cachedCookies
     }
-    return this.cachedCookies = Cookies.fromSetCookie(this.source.headers.getSetCookie())
+    // React Native's Headers does not implement getSetCookie, and it never
+    // exposes Set-Cookie to JavaScript anyway.
+    return this.cachedCookies = Cookies.fromSetCookie(this.source.headers.getSetCookie?.() ?? [])
   }
 
   get remoteAddress(): Option.Option<string> {

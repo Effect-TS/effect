@@ -17,6 +17,7 @@ import * as Predicate from "../../Predicate.ts"
 import * as Result from "../../Result.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import type * as RpcMessage from "../../rpc/RpcMessage.ts"
+import type * as Scope from "../../Scope.ts"
 import type * as PublicMcpProtocol from "../McpProtocol.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import type * as McpCore from "./mcpCore.ts"
@@ -175,6 +176,10 @@ export interface ServerRuntimeShape {
     fallback: LogLevel.LogLevel
   ) => LogLevel.LogLevel
   readonly disconnect: (clientId: number) => void
+  readonly terminateHttpSession: (headers: Headers.Headers) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+  readonly onSessionTerminated: (
+    listener: (binding: RequestBinding) => Effect.Effect<void>
+  ) => Effect.Effect<void, never, Scope.Scope>
   readonly deliveryClientIds: () => Iterable<number>
   readonly canDeliver: (
     clientId: number,
@@ -228,9 +233,36 @@ export const make = Effect.fnUntraced(function*(
     statelessProtocol = protocol
   }
   const registry = yield* McpProtocolRegistry.make(protocols)
-  const selectHttpProtocol = (headers: Headers.Headers, input: unknown): HttpProtocolSelection => {
+  const sessionTerminationListeners = new Set<(binding: RequestBinding) => Effect.Effect<void>>()
+  const unsupportedProtocolVersion = (requested: string) => ({
+    code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
+    message: `Unsupported protocol version '${requested}'`,
+    data: { supported: protocolVersions, requested }
+  })
+  const selectHttpSession = (headers: Headers.Headers, isInitialize: boolean): HttpProtocolSelection => {
     const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
     const sessionId = headers[MCP_SESSION_ID_HEADER]
+    const binding = sessionId === undefined ? undefined : stateful?.resolveSessionId(sessionId)
+    if (sessionId !== undefined && binding === undefined) {
+      return { _tag: "Rejected", status: 404 }
+    }
+    if (!isInitialize && protocolVersion !== undefined) {
+      if (!protocolVersions.includes(protocolVersion)) {
+        return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
+      }
+      if (
+        binding?.protocol.runtime.transport.http.requiresVersionHeader === true &&
+        protocolVersion !== binding.protocol.protocolVersion
+      ) {
+        return headerMismatch(
+          `MCP-Protocol-Version header '${protocolVersion}' does not match negotiated protocol version '${binding.protocol.protocolVersion}'`
+        )
+      }
+    }
+    return { _tag: "Accepted", binding, protocol: binding?.protocol }
+  }
+  const selectHttpProtocol = (headers: Headers.Headers, input: unknown): HttpProtocolSelection => {
+    const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
     const inputRecord = asRecord(input)
     const metadata = asRecord(asRecord(inputRecord?.params)?._meta)
     const claim = protocolVersionClaim(metadata)
@@ -272,18 +304,7 @@ export const make = Effect.fnUntraced(function*(
         }
       }
       if (statelessProtocol === undefined || protocolVersion !== statelessProtocol.protocolVersion) {
-        return {
-          _tag: "Rejected",
-          status: 400,
-          error: {
-            code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-            message: `Unsupported protocol version '${protocolVersion}'`,
-            data: {
-              supported: protocolVersions,
-              requested: protocolVersion
-            }
-          }
-        }
+        return { _tag: "Rejected", status: 400, error: unsupportedProtocolVersion(protocolVersion) }
       }
       const method = inputRecord?.method
       if (typeof method !== "string" || headers[MCP_METHOD_HEADER] !== method) {
@@ -299,25 +320,7 @@ export const make = Effect.fnUntraced(function*(
       }
       return { _tag: "Accepted", binding: undefined, protocol: statelessProtocol }
     }
-    const binding = sessionId === undefined ? undefined : stateful?.resolveSessionId(sessionId)
-    if (sessionId !== undefined && binding === undefined) {
-      return { _tag: "Rejected", status: 404 }
-    }
-    if (
-      !isInitialize &&
-      protocolVersion !== undefined &&
-      !registry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
-    ) {
-      return { _tag: "Rejected", status: 400 }
-    }
-    if (
-      !isInitialize &&
-      binding?.protocol.runtime.transport.http.requiresVersionHeader === true &&
-      protocolVersion !== binding.protocol.protocolVersion
-    ) {
-      return { _tag: "Rejected", status: 400 }
-    }
-    return { _tag: "Accepted", binding, protocol: binding?.protocol }
+    return selectHttpSession(headers, isInitialize)
   }
   return ServerRuntime.of({
     protocols: registry.protocols,
@@ -362,11 +365,7 @@ export const make = Effect.fnUntraced(function*(
         return yield* Effect.die("MCP stateless runtime invariant failed")
       }
       if (requestedVersion !== undefined && requestedVersion !== protocol.protocolVersion) {
-        return yield* new McpProtocol.ProtocolError({
-          code: UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-          message: `Unsupported protocol version '${requestedVersion}'`,
-          data: { supported: protocolVersions, requested: requestedVersion }
-        })
+        return yield* new McpProtocol.ProtocolError(unsupportedProtocolVersion(requestedVersion))
       }
       const decodedProfile = yield* statelessDescriptor.profileFromRequestMetadata(metadata)
       const profile: McpCore.NegotiatedProtocolProfile<string> = {
@@ -394,12 +393,14 @@ export const make = Effect.fnUntraced(function*(
       })
       if (Result.isFailure(parsed)) {
         const version = headers[MCP_PROTOCOL_VERSION_HEADER]
-        if (version !== undefined && !registry.protocols.some((protocol) => protocol.protocolVersion === version)) {
-          return reject(400)
+        if (version !== undefined && !protocolVersions.includes(version)) {
+          return reject(400, unsupportedProtocolVersion(version))
         }
         const admission = selectHttpProtocol(headers, undefined)
-        return admission._tag === "Rejected" && admission.error === undefined
-          ? reject(admission.status)
+        // Session and protocol-header errors take precedence over parse errors.
+        return admission._tag === "Rejected" &&
+            (admission.error === undefined || admission.error.code === PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE)
+          ? reject(admission.status, admission.error)
           : reject(200, new PublicMcpSchema.ParseError({ message: "Parse error" }))
       }
       const input = parsed.success
@@ -444,8 +445,21 @@ export const make = Effect.fnUntraced(function*(
       }
       const isInitialize = Predicate.hasProperty(input, "method") && input.method === "initialize"
       const hasSession = headers[MCP_SESSION_ID_HEADER] !== undefined
-      if (isInitialize ? hasSession : !hasSession && admission.protocol?.runtime._tag !== "Stateless") {
-        return reject(400)
+      if (isInitialize && hasSession) {
+        return reject(
+          400,
+          new PublicMcpSchema.InvalidRequest({ message: "initialize must not include an MCP-Session-Id header" }),
+          id
+        )
+      }
+      if (!isInitialize && !hasSession && admission.protocol?.runtime._tag !== "Stateless") {
+        return reject(
+          400,
+          stateful === undefined ? undefined : new PublicMcpSchema.InvalidRequest({
+            message: "MCP-Session-Id header is required; send initialize to start a session"
+          }),
+          id
+        )
       }
       if (
         isRequest && admission.protocol?.runtime._tag === "Stateless" &&
@@ -464,6 +478,33 @@ export const make = Effect.fnUntraced(function*(
     },
     effectLogLevel: (clientId, headers, fallback) => stateful?.effectLogLevel(clientId, headers, fallback) ?? fallback,
     disconnect: (clientId) => stateful?.disconnect(clientId),
+    terminateHttpSession: (headers) =>
+      Effect.suspend(() => {
+        const sessionId = headers[MCP_SESSION_ID_HEADER]
+        if (sessionId === undefined) {
+          return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+        }
+        const selection = selectHttpSession(headers, false)
+        if (selection._tag === "Rejected") {
+          return Effect.succeed(HttpServerResponse.empty({ status: selection.status }))
+        }
+        const binding = selection.binding!
+        stateful!.terminateSession(sessionId)
+        return Effect.as(
+          Effect.forEach(sessionTerminationListeners, (listener) => listener(binding), { discard: true }),
+          HttpServerResponse.empty({ status: 204 })
+        )
+      }),
+    onSessionTerminated: (listener) =>
+      Effect.acquireRelease(
+        Effect.sync(() => {
+          sessionTerminationListeners.add(listener)
+        }),
+        () =>
+          Effect.sync(() => {
+            sessionTerminationListeners.delete(listener)
+          })
+      ),
     deliveryClientIds: () => stateful?.initializedClientIds() ?? [],
     canDeliver: (clientId, headers, notification, fallback) =>
       stateful?.canDeliver(clientId, headers, notification, fallback) ?? true,

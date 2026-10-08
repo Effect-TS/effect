@@ -26,8 +26,6 @@ interface PreviousHistogramState {
   readonly count: number
   readonly sum: number
   readonly bucketCounts: ReadonlyArray<number>
-  readonly min: number
-  readonly max: number
 }
 
 interface PreviousSummaryState {
@@ -195,8 +193,7 @@ export class MetricProducerImpl implements MetricProducer {
           let reportCount = state.state.count
           let reportSum = state.state.sum
           let reportBucketCounts = currentBuckets.counts
-          const reportMin = state.state.min
-          const reportMax = state.state.max
+          let reportExtrema = true
 
           if (isDelta) {
             const previousState = this.previousHistogramState.get(metricKey)
@@ -206,13 +203,14 @@ export class MetricProducerImpl implements MetricProducer {
               reportBucketCounts = currentBuckets.counts.map((c, i) =>
                 Math.max(0, c - (previousState.bucketCounts[i] ?? 0))
               )
+              // Interval extrema cannot be derived from cumulative min / max,
+              // so omit the optional fields rather than report stale values
+              reportExtrema = false
             }
             this.previousHistogramState.set(metricKey, {
               count: state.state.count,
               sum: state.state.sum,
-              bucketCounts: currentBuckets.counts.slice(),
-              min: state.state.min,
-              max: state.state.max
+              bucketCounts: currentBuckets.counts.slice()
             })
           }
 
@@ -228,8 +226,7 @@ export class MetricProducerImpl implements MetricProducer {
                 counts: reportBucketCounts
               },
               count: reportCount,
-              min: reportMin,
-              max: reportMax,
+              ...(reportExtrema ? { min: state.state.min, max: state.state.max } : undefined),
               sum: reportSum
             }
           }

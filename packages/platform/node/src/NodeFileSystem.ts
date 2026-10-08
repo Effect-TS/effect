@@ -6,6 +6,7 @@
  * links, temporary paths, and path watching. Effects still call the service from
  * `effect/FileSystem`; this module only chooses the Node implementation.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
@@ -15,6 +16,7 @@ import type * as Layer from "effect/Layer"
 /**
  * Provides the `FileSystem` service backed by Node filesystem APIs.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -126,8 +126,8 @@ const Proto = {
  *
  * **Details**
  *
- * Use `HttpApiBuilder.middlewareSecurity` to implement API middleware for this
- * security scheme.
+ * Use `HttpApiMiddleware.Service` with a `security` option to implement API
+ * middleware for this security scheme.
  *
  * @see {@link apiKey} for an API-key security scheme
  * @see {@link basic} for an HTTP Basic security scheme
@@ -155,8 +155,8 @@ export const http = (options: {
  *
  * **Details**
  *
- * Use `HttpApiBuilder.middlewareSecurity` to implement API middleware for this
- * security scheme.
+ * Use `HttpApiMiddleware.Service` with a `security` option to implement API
+ * middleware for this security scheme.
  *
  * @see {@link apiKey} for an API-key security scheme
  * @see {@link basic} for an HTTP Basic security scheme
@@ -176,8 +176,8 @@ export const bearer: Http = http({ scheme: "Bearer" })
  *
  * **Details**
  *
- * Use `HttpApiBuilder.middlewareSecurity` to implement API middleware for this
- * security scheme.
+ * Use `HttpApiMiddleware.Service` with a `security` option to implement API
+ * middleware for this security scheme.
  *
  * Use `HttpApiBuilder.securitySetCookie` to set the correct cookie in a
  * handler. By default, `in` is `"header"`.
@@ -208,8 +208,8 @@ export const apiKey = (options: {
  *
  * **Details**
  *
- * Use `HttpApiBuilder.middlewareSecurity` to implement API middleware for this
- * security scheme.
+ * Use `HttpApiMiddleware.Service` with a `security` option to implement API
+ * middleware for this security scheme.
  *
  * @see {@link bearer} for a Bearer token security scheme
  * @see {@link apiKey} for an API-key security scheme

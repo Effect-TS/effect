@@ -22,9 +22,9 @@ export const protocolVersion = "2024-11-05"
  */
 export const optional = <S extends Schema.Constraint>(
   schema: S
-): Schema.decodeTo<Schema.optional<S>, Schema.optionalKey<S>> =>
+): Schema.decodeTo<Schema.toType<Schema.optional<S>>, Schema.optionalKey<S>> =>
   Schema.optionalKey(schema).pipe(
-    Schema.decodeTo(Schema.optional(schema), {
+    Schema.decodeTo(Schema.toType(Schema.optional(schema)), {
       decode: SchemaGetter.passthrough(),
       encode: SchemaGetter.transformOptional(Option.flatMap(Option.fromUndefinedOr))
     })
@@ -111,6 +111,7 @@ export const Implementation = Schema.Struct({
  * @internal
  */
 export const ClientCapabilities = Schema.Struct({
+  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Json)),
   experimental: optional(Schema.Record(Schema.String, JsonObject)),
   roots: optional(Schema.Struct({
     listChanged: optional(Schema.Boolean)
@@ -122,6 +123,7 @@ export const ClientCapabilities = Schema.Struct({
  * @internal
  */
 export const ServerCapabilities = Schema.Struct({
+  extensions: optional(Schema.Record(Schema.TemplateLiteral([Schema.String, "/", Schema.String]), Schema.Json)),
   experimental: optional(Schema.Record(Schema.String, JsonObject)),
   logging: optional(JsonObject),
   prompts: optional(Schema.Struct({

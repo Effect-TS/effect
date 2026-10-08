@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
-import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
@@ -48,6 +48,129 @@ const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
 })
 
 describe("RpcServer", () => {
+  for (
+    const [name, serialization] of [
+      ["ndjson", RpcSerialization.layerNdjson],
+      ["ndJsonRpc", RpcSerialization.layerNdJsonRpc()],
+      ["schemaBinary", RpcSerialization.layerSchemaBinary()]
+    ] as const
+  ) {
+    it.effect(`returns HTTP 200 with an empty body for an empty ${name} POST`, () =>
+      Effect.gen(function*() {
+        const group = RpcGroup.make(Rpc.make("ping", { success: Schema.String }))
+        const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ ping: () => Effect.succeed("pong") }),
+            serialization
+          ))
+        )
+        const handler = HttpEffect.toWebHandler(httpEffect)
+        const response = yield* Effect.promise(() =>
+          handler(new Request("http://test/rpc", { method: "POST", body: "" }))
+        )
+        const body = yield* Effect.promise(() => response.text())
+
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(body, "")
+      }))
+  }
+
+  it.effect("should drain the response when stdin ends during request startup", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const finishRequest = yield* Deferred.make<void>()
+      const output: Array<string> = []
+      const group = RpcGroup.make(Rpc.make("wait", { payload: Schema.Struct({}), success: Schema.String }))
+      const server = yield* Layer.launch(
+        RpcServer.layer(group).pipe(
+          Layer.provide(group.toLayerHandler("wait", () =>
+            Deferred.succeed(started, undefined).pipe(
+              Effect.andThen(Deferred.await(finishRequest)),
+              Effect.as("finished")
+            ))),
+          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.make(
+              new TextEncoder().encode(
+                `{"_tag":"Request","id":1,"tag":"wait","payload":{},"headers":[]}\n`
+              )
+            ).pipe(Stream.concat(Stream.fromEffect(Deferred.await(started)).pipe(Stream.drain))),
+            stdout: () => Sink.forEach((data) => Effect.sync(() => output.push(String(data))))
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Deferred.await(started)
+      yield* Deferred.succeed(finishRequest, undefined)
+      yield* Fiber.await(server)
+      assert.deepStrictEqual(output.join("").trim().split("\n").map((line) => JSON.parse(line)), [
+        { _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: "finished" } }
+      ])
+    }))
+
+  it.effect("should shut down when stdin ends after the STDIO response is written", () =>
+    Effect.gen(function*() {
+      const responseWritten = yield* Deferred.make<void>()
+      const closeStdin = yield* Deferred.make<void>()
+      const output: Array<string> = []
+      const group = RpcGroup.make(Rpc.make("hello", { payload: Schema.Struct({}), success: Schema.String }))
+      const server = yield* Layer.launch(
+        RpcServer.layer(group).pipe(
+          Layer.provide(group.toLayerHandler("hello", () => Effect.succeed("world"))),
+          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.make(
+              new TextEncoder().encode(`{"_tag":"Request","id":1,"tag":"hello","payload":{},"headers":[]}\n`)
+            ).pipe(Stream.concat(Stream.fromEffect(Deferred.await(closeStdin)).pipe(Stream.drain))),
+            stdout: () =>
+              Sink.forEach((data) =>
+                Effect.sync(() => output.push(String(data))).pipe(
+                  Effect.andThen(Deferred.succeed(responseWritten, undefined))
+                )
+              )
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Deferred.await(responseWritten)
+      assert.deepStrictEqual(output.join("").trim().split("\n").map((line) => JSON.parse(line)), [
+        { _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: "world" } }
+      ])
+      yield* Deferred.succeed(closeStdin, undefined)
+      yield* Fiber.await(server)
+    }))
+
+  it.effect("should wait for a blocked STDIO write before shutting down", () =>
+    Effect.gen(function*() {
+      const writeStarted = yield* Deferred.make<void>()
+      const finishWrite = yield* Deferred.make<void>()
+      const output: Array<string> = []
+      const server = yield* Layer.launch(
+        RpcServer.layer(RpcGroup.make()).pipe(
+          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.make(new TextEncoder().encode(`{"_tag":"Ping"}\n`)),
+            stdout: () =>
+              Sink.forEach((data) =>
+                Deferred.succeed(writeStarted, undefined).pipe(
+                  Effect.andThen(Deferred.await(finishWrite)),
+                  Effect.andThen(Effect.sync(() => output.push(String(data))))
+                )
+              )
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Deferred.await(writeStarted)
+      yield* Effect.yieldNow
+      assert.isUndefined(server.pollUnsafe())
+      yield* Deferred.succeed(finishWrite, undefined)
+      yield* Fiber.await(server)
+      assert.deepStrictEqual(output.join("").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)), [{
+        _tag: "Pong"
+      }])
+    }))
+
   it.effect("should accept only cancellation of an active request when client input has ended", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()

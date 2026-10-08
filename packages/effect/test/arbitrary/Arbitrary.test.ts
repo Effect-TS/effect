@@ -1,5 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
+  Cause,
+  Context,
   Deferred,
   Effect,
   Exit,
@@ -50,6 +52,102 @@ const verifySchemaCatalog = Effect.fnUntraced(function*(entries: ReadonlyArray<S
 })
 
 describe("Arbitrary", () => {
+  describe("mixed causes", () => {
+    const annotations = Context.make(Context.Service<string>("test/Arbitrary/Diagnostic"), "original diagnostic")
+    const causes = [
+      ["defects", Cause.die("defect")],
+      ["interruption", Cause.interrupt(123)],
+      ["defects and interruption", Cause.combine(Cause.die("defect"), Cause.interrupt(123))]
+    ] as const
+
+    for (const [name, cause] of causes) {
+      const unexpected = Cause.annotate(cause, annotations)
+
+      for (const phase of ["initial evaluation", "shrinking"] as const) {
+        it.effect(`propagates ${name} without typed property failures during ${phase}`, () =>
+          Effect.gen(function*() {
+            const mixed = Cause.combine(Cause.fail("property failure"), unexpected)
+            let evaluations = 0
+            const exit = yield* Effect.exit(Arbitrary.checkEffect(
+              Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))),
+              () => {
+                evaluations++
+                return phase === "shrinking" && evaluations === 1 ? false : Effect.failCause(mixed)
+              },
+              { runs: 1, seed: 47 }
+            ))
+
+            assert.deepStrictEqual(exit, Exit.failCause(unexpected))
+            assert.strictEqual(evaluations, phase === "shrinking" ? 2 : 1)
+          }))
+      }
+
+      it.effect(`propagates ${name} without typed decode failures during generation`, () =>
+        Effect.gen(function*() {
+          const mixed = Cause.combine(
+            Cause.fail(new SchemaIssue.Forbidden({ message: "decode failure" })),
+            unexpected
+          )
+          const schema = Schema.declare<number>((input): input is number => typeof input === "number", {
+            toCodecArbitrary: () =>
+              Schema.link<number>()(
+                Schema.Literal(1),
+                SchemaTransformation.transformEffect<number, 1>({
+                  decode: () => Effect.failCause(mixed),
+                  encode: () => Effect.succeed(1)
+                })
+              )
+          })
+          const exit = yield* Effect.exit(Arbitrary.sampleEffect(Arbitrary.schema(schema), {
+            count: 1,
+            maxDiscards: 0
+          }))
+
+          assert.deepStrictEqual(exit, Exit.failCause(unexpected))
+        }))
+
+      it.effect(`propagates ${name} without typed decode failures through composed shrinkers`, () =>
+        Effect.gen(function*() {
+          const mixed = Cause.combine(
+            Cause.fail(new SchemaIssue.Forbidden({ message: "shrink decode failure" })),
+            unexpected
+          )
+          const wrappers: ReadonlyArray<
+            readonly [string, (arbitrary: Arbitrary.Arbitrary<number>) => Arbitrary.Arbitrary<unknown>]
+          > = [
+            ["schema", (arbitrary) => arbitrary],
+            ["filter", Arbitrary.filter(() => true)],
+            ["filterMap", Arbitrary.filterMap(Result.succeed)],
+            ["flatMap", Arbitrary.flatMap(Arbitrary.Constant)],
+            ["all", (arbitrary) => Arbitrary.all([arbitrary])],
+            ["array", (arbitrary) => Arbitrary.array(arbitrary, { minLength: 1, maxLength: 1 })]
+          ]
+          for (const [wrapper, wrap] of wrappers) {
+            let decodes = 0
+            let evaluations = 0
+            const schema = Schema.declare<number>((input): input is number => typeof input === "number", {
+              toCodecArbitrary: () =>
+                Schema.link<number>()(
+                  Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })),
+                  SchemaTransformation.transformEffect({
+                    decode: (value) => ++decodes === 1 ? Effect.succeed(value) : Effect.failCause(mixed),
+                    encode: Effect.succeed
+                  })
+                )
+            })
+            const exit = yield* Effect.exit(Arbitrary.checkEffect(wrap(Arbitrary.schema(schema)), () => {
+              evaluations++
+              return false
+            }, { runs: 1, maxDiscards: 0, seed: 47 }))
+
+            assert.deepStrictEqual(exit, Exit.failCause(unexpected), wrapper)
+            assert.strictEqual(evaluations, 1, wrapper)
+            assert.strictEqual(decodes, 2, wrapper)
+          }
+        }))
+    }
+  })
+
   describe("isArbitrary", () => {
     it("identifies Arbitrary values", () => {
       assert.isTrue(Arbitrary.isArbitrary(Arbitrary.schema(Schema.String)))

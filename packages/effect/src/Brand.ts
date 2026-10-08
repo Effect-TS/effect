@@ -5,6 +5,7 @@
  * information lives in the type system unless you choose a validating
  * constructor.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Arr from "./Array.ts"
@@ -29,6 +30,7 @@ const TypeId = "~effect/Brand"
  * @see {@link Branded} for applying a brand key to a base type
  * @see {@link Constructor} for validating or constructing branded values
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -53,6 +55,7 @@ export interface Brand<in out Keys extends string> {
  * @see {@link check} for creating a constructor from schema checks
  * @see {@link all} for combining brand constructors
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -100,6 +103,7 @@ export interface Constructor<in out B extends Brand<any>> {
  * `BrandError` is an error-like model with `_tag`, `name`, `message`, and
  * `toString`; it does not extend JavaScript `Error`.
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -147,6 +151,7 @@ export class BrandError {
  * Namespace containing type-level helpers for working with branded types and
  * brand constructors.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Brand {
@@ -205,6 +210,7 @@ export declare namespace Brand {
 /**
  * A type alias for creating branded types more concisely.
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -222,6 +228,7 @@ export type Branded<A, Key extends string> = A & Brand<Key>
  * @see {@link make} for constructing branded values with validation.
  * @see {@link check} for constructing branded values from schema checks.
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -243,6 +250,7 @@ export function nominal<A extends Brand<any>>(): Constructor<A> {
  *
  * @see {@link nominal} for a brand constructor that performs no validation.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -268,6 +276,7 @@ export function make<A extends Brand<any>>(
  *
  * @see {@link nominal} for a brand constructor without runtime validation
  * @see {@link all} for combining multiple brand constructors
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -302,6 +311,7 @@ export function check<A extends Brand<any>>(
  * constructor succeeds only when all checks pass. If no runtime checks are
  * present, it behaves as a nominal constructor.
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */

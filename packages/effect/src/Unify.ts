@@ -8,6 +8,7 @@
  * exports the protocol symbols, the `Unify` type that performs normalization,
  * and `unify`, an identity function that changes only the inferred type.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -29,6 +30,7 @@ import { identity } from "./Function.ts"
  * @see {@link typeSymbol} for storing the source type information used during unification
  * @see {@link ignoreSymbol} for excluding protocol entries from unification
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -48,6 +50,7 @@ export declare const unifySymbol: unique symbol
  * behavior in Effect types. It's typically used in type-level operations
  * to enable automatic type unification.
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -68,6 +71,7 @@ export type unifySymbol = typeof unifySymbol
  *
  * @see {@link unifySymbol} for defining how protocol entries widen
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -87,6 +91,7 @@ export declare const typeSymbol: unique symbol
  * in types that support unification. It's used in type-level operations
  * to access and manipulate type information.
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -107,6 +112,7 @@ export type typeSymbol = typeof typeSymbol
  *
  * @see {@link unifySymbol} for defining the protocol entries being filtered
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -126,6 +132,7 @@ export declare const ignoreSymbol: unique symbol
  * be ignored during unification operations. It's used in type-level operations
  * to exclude specific types from the unification process.
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -202,6 +209,7 @@ type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : nev
  *
  * @see {@link unify} for applying this normalization to a value or function
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -266,6 +274,7 @@ export type Unify<A> = Values<
  *
  * @see {@link Unify} for the type-level normalization applied by this helper
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */

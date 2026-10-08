@@ -7,6 +7,7 @@
  * tests or other environments. This module also includes scoped helpers that
  * close console groups or timers automatically.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Context from "./Context.ts"
@@ -19,6 +20,7 @@ import type { Scope } from "./Scope.ts"
 /**
  * Represents a console interface for logging, debugging, timing, and grouping output.
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -77,6 +79,7 @@ export interface Console {
  *
  * @see {@link consoleWith} for using the current console service inside an effect
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -106,6 +109,7 @@ export const Console: Context.Reference<Console> = effect.ConsoleRef
  * messages // => ["Hello, world!", "This is an error message"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -135,6 +139,7 @@ export const consoleWith = <A, E, R>(f: (console: Console) => Effect.Effect<A, E
  * errors // => ["This will be logged as an error"]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -178,6 +183,7 @@ export const assert = (condition: boolean, ...args: ReadonlyArray<any>): Effect.
  * operations // => ["log:This will be cleared", "clear", "log:This appears after clearing"]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -214,6 +220,7 @@ export const clear: Effect.Effect<void> = consoleWith((console) =>
  * messages // => ["my-counter: 1", "my-counter: 2", "default: 1"]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -253,6 +260,7 @@ export const count = (label?: string): Effect.Effect<void> =>
  * messages // => ["my-counter: 1", "my-counter: 2", "my-counter: 1"]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -290,6 +298,7 @@ export const countReset = (label?: string): Effect.Effect<void> =>
  * messages // => [["Debug info:", { userId: 123, action: "login" }], ["Processing step", 1, "of", 5]]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -326,6 +335,7 @@ export const debug = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  * inspected // => expected
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -356,6 +366,7 @@ export const dir = (item: any, options?: any): Effect.Effect<void> =>
  * messages // => ["<user id=\"1\">Ada</user>"]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -395,6 +406,7 @@ export const dirxml = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  * messages // => expected
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -441,6 +453,7 @@ export const error = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  * operations // => expected
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -492,6 +505,7 @@ export const group = (
  * messages // => expected
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -529,6 +543,7 @@ export const info = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  * messages // => expected
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -568,6 +583,7 @@ export const log = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  * calls // => [{ rows: 3, properties: undefined }, { rows: 3, properties: ["name", "age"] }]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -607,6 +623,7 @@ export const table = (tabularData: any, properties?: ReadonlyArray<string>): Eff
  * operations // => ["start:operation-timer", "log:Operation completed", "end:operation-timer"]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -652,6 +669,7 @@ export const time = (label?: string | undefined): Effect.Effect<void, never, Sco
  * operations // => [["start", "long-operation"], ["log", "long-operation", "Halfway done"], ["end", "long-operation"]]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -685,6 +703,7 @@ export const timeLog = (label?: string, ...args: ReadonlyArray<any>): Effect.Eff
  * traces // => [["Debug trace point"], ["Function call:", { functionName: "processData" }]]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -723,6 +742,7 @@ export const trace = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  * messages // => expected
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -769,6 +789,7 @@ export const warn = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  * operations // => expected
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -832,6 +853,7 @@ export const withGroup = dual<
  * operations // => ["start:my-operation", "log:Operation completed", "end:my-operation"]
  * ```
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */

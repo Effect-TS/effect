@@ -54,13 +54,13 @@ function rebuild<A>(
         }
         if (index >= elementStart) itemShrinks ??= children[index].shrinks?.()
         if (itemShrinks !== undefined) {
-          return Effect.matchEffect(itemShrinks, {
-            onFailure: () => {
+          return Effect.matchCauseEffect(itemShrinks, {
+            onFailure: Model.onTypedFailure(() => {
               itemShrinks = undefined
               removable = undefined
               index++
               return loop()
-            },
+            }),
             onSuccess: (item): Effect.Effect<Model.Attempt<Array<A>>> => {
               if (item._tag === "Discarded") return Effect.succeed(item)
               return Effect.succeed(rebuild(InternalArray.replaceAt(children, index, item), shape, index))

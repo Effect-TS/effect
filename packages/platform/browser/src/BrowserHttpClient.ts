@@ -8,6 +8,7 @@
  * XHR response type, an overridable `XMLHttpRequest` constructor service, and
  * the `layerXMLHttpRequest` layer.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -39,6 +40,7 @@ export {
   /**
    * Context reference for the `fetch` implementation used by the fetch-based HTTP client.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -46,6 +48,7 @@ export {
   /**
    * Layer that provides an `HttpClient` implementation backed by the configured `Fetch` function.
    *
+   * @stability unstable
    * @category layers
    * @since 4.0.0
    */
@@ -58,6 +61,7 @@ export {
    * Use to provide default credentials, cache, redirect, integrity, or other
    * fetch options for browser HTTP requests.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -71,6 +75,7 @@ export {
 /**
  * Allowed response body modes for the browser XHR HTTP client.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -87,6 +92,7 @@ export type XHRResponseType = "arraybuffer" | "text"
  * @see {@link XHRResponseType} for the allowed response body modes
  * @see {@link withXHRArrayBuffer} for scoping XHR response handling to `ArrayBuffer`
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -98,6 +104,7 @@ export const CurrentXHRResponseType: Context.Reference<XHRResponseType> = Contex
 /**
  * Runs an effect with `CurrentXHRResponseType` set to `"arraybuffer"` so the XHR HTTP client receives response bodies as `ArrayBuffer` values.
  *
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -113,6 +120,7 @@ export const withXHRArrayBuffer = <A, E, R>(
 /**
  * Service tag for the `XMLHttpRequest` constructor used by the browser XHR HTTP client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -443,6 +451,7 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
 /**
  * Layer that provides an `HttpClient` implementation backed by the browser `XMLHttpRequest` API.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

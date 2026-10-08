@@ -15,6 +15,7 @@
  * Effect.runSync(program) // => ".txt"
  * ```
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -55,6 +56,7 @@ const fileUrlOps = (impl: {
 /**
  * A {@linkplain Layer.Layer | layer} that provides POSIX path operations.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -70,6 +72,7 @@ export const layerPosix: Layer.Layer<Path.Path> = Layer.succeed(Path.Path)(
 /**
  * A {@linkplain Layer.Layer | layer} that provides Windows path operations.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -87,6 +90,7 @@ export const layerWin32: Layer.Layer<Path.Path> = Layer.succeed(
 /**
  * A {@linkplain Layer.Layer | layer} that provides OS-agnostic path operations.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

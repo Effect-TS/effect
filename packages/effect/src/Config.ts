@@ -5,8 +5,10 @@
  * multiple settings. Configs are also Effects, so they can be yielded in
  * `Effect.gen` after a provider has been supplied.
  *
+ * @stability stable
  * @since 4.0.0
  */
+import * as Cause from "./Cause.ts"
 import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
 import * as Effect from "./Effect.ts"
@@ -44,6 +46,7 @@ const TypeId = "~effect/Config"
  * Config.isConfig("not a config") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -66,6 +69,7 @@ export const isConfig = (u: unknown): u is Config<unknown> => Predicate.hasPrope
  * @see {@link orElse} – recover from a ConfigError
  * @see {@link withDefault} – provide a fallback when relevant input is absent
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -102,6 +106,7 @@ export class ConfigError {
  *
  * @see {@link schema} – the main way to create a Config
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -177,6 +182,7 @@ const evaluateAt = <T>(
  *
  * @see {@link mapEffect} – when the transformation can fail
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -244,6 +250,7 @@ export const map: {
  * )
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -284,6 +291,7 @@ export const flatMap: {
  *
  * @see {@link map} – when the transformation cannot fail
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -320,7 +328,8 @@ export const mapEffect: {
  *
  * The fallback's result replaces the original failure. If the fallback is
  * absent, an outer {@link withDefault} or {@link option} can recover it. If the
- * fallback fails, only its error propagates.
+ * fallback fails, only its error propagates. Defects and interruptions never
+ * reach the fallback; they propagate unchanged.
  *
  * **Example** (Trying another port before using a default)
  *
@@ -340,6 +349,7 @@ export const mapEffect: {
  *
  * @see {@link withDefault} – fallback only on semantic absence
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -348,8 +358,14 @@ export const orElse: {
   <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2>
 } = dual(2, <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2> => {
   return make<A | A2>((provider, pathPrefix) =>
-    Effect.matchEffect(evaluateAt(self, provider, pathPrefix), {
-      onFailure: (error) => evaluateAt(that(error), provider, pathPrefix),
+    Effect.matchCauseEffect(evaluateAt(self, provider, pathPrefix), {
+      // Only plain failures reach the fallback; defects and interruptions propagate unchanged.
+      onFailure: (cause) => {
+        const error = Cause.findErrorOption(cause)
+        return Option.isSome(error) && cause.reasons.every(Cause.isFailReason)
+          ? evaluateAt(that(error.value), provider, pathPrefix)
+          : Effect.failCause(cause)
+      },
       onSuccess: (resolution): Effect.Effect<Resolution<A | A2>, ConfigError> =>
         Result.isFailure(resolution)
           ? evaluateAt(that(resolution.failure), provider, pathPrefix)
@@ -397,6 +413,7 @@ export const orElse: {
  * await Effect.runPromise(dbConfig.parse(missingPort)) // => { host: "localhost", port: 5432 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -462,6 +479,7 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
  * @see {@link option} – returns `Option` instead of a default value
  * @see {@link orElse} – catches all errors, not just absent input
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -507,6 +525,7 @@ export const withDefault: {
  *
  * @see {@link withDefault} – provide a concrete fallback value instead
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -524,6 +543,7 @@ export const option = <A>(self: Config<A>): Config<Option.Option<A>> =>
  * @see {@link Config} for the config type whose parsed value is extracted
  * @see {@link Effect.Success} for extracting the success type from any `Effect`
  *
+ * @stability stable
  * @category utility types
  * @since 2.5.0
  */
@@ -544,6 +564,7 @@ export type Success<T> = [T] extends [Config<infer A>] ? A : never
  *
  * @see {@link unwrap} – construct a `Config` from a `Wrap<T>`
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -589,6 +610,7 @@ type IsPlainObject<A> = [A] extends [Record<string, any>]
  *
  * @see {@link Wrap} – the utility type accepted by this function
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -612,12 +634,22 @@ const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate
 
 const cursorToString = (): string => "<configuration>"
 
+// Rewrites each reason of a failure individually, so unrelated defects and
+// interruptions survive the conversion.
+const mapReasons =
+  <E, E2>(f: (reason: Cause.Reason<E>) => Cause.Reason<E2>) =>
+  <A, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E2, R> =>
+    Effect.catchCause(self, (cause) => Effect.failCause(Cause.fromReasons(cause.reasons.map(f))))
+
 const loadCursor: (
   provider: ConfigProvider.ConfigProvider,
   path: Path
 ) => Effect.Effect<ConfigCursor> = (provider, path) =>
   provider.load(path).pipe(
-    Effect.orDie,
+    // Source errors travel as defects so they bypass schema issue recovery; `schema` converts them back.
+    mapReasons<SourceError, never>((reason) =>
+      Cause.isFailReason(reason) ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason)) : reason
+    ),
     Effect.mapEager((node) => ({ provider, path, node, toString: cursorToString }))
   )
 
@@ -810,6 +842,7 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
  * @see {@link String} / {@link Number} / {@link Boolean} – shortcuts for
  *   single-value configs
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -836,7 +869,11 @@ export function schema<T>(codec: Schema.ConstraintCodec<T, unknown>, path?: stri
           })
         )
       ),
-      Effect.catchDefect((defect) => isSourceError(defect) ? Effect.fail(new ConfigError(defect)) : Effect.die(defect))
+      mapReasons((reason) =>
+        Cause.isDieReason(reason) && isSourceError(reason.defect)
+          ? Cause.makeFailReason(new ConfigError(reason.defect)).annotate(Cause.reasonAnnotations(reason))
+          : reason
+      )
     )
   })
 }
@@ -868,6 +905,7 @@ const isPath = (u: unknown): u is string | Path => Predicate.isString(u) || glob
  * Use when you need to re-raise a specific config error, such as inside
  * {@link orElse}.
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -896,6 +934,7 @@ export function fail(err: SourceError | Schema.SchemaError): Config<never> {
  * Effect.runSync(host.parse(provider)) // => "localhost"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -928,6 +967,7 @@ export function succeed<T>(value: T) {
  * @see {@link NonEmptyString} – rejects empty strings
  * @see {@link schema} – for more complex types
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -949,6 +989,7 @@ export function String(name?: string) {
  *
  * @see {@link String} for allowing empty strings
  *
+ * @stability stable
  * @category constructors
  * @since 3.7.0
  */
@@ -971,6 +1012,7 @@ export function NonEmptyString(name?: string) {
  * @see {@link Finite} for rejecting `NaN` and `Infinity`
  * @see {@link Int} for accepting only integers
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -992,6 +1034,7 @@ export function Number(name?: string) {
  * @see {@link Number} for accepting `NaN` and `Infinity`
  * @see {@link Int} for accepting only integers
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1013,6 +1056,7 @@ export function Finite(name?: string) {
  * @see {@link Number} for accepting any number
  * @see {@link Port} for accepting only integers in `1` through `65535`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1042,6 +1086,7 @@ export function Int(name?: string) {
  * ```
  *
  * @see {@link Literals} – accepts multiple literal values
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1072,6 +1117,7 @@ export function Literal<L extends SchemaAST.LiteralValue>(literal: L, name?: str
  *
  * @see {@link Literal} for accepting one specific literal value
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1105,6 +1151,7 @@ export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
  * ```
  *
  * @see {@link Record} for key-value input from structural records or separated strings.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1172,6 +1219,7 @@ export function Array<V extends Schema.ConstraintCodec<unknown, unknown>>(
  * ```
  *
  * @see {@link Array} for array input from structural arrays or separated strings.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1247,6 +1295,7 @@ export function Record<
  * ) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1289,6 +1338,7 @@ export function Boolean(name?: string) {
  *
  * @see {@link schema} for decoding configuration values with a custom codec
  *
+ * @stability stable
  * @category constructors
  * @since 2.5.0
  */
@@ -1304,6 +1354,7 @@ export function Duration(name?: string) {
  * Decimal symbols such as `kB` use powers of 1,000, while binary symbols such
  * as `KiB` use powers of 1,024.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1342,6 +1393,7 @@ export function ByteSize(name?: string) {
  *
  * @see {@link Int} for integer config values outside the port range
  *
+ * @stability stable
  * @category constructors
  * @since 3.16.0
  */
@@ -1379,6 +1431,7 @@ export function Port(name?: string) {
  * ) // => "Info"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1419,6 +1472,7 @@ export function LogLevel(name?: string) {
  *
  * @see {@link String} for non-secret string settings
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1461,6 +1515,7 @@ export function Redacted(name?: string) {
  *
  * @see {@link schema} for decoding configuration values with a custom codec
  *
+ * @stability stable
  * @category constructors
  * @since 3.11.0
  */
@@ -1494,6 +1549,7 @@ export function URL(name?: string) {
  * Effect.runSync(createdAt.parse(provider)).toISOString() // => "2024-01-15T00:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1549,6 +1605,7 @@ export function Date(name?: string) {
  * @see {@link all} – combine multiple configs into a struct
  * @see {@link schema} – read structured config from a schema
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */

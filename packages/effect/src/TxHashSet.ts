@@ -10,6 +10,7 @@
  * membership checks, set algebra, mapping, filtering, reducing, and conversion
  * back to `HashSet`.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -83,6 +84,7 @@ const TxHashSetProto = {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -117,6 +119,7 @@ export interface TxHashSet<in out V> extends Inspectable, Pipeable {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace TxHashSet {
@@ -175,6 +178,7 @@ const makeTxHashSet = <V>(ref: TxRef.TxRef<HashSet.HashSet<V>>): TxHashSet<V> =>
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -206,6 +210,7 @@ export const empty = <V = never>(): Effect.Effect<TxHashSet<V>> =>
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -240,15 +245,17 @@ export const make = <Values extends ReadonlyArray<any>>(
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterable = <V>(values: Iterable<V>): Effect.Effect<TxHashSet<V>> =>
-  Effect.gen(function*() {
-    const hashSet = HashSet.fromIterable(values)
+export const fromIterable = <V>(values: Iterable<V>): Effect.Effect<TxHashSet<V>> => {
+  const hashSet = HashSet.fromIterable(values)
+  return Effect.gen(function*() {
     const ref = yield* TxRef.make(hashSet)
     return makeTxHashSet(ref)
   })
+}
 
 /**
  * Creates a TxHashSet from an existing HashSet.
@@ -274,6 +281,7 @@ export const fromIterable = <V>(values: Iterable<V>): Effect.Effect<TxHashSet<V>
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -305,6 +313,7 @@ export const fromHashSet = <V>(hashSet: HashSet.HashSet<V>): Effect.Effect<TxHas
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -337,6 +346,7 @@ export const isTxHashSet = (u: unknown): u is TxHashSet<unknown> => hasProperty(
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -374,6 +384,7 @@ export const add: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -427,6 +438,7 @@ export const remove: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -464,6 +476,7 @@ export const has: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -492,6 +505,7 @@ export const size = <V>(self: TxHashSet<V>): Effect.Effect<number> =>
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -521,6 +535,7 @@ export const isEmpty = <V>(self: TxHashSet<V>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -551,6 +566,7 @@ export const isNonEmpty = <V>(self: TxHashSet<V>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -576,6 +592,7 @@ export const clear = <V>(self: TxHashSet<V>): Effect.Effect<void> => TxRef.set(s
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -618,6 +635,7 @@ export const union: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -660,6 +678,7 @@ export const intersection: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -704,6 +723,7 @@ export const difference: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -741,6 +761,7 @@ export const isSubset: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -777,6 +798,7 @@ export const some: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -816,6 +838,7 @@ export const every: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -851,6 +874,7 @@ export const map: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -908,6 +932,7 @@ export const filter: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -961,6 +986,7 @@ export const reduce: {
  * await Effect.runPromise(program)
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */

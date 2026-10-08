@@ -1,6 +1,7 @@
 /**
  * Deno implementation of Effect's `FileSystem` service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { copy as denoCopy, expandGlob, walk } from "@std/fs"
@@ -510,6 +511,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
 /**
  * Provides the `FileSystem` service backed by Deno filesystem APIs.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

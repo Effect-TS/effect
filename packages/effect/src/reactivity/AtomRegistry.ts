@@ -71,11 +71,13 @@ export interface AtomRegistry {
   readonly scheduler: Scheduler
   readonly schedulerAsync: Scheduler
   readonly getNodes: () => ReadonlyMap<Atom.Atom<any> | string, Node<any>>
+  readonly ensureNode: <A>(atom: Atom.Atom<A>) => Node<A>
   readonly get: <A>(atom: Atom.Atom<A>) => A
   readonly mount: <A>(atom: Atom.Atom<A>) => () => void
   readonly refresh: <A>(atom: Atom.Atom<A>) => void
   readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
   readonly setSerializable: (key: string, encoded: unknown) => void
+  readonly preloadedSerializable: Map<string, unknown>
   readonly modify: <R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]) => A
   readonly update: <R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W) => void
   readonly subscribe: <A>(atom: Atom.Atom<A>, f: (_: A) => void, options?: {
@@ -83,6 +85,7 @@ export interface AtomRegistry {
   }) => () => void
   readonly reset: () => void
   readonly dispose: () => void
+  scheduleNodeRemoval(node: Node<any>): void
   onNodeAdded?: ((node: Node<any>) => void) | undefined
   onNodeRemoved?: ((node: Node<any>) => void) | undefined
 }
@@ -102,10 +105,14 @@ export interface AtomRegistry {
 export interface Node<A> {
   readonly atom: Atom.Atom<A>
   readonly value: () => A
+  readonly valueOption: () => Option.Option<A>
+  readonly canBeRemoved: boolean
   parents: Set<Node<any>>
   children: Set<Node<any>>
   listeners: Set<() => void>
   currentState(): "uninitialized" | "stale" | "valid" | "removed"
+  setInitialValue(value: A): void
+  subscribe(listener: () => void): () => void
 }
 
 /**

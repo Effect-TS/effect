@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`0963a1c17f5be8e26676ed5ffc9c542bd26f97f0`)
+Base: `origin/v3` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `HEAD` (`072cdc42a84421694593035d65d0f3375d1a17fd`)
+Head: `HEAD` (`79b88977582fb715494d08405c73a47a593afced`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4152,9 +4152,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/ai-openai/OpenAiTelemetry`
 
-- `OpenAiTelemetry.AllAttributes` -> `OpenAiTelemetry.AllAttributes`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
+- `OpenAiTelemetry.AllAttributes` -> `none`: Removed. Use OpenAiTelemetry.OpenAiTelemetryAttributeOptions for the grouped options accepted by OpenAiTelemetry.addGenAIAnnotations, or OpenAiTelemetry.OpenAiTelemetryAttributes for the prefixed span attribute keys.
 
 - `OpenAiTelemetry.OpenAiTelemetryAttributeOptions` -> `OpenAiTelemetry.OpenAiTelemetryAttributeOptions`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
+
+- `OpenAiTelemetry.RequestAttributes` -> `OpenAiTelemetry.RequestAttributes`: Attributes are written under openai.request.\* instead of gen\_ai.openai.request.\*. responseFormat was removed; LanguageModel records gen\_ai.output.type for every provider.
+
+- `OpenAiTelemetry.WellKnownResponseFormat` -> `Telemetry.WellKnownOutputType`: The response format is no longer a telemetry option. LanguageModel records gen\_ai.output.type as text or json from the requested response format.
 
 - `OpenAiTelemetry.addGenAIAnnotations` -> `OpenAiTelemetry.addGenAIAnnotations`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
 
@@ -5063,6 +5067,18 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Response.toolResultPart` -> `Response.toolResultPart`: Moved to effect/ai/Response; providerName was removed and decoded tool results now require preliminary, normally false.
 
 - `Response.urlSourcePart` -> `Response.makePart("source", { ...params, sourceType: "url" })`: The lowercase convenience constructor was removed. The UrlSourcePart model remains, and the generic constructor now requires the URL source discriminator.
+
+### `@effect/ai/Telemetry`
+
+- `Telemetry.AllAttributes` -> `none`: Removed. Use Telemetry.GenAITelemetryAttributeOptions for the grouped options accepted by Telemetry.addGenAIAnnotations, or Telemetry.GenAITelemetryAttributes for the prefixed gen\_ai.\* span attribute keys.
+
+- `Telemetry.BaseAttributes` -> `Telemetry.ProviderAttributes`: gen\_ai.system was replaced by gen\_ai.provider.name. Pass provider: { name } instead of system; legacy system values are not mapped.
+
+- `Telemetry.GenAITelemetryAttributeOptions` -> `Telemetry.GenAITelemetryAttributeOptions`: The system and token options were removed. Use provider: { name } for gen\_ai.provider.name; gen\_ai.token.type has no span replacement. The new output option writes gen\_ai.output.type.
+
+- `Telemetry.TokenAttributes` -> `none`: Removed with the token option. gen\_ai.token.type is not a span attribute in the current OpenTelemetry GenAI conventions.
+
+- `Telemetry.WellKnownSystem` -> `Telemetry.WellKnownProviderName`: Values follow gen\_ai.provider.name: az.ai.inference, az.ai.openai, gemini, vertex\_ai and xai became azure.ai.inference, azure.ai.openai, gcp.gemini, gcp.vertex\_ai and x\_ai.
 
 ### `@effect/ai/Tool`
 
@@ -7956,6 +7972,12 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-bun/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service.
 
+- `SqliteClient.layer` -> `SqliteClient.layer`: The layer now has a SqlError error channel for database opening and initialization failures. Handle setup failures, or use Layer.orDie when they should remain fatal.
+
+- `SqliteClient.layerConfig` -> `SqliteClient.layerConfig`: The layer now fails with ConfigError | SqlError: configuration errors remain typed, and database opening and initialization failures are also typed. Handle SqlError as well, or use Layer.orDie if all setup failures should be fatal.
+
+- `SqliteClient.make` -> `SqliteClient.make`: Database opening and initialization now fail with SqlError instead of defects. Handle the typed setup error, or use Effect.orDie when setup failures should remain fatal.
+
 ### `@effect/sql-sqlite-do/SqliteClient`
 
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-do/SqliteClient#SqliteClientConfig`: Retained; db is optional and storage may be supplied, but one of db or storage is required at runtime.
@@ -7965,6 +7987,12 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClient`: Retained on node:sqlite, but the byte-export member was removed; use backup(destination) for file backup.
 
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClientConfig`: Retained; prepareCacheTTL now uses Duration.Input.
+
+- `SqliteClient.layer` -> `SqliteClient.layer`: The layer now has a SqlError error channel for database opening and initialization failures. Handle setup failures, or use Layer.orDie when they should remain fatal.
+
+- `SqliteClient.layerConfig` -> `SqliteClient.layerConfig`: The layer now fails with ConfigError | SqlError: configuration errors remain typed, and database opening and initialization failures are also typed. Handle SqlError as well, or use Layer.orDie if all setup failures should be fatal.
+
+- `SqliteClient.make` -> `SqliteClient.make`: Database opening and initialization now fail with SqlError instead of defects. Handle the typed setup error, or use Effect.orDie when setup failures should remain fatal.
 
 ### `@effect/sql-sqlite-react-native/SqliteClient`
 
@@ -14435,7 +14463,7 @@ Schema.toFormatter(schema)
 
 - `Schema.Number` -> `Schema.Number`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.NumberFromString` -> `Schema.NumberFromString`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.NumberFromString` -> `Schema.NumberFromString`: Decoding now uses JavaScript number coercion: unlike v3, `"abc"` decodes to `NaN`, while `""` and whitespace-only strings decode to `0`. `FiniteFromString` rejects non-finite results, so it rejects invalid strings but also the `"NaN"` and infinity spellings accepted by v3; it still decodes blank strings to `0`. Use a custom codec to preserve the v3 acceptance rules exactly.
 
 - `Schema.Object` -> `Schema.ObjectKeyword`: Rename the object keyword schema.
 
@@ -14923,9 +14951,9 @@ Schema.toFormatter(schema)
 
 - `Schema.optionalWith` -> `Schema.optional / Schema.optionalKey / Schema.withDecodingDefaultType`: Choose `optional` or `optionalKey`; use the decoding-default helpers and an explicit nullable transformation as required by the old options.
 
-- `Schema.parseJson` -> `Schema.UnknownFromJsonString / Schema.fromJsonString(schema)`: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
+- `Schema.parseJson` -> `Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)`: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 
-- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec.
+- `Schema.parseNumber` -> `Schema.NumberFromString`: Use the built-in string-to-number codec. Unlike v3 `parseNumber`, invalid strings decode to `NaN`, while blank strings decode to `0`. `FiniteFromString` rejects non-finite results but also the `"NaN"` and infinity spellings accepted by v3; exact compatibility requires a custom codec.
 
 - `Schema.partial` -> `schema.mapFields(Struct.map(Schema.optional))`: Map struct fields with `Schema.optional`.
 
@@ -15111,7 +15139,7 @@ Schema.toFormatter(schema)
 
 - `SchemaAST.ParseIssueTitleAnnotationId` -> `none`: The symbol annotation was removed; use message or expected annotations.
 
-- `SchemaAST.ParseJsonSchemaId` -> `Schema.UnknownFromJsonString`: Use the built-in JSON string codec instead of checking the old schema ID.
+- `SchemaAST.ParseJsonSchemaId` -> `Schema.fromJsonString(Schema.Unknown)`: Use the built-in JSON string codec instead of checking the old schema ID.
 
 - `SchemaAST.ParseOptions` -> `SchemaAST.ParseOptions`: Pass parsing options at runtime. onExcessProperty supports ignore or error, not preserve; model extra values with an explicit Record or StructWithRest. propertyOrder was removed. concurrency follows Effect.forEach semantics for tuple, array, struct, record, and struct-with-rest children, applies independently at each nested product, and does not make Union candidates concurrent. Output key order is unspecified, including in values passed to checks. Handle required presentation or serialization order explicitly outside the parser.
 

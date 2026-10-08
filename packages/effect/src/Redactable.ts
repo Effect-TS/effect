@@ -6,6 +6,7 @@
  * Typical use cases include masking secrets, tokens, or personal data in logs, traces,
  * and serialized output.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Context from "./Context.ts"
@@ -45,6 +46,7 @@ import { hasProperty } from "./Predicate.ts"
  *
  * @see {@link Redactable} for the interface this symbol belongs to
  * @see {@link isRedactable} to check whether a value has this symbol
+ * @stability stable
  * @category symbols
  * @since 3.10.0
  */
@@ -82,6 +84,7 @@ export const symbolRedactable: unique symbol = Symbol.for("~effect/Redactable")
  * @see {@link symbolRedactable} for the symbol key to implement
  * @see {@link redact} to apply redaction to any value
  * @see {@link isRedactable} for the type guard for this interface
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -99,6 +102,7 @@ export interface Redactable {
  *
  * @see {@link Redactable} for the interface being checked
  * @see {@link redact} to apply redaction if the value is redactable
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -125,6 +129,7 @@ export const isRedactable = (u: unknown): u is Redactable => hasProperty(u, symb
  *
  * @see {@link isRedactable} to check before redacting
  * @see {@link getRedacted} for the lower-level variant for known redactables
+ * @stability stable
  * @category destructors
  * @since 3.10.0
  */
@@ -153,6 +158,7 @@ export function redact(u: unknown): unknown {
  *
  * @see {@link redact} for the higher-level variant that handles non-redactable values
  * @see {@link isRedactable} for the type guard to verify before calling this
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */

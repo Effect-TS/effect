@@ -6,6 +6,7 @@
  * the same list object in place and keep its `length` field current. Taking
  * from an empty list returns the `Empty` symbol.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
@@ -30,6 +31,7 @@ import * as Count from "./internal/count.ts"
  * list.length // => 0
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -43,6 +45,7 @@ export interface MutableList<in out A> {
  * The MutableList namespace contains type definitions and utilities for working
  * with mutable linked lists.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace MutableList {
@@ -103,6 +106,7 @@ export declare namespace MutableList {
  * MutableList.take(list) === MutableList.Empty // => true
  * ```
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -129,6 +133,7 @@ export const Empty: unique symbol = Symbol.for("effect/MutableList/Empty")
  * takeAndDouble(list) // => 10
  * ```
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -150,6 +155,7 @@ export type Empty = typeof Empty
  * list.length // => 0
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -202,6 +208,7 @@ const emptyBucket = <A = never>(): MutableList.Bucket<A> => ({
  * list.length // => 3
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -234,6 +241,7 @@ export const append = <A>(self: MutableList<A>, message: A): void => {
  * MutableList.toArray(list) // => ["first", "second", "third", "last"]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -266,6 +274,7 @@ export const prepend = <A>(self: MutableList<A>, message: A): void => {
  * MutableList.toArray(list) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -299,6 +308,7 @@ export const prependAll = <A>(self: MutableList<A>, messages: Iterable<A>): void
  * MutableList.toArray(list) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -334,6 +344,7 @@ export const prependAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArra
  * list.length // => 5
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -368,6 +379,7 @@ export const appendAll = <A>(self: MutableList<A>, messages: Iterable<A>): numbe
  * MutableList.toArray(list) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -409,6 +421,7 @@ export const appendAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArray
  * MutableList.take(list) === MutableList.Empty // => true
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -440,6 +453,7 @@ export const clear = <A>(self: MutableList<A>): void => {
  * list.length // => 7
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -493,6 +507,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
  * @see {@link takeN} for removing up to `n` values and returning them as an array
  * @see {@link clear} for removing every value from the list
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -538,6 +553,7 @@ export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
  * list.length // => 0
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -561,6 +577,7 @@ export const takeAll = <A>(self: MutableList<A>): Array<A> => takeN(self, self.l
  * list.length // => 2
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -598,6 +615,7 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
  *
  * @see {@link takeN} for removing up to `n` values and returning them as an array
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -629,6 +647,7 @@ export const toArrayN = <A>(self: MutableList<A>, n: number): Array<A> => {
  *
  * @see {@link takeAll} for converting all elements to an array and clearing the list
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -652,6 +671,7 @@ export const toArray = <A>(self: MutableList<A>): Array<A> => toArrayN(self, sel
  * MutableList.toArray(list) // => [2, 4, 6, 8, 10]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -711,6 +731,7 @@ export const filter = <A>(self: MutableList<A>, f: (value: A, i: number) => bool
  * MutableList.toArray(list) // => ["banana", "cherry"]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */

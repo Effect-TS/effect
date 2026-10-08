@@ -108,6 +108,13 @@ export interface LanguageModel {
   readonly [TypeId]: TypeId
 
   /**
+   * Whether the effective provider configuration supports system messages in
+   * history. Evaluate in the request's context to respect scoped overrides.
+   * Placement restrictions may apply; an absent capability means unknown support.
+   */
+  readonly supportsSystemMessagesInHistory?: Effect.Effect<boolean> | undefined
+
+  /**
    * Generate text using the language model.
    */
   readonly generateText: {
@@ -833,6 +840,9 @@ export const make: (params: {
    * for structured output generation.
    */
   readonly codecTransformer?: CodecTransformer | undefined
+
+  /** Whether the effective provider configuration supports system messages in history. */
+  readonly supportsSystemMessagesInHistory?: Effect.Effect<boolean> | undefined
 }) => Effect.Effect<LanguageModel> = Effect.fnUntraced(function*(params) {
   const codecTransformer = params.codecTransformer ?? defaultCodecTransformer
 
@@ -859,12 +869,7 @@ export const make: (params: {
   > =>
     Effect.useSpan(
       "LanguageModel.generateText",
-      {
-        attributes: {
-          concurrency: options.concurrency,
-          toolChoice: options.toolChoice
-        }
-      },
+      { kind: "client" },
       Effect.fnUntraced(
         function*(span) {
           const spanTransformer = yield* getSpanTransformer
@@ -920,11 +925,8 @@ export const make: (params: {
     return Effect.useSpan(
       "LanguageModel.generateObject",
       {
-        attributes: {
-          objectName,
-          concurrency: options.concurrency,
-          toolChoice: options.toolChoice
-        }
+        kind: "client",
+        attributes: { "effect.ai.object_name": objectName }
       },
       Effect.fnUntraced(
         function*(span) {
@@ -996,12 +998,7 @@ export const make: (params: {
       Tools extends Record<string, Tool.Any>,
       Options extends NoExcessProperties<GenerateTextOptions<Tools>, Options>
     >(options: Options & GenerateTextOptions<Tools>) {
-      const span = yield* Effect.makeSpanScoped("LanguageModel.streamText", {
-        attributes: {
-          concurrency: options.concurrency,
-          toolChoice: options.toolChoice
-        }
-      })
+      const span = yield* Effect.makeSpanScoped("LanguageModel.streamText", { kind: "client" })
 
       const providerOptions: Mutable<ProviderOptions> = {
         prompt: Prompt.make(options.prompt),
@@ -1073,7 +1070,7 @@ export const make: (params: {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
     const concurrency = options.concurrency ?? "unbounded"
-    providerOptions.span.attribute("concurrency", concurrency)
+    annotateRequestOptions(providerOptions, toolChoice, concurrency)
 
     const generateWithNonIncrementalFallback = () => {
       const requestOptions: ProviderOptions = {
@@ -1326,7 +1323,7 @@ export const make: (params: {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
     const concurrency = options.concurrency ?? "unbounded"
-    providerOptions.span.attribute("concurrency", concurrency)
+    annotateRequestOptions(providerOptions, toolChoice, concurrency)
 
     const streamWithNonIncrementalFallback = () => {
       const requestOptions: ProviderOptions = {
@@ -1749,6 +1746,7 @@ export const make: (params: {
 
   return LanguageModel.of({
     [TypeId]: TypeId,
+    supportsSystemMessagesInHistory: params.supportsSystemMessagesInHistory,
     generateText: generateText as LanguageModel["generateText"],
     generateObject: generateObject as LanguageModel["generateObject"],
     streamText: streamText as LanguageModel["streamText"]
@@ -2417,18 +2415,32 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
+// Stable parameter-mode copies let Response reuse each tool's part schemas.
+const parameterModeTools = new WeakMap<Tool.Any, { encoded?: Tool.Any; opaque?: Tool.Any }>()
+
+const withParameterMode = (tool: Tool.Any, mode: "encoded" | "opaque"): Tool.Any => {
+  let tools = parameterModeTools.get(tool)
+  if (tools === undefined) {
+    tools = {}
+    parameterModeTools.set(tool, tools)
+  }
+  return tools[mode] ??= tool.setParameters(
+    mode === "encoded" ? Schema.toEncoded(tool.parametersSchema) : Schema.Unknown
+  )
+}
+
 const makeToolkitWithEncodedParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.toEncoded(tool.parametersSchema)))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "encoded"))
   )
 
 const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>
 ): Toolkit.Any =>
   Toolkit.make(
-    ...Object.values(toolkit.tools).map((tool) => tool.setParameters(Schema.Unknown))
+    ...Object.values(toolkit.tools).map((tool) => withParameterMode(tool, "opaque"))
   )
 
 // Provider-executed tools bypass Toolkit, so validate their parameters here.
@@ -2459,6 +2471,16 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
   (Effect.isEffect(toolkit)
     ? toolkit
     : Effect.succeed(toolkit as unknown as Toolkit.WithHandler<Tools>)) as any
+
+const annotateRequestOptions = (
+  { responseFormat, span }: ProviderOptions,
+  toolChoice: ToolChoice<any>,
+  concurrency: Concurrency
+): void => {
+  span.attribute("gen_ai.output.type", responseFormat.type)
+  span.attribute("effect.ai.tool_choice", typeof toolChoice === "string" ? toolChoice : JSON.stringify(toolChoice))
+  span.attribute("effect.ai.concurrency", concurrency)
+}
 
 /**
  * @internal

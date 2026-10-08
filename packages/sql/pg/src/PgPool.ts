@@ -1,6 +1,7 @@
 /**
  * Pools of native `PgConnection` sessions.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Clock from "effect/Clock"
@@ -18,6 +19,7 @@ const defaultMultiplexConcurrency = 32
 /**
  * The runtime type identifier for `PgPool`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -26,6 +28,7 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgPool"
 /**
  * The type-level identifier for `PgPool`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -36,7 +39,7 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  *
  * **Details**
  *
- * The defaults are 0 to 10 connections and a 10-second idle timeout.
+ * The defaults are 0 to 10 connections and a 60-second idle timeout.
  * `connectionTTL` replaces connections that exceed the configured lifetime.
  * Every connection is used at least once, so a TTL of zero disables reuse.
  *
@@ -44,6 +47,7 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  * queries. Reserved connections remain exclusive. Without multiplexing, every
  * checkout is exclusive.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -64,6 +68,7 @@ export interface Config extends PgConnection.Config {
 /**
  * A PostgreSQL session pool.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -104,6 +109,7 @@ export interface PgPool {
 /**
  * The service tag for `PgPool`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -118,6 +124,7 @@ export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
  * `minConnections` after `idleTimeout` without use. Closing the scope shuts
  * the pool down and releases every session.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -160,7 +167,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     concurrency: multiplex
       ? Math.max(1, options.multiplexConcurrency ?? defaultMultiplexConcurrency)
       : 1,
-    timeToLive: options.idleTimeout ?? Duration.seconds(10),
+    timeToLive: options.idleTimeout ?? Duration.seconds(60),
     timeToLiveStrategy: "usage"
   })
 

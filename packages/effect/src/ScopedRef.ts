@@ -7,6 +7,7 @@
  * value. Reads can be effectful or synchronous, and updates are synchronized so
  * only one replacement happens at a time.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Effect from "./Effect.ts"
@@ -32,6 +33,7 @@ const TypeId = "~effect/ScopedRef"
  * later replace it with another acquired value while ensuring the previous
  * value is released.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -78,6 +80,7 @@ const isClosed = (scope: Scope.Scope): boolean => scope.state._tag === "Closed"
  * resources that must be released.
  *
  * @see {@link make} for creating a `ScopedRef` from a value that does not require resource acquisition
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -106,6 +109,7 @@ export const fromAcquire: <A, E, R>(
  *
  * @see {@link get} for Effect-wrapped access in Effect programs
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -121,6 +125,7 @@ export const getUnsafe = <A>(self: ScopedRef<A>): A => self.backing.backing.ref.
  *
  * @see {@link getUnsafe} for reading the current value synchronously when an unsafe read is acceptable
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -148,6 +153,7 @@ export const get = <A>(self: ScopedRef<A>): Effect.Effect<A> => Effect.sync(() =
  * @see {@link fromAcquire} for creating a `ScopedRef` from an effect that acquires the initial value
  * @see {@link set} for replacing the current value with a newly acquired value
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -169,6 +175,7 @@ export const make = <A>(evaluate: LazyArg<A>): Effect.Effect<ScopedRef<A>, never
  * changed to the new value, with old resources released, or until the attempt
  * to acquire a new value fails.
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */

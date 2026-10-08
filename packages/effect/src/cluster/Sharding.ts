@@ -1459,8 +1459,10 @@ const make = Effect.gen(function*() {
               // for durable messages, we ignore interrupts on shutdown or as a
               // result of a shard being resassigned
               const caller = Context.getOption(entry.context, CurrentAddress).valueOrUndefined
+              const singletonShard = Context.getOption(entry.context, SingletonShardTag).valueOrUndefined
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
-                (caller !== undefined && ActiveTeardown.isActive(caller))
+                (caller !== undefined && ActiveTeardown.isActive(caller)) ||
+                (singletonShard !== undefined && ActiveTeardown.isShardActive(singletonShard))
               if (isTransientInterrupt && Context.get(entry.message.annotations, Persisted)) {
                 return Effect.void
               }
@@ -1589,7 +1591,7 @@ const make = Effect.gen(function*() {
         Effect.andThen(Effect.never),
         Effect.scoped,
         Effect.provideService(CurrentLogAnnotations, {}),
-        Effect.provideContext(services),
+        Effect.provideContext(Context.add(services, SingletonShardTag, address.shardId)),
         Effect.orDie,
         Effect.interruptible
       ) as Effect.Effect<never>
@@ -1852,3 +1854,4 @@ export const layer: Layer.Layer<
 // Utilities
 
 const ClientAddressTag = Context.Service<EntityAddress>("effect/cluster/Sharding/ClientAddress")
+const SingletonShardTag = Context.Service<ShardId>("effect/cluster/Sharding/SingletonShard")

@@ -8,6 +8,7 @@
  * used by modules such as `Effect`, `Option`, and `Result` to type their
  * `gen` APIs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { Kind, TypeLambda } from "./HKT.ts"
@@ -45,6 +46,7 @@ import type * as Types from "./Types.ts"
  * ```
  *
  * @see {@link Gen} for the type-level signature that relies on `SingleShotGen`
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -113,6 +115,7 @@ export class SingleShotGen<T, A> implements Iterator<T, A> {
  * ```
  *
  * @see {@link Gen} for the type-level signature that uses `Variance`
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -153,6 +156,7 @@ export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
  *
  * @see {@link Variance} for encoding the variance used for inference
  * @see {@link SingleShotGen} for the iterator protocol that makes yielding work
+ * @stability stable
  * @category models
  * @since 2.0.0
  */

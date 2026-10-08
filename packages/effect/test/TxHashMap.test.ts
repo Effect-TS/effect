@@ -1,8 +1,28 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Hash, HashMap, Option, Result, TxHashMap } from "effect"
+import { Effect, Fiber, Hash, HashMap, Option, Result, TxHashMap, TxRef } from "effect"
 
 describe("TxHashMap", () => {
   describe("constructors", () => {
+    it.effect("fromIterable preserves a one-shot iterable across transaction retries", () =>
+      Effect.gen(function*() {
+        const gate = yield* TxRef.make(false)
+        const operation = TxHashMap.fromIterable((function*() {
+          yield ["a", 1] as const
+          yield ["b", 2] as const
+        })())
+        const fiber = yield* Effect.forkChild(
+          Effect.tx(Effect.gen(function*() {
+            const txMap = yield* operation
+            if (!(yield* TxRef.get(gate))) return yield* Effect.txRetry
+            return txMap
+          })),
+          { startImmediately: true }
+        )
+        yield* TxRef.set(gate, true)
+        const txMap = yield* Fiber.join(fiber)
+        assert.deepStrictEqual((yield* TxHashMap.toEntries(txMap)).sort(), [["a", 1], ["b", 2]])
+      }))
+
     it.effect("empty", () =>
       Effect.tx(Effect.gen(function*() {
         const txMap = yield* TxHashMap.empty<string, number>()
@@ -26,6 +46,20 @@ describe("TxHashMap", () => {
         assert.deepStrictEqual(b, Option.some(2))
         assert.deepStrictEqual(c, Option.some(3))
       })))
+
+    it.effect("fromIterable creates independent maps on each execution", () =>
+      Effect.gen(function*() {
+        const make = TxHashMap.fromIterable((function*() {
+          yield ["a", 1] as const
+        })())
+        const first = yield* Effect.tx(make)
+        yield* Effect.tx(TxHashMap.clear(first))
+        const second = yield* Effect.tx(make)
+
+        assert.strictEqual(yield* Effect.tx(TxHashMap.size(second)), 1)
+        assert.deepStrictEqual(yield* Effect.tx(TxHashMap.get(second, "a")), Option.some(1))
+        assert.strictEqual(yield* Effect.tx(TxHashMap.size(first)), 0)
+      }))
 
     it.effect("fromIterable", () =>
       Effect.tx(Effect.gen(function*() {
@@ -279,6 +313,29 @@ describe("TxHashMap", () => {
         assert.deepStrictEqual(c, Option.some(3))
       })))
 
+    it.effect("removeMany preserves a one-shot iterable across transaction retries", () =>
+      Effect.gen(function*() {
+        const txMap = yield* TxHashMap.make(["a", 1], ["b", 2], ["c", 3])
+        const gate = yield* TxRef.make(false)
+        const operation = TxHashMap.removeMany(
+          txMap,
+          (function*() {
+            yield "a"
+            yield "b"
+          })()
+        )
+        const fiber = yield* Effect.forkChild(
+          Effect.tx(Effect.gen(function*() {
+            yield* operation
+            if (!(yield* TxRef.get(gate))) return yield* Effect.txRetry
+          })),
+          { startImmediately: true }
+        )
+        yield* TxRef.set(gate, true)
+        yield* Fiber.join(fiber)
+        assert.deepStrictEqual(yield* TxHashMap.toEntries(txMap), [["c", 3]])
+      }))
+
     it.effect("removeMany", () =>
       Effect.tx(Effect.gen(function*() {
         const txMap = yield* TxHashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
@@ -296,6 +353,29 @@ describe("TxHashMap", () => {
         assert.strictEqual(hasC, true)
         assert.strictEqual(hasD, false)
       })))
+
+    it.effect("setMany preserves a one-shot iterable across transaction retries", () =>
+      Effect.gen(function*() {
+        const txMap = yield* TxHashMap.make(["a", 0], ["c", 3])
+        const gate = yield* TxRef.make(false)
+        const operation = TxHashMap.setMany(
+          txMap,
+          (function*() {
+            yield ["a", 1] as const
+            yield ["b", 2] as const
+          })()
+        )
+        const fiber = yield* Effect.forkChild(
+          Effect.tx(Effect.gen(function*() {
+            yield* operation
+            if (!(yield* TxRef.get(gate))) return yield* Effect.txRetry
+          })),
+          { startImmediately: true }
+        )
+        yield* TxRef.set(gate, true)
+        yield* Fiber.join(fiber)
+        assert.deepStrictEqual((yield* TxHashMap.toEntries(txMap)).sort(), [["a", 1], ["b", 2], ["c", 3]])
+      }))
 
     it.effect("setMany", () =>
       Effect.tx(Effect.gen(function*() {

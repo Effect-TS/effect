@@ -6,6 +6,7 @@
  * `make` as the concrete service value and `layer` for providing it through
  * Effect context.
  *
+ * @stability unstable
  * @since 1.0.0
  */
 import * as EffectCrypto from "effect/Crypto"
@@ -43,6 +44,7 @@ const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
 /**
  * The default Node.js Crypto service implementation.
  *
+ * @stability unstable
  * @category constructors
  * @since 1.0.0
  */
@@ -54,6 +56,7 @@ export const make: EffectCrypto.Crypto = EffectCrypto.make({
 /**
  * Layer that provides the Node.js Crypto service implementation.
  *
+ * @stability unstable
  * @category layers
  * @since 1.0.0
  */

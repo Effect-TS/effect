@@ -7,6 +7,7 @@
  * union, intersection, difference, subset checks, mapping, filtering, and
  * reducing helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -45,6 +46,7 @@ const TypeId = internal.HashSetTypeId
  * smaller // => HashSet.make("apple", "cherry")
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -74,6 +76,7 @@ export interface HashSet<out Value> extends Iterable<Value>, Equal, Pipeable, In
  * processFruit("apple") // => "Processing apple"
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace HashSet {
@@ -122,6 +125,7 @@ export declare namespace HashSet {
  * withValues // => HashSet.make("hello", "world")
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -142,6 +146,7 @@ export const empty: <V = never>() => HashSet<V> = internal.empty
  * HashSet.make("hello", 42, true) // => HashSet.make("hello", 42, true)
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -164,6 +169,7 @@ export const make: <Values extends ReadonlyArray<any>>(
  * HashSet.fromIterable("hello") // => HashSet.make("h", "e", "l", "o")
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -185,6 +191,7 @@ export const fromIterable: <V>(values: Iterable<V>) => HashSet<V> = internal.fro
  * HashSet.isHashSet(null) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -212,6 +219,7 @@ export const isHashSet: {
  * HashSet.add(set, "a") // => HashSet.make("a", "b")
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -254,6 +262,7 @@ export const add: {
  * HashSet.has(people, new Person("Alice")) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -284,6 +293,7 @@ export const has: {
  * HashSet.remove(set, "d") // => HashSet.make("a", "b", "c")
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -310,6 +320,7 @@ export const remove: {
  * HashSet.size(HashSet.fromIterable(["x", "y", "z", "x", "y"])) // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -328,6 +339,7 @@ export const size: <V>(self: HashSet<V>) => number = internal.size
  * HashSet.isEmpty(HashSet.make("a")) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -344,6 +356,7 @@ export const isEmpty: <V>(self: HashSet<V>) => boolean = internal.isEmpty
  * HashSet.union(HashSet.make("a", "b"), HashSet.make("b", "c")) // => HashSet.make("a", "b", "c")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -366,6 +379,7 @@ export const union: {
  * HashSet.intersection(HashSet.make("a", "b", "c"), HashSet.make("b", "c", "d")) // => HashSet.make("b", "c")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -388,6 +402,7 @@ export const intersection: {
  * HashSet.difference(HashSet.make("a", "b", "c"), HashSet.make("b", "d")) // => HashSet.make("a", "c")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -417,6 +432,7 @@ export const difference: {
  * HashSet.isSubset(small, small) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -447,6 +463,7 @@ export const isSubset: {
  * lengths // => HashSet.make(5, 6)
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -469,6 +486,7 @@ export const map: {
  * HashSet.filter(HashSet.make(1, 2, 3, 4, 5, 6), (n) => n % 2 === 0) // => HashSet.make(2, 4, 6)
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -504,6 +522,7 @@ export const filter: {
  * HashSet.some(HashSet.empty<number>(), (n) => n > 0) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -531,6 +550,7 @@ export const some: {
  * HashSet.every(HashSet.empty<number>(), (n) => n > 0) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -554,6 +574,7 @@ export const every: {
  * HashSet.reduce(numbers, 0, (acc, n) => acc + n) // => 15
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */

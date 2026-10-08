@@ -3,21 +3,28 @@
  *
  * The SQL-backed `RunnerStorage` records runners, health flags, machine ids,
  * and shard locks so multiple processes can coordinate which runner owns each
- * shard. This module creates the required runner and lock tables, supports an
+ * shard. This module migrates the required runner and lock tables, supports an
  * optional table prefix, uses advisory locks for PostgreSQL and MySQL when
  * enabled, and provides constructors and layers for the storage service.
+ *
+ * `layer`, `layerWith`, and `make` run the migrations before building the
+ * storage. To run migrations with a different connection, such as a schema
+ * owner in a deploy step, use `layerMigrations` there and `layerStorage` in the
+ * runtime.
  *
  * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Cause from "../Cause.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
+import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
+import type { Connection } from "../sql/SqlConnection.ts"
 import type { SqlError } from "../sql/SqlError.ts"
 import type * as Statement from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
@@ -40,36 +47,7 @@ const postgresLockNamespace = (prefix: string): number => {
   return hash | 0
 }
 
-/**
- * Creates a SQL-backed `RunnerStorage` implementation for registered runners and
- * shard locks, using the configured table prefix and advisory locks where
- * supported and enabled.
- *
- * **When to use**
- *
- * Use to create a SQL-backed `RunnerStorage` value directly when building
- * custom service or layer composition around the storage implementation.
- *
- * **Details**
- *
- * When `prefix` is omitted, `make` uses the `cluster` prefix, creating
- * `cluster_runners` and `cluster_locks`. PostgreSQL and MySQL use advisory
- * locks unless `ShardingConfig.shardLockDisableAdvisory` is enabled; other
- * dialects use rows in the locks table.
- *
- * **Gotchas**
- *
- * Changing `prefix` changes both generated table names, so runners using
- * different prefixes do not share registrations or shard locks.
- *
- * @see {@link layer} for the default SQL-backed storage layer
- * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const make = Effect.fnUntraced(function*(options: {
+const makeStorage = Effect.fnUntraced(function*(options: {
   readonly prefix?: string | undefined
 }) {
   const config = yield* ShardingConfig.ShardingConfig
@@ -156,143 +134,34 @@ export const make = Effect.fnUntraced(function*(options: {
     )
   })
 
-  let lockConnRebuilding = false
-  // Incremented every time the reserved connection is replaced, so failures
-  // from operations that ran on an already replaced connection do not trigger
-  // another rebuild.
-  let lockConnGeneration = 0
-  const rebuildLockConn = (generation: number) => {
-    if (
-      !lockConn ||
-      lockConnRebuilding ||
-      generation !== lockConnGeneration ||
-      lockConn.state.current._tag === "Closed"
-    ) return Effect.void
-    lockConnRebuilding = true
-    // The rebuild starts by closing the previous scope, releasing the
-    // unresponsive connection back to the pool. Bound it with `withDeadline`
-    // so a release that never completes cannot leave `lockConnRebuilding` set
-    // forever, which would disable every subsequent rebuild.
-    return withDeadline(lockConn.rebuildUnsafe()).pipe(
+  const rebuildLockConn = (from?: readonly [Connection, number]) => {
+    const rebuild = lockConn?.rebuildUnsafe({ from })
+    if (!rebuild) return Effect.void
+    // Bound release so a stalled connection cannot block subsequent rebuilds.
+    return withDeadline(rebuild).pipe(
       Effect.exit,
-      Effect.tap((exit) =>
-        Effect.sync(() => {
-          if (Exit.isSuccess(exit) && lockConn.state.current._tag === "Acquired") {
-            lockConnGeneration++
-          }
-        })
-      ),
-      Effect.ensuring(Effect.sync(() => {
-        lockConnRebuilding = false
-      })),
       Effect.forkIn(layerScope, { startImmediately: true }),
       Effect.asVoid
     )
   }
-  // Rebuild the reserved connection when `effect` fails on it. Failures keep
-  // scheduling rebuilds, so a rebuilt connection that is also unresponsive is
-  // replaced again.
-  const onErrorRebuildLockConn = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.suspend(() => {
-      const generation = lockConnGeneration
-      return Effect.onError(effect, () => rebuildLockConn(generation))
-    })
+  // SQL failures replace the held connection; deadlines are handled by withLockOperationDeadline.
+  const useLockConn = <A, E, R>(
+    f: (conn: Connection, pid: number) => Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R> =>
+    Effect.flatMap(
+      lockConn!.await,
+      (held) =>
+        Effect.onError(
+          f(held[0], held[1]),
+          (cause) => Cause.hasInterruptsOnly(cause) ? Effect.void : rebuildLockConn(held)
+        )
+    )
 
   const runnersTable = table("runners")
   const runnersTableSql = sql(runnersTable)
 
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF OBJECT_ID(N'${runnersTableSql}', N'U') IS NULL
-        CREATE TABLE ${runnersTableSql} (
-          machine_id INT IDENTITY PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          runner TEXT NOT NULL,
-          healthy BIT NOT NULL DEFAULT 1,
-          last_heartbeat DATETIME NOT NULL DEFAULT GETDATE(),
-          UNIQUE(address)
-        )
-      `,
-    mysql: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
-          machine_id INT AUTO_INCREMENT PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          runner TEXT NOT NULL,
-          healthy BOOLEAN NOT NULL DEFAULT TRUE,
-          last_heartbeat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(address)
-        )
-      `,
-    pg: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
-          machine_id SERIAL PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          runner TEXT NOT NULL,
-          healthy BOOLEAN NOT NULL DEFAULT TRUE,
-          last_heartbeat TIMESTAMP NOT NULL DEFAULT NOW(),
-          UNIQUE(address)
-        )
-      `,
-    orElse: () =>
-      // sqlite
-      sql`
-        CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
-          machine_id INTEGER PRIMARY KEY AUTOINCREMENT,
-          address TEXT NOT NULL,
-          runner TEXT NOT NULL,
-          healthy INTEGER NOT NULL DEFAULT 1,
-          last_heartbeat DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-          UNIQUE(address)
-        )
-      `
-  })
-
   const locksTable = table("locks")
   const locksTableSql = sql(locksTable)
-
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF OBJECT_ID(N'${locksTableSql}', N'U') IS NULL
-        CREATE TABLE ${locksTableSql} (
-          shard_id VARCHAR(50) PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          acquired_at DATETIME NOT NULL
-        )
-      `,
-    mysql: () =>
-      disableAdvisoryLocks ?
-        sql`
-          CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-            shard_id VARCHAR(50) PRIMARY KEY,
-            address VARCHAR(255) NOT NULL,
-            acquired_at DATETIME NOT NULL
-          )
-        ` :
-        Effect.void,
-    pg: () =>
-      disableAdvisoryLocks ?
-        sql`
-          CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-            shard_id VARCHAR(50) PRIMARY KEY,
-            address VARCHAR(255) NOT NULL,
-            acquired_at TIMESTAMP NOT NULL
-          )
-        ` :
-        Effect.void,
-    orElse: () =>
-      // sqlite
-      sql`
-        CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-          shard_id TEXT PRIMARY KEY,
-          address TEXT NOT NULL,
-          acquired_at DATETIME NOT NULL
-        )
-      `
-  })
 
   const sqlNowString = sql.onDialectOrElse({
     pg: () => "NOW()",
@@ -378,30 +247,21 @@ export const make = Effect.fnUntraced(function*(options: {
   const execWithLockConn = <A>(effect: Statement.Statement<A>): Effect.Effect<unknown, SqlError> => {
     if (!lockConn) return effect
     const [query, params] = effect.compile()
-    return lockConn.await.pipe(
-      Effect.flatMap(([conn]) => conn.executeRaw(query, params)),
-      onErrorRebuildLockConn
-    )
+    return useLockConn((conn) => conn.executeRaw(query, params))
   }
   const execWithLockConnUnprepared = <A>(
     effect: Statement.Statement<A>
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<any>>, SqlError> => {
     if (!lockConn) return effect.values
     const [query, params] = effect.compile()
-    return lockConn.await.pipe(
-      Effect.flatMap(([conn]) => conn.executeUnprepared(query, params, undefined)),
-      onErrorRebuildLockConn
-    )
+    return useLockConn((conn) => conn.executeUnprepared(query, params, undefined))
   }
   const execWithLockConnValues = <A>(
     effect: Statement.Statement<A>
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<any>>, SqlError> => {
     if (!lockConn) return effect.values
     const [query, params] = effect.compile()
-    return lockConn.await.pipe(
-      Effect.flatMap(([conn]) => conn.executeValues(query, params)),
-      onErrorRebuildLockConn
-    )
+    return useLockConn((conn) => conn.executeValues(query, params))
   }
 
   const acquireLock = sql.onDialectOrElse({
@@ -425,33 +285,33 @@ export const make = Effect.fnUntraced(function*(options: {
           )
         }
       }
-      return Effect.fnUntraced(function*(_address: string, shardIds: ReadonlyArray<string>) {
-        const [conn, pid] = yield* lockConn!.await
-        const acquiredShardIds: Array<string> = []
-        const toAcquire = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
-        const takenLocks = yield* conn.executeValues(
-          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} ORDER BY objid`,
-          []
-        )
-        for (let i = 0; i < takenLocks.length; i++) {
-          const lockNum = takenLocks[i][0] as number
-          const shardId = toAcquire.get(lockNum)
-          if (shardId === undefined) continue
-          acquiredShardIds.push(shardId)
-          toAcquire.delete(lockNum)
-        }
-        if (toAcquire.size === 0) {
-          return acquiredShardIds
-        }
-        const rows = yield* conn.executeUnprepared(`SELECT ${pgLocks(toAcquire)}`, [], undefined)
-        const results = rows[0] as Record<string, boolean>
-        for (const shardId in results) {
-          if (results[shardId]) {
+      return (_address: string, shardIds: ReadonlyArray<string>) =>
+        useLockConn(Effect.fnUntraced(function*(conn, pid) {
+          const acquiredShardIds: Array<string> = []
+          const toAcquire = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
+          const takenLocks = yield* conn.executeValues(
+            `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objsubid = 2 AND pid = ${pid} ORDER BY objid`,
+            []
+          )
+          for (let i = 0; i < takenLocks.length; i++) {
+            const lockNum = takenLocks[i][0] as number
+            const shardId = toAcquire.get(lockNum)
+            if (shardId === undefined) continue
             acquiredShardIds.push(shardId)
+            toAcquire.delete(lockNum)
           }
-        }
-        return acquiredShardIds
-      }, onErrorRebuildLockConn)
+          if (toAcquire.size === 0) {
+            return acquiredShardIds
+          }
+          const rows = yield* conn.executeUnprepared(`SELECT ${pgLocks(toAcquire)}`, [], undefined)
+          const results = rows[0] as Record<string, boolean>
+          for (const shardId in results) {
+            if (results[shardId]) {
+              acquiredShardIds.push(shardId)
+            }
+          }
+          return acquiredShardIds
+        }))
     },
 
     mysql: () => {
@@ -471,31 +331,31 @@ export const make = Effect.fnUntraced(function*(options: {
           )
         }
       }
-      return Effect.fnUntraced(function*(_address: string, shardIds: ReadonlyArray<string>) {
-        const [conn, pid] = yield* lockConn!.await
-        const takenLocks = (yield* conn.executeValues(`SELECT ${allMySqlTakenLocks}`, []))[0] as Array<number | null>
-        const acquiredShardIds: Array<string> = []
-        const toAcquire: Array<string> = []
-        for (let i = 0; i < shardIds.length; i++) {
-          const shardId = shardIds[i]
-          const lockTakenBy = takenLocks[shardIdsIndex.get(shardId)!]
-          if (lockTakenBy === pid) {
-            acquiredShardIds.push(shardId)
-          } else if (shardIds.includes(shardId)) {
-            toAcquire.push(shardId)
+      return (_address: string, shardIds: ReadonlyArray<string>) =>
+        useLockConn(Effect.fnUntraced(function*(conn, pid) {
+          const takenLocks = (yield* conn.executeValues(`SELECT ${allMySqlTakenLocks}`, []))[0] as Array<number | null>
+          const acquiredShardIds: Array<string> = []
+          const toAcquire: Array<string> = []
+          for (let i = 0; i < shardIds.length; i++) {
+            const shardId = shardIds[i]
+            const lockTakenBy = takenLocks[shardIdsIndex.get(shardId)!]
+            if (lockTakenBy === pid) {
+              acquiredShardIds.push(shardId)
+            } else if (shardIds.includes(shardId)) {
+              toAcquire.push(shardId)
+            }
           }
-        }
-        if (toAcquire.length === 0) {
+          if (toAcquire.length === 0) {
+            return acquiredShardIds
+          }
+          const results = (yield* conn.executeValues(`SELECT ${mysqlLocks(toAcquire)}`, []))[0] as Array<number>
+          for (let i = 0; i < results.length; i++) {
+            if (results[i] === 1) {
+              acquiredShardIds.push(toAcquire[i])
+            }
+          }
           return acquiredShardIds
-        }
-        const results = (yield* conn.executeValues(`SELECT ${mysqlLocks(toAcquire)}`, []))[0] as Array<number>
-        for (let i = 0; i < results.length; i++) {
-          if (results[i] === 1) {
-            acquiredShardIds.push(toAcquire[i])
-          }
-        }
-        return acquiredShardIds
-      }, onErrorRebuildLockConn)
+        }))
     },
 
     mssql: () => (address: string, shardIds: ReadonlyArray<string>) => {
@@ -647,8 +507,16 @@ export const make = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
+  // On failure, replace the connection ready at entry. If none was ready,
+  // retry only a failed rebuild, leaving pending or newly ready connections alone.
   const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
-    onErrorRebuildLockConn(withDeadline(operation))
+    Effect.suspend(() => {
+      const ready = lockConn?.getUnsafe()
+      return Effect.onError(withDeadline(operation), () => {
+        if (ready !== undefined) return rebuildLockConn(ready)
+        return lockConn?.getUnsafe() === undefined ? rebuildLockConn() : Effect.void
+      })
+    })
 
   const releaseShard = sql.onDialectOrElse({
     pg: () => {
@@ -656,11 +524,10 @@ export const make = Effect.fnUntraced(function*(options: {
         return (address: string, shardId: string) =>
           sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`.pipe(execWithLockConn)
       }
-      return Effect.fnUntraced(
-        function*(_address, shardId) {
+      return (_address: string, shardId: string) =>
+        useLockConn(Effect.fnUntraced(function*(conn) {
           const lockNum = lockNumbers.get(shardId)!
           for (let i = 0; i < 5; i++) {
-            const [conn] = yield* lockConn!.await
             yield* conn.executeRaw(`SELECT pg_advisory_unlock(${pgLockNamespace}, ${lockNum})`, [])
             const takenLocks = yield* conn.executeValues(
               `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND classid = ${pgLockNamespaceOid} AND objid = ${lockNum} AND objsubid = 2 AND pid = pg_backend_pid()`,
@@ -668,23 +535,18 @@ export const make = Effect.fnUntraced(function*(options: {
             )
             if (takenLocks.length === 0) return
           }
-          const [conn] = yield* lockConn!.await
           yield* conn.executeRaw(`SELECT pg_advisory_unlock_all()`, [])
-        },
-        onErrorRebuildLockConn,
-        Effect.asVoid
-      )
+        }))
     },
     mysql: () => {
       if (disableAdvisoryLocks) {
         return (address: string, shardId: string) =>
           sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`.pipe(execWithLockConn)
       }
-      return Effect.fnUntraced(
-        function*(_address, shardId) {
+      return (_address: string, shardId: string) =>
+        useLockConn(Effect.fnUntraced(function*(conn, pid) {
           const lockName = lockNames.get(shardId)!
           while (true) {
-            const [conn, pid] = yield* lockConn!.await
             yield* conn.executeRaw(`SELECT RELEASE_LOCK('${lockName}')`, [])
             const takenLocks = yield* conn.executeValues(
               `SELECT IS_USED_LOCK('${lockName}')`,
@@ -692,10 +554,7 @@ export const make = Effect.fnUntraced(function*(options: {
             )
             if (takenLocks.length === 0 || takenLocks[0][0] !== pid) return
           }
-        },
-        onErrorRebuildLockConn,
-        Effect.asVoid
-      )
+        }))
     },
     orElse: () => (address: string, shardId: string) =>
       sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`
@@ -793,20 +652,213 @@ export const make = Effect.fnUntraced(function*(options: {
 }, withTracerDisabled)
 
 /**
- * Layer that provides SQL-backed `RunnerStorage` using the default table prefix.
+ * Creates a SQL-backed `RunnerStorage` implementation for registered runners and
+ * shard locks, using the configured table prefix and advisory locks where
+ * supported and enabled.
+ *
+ * **When to use**
+ *
+ * Use to create a SQL-backed `RunnerStorage` value directly when building
+ * custom service or layer composition around the storage implementation.
+ *
+ * **Details**
+ *
+ * `make` first runs the runner storage migrations, so the connection needs
+ * permission to create tables. When `prefix` is omitted, `make` uses the
+ * `cluster` prefix, creating `cluster_runners`, `cluster_locks`, and the
+ * `cluster_runner_migrations` history table. PostgreSQL and MySQL use advisory
+ * locks unless `ShardingConfig.shardLockDisableAdvisory` is enabled; other
+ * dialects use rows in the locks table.
+ *
+ * **Gotchas**
+ *
+ * Changing `prefix` changes all generated table names, so runners using
+ * different prefixes do not share registrations or shard locks.
+ *
+ * @see {@link layer} for the default SQL-backed storage layer
+ * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix
+ * @see {@link layerStorage} for a storage layer that does not run migrations
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (options: {
+  readonly prefix?: string | undefined
+}): Effect.Effect<
+  RunnerStorage.RunnerStorage["Service"],
+  SqlError,
+  SqlClient.SqlClient | ShardingConfig.ShardingConfig | Scope.Scope
+> => Effect.andThen(runRunnerMigrations(options), makeStorage(options))
+
+/**
+ * Migration loader for the SQL runner storage tables.
+ *
+ * **Details**
+ *
+ * History is recorded in `<prefix>_runner_migrations`; the default
+ * prefix is `cluster`. The locks table is created regardless of advisory lock settings.
+ *
+ * @stability unstable
+ * @category migrations
+ * @since 4.1.0
+ */
+export const migrations = (options: {
+  readonly prefix?: string | undefined
+}): Migrator.Loader => {
+  const prefix = options.prefix ?? "cluster"
+  const table = (name: string) => `${prefix}_${name}`
+  const runnersTable = table("runners")
+  const locksTable = table("locks")
+
+  return Migrator.fromRecord({
+    // Existing deployments may have these tables but no migration history.
+    "0001_create_tables": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const runnersTableSql = sql(runnersTable)
+      const locksTableSql = sql(locksTable)
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF OBJECT_ID(N'${runnersTableSql}', N'U') IS NULL
+            CREATE TABLE ${runnersTableSql} (
+              machine_id INT IDENTITY PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              runner TEXT NOT NULL,
+              healthy BIT NOT NULL DEFAULT 1,
+              last_heartbeat DATETIME NOT NULL DEFAULT GETDATE(),
+              UNIQUE(address)
+            )
+          `,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
+              machine_id INT AUTO_INCREMENT PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              runner TEXT NOT NULL,
+              healthy BOOLEAN NOT NULL DEFAULT TRUE,
+              last_heartbeat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(address)
+            )
+          `,
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
+              machine_id SERIAL PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              runner TEXT NOT NULL,
+              healthy BOOLEAN NOT NULL DEFAULT TRUE,
+              last_heartbeat TIMESTAMP NOT NULL DEFAULT NOW(),
+              UNIQUE(address)
+            )
+          `,
+        orElse: () =>
+          // sqlite
+          sql`
+            CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
+              machine_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              address TEXT NOT NULL,
+              runner TEXT NOT NULL,
+              healthy INTEGER NOT NULL DEFAULT 1,
+              last_heartbeat DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+              UNIQUE(address)
+            )
+          `
+      })
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF OBJECT_ID(N'${locksTableSql}', N'U') IS NULL
+            CREATE TABLE ${locksTableSql} (
+              shard_id VARCHAR(50) PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              acquired_at DATETIME NOT NULL
+            )
+          `,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+              shard_id VARCHAR(50) PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              acquired_at DATETIME NOT NULL
+            )
+          `,
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+              shard_id VARCHAR(50) PRIMARY KEY,
+              address VARCHAR(255) NOT NULL,
+              acquired_at TIMESTAMP NOT NULL
+            )
+          `,
+        orElse: () =>
+          // sqlite
+          sql`
+            CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+              shard_id TEXT PRIMARY KEY,
+              address TEXT NOT NULL,
+              acquired_at DATETIME NOT NULL
+            )
+          `
+      })
+    })
+  })
+}
+
+const runRunnerMigrations = (options: {
+  readonly prefix?: string | undefined
+}): Effect.Effect<void, never, SqlClient.SqlClient> =>
+  Migrator.make({})({
+    loader: migrations(options),
+    // Message and runner migration ids overlap, so keep separate histories.
+    table: `${options.prefix ?? "cluster"}_runner_migrations`
+  }).pipe(Effect.asVoid, Effect.orDie)
+
+/**
+ * Runs the SQL runner storage migrations without providing storage.
+ *
+ * **Details**
+ *
+ * Use an owner connection in a deploy step, then use `layerStorage` with a
+ * DML-only runtime connection. History is recorded in `<prefix>_runner_migrations`.
+ * Migration errors become defects.
+ * This layer does not require `ShardingConfig`.
  *
  * @stability unstable
  * @category layers
- * @since 4.0.0
+ * @since 4.1.0
  */
-export const layer: Layer.Layer<
-  RunnerStorage.RunnerStorage,
-  SqlError,
-  SqlClient.SqlClient | ShardingConfig.ShardingConfig
-> = Layer.effect(RunnerStorage.RunnerStorage)(make({}))
+export const layerMigrations = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<never, never, SqlClient.SqlClient> => Layer.effectDiscard(runRunnerMigrations(options))
 
 /**
- * Layer that provides SQL-backed `RunnerStorage` using a custom table prefix.
+ * Provides SQL-backed `RunnerStorage` without DDL or startup schema checks.
+ *
+ * **Details**
+ *
+ * Run `layerMigrations` separately before using this layer.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerStorage = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<RunnerStorage.RunnerStorage, never, SqlClient.SqlClient | ShardingConfig.ShardingConfig> =>
+  Layer.effect(RunnerStorage.RunnerStorage)(makeStorage(options))
+
+/**
+ * Provides SQL-backed `RunnerStorage` with a custom table prefix,
+ * running migrations first.
+ *
+ * **Details**
+ *
+ * The connection needs DDL permissions. PostgreSQL takes an exclusive lock
+ * on the migration history table. Use `layerMigrations` and `layerStorage`
+ * to migrate separately.
  *
  * @stability unstable
  * @category layers
@@ -816,3 +868,19 @@ export const layerWith = (options: {
   readonly prefix?: string | undefined
 }): Layer.Layer<RunnerStorage.RunnerStorage, SqlError, SqlClient.SqlClient | ShardingConfig.ShardingConfig> =>
   Layer.effect(RunnerStorage.RunnerStorage)(make(options))
+
+/**
+ * Layer that provides SQL-backed `RunnerStorage` using the default table prefix,
+ * running the runner storage migrations first.
+ *
+ * @see {@link layerWith} for the same layer with a custom table prefix
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer: Layer.Layer<
+  RunnerStorage.RunnerStorage,
+  SqlError,
+  SqlClient.SqlClient | ShardingConfig.ShardingConfig
+> = layerWith({})
