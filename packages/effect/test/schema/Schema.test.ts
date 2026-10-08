@@ -100,30 +100,32 @@ describe("Schema", () => {
   })
 
   describe("SchemaError", () => {
-    it("serializes nested symbol paths as compact JSON", () => {
-      const key = Symbol("email")
-      const schema = Schema.Struct({ profile: Schema.Struct({ [key]: Schema.String }) })
-      const result = SchemaParser.decodeUnknownResult(schema)({ profile: { [key]: null } })
+    it("serializes as a tagged formatted message", () => {
+      const schema = Schema.Struct({ profile: Schema.Struct({ email: Schema.String }) })
+      const result = Schema.decodeUnknownResult(schema)({ profile: { email: null } })
       assertTrue(Result.isFailure(result))
-
-      deepStrictEqual(JSON.parse(JSON.stringify(new Schema.SchemaError(result.failure))), {
+      const error = result.failure
+      const expected = {
         _tag: "SchemaError",
-        message: "Expected string\n  at [\"profile\"][Symbol(email)]",
-        issues: [{ path: ["profile", "Symbol(email)"], message: "Expected string" }]
-      })
+        message: "Expected string\n  at [\"profile\"][\"email\"]"
+      }
+
+      deepStrictEqual(error.toJSON(), expected)
+      deepStrictEqual(JSON.parse(JSON.stringify(error)), expected)
     })
 
-    it("inspects failures as a compact object", () => {
-      const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
+    it("inspects as a tagged formatted message", () => {
+      const result = Schema.decodeUnknownResult(Schema.String)(null)
       assertTrue(Result.isFailure(result))
+      const error = result.failure
+      const expected = {
+        _tag: "SchemaError",
+        message: "Expected string"
+      }
 
       strictEqual(
-        inspect(new Schema.SchemaError(result.failure), { depth: null }),
-        inspect({
-          _tag: "SchemaError",
-          message: "Expected string",
-          issues: [{ path: [], message: "Expected string" }]
-        }, { depth: null })
+        inspect(error, { depth: null }),
+        inspect(expected, { depth: null })
       )
     })
 

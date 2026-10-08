@@ -1221,14 +1221,7 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
   override toJSON() {
     return {
       _tag: this._tag,
-      message: this.message,
-      issues: SchemaIssue.makeFormatterStandardSchemaV1()(this.issue).issues.map((issue) => ({
-        path: (issue.path ?? []).map((segment) => {
-          const key = typeof segment === "object" ? segment.key : segment
-          return typeof key === "symbol" ? globalThis.String(key) : key
-        }),
-        message: issue.message
-      }))
+      message: this.message
     }
   }
   override [NodeInspectSymbol]() {
