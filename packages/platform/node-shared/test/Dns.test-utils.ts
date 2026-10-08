@@ -7,6 +7,7 @@ import * as AddressResolver from "effect/net/AddressResolver"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
+import type * as Scope from "effect/Scope"
 import * as NodeDnsApi from "node:dns"
 import * as Fs from "node:fs/promises"
 import * as Os from "node:os"
@@ -187,7 +188,9 @@ const isDeno = "Deno" in globalThis
 
 export const describeDnsServer = (
   label: string,
-  make: (nameServer: NetAddress.InetAddress) => Dns.Dns["Service"],
+  make: (
+    nameServer: NetAddress.InetAddress
+  ) => Effect.Effect<Dns.Dns["Service"], NetAddress.NetAddressError, Scope.Scope>,
   addressResolver: Layer.Layer<AddressResolver.AddressResolver, never, Dns.Dns>
 ) =>
   describe(label, () => {
@@ -202,12 +205,12 @@ export const describeDnsServer = (
     const dns = () => make(server.nameServer)
     const resolver = () =>
       Effect.service(AddressResolver.AddressResolver).pipe(
-        Effect.provide(addressResolver.pipe(Layer.provide(Layer.succeed(Dns.Dns, dns()))))
+        Effect.provide(addressResolver.pipe(Layer.provide(Layer.effect(Dns.Dns, dns()))))
       )
 
     it.effect("looks up localhost from the hosts file", () =>
       Effect.gen(function*() {
-        const addresses = yield* dns().lookup(name("localhost"), { family: "IPv4" })
+        const addresses = yield* (yield* dns()).lookup(name("localhost"), { family: "IPv4" })
         assert.isTrue(addresses.some((address) => NetAddress.formatIp(address) === "127.0.0.1"))
         const endpoints = yield* (yield* resolver()).resolve(Host.hostPortFromStringUnsafe("localhost:8080"), {
           family: "IPv4"
@@ -233,10 +236,10 @@ export const describeDnsServer = (
     it.effect("queries every record type", () =>
       Effect.gen(function*() {
         for (const type of ["A", "AAAA", "CAA", "MX", "NAPTR", "NS", "SOA"] as const) {
-          assertRecords(yield* dns().resolve(name("example.test."), type), expected[type])
+          assertRecords(yield* (yield* dns()).resolve(name("example.test."), type), expected[type])
         }
-        assertRecords(yield* dns().resolve(name("www.example.test"), "CNAME"), expected.CNAME)
-        assertRecords(yield* dns().resolve(name("_pg._tcp.example.test"), "SRV"), expected.SRV)
+        assertRecords(yield* (yield* dns()).resolve(name("www.example.test"), "CNAME"), expected.CNAME)
+        assertRecords(yield* (yield* dns()).resolve(name("_pg._tcp.example.test"), "SRV"), expected.SRV)
       }))
 
     // Bun returns each character string of a TXT record as a separate record,
@@ -244,26 +247,26 @@ export const describeDnsServer = (
     // https://github.com/oven-sh/bun/issues/44692
     it.effect.skipIf(isBun)("keeps the chunks of a TXT record together", () =>
       Effect.gen(function*() {
-        assertRecords(yield* dns().resolve(name("example.test."), "TXT"), expected.TXT)
+        assertRecords(yield* (yield* dns()).resolve(name("example.test."), "TXT"), expected.TXT)
       }))
 
     it.effect("returns the root name for null targets", () =>
       Effect.gen(function*() {
-        const [mx] = yield* dns().resolve(name("null-mx.example.test"), "MX")
+        const [mx] = yield* (yield* dns()).resolve(name("null-mx.example.test"), "MX")
         assert.strictEqual(mx.exchange, ".")
-        const [srv] = yield* dns().resolve(name("_none._tcp.example.test"), "SRV")
+        const [srv] = yield* (yield* dns()).resolve(name("_none._tcp.example.test"), "SRV")
         assert.strictEqual(srv.target, ".")
       }))
 
     it.effect("returns fully qualified names", () =>
       Effect.gen(function*() {
-        const [srv] = yield* dns().resolve(name("_pg._tcp.example.test"), "SRV")
+        const [srv] = yield* (yield* dns()).resolve(name("_pg._tcp.example.test"), "SRV")
         assert.isTrue(Host.isFullyQualified(srv.target))
       }))
 
     it.effect("converts unusual record data", () =>
       Effect.gen(function*() {
-        assertRecords(yield* dns().resolve(name("edge.test"), "SOA"), [
+        assertRecords(yield* (yield* dns()).resolve(name("edge.test"), "SOA"), [
           Dns.makeRecordUnsafe("SOA", {
             primary: name("."),
             admin: "john\\.doe.example.test.",
@@ -274,34 +277,35 @@ export const describeDnsServer = (
             minimum: Duration.seconds(300)
           })
         ])
-        assertRecords(yield* dns().resolve(name("edge.test"), "CAA"), [
+        assertRecords(yield* (yield* dns()).resolve(name("edge.test"), "CAA"), [
           Dns.makeRecordUnsafe("CAA", { critical: false, tag: "issue", value: "ca.example.test" })
         ])
-        assertRecords(yield* dns().resolve(name("edge.test"), "TXT"), [
+        assertRecords(yield* (yield* dns()).resolve(name("edge.test"), "TXT"), [
           Dns.makeRecordUnsafe("TXT", { chunks: ["grüß"] })
         ])
       }))
 
     it.effect("rejects name servers with a scope ID", () =>
       Effect.gen(function*() {
-        const scoped = make(NetAddress.inetAddressFromStringUnsafe("[fe80::1%1]:53"))
-        const error = yield* Effect.flip(scoped.resolve(name("example.test."), "A"))
-        assert.strictEqual(error.reason, "Unsupported")
+        const error = yield* Effect.flip(make(NetAddress.inetAddressFromStringUnsafe("[fe80::1%1]:53")))
+        assert.strictEqual(error._tag, "NetAddressError")
       }))
 
     it.effect("looks up the names of an address", () =>
       Effect.gen(function*() {
-        assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns().reverse(ip("192.0.2.1")), ["example.test."])
+        assert.deepStrictEqual<ReadonlyArray<string>>(yield* (yield* dns()).reverse(ip("192.0.2.1")), ["example.test."])
       }))
 
     it.effect("skips names that are not valid domain names", () =>
       Effect.gen(function*() {
-        assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns().reverse(ip("192.0.2.2")), ["good.example.test."])
+        assert.deepStrictEqual<ReadonlyArray<string>>(yield* (yield* dns()).reverse(ip("192.0.2.2")), [
+          "good.example.test."
+        ])
       }))
 
     it.effect("reports missing names", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(dns().resolve(name("missing.example.test"), "A"))
+        const error = yield* Effect.flip((yield* dns()).resolve(name("missing.example.test"), "A"))
         assert.strictEqual(error.reason, "NotFound")
         assert.strictEqual(error.recordType, "A")
       }))
@@ -310,13 +314,13 @@ export const describeDnsServer = (
     // queries, with the same `NotFound` error as a missing name.
     it.effect.skipIf(isDeno)("reports refused queries", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(dns().resolve(name("outside.invalid"), "A"))
+        const error = yield* Effect.flip((yield* dns()).resolve(name("outside.invalid"), "A"))
         assert.strictEqual(error.reason, "Refused")
       }))
 
     it.effect("reports names without records of the requested type", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(dns().resolve(name("ns1.example.test."), "SRV"))
+        const error = yield* Effect.flip((yield* dns()).resolve(name("ns1.example.test."), "SRV"))
         assert.strictEqual(error.reason, "NotFound")
       }))
   })

@@ -21,15 +21,7 @@ import type * as Dns from "effect/net/Dns"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Option from "effect/Option"
 
-/**
- * Looks up the IPv6 scope ID of a network interface with
- * `Deno.networkInterfaces()`.
- *
- * @stability experimental
- * @category resolving
- * @since 4.0.0
- */
-export const scopeId: AddressResolver.ScopeIdLookup = (name) =>
+const scopeId: AddressResolver.ScopeIdLookup = (name) =>
   Effect.try({
     try: () =>
       Option.fromUndefinedOr(

@@ -16,15 +16,7 @@ import type * as Dns from "effect/net/Dns"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Os from "node:os"
 
-/**
- * Looks up the IPv6 scope ID of a network interface with
- * `os.networkInterfaces()`.
- *
- * @stability experimental
- * @category resolving
- * @since 4.0.0
- */
-export const scopeId: AddressResolver.ScopeIdLookup = (name) =>
+const scopeId: AddressResolver.ScopeIdLookup = (name) =>
   Effect.try({
     try: () => NetAddress.scopeIdFromInterface(Os.networkInterfaces()[name]),
     catch: (cause) => new NetAddress.NetAddressError({ input: name, message: "cannot list network interfaces", cause })

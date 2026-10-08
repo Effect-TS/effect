@@ -1,15 +1,18 @@
 /**
  * Node.js implementation of Effect's `Dns` service.
  *
- * Address lookups use `dns.lookup` (exported as `lookup`), which calls the
- * operating system resolver (`getaddrinfo`) and therefore also reads the hosts
- * file. Record queries and reverse lookups use `makeResolver`, which sends DNS
- * queries with pooled `dns.Resolver` instances, each used by one operation at a
- * time, so interrupting a query cancels it. Records whose data cannot be
- * represented, such as names that are not valid `Host.DomainName` values, are
- * skipped. Node.js decodes each byte of TXT and CAA character strings as one
- * Latin-1 character; `make` decodes those bytes as UTF-8. Other runtimes that
- * implement `node:dns` reuse `lookup` or `makeResolver` and replace the rest.
+ * Address lookups use `lookup`, which calls the operating system resolver
+ * (`getaddrinfo`) through `dns.lookup` and therefore also reads the hosts file.
+ * Record queries and reverse lookups use the `resolve` function created by
+ * `resolver`, which sends DNS queries with one shared `dns.Resolver`.
+ * Node.js cannot cancel a single query, so an interrupted query keeps running
+ * until it is answered or times out, and its result is discarded; closing the
+ * service's scope cancels the queries that are still running. Records whose
+ * data cannot be represented, such as names that are not valid
+ * `Host.DomainName` values, are skipped. Node.js decodes each byte of TXT and
+ * CAA character strings as one Latin-1 character; `make` decodes those bytes as
+ * UTF-8. Other runtimes that implement `node:dns` reuse `lookup` or
+ * `resolver` and assemble their own service.
  *
  * @stability experimental
  * @since 4.0.0
@@ -22,10 +25,11 @@ import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
+import * as Result from "effect/Result"
 import * as NodeDns from "node:dns"
 
 /**
- * Options for the Node.js `Dns` service and `makeResolver`.
+ * Options for the Node.js `Dns` service and `resolver`.
  *
  * **Details**
  *
@@ -38,8 +42,8 @@ import * as NodeDns from "node:dns"
  * **Gotchas**
  *
  * IPv6 name servers with a scope ID, such as link-local addresses, are not
- * supported because the resolver drops the scope; record queries and reverse
- * lookups fail with `Unsupported`.
+ * supported because the resolver drops the scope; creating the service fails
+ * with a `NetAddress.NetAddressError`.
  *
  * @stability experimental
  * @category models
@@ -83,10 +87,6 @@ const toDnsError = (
   })
 }
 
-const invalidResponse =
-  (method: Dns.DnsError["method"], hostname: string, recordType?: Dns.RecordType) => (cause: unknown): Dns.DnsError =>
-    new Dns.DnsError({ reason: "InvalidResponse", method, hostname, recordType, cause })
-
 // c-ares writes names without the trailing dot and the root name as an empty string.
 const absoluteName = (name: string): string => name === "" ? "." : name.endsWith(".") ? name : `${name}.`
 
@@ -95,80 +95,108 @@ const recordName = (name: string): Host.DomainName => Host.domainNameFromStringU
 // c-ares reports SOA refresh, retry, and expire as signed 32-bit integers.
 const uint32Seconds = (value: number): Duration.Duration => Duration.seconds(value >>> 0)
 
+// Records whose data cannot be represented, such as names that are not valid
+// `Host.DomainName` values, are skipped.
 const queries: {
-  readonly [K in Dns.RecordType]: (
-    resolver: NodeDns.promises.Resolver,
-    name: string
-  ) => Promise<ReadonlyArray<() => Dns.DnsRecord>>
+  readonly [K in Dns.RecordType]: (resolver: NodeDns.promises.Resolver, name: string) => Promise<Array<Dns.DnsRecord>>
 } = {
   A: async (resolver, name) =>
-    (await resolver.resolve4(name)).map((address) => () =>
-      Dns.makeRecordUnsafe("A", { address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv4Address })
-    ),
+    Arr.filterMap(await resolver.resolve4(name), (address) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("A", {
+          address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv4Address
+        })
+      )),
   AAAA: async (resolver, name) =>
-    (await resolver.resolve6(name)).map((address) => () =>
-      Dns.makeRecordUnsafe("AAAA", { address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv6Address })
-    ),
+    Arr.filterMap(await resolver.resolve6(name), (address) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("AAAA", {
+          address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv6Address
+        })
+      )),
   CAA: async (resolver, name) =>
-    (await resolver.resolveCaa(name)).map((caa) => () => {
-      const tag = Object.keys(caa).find((key) => key !== "critical" && key !== "type")
-      if (tag === undefined) throw new Error("CAA record without a property tag")
-      // Only the issuer critical flag (bit 7) is defined; other flag bits are reserved.
-      return Dns.makeRecordUnsafe("CAA", {
-        critical: (caa.critical & 0x80) !== 0,
-        tag,
-        value: String((caa as any)[tag])
-      })
-    }),
+    Arr.filterMap(await resolver.resolveCaa(name), (caa) =>
+      Result.try(() => {
+        const tag = Object.keys(caa).find((key) => key !== "critical" && key !== "type")
+        if (tag === undefined) throw new Error("CAA record without a property tag")
+        // Only the issuer critical flag (bit 7) is defined; other flag bits are reserved.
+        return Dns.makeRecordUnsafe("CAA", {
+          critical: (caa.critical & 0x80) !== 0,
+          tag,
+          value: String((caa as any)[tag])
+        })
+      })),
   CNAME: async (resolver, name) =>
-    (await resolver.resolveCname(name)).map((target) => () =>
-      Dns.makeRecordUnsafe("CNAME", { target: recordName(target) })
-    ),
+    Arr.filterMap(await resolver.resolveCname(name), (target) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("CNAME", {
+          target: recordName(target)
+        })
+      )),
   MX: async (resolver, name) =>
-    (await resolver.resolveMx(name)).map((mx) => () =>
-      Dns.makeRecordUnsafe("MX", { exchange: recordName(mx.exchange), priority: mx.priority })
-    ),
+    Arr.filterMap(await resolver.resolveMx(name), (mx) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("MX", {
+          exchange: recordName(mx.exchange),
+          priority: mx.priority
+        })
+      )),
   NAPTR: async (resolver, name) =>
-    (await resolver.resolveNaptr(name)).map((naptr) => () =>
-      Dns.makeRecordUnsafe("NAPTR", {
-        order: naptr.order,
-        preference: naptr.preference,
-        flags: naptr.flags,
-        service: naptr.service,
-        regexp: naptr.regexp,
-        replacement: recordName(naptr.replacement)
-      })
-    ),
+    Arr.filterMap(await resolver.resolveNaptr(name), (naptr) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("NAPTR", {
+          order: naptr.order,
+          preference: naptr.preference,
+          flags: naptr.flags,
+          service: naptr.service,
+          regexp: naptr.regexp,
+          replacement: recordName(naptr.replacement)
+        })
+      )),
   NS: async (resolver, name) =>
-    (await resolver.resolveNs(name)).map((host) => () => Dns.makeRecordUnsafe("NS", { host: recordName(host) })),
+    Arr.filterMap(await resolver.resolveNs(name), (host) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("NS", {
+          host: recordName(host)
+        })
+      )),
   PTR: async (resolver, name) =>
-    (await resolver.resolvePtr(name)).map((host) => () => Dns.makeRecordUnsafe("PTR", { host: recordName(host) })),
-  SOA: async (resolver, name) => {
-    const soa = await resolver.resolveSoa(name)
-    return [() =>
-      Dns.makeRecordUnsafe("SOA", {
-        primary: recordName(soa.nsname),
-        admin: absoluteName(soa.hostmaster),
-        serial: soa.serial,
-        refresh: uint32Seconds(soa.refresh),
-        retry: uint32Seconds(soa.retry),
-        expire: uint32Seconds(soa.expire),
-        minimum: Duration.seconds(soa.minttl)
-      })]
-  },
+    Arr.filterMap(await resolver.resolvePtr(name), (host) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("PTR", {
+          host: recordName(host)
+        })
+      )),
+  SOA: async (resolver, name) =>
+    Arr.filterMap([await resolver.resolveSoa(name)], (soa) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("SOA", {
+          primary: recordName(soa.nsname),
+          admin: absoluteName(soa.hostmaster),
+          serial: soa.serial,
+          refresh: uint32Seconds(soa.refresh),
+          retry: uint32Seconds(soa.retry),
+          expire: uint32Seconds(soa.expire),
+          minimum: Duration.seconds(soa.minttl)
+        })
+      )),
   SRV: async (resolver, name) =>
-    (await resolver.resolveSrv(name)).map((srv) => () =>
-      Dns.makeRecordUnsafe("SRV", {
-        target: recordName(srv.name),
-        port: srv.port,
-        priority: srv.priority,
-        weight: srv.weight
-      })
-    ),
+    Arr.filterMap(await resolver.resolveSrv(name), (srv) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("SRV", {
+          target: recordName(srv.name),
+          port: srv.port,
+          priority: srv.priority,
+          weight: srv.weight
+        })
+      )),
   TXT: async (resolver, name) =>
-    (await resolver.resolveTxt(name)).map((chunks) => () =>
-      Dns.makeRecordUnsafe("TXT", { chunks: chunks as unknown as Arr.NonEmptyReadonlyArray<string> })
-    )
+    Arr.filterMap(await resolver.resolveTxt(name), (chunks) =>
+      Result.try(() =>
+        Dns.makeRecordUnsafe("TXT", {
+          chunks: chunks as unknown as Arr.NonEmptyReadonlyArray<string>
+        })
+      ))
 }
 
 /**
@@ -187,25 +215,6 @@ const stripZone = (address: string): string => {
   return separator === -1 ? address : address.slice(0, separator)
 }
 
-// Converts every value that can be represented and skips the rest, failing only
-// when nothing could be converted.
-const convert = <A>(
-  thunks: ReadonlyArray<() => A>,
-  onError: (cause: unknown) => Dns.DnsError
-): Effect.Effect<Array<A>, Dns.DnsError> =>
-  Effect.suspend(() => {
-    const out: Array<A> = []
-    let failure: { readonly cause: unknown } | undefined
-    for (const thunk of thunks) {
-      try {
-        out.push(thunk())
-      } catch (cause) {
-        failure ??= { cause }
-      }
-    }
-    return out.length === 0 && failure !== undefined ? Effect.fail(onError(failure.cause)) : Effect.succeed(out)
-  })
-
 /**
  * Looks up the addresses of a host name with `dns.lookup`, keeping the order
  * returned by the operating system resolver.
@@ -219,104 +228,83 @@ export const lookup = (
   family?: NetAddress.IpFamily | undefined
 ): Effect.Effect<Array<NetAddress.IpAddress>, Dns.DnsError> =>
   Effect.tryPromise({
-    // `verbatim` keeps the system order on Node versions without `order`.
-    try: () =>
-      NodeDns.promises.lookup(host, { all: true, family: toFamily(family), order: "verbatim", verbatim: true }),
+    try: async () => {
+      // `verbatim` keeps the system order on Node versions without `order`.
+      const entries = await NodeDns.promises.lookup(host, {
+        all: true,
+        family: toFamily(family),
+        order: "verbatim",
+        verbatim: true
+      })
+      return Arr.filterMap(
+        entries,
+        (entry) => Result.try(() => NetAddress.ipFromStringUnsafe(stripZone(entry.address)))
+      )
+    },
     catch: (cause) => toDnsError(cause, "lookup", host)
-  }).pipe(Effect.flatMap((entries) =>
-    convert(
-      entries.map((entry) => () => NetAddress.ipFromStringUnsafe(stripZone(entry.address))),
-      invalidResponse("lookup", host)
-    )
-  ))
-
-const maxIdleResolvers = 8
+  })
 
 /**
- * Creates record query and reverse lookup operations backed by the runtime's
- * `node:dns` module.
+ * Creates a function that queries DNS records with the runtime's `node:dns`
+ * module.
  *
  * **Details**
  *
- * Names in records are fully qualified, and TXT and CAA character strings are
- * returned as the runtime decodes them, without the UTF-8 correction that
- * `make` applies for Node.js. Pass the operations to `Dns.make`, together with
- * a lookup, to build a `Dns` service.
+ * All queries share one `dns.Resolver`, which is cancelled when the scope
+ * closes. Names in records are fully qualified, and TXT and CAA character
+ * strings are returned as the runtime decodes them, without the UTF-8
+ * correction that `make` applies for Node.js. Failures are reported for
+ * `method` and `hostname`, which default to a `resolve` of `name`; pass
+ * `"reverse"` and the address when querying the PTR records of a reverse
+ * lookup.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const makeResolver = (options?: Options) => {
+export const resolver = Effect.fnUntraced(function*(options?: Options) {
   const resolverOptions: NodeDns.ResolverOptions = {
     ...(options?.timeout !== undefined && { timeout: Duration.toMillis(options.timeout) }),
     ...(options?.tries !== undefined && { tries: options.tries })
   }
   const nameServers = options?.nameServers ?? []
   const scoped = nameServers.find((server) => NetAddress.isInetAddressV6(server) && server.scopeId !== 0)
-  const servers = nameServers.length === 0 ?
-    undefined :
-    nameServers.map((server) =>
-      NetAddress.isIpAddress(server) ? NetAddress.formatIp(server) : NetAddress.formatInet(server)
-    )
 
-  const idle: Array<NodeDns.promises.Resolver> = []
-  const acquire = (): NodeDns.promises.Resolver => {
-    const pooled = idle.pop()
-    if (pooled !== undefined) return pooled
-    const resolver = new NodeDns.promises.Resolver(resolverOptions)
-    if (servers !== undefined) resolver.setServers(servers)
-    return resolver
+  if (scoped !== undefined) {
+    return yield* new NetAddress.NetAddressError({
+      input: scoped,
+      message: "IPv6 name servers with a scope ID are not supported"
+    })
   }
 
-  const withResolver = <A>(
-    method: Dns.DnsError["method"],
-    hostname: string,
-    recordType: Dns.RecordType | undefined,
-    query: (resolver: NodeDns.promises.Resolver) => Promise<A>
-  ): Effect.Effect<A, Dns.DnsError> =>
-    scoped !== undefined
-      ? Effect.fail(
-        new Dns.DnsError({
-          reason: "Unsupported",
-          method,
-          hostname,
-          recordType,
-          cause: new NetAddress.NetAddressError({
-            input: scoped,
-            message: "IPv6 name servers with a scope ID are not supported"
-          })
-        })
-      )
-      : Effect.tryPromise({
-        try: (signal) => {
-          const resolver = acquire()
-          const cancel = () => resolver.cancel()
-          signal.addEventListener("abort", cancel, { once: true })
-          return query(resolver).finally(() => {
-            signal.removeEventListener("abort", cancel)
-            if (idle.length < maxIdleResolvers) idle.push(resolver)
-          })
-        },
-        catch: (cause) => toDnsError(cause, method, hostname, recordType)
-      })
-
-  return {
-    resolve: (name: string, type: Dns.RecordType): Effect.Effect<Array<Dns.DnsRecord>, Dns.DnsError> =>
-      withResolver("resolve", name, type, (resolver) => queries[type](resolver, name)).pipe(
-        Effect.flatMap((thunks) => convert(thunks, invalidResponse("resolve", name, type)))
-      ),
-    reverse: (address: NetAddress.IpAddress): Effect.Effect<Array<Host.DomainName>, Dns.DnsError> => {
-      const hostname = NetAddress.formatIp(address)
-      return withResolver("reverse", hostname, undefined, (resolver) => resolver.resolvePtr(Dns.reverseName(address)))
-        .pipe(
-          Effect.flatMap((names) =>
-            convert(names.map((name) => () => recordName(name)), invalidResponse("reverse", hostname))
+  // Node.js can only cancel every query of a resolver, so all queries share one
+  // resolver and closing the scope cancels those still running.
+  const nodeResolver = yield* Effect.acquireRelease(
+    Effect.sync(() => {
+      const nodeResolver = new NodeDns.promises.Resolver(resolverOptions)
+      if (nameServers.length > 0) {
+        nodeResolver.setServers(
+          nameServers.map((server) =>
+            NetAddress.isIpAddress(server) ? NetAddress.formatIp(server) : NetAddress.formatInet(server)
           )
         )
-    }
-  }
-}
+      }
+      return nodeResolver
+    }),
+    (nodeResolver) => Effect.sync(() => nodeResolver.cancel())
+  )
+
+  return (
+    name: string,
+    type: Dns.RecordType,
+    method: "resolve" | "reverse" = "resolve",
+    hostname: string = name
+  ): Effect.Effect<Array<Dns.DnsRecord>, Dns.DnsError> =>
+    Effect.tryPromise({
+      try: () => queries[type](nodeResolver, name),
+      catch: (cause) => toDnsError(cause, method, hostname, method === "resolve" ? type : undefined)
+    })
+})
 
 const decoder = new TextDecoder()
 
@@ -326,28 +314,40 @@ const utf8FromLatin1 = (value: string): string =>
 
 // Node.js decodes each byte of TXT and CAA character strings as one Latin-1
 // character; decoding the bytes as UTF-8 matches other runtimes.
-const utf8Strings = (record: Dns.DnsRecord): Dns.DnsRecord =>
-  record._tag === "TXT"
-    ? Dns.makeRecordUnsafe("TXT", { chunks: Arr.map(record.chunks, utf8FromLatin1) })
-    : record._tag === "CAA"
-    ? Dns.makeRecordUnsafe("CAA", { critical: record.critical, tag: record.tag, value: utf8FromLatin1(record.value) })
-    : record
+const utf8Strings = (record: Dns.DnsRecord): Dns.DnsRecord => {
+  switch (record._tag) {
+    case "TXT":
+      return Dns.makeRecordUnsafe("TXT", { chunks: Arr.map(record.chunks, utf8FromLatin1) })
+    case "CAA":
+      return Dns.makeRecordUnsafe("CAA", {
+        critical: record.critical,
+        tag: record.tag,
+        value: utf8FromLatin1(record.value)
+      })
+    default:
+      return record
+  }
+}
 
 /**
- * Creates a Node.js `Dns` service.
+ * Creates a Node.js `Dns` service whose resolver lives as long as the scope.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: Options): Dns.Dns["Service"] => {
-  const resolver = makeResolver(options)
+export const make = Effect.fnUntraced(function*(options?: Options) {
+  const resolve = yield* resolver(options)
   return Dns.make({
     lookup,
-    resolve: (name, type) => Effect.map(resolver.resolve(name, type), Arr.map(utf8Strings)),
-    reverse: resolver.reverse
+    resolve: (name, type) => Effect.map(resolve(name, type), Arr.map(utf8Strings)),
+    reverse: (address) =>
+      Effect.map(
+        resolve(Dns.reverseName(address), "PTR", "reverse", NetAddress.formatIp(address)),
+        Arr.flatMap((record) => record._tag === "PTR" ? [record.host] : [])
+      )
   })
-}
+})
 
 /**
  * Layer that provides the Node.js `Dns` service using the system resolver
@@ -357,7 +357,7 @@ export const make = (options?: Options): Dns.Dns["Service"] => {
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
+export const layer: Layer.Layer<Dns.Dns> = Layer.effect(Dns.Dns, Effect.orDie(make()))
 
 /**
  * Creates a layer that provides the Node.js `Dns` service with options read
@@ -367,5 +367,7 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * @category layers
  * @since 4.0.0
  */
-export const layerConfig = (options: Config.Wrap<Options>): Layer.Layer<Dns.Dns, Config.ConfigError> =>
-  Layer.effect(Dns.Dns, Effect.map(Config.unwrap(options), make))
+export const layerConfig = (
+  options: Config.Wrap<Options>
+): Layer.Layer<Dns.Dns, Config.ConfigError | NetAddress.NetAddressError> =>
+  Layer.effect(Dns.Dns, Effect.flatMap(Config.unwrap(options), make))

@@ -5,7 +5,7 @@
  * the operating system resolver (`getaddrinfo`) and therefore also reads the
  * hosts file. Bun's `node:dns` lookup uses c-ares instead, which bypasses the
  * system's name service configuration. Record queries and reverse lookups use
- * `NodeDns.makeResolver` without the UTF-8 correction of `NodeDns.make`,
+ * `NodeDns.resolver` without the UTF-8 correction of `NodeDns.make`,
  * because Bun already decodes TXT and CAA character strings as UTF-8.
  *
  * **Gotchas**
@@ -18,6 +18,7 @@
  * @since 4.0.0
  */
 import * as NodeDns from "@effect/platform-node-shared/NodeDns"
+import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -47,14 +48,14 @@ const reasons: Record<string, Dns.DnsErrorReason> = {
 }
 
 /**
- * Creates a Bun `Dns` service.
+ * Creates a Bun `Dns` service whose resolver lives as long as the scope.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options?: NodeDns.Options): Dns.Dns["Service"] => {
-  const resolver = NodeDns.makeResolver(options)
+export const make = Effect.fnUntraced(function*(options?: NodeDns.Options) {
+  const resolve = yield* NodeDns.resolver(options)
   return Dns.make({
     lookup: (host, family) =>
       Effect.tryPromise({
@@ -76,10 +77,14 @@ export const make = (options?: NodeDns.Options): Dns.Dns["Service"] => {
           })
         )
       ),
-    resolve: resolver.resolve,
-    reverse: resolver.reverse
+    resolve,
+    reverse: (address) =>
+      Effect.map(
+        resolve(Dns.reverseName(address), "PTR", "reverse", NetAddress.formatIp(address)),
+        Arr.flatMap((record) => record._tag === "PTR" ? [record.host] : [])
+      )
   })
-}
+})
 
 /**
  * Layer that provides the Bun `Dns` service using the system resolver
@@ -89,7 +94,7 @@ export const make = (options?: NodeDns.Options): Dns.Dns["Service"] => {
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
+export const layer: Layer.Layer<Dns.Dns> = Layer.effect(Dns.Dns, Effect.orDie(make()))
 
 /**
  * Creates a layer that provides the Bun `Dns` service with options read
@@ -99,5 +104,7 @@ export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
  * @category layers
  * @since 4.0.0
  */
-export const layerConfig = (options: Config.Wrap<NodeDns.Options>): Layer.Layer<Dns.Dns, Config.ConfigError> =>
-  Layer.effect(Dns.Dns, Effect.map(Config.unwrap(options), make))
+export const layerConfig = (
+  options: Config.Wrap<NodeDns.Options>
+): Layer.Layer<Dns.Dns, Config.ConfigError | NetAddress.NetAddressError> =>
+  Layer.effect(Dns.Dns, Effect.flatMap(Config.unwrap(options), make))
