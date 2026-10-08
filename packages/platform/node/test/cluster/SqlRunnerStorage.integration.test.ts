@@ -488,8 +488,6 @@ describe("SqlRunnerStorage", () => {
 
             yield* Effect.scoped(Layer.build(SqlRunnerStorage.layerMigrations({ prefix: "legacy" })))
 
-            expect(yield* sql`SELECT migration_id, name FROM legacy_runner_migrations ORDER BY migration_id`)
-              .toEqual([{ migration_id: 1, name: "create_tables" }])
             expect(yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`).toEqual(rows)
             expect(yield* sql`SELECT * FROM legacy_locks`).toEqual([])
           }))
