@@ -357,8 +357,8 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        backup: (destination: string) => Effect.flatMap(acquirer, (_) => _.backup(destination)),
-        loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
+        backup: (destination: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.backup(destination))),
+        loadExtension: (path: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.loadExtension(path)))
       }
     )
   })
