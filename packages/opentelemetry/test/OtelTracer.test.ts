@@ -240,6 +240,45 @@ describe("Tracer", () => {
       )
     })
 
+    it("starts a span with the active OpenTelemetry parent span itself", () => {
+      const parent = OtelApi.trace.wrapSpanContext({
+        traceId: "1".repeat(32),
+        spanId: "2".repeat(16),
+        traceFlags: OtelApi.TraceFlags.SAMPLED
+      })
+      const active = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, parent)
+      let receivedParent: OtelApi.Span | undefined
+      const tracer = {
+        startSpan(_name: string, _options: unknown, context: OtelApi.Context) {
+          receivedParent = OtelApi.trace.getSpan(context)
+          return OtelApi.trace.wrapSpanContext({
+            traceId: "1".repeat(32),
+            spanId: "3".repeat(16),
+            traceFlags: OtelApi.TraceFlags.SAMPLED
+          })
+        }
+      } as OtelApi.Tracer
+
+      const child = new OtelTracer.OtelSpan(
+        { active: () => active } as OtelApi.ContextAPI,
+        OtelApi.trace,
+        tracer,
+        {
+          name: "child",
+          parent: Option.none(),
+          annotations: EffectContext.empty(),
+          links: [],
+          startTime: 0n,
+          kind: "internal",
+          root: false,
+          sampled: true
+        }
+      )
+
+      assert.strictEqual(Option.getOrThrow(child.parent).spanId, parent.spanContext().spanId)
+      assert.strictEqual(receivedParent, parent)
+    })
+
     it.effect.each([OtelApi.TraceFlags.SAMPLED, OtelApi.TraceFlags.NONE])(
       "inherits getter-based OpenTelemetry parent ids with trace flags %s",
       (traceFlags) =>
