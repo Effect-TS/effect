@@ -1,8 +1,9 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Option, References } from "effect"
 import { Reactivity } from "effect/reactivity"
+import type { SqlClient } from "effect/sql/SqlClient"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
 import { DatabaseSync } from "node:sqlite"
@@ -36,6 +37,40 @@ const makeLockedDatabase = Effect.gen(function*() {
   lock.exec("BEGIN IMMEDIATE")
   return { filename, unlock: () => lock.exec("ROLLBACK") }
 }).pipe(Effect.provide(NodeFileSystem.layer))
+
+// A statement that takes the shared connection before another fiber begins a
+// transaction must not run inside that transaction. Where the statement's
+// fiber yields depends on scheduling, so callers start the transaction after
+// each delay in `raceDelays`.
+const raceDelays = Array.from({ length: 201 }, (_, delay) => delay)
+
+const raceRolledBackTransaction = <A>(
+  sql: SqlClient,
+  statement: Effect.Effect<A, SqlError>,
+  delay: number
+) =>
+  Effect.gen(function*() {
+    const plain = yield* statement.pipe(
+      Effect.provideService(References.MaxOpsBeforeYield, 3),
+      Effect.exit,
+      Effect.forkChild
+    )
+    for (let i = 0; i < delay; i++) yield* Effect.yieldNow
+    const transaction = yield* sql.withTransaction(Effect.gen(function*() {
+      yield* sql`INSERT INTO race VALUES ('rolled back')`
+      for (let i = 0; i < 1000; i++) yield* Effect.yieldNow
+      return yield* Effect.fail("rollback")
+    })).pipe(Effect.ignore, Effect.forkChild)
+    const exit = yield* Fiber.join(plain)
+    yield* Fiber.join(transaction)
+    return exit
+  })
+
+const makeRaceClient = Effect.gen(function*() {
+  const sql = yield* SqliteClient.make({ filename: ":memory:" })
+  yield* sql`CREATE TABLE race (kind TEXT NOT NULL)`
+  return sql
+}).pipe(Effect.provide(Reactivity.layer))
 
 describe("Client", () => {
   it.effect("releases completed nested savepoints", () =>
@@ -269,6 +304,33 @@ describe("Client", () => {
       )
       const rows = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(rows, [])
+    }))
+
+  it.effect("keeps a plain write out of another fiber's rolled back transaction", () =>
+    Effect.gen(function*() {
+      const lost: Array<number> = []
+      for (const delay of raceDelays) {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const sql = yield* makeRaceClient
+          const exit = yield* raceRolledBackTransaction(sql, sql`INSERT INTO race VALUES ('plain')`, delay)
+          const rows = yield* sql<{ n: number }>`SELECT count(*) AS n FROM race`
+          if (Exit.isFailure(exit) || Number(rows[0].n) !== 1) lost.push(delay)
+        }))
+      }
+      assert.deepStrictEqual(lost, [])
+    }))
+
+  it.effect("keeps a plain read out of another fiber's uncommitted transaction", () =>
+    Effect.gen(function*() {
+      const dirty: Array<number> = []
+      for (const delay of raceDelays) {
+        yield* Effect.scoped(Effect.gen(function*() {
+          const sql = yield* makeRaceClient
+          const exit = yield* raceRolledBackTransaction(sql, sql<{ n: number }>`SELECT count(*) AS n FROM race`, delay)
+          if (Exit.isFailure(exit) || Number(exit.value[0].n) !== 0) dirty.push(delay)
+        }))
+      }
+      assert.deepStrictEqual(dirty, [])
     }))
 
   it.effect("uses a 5 second busy timeout", () =>
