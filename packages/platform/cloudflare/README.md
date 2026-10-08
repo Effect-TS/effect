@@ -312,10 +312,8 @@ To run code written against `SqlClient.SqlClient`, such as `SqlSchema` or
 - A storage transaction closes the Durable Object's input gate until it
   finishes. Timers and I/O awaited inside `withTransaction` never resume, so
   keep transactions to SQL work.
-- Mailbox writes wait for an open transaction to finish. At any `concurrency`,
-  a rollback cannot take another handler's stored reply with it.
-- The client is built once per handler build and closed with it, so a
-  terminal defect or a new wake opens a fresh client on the same storage.
+- Mailbox writes wait for an open transaction to finish, so a rollback never
+  takes another handler's stored reply with it.
 
 To test the handlers, register the same build with `Entity.toLayer` and run it
 with `Entity.makeTestClient`, providing `DurableObjectSqlClient` from any SQL

@@ -555,12 +555,11 @@ export class CloudflareSharding extends Context.Service<CloudflareSharding, Shar
  *
  * **Details**
  *
- * Each entity Durable Object provides this service to its handler build and
- * handlers, as one `@effect/sql-sqlite-do` client per handler build, closed
- * with the build scope. It is a separate tag, so any `SqlClient` from the
- * Worker layer (a D1 database, say) stays reachable inside the handlers. To run
- * code written against `SqlClient.SqlClient`, provide this client as that
- * service locally.
+ * Each entity Durable Object provides this service, an `@effect/sql-sqlite-do`
+ * client, to its handler build and handlers. It is a separate tag, so any
+ * `SqlClient` from the Worker layer (a D1 database, say) stays reachable inside
+ * the handlers. To run code written against `SqlClient.SqlClient`, provide this
+ * client as that service locally.
  *
  * `withTransaction` uses the object's storage transaction, so several rows
  * commit or roll back together. Rows live and die with the entity's Durable
@@ -651,12 +650,10 @@ export const toLayer = <
   | Rpc.Middleware<Rpcs>
   | CloudflareSharding
 > =>
-  Layer.effectDiscard(Effect.gen(function*() {
-    const sharding = yield* CloudflareSharding
-    // The entity Durable Object provides the client the type erases.
-    yield* sharding.registerEntity(
+  // The entity Durable Object provides the client the type erases.
+  Layer.effectDiscard(Effect.flatMap(CloudflareSharding, (sharding) =>
+    sharding.registerEntity(
       entity,
       (Effect.isEffect(build) ? build : Effect.succeed(build)) as Effect.Effect<Handlers>,
       options
-    )
-  }))
+    )))
