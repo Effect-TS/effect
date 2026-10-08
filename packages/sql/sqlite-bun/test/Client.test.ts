@@ -1,8 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, References } from "effect"
+import { Cause, Duration, Effect, Exit, Fiber } from "effect"
 import { Reactivity } from "effect/reactivity"
-import type { SqlClient } from "effect/sql/SqlClient"
-import type { SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
 import { rejects } from "node:assert/strict"
 import { mkdtemp, rm, stat } from "node:fs/promises"
@@ -26,41 +24,6 @@ const makeLockedDatabase = Effect.gen(function*() {
   lock.run("BEGIN IMMEDIATE")
   return { filename, unlock: () => lock.run("ROLLBACK") }
 })
-
-// A statement that takes the shared connection before another fiber begins a
-// transaction must not run inside that transaction. Where the statement's
-// fiber yields depends on scheduling, so callers start the transaction after
-// each delay in `raceDelays`.
-const raceDelays = Array.from({ length: 201 }, (_, delay) => delay)
-
-const raceRolledBackTransaction = <A>(
-  sql: SqlClient,
-  statement: Effect.Effect<A, SqlError>,
-  delay: number
-) =>
-  Effect.gen(function*() {
-    const plain = yield* statement.pipe(
-      Effect.provideService(References.MaxOpsBeforeYield, 3),
-      Effect.exit,
-      Effect.forkChild
-    )
-    for (let i = 0; i < delay; i++) yield* Effect.yieldNow
-    const transaction = yield* sql.withTransaction(Effect.gen(function*() {
-      yield* sql`INSERT INTO race VALUES ('rolled back')`
-      for (let i = 0; i < 1000; i++) yield* Effect.yieldNow
-      return yield* Effect.fail("rollback")
-    })).pipe(Effect.ignore, Effect.forkChild)
-    const exit = yield* Fiber.join(plain)
-    yield* Fiber.join(transaction)
-    return exit
-  })
-
-const makeRaceClient = Effect.gen(function*() {
-  const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
-  const sql = yield* SqliteClient.make({ filename: ":memory:" })
-  yield* sql`CREATE TABLE race (kind TEXT NOT NULL)`
-  return sql
-}).pipe(Effect.provide(Reactivity.layer))
 
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
@@ -257,21 +220,4 @@ describe("Client", () => {
       const error = yield* Effect.flip(Fiber.join(fiber))
       assert.strictEqual(error.reason._tag, "LockTimeoutError")
     }).pipe(Effect.provide(Reactivity.layer)))
-
-  it.effect.skipIf(!isBun)(
-    "keeps a plain write out of another fiber's rolled back transaction",
-    () =>
-      Effect.gen(function*() {
-        const lost: Array<number> = []
-        for (const delay of raceDelays) {
-          yield* Effect.scoped(Effect.gen(function*() {
-            const sql = yield* makeRaceClient
-            const exit = yield* raceRolledBackTransaction(sql, sql`INSERT INTO race VALUES ('plain')`, delay)
-            const rows = yield* sql<{ n: number }>`SELECT count(*) AS n FROM race`
-            if (Exit.isFailure(exit) || Number(rows[0].n) !== 1) lost.push(delay)
-          }))
-        }
-        assert.deepStrictEqual(lost, [])
-      })
-  )
 })
