@@ -47,6 +47,7 @@ describe("EntityRuntime", () => {
     let activeDuringHandler = BigInt(0)
     const registration: EntityRegistration = {
       entity: Telemetry,
+      keepAliveHeartbeat: 30_000,
       build: Effect.succeed(Telemetry.of({
         Ping: () =>
           Effect.sync(() => {
@@ -111,6 +112,7 @@ describe("EntityRuntime", () => {
       let finalizers = 0
       const registration: EntityRegistration = {
         entity: Concurrent,
+        keepAliveHeartbeat: 30_000,
         build: Effect.gen(function*() {
           const scope = Option.getOrThrow(yield* Effect.serviceOption(Scope.Scope))
           builds++
@@ -165,6 +167,7 @@ describe("EntityRuntime", () => {
       const seenLastChunks: Array<number | undefined> = []
       const registration: EntityRegistration = {
         entity: Streaming,
+        keepAliveHeartbeat: 30_000,
         build: Effect.succeed(Streaming.of({
           Values: (request) => {
             const last = Option.getOrUndefined(request.lastSentChunkValue)

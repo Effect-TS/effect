@@ -41,6 +41,7 @@ const appSql = Effect.runSync(
 // `DurableObjectSqlClient` the entity Durable Object provides.
 const registration: EntityRegistration = {
   entity: Notes,
+  keepAliveHeartbeat: 30_000,
   build: Effect.gen(function*() {
     const sql = yield* CloudflareCluster.DurableObjectSqlClient
     yield* sql`CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY)`

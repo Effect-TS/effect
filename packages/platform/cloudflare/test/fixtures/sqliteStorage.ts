@@ -72,4 +72,9 @@ export class SqliteStorage {
     this.alarm = scheduledTime
     return Promise.resolve()
   }
+
+  deleteAlarm(): Promise<void> {
+    this.alarm = null
+    return Promise.resolve()
+  }
 }
