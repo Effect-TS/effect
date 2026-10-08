@@ -43,6 +43,7 @@ import {
 } from "./entityMailbox.ts"
 import { type EntityRegistration, getEntityRegistration } from "./entityRegistry.ts"
 import { CurrentEntityName, CurrentReplyRegistry, type EntityReplyRegistry, makeReplyRegistry } from "./entityReply.ts"
+import { type EntitySql, makeEntitySql } from "./entitySql.ts"
 import { armAlarm, earliestDeliverAt, withTransaction } from "./entityStorage.ts"
 import { decodeReplyFor, decodeRequest, encodeReplyFor, peekEnvelopeTag } from "./entityWire.ts"
 
@@ -59,7 +60,8 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   nextId: () => string,
   entityName = encodeName(address.entityType, address.entityId),
   keepAlive?: (enabled: boolean) => Effect.Effect<void>,
-  replyRegistry?: EntityReplyRegistry
+  replyRegistry?: EntityReplyRegistry,
+  entitySql?: EntitySql
 ) {
   let cached: CachedHandlers | undefined
   let building: Deferred.Deferred<CachedHandlers> | undefined
@@ -97,7 +99,13 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     if (replyRegistry !== undefined) {
       context = Context.add(context, CurrentReplyRegistry, replyRegistry)
     }
-    const handlers = yield* Effect.provideContext(registration.build, context).pipe(
+    const handlers = yield* Effect.gen(function*() {
+      if (entitySql !== undefined) {
+        const sqlContext = yield* Effect.provideService(entitySql.make(registration.context), Scope.Scope, scope)
+        context = Context.merge(context, sqlContext)
+      }
+      return yield* Effect.provideContext(registration.build, context)
+    }).pipe(
       Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
     )
     ClusterMetrics.entities.modifyUnsafe(BigInt(1), metricContext)
@@ -353,6 +361,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const pendingRuns = new Set<string>()
   const workerWaiters = new Map<string, Array<WorkerWaiter>>()
   const replyRegistry = makeReplyRegistry()
+  const entitySql = makeEntitySql(storage)
+  // Every mailbox write runs in its own storage transaction and waits for any
+  // open user transaction, so a user rollback cannot take a reply with it.
+  const write = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, E> =>
+    entitySql.guard(withTransaction(storage, effect))
   let runtime: EntityRuntime | undefined
 
   const getRuntime = (registration: EntityRegistration): Effect.Effect<EntityRuntime> =>
@@ -363,7 +376,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         () => crypto.randomUUID(),
         options.entityName,
         options.keepAlive.update,
-        replyRegistry
+        replyRegistry,
+        entitySql
       ),
       (built) => runtime = built
     )
@@ -460,7 +474,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         Effect.gen(function*() {
           const encoded = yield* encodeReplyFor(registration, rpc, reply)
           if (persisted) {
-            yield* Effect.orDie(withTransaction(storage, saveReply(sql, encoded)))
+            yield* Effect.orDie(write(saveReply(sql, encoded)))
           }
           if (scheduled && reply._tag === "WithExit") {
             yield* deliverScheduledReply(requestId, encoded, runOptions?.replyTos)
@@ -474,7 +488,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
               Effect.suspend(() => {
                 if (!persisted) return Effect.void
                 pendingRuns.delete(requestId)
-                return discard && Exit.isSuccess(exit) ? completeTell(sql, requestId) : Effect.void
+                return discard && Exit.isSuccess(exit) ? write(completeTell(sql, requestId)) : Effect.void
               })
             )
           )
@@ -497,7 +511,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         ),
         (reply) =>
           Effect.orDie(
-            withTransaction(storage, Effect.andThen(clearReplies(sql, requestId), saveReply(sql, reply)))
+            write(Effect.andThen(clearReplies(sql, requestId), saveReply(sql, reply)))
           )
       )
       : Effect.void
@@ -508,7 +522,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       Effect.gen(function*() {
         const encoded = yield* encodeReplyFor(registration, rpc, reply)
         if (persisted) {
-          yield* Effect.orDie(withTransaction(storage, saveReply(sql, encoded)))
+          yield* Effect.orDie(write(saveReply(sql, encoded)))
         }
         if (reply._tag === "Chunk") {
           const acknowledged = Deferred.makeUnsafe<void>()
@@ -560,11 +574,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     Effect.suspend(() => peekEnvelopeTag(row.envelope)).pipe(
       Effect.flatMap((tag) => {
         if (row.discard || tag === undefined) {
-          return completeTell(sql, row.requestId)
+          return write(completeTell(sql, row.requestId))
         }
         const rpc = registration.entity.protocol.requests.get(tag) as Rpc.AnyWithProps | undefined
         if (rpc === undefined) {
-          return completeTell(sql, row.requestId)
+          return write(completeTell(sql, row.requestId))
         }
         return Effect.flatMap(
           encodeReplyFor(
@@ -577,11 +591,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             })
           ),
           (reply) =>
-            withTransaction(storage, saveReply(sql, reply)).pipe(
+            write(saveReply(sql, reply)).pipe(
               Effect.andThen(deliverScheduledReply(row.requestId, reply, row.replyTos))
             )
         ).pipe(
-          Effect.catchCause(() => completeTell(sql, row.requestId))
+          Effect.catchCause(() => write(completeTell(sql, row.requestId)))
         )
       })
     )
@@ -704,8 +718,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
 
       const persistedResult = yield* Effect.result(
-        withTransaction(
-          storage,
+        write(
           persistRequest(
             sql,
             envelopeText,
@@ -789,7 +802,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     Effect.flatten(Semaphore.withPermit(semaphore, invokeEntry(envelopeText, discard, delivery)))
 
   const acknowledge = (requestId: string, replyId: string): Effect.Effect<ReadonlyArray<string>> =>
-    withTransaction(storage, ackChunk(sql, requestId, replyId)).pipe(
+    write(ackChunk(sql, requestId, replyId)).pipe(
       Effect.flatMap(() => {
         const session = sessions.get(requestId)
         if (session?.ack?.replyId === replyId) {
@@ -829,7 +842,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       return Effect.andThen(stop, session.completeInterrupt)
     })
 
-  const reset = (requestId: string): Effect.Effect<void> => withTransaction(storage, clearReplies(sql, requestId))
+  const reset = (requestId: string): Effect.Effect<void> => write(clearReplies(sql, requestId))
 
   const alarm = Effect.suspend(() => {
     const registration = getEntityRegistration(options.address.entityType)

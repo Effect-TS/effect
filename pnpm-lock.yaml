@@ -441,6 +441,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^5.20260822.1
         version: 5.20260926.1
+      '@effect/sql-sqlite-do':
+        specifier: workspace:^
+        version: link:../../sql/sqlite-do
     devDependencies:
       alchemy:
         specifier: 2.0.0-beta.76

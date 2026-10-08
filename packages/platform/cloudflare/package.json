@@ -72,7 +72,8 @@
     }
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^5.20260822.1"
+    "@cloudflare/workers-types": "^5.20260822.1",
+    "@effect/sql-sqlite-do": "workspace:^"
   },
   "devDependencies": {
     "alchemy": "2.0.0-beta.76",
