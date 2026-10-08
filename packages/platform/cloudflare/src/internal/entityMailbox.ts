@@ -224,22 +224,6 @@ export const loadUnprocessed = (sql: SqlStorage, now?: number): Effect.Effect<Ar
   )
 
 /** @internal */
-// The alarm replays every unprocessed row through `loadUnprocessed` now; this
-// stays only for `EntityMailbox.test.ts` until that test moves off it.
-// oxlint-disable-next-line effect/no-unused-internal
-export const loadDue = (sql: SqlStorage, now?: number): Effect.Effect<Array<StoredMessage>> =>
-  Effect.sync(() =>
-    sql.exec<StoredMessageRow>(
-      `SELECT m.request_id, m.envelope, m.discard, m.deliver_at, m.reply_to, r.reply AS last_reply
-       FROM cluster_messages m
-       LEFT JOIN cluster_replies r ON r.reply_id = m.last_reply_id
-       WHERE m.processed = 0 AND m.deliver_at IS NOT NULL AND m.deliver_at <= ?
-       ORDER BY m.rowid ASC`,
-      now ?? Date.now()
-    ).toArray().map(rowToMessage)
-  )
-
-/** @internal */
 export const loadMessage = (sql: SqlStorage, requestId: string): Effect.Effect<StoredMessage | undefined> =>
   Effect.sync(() => {
     const row = sql.exec<StoredMessageRow>(
