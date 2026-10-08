@@ -1211,24 +1211,6 @@ export const withRateLimiter: {
     }
     return budget
   }
-  const budgetWait = (key: string, tokens: number, now: number): number => {
-    const budget = getBudget(key)
-    // requests sent after the observed one are not reflected in its count
-    const available = budget.remaining - (budget.sent - budget.observed)
-    return budget.resetAt > now && available < tokens ? budget.resetAt - now : 0
-  }
-
-  const consume = (key: string, tokens: number) => {
-    const state = getState(key)
-    return options.limiter.consume({
-      algorithm: options.algorithm,
-      onExceeded: "delay",
-      key,
-      limit: state.limit,
-      window: state.window,
-      tokens
-    })
-  }
 
   const onResponse = options.disableResponseInspection
     ? undefined
@@ -1261,10 +1243,15 @@ export const withRateLimiter: {
     const clock = fiber.getRef(Clock)
     const key = resolveKey(request)
     const tokens = Math.max(resolveTokens(request), 1)
-    const wait = budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
-    if (wait > 0) {
-      return Effect.flatMap(Effect.sleep(wait), () => loop(effect, request, retries))
+    const budget = getBudget(key)
+    const now = clock.currentTimeMillisUnsafe()
+    // requests admitted after the observed one are not reflected in its count
+    if (budget.resetAt > now && budget.remaining - (budget.sent - budget.observed) < tokens) {
+      return Effect.flatMap(Effect.sleep(budget.resetAt - now), () => loop(effect, request, retries))
     }
+    // counted at admission, so requests already admitted are sent even if a
+    // later response exhausts the budget
+    const sent = budget.sent += tokens
     const current = getState(key)
     const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
@@ -1274,8 +1261,7 @@ export const withRateLimiter: {
     }
     const inspectResponse = (
       response: HttpClientResponse.HttpClientResponse,
-      adaptive: RateLimiter.AdaptiveConsumeResult | undefined,
-      sent: number
+      adaptive: RateLimiter.AdaptiveConsumeResult | undefined
     ) => {
       onResponse?.(clock, key, response.headers, tokens, sent)
       if (options.disableResponseInspection || response.status !== 429) {
@@ -1301,7 +1287,14 @@ export const withRateLimiter: {
       )
     }
     return Effect.flatMap(
-      consume(key, tokens),
+      options.limiter.consume({
+        algorithm: options.algorithm,
+        onExceeded: "delay",
+        key,
+        limit: current.limit,
+        window: current.window,
+        tokens
+      }),
       ({ delay }) => {
         const runAdaptive = (): Effect.Effect<
           HttpClientResponse.HttpClientResponse,
@@ -1309,51 +1302,26 @@ export const withRateLimiter: {
           R
         > => {
           const runRequest = (adaptive: RateLimiter.AdaptiveConsumeResult | undefined) => {
-            const attempt = (sent: number) =>
-              Effect.matchEffect(effect, {
-                onSuccess(response) {
-                  return Effect.flatMap(inspectResponse(response, adaptive, sent), (retryAfter) => {
-                    if (response.status !== 429 || !canRetry) return Effect.succeed(response)
-                    return retry(retryAfter)
-                  })
-                },
-                onFailure(error) {
-                  if (isTooManyRequestsHttpClientError(error)) {
-                    return Effect.flatMap(
-                      inspectResponse(error.reason.response, adaptive, sent),
-                      (retryAfter) => canRetry ? retry(retryAfter) : Effect.fail(error)
-                    )
-                  }
-                  return Effect.fail(error)
+            const request = Effect.matchEffect(effect, {
+              onSuccess(response) {
+                return Effect.flatMap(inspectResponse(response, adaptive), (retryAfter) => {
+                  if (response.status !== 429 || !canRetry) return Effect.succeed(response)
+                  return retry(retryAfter)
+                })
+              },
+              onFailure(error) {
+                if (isTooManyRequestsHttpClientError(error)) {
+                  return Effect.flatMap(
+                    inspectResponse(error.reason.response, adaptive),
+                    (retryAfter) => canRetry ? retry(retryAfter) : Effect.fail(error)
+                  )
                 }
-              })
-            // re-checked after the limiter delays, as responses may exhaust the budget meanwhile
-            const dispatch: Effect.Effect<
-              HttpClientResponse.HttpClientResponse,
-              E | RateLimiter.RateLimiterError,
-              R
-            > = Effect.suspend(() => {
-              const wait = budgetWait(key, tokens, clock.currentTimeMillisUnsafe())
-              if (wait === 0) {
-                const budget = getBudget(key)
-                budget.sent += tokens
-                return attempt(budget.sent)
+                return Effect.fail(error)
               }
-              // restart to wait for the reset and renew every admission, unless this is
-              // a learning admission, which is already counted and does not pace requests
-              if (adaptive?.phase !== "learning") {
-                return loop(effect, request, retries)
-              }
-              return Effect.sleep(wait).pipe(
-                Effect.flatMap(() => consume(key, tokens)),
-                Effect.flatMap(({ delay }) =>
-                  Duration.isZero(delay) ? dispatch : Effect.andThen(Effect.sleep(delay), dispatch)
-                )
-              )
             })
             return adaptive === undefined || Duration.isZero(adaptive.delay)
-              ? dispatch
-              : Effect.delay(dispatch, adaptive.delay)
+              ? request
+              : Effect.delay(request, adaptive.delay)
           }
           if (!adaptiveLearningEnabled) {
             return runRequest(undefined)
@@ -1414,7 +1382,7 @@ interface RateLimiterState {
 }
 
 interface RateLimitBudget {
-  /** Total tokens sent for the key. */
+  /** Total tokens admitted for the key. */
   sent: number
   /** The `sent` total of the request whose remaining count was last applied. */
   observed: number
