@@ -236,8 +236,6 @@ const make = Effect.gen(function*() {
     const inputSinks = new Map<number, Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError>>()
     const outputStreams = new Map<number, Stream.Stream<Uint8Array, PlatformError.PlatformError>>()
 
-    // Create a sink to write to the file descriptor, piping in the user
-    // provided stream if present
     const setupInput = Effect.fnUntraced(function*(
       fd: number,
       nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
@@ -258,8 +256,6 @@ const make = Effect.gen(function*() {
       inputSinks.set(fd, sink)
     })
 
-    // Create a stream to read from the file descriptor, transducing it through
-    // the user provided sink if present
     const setupOutput = (
       fd: number,
       nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
@@ -296,8 +292,7 @@ const make = Effect.gen(function*() {
           break
         }
         case "duplex": {
-          // Both directions share the same socket. Keep the write side open
-          // after the child half-closes, so responses can still be sent.
+          // Keep writing possible after the child closes its write side.
           if (nodeStream && "allowHalfOpen" in nodeStream) {
             nodeStream.allowHalfOpen = true
           }
@@ -669,7 +664,6 @@ const make = Effect.gen(function*() {
               const fdName = ChildProcess.fdName(fd) as `fd${number}`
               const existingFds = command.options.additionalFds ?? {}
               const existingFd = existingFds[fdName]
-              // A duplex target stays duplex, with the source as its input
               const fdConfig: ChildProcess.AdditionalFdConfig = existingFd?.type === "duplex"
                 ? { ...existingFd, stream: sourceStream }
                 : { type: "input", stream: sourceStream }

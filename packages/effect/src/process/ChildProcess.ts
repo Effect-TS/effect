@@ -499,32 +499,21 @@ export interface CommandOptions extends KillOptions {
    *
    * **Details**
    *
-   * Keys must be in the format `"fd3"`, `"fd4"`, etc. with a file descriptor
-   * index >= 3.
+   * Keys use the descriptor index: `"fd3"`, `"fd4"`, etc. (index >= 3).
    *
-   * The file descriptor index is determined by the numeric suffix (i.e. `fd3`
-   * has a file descriptor index of 3).
+   * For `"duplex"`, use `getInputFd` to write and `getOutputFd` to read the same
+   * descriptor. `pipeTo` preserves duplex targets, replacing only their input.
    *
-   * A `"duplex"` file descriptor is a single bidirectional channel. Write to it
-   * with `getInputFd` and read from it with `getOutputFd`; both use the same
-   * descriptor. When a `"duplex"` descriptor is the target of `pipeTo`, it
-   * stays duplex and the piped stream becomes its input.
+   * Duplex request/response and half-close are verified on Linux with Node.js
+   * and raw Deno `node:child_process` (not Effect's spawner). The same behavior
+   * is expected on macOS; Windows request/response is expected but unverified.
+   * Half-close is unsupported on Windows and Bun: keep the input open until
+   * all responses are read. Bun extra descriptors on Windows are unverified.
+   * Native `DenoChildProcessSpawner` does not support additional descriptors.
    *
-   * Platform support for `"duplex"` descriptors:
-   *
-   * - Verified on Linux with Node.js and Deno's `node:child_process`:
-   *   request/response on one descriptor, and half-close in both directions.
-   *   Ending the input sends EOF to the child, which can still reply.
-   * - Expected, not verified: the same behavior on macOS (POSIX socket pair),
-   *   and request/response on Windows (duplex named pipe).
-   * - Not supported: half-close on Windows (named pipes have no write-side
-   *   shutdown) and on Bun (ending the input closes the whole descriptor).
-   *   Keep the input open until every response has been read.
-   * - Unverified: any use of extra descriptors with Bun on Windows.
-   *
-   * In the child, open the descriptor as a socket, e.g. `new net.Socket({ fd: 3 })`
-   * in Node.js or Deno. Deno children cannot use `node:fs` on the raw
-   * descriptor, and Bun children cannot use `net.Socket` on it.
+   * Node.js and Deno children can use `new net.Socket({ fd: 3 })`. Deno children
+   * cannot use `node:fs` on the raw descriptor; Bun children cannot use
+   * `net.Socket` on it.
    *
    * **Example** (Configuring additional file descriptors)
    *
