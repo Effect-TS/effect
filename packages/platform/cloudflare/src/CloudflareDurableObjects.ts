@@ -120,7 +120,8 @@ const blockOnInitialization = (
  * **Details**
  *
  * The constructor stays cheap: it opens SQLite, ensures the mailbox tables,
- * and re-arms the single alarm from the earliest pending `deliver_at`. User
+ * and re-arms the single alarm from the earliest pending `deliver_at`, or the
+ * keep-alive heartbeat when the entity holds `Entity.keepAlive`. User
  * handlers are never built in the constructor; requests and alarms wait for
  * the registered {@link setInitializer} callback, then handlers are built once
  * per wake. Each build gets a `DurableObjectSqlClient` on this object's SQLite

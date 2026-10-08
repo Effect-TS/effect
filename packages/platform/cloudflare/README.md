@@ -341,6 +341,45 @@ const program = Effect.gen(function*() {
 )
 ```
 
+## Restarts and recovery
+
+A deploy, a runtime update, or an eviction kills the entity Durable Object.
+Cloudflare does not re-create it by itself: the object stays cold until a
+request, an alarm, or a WebSocket event arrives. To recover without outside
+contact, the entity keeps an alarm in storage while it has something to come
+back for:
+
+- While it holds `Entity.keepAlive`, the alarm re-arms every
+  `keepAliveHeartbeat` interval (30 seconds by default, set on
+  `CloudflareCluster.layer` or `AlchemyCloudflareCluster.make`). After a
+  restart the alarm rebuilds the entity, which runs its handler build, and
+  restores the hold. `Entity.keepAlive(false)` ends it.
+- While a persisted request runs, the alarm stays armed one interval ahead.
+  After a restart it replays every unprocessed row, so an interrupted request
+  runs again without a new message. Replay is alarm-driven; any later request
+  to the entity replays the rows too.
+
+The interval is recovery latency, not a liveness check. At 30 seconds a
+kept-alive entity costs about 2,880 alarm requests a day, which is small next
+to the duration billing of the held object itself.
+
+Things to plan for:
+
+- After a deploy, kept-alive entities keep running the old code for about 5
+  minutes, then die without warning. Schema changes must tolerate old code
+  still running against the same storage.
+- Recovery after a deploy takes about those 5 minutes plus one interval. The
+  hold cannot see the deploy; only the heartbeat brings the entity back.
+- The keep-alive flag is persisted, the holder count is not. Each handler
+  build counts its own holders, so two `EntityResource`s need two releases.
+  Classic cluster drops the hold when the first one releases.
+- An `EntityResource` that is not acquired eagerly in the handler build
+  leaves the object pinned after a restart until a later
+  `Entity.keepAlive(false)`. Classic cluster behaves the same.
+- A deploy that removes an entity type leaves its heartbeat behind. The alarm
+  fails, Cloudflare retries it 6 times, and the chain stops; the stored
+  keep-alive flag is never cleaned up.
+
 ## v1 compatibility
 
 The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
@@ -360,7 +399,7 @@ The status vocabulary is **maps 1:1**, **adapted**, and **out of scope**.
 | `MailboxFull` / 4096 cap / 2 MB row rejection                                 | maps 1:1     | Same limits; the SQLite row is the hard ceiling                                                             |
 | `defectRetryPolicy` then terminal defect                                      | adapted      | Rebuilds handlers in the wake; crash or deployment wipes memory and replays unprocessed rows                |
 | `Entity.toLayer` `concurrency`                                                | maps 1:1     | Same per-entity handler interleaving contract; storage entry stays serialized at any setting                |
-| `Entity.keepAlive`                                                            | adapted      | Pins while holders exist; hibernation is allowed with no holders                                            |
+| `Entity.keepAlive`                                                            | maps 1:1     | Survives restarts through a heartbeat alarm; the holder count is per handler build, not persisted           |
 | `CurrentRunnerAddress`                                                        | adapted      | Synthetic address for identity and telemetry; no peer dialing                                               |
 | `EntityResource.make`                                                         | adapted      | External lifetimes such as a browser; close or idle TTL unpins                                              |
 | `DurableObjectSqlClient` in entity handlers (`CloudflareCluster.toLayer`)     | adapted      | The entity Durable Object's own SQLite; `cluster_` tables reserved, 2 MB rows, transactions per object      |
