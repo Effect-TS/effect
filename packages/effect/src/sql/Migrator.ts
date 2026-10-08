@@ -240,12 +240,37 @@ export const make = <RD = never>({
         orElse: () => Effect.void
       })
 
-      const [latestId, current] = yield* Effect.all([latestMigrationId(sql, table), loader])
+      const [latestMigrationId, current] = yield* Effect.all([
+        Effect.map(
+          latestMigration,
+          Option.match({
+            onNone: () => 0,
+            onSome: (_) => _.id
+          })
+        ),
+        loader
+      ])
+
+      if (new Set(current.map(([id]) => id)).size !== current.length) {
+        return yield* new MigrationError({
+          kind: "Duplicates",
+          message: "Found duplicate migration id's"
+        })
+      }
 
       const required: Array<ResolvedMigration> = []
 
-      for (const resolved of yield* selectPending(current, latestId)) {
-        required.push([resolved[0], resolved[1], yield* loadMigration(resolved)])
+      for (const resolved of current) {
+        const [currentId, currentName] = resolved
+        if (currentId <= latestMigrationId) {
+          continue
+        }
+
+        required.push([
+          currentId,
+          currentName,
+          yield* loadMigration(resolved)
+        ])
       }
 
       if (required.length > 0) {
@@ -309,26 +334,6 @@ export const make = <RD = never>({
 
     return completed
   })
-
-const latestMigrationId = (sql: Client.SqlClient, table: string): Effect.Effect<number, SqlError> =>
-  Effect.map(
-    sql<{ migration_id: number | string | null }>`SELECT MAX(migration_id) AS migration_id FROM ${sql(table)}`
-      .withoutTransform,
-    (rows) => Number(rows[0]?.migration_id ?? 0)
-  )
-
-const selectPending = (
-  current: ReadonlyArray<ResolvedMigration>,
-  latestId: number
-): Effect.Effect<ReadonlyArray<ResolvedMigration>, MigrationError> =>
-  new Set(current.map(([id]) => id)).size !== current.length
-    ? Effect.fail(
-      new MigrationError({
-        kind: "Duplicates",
-        message: "Found duplicate migration id's"
-      })
-    )
-    : Effect.succeed(current.filter(([id]) => id > latestId))
 
 const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Effect<boolean, SqlError> => {
   // Match query quoting: to_regclass folds unquoted names to lowercase.
