@@ -91,7 +91,12 @@ const makeNotes = Effect.fnUntraced(function*(entityId: string) {
     storage: storage as unknown as DurableObjectStorage,
     address,
     entityName: `${Notes.type.length}:${Notes.type}${entityId}`,
-    keepAlive: makeEntityKeepAlive(() => Promise.resolve()),
+    keepAlive: makeEntityKeepAlive({
+      startHold: () => Promise.resolve(),
+      wanted: false,
+      persist: () => Effect.void,
+      retryCapMillis: () => 0
+    }),
     waitUntil: (effect) => {
       Effect.runFork(effect)
     },

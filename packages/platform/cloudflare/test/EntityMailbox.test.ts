@@ -1,7 +1,6 @@
 import {
   clearReplies,
   EncodedMessageTooLargeError,
-  loadDue,
   loadUnprocessed,
   MailboxFullError,
   maximumEncodedSize,
@@ -63,7 +62,7 @@ describe("EntityMailbox", () => {
         "7:Callersecond"
       )
 
-      const [row] = yield* loadDue(sql, 2_000)
+      const [row] = yield* loadUnprocessed(sql, 2_000)
       assert.deepStrictEqual(row.replyTos, ["7:Callerfirst", "7:Callersecond"])
     }))
 

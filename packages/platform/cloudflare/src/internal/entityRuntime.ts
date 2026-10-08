@@ -40,12 +40,11 @@ import {
   saveReply,
   type StoredMessage
 } from "./entityMailbox.ts"
-import { type EntityRegistration, getEntityRegistration } from "./entityRegistry.ts"
+import { type EntityRegistration, getEntityRegistration, keepAliveHeartbeatMillis } from "./entityRegistry.ts"
 import { CurrentEntityName, CurrentReplyRegistry, type EntityReplyRegistry, makeReplyRegistry } from "./entityReply.ts"
 import { type EntitySql, makeEntitySql } from "./entitySql.ts"
 import {
   armAlarm,
-  defaultKeepAliveHeartbeatMillis,
   earliestDeliverAt,
   loadEntityState,
   nextAlarmAt,
@@ -230,8 +229,9 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   })
 
   // Builds the handlers without running a request, for wakes that only need
-  // the entity alive.
-  const warm: Effect.Effect<void> = Effect.asVoid(getHandlers())
+  // the entity alive. Building restores the hold; the explicit `restore`
+  // covers an entity that was already built when its hold ended.
+  const warm: Effect.Effect<void> = Effect.andThen(getHandlers(), Effect.sync(() => keepAlive?.restore()))
 
   return { run, invalidate, warm, handlerSemaphore } as const
 })
@@ -406,8 +406,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     return deliverAt === undefined ? Effect.void : armAlarm(storage, deliverAt)
   })
 
-  const heartbeatMillis = () =>
-    getEntityRegistration(options.address.entityType)?.keepAliveHeartbeat ?? defaultKeepAliveHeartbeatMillis
+  const heartbeatMillis = () => keepAliveHeartbeatMillis(options.address.entityType)
 
   const isRunning = (requestId: string) => sessions.has(requestId) || pendingRuns.has(requestId)
 
@@ -655,7 +654,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       (row) =>
         // An active session or in-flight run already owns this request;
         // replaying it would start a second execution in the same wake.
-        sessions.has(row.requestId) || pendingRuns.has(row.requestId) ? Effect.succeed(undefined) : runStored(
+        isRunning(row.requestId) ? Effect.succeed(undefined) : runStored(
           registration,
           entityRuntime,
           row.envelope,
@@ -898,36 +897,26 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     // armed before awaiting the replayed handlers: a handler that outlives the
     // alarm wall-clock limit kills this invocation, and the chain must not
     // depend on code after it.
-    return Semaphore.withPermit(
+    return Effect.flatten(Semaphore.withPermit(
       semaphore,
       Effect.gen(function*() {
         const rows = (yield* loadUnprocessed(sql)).filter((row) => !isRunning(row.requestId))
         const keepAlive = loadEntityState(sql).keepAlive
         // A heartbeat left over after keep-alive was released must not
-        // rebuild the entity.
-        if (rows.length === 0 && !keepAlive) {
-          yield* rearm
-          return undefined
-        }
+        // rebuild the entity; the `ensuring` below still settles the alarm.
+        if (rows.length === 0 && !keepAlive) return Effect.void
         const entityRuntime = yield* getRuntime(registration)
         const entries = yield* replayRows(registration, entityRuntime, rows)
         yield* rearm
-        return { entityRuntime, entries, keepAlive }
+        const awaitReplays = Effect.asVoid(Fiber.awaitAll(entries.map((entry) => entry.fiber)))
+        if (!keepAlive) return awaitReplays
+        // The hold is never awaited: it does not resolve while held.
+        return Effect.andThen(
+          Effect.catchCause(entityRuntime.warm, (cause) => Effect.logError("Entity keep-alive rebuild failed", cause)),
+          awaitReplays
+        )
       })
-    ).pipe(
-      Effect.flatMap((woken) => {
-        if (woken === undefined) return Effect.void
-        // Building restores the hold; `restore` covers an entity that was
-        // already built when its hold ended. The hold is never awaited: it
-        // does not resolve while held.
-        const warm = woken.keepAlive
-          ? woken.entityRuntime.warm.pipe(
-            Effect.andThen(Effect.sync(() => options.keepAlive.restore())),
-            Effect.catchCause((cause) => Effect.logError("Entity keep-alive rebuild failed", cause))
-          )
-          : Effect.void
-        return Effect.andThen(warm, Fiber.awaitAll(woken.entries.map((entry) => entry.fiber)))
-      }),
+    )).pipe(
       Effect.ensuring(Semaphore.withPermit(semaphore, rearm)),
       Effect.withSpan("CloudflareCluster.alarm", {
         attributes: {

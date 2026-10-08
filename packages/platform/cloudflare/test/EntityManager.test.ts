@@ -70,7 +70,12 @@ const makeMailbox = Effect.fnUntraced(function*(entityId: string) {
     storage: storage as unknown as DurableObjectStorage,
     address,
     entityName: `${Mailbox.type.length}:${Mailbox.type}${entityId}`,
-    keepAlive: makeEntityKeepAlive(() => Promise.resolve()),
+    keepAlive: makeEntityKeepAlive({
+      startHold: () => Promise.resolve(),
+      wanted: false,
+      persist: () => Effect.void,
+      retryCapMillis: () => 0
+    }),
     waitUntil: (effect) => {
       waitUntilFibers.push(Effect.runFork(effect))
     },
