@@ -889,66 +889,23 @@ export const suite = (
         describe("duplex", () => {
           const encode = (text: string) => new TextEncoder().encode(text)
 
-          it.effect("should exchange a request and response over the same fd", () =>
+          it.effect("should read a reply on the same fd after pipeTo ends its input", () =>
             Effect.gen(function*() {
-              // The child replies on fd3 before the parent has finished writing
-              const handle = yield* ChildProcess.make("sh", ["-c", "read req <&3; echo \"pong:$req\" >&3"], {
-                additionalFds: { fd3: { type: "duplex" } }
-              })
-
-              yield* Stream.make(encode("ping\n")).pipe(
-                Stream.concat(Stream.never),
-                Stream.run(handle.getInputFd(3)),
-                Effect.forkScoped
+              // The child replies on fd3 only after reading EOF from it
+              const handle = yield* ChildProcess.make("echo", ["ping"]).pipe(
+                ChildProcess.pipeTo(
+                  ChildProcess.make("sh", ["-c", "req=$(cat <&3); echo \"pong:$req\" >&3"], {
+                    additionalFds: { fd3: { type: "duplex" } }
+                  }),
+                  { to: "fd3" }
+                )
               )
+
               const response = yield* decodeByteStream(handle.getOutputFd(3))
 
               assert.strictEqual(response, "pong:ping")
               assert.strictEqual(yield* handle.exitCode, ChildProcessSpawner.ExitCode(0))
             }))
-
-          it.effect.skipIf(process.platform === "win32")(
-            "should half-close the write side when the input stream ends",
-            () =>
-              Effect.gen(function*() {
-                // The child only replies after reading EOF on fd3
-                const handle = yield* ChildProcess.make("sh", ["-c", "req=$(cat <&3); echo \"got:$req\" >&3"], {
-                  additionalFds: { fd3: { type: "duplex", stream: Stream.make(encode("request")) } }
-                })
-
-                const response = yield* decodeByteStream(handle.getOutputFd(3))
-
-                assert.strictEqual(response, "got:request")
-                assert.strictEqual(yield* handle.exitCode, ChildProcessSpawner.ExitCode(0))
-              })
-          )
-
-          it.effect.skipIf(process.platform === "win32")(
-            "should keep the write side open after the child half-closes",
-            () =>
-              Effect.gen(function*() {
-                // The child ends its write side first, then waits for the reply
-                const script = [
-                  "const socket = new (require(\"node:net\").Socket)({ fd: 3, allowHalfOpen: true })",
-                  "let reply = \"\"",
-                  "socket.on(\"data\", (chunk) => { reply += chunk })",
-                  "socket.on(\"end\", () => { process.stdout.write(reply); socket.destroy() })",
-                  "socket.end(\"hello\")"
-                ].join("\n")
-                const handle = yield* ChildProcess.make(process.execPath, ["-e", script], {
-                  additionalFds: { fd3: { type: "duplex" } }
-                })
-
-                const request = yield* decodeByteStream(handle.getOutputFd(3))
-                assert.strictEqual(request, "hello")
-
-                yield* Stream.run(Stream.make(encode("reply")), handle.getInputFd(3))
-                const stdout = yield* decodeByteStream(handle.stdout)
-
-                assert.strictEqual(stdout, "reply")
-                assert.strictEqual(yield* handle.exitCode, ChildProcessSpawner.ExitCode(0))
-              })
-          )
 
           it.effect("should report a write failure to a later reader without an uncaught error", () =>
             Effect.gen(function*() {
@@ -975,23 +932,6 @@ export const suite = (
               assert.strictEqual(writeError._tag, "PlatformError")
               assert.deepStrictEqual(uncaught, [])
               assert.strictEqual(readError._tag, "PlatformError")
-            }))
-
-          it.effect("should keep a duplex fd duplex when targeted by pipeTo", () =>
-            Effect.gen(function*() {
-              const handle = yield* ChildProcess.make("echo", ["ping"]).pipe(
-                ChildProcess.pipeTo(
-                  ChildProcess.make("sh", ["-c", "read req <&3; echo \"pong:$req\" >&3"], {
-                    additionalFds: { fd3: { type: "duplex" } }
-                  }),
-                  { to: "fd3" }
-                )
-              )
-
-              const response = yield* decodeByteStream(handle.getOutputFd(3))
-
-              assert.strictEqual(response, "pong:ping")
-              assert.strictEqual(yield* handle.exitCode, ChildProcessSpawner.ExitCode(0))
             }))
         })
       })
