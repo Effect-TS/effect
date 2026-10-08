@@ -2,4 +2,4 @@
 "@effect/opentelemetry": patch
 ---
 
-Fix Effect spans starting a new trace under an active OpenTelemetry span whose span context exposes its ids through getters, such as dd-trace's, so they continue that trace.
+Preserve parent trace and span IDs when an active OpenTelemetry span context exposes them through getters, such as dd-trace.
