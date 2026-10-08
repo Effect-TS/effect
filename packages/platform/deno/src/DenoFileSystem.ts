@@ -184,8 +184,10 @@ const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
 
 /**
  * Deno has no positional read, so reads and writes seek the shared native
- * offset first. `native` serializes those seek-then-I/O sequences, including
- * ones whose fiber was interrupted, so positional reads can run concurrently.
+ * offset first. `native` serializes those seek-then-I/O sequences so
+ * positional reads can run concurrently. A started sequence holds the queue
+ * until it settles, even if its fiber was interrupted; a queued sequence
+ * whose fiber was interrupted before its turn is skipped.
  * Cursor operations must still not be used concurrently with each other.
  */
 class FileImpl implements FileSystem.File {
@@ -230,8 +232,8 @@ class FileImpl implements FileSystem.File {
     })
   }
 
-  private native<A>(evaluate: () => Promise<A>): Promise<A> {
-    const result = this.nativeQueue.then(evaluate)
+  private native<A>(signal: AbortSignal, evaluate: () => Promise<A>): Promise<A> {
+    const result = this.nativeQueue.then(() => signal.aborted ? Promise.reject(signal.reason) : evaluate())
     this.nativeQueue = result.catch(() => undefined)
     return result
   }
@@ -250,8 +252,8 @@ class FileImpl implements FileSystem.File {
         tryPromise(
           method,
           undefined,
-          () =>
-            this.native(async () => {
+          (signal) =>
+            this.native(signal, async () => {
               if (this.nativePosition !== position) {
                 this.file.seekSync(position, Deno.SeekMode.Start)
               }
@@ -318,8 +320,8 @@ class FileImpl implements FileSystem.File {
         tryPromise(
           method,
           undefined,
-          () =>
-            this.native(async () => {
+          (signal) =>
+            this.native(signal, async () => {
               if (!this.append && this.nativePosition !== position) {
                 this.file.seekSync(position, Deno.SeekMode.Start)
               }
