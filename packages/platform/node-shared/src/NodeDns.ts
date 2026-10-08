@@ -39,6 +39,10 @@ import * as NodeDns from "node:dns"
  * server. Address lookups always use the operating system resolver and are not
  * affected.
  *
+ * `timeout` is rounded up to whole milliseconds and `tries` down to a whole
+ * number, and both are clamped to 1 through 2^31 - 1, so `Duration.infinity`
+ * uses the longest timeout the resolver supports.
+ *
  * **Gotchas**
  *
  * IPv6 name servers with a scope ID, such as link-local addresses, are not
@@ -71,13 +75,28 @@ const reasons: Record<string, Dns.DnsErrorReason> = {
   ENOTIMP: "Unsupported"
 }
 
-const toDnsError = (
+/**
+ * Converts a failure of `node:dns` or of Bun's DNS functions to a
+ * `Dns.DnsError`, choosing the reason from the error's `code`.
+ *
+ * **Details**
+ *
+ * Bun prefixes c-ares codes with `DNS_`, such as `DNS_ENOTFOUND`; the prefix is
+ * ignored. Errors without a known code get the reason `Unknown`.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const dnsErrorFromCause = (
   cause: unknown,
   method: Dns.DnsError["method"],
   hostname: string,
   recordType?: Dns.RecordType
 ): Dns.DnsError => {
-  const code = typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code) : undefined
+  const code = typeof cause === "object" && cause !== null && "code" in cause
+    ? String(cause.code).replace(/^DNS_/, "")
+    : undefined
   return new Dns.DnsError({
     reason: (code !== undefined ? reasons[code] : undefined) ?? "Unknown",
     method,
@@ -87,23 +106,47 @@ const toDnsError = (
   })
 }
 
-// c-ares writes names without the trailing dot and the root name as an empty string.
-const absoluteName = (name: string): string => name === "" ? "." : name.endsWith(".") ? name : `${name}.`
-const recordName = (name: string): Host.DomainName => Host.domainNameFromStringUnsafe(absoluteName(name))
+// Resolvers write names without the trailing dot, and c-ares writes the root
+// name as an empty string.
+const absoluteName = (name: string): string => name.endsWith(".") ? name : `${name}.`
+
+/**
+ * Converts a name returned by a resolver to a fully qualified
+ * `Host.DomainName`, throwing when it is not a valid domain name.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const domainNameFromResolverUnsafe = (name: string): Host.DomainName =>
+  Host.domainNameFromStringUnsafe(absoluteName(name))
+
 const decoder = new TextDecoder()
 
-// c-ares escapes dots and backslashes inside a label as `\.` and `\\`, and
-// writes other bytes as decimal `\DDD` escapes. Decoding those bytes as UTF-8 gives
-// the text of the name, keeping only the dot and backslash escapes.
-const nameText = (name: string): string => {
-  if (!/\\\d{3}/.test(name)) return name
+/**
+ * Converts a name returned by a resolver to fully qualified text, for names
+ * that need not be host names, such as PTR targets and SOA mailboxes.
+ *
+ * **Details**
+ *
+ * Resolvers escape dots and backslashes inside a label as `\.` and `\\`,
+ * and write other bytes as `\DDD` escapes: c-ares in decimal (`radix` 10) and
+ * `Deno.resolveDns` in octal (`radix` 8). Decoding those bytes as UTF-8 gives
+ * the text of the name, keeping only the dot and backslash escapes.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const nameTextFromResolver = (name: string, radix: 8 | 10 = 10): string => {
+  if (!/\\\d{3}/.test(name)) return absoluteName(name)
   const bytes: Array<number> = []
   for (let i = 0; i < name.length; i++) {
     const code = name.charCodeAt(i)
     if (code !== 92 || i + 1 === name.length) {
       bytes.push(code)
     } else if (/^\d{3}$/.test(name.slice(i + 1, i + 4))) {
-      const byte = Number.parseInt(name.slice(i + 1, i + 4), 10)
+      const byte = Number.parseInt(name.slice(i + 1, i + 4), radix)
       if (byte === 46 || byte === 92) bytes.push(92)
       bytes.push(byte)
       i += 3
@@ -112,11 +155,36 @@ const nameText = (name: string): string => {
       i++
     }
   }
-  return decoder.decode(Uint8Array.from(bytes))
+  return absoluteName(decoder.decode(Uint8Array.from(bytes)))
 }
 
-// c-ares reports SOA refresh, retry, and expire as signed 32-bit integers.
-const uint32Seconds = (value: number): Duration.Duration => Duration.seconds(value >>> 0)
+/**
+ * Converts a number of seconds that a resolver reports as a signed 32-bit
+ * integer, such as the SOA refresh, retry, and expire intervals, to a
+ * `Duration`.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const secondsFromInt32 = (value: number): Duration.Duration => Duration.seconds(value >>> 0)
+
+/**
+ * Decodes a string that holds one byte per character as UTF-8.
+ *
+ * **Details**
+ *
+ * Node.js and `Deno.resolveDns` decode each byte of TXT and CAA character
+ * strings as one Latin-1 character; decoding the bytes as UTF-8 matches other
+ * runtimes. Strings with only ASCII characters are returned unchanged.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const utf8FromLatin1 = (value: string): string =>
+  // oxlint-disable-next-line no-control-regex
+  /[^\x00-\x7f]/.test(value) ? decoder.decode(Uint8Array.from(value, (character) => character.charCodeAt(0))) : value
 
 // Records whose data cannot be represented, such as names that are not valid
 // `Host.DomainName` values, are skipped.
@@ -153,14 +221,14 @@ const queries: {
     Arr.filterMap(await resolver.resolveCname(name), (target) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("CNAME", {
-          target: recordName(target)
+          target: domainNameFromResolverUnsafe(target)
         })
       )),
   MX: async (resolver, name) =>
     Arr.filterMap(await resolver.resolveMx(name), (mx) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("MX", {
-          exchange: recordName(mx.exchange),
+          exchange: domainNameFromResolverUnsafe(mx.exchange),
           priority: mx.priority
         })
       )),
@@ -173,33 +241,33 @@ const queries: {
           flags: naptr.flags,
           service: naptr.service,
           regexp: naptr.regexp,
-          replacement: recordName(naptr.replacement)
+          replacement: domainNameFromResolverUnsafe(naptr.replacement)
         })
       )),
   NS: async (resolver, name) =>
     Arr.filterMap(await resolver.resolveNs(name), (host) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("NS", {
-          host: recordName(host)
+          host: domainNameFromResolverUnsafe(host)
         })
       )),
   PTR: async (resolver, name) =>
     Arr.filterMap(await resolver.resolvePtr(name), (host) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("PTR", {
-          host: absoluteName(nameText(host))
+          host: nameTextFromResolver(host)
         })
       )),
   SOA: async (resolver, name) =>
     Arr.filterMap([await resolver.resolveSoa(name)], (soa) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("SOA", {
-          primary: recordName(soa.nsname),
-          admin: absoluteName(nameText(soa.hostmaster)),
+          primary: domainNameFromResolverUnsafe(soa.nsname),
+          admin: nameTextFromResolver(soa.hostmaster),
           serial: soa.serial,
-          refresh: uint32Seconds(soa.refresh),
-          retry: uint32Seconds(soa.retry),
-          expire: uint32Seconds(soa.expire),
+          refresh: secondsFromInt32(soa.refresh),
+          retry: secondsFromInt32(soa.retry),
+          expire: secondsFromInt32(soa.expire),
           minimum: Duration.seconds(soa.minttl)
         })
       )),
@@ -207,7 +275,7 @@ const queries: {
     Arr.filterMap(await resolver.resolveSrv(name), (srv) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("SRV", {
-          target: recordName(srv.name),
+          target: domainNameFromResolverUnsafe(srv.name),
           port: srv.port,
           priority: srv.priority,
           weight: srv.weight
@@ -265,8 +333,12 @@ export const lookup = (
         (entry) => Result.try(() => NetAddress.ipFromStringUnsafe(stripZone(entry.address)))
       )
     },
-    catch: (cause) => toDnsError(cause, "lookup", host)
+    catch: (cause) => dnsErrorFromCause(cause, "lookup", host)
   })
+
+// `dns.Resolver` throws for `timeout` and `tries` values that are not 32-bit
+// integers, and for `tries` below 1. Values below 1, including `NaN`, become 1.
+const resolverInt = (value: number): number => value >= 1 ? Math.min(value, 2 ** 31 - 1) : 1
 
 /**
  * Creates a function that queries DNS records with the runtime's `node:dns`
@@ -288,8 +360,8 @@ export const lookup = (
  */
 export const resolver = Effect.fnUntraced(function*(options?: Options) {
   const resolverOptions: NodeDns.ResolverOptions = {
-    ...(options?.timeout !== undefined && { timeout: Duration.toMillis(options.timeout) }),
-    ...(options?.tries !== undefined && { tries: options.tries })
+    ...(options?.timeout !== undefined && { timeout: resolverInt(Math.ceil(Duration.toMillis(options.timeout))) }),
+    ...(options?.tries !== undefined && { tries: resolverInt(Math.floor(options.tries)) })
   }
   const nameServers = options?.nameServers ?? []
   const scoped = nameServers.find((server) => NetAddress.isInetAddressV6(server) && server.scopeId !== 0)
@@ -326,13 +398,9 @@ export const resolver = Effect.fnUntraced(function*(options?: Options) {
   ): Effect.Effect<Array<Dns.DnsRecord>, Dns.DnsError> =>
     Effect.tryPromise({
       try: () => queries[type](resolver, name),
-      catch: (cause) => toDnsError(cause, method, hostname, method === "resolve" ? type : undefined)
+      catch: (cause) => dnsErrorFromCause(cause, method, hostname, method === "resolve" ? type : undefined)
     })
 })
-
-const utf8FromLatin1 = (value: string): string =>
-  // oxlint-disable-next-line no-control-regex
-  /[^\x00-\x7f]/.test(value) ? decoder.decode(Uint8Array.from(value, (character) => character.charCodeAt(0))) : value
 
 // Node.js decodes each byte of TXT and CAA character strings as one Latin-1
 // character; decoding the bytes as UTF-8 matches other runtimes.

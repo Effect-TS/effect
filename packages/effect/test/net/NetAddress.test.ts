@@ -712,7 +712,7 @@ describe("NetAddress", () => {
           { family: "IPv6", scopeid: 9 }
         ],
         en1: undefined,
-        en2: [{ family: "IPv4" }, { family: "IPv6", scopeid: 0 }],
+        en2: [{ family: "IPv4" }, { family: "IPv6", scopeid: 0 }, { family: "IPv6", scopeid: null }],
         en3: [{ family: "IPv6", scopeid: 11 }]
       }
       const scopeIds = NetAddress.scopeIdsFromInterfaces(Object.entries(interfaces))

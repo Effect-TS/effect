@@ -1653,7 +1653,7 @@ export const inetAddressFromHostString = (
  */
 export interface NetworkInterfaceAddress {
   readonly family: string
-  readonly scopeid?: number | undefined
+  readonly scopeid?: number | null | undefined
 }
 
 /**
@@ -1662,8 +1662,9 @@ export interface NetworkInterfaceAddress {
  * **Details**
  *
  * The first IPv6 address with a positive scope ID supplies the result. Accepts
- * the addresses of one interface, such as `os.networkInterfaces()[name]`,
- * without performing any operating-system lookup itself.
+ * the addresses of one interface, such as `os.networkInterfaces()[name]` or the
+ * entries of `Deno.networkInterfaces()` with that name, without performing any
+ * operating-system lookup itself.
  *
  * @see {@link scopeIdsFromInterfaces} for mapping every interface at once
  * @stability experimental
@@ -1673,8 +1674,12 @@ export interface NetworkInterfaceAddress {
 export const scopeIdFromInterface = (
   addresses: ReadonlyArray<NetworkInterfaceAddress> | undefined
 ): Option.Option<number> => {
-  const address = addresses?.find((address) => address.family === "IPv6" && (address.scopeid ?? 0) > 0)
-  return address?.scopeid === undefined ? Option.none() : Option.some(address.scopeid)
+  for (const address of addresses ?? []) {
+    if (address.family === "IPv6" && typeof address.scopeid === "number" && address.scopeid > 0) {
+      return Option.some(address.scopeid)
+    }
+  }
+  return Option.none()
 }
 
 /**

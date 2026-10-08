@@ -19,15 +19,10 @@ import type * as Layer from "effect/Layer"
 import * as AddressResolver from "effect/net/AddressResolver"
 import type * as Dns from "effect/net/Dns"
 import * as NetAddress from "effect/net/NetAddress"
-import * as Option from "effect/Option"
 
 const scopeId: AddressResolver.ScopeIdLookup = (name) =>
   Effect.try({
-    try: () =>
-      Option.fromUndefinedOr(
-        Deno.networkInterfaces().find((info) => info.name === name && info.family === "IPv6" && (info.scopeid ?? 0) > 0)
-          ?.scopeid ?? undefined
-      ),
+    try: () => NetAddress.scopeIdFromInterface(Deno.networkInterfaces().filter((info) => info.name === name)),
     catch: (cause) => new NetAddress.NetAddressError({ input: name, message: "cannot list network interfaces", cause })
   })
 

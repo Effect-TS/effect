@@ -27,7 +27,8 @@ import * as NetAddress from "./NetAddress.ts"
  *
  * Every operation either returns at least one address or fails. Lookups fail
  * with a `Dns.DnsError`, and hosts that cannot be converted, such as IPv6
- * literals with an unknown zone, fail with a `NetAddress.NetAddressError`.
+ * literals with an unknown zone or numeric addresses outside the requested
+ * family, fail with a `NetAddress.NetAddressError`.
  *
  * @stability experimental
  * @category services
@@ -119,10 +120,10 @@ export interface MakeOptions {
 const inFamily = (
   address: NetAddress.InetAddress,
   family: NetAddress.IpFamily | undefined
-): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>, Dns.DnsError> =>
+): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>, NetAddress.NetAddressError> =>
   family === undefined || NetAddress.isFamily(address, family)
     ? Effect.succeed(Arr.of(address))
-    : Effect.fail(new Dns.DnsError({ reason: "NotFound", method: "lookup", hostname: NetAddress.formatHost(address) }))
+    : Effect.fail(new NetAddress.NetAddressError({ input: address, message: `expected an ${family} address` }))
 
 /**
  * Creates an `AddressResolver` that looks up domain names with a `Dns`

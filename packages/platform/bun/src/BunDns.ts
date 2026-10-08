@@ -24,6 +24,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
 import * as NetAddress from "effect/net/NetAddress"
+import * as Result from "effect/Result"
 
 export type {
   /**
@@ -36,16 +37,6 @@ export type {
    */
   Options
 } from "@effect/platform-node-shared/NodeDns"
-
-const reasons: Record<string, Dns.DnsErrorReason> = {
-  DNS_ENOTFOUND: "NotFound",
-  DNS_ENODATA: "NotFound",
-  DNS_ETIMEOUT: "Timeout",
-  DNS_ESERVFAIL: "ServerFailure",
-  DNS_ECONNREFUSED: "Refused",
-  DNS_EBADNAME: "BadName",
-  DNS_EBADFAMILY: "BadName"
-}
 
 /**
  * Creates a Bun `Dns` service whose resolver lives as long as the scope.
@@ -60,21 +51,14 @@ export const make = Effect.fnUntraced(function*(options?: NodeDns.Options) {
     lookup: (host, family) =>
       Effect.tryPromise({
         try: () => Bun.dns.lookup(host, { family: NodeDns.toFamily(family), backend: "system" }),
-        catch: (cause) => {
-          const code = typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code) : undefined
-          return new Dns.DnsError({
-            reason: (code !== undefined ? reasons[code] : undefined) ?? "Unknown",
-            method: "lookup",
-            hostname: host,
-            cause
-          })
-        }
+        catch: (cause) => NodeDns.dnsErrorFromCause(cause, "lookup", host)
       }).pipe(
-        Effect.flatMap((entries) =>
-          Effect.try({
-            try: () => entries.map((entry) => NetAddress.ipFromStringUnsafe(entry.address)),
-            catch: (cause) => new Dns.DnsError({ reason: "InvalidResponse", method: "lookup", hostname: host, cause })
-          })
+        // Like `NodeDns.lookup`, drop zones and skip addresses that cannot be parsed.
+        Effect.map((entries) =>
+          Arr.filterMap(
+            entries,
+            (entry) => Result.try(() => NetAddress.ipFromStringUnsafe(entry.address.split("%")[0]))
+          )
         )
       ),
     resolve,

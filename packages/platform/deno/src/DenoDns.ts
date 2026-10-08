@@ -26,7 +26,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
-import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Result from "effect/Result"
 
@@ -74,46 +73,6 @@ const toDnsError = (
     cause
   })
 
-const absoluteName = (name: string): string => name.endsWith(".") ? name : `${name}.`
-
-const recordName = (name: string): Host.DomainName => Host.domainNameFromStringUnsafe(absoluteName(name))
-
-const nameDecoder = new TextDecoder()
-
-// `Deno.resolveDns` escapes dots and backslashes inside a label as `\.` and `\\`, and
-// writes other bytes as octal `\DDD` escapes. Decoding those bytes as UTF-8 gives
-// the text of the name, keeping only the dot and backslash escapes.
-const nameText = (name: string): string => {
-  if (!/\\\d{3}/.test(name)) return name
-  const bytes: Array<number> = []
-  for (let i = 0; i < name.length; i++) {
-    const code = name.charCodeAt(i)
-    if (code !== 92 || i + 1 === name.length) {
-      bytes.push(code)
-    } else if (/^\d{3}$/.test(name.slice(i + 1, i + 4))) {
-      const byte = Number.parseInt(name.slice(i + 1, i + 4), 8)
-      if (byte === 46 || byte === 92) bytes.push(92)
-      bytes.push(byte)
-      i += 3
-    } else {
-      bytes.push(code, name.charCodeAt(i + 1))
-      i++
-    }
-  }
-  return nameDecoder.decode(Uint8Array.from(bytes))
-}
-
-const decoder = new TextDecoder()
-
-// Deno.resolveDns decodes each byte of a TXT character string as one Latin-1
-// character; re-decoding the bytes as UTF-8 matches other runtimes.
-const utf8FromLatin1 = (value: string): string =>
-  // oxlint-disable-next-line no-control-regex
-  /[^\x00-\x7f]/.test(value) ? decoder.decode(Uint8Array.from(value, (character) => character.charCodeAt(0))) : value
-
-// Deno.resolveDns reports SOA refresh, retry, and expire as signed 32-bit integers.
-const uint32Seconds = (value: number): Duration.Duration => Duration.seconds(value >>> 0)
-
 // Records whose data cannot be represented, such as names that are not valid
 // `Host.DomainName` values, are skipped.
 const queries: {
@@ -154,7 +113,7 @@ const queries: {
       (target) =>
         Result.try(() =>
           Dns.makeRecordUnsafe("CNAME", {
-            target: recordName(target)
+            target: NodeDns.domainNameFromResolverUnsafe(target)
           })
         )
     ),
@@ -162,7 +121,7 @@ const queries: {
     Arr.filterMap(await Deno.resolveDns(name, "MX", options), (mx) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("MX", {
-          exchange: recordName(mx.exchange),
+          exchange: NodeDns.domainNameFromResolverUnsafe(mx.exchange),
           priority: mx.preference
         })
       )),
@@ -177,7 +136,7 @@ const queries: {
             flags: naptr.flags,
             service: naptr.services,
             regexp: naptr.regexp,
-            replacement: recordName(naptr.replacement)
+            replacement: NodeDns.domainNameFromResolverUnsafe(naptr.replacement)
           })
         )
     ),
@@ -185,26 +144,26 @@ const queries: {
     Arr.filterMap(await Deno.resolveDns(name, "NS", options), (host) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("NS", {
-          host: recordName(host)
+          host: NodeDns.domainNameFromResolverUnsafe(host)
         })
       )),
   PTR: async (name, options) =>
     Arr.filterMap(await Deno.resolveDns(name, "PTR", options), (host) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("PTR", {
-          host: absoluteName(nameText(host))
+          host: NodeDns.nameTextFromResolver(host, 8)
         })
       )),
   SOA: async (name, options) =>
     Arr.filterMap(await Deno.resolveDns(name, "SOA", options), (soa) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("SOA", {
-          primary: recordName(soa.mname),
-          admin: absoluteName(nameText(soa.rname)),
+          primary: NodeDns.domainNameFromResolverUnsafe(soa.mname),
+          admin: NodeDns.nameTextFromResolver(soa.rname, 8),
           serial: soa.serial,
-          refresh: uint32Seconds(soa.refresh),
-          retry: uint32Seconds(soa.retry),
-          expire: uint32Seconds(soa.expire),
+          refresh: NodeDns.secondsFromInt32(soa.refresh),
+          retry: NodeDns.secondsFromInt32(soa.retry),
+          expire: NodeDns.secondsFromInt32(soa.expire),
           minimum: Duration.seconds(soa.minimum)
         })
       )),
@@ -212,7 +171,7 @@ const queries: {
     Arr.filterMap(await Deno.resolveDns(name, "SRV", options), (srv) =>
       Result.try(() =>
         Dns.makeRecordUnsafe("SRV", {
-          target: recordName(srv.target),
+          target: NodeDns.domainNameFromResolverUnsafe(srv.target),
           port: srv.port,
           priority: srv.priority,
           weight: srv.weight
@@ -224,7 +183,7 @@ const queries: {
       (chunks) =>
         Result.try(() =>
           Dns.makeRecordUnsafe("TXT", {
-            chunks: chunks.map(utf8FromLatin1) as unknown as readonly [string, ...Array<string>]
+            chunks: chunks.map(NodeDns.utf8FromLatin1) as unknown as readonly [string, ...Array<string>]
           })
         )
     )

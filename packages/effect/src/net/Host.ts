@@ -292,7 +292,9 @@ export const hostPortUnsafe = (host: Host, port: number): HostPort => Result.get
  * **Details**
  *
  * IPv6 hosts must be bracketed and other hosts must not be. The port is
- * required and must be an unpadded decimal integer from 0 through 65535.
+ * required and must be an unpadded decimal integer from 0 through 65535. A
+ * zone follows the `%` directly; the percent-encoded `%25` separator of RFC
+ * 6874 URLs is not decoded, because `[fe80::1%253]:80` would be ambiguous.
  *
  * **Example** (Parsing host and port strings)
  *

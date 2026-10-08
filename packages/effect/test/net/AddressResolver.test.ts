@@ -33,7 +33,9 @@ describe("AddressResolver", () => {
       const literal = yield* resolve.resolve(endpoint("[::1]:443"))
       assert.deepStrictEqual(literal.map(NetAddress.formatInet), ["[::1]:443"])
       const wrongFamily = yield* Effect.flip(resolve.resolve(inet, { family: "IPv6" }))
-      assert.strictEqual(wrongFamily._tag, "DnsError")
+      assert.strictEqual(wrongFamily._tag, "NetAddressError")
+      const wrongLiteralFamily = yield* Effect.flip(resolve.resolve(endpoint("[::1]:443"), { family: "IPv4" }))
+      assert.strictEqual(wrongLiteralFamily._tag, "NetAddressError")
     }))
 
   it.effect("supports only numeric zones without a scope ID lookup", () =>
