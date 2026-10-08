@@ -36,7 +36,8 @@
       "namespaceImportPackages": ["effect", "@effect/*"],
       "diagnosticSeverity": {
         "globalErrorInEffectFailure": "off", // TODO: Check if we should fix the warnings this reports
-        "unstableApiUsage": "off"
+        "unstableApiUsage": "off",
+        "experimentalApiUsage": "off"
       },
       "includeSuggestionsInTsc": false,
       "ignoreEffectWarningsInTscExitCode": true,
