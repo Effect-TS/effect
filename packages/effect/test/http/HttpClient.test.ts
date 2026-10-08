@@ -746,6 +746,51 @@ Missing key
         strictEqual(yield* Ref.get(attempts), 3)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
+    it.effect("counts requests sent after the reporting request against its remaining", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const releaseFirst = yield* Deferred.make<void>()
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              attempt === 1
+                ? Effect.as(
+                  Deferred.await(releaseFirst),
+                  HttpClientResponse.fromWeb(
+                    request,
+                    new Response(null, {
+                      status: 200,
+                      headers: { "ratelimit-remaining": "1", "ratelimit-reset-after": "60" }
+                    })
+                  )
+                )
+                : Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "in-flight-remaining",
+            limit: 800,
+            window: "1 minute"
+          })
+        )
+
+        const first = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* client.get("http://test/")
+        yield* Deferred.succeed(releaseFirst, undefined)
+        yield* Fiber.join(first)
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 2)
+
+        yield* TestClock.adjust("1 second")
+        yield* Fiber.join(fiber)
+        strictEqual(yield* Ref.get(attempts), 3)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
     it.effect("inspects custom remaining and reset-after headers", () =>
       Effect.gen(function*() {
         const attempts = yield* Ref.make(0)
