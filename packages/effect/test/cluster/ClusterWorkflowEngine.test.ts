@@ -83,7 +83,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(layer()))
     }))
 
-  it.effect("retries an activity delivered before replay registration exactly once in the same attempt", () =>
+  it.effect("retries an early activity registered while its Suspended reply is still being persisted", () =>
     Effect.gen(function*() {
       const workflow = Workflow.make("EarlyActivity", {
         payload: {},
@@ -91,14 +91,41 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         idempotencyKey: () => "one"
       })
       const register = yield* Latch.make()
+      const savingReply = yield* Latch.make()
+      const releaseReply = yield* Latch.make()
+      const registrationRequested = yield* Latch.make()
       let executions = 0
+      let activityRequests = 0
       const activity = Activity.make({
         name: "loser",
         success: Schema.Number,
         execute: Effect.sync(() => ++executions)
       })
       const storage = yield* makeSharedStorage
-      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, storage)
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        saveReply: (reply) => {
+          if (reply.rpc._tag === "activity" && !savingReply.isOpen()) {
+            assert(reply.reply._tag === "WithExit")
+            assert(reply.reply.exit._tag === "Success")
+            assert(Schema.is(Workflow.Suspended)(reply.reply.exit.value))
+            return savingReply.open.pipe(
+              Effect.andThen(releaseReply.await),
+              Effect.andThen(storage.saveReply(reply))
+            )
+          }
+          return storage.saveReply(reply)
+        },
+        saveRequest: (request) =>
+          storage.saveRequest(request).pipe(
+            Effect.tap(() => {
+              if (request.rpc._tag !== "activity") return Effect.void
+              // Bound a broken reset/resend loop so this regression fails instead of exhausting memory.
+              assert.isAtMost(++activityRequests, 20, "activity reset/resend must not livelock on Suspended")
+              return registrationRequested.open
+            })
+          )
+      })
       const executionId = yield* workflow.executionId({})
       const requestId = yield* sendUnregisteredActivity(workflow._tag, executionId).pipe(Effect.provide(
         workflow.toLayer(() => activity).pipe(Layer.provideMerge(makeTestWorkflowEngine({
@@ -109,9 +136,17 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* Effect.gen(function*() {
         yield* workflow.execute({}, { discard: true })
         yield* (yield* Sharding.Sharding).pollStorage
-        assert.deepStrictEqual(yield* activityReply(storage, requestId), Exit.succeed(new Workflow.Suspended({})))
+        for (let i = 0; i < 200 && !savingReply.isOpen(); i++) yield* TestClock.adjust(1)
+        assert.isTrue(savingReply.isOpen())
+        assert.deepStrictEqual(yield* storage.repliesForUnfiltered([requestId]), [])
         assert.strictEqual(executions, 0)
         yield* register.open
+        // The replay has registered and requested the same activity before the early reply commits.
+        for (let i = 0; i < 200 && !registrationRequested.isOpen(); i++) yield* TestClock.adjust(1)
+        assert.isTrue(registrationRequested.isOpen())
+        assert.deepStrictEqual(yield* storage.repliesForUnfiltered([requestId]), [])
+        assert.strictEqual(executions, 0)
+        yield* releaseReply.open
         assert.deepStrictEqual(
           yield* pollUntil(workflow, executionId, "Complete"),
           new Workflow.Complete({ exit: Exit.succeed(1) })
