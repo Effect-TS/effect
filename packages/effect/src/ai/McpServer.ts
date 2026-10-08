@@ -724,6 +724,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     readonly websiteUrl?: string | undefined
     readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
     readonly extensions?: ServerExtensions | undefined
+    readonly allowSubscriptions?: boolean | undefined
   },
   runtime: McpRuntime.ServerRuntimeShape,
   transport: "custom" | "http" | "stdio"
@@ -820,7 +821,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
-    ...(!protocol.supportsNotifications ? {} : {
+    ...(!protocol.supportsNotifications || options.allowSubscriptions === false ? {} : {
       sendNotification,
       markSubscriptionCancelled: (clientId: number, requestId: RpcMessage.RequestId) =>
         Effect.sync(() => {
@@ -1441,6 +1442,7 @@ const layerWithRuntime = (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
+  readonly allowSubscriptions?: boolean | undefined
 }, transport: "custom" | "http" | "stdio"): Layer.Layer<
   McpServer | McpServerClient,
   never,
@@ -1587,6 +1589,11 @@ const mcpStdioSerialization = (
  * holding a session id can end that session, so authenticate requests in the
  * surrounding router.
  *
+ * Set `allowSubscriptions` to `false` to disable subscription handlers and
+ * advertise subscription-related capabilities such as `listChanged` as false.
+ * Request-scoped progress and log notifications remain available. Subscriptions
+ * are enabled by default when supported by the transport and protocol.
+ *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
@@ -1611,6 +1618,7 @@ export const layerHttp = (options: {
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly allowSubscriptions?: boolean | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
   const runtime = McpRuntime.layer(options.protocols)
   return layerWithRuntime(options, "http").pipe(
