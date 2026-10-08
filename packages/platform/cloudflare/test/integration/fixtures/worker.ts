@@ -191,8 +191,8 @@ const CounterLayer = Counter.toLayer(
   })
 )
 
-// Persisted requests that block on a gate, for restart/replay scenarios. The
-// concurrency of 2 lets a Get interleave while a replayed Hold is blocked.
+// Persisted requests that block on a gate, for restart/replay scenarios.
+// Unbounded concurrency lets control requests interleave with blocked Holds.
 const Blocker = Entity.make("Blocker", [
   Rpc.make("Hold", {
     payload: { op: Schema.String },
@@ -200,6 +200,12 @@ const Blocker = Entity.make("Blocker", [
     success: Schema.Number
   }).annotate(ClusterSchema.Persisted, true),
   Rpc.make("Get", { success: Schema.Number }),
+  Rpc.make("Pin", { success: Schema.String }),
+  Rpc.make("Unpin", { success: Schema.String }),
+  Rpc.make("ScheduledIncrement", { payload: ScheduledPayload, success: Schema.Number }).annotate(
+    ClusterSchema.Persisted,
+    true
+  ),
   // Opens the gate from inside the entity Durable Object, so the resumed
   // handler continues in a request context that may touch this object's
   // storage (a Worker-side open would resume it in a foreign context).
@@ -210,6 +216,17 @@ const BlockerLayer = Blocker.toLayer(
   Effect.sync(() => {
     bump(counts.builds, "Blocker")
     return Blocker.of({
+      Pin: () => Effect.as(Entity.keepAlive(true), "pinned"),
+      Unpin: () => Effect.as(Entity.keepAlive(false), "unpinned"),
+      ScheduledIncrement: (request) =>
+        Effect.sync(() => {
+          const entityId = request.address.entityId
+          deliveries.set(entityId, [
+            ...(deliveries.get(entityId) ?? []),
+            { deliverAt: request.payload.deliverAt, deliveredAt: Date.now() }
+          ])
+          return increment(entityId)
+        }),
       Hold: (request) =>
         Effect.gen(function*() {
           const key = `${request.address.entityId}/${request.payload.op}`
@@ -226,7 +243,7 @@ const BlockerLayer = Blocker.toLayer(
         })
     })
   }),
-  { concurrency: 2 }
+  { concurrency: "unbounded" }
 )
 
 // Serialized entity for cancellation and permit-cleanup scenarios.
@@ -547,7 +564,7 @@ const makeAppLayer = (env: Record<string, any>) =>
     CronLayer
   ).pipe(
     Layer.provideMerge(CloudflareCluster.layer({
-      keepAliveHeartbeat: "1 second",
+      keepAliveHeartbeat: env.KEEP_ALIVE_HEARTBEAT ?? "1 second",
       entities: [Counter, Blocker, Serial, Flaky, Relay, Pinned, Holder, Journal, Coordinated],
       entityNamespace: env.CLUSTER_ENTITY,
       workflowNamespace: env.CLUSTER_WORKFLOW,
@@ -752,12 +769,40 @@ const handle = Effect.fnUntraced(function*(url: URL) {
 
     case "/blocker/hold": {
       const makeClient = yield* Blocker.client
-      yield* makeClient(id).Hold({ op: params.get("op") ?? "op" }, { discard: true })
+      const payload = { op: params.get("op") ?? "op" }
+      if (params.get("discard") === "false") {
+        return { value: yield* makeClient(id).Hold(payload) }
+      }
+      yield* makeClient(id).Hold(payload, { discard: true })
       return { discarded: true }
+    }
+    case "/blocker/rows": {
+      const stub = bindings.CLUSTER_ENTITY.getByName(CloudflareCluster.encodeName("Blocker", id))
+      return {
+        rows: yield* Effect.promise(() => stub.mailboxRows()),
+        alarm: yield* Effect.promise(() => stub.getAlarm())
+      }
     }
     case "/blocker/get": {
       const makeClient = yield* Blocker.client
       return { value: yield* makeClient(id).Get(void 0) }
+    }
+    case "/blocker/pin": {
+      const makeClient = yield* Blocker.client
+      return { value: yield* makeClient(id).Pin(void 0) }
+    }
+    case "/blocker/unpin": {
+      const makeClient = yield* Blocker.client
+      return { value: yield* makeClient(id).Unpin(void 0) }
+    }
+    case "/blocker/scheduled": {
+      const makeClient = yield* Blocker.client
+      const payload = new ScheduledPayload({
+        deliverAt: Date.now() + Number(params.get("offset") ?? 8000),
+        op: "scheduled"
+      })
+      yield* makeClient(id).ScheduledIncrement(payload, { discard: true })
+      return { deliverAt: payload.deliverAt }
     }
     case "/blocker/open": {
       const makeClient = yield* Blocker.client
