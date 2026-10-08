@@ -8,6 +8,7 @@
  */
 import type * as Entity from "effect/cluster/Entity"
 import * as Context from "effect/Context"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
@@ -19,6 +20,7 @@ export interface ClusterHandleOptions {
   readonly entities: ReadonlyArray<Entity.Entity<any, any>>
   readonly layer: Layer.Layer<never, any, any>
   readonly env: Record<string, unknown>
+  readonly keepAliveHeartbeat?: Duration.Input | undefined
 }
 
 /** @internal */
@@ -39,7 +41,8 @@ export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHan
         entityNamespace,
         workflowNamespace,
         queueNamespace,
-        singletonNamespace
+        singletonNamespace,
+        keepAliveHeartbeat: options.keepAliveHeartbeat
       }))
     ),
     scope
