@@ -51,7 +51,8 @@ export const TestEntity = Entity.make("TestEntity", [
     error: BoomError,
     payload: { id: Schema.Number },
     primaryKey: ({ id }) => String(id)
-  }).annotate(ClusterSchema.Dynamic, Context.add(ClusterSchema.WithTransaction, true))
+  }).annotate(ClusterSchema.Dynamic, Context.add(ClusterSchema.WithTransaction, true)),
+  Rpc.make("NeverWithTransaction").annotate(ClusterSchema.Dynamic, Context.add(ClusterSchema.WithTransaction, true))
 ]).annotateRpcs(ClusterSchema.Persisted, true)
 
 export class TestEntityState extends Context.Service<TestEntityState>()("TestEntityState", {
@@ -146,7 +147,8 @@ export const TestEntityNoState = TestEntity.toLayer(
         Effect.suspend(() => {
           Queue.offerUnsafe(state.envelopes, envelope)
           return Effect.fail(new BoomError({ cause: "boom" }))
-        })
+        }),
+      NeverWithTransaction: never
     })
   }),
   { defectRetryPolicy: Schedule.forever }

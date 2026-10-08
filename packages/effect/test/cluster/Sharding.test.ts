@@ -1760,6 +1760,22 @@ describe.concurrent("Sharding", () => {
       Layer.provide(TestShardingConfig)
     ))))
 
+  it.effect("WithTransaction persists a client interrupt instead of replaying the request", () =>
+    Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* makeClient("1").NeverWithTransaction().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      yield* Fiber.interrupt(fiber)
+
+      yield* TestClock.adjust(1)
+      expect(driver.replyIds.size).toEqual(1)
+      expect(Queue.sizeUnsafe(state.envelopes)).toEqual(1)
+    }).pipe(Effect.provide(TestSharding)))
+
   it.effect("WithTransaction delivers a success only after commit", () =>
     Effect.gen(function*() {
       const committing = Latch.makeUnsafe()
