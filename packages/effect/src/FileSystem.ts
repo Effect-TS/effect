@@ -220,12 +220,19 @@ export interface FileSystem {
    * **Details**
    *
    * The file handle will be automatically closed when the scope is closed.
+   *
+   * Set `noFollow` to fail instead of opening a symbolic link at the final
+   * path component (`O_NOFOLLOW`). Symbolic links in parent directories are
+   * still followed. Node and Bun support it on POSIX systems. Platforms that
+   * cannot enforce it, including Windows and Deno, fail with `BadArgument`
+   * rather than opening the file without the check.
    */
   readonly open: (
     path: string,
     options?: {
       readonly flag?: OpenFlag | undefined
       readonly mode?: number | undefined
+      readonly noFollow?: boolean | undefined
     }
   ) => Effect.Effect<File, PlatformError, Scope>
   /**
@@ -827,6 +834,12 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * cursor. Outside append mode, `truncate` clamps a cursor past the new length
  * to that length.
  *
+ * `read` and `readAlloc` accept an optional `position`. A positional read
+ * reads at that byte offset and neither uses nor moves the cursor, so
+ * concurrent positional reads on one handle are safe. Operations that use the
+ * cursor (`seek`, cursor reads, and writes) should not run concurrently with
+ * each other.
+ *
  * **Example** (Working with file handles)
  *
  * ```ts import.meta.vitest
@@ -877,8 +890,21 @@ export interface File {
    */
   readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint, PlatformError>
   readonly sync: Effect.Effect<void, PlatformError>
-  readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
-  readonly readAlloc: (size: number) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
+  /**
+   * Reads into `buffer` and returns the number of bytes read, or `0` at the
+   * end of the file. Reads at the cursor and advances it unless
+   * `options.position` is set. See `File.ReadOptions`.
+   */
+  readonly read: (buffer: Uint8Array, options?: File.ReadOptions) => Effect.Effect<number, PlatformError>
+  /**
+   * Allocates a buffer of up to `size` bytes and reads into it, returning
+   * `Option.none()` at the end of the file. Reads at the cursor and advances
+   * it unless `options.position` is set. See `File.ReadOptions`.
+   */
+  readonly readAlloc: (
+    size: number,
+    options?: File.ReadOptions
+  ) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
   readonly truncate: (length?: number) => Effect.Effect<void, PlatformError>
   readonly write: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError>
@@ -892,6 +918,32 @@ export interface File {
  * @since 4.0.0
  */
 export declare namespace File {
+  /**
+   * Options for `File.read` and `File.readAlloc`.
+   *
+   * **Details**
+   *
+   * When `position` is set, the read starts at that byte offset from the
+   * start of the file and leaves the cursor unchanged. A negative `position`
+   * fails with `BadArgument`. A `position` at or past the end of the file
+   * reads nothing.
+   *
+   * **Example** (Reading a byte range without moving the cursor)
+   *
+   * ```ts import.meta.vitest
+   * import type { FileSystem } from "effect"
+   *
+   * const options: FileSystem.File.ReadOptions = { position: BigInt(1024) }
+   * options.position // => 1024n
+   * ```
+   *
+   * @category models
+   * @since 4.1.0
+   */
+  export interface ReadOptions {
+    readonly position?: bigint | undefined
+  }
+
   /**
    * Enumeration of possible file system entry types.
    *
