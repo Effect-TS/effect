@@ -32,6 +32,7 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import type * as RpcMessage from "effect/rpc/RpcMessage"
 import { RequestId } from "effect/rpc/RpcMessage"
 import * as RpcServer from "effect/rpc/RpcServer"
+import * as Scheduler from "effect/Scheduler"
 import * as Schema from "effect/Schema"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
@@ -2615,6 +2616,68 @@ describe("McpServer", () => {
           assert.deepStrictEqual(next, Option.none())
         }))
     }
+
+    it.effect("should retain a coalesced tool change across subscription creation", () =>
+      Effect.gen(function*() {
+        const pending: Array<() => void> = []
+        const manualScheduler = new Scheduler.MixedScheduler("async", (task) => {
+          pending.push(task)
+          return () => {}
+        })
+        const scheduler = new Scheduler.MixedScheduler()
+        const makeDispatcher = scheduler.makeDispatcher.bind(scheduler)
+        const memoMap = yield* Layer.makeMemoMap
+        // Hold only the server notification dispatcher; transport fibers use the normal scheduler.
+        const server = yield* Effect.withFiber((fiber) => {
+          // Queue.make captures the fiber dispatcher before McpServer creates its own.
+          void fiber.currentDispatcher
+          scheduler.makeDispatcher = () => {
+            scheduler.makeDispatcher = makeDispatcher
+            return manualScheduler.makeDispatcher()
+          }
+          return McpServer.McpServer.make
+        }).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+        yield* memoMap.getOrElseMemoize(
+          McpServer.McpServer.layer,
+          yield* Effect.scope,
+          () => Effect.succeed(Context.make(McpServer.McpServer, server))
+        )
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2026_07_28).pipe(
+          Effect.provideService(Layer.CurrentMemoMap, memoMap)
+        )
+        assert.strictEqual(fixture.server, server)
+        const makeTool = (name: string) => ({
+          tool: new McpSchema.Tool({ name, inputSchema: { type: "object", properties: {} } }),
+          annotations: Context.empty(),
+          handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+        })
+
+        yield* fixture.initialize()
+        yield* fixture.server.addTool(makeTool("before-subscription"))
+        yield* Effect.yieldNow
+        assert.strictEqual(pending.length, 1)
+        const subscription = yield* fixture.startRequest("subscriptions/listen", {
+          notifications: { toolsListChanged: true }
+        }, "subscription-boundary")
+        assert.strictEqual((yield* fixture.takeMessage).method, "notifications/subscriptions/acknowledged")
+
+        // Do not flush between the pre-subscription change and this newer change.
+        yield* fixture.server.addTool(makeTool("after-subscription"))
+        yield* Effect.yieldNow
+        assert.strictEqual(pending.length, 1)
+        yield* Effect.sync(() => pending.shift()!())
+        assert.deepInclude(yield* fixture.takeMessage, {
+          method: "notifications/tools/list_changed",
+          params: { _meta: { "io.modelcontextprotocol/subscriptionId": "subscription-boundary" } }
+        })
+
+        const next = yield* fixture.takeMessage.pipe(Effect.timeoutOption("100 millis"), Effect.forkChild)
+        yield* TestClock.adjust("100 millis")
+        assert.deepStrictEqual(yield* Fiber.join(next), Option.none())
+        yield* subscription.cancel()
+      }))
 
     it.effect("should coalesce notifications when one registration kind changes repeatedly in a scheduling window", () =>
       Effect.gen(function*() {
