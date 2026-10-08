@@ -148,7 +148,9 @@ describe("Scheduler", () => {
 
       scheduler.scheduleTask(() => order.push("c"), 0)
       assert.strictEqual(setImmediate.mock.calls.length, 2)
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      // Immediates run in order, but a zero timeout can fire before a pending
+      // immediate (it does under Bun)
+      await new Promise((resolve) => setImmediate(resolve))
       assert.deepStrictEqual(order, ["a", "b", "c"])
     } finally {
       setImmediate.mockRestore()
