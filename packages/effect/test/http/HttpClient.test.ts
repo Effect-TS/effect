@@ -791,6 +791,54 @@ Missing key
         strictEqual(yield* Ref.get(attempts), 3)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
+    it.effect("holds requests queued in the limiter when remaining is exhausted", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const releaseFirst = yield* Deferred.make<void>()
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              attempt === 1
+                ? Effect.as(
+                  Deferred.await(releaseFirst),
+                  HttpClientResponse.fromWeb(
+                    request,
+                    new Response(null, {
+                      status: 200,
+                      headers: {
+                        "ratelimit-limit": "100",
+                        "ratelimit-remaining": "0",
+                        "ratelimit-reset-after": "60"
+                      }
+                    })
+                  )
+                )
+                : Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "queued-remaining",
+            limit: 1,
+            window: "10 seconds",
+            disableAdaptiveLearning: true
+          })
+        )
+
+        const first = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        const queued = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.succeed(releaseFirst, undefined)
+        yield* Fiber.join(first)
+
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("1 second")
+        yield* Fiber.join(queued)
+        strictEqual(yield* Ref.get(attempts), 2)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
     it.effect("inspects custom remaining and reset-after headers", () =>
       Effect.gen(function*() {
         const attempts = yield* Ref.make(0)
