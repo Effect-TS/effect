@@ -11,7 +11,8 @@
  * @since 4.0.0
  */
 import type * as ByteSize from "../ByteSize.ts"
-import * as Context from "../Context.ts"
+import type * as Cause from "../Cause.ts"
+import type * as Context from "../Context.ts"
 import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
 import type * as HttpClient from "../http/HttpClient.ts"
@@ -19,11 +20,12 @@ import type * as Layer from "../Layer.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import type * as ChildProcess from "../process/ChildProcess.ts"
 import type { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
-import * as Schema from "../Schema.ts"
+import type * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as internal from "./internal/mcpClient.ts"
+import * as models from "./internal/mcpClientModels.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
-import * as McpSchema from "./McpSchema.ts"
+import type * as McpSchema from "./McpSchema.ts"
 import type * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
@@ -34,63 +36,7 @@ import type * as Toolkit from "./Toolkit.ts"
  * @category schemas
  * @since 4.0.0
  */
-export const McpClientErrorReason = Schema.Union([
-  Schema.Struct({
-    _tag: Schema.Literal("TransportError"),
-    message: Schema.String,
-    cause: Schema.optional(Schema.Defect())
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("ProtocolError"),
-    message: Schema.String,
-    code: Schema.optional(Schema.Int),
-    data: Schema.optional(Schema.Unknown),
-    cause: Schema.optional(Schema.Defect())
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("HttpError"),
-    message: Schema.String,
-    status: Schema.Int,
-    wwwAuthenticate: Schema.optional(Schema.String),
-    retryAfter: Schema.optional(Schema.String),
-    code: Schema.optional(Schema.Int),
-    data: Schema.optional(Schema.Unknown)
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("UnsupportedError"),
-    message: Schema.String,
-    result: Schema.optional(McpSchema.CallToolResult)
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("ClosedError"),
-    message: Schema.String,
-    sessionExpired: Schema.optional(Schema.Boolean)
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("TimeoutError"),
-    message: Schema.String
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("LimitError"),
-    message: Schema.String
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("ConfigurationError"),
-    message: Schema.String,
-    cause: Schema.optional(Schema.Defect())
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("ValidationError"),
-    message: Schema.String,
-    cause: Schema.optional(Schema.Defect())
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal("ToolError"),
-    message: Schema.String,
-    result: McpSchema.CallToolResult
-  })
-])
-
+export const McpClientErrorReason = models.McpClientErrorReason
 /**
  * Union of MCP client and transport failure reasons.
  *
@@ -130,16 +76,24 @@ export type McpClientErrorReason = typeof McpClientErrorReason.Type
  * @category errors
  * @since 4.0.0
  */
-export class McpClientError extends Schema.TaggedError<McpClientError>()("McpClientError", {
-  reason: McpClientErrorReason
-}) {
-  override readonly cause = this.reason
+export const McpClientError: Schema.Class<
+  McpClientError,
+  Schema.TaggedStruct<"McpClientError", { readonly reason: typeof McpClientErrorReason }>,
+  McpClientError
+> = models.McpClientError
 
-  override get message(): string {
-    return this.reason.message
-  }
+/**
+ * Error carrying a tagged MCP client or transport failure reason.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.0
+ */
+export interface McpClientError extends Cause.YieldableError {
+  readonly _tag: "McpClientError"
+  readonly reason: McpClientErrorReason
+  readonly cause: McpClientErrorReason
 }
-
 /**
  * Supported MCP wire protocol revisions.
  *
@@ -160,10 +114,21 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
  * @category services
  * @since 4.0.0
  */
-export class Transport extends Context.Service<Transport, {
-  readonly [internal.TransportTypeId]: typeof internal.TransportTypeId
-}>()("effect/ai/McpClient/Transport") {}
+export const Transport: Context.ServiceClass<Transport, "effect/ai/McpClient/Transport", Transport["Service"]> =
+  models.Transport
 
+/**
+ * Type of the Transport service tag.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export interface Transport extends
+  Context.ServiceClass.Shape<"effect/ai/McpClient/Transport", {
+    readonly "~effect/ai/McpClient/Transport": "~effect/ai/McpClient/Transport"
+  }>
+{}
 /**
  * Starts a scoped subprocess using newline-delimited JSON-RPC.
  *
@@ -487,8 +452,16 @@ export const readResource: {
  * @category services
  * @since 4.0.0
  */
-export class McpClient extends Context.Service<McpClient, Client>()("effect/ai/McpClient") {}
+export const McpClient: Context.ServiceClass<McpClient, "effect/ai/McpClient", Client> = models.McpClient
 
+/**
+ * Type of the McpClient service tag.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export interface McpClient extends Context.ServiceClass.Shape<"effect/ai/McpClient", Client> {}
 /**
  * Constructs and connects a client using the supplied MCP transport service and its protocol adapter.
  *
@@ -508,16 +481,3 @@ export const make: (options: Options) => Effect.Effect<
   McpClientError,
   Scope.Scope | Transport
 > = internal.make
-
-/**
- * Layer providing one default scoped client from an MCP transport.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layer: (options: Options) => Layer.Layer<
-  McpClient,
-  McpClientError,
-  Transport
-> = internal.layer

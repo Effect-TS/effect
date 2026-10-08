@@ -31,7 +31,6 @@ import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as Semaphore from "../../Semaphore.ts"
 import * as Stream from "../../Stream.ts"
-import { McpClient, McpClientError, Transport } from "../McpClient.ts"
 import type {
   CallOptions,
   CallToolParams,
@@ -45,6 +44,7 @@ import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
 import * as Tool from "../Tool.ts"
 import * as Toolkit from "../Toolkit.ts"
+import { McpClient, McpClientError, Transport, TransportTypeId } from "./mcpClientModels.ts"
 
 const DEFAULT_MAX_MESSAGE_BYTES = ByteSize.mebibytes(16)
 const DEFAULT_TIMEOUT = Duration.seconds(60)
@@ -97,7 +97,7 @@ const decodeVersionRejection = Schema.decodeUnknownOption(Schema.Struct({
   supported: Schema.Array(Schema.String)
 }))
 
-export const TransportTypeId = "~effect/ai/McpClient/Transport" as const
+export { TransportTypeId } from "./mcpClientModels.ts"
 
 type TransportService = Transport["Service"] & {
   readonly protocol: McpProtocol.ProtocolAdapter<ProtocolVersion>

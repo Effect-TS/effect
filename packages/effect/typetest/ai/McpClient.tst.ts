@@ -10,6 +10,27 @@ const tool = McpSchema.Tool.make({ name: "read", inputSchema: { type: "object" }
 class Policy extends Context.Service<Policy, string>()("test/McpClientPolicy") {}
 
 describe("McpClient", () => {
+  it("should expose public service and schema error types", () => {
+    expect(McpClient.McpClient).type.toBe<
+      Context.ServiceClass<McpClient.McpClient, "effect/ai/McpClient", McpClient.Client>
+    >()
+    expect(McpClient.Transport).type.toBe<
+      Context.ServiceClass<McpClient.Transport, "effect/ai/McpClient/Transport", McpClient.Transport["Service"]>
+    >()
+    expect(Effect.gen(function*() {
+      return yield* McpClient.McpClient
+    })).type.toBe<Effect.Effect<McpClient.Client, never, McpClient.McpClient>>()
+
+    const error = new McpClient.McpClientError({ reason: { _tag: "TimeoutError", message: "deadline exceeded" } })
+    expect(error).type.toBeAssignableTo<McpClientError>()
+    expect(error.cause).type.toBe<McpClient.McpClientErrorReason>()
+    expect(Schema.decodeUnknownEffect(McpClient.McpClientError)({})).type.toBe<
+      Effect.Effect<McpClientError, Schema.SchemaError>
+    >()
+    expect(McpClient.McpClientError.make({ reason: { _tag: "TimeoutError", message: "deadline exceeded" } }))
+      .type.toBe<McpClientError>()
+  })
+
   it("should reuse MCP prompt and resource types in methods and both dual forms", () => {
     const client = {} as McpClient.Client
     const prompt = McpSchema.Prompt.make({ name: "review" })
