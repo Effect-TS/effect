@@ -30,6 +30,12 @@ export * as BunClusterSocket from "./BunClusterSocket.ts"
 export * as BunCrypto from "./BunCrypto.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as BunDatagramSocket from "./BunDatagramSocket.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */

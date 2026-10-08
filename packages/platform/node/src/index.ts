@@ -30,6 +30,12 @@ export * as NodeClusterSocket from "./NodeClusterSocket.ts"
 export * as NodeCrypto from "./NodeCrypto.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
