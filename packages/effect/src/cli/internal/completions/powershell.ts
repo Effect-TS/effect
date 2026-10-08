@@ -291,7 +291,7 @@ const completer = (dataName: string): string =>
       }
       return $results
     }
-    if ($typed.StartsWith('-')) {
+    if ($typedIsOption) {
       & $addFlags $typed
       return $results
     }
