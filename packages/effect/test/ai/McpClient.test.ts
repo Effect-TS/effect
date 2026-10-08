@@ -119,7 +119,8 @@ const makeInMemory = (
 const connect = Effect.fnUntraced(function*(
   version: McpClient.ProtocolVersion,
   options: Partial<McpClient.Options> = {},
-  transportOptions: { maxMessageBytes?: ByteSize.Input } = {}
+  transportOptions: { maxMessageBytes?: ByteSize.Input } = {},
+  serverCapabilities: McpSchema.ServerCapabilities = capabilities
 ) {
   const protocol = version === "2026-07-28" ? McpProtocol.v2026_07_28 : McpProtocol.v2025_11_25
   const peer = yield* makeInMemory({ protocol, ...transportOptions })
@@ -136,8 +137,13 @@ const connect = Effect.fnUntraced(function*(
     jsonrpc: "2.0",
     id: initial.id,
     result: version === "2026-07-28"
-      ? result(version, { supportedVersions: [version], capabilities, ttlMs: 0, cacheScope: "private" })
-      : profile
+      ? result(version, {
+        supportedVersions: [version],
+        capabilities: serverCapabilities,
+        ttlMs: 0,
+        cacheScope: "private"
+      })
+      : { ...profile, capabilities: serverCapabilities }
   })
   const client = yield* Fiber.join(fiber)
 
@@ -1557,6 +1563,32 @@ describe("McpClient HTTP tool routing", () => {
       assert.deepStrictEqual(tools.map((tool) => tool.name), ["valid"])
     }))
 
+  for (const operation of ["prompt", "resource"] as const) {
+    it.effect(`should mirror the ${operation} identifier in modern HTTP routing headers`, () =>
+      Effect.gen(function*() {
+        const identifier = "demo://Hello, 世界"
+        let headers: Readonly<Record<string, string>> = {}
+        const peer = yield* connectHttp((message, request) => {
+          headers = request.headers
+          assert.strictEqual(message.method, operation === "prompt" ? "prompts/get" : "resources/read")
+          return Effect.succeed(jsonResponse({
+            jsonrpc: "2.0",
+            id: message.id,
+            result: operation === "prompt"
+              ? { messages: [] }
+              : { contents: [], ttlMs: 0, cacheScope: "private" }
+          }))
+        })
+        if (operation === "prompt") {
+          yield* peer.client.getPrompt({ prompt: McpSchema.Prompt.make({ name: identifier }) })
+        } else {
+          yield* peer.client.readResource({ uri: identifier })
+        }
+        assert.strictEqual(headers["mcp-method"], operation === "prompt" ? "prompts/get" : "resources/read")
+        assert.strictEqual(headers["mcp-name"], "=?base64?ZGVtbzovL0hlbGxvLCDkuJbnlYw=?=")
+      }))
+  }
+
   it.effect("should route discovered tools when nested header values contain Unicode", () =>
     Effect.gen(function*() {
       const definition = {
@@ -2054,3 +2086,218 @@ describe("McpClient bounded operations", () => {
       assert.strictEqual(yield* Queue.size(peer.outgoing), 0)
     }))
 })
+
+for (const version of ["2025-11-25", "2026-07-28"] as const) {
+  describe(`prompts and resources ${version}`, () => {
+    const prompt = McpSchema.Prompt.make({ name: "review", arguments: [{ name: "code", required: true }] })
+    const resource = McpSchema.Resource.make({ name: "document", uri: "test://document" })
+
+    it.effect("should discover and retrieve prompts and resources over HTTP", () =>
+      Effect.gen(function*() {
+        const protocol = version === "2025-11-25" ? McpProtocol.v2025_11_25 : McpProtocol.v2026_07_28
+        const methods: Array<string> = []
+        const transport = yield* scriptedHttp(protocol, (request, receive) => {
+          methods.push(request.method)
+          const value = request.method === "prompts/list" ?
+            { prompts: [prompt] }
+            : request.method === "resources/list" ?
+            { resources: [resource] }
+            : request.method === "prompts/get" ?
+            { messages: [{ role: "user", content: { type: "text", text: "Review" } }] }
+            : { contents: [{ uri: resource.uri, text: "Document" }] }
+          return receive({
+            jsonrpc: "2.0",
+            id: request.id,
+            result: result(version, { ...value, ttlMs: 0, cacheScope: "private" })
+          })
+        })
+        const client = yield* McpClient.make({ clientInfo }).pipe(Effect.provideService(McpClient.Transport, transport))
+        const prompts = yield* client.listPrompts()
+        assert.strictEqual((yield* client.getPrompt({ prompt: prompts[0] })).messages.length, 1)
+        const resources = yield* client.listResources()
+        assert.deepStrictEqual((yield* client.readResource({ uri: resources[0].uri })).contents, [{
+          uri: resource.uri,
+          text: "Document"
+        }])
+        assert.deepStrictEqual(methods, ["prompts/list", "prompts/get", "resources/list", "resources/read"])
+      }))
+
+    for (const kind of ["prompts", "resources"] as const) {
+      const entry = kind === "prompts" ? prompt : resource
+      const list = (client: McpClient.Client, options?: McpClient.CallOptions) =>
+        kind === "prompts" ? client.listPrompts(options) : client.listResources(options)
+
+      it.effect(`should collect all ${kind} pages including an empty cursor and refresh each snapshot`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          for (let scan = 0; scan < 2; scan++) {
+            const operation = kind === "prompts"
+              ? scan === 0 ? McpClient.listPrompts(peer.client) : peer.client.pipe(McpClient.listPrompts())
+              : scan === 0
+              ? McpClient.listResources(peer.client)
+              : peer.client.pipe(McpClient.listResources())
+            const fiber = yield* operation.pipe(Effect.forkChild)
+            const first = yield* peer.nextRequest
+            assert.strictEqual(first.method, `${kind}/list`)
+            assert.strictEqual(first.params?.cursor, undefined)
+            yield* peer.reply(
+              first,
+              result(version, { [kind]: [entry], nextCursor: "", ttlMs: 0, cacheScope: "private" })
+            )
+            const second = yield* peer.nextRequest
+            assert.strictEqual(second.params?.cursor, "")
+            yield* peer.reply(second, result(version, { [kind]: [entry], ttlMs: 0, cacheScope: "private" }))
+            assert.deepStrictEqual(yield* Fiber.join(fiber), [entry, entry])
+          }
+        }))
+
+      for (const limit of ["cursor", "pages", "items"] as const) {
+        it.effect(`should fail when ${kind} discovery exceeds the ${limit} limit`, () =>
+          Effect.gen(function*() {
+            const peer = yield* connect(version)
+            const fiber = yield* list(peer.client).pipe(Effect.flip, Effect.forkChild)
+            const count = limit === "pages" ? 100 : limit === "cursor" ? 2 : 1
+            for (let page = 0; page < count; page++) {
+              const request = yield* peer.nextRequest
+              yield* peer.reply(
+                request,
+                result(version, {
+                  [kind]: limit === "items"
+                    ? Array.from({ length: 10_001 }, () => entry)
+                    : [entry],
+                  ...(limit === "items" ? {} : { nextCursor: limit === "cursor" ? "again" : String(page) }),
+                  ttlMs: 0,
+                  cacheScope: "private"
+                })
+              )
+            }
+            assert.strictEqual((yield* Fiber.join(fiber)).reason._tag, "LimitError")
+          }))
+      }
+
+      it.effect(`should use one deadline across ${kind} pages`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          const fiber = yield* list(peer.client, { timeout: "1 second" }).pipe(Effect.flip, Effect.forkChild)
+          const first = yield* peer.nextRequest
+          yield* TestClock.adjust("400 millis")
+          yield* peer.reply(
+            first,
+            result(version, { [kind]: [entry], nextCursor: "next", ttlMs: 0, cacheScope: "private" })
+          )
+          yield* peer.nextRequest
+          yield* TestClock.adjust("600 millis")
+          assert.strictEqual((yield* Fiber.join(fiber)).reason._tag, "TimeoutError")
+        }))
+    }
+
+    for (const first of [true, false]) {
+      it.effect(`should preserve prompt messages and metadata with data-first=${first}`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          const params = { prompt, arguments: { code: "const x = 1" } }
+          const call = first ? McpClient.getPrompt(peer.client, params) : peer.client.pipe(McpClient.getPrompt(params))
+          const fiber = yield* call.pipe(Effect.forkChild)
+          const request = yield* peer.nextRequest
+          assert.strictEqual(request.method, "prompts/get")
+          assert.strictEqual(request.params?.name, "review")
+          assert.deepStrictEqual(request.params?.arguments, params.arguments)
+          const value = result(version, {
+            description: "Review code",
+            messages: [{ role: "user", content: { type: "text", text: "Review this code" } }],
+            _meta: { ...modernMeta, custom: "retained" }
+          })
+          yield* peer.reply(request, value)
+          const response = yield* Fiber.join(fiber)
+          assert.deepStrictEqual(response.messages, value.messages)
+          assert.strictEqual(response.description, value.description)
+          assert.deepStrictEqual(response._meta, value._meta)
+        }))
+
+      it.effect(`should read unlisted resource URIs and preserve text and binary contents with data-first=${first}`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          const params = { uri: "test://unlisted" }
+          const call = first
+            ? McpClient.readResource(peer.client, params)
+            : peer.client.pipe(McpClient.readResource(params))
+          const fiber = yield* call.pipe(Effect.forkChild)
+          const request = yield* peer.nextRequest
+          assert.strictEqual(request.method, "resources/read")
+          assert.strictEqual(request.params?.uri, params.uri)
+          const value = result(version, {
+            contents: [
+              { uri: params.uri, mimeType: "text/plain", text: "Hello" },
+              { uri: "test://image", mimeType: "image/png", blob: "aGVsbG8=" }
+            ],
+            ttlMs: 0,
+            cacheScope: "private",
+            _meta: { ...modernMeta, custom: "retained" }
+          })
+          yield* peer.reply(request, value)
+          const response = yield* Fiber.join(fiber)
+          assert.deepStrictEqual(response.contents, [
+            { uri: params.uri, mimeType: "text/plain", text: "Hello" },
+            { uri: "test://image", mimeType: "image/png", blob: new TextEncoder().encode("hello") }
+          ])
+          assert.deepStrictEqual(response._meta, value._meta)
+        }))
+    }
+
+    it.effect("should return empty discovery and reject calls when capabilities are absent", () =>
+      Effect.gen(function*() {
+        const peer = yield* connect(version, {}, {}, {})
+        assert.deepStrictEqual(yield* peer.client.listPrompts(), [])
+        assert.deepStrictEqual(yield* peer.client.listResources(), [])
+        assert.strictEqual((yield* peer.client.getPrompt({ prompt }).pipe(Effect.flip)).reason._tag, "UnsupportedError")
+        assert.strictEqual(
+          (yield* peer.client.readResource({ uri: resource.uri }).pipe(Effect.flip)).reason._tag,
+          "UnsupportedError"
+        )
+      }))
+
+    for (const kind of ["prompt", "resource"] as const) {
+      const call = (
+        client: McpClient.Client,
+        options?: McpClient.CallOptions
+      ): Effect.Effect<McpSchema.GetPromptResult | McpSchema.ReadResourceResult, McpClientError> =>
+        kind === "prompt" ? client.getPrompt({ prompt }, options) : client.readResource({ uri: resource.uri }, options)
+
+      it.effect(`should preserve protocol errors from ${kind} requests`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          const fiber = yield* call(peer.client).pipe(Effect.flip, Effect.forkChild)
+          const request = yield* peer.nextRequest
+          if (kind === "prompt") assert.strictEqual(request.params?.arguments, undefined)
+          yield* Queue.offer(peer.incoming, {
+            jsonrpc: "2.0",
+            id: request.id,
+            error: { code: -32602, message: "Missing" }
+          })
+          const error = yield* Fiber.join(fiber)
+          assert.strictEqual(error.reason._tag, "ProtocolError")
+          assert.strictEqual(error.reason.message, "Missing")
+        }))
+
+      it.effect(`should validate ${kind} results`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          const fiber = yield* call(peer.client).pipe(Effect.flip, Effect.forkChild)
+          yield* peer.reply(
+            yield* peer.nextRequest,
+            result(version, kind === "prompt" ? { messages: "invalid" } : { contents: "invalid" })
+          )
+          assert.strictEqual((yield* Fiber.join(fiber)).reason._tag, "ValidationError")
+        }))
+
+      it.effect(`should apply the per-call deadline to ${kind} requests`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          const fiber = yield* call(peer.client, { timeout: "1 second" }).pipe(Effect.flip, Effect.forkChild)
+          yield* peer.nextRequest
+          yield* TestClock.adjust("1 second")
+          assert.strictEqual((yield* Fiber.join(fiber)).reason._tag, "TimeoutError")
+        }))
+    }
+  })
+}

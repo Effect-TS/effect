@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add scoped MCP tool clients for Streamable HTTP and stdio with legacy and modern protocol support. Discover tools as complete snapshots with bounded pagination, call them directly with complete MCP results or decoded structured output, and expose them to language models through `McpClient.toolkit`.
+Add scoped `McpClient` support for stdio and Streamable HTTP with legacy and modern protocols. Configure client identity and transport together with `McpClient.layerStdio` or `McpClient.layerHttp`. Discover tools, prompts, and resources; call tools with optional schema decoding; retrieve prompts and resource contents; and adapt remote tools through `McpClient.toolkit`.
