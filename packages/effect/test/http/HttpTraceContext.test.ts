@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { strictEqual } from "@effect/vitest/utils"
+import { assertNone, strictEqual } from "@effect/vitest/utils"
 import { Option } from "effect"
 import { Headers, HttpTraceContext } from "effect/http"
 
@@ -32,39 +32,22 @@ describe("HttpTraceContext", () => {
       }, true)
     })
 
-    it("accepts a 64-bit B3 trace-id", () => {
-      const span = Option.getOrThrow(HttpTraceContext.fromHeaders(Headers.fromInput({
-        b3: `${traceId.slice(16)}-${spanId}-1`
-      })))
+    it.each([
+      { b3: `${traceId.slice(16)}-${spanId}-1` },
+      { "X-B3-TraceId": traceId.slice(16), "X-B3-SpanId": spanId }
+    ])("accepts a 64-bit B3 trace-id: %j", (headers) => {
+      const span = Option.getOrThrow(HttpTraceContext.fromHeaders(Headers.fromInput(headers)))
       strictEqual(span.traceId, traceId.slice(16))
+      strictEqual(span.spanId, spanId)
     })
 
-    it("rejects a single-header B3 trace-id that is not hex", () => {
-      strictEqual(
-        Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
-          b3: `<script>-${spanId}-1`
-        }))),
-        true
-      )
-    })
-
-    it("rejects a single-header B3 span-id that is not hex", () => {
-      strictEqual(
-        Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
-          b3: `${traceId}-<script>-1`
-        }))),
-        true
-      )
-    })
-
-    it("rejects an X-B3-TraceId that is not hex", () => {
-      strictEqual(
-        Option.isNone(HttpTraceContext.fromHeaders(Headers.fromInput({
-          "X-B3-TraceId": "<script>",
-          "X-B3-SpanId": spanId
-        }))),
-        true
-      )
+    it.each([
+      { b3: `<script>-${spanId}-1` },
+      { b3: `${traceId}-${spanId.slice(0, -1)}g-1` },
+      { "X-B3-TraceId": "<script>", "X-B3-SpanId": spanId },
+      { "X-B3-TraceId": traceId, "X-B3-SpanId": `${spanId.slice(0, -1)}g` }
+    ])("rejects invalid B3 identifiers: %j", (headers) => {
+      assertNone(HttpTraceContext.fromHeaders(Headers.fromInput(headers)))
     })
 
     it("rejects an all-zero W3C trace-id", () => {
