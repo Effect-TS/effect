@@ -885,6 +885,55 @@ export const suite = (
             assert.strictEqual(stderr, "stderr")
             assert.strictEqual(fd3Output, "fd3")
           }))
+
+        describe("duplex", () => {
+          const encode = (text: string) => new TextEncoder().encode(text)
+
+          it.effect("should read a reply on the same fd after pipeTo ends its input", () =>
+            Effect.gen(function*() {
+              // The child replies on fd3 only after reading EOF from it
+              const handle = yield* ChildProcess.make("echo", ["ping"]).pipe(
+                ChildProcess.pipeTo(
+                  ChildProcess.make("sh", ["-c", "req=$(cat <&3); echo \"pong:$req\" >&3"], {
+                    additionalFds: { fd3: { type: "duplex" } }
+                  }),
+                  { to: "fd3" }
+                )
+              )
+
+              const response = yield* decodeByteStream(handle.getOutputFd(3))
+
+              assert.strictEqual(response, "pong:ping")
+              assert.strictEqual(yield* handle.exitCode, ChildProcessSpawner.ExitCode(0))
+            }))
+
+          it.effect("should report a write failure to a later reader without an uncaught error", () =>
+            Effect.gen(function*() {
+              const uncaught: Array<unknown> = []
+              const onUncaught = (error: unknown) => uncaught.push(error)
+              yield* Effect.acquireRelease(
+                Effect.sync(() => process.on("uncaughtException", onUncaught)),
+                () => Effect.sync(() => process.off("uncaughtException", onUncaught))
+              )
+
+              // The child closes fd3 before signalling readiness on stdout
+              const handle = yield* ChildProcess.make("sh", ["-c", "exec 3>&-; echo ready; exec sleep 10"], {
+                additionalFds: { fd3: { type: "duplex" } }
+              })
+              yield* Stream.runDrain(Stream.take(handle.stdout, 1))
+
+              // Write before anyone reads fd3, and start reading only later
+              const writeError = yield* Effect.flip(Stream.run(Stream.make(encode("request")), handle.getInputFd(3)))
+              yield* TestClock.withLive(Effect.sleep("100 millis"))
+              const readError = yield* Effect.flip(
+                Stream.runDrain(handle.getOutputFd(3)).pipe(Effect.timeout("2 seconds"), TestClock.withLive)
+              )
+
+              assert.strictEqual(writeError._tag, "PlatformError")
+              assert.deepStrictEqual(uncaught, [])
+              assert.strictEqual(readError._tag, "PlatformError")
+            }))
+        })
       })
 
       describe("process supervision", { concurrent: false }, () => {
