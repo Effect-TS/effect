@@ -19,6 +19,6 @@ Add name resolution to `effect/net`:
 - `AddressResolver` provides the `AddressResolver` service, which resolves a `HostPort` into internet or socket addresses with `resolve`, using `Dns` for domain names.
 - `NodeAddressResolver`, `BunAddressResolver`, and `DenoAddressResolver` provide `AddressResolver` layers that look up named IPv6 zones such as `fe80::1%eth0` in the host's network interfaces each time they are resolved.
 - `Schema` adds `Port`, `DomainName`, `Host`, `HostPort`, `DnsRecord`, and `DnsRecordType`.
-- The network address schemas now serialize to and from JSON, as canonical strings or, for Unix-domain addresses, `{ path }` objects, and support arbitrary generation.
+- The network address schemas now serialize to and from JSON, as canonical strings or, for Unix-domain addresses, `{ path }` objects.
 
 The new `AddressResolver`, `Dns`, and `Host` modules, their runtime modules, the new `NetAddress` APIs, and the new schemas are experimental and may change in patch releases. The `Dns` and `AddressResolver` services are not part of `NodeServices`, `BunServices`, or `DenoServices`; provide them explicitly, for example with `NodeAddressResolver.layer.pipe(Layer.provideMerge(NodeDns.layer))`.

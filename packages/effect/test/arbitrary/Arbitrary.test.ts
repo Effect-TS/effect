@@ -20,8 +20,6 @@ import * as Chunk from "effect/Chunk"
 import * as DateTime from "effect/DateTime"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
-import * as Dns from "effect/net/Dns"
-import * as NetAddress from "effect/net/NetAddress"
 import * as Scheduler from "effect/Scheduler"
 
 const makeSuspendChain = (count: number): Schema.Codec<unknown> => {
@@ -854,64 +852,6 @@ describe("Arbitrary", () => {
         assert.isTrue(zones.every(Schema.is(Schema.TimeZone)))
         assert.isTrue(zones.some(DateTime.isTimeZoneNamed))
         assert.isTrue(zones.some(DateTime.isTimeZoneOffset))
-      }))
-
-    it.effect("generates network declarations constructively", () =>
-      Effect.gen(function*() {
-        const schemas: ReadonlyArray<Schema.Top> = [
-          Schema.MacAddress,
-          Schema.Ipv4Address,
-          Schema.Ipv6Address,
-          Schema.IpAddress,
-          Schema.Ipv4Interface,
-          Schema.Ipv6Interface,
-          Schema.IpInterface,
-          Schema.Ipv4Network,
-          Schema.Ipv6Network,
-          Schema.IpNetwork,
-          Schema.InetAddressV4,
-          Schema.InetAddressV6,
-          Schema.InetAddress,
-          Schema.SocketAddress,
-          Schema.DomainName,
-          Schema.Host,
-          Schema.HostPort,
-          Schema.DnsRecord
-        ]
-        for (const schema of schemas) {
-          const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(schema), {
-            count: 200,
-            maxDiscards: 0,
-            seed: "network-declarations",
-            size: 10
-          })
-          assert.isTrue(values.every(Schema.is(schema)))
-        }
-
-        const records = yield* Arbitrary.sampleEffect(Arbitrary.schema(Schema.DnsRecord), {
-          count: 1_000,
-          maxDiscards: 0,
-          seed: "dns-records",
-          size: 10
-        })
-        assert.strictEqual(new Set(records.map((record) => record._tag)).size, Dns.recordTypes.length)
-
-        const sockets = yield* Arbitrary.sampleEffect(Arbitrary.schema(Schema.SocketAddress), {
-          count: 200,
-          maxDiscards: 0,
-          seed: "socket-addresses",
-          size: 10
-        })
-        assert.isTrue(sockets.some(NetAddress.isInetAddress))
-        assert.isTrue(sockets.some(NetAddress.isUnixPathAddress))
-
-        const loopback = yield* Arbitrary.sampleEffect(Arbitrary.schema(Schema.IpLoopbackAddress), {
-          count: 20,
-          maxDiscards: 1_000,
-          seed: "loopback-addresses",
-          size: 10
-        })
-        assert.isTrue(loopback.every(NetAddress.isLoopback))
       }))
 
     it.effect("generates and shrinks DateTime.Zoned declarations constructively", () =>
