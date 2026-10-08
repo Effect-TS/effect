@@ -830,9 +830,16 @@ describe("PowerShell completions", () => {
     assert.include(script, `if (-not $endOfOptions) {`)
   })
 
-  it("does not consume an option as a pending flag value", () => {
+  it("does not treat an option as a pending flag value", () => {
     const script = PowerShell.generate("server", fromCommand(withSubcommands))
     assert.match(script, /\$expecting = \$null\s+if \(-not \$isOption\) \{ continue \}/)
+    assert.match(script, /if \(\$null -ne \$expecting -and -not \$\w+\) \{/)
+  })
+
+  it("tracks used flags case-sensitively", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.notInclude(script, "$used = @{}")
+    assert.include(script, "$used = [hashtable]::new([System.StringComparer]::Ordinal)")
   })
 
   it("emits non-ASCII text as [char] code units", () => {
