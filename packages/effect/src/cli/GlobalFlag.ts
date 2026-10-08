@@ -231,14 +231,22 @@ export const Wizard: Action<boolean> = Action({
  * @category references
  * @since 4.0.0
  */
-export const Completions: Action<Option.Option<"bash" | "zsh" | "fish" | "powershell">> = Action({
-  flag: Flag.Literals("completions", ["bash", "zsh", "fish", "powershell", "sh", "pwsh"] as const)
-    .pipe(
-      Flag.optional,
-      Flag.map((v) => Option.map(v, (s) => s === "sh" ? "bash" : s === "pwsh" ? "powershell" : s)),
-      Flag.withMetavar("<bash|zsh|fish|powershell|sh|pwsh>"),
-      Flag.withDescription("Print shell completion script")
-    ),
+export const Completions: Action<Option.Option<Completions_.Shell>> = Action({
+  flag: Flag.ChoiceWithValue(
+    "completions",
+    [
+      ["bash", "bash"],
+      ["zsh", "zsh"],
+      ["fish", "fish"],
+      ["powershell", "powershell"],
+      ["sh", "bash"],
+      ["pwsh", "powershell"]
+    ] as const
+  ).pipe(
+    Flag.optional,
+    Flag.withMetavar("<bash|zsh|fish|powershell|sh|pwsh>"),
+    Flag.withDescription("Print shell completion script")
+  ),
   run: Effect.fnUntraced(function*(shell, { command }) {
     if (Option.isNone(shell)) return
     const descriptor = CommandDescriptor.fromCommand(command)
@@ -317,7 +325,7 @@ export const BuiltIns: readonly [
   Action<boolean>,
   Action<boolean>,
   Action<boolean>,
-  Action<Option.Option<"bash" | "zsh" | "fish" | "powershell">>,
+  Action<Option.Option<Completions_.Shell>>,
   Setting<"log-level", Option.Option<LogLevelType>>
 ] = [Help, Version, Wizard, Completions, LogLevel]
 

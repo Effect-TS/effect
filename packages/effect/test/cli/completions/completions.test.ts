@@ -125,6 +125,14 @@ const emptyCmd = Command.make("noop").pipe(
   Command.withDescription("Does nothing")
 )
 
+const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
+  name,
+  description: undefined,
+  flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
+  arguments: [],
+  subcommands: []
+})
+
 const choicesHelperSource = (script: string): string => {
   const start = script.indexOf("_deploy--choices()")
   const end = script.indexOf("\n}\n", start)
@@ -559,13 +567,6 @@ describe("Zsh completions", () => {
 
 describe("Fish completions", () => {
   it("scopes nested completions by the full command path", () => {
-    const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
-      name,
-      description: undefined,
-      flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
-      arguments: [],
-      subcommands: []
-    })
     const descriptor: Completions.CommandDescriptor = {
       name: "tool",
       description: undefined,
@@ -808,9 +809,9 @@ describe("PowerShell completions", () => {
     const simple = PowerShell.generate("greet", fromCommand(simpleCmd))
     assert.include(
       linesWith(simple, "name = 'loud'"),
-      `forms = @('--loud', '-l'); takesValue = $false; negatable = $true`
+      `forms = @('--loud', '-l'); takesValue = $false`
     )
-    assert.include(linesWith(simple, "name = 'times'"), `forms = @('--times'); takesValue = $true; negatable = $false`)
+    assert.include(linesWith(simple, "name = 'times'"), `forms = @('--times'); takesValue = $true`)
 
     const choices = PowerShell.generate("deploy", fromCommand(withChoices))
     assert.include(choices, `values = @('dev', 'staging', 'prod')`)
@@ -832,8 +833,8 @@ describe("PowerShell completions", () => {
 
   it("does not treat an option as a pending flag value", () => {
     const script = PowerShell.generate("server", fromCommand(withSubcommands))
-    assert.match(script, /\$expecting = \$null\s+if \(-not \$isOption\) \{ continue \}/)
-    assert.match(script, /if \(\$null -ne \$expecting -and -not \$\w+\) \{/)
+    assert.match(script, /if \(\$flag\.takesValue\) \{\s+if \(-not \$isOption\) \{ continue \}/)
+    assert.include(script, "if ($null -ne $pending -and $pending.takesValue -and -not $typedIsOption) {")
   })
 
   it("completes a negative number as a value, not a flag", () => {
@@ -874,13 +875,6 @@ describe("PowerShell completions", () => {
   })
 
   it("keeps case-distinct subcommand contexts and emits a repeated path once", () => {
-    const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
-      name,
-      description: undefined,
-      flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
-      arguments: [],
-      subcommands: []
-    })
     const script = PowerShell.generate("tool", {
       name: "tool",
       description: undefined,

@@ -17,24 +17,21 @@ import type * as Completions from "../../Completions.ts"
 const quotePs = (s: string): string => {
   const parts: Array<string> = []
   let literal = ""
-  for (const char of s) {
-    const code = char.charCodeAt(0)
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i)
     if (code >= 0x20 && code < 0x80) {
-      literal += char === "'" ? "''" : char
+      literal += s[i] === "'" ? "''" : s[i]
       continue
     }
     if (literal !== "" || parts.length === 0) parts.push(`'${literal}'`)
     literal = ""
-    for (let i = 0; i < char.length; i++) {
-      parts.push(`[char]0x${char.charCodeAt(i).toString(16).toUpperCase().padStart(4, "0")}`)
-    }
+    parts.push(`[char]0x${code.toString(16).toUpperCase().padStart(4, "0")}`)
   }
   if (literal !== "" || parts.length === 0) parts.push(`'${literal}'`)
   return parts.length === 1 ? parts[0] : `(${parts.join(" + ")})`
 }
 
-const psArray = (items: ReadonlyArray<string>): string =>
-  items.length === 0 ? "@()" : `@(${items.map(quotePs).join(", ")})`
+const psArray = (items: ReadonlyArray<string>): string => `@(${items.map(quotePs).join(", ")})`
 
 const psOptional = (s: string | undefined): string => s ? quotePs(s) : "$null"
 
@@ -46,15 +43,13 @@ const flagForms = (flag: Completions.FlagDescriptor): Array<string> => [
 ]
 
 const valueFields = (type: Completions.FlagType | Completions.ArgumentType): string =>
-  `values = ${type._tag === "Choice" ? psArray(type.values) : "@()"}; ` +
+  `values = ${psArray(type._tag === "Choice" ? type.values : [])}; ` +
   `pathType = ${type._tag === "Path" ? quotePs(type.pathType) : "$null"}`
 
-const flagEntry = (flag: Completions.FlagDescriptor): string => {
-  const isBoolean = flag.type._tag === "Boolean"
-  return `@{ name = ${quotePs(flag.name)}; forms = ${psArray(flagForms(flag))}; ` +
-    `takesValue = $${!isBoolean}; negatable = $${isBoolean}; ${valueFields(flag.type)}; ` +
-    `description = ${psOptional(flag.description)} }`
-}
+const flagEntry = (flag: Completions.FlagDescriptor): string =>
+  `@{ name = ${quotePs(flag.name)}; forms = ${psArray(flagForms(flag))}; ` +
+  `takesValue = $${flag.type._tag !== "Boolean"}; ${valueFields(flag.type)}; ` +
+  `description = ${psOptional(flag.description)} }`
 
 const argumentEntry = (argument: Completions.ArgumentDescriptor): string =>
   `@{ name = ${quotePs(argument.name)}; variadic = $${argument.variadic}; ${valueFields(argument.type)}; ` +
@@ -124,16 +119,12 @@ const completer = (dataName: string): string =>
     $lookup
   }
 
-  $quote = {
-    param([string]$value)
-    if ($value -match '^[\w./:%+=\\-]+$') { return $value }
-    "'" + ($value -replace "['\u2018-\u201b]", '$0$0') + "'"
-  }
-
   $add = {
     param([string]$value, [string]$type, $tooltip, [string]$typed, [string]$textPrefix)
     if (-not $value.StartsWith($typed, [System.StringComparison]::OrdinalIgnoreCase)) { return }
-    $text = $textPrefix + (& $quote $value)
+    $text = $value
+    if ($value -notmatch '^[\w./:%+=\\-]+$') { $text = "'" + ($value -replace "['\u2018-\u201b]", '$0$0') + "'" }
+    $text = $textPrefix + $text
     $label = $value
     if (-not $label) { $label = $text }
     if (-not $tooltip) { $tooltip = $label }
@@ -143,7 +134,7 @@ const completer = (dataName: string): string =>
   $addValues = {
     param($entry, [string]$typed, [string]$textPrefix)
     foreach ($value in $entry.values) {
-      if ($textPrefix -eq '' -and -not $endOfOptions -and (& $optionLike $value)) { continue }
+      if ($textPrefix -eq '' -and (& $optionLike $value)) { continue }
       & $add $value 'ParameterValue' $entry.description $typed $textPrefix
     }
     if ($entry.pathType) {
@@ -161,7 +152,7 @@ const completer = (dataName: string): string =>
       foreach ($form in $flag.forms) {
         & $add $form 'ParameterName' $flag.description $typed ''
       }
-      if ($flag.negatable) {
+      if (-not $flag.takesValue) {
         $tooltip = $null
         if ($flag.description) { $tooltip = 'Disable ' + $flag.name }
         & $add ('--no-' + $flag.name) 'ParameterName' $tooltip $typed ''
@@ -169,10 +160,11 @@ const completer = (dataName: string): string =>
     }
   }
 
-  # Negative numbers and a lone '-' are values, as in the CLI lexer.
+  # As in the CLI lexer, nothing after '--' is an option, and negative numbers
+  # and a lone '-' are values.
   $optionLike = {
     param([string]$word)
-    $word -match '^-.' -and $word -notmatch '^-(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$'
+    -not $endOfOptions -and $word -match '^-.' -and $word -notmatch '^-(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$'
   }
 
   # A typed value that has no candidates completes to itself, so the engine
@@ -187,8 +179,7 @@ const completer = (dataName: string): string =>
   $context = $spec[$path]
   $lookup = & $index $context
   $used = [hashtable]::new([System.StringComparer]::Ordinal)
-  $expecting = $null
-  $afterBoolean = $false
+  $pending = $null
   $endOfOptions = $false
   $position = 0
 
@@ -210,99 +201,87 @@ const completer = (dataName: string): string =>
       break
     }
 
-    # A pending flag value is never an option or '--'.
+    # A flag takes the next word as its value unless it is an option or '--';
+    # a boolean flag only takes a boolean literal.
     $isOption = & $optionLike $word
-    if ($null -ne $expecting) {
-      $expecting = $null
-      if (-not $isOption) { continue }
-    }
-    if ($afterBoolean) {
-      $afterBoolean = $false
-      if ($booleanLiterals -ccontains $word) { continue }
+    if ($null -ne $pending) {
+      $flag = $pending
+      $pending = $null
+      if ($flag.takesValue) {
+        if (-not $isOption) { continue }
+      } elseif ($booleanLiterals -ccontains $word) { continue }
     }
     if ($endOfOptions) { $position++; continue }
     if ($word -ceq '--') { $endOfOptions = $true; continue }
 
     if ($isOption) {
-      $forms = @($word)
       $hasValue = $word.Contains('=')
       if ($hasValue) {
         $forms = @($word.Substring(0, $word.IndexOf('=')))
-      } elseif (-not $word.StartsWith('--')) {
-        $forms = @($word.Substring(1).ToCharArray() | ForEach-Object { '-' + $_ })
+      } elseif ($word.StartsWith('--')) {
+        $forms = @($word)
+      } else {
+        $forms = @(foreach ($char in $word.Substring(1).ToCharArray()) { '-' + $char })
       }
       foreach ($form in $forms) {
-        $expecting = $null
-        $afterBoolean = $false
+        $pending = $null
         $flag = $lookup[$form]
         if ($null -eq $flag) {
           if ($form.StartsWith('--no-')) {
-            $flag = $lookup['--' + $form.Substring(5)]
-            if ($null -ne $flag -and $flag.negatable -and $flag.name -ceq $form.Substring(5)) { $used[$flag.name] = $true }
+            $name = $form.Substring(5)
+            $flag = $lookup['--' + $name]
+            if ($null -ne $flag -and -not $flag.takesValue -and $flag.name -ceq $name) { $used[$name] = $true }
           }
           continue
         }
         $used[$flag.name] = $true
-        if ($hasValue) { continue }
-        if ($flag.takesValue) { $expecting = $flag } else { $afterBoolean = $true }
+        if (-not $hasValue) { $pending = $flag }
       }
       continue
     }
 
-    if ($position -eq 0) {
-      $subcommand = $null
-      foreach ($sub in $context.subcommands) {
-        if ($sub.name -ceq $word) { $subcommand = $sub; break }
-      }
-      if ($null -ne $subcommand) {
-        if ($path) { $path = $path + ' ' + $word } else { $path = $word }
-        $context = $spec[$path]
-        $lookup = & $index $context
-        $used = [hashtable]::new([System.StringComparer]::Ordinal)
-        continue
-      }
+    if ($position -eq 0 -and $context.subcommands.name -ccontains $word) {
+      if ($path) { $path = $path + ' ' + $word } else { $path = $word }
+      $context = $spec[$path]
+      $lookup = & $index $context
+      $used = [hashtable]::new([System.StringComparer]::Ordinal)
+      continue
     }
     $position++
   }
 
   $typedIsOption = & $optionLike $typed
-  if ($null -ne $expecting -and -not $typedIsOption) {
-    & $addValues $expecting $typed ''
+  if ($null -ne $pending -and $pending.takesValue -and -not $typedIsOption) {
+    & $addValues $pending $typed ''
     & $keepTyped
     return $results
   }
 
-  if (-not $endOfOptions) {
+  if ($typedIsOption) {
     if ($typed -match '^(-[^=]+)=(.*)$') {
       $form = $Matches[1]
-      $value = $Matches[2]
       $flag = $lookup[$form]
       if ($null -ne $flag -and $flag.takesValue) {
-        & $addValues $flag $value ($form + '=')
+        & $addValues $flag $Matches[2] ($form + '=')
         & $keepTyped
       }
-      return $results
-    }
-    if ($typedIsOption) {
+    } else {
       & $addFlags $typed
-      return $results
     }
-    if ($position -eq 0) {
-      foreach ($sub in $context.subcommands) {
-        & $add $sub.name 'Command' $sub.description $typed ''
-      }
+    return $results
+  }
+
+  if (-not $endOfOptions -and $position -eq 0) {
+    foreach ($sub in $context.subcommands) {
+      & $add $sub.name 'Command' $sub.description $typed ''
     }
   }
 
-  $arguments = @($context.arguments)
-  $argument = $null
+  $arguments = $context.arguments
   if ($position -lt $arguments.Count) {
-    $argument = $arguments[$position]
+    & $addValues $arguments[$position] $typed ''
   } elseif ($arguments.Count -gt 0 -and $arguments[-1].variadic) {
-    $argument = $arguments[-1]
-  }
-  if ($null -ne $argument) {
-    & $addValues $argument $typed ''
+    & $addValues $arguments[-1] $typed ''
   }
 
   if (-not $endOfOptions) {
