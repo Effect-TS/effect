@@ -18,7 +18,6 @@ import * as Result from "../Result.ts"
 import * as NetAddress from "./NetAddress.ts"
 
 const TypeId = "~effect/net/Host" as const
-const DomainNameTypeId = "~effect/net/Host/DomainName" as const
 
 /**
  * A syntactically valid DNS domain name in lowercase ASCII form.
@@ -39,7 +38,7 @@ const DomainNameTypeId = "~effect/net/Host/DomainName" as const
  * @category models
  * @since 4.0.0
  */
-export type DomainName = Brand.Branded<string, typeof DomainNameTypeId>
+export type DomainName = Brand.Branded<string, "~effect/net/Host/DomainName">
 
 /**
  * A host as written in configuration or a URL authority: a numeric IP address,

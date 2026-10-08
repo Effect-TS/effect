@@ -91,9 +91,6 @@ export interface Options {
     | undefined
 }
 
-const isScoped = (host: Host.Host): host is NetAddress.ScopedIpv6Literal =>
-  typeof host === "string" && host.includes("%")
-
 const inFamily = (
   address: NetAddress.InetAddress,
   family: NetAddress.IpFamily | undefined
@@ -154,7 +151,7 @@ export const make = (dns: Dns.Dns["Service"], options?: Options): AddressResolve
     if (NetAddress.isUnixPathAddress(target)) return Effect.succeed(Arr.of(target))
     if (NetAddress.isInetAddress(target)) return inFamily(target, family)
     const { host, port } = target
-    if (NetAddress.isIpAddress(host) || isScoped(host)) {
+    if (NetAddress.isIpAddress(host) || NetAddress.isScopedIpv6Literal(host)) {
       return Effect.flatMap(fromLiteral(host, port), (address) => inFamily(address, family))
     }
     return Effect.map(dns.lookup(host, { family }), Arr.map((address) => NetAddress.inetAddressUnsafe(address, port)))
