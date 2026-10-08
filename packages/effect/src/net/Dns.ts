@@ -23,6 +23,7 @@ import * as Hash from "../Hash.ts"
 import * as Inspectable from "../Inspectable.ts"
 import * as Layer from "../Layer.ts"
 import { hasProperty } from "../Predicate.ts"
+import type { ReadonlyRecord } from "../Record.ts"
 import * as Result from "../Result.ts"
 import * as Host from "./Host.ts"
 import * as NetAddress from "./NetAddress.ts"
@@ -677,8 +678,8 @@ export const make = (impl: {
  * @since 4.0.0
  */
 export interface StaticZone {
-  readonly hosts?: { readonly [name: string]: ReadonlyArray<NetAddress.IpAddress> } | undefined
-  readonly records?: { readonly [name: string]: ReadonlyArray<DnsRecord> } | undefined
+  readonly hosts?: ReadonlyRecord<string, ReadonlyArray<NetAddress.IpAddress>> | undefined
+  readonly records?: ReadonlyRecord<string, ReadonlyArray<DnsRecord>> | undefined
 }
 
 const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") ? name.slice(0, -1) : name
@@ -719,10 +720,10 @@ const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") 
  * @since 4.0.0
  */
 export const makeStatic = (zone: StaticZone): Result.Result<Dns["Service"], NetAddress.NetAddressError> => {
-  const entries = new Map<
-    string,
-    { readonly addresses: Array<NetAddress.IpAddress>; readonly records: Array<DnsRecord> }
-  >()
+  const entries = new Map<string, {
+    readonly addresses: Array<NetAddress.IpAddress>
+    readonly records: Array<DnsRecord>
+  }>()
   const entry = (name: string) =>
     Result.map(Host.domainNameFromString(name), (domain) => {
       const key = zoneKey(domain)

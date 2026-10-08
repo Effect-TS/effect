@@ -46,9 +46,6 @@ const reasons: Record<string, Dns.DnsErrorReason> = {
   DNS_EBADFAMILY: "BadName"
 }
 
-const toFamily = (family: NetAddress.IpFamily | undefined): 0 | 4 | 6 =>
-  family === "IPv4" ? 4 : family === "IPv6" ? 6 : 0
-
 /**
  * Creates a Bun `Dns` service.
  *
@@ -61,7 +58,7 @@ export const make = (options?: NodeDns.Options): Dns.Dns["Service"] => {
   return Dns.make({
     lookup: (host, family) =>
       Effect.tryPromise({
-        try: () => Bun.dns.lookup(host, { family: toFamily(family), backend: "system" }),
+        try: () => Bun.dns.lookup(host, { family: NodeDns.toFamily(family), backend: "system" }),
         catch: (cause) => {
           const code = typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code) : undefined
           return new Dns.DnsError({

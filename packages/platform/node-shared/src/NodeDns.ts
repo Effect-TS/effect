@@ -171,7 +171,15 @@ const queries: {
     )
 }
 
-const toFamily = (family: NetAddress.IpFamily | undefined): 0 | 4 | 6 =>
+/**
+ * Converts an IP family to the numeric family used by `dns.lookup`, with `0`
+ * for addresses of either family.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const toFamily = (family: NetAddress.IpFamily | undefined): 0 | 4 | 6 =>
   family === "IPv4" ? 4 : family === "IPv6" ? 6 : 0
 
 const stripZone = (address: string): string => {
