@@ -17,9 +17,9 @@ const assertNotDelivered = <A, E>(fiber: Fiber.Fiber<A, E>) =>
     assert.isUndefined(fiber.pollUnsafe())
   })
 
-// advance both clocks until the forked take completes. Keep advancing while
-// it is pending: an SQL poll can still be in flight during an adjust and miss
-// that virtual-clock wakeup
+// advance both clocks until the forked take completes, including acknowledgement.
+// Keep advancing while it is pending: an SQL poll can miss a virtual-clock
+// wakeup, and acknowledgement retries also sleep on the virtual clock.
 const awaitDelivery = <A, E>(fiber: Fiber.Fiber<A, E>) =>
   Effect.gen(function*() {
     for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
@@ -347,8 +347,7 @@ export const suiteWith = <R>(
         yield* advancePastTtl
         yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: undefined })
         yield* queue.offer({ n: 3n }, { id: "cleanup-id" })
-        yield* TestClock.adjust(1000)
-        assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 3n })
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 3n })
       }), testOptions)
 
     it.effect("cleanup removes failed elements only with failedTimeToLive", () =>
@@ -376,8 +375,7 @@ export const suiteWith = <R>(
         // with failedTimeToLive the failed element and its dedupe entry go away
         yield* store.cleanup({ timeToLive: Duration.days(30), failedTimeToLive: Duration.seconds(1) })
         yield* queue.offer({ n: 3n }, { id: "failed-cleanup-id" })
-        yield* TestClock.adjust(1000)
-        assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 3n })
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 3n })
       }), testOptions)
 
     it.effect("cleanup keeps dedupe entries for unprocessed elements", () =>
