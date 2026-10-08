@@ -41,6 +41,15 @@ const TypeId = "~effect/net/Host" as const
 export type DomainName = Brand.Branded<string, "~effect/net/Host/DomainName">
 
 /**
+ * A domain name or a string to parse and normalize.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type DomainNameInput = DomainName | string
+
+/**
  * A host as written in configuration or a URL authority: a numeric IP address,
  * a scoped IPv6 literal, or a domain name.
  *
@@ -66,6 +75,15 @@ export interface HostPort extends Equal.Equal, Hash.Hash, Inspectable.Inspectabl
   readonly port: number
   readonly [TypeId]: typeof TypeId
 }
+
+/**
+ * An endpoint or a `host:port` string to parse.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type HostPortInput = HostPort | string
 
 const hostError = (input: unknown, message: string): Result.Result<never, NetAddress.NetAddressError> =>
   Result.fail(new NetAddress.NetAddressError({ input, message }))

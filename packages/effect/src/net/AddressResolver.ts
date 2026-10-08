@@ -17,7 +17,7 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Dns from "./Dns.ts"
-import type * as Host from "./Host.ts"
+import * as Host from "./Host.ts"
 import * as NetAddress from "./NetAddress.ts"
 
 /**
@@ -41,6 +41,7 @@ export class AddressResolver extends Context.Service<AddressResolver, {
    * **Details**
    *
    * - Socket addresses are returned as-is.
+   * - `host:port` strings are parsed, failing with `NetAddressError` when invalid.
    * - A `Host.HostPort` with a numeric host is converted without a lookup.
    * - A `Host.HostPort` with a domain name is looked up with `Dns.lookup`, and
    *   the port is attached to every address.
@@ -57,18 +58,18 @@ export class AddressResolver extends Context.Service<AddressResolver, {
    * address with a zone such as `fe80::1%en0` instead.
    */
   resolve<F extends NetAddress.IpFamily>(
-    target: NetAddress.InetAddress | Host.HostPort,
+    target: NetAddress.InetAddress | Host.HostPortInput,
     options: ResolveOptions & { readonly family: F }
   ): Effect.Effect<
     Arr.NonEmptyReadonlyArray<NetAddress.Inet<NetAddress.FamilyAddress<F>>>,
     Dns.DnsError | NetAddress.NetAddressError
   >
   resolve(
-    target: NetAddress.InetAddress | Host.HostPort,
+    target: NetAddress.InetAddress | Host.HostPortInput,
     options?: ResolveOptions
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>, Dns.DnsError | NetAddress.NetAddressError>
   resolve(
-    target: NetAddress.SocketAddress | Host.HostPort,
+    target: NetAddress.SocketAddress | Host.HostPortInput,
     options?: ResolveOptions
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, Dns.DnsError | NetAddress.NetAddressError>
 }>()("effect/net/AddressResolver") {}
@@ -171,9 +172,15 @@ export const make = (dns: Dns.Dns["Service"], options?: MakeOptions): AddressRes
   }
 
   const resolve = (
-    target: NetAddress.SocketAddress | Host.HostPort,
+    target: NetAddress.SocketAddress | Host.HostPortInput,
     options?: ResolveOptions
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, Dns.DnsError | NetAddress.NetAddressError> => {
+    if (typeof target === "string") {
+      return Effect.flatMap(
+        Effect.fromResult(Host.hostPortFromString(target)),
+        (endpoint) => resolve(endpoint, options)
+      )
+    }
     const family = options?.family
     if (NetAddress.isUnixPathAddress(target)) return Effect.succeed(Arr.of(target))
     if (NetAddress.isInetAddress(target)) return inFamily(target, family)

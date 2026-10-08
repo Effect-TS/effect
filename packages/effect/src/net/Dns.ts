@@ -634,6 +634,7 @@ export class Dns extends Context.Service<Dns, {
    * Addresses are returned in the implementation's preferred order. Platform
    * implementations use the operating system resolver and keep the system's
    * order.
+   * Names are parsed and normalized; invalid names fail with `BadName`.
    *
    * **Gotchas**
    *
@@ -641,19 +642,20 @@ export class Dns extends Context.Service<Dns, {
    * they belong to, because the runtimes' resolvers do not report it.
    */
   lookup<F extends NetAddress.IpFamily>(
-    host: Host.DomainName,
+    host: Host.DomainNameInput,
     options: { readonly family: F }
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.FamilyAddress<F>>, DnsError>
   lookup(
-    host: Host.DomainName,
+    host: Host.DomainNameInput,
     options?: LookupOptions
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.IpAddress>, DnsError>
 
   /**
    * Queries the DNS records of one type for a name.
+   * Names are parsed and normalized; invalid names fail with `BadName`.
    */
   resolve<T extends RecordType>(
-    name: Host.DomainName,
+    name: Host.DomainNameInput,
     type: T
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<RecordFor<T>>, DnsError>
 
@@ -729,27 +731,34 @@ export const make = (impl: {
         )
       ))
 
-  const lookup = (host: Host.DomainName, options?: LookupOptions) =>
-    impl.lookup(host, options?.family).pipe(
-      Effect.flatMap((addresses) =>
-        Arr.match(Arr.dedupe(addresses.filter(inFamily(options?.family))), {
-          onEmpty: () => notFound("lookup", host),
-          onNonEmpty: Effect.succeed
-        })
-      )
+  const parseName = (input: Host.DomainNameInput, method: "lookup" | "resolve", recordType?: RecordType) =>
+    Effect.fromResult(Host.domainNameFromString(input)).pipe(
+      Effect.mapError((cause) => new DnsError({ reason: "BadName", method, hostname: input, recordType, cause }))
     )
 
-  return Dns.of({
-    lookup,
-    resolve: <T extends RecordType>(name: Host.DomainName, type: T) =>
-      resolveRecords(name, type).pipe(
-        Effect.flatMap((records) =>
-          Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
-            onEmpty: () => notFound("resolve", name, type),
+  const lookup = (input: Host.DomainNameInput, options?: LookupOptions) =>
+    Effect.flatMap(parseName(input, "lookup"), (host) =>
+      impl.lookup(host, options?.family).pipe(
+        Effect.flatMap((addresses) =>
+          Arr.match(Arr.dedupe(addresses.filter(inFamily(options?.family))), {
+            onEmpty: () => notFound("lookup", host),
             onNonEmpty: Effect.succeed
           })
         )
-      ),
+      ))
+
+  return Dns.of({
+    lookup,
+    resolve: <T extends RecordType>(input: Host.DomainNameInput, type: T) =>
+      Effect.flatMap(parseName(input, "resolve", type), (name) =>
+        resolveRecords(name, type).pipe(
+          Effect.flatMap((records) =>
+            Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
+              onEmpty: () => notFound("resolve", name, type),
+              onNonEmpty: Effect.succeed
+            })
+          )
+        )),
     reverse: (address) =>
       reverseNames(address).pipe(
         Effect.flatMap((names) => {
