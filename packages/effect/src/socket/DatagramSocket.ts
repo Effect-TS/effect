@@ -262,10 +262,7 @@ export interface BackingAddress {
  * not throw. `sendMany` passes the index of the failing datagram to `done`
  * when the runtime knows it, so core can attach its address.
  *
- * Optional `trySend` provides an allocation-free synchronous send. It must
- * not throw: return `true` if sent, otherwise `false`. On `false`, core calls
- * `send` immediately with the same datagram; use the saved result rather than
- * resending. Adapters normalize native errors before passing them to core.
+ * Adapters normalize native errors before passing them to core.
  * Read destination `host` and `port` during the call; do not retain the record.
  *
  * `close` must not throw.
@@ -279,7 +276,6 @@ export interface BackingSocket {
   readonly scopeIds?: ReadonlyMap<string, number> | undefined
   readonly peer?: BackingAddress | undefined
   readonly connected?: boolean | undefined
-  readonly trySend?: ((payload: Uint8Array, destination: BackingAddress | undefined) => boolean) | undefined
   readonly send: (
     payload: Uint8Array,
     destination: BackingAddress | undefined,
@@ -803,7 +799,6 @@ class ReaderState {
     if (destination === rejected) return Effect.fail(this.rejection!)
     const handle = this.handle!
     const payload = encode(datagram.payload)
-    if (handle.trySend !== undefined && handle.trySend(payload, destination)) return Effect.void
     let result: Effect.Effect<void, DatagramSocketError> | undefined
     let parked = false
     handle.send(payload, destination, (error) => {
