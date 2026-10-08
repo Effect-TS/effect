@@ -35,12 +35,15 @@ const AppClient = Layer.unwrap(
 const asApp = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.provide(effect, [AppClient, ShardingConfig.layerDefaults, NodeCrypto.layer, Snowflake.layerGenerator])
 
-const failure = (exit: Exit.Exit<unknown, unknown>): unknown => {
+const assertMigrationDefect = (exit: Exit.Exit<unknown, unknown>) => {
   assert(Exit.isFailure(exit))
-  assert.isFalse(Cause.hasDies(exit.cause), `expected a typed failure, got ${exit.cause}`)
-  const error = Cause.findError(exit.cause)
+  assert.isFalse(Cause.hasFails(exit.cause))
+  assert.isFalse(Cause.hasInterrupts(exit.cause))
+  const error = Cause.findDefect(exit.cause)
   assert(Result.isSuccess(error))
-  return error.success
+  assert(error.success instanceof Migrator.MigrationError)
+  assert.strictEqual(error.success.kind, "Failed")
+  assertAuthorizationError(error.success.cause)
 }
 
 const assertAuthorizationError = (error: unknown) => {
@@ -87,7 +90,7 @@ describe("cluster SQL storage with a DML-only role", () => {
         )
       }))
 
-    it.effect("surfaces errors inside a migration as typed failures", () =>
+    it.effect("surfaces errors inside a migration as defects", () =>
       Effect.gen(function*() {
         // Empty history tables the role can use, so the migrator gets past its
         // own table and fails inside the first migration.
@@ -97,19 +100,13 @@ describe("cluster SQL storage with a DML-only role", () => {
           yield* sql.unsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${table} TO ${appRole}`)
         }
 
-        const migration = failure(
+        assertMigrationDefect(
           yield* asApp(Effect.scoped(Layer.build(SqlMessageStorage.layerMigrations({ prefix: "inside" })))).pipe(
             Effect.exit
           )
         )
-        assert(migration instanceof Migrator.MigrationError)
-        assert.strictEqual(migration.kind, "Failed")
-        assertAuthorizationError(migration.cause)
-
-        assertAuthorizationError(
-          failure(
-            yield* asApp(Effect.scoped(Layer.build(SqlRunnerStorage.layerWith({ prefix: "inside" })))).pipe(Effect.exit)
-          )
+        assertMigrationDefect(
+          yield* asApp(Effect.scoped(Layer.build(SqlRunnerStorage.layerWith({ prefix: "inside" })))).pipe(Effect.exit)
         )
       }).pipe(Effect.timeout("20 seconds"), TestClock.withLive), 30_000)
   })
