@@ -23,7 +23,7 @@ import * as ShardId from "effect/cluster/ShardId"
 import { Sharding } from "effect/cluster/Sharding"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
-import type * as Duration from "effect/Duration"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -104,6 +104,13 @@ export const decodeName: (name: string) => ClusterName | undefined = Internal.de
  * handler registration for an entity type outside this set fails at the
  * Worker, before any Durable Object is contacted.
  *
+ * `keepAliveHeartbeat` (default 30 seconds) is the interval of the alarm an
+ * entity Durable Object keeps armed while it holds `Entity.keepAlive` or runs
+ * a persisted request. Cloudflare never re-creates an evicted object on its
+ * own, so this alarm is what rebuilds a kept-alive entity and replays an
+ * interrupted request after a restart or deploy. It bounds recovery latency;
+ * it is not a liveness check.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -114,6 +121,7 @@ export interface LayerOptions {
   readonly workflowNamespace: DurableObjectNamespace
   readonly queueNamespace: DurableObjectNamespace
   readonly singletonNamespace: DurableObjectNamespace
+  readonly keepAliveHeartbeat?: Duration.Input | undefined
 }
 
 const notImplemented = (method: string) =>
@@ -175,6 +183,9 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
     entities.set(entity.type, entity)
   }
   const clock = yield* Clock
+  const keepAliveHeartbeat = options.keepAliveHeartbeat === undefined
+    ? undefined
+    : Duration.toMillis(options.keepAliveHeartbeat)
   const requestTargets = new Map<string, { readonly stub: EntityStub; storageRequestId: string }>()
 
   const unknownEntity = (entity: Entity.Entity<any, any>) =>
@@ -437,7 +448,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       return yield* unknownEntity(entity)
     }
     const context = yield* Effect.context<never>()
-    const registration = { entity, build: build as any, options: buildOptions, context }
+    const registration = { entity, build: build as any, options: buildOptions, context, keepAliveHeartbeat }
     if (!registerEntityHandler(entity.type, registration)) return
     if (!declared) entities.set(entity.type, entity)
     yield* Effect.addFinalizer(() =>
