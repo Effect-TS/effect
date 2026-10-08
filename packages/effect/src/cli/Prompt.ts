@@ -26,6 +26,7 @@ import * as Path from "../Path.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Queue from "../Queue.ts"
 import * as Redacted from "../Redacted.ts"
+import type * as Scope from "../Scope.ts"
 import * as Terminal from "../Terminal.ts"
 import type { Covariant } from "../Types.ts"
 import * as Ansi from "./internal/ansi.ts"
@@ -1256,7 +1257,7 @@ export const run: <Output>(
 > = Effect.fnUntraced(
   function*<Output>(self: Prompt<Output>) {
     const terminal = yield* Terminal.Terminal
-    const input = yield* terminal.readInput
+    const input = yield* Effect.cached(terminal.readInput)
     return yield* runWithInput(self, terminal, input)
   },
   Effect.mapError(() => new Terminal.QuitError({})),
@@ -1521,13 +1522,13 @@ const allTupled = <const T extends ArrayLike<Prompt<any>>>(arg: T): Prompt<
 const runWithInput = <Output>(
   prompt: Prompt<Output>,
   terminal: Terminal.Terminal,
-  input: Queue.Dequeue<Terminal.UserInput, Cause.Done>
-): Effect.Effect<Output, NoSuchElementError, Environment> =>
+  input: Terminal.Terminal["readInput"]
+): Effect.Effect<Output, NoSuchElementError, Environment | Scope.Scope> =>
   Effect.suspend(() => {
     const op = prompt as PromptPrimitive
     switch (op._tag) {
       case "Loop": {
-        return runLoop(op, terminal, input)
+        return Effect.flatMap(input, (queue) => runLoop(op, terminal, queue))
       }
       case "OnSuccess": {
         return Effect.flatMap(
