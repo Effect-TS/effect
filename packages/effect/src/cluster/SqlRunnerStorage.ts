@@ -706,8 +706,7 @@ export const make = (options: {
  *
  * **Details**
  *
- * Use with `Migrator.pending` to check migration status before starting
- * `layerStorage`. History is recorded in `<prefix>_runner_migrations`; the default
+ * History is recorded in `<prefix>_runner_migrations`; the default
  * prefix is `cluster`. The locks table is created regardless of advisory lock settings.
  *
  * @stability unstable
@@ -851,8 +850,7 @@ export const layerMigrations = (options: {
  *
  * **Details**
  *
- * Run `layerMigrations` separately before using this layer. To check migration
- * status, use `Migrator.pending` with `migrations`.
+ * Run `layerMigrations` separately before using this layer.
  *
  * @stability unstable
  * @category layers

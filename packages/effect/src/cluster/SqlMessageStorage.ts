@@ -818,8 +818,7 @@ export const make: (options?: {
  *
  * **Details**
  *
- * Use with `Migrator.pending` to check migration status before starting
- * `layerStorage`. History is recorded in `<prefix>_migrations`; the default
+ * History is recorded in `<prefix>_migrations`; the default
  * prefix is `cluster`.
  *
  * @stability unstable
@@ -1156,8 +1155,7 @@ export const layerMigrations = (options: {
  *
  * **Details**
  *
- * Run `layerMigrations` separately before using this layer. To check migration
- * status, use `Migrator.pending` with `migrations`.
+ * Run `layerMigrations` separately before using this layer.
  * This layer supplies `Snowflake.layerGenerator` internally.
  *
  * @stability unstable

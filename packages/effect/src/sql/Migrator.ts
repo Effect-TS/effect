@@ -310,51 +310,6 @@ export const make = <RD = never>({
     return completed
   })
 
-/**
- * Options for listing pending migrations, including the migration loader and
- * the migrations table name.
- *
- * @stability unstable
- * @category options
- * @since 4.1.0
- */
-export interface PendingOptions<R = never> {
-  readonly loader: Loader<R>
-  readonly table?: string | undefined
-}
-
-/**
- * Lists the migrations that `make` would run, without DDL or locks.
- *
- * **Details**
- *
- * A migration is pending when its id exceeds the highest recorded id. If the
- * history table is missing, all migrations are pending. Duplicate ids fail
- * with `MigrationError`, as in `make`.
- *
- * Reads the history table and loader without loading or running migration
- * effects. Use to check migration status with a DML-only connection.
- *
- * @stability unstable
- * @category constructors
- * @since 4.1.0
- */
-export const pending = <R = never>({
-  loader,
-  table = "effect_sql_migrations"
-}: PendingOptions<R>): Effect.Effect<
-  ReadonlyArray<readonly [id: number, name: string]>,
-  MigrationError | SqlError,
-  Client.SqlClient | R
-> =>
-  Effect.gen(function*() {
-    const sql = yield* Client.SqlClient
-
-    const latestId = (yield* migrationsTableExists(sql, table)) ? yield* latestMigrationId(sql, table) : 0
-    const pending = yield* selectPending(yield* loader, latestId)
-    return pending.map(([id, name]) => [id, name] as const)
-  })
-
 const latestMigrationId = (sql: Client.SqlClient, table: string): Effect.Effect<number, SqlError> =>
   Effect.map(
     sql<{ migration_id: number | string | null }>`SELECT MAX(migration_id) AS migration_id FROM ${sql(table)}`
@@ -375,22 +330,14 @@ const selectPending = (
     )
     : Effect.succeed(current.filter(([id]) => id > latestId))
 
-// Catalog lookup avoids aborting a PostgreSQL transaction when the table is missing.
-const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Effect<boolean, SqlError> =>
-  Effect.map(
-    sql.onDialectOrElse({
-      mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(N'${sql.literal(table)}', N'U') IS NOT NULL`,
-      mysql: () =>
-        sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
-      // Match query quoting: to_regclass folds unquoted names to lowercase.
-      pg: () => {
-        const quotedTable = sql`${sql(table)}`.compile(true)[0]
-        return sql`SELECT 1 AS found WHERE to_regclass(${quotedTable}) IS NOT NULL`
-      },
-      orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
-    }).withoutTransform,
+const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Effect<boolean, SqlError> => {
+  // Match query quoting: to_regclass folds unquoted names to lowercase.
+  const quotedTable = sql`${sql(table)}`.compile(true)[0]
+  return Effect.map(
+    sql`SELECT 1 AS found WHERE to_regclass(${quotedTable}) IS NOT NULL`.withoutTransform,
     (rows) => rows.length > 0
   )
+}
 
 const migrationOrder = Order.make<ResolvedMigration>(([a], [b]) => Order.Number(a, b))
 
