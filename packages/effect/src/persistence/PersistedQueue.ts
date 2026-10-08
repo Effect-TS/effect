@@ -251,8 +251,8 @@ export const makeFactory = Effect.gen(function*() {
         offer: (value, opts) =>
           Effect.suspend(() => {
             const id = opts?.id ?? crypto.randomUUID()
-            const delay = opts?.delay === undefined ? undefined : Duration.fromInputUnsafe(opts.delay)
-            if (delay !== undefined && Duration.isPositive(delay) && !Duration.isFinite(delay)) {
+            const delay = positiveDelay(opts?.delay)
+            if (delay !== undefined && !Duration.isFinite(delay)) {
               return Effect.succeed(id)
             }
             return Effect.flatMap(
@@ -264,8 +264,7 @@ export const makeFactory = Effect.gen(function*() {
                     id,
                     element,
                     isCustomId: opts?.id !== undefined,
-                    // stores only see a finite positive delay
-                    delay: delay !== undefined && Duration.isPositive(delay) ? delay : undefined
+                    delay
                   }),
                   id
                 )
@@ -453,6 +452,13 @@ class DeadLetter {
 
 const isDeadLetter = (u: unknown): u is DeadLetter =>
   Predicate.isTagged(u, "~effect/persistence/PersistedQueue/DeadLetter")
+
+// stores only see a positive delay, so a zero or negative one is dropped here
+const positiveDelay = (input: Duration.Input | undefined): Duration.Duration | undefined => {
+  if (input === undefined) return undefined
+  const delay = Duration.fromInputUnsafe(input)
+  return Duration.isPositive(delay) ? delay : undefined
+}
 
 const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefined => {
   for (const reason of cause.reasons) {
@@ -1428,15 +1434,13 @@ export const makeStoreSql: (
   // Deadline for a delayed offer, which must never land before the delay
   // elapses. pg reads clock_timestamp() since NOW() is fixed at transaction
   // start. mysql and sqlite clocks drop the fraction of the current second, so
-  // add a second whenever there was one.
+  // they get a whole extra second to cover it.
   const delayedVisibleAt = (delay: Duration.Duration) => {
-    const s = sql.literal(Math.ceil(Duration.toSeconds(delay)).toString())
+    const seconds = Math.ceil(Duration.toSeconds(delay))
     return sql.onDialectOrElse({
-      pg: () => sql`clock_timestamp() + INTERVAL '${s} seconds'`,
-      mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${s} + (NOW(6) > ${sqlNow}) SECOND)`,
-      mssql: () => sql`DATEADD(SECOND, ${s}, ${sqlNow})`,
-      orElse: () =>
-        sql`datetime(${sqlNow}, '${s} seconds', CASE WHEN CAST(strftime('%f', 'now') AS REAL) > CAST(strftime('%S', 'now') AS REAL) THEN '+1 seconds' ELSE '+0 seconds' END)`
+      pg: () => sql`clock_timestamp() + INTERVAL '${sql.literal(seconds.toString())} seconds'`,
+      mssql: () => secondsOffset(seconds),
+      orElse: () => secondsOffset(seconds + 1)
     })
   }
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))

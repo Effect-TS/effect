@@ -140,14 +140,7 @@ export const suiteWith = <R>(
         yield* Effect.sleep(100).pipe(TestClock.withLive)
         assert.isUndefined(fiber.pollUnsafe())
 
-        // Keep advancing while the take is pending: an SQL poll can still be
-        // in flight during an adjust and miss that virtual-clock wakeup.
-        for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
-          yield* TestClock.adjust(1000)
-          yield* Effect.sleep(700).pipe(TestClock.withLive)
-        }
-        assert.isDefined(fiber.pollUnsafe())
-        assert.strictEqual(yield* Fiber.join(fiber), 2)
+        assert.strictEqual(yield* awaitDelivery(fiber), 2)
       }), testOptions)
 
     it.effect("delays first delivery with the offer delay", () =>
