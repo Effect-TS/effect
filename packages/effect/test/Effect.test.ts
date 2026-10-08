@@ -74,6 +74,7 @@ describe("Effect", () => {
       Effect.gen(function*() {
         const log: Array<string> = []
         const result = yield* Effect.gen(function*() {
+          // @effect-diagnostics-next-line missingReturnYieldStar:off
           yield* Effect.gen(function*() {
             return yield* Effect.fail("e")
           }).pipe(Effect.ensuring(Effect.sync(() => log.push("finalizer"))))
