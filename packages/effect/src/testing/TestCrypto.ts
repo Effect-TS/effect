@@ -6,6 +6,7 @@
  * pseudo-random generator. Digest operations are delegated to an underlying
  * platform `Crypto` service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Crypto from "../Crypto.ts"
@@ -39,6 +40,7 @@ import * as Random from "../Random.ts"
  *
  * @see {@link layer} for providing the service as a layer
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -84,6 +86,7 @@ export const make: (
  *
  * @see {@link make} for constructing the service directly
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
