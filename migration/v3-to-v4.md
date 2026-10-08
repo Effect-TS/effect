@@ -4,7 +4,7 @@
 
 Base: `origin/v3` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `HEAD` (`a84d4f65d978bf33aabc38227e477d187ff05c2c`)
+Head: `HEAD` (`79b88977582fb715494d08405c73a47a593afced`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4152,9 +4152,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/ai-openai/OpenAiTelemetry`
 
-- `OpenAiTelemetry.AllAttributes` -> `OpenAiTelemetry.AllAttributes`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
+- `OpenAiTelemetry.AllAttributes` -> `none`: Removed. Use OpenAiTelemetry.OpenAiTelemetryAttributeOptions for the grouped options accepted by OpenAiTelemetry.addGenAIAnnotations, or OpenAiTelemetry.OpenAiTelemetryAttributes for the prefixed span attribute keys.
 
 - `OpenAiTelemetry.OpenAiTelemetryAttributeOptions` -> `OpenAiTelemetry.OpenAiTelemetryAttributeOptions`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
+
+- `OpenAiTelemetry.RequestAttributes` -> `OpenAiTelemetry.RequestAttributes`: Attributes are written under openai.request.\* instead of gen\_ai.openai.request.\*. responseFormat was removed; LanguageModel records gen\_ai.output.type for every provider.
+
+- `OpenAiTelemetry.WellKnownResponseFormat` -> `Telemetry.WellKnownOutputType`: The response format is no longer a telemetry option. LanguageModel records gen\_ai.output.type as text or json from the requested response format.
 
 - `OpenAiTelemetry.addGenAIAnnotations` -> `OpenAiTelemetry.addGenAIAnnotations`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
 
@@ -5063,6 +5067,18 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Response.toolResultPart` -> `Response.toolResultPart`: Moved to effect/ai/Response; providerName was removed and decoded tool results now require preliminary, normally false.
 
 - `Response.urlSourcePart` -> `Response.makePart("source", { ...params, sourceType: "url" })`: The lowercase convenience constructor was removed. The UrlSourcePart model remains, and the generic constructor now requires the URL source discriminator.
+
+### `@effect/ai/Telemetry`
+
+- `Telemetry.AllAttributes` -> `none`: Removed. Use Telemetry.GenAITelemetryAttributeOptions for the grouped options accepted by Telemetry.addGenAIAnnotations, or Telemetry.GenAITelemetryAttributes for the prefixed gen\_ai.\* span attribute keys.
+
+- `Telemetry.BaseAttributes` -> `Telemetry.ProviderAttributes`: gen\_ai.system was replaced by gen\_ai.provider.name. Pass provider: { name } instead of system; legacy system values are not mapped.
+
+- `Telemetry.GenAITelemetryAttributeOptions` -> `Telemetry.GenAITelemetryAttributeOptions`: The system and token options were removed. Use provider: { name } for gen\_ai.provider.name; gen\_ai.token.type has no span replacement. The new output option writes gen\_ai.output.type.
+
+- `Telemetry.TokenAttributes` -> `none`: Removed with the token option. gen\_ai.token.type is not a span attribute in the current OpenTelemetry GenAI conventions.
+
+- `Telemetry.WellKnownSystem` -> `Telemetry.WellKnownProviderName`: Values follow gen\_ai.provider.name: az.ai.inference, az.ai.openai, gemini, vertex\_ai and xai became azure.ai.inference, azure.ai.openai, gcp.gemini, gcp.vertex\_ai and x\_ai.
 
 ### `@effect/ai/Tool`
 
@@ -7956,6 +7972,12 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-bun/SqliteClient#SqliteClient`: Retained; the service value is now a Context.Service.
 
+- `SqliteClient.layer` -> `SqliteClient.layer`: The layer now has a SqlError error channel for database opening and initialization failures. Handle setup failures, or use Layer.orDie when they should remain fatal.
+
+- `SqliteClient.layerConfig` -> `SqliteClient.layerConfig`: The layer now fails with ConfigError | SqlError: configuration errors remain typed, and database opening and initialization failures are also typed. Handle SqlError as well, or use Layer.orDie if all setup failures should be fatal.
+
+- `SqliteClient.make` -> `SqliteClient.make`: Database opening and initialization now fail with SqlError instead of defects. Handle the typed setup error, or use Effect.orDie when setup failures should remain fatal.
+
 ### `@effect/sql-sqlite-do/SqliteClient`
 
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-do/SqliteClient#SqliteClientConfig`: Retained; db is optional and storage may be supplied, but one of db or storage is required at runtime.
@@ -7965,6 +7987,12 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `SqliteClient.SqliteClient` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClient`: Retained on node:sqlite, but the byte-export member was removed; use backup(destination) for file backup.
 
 - `SqliteClient.SqliteClientConfig` -> `@effect/sql-sqlite-node/SqliteClient#SqliteClientConfig`: Retained; prepareCacheTTL now uses Duration.Input.
+
+- `SqliteClient.layer` -> `SqliteClient.layer`: The layer now has a SqlError error channel for database opening and initialization failures. Handle setup failures, or use Layer.orDie when they should remain fatal.
+
+- `SqliteClient.layerConfig` -> `SqliteClient.layerConfig`: The layer now fails with ConfigError | SqlError: configuration errors remain typed, and database opening and initialization failures are also typed. Handle SqlError as well, or use Layer.orDie if all setup failures should be fatal.
+
+- `SqliteClient.make` -> `SqliteClient.make`: Database opening and initialization now fail with SqlError instead of defects. Handle the typed setup error, or use Effect.orDie when setup failures should remain fatal.
 
 ### `@effect/sql-sqlite-react-native/SqliteClient`
 

@@ -9,6 +9,7 @@
  * IndexedDB. The IndexedDB layer requires the browser `IndexedDb` service and
  * accepts an optional database name.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -19,6 +20,7 @@ import { IndexedDb } from "./IndexedDb.ts"
 /**
  * Creates a `KeyValueStore` layer that uses the browser's `localStorage` API and stores values between browser sessions.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -29,6 +31,7 @@ export const layerLocalStorage: Layer.Layer<KeyValueStore.KeyValueStore> = KeyVa
 /**
  * Creates a `KeyValueStore` layer that uses the browser's `sessionStorage` API and stores values only for the current session.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -59,6 +62,7 @@ export const layerSessionStorage: Layer.Layer<KeyValueStore.KeyValueStore> = Key
  * @see {@link layerLocalStorage} for synchronous persistent Web Storage
  * @see {@link layerSessionStorage} for synchronous tab-session Web Storage
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

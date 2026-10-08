@@ -6,6 +6,7 @@
  * by capacity and optional time-to-live rules. This module includes helpers for
  * reading, setting, refreshing, invalidating, and inspecting cache contents.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Context from "./Context.ts"
@@ -105,6 +106,7 @@ const TypeId = "~effect/Cache"
  * actual // => "User-123"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -129,9 +131,14 @@ export interface Cache<in out Key, in out A, in out E = never, out R = never> ex
  *
  * An `expiresAt` value of `undefined` means the entry does not expire.
  *
+ * Pass the current fiber to `await` when calling it from inside
+ * `Effect.withFiber`, so the waiter is counted and its cleanup registered in
+ * that same step. Without it, `await` resolves the fiber itself.
+ *
  * @see {@link Cache} for the public cache API that manages entries through
  * combinators
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -139,7 +146,7 @@ export interface Entry<A, E> {
   expiresAt: number | undefined
   awaiters: number
   readonly fiber: Fiber.Fiber<A, E>
-  await(this: Entry<A, E>): Effect.Effect<A, E>
+  await(this: Entry<A, E>, fiber?: Fiber.Fiber<unknown, unknown>): Effect.Effect<A, E>
 }
 
 /**
@@ -184,6 +191,7 @@ export interface Entry<A, E> {
  * ```
  *
  * @see {@link make} for a simpler cache constructor with a fixed time-to-live for all entries
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -282,6 +290,7 @@ export const makeWith = <
  * actual // => [{ name: "Ada", email: "ada@example.com" }, { name: "Ada", email: "ada@example.com" }, true]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -414,6 +423,7 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  * actual // => { results: [5, 5, 5], lookupCount: 1 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -430,7 +440,7 @@ export const get: {
         if (!hasExpired(oentry.value, fiber)) {
           // Move the entry to the end of the map to keep it fresh
           MutableHashMap.set(self.map, key, oentry.value)
-          return oentry.value.await()
+          return oentry.value.await(fiber)
         }
       }
       const entry = new EntryImpl(fiber, self.lookup(key))
@@ -458,7 +468,7 @@ export const get: {
       if (Number.isFinite(self.capacity)) {
         checkCapacity(self)
       }
-      return entry.await()
+      return entry.await(fiber)
     })
 )
 
@@ -477,11 +487,14 @@ class EntryImpl<A, E> implements Entry<A, E> {
     this.expiresAt = undefined
   }
 
-  await(): Effect.Effect<A, E> {
+  await(fiber?: Fiber.Fiber<unknown, unknown>): Effect.Effect<A, E> {
+    if (fiber === undefined) return core.withFiber((fiber) => this.await(fiber))
     const exit = this.fiber.pollUnsafe()
     if (exit) return exit
     this.awaiters++
-    return effect.onExit(effect.fiberJoin(this.fiber), () => {
+    // Register cleanup in the same evaluation as the increment, before interruption
+    // can prevent the returned join effect from starting.
+    effect.onExitUnsafe(fiber, () => {
       this.awaiters--
       if (this.awaiters > 0 || this.fiber.pollUnsafe()) return effect.void
       // Detach before interrupting so new lookups do not join the abandoned fiber
@@ -489,6 +502,7 @@ class EntryImpl<A, E> implements Entry<A, E> {
       this.onInterrupt?.()
       return effect.fiberInterrupt(this.fiber)
     })
+    return effect.fiberJoin(this.fiber)
   }
 }
 
@@ -616,6 +630,7 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  * actual // => [Option.some(42), 42]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -627,7 +642,7 @@ export const getOption: {
   <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key): Effect.Effect<Option.Option<A>, E> =>
     core.withFiber((fiber) => {
       const entry = getImpl(self, key, fiber)
-      return entry ? effect.asSome(entry.await()) : effect.succeedNone
+      return entry ? effect.asSome(entry.await(fiber)) : effect.succeedNone
     })
 )
 
@@ -663,6 +678,7 @@ const getImpl = <Key, A, E, R>(
  * @see {@link get} for triggering or awaiting the cache lookup
  * @see {@link getOption} for reading an existing entry as an optional effect
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -788,6 +804,7 @@ export const getSuccess: {
  * actual // => [2, 2, false, true]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -908,6 +925,7 @@ export const set: {
  * actual // => ["apple: true", "banana: true", "cherry: false", "date: false"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -969,6 +987,7 @@ export const has: {
  * actual // => { beforeInvalidation: true, afterInvalidation: false, lookupCount: 2 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1042,6 +1061,7 @@ export const invalidate: {
  * actual // => [true, false, false, true, false, false]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1056,7 +1076,7 @@ export const invalidateWhen: {
       if (oentry === undefined) {
         return effect.succeed(false)
       }
-      return oentry.await().pipe(
+      return oentry.await(fiber).pipe(
         effect.map((value) => {
           if (f(value)) {
             const current = MutableHashMap.get(self.map, key)
@@ -1169,6 +1189,7 @@ export const invalidateWhen: {
  * actual // => ["value-for-newKey", true]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1207,7 +1228,7 @@ export const refresh: {
           checkCapacity(self)
         }
       })
-      return entry.await()
+      return entry.await(fiber)
     })
 )
 
@@ -1256,6 +1277,7 @@ export const refresh: {
  * actual // => [3, true, 0, false, false, false]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1302,6 +1324,7 @@ export const invalidateAll = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.E
  * actual // => [0, 2, 1]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1337,6 +1360,7 @@ export const size = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<num
  * actual // => ["cache", "hello", "world"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1381,6 +1405,7 @@ export const keys = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<Ite
  * actual // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1399,6 +1424,7 @@ export const values = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<I
  * @see {@link keys} for retrieving only cached keys
  * @see {@link values} for retrieving only cached values
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */

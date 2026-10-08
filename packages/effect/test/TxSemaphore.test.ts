@@ -235,6 +235,41 @@ describe("TxSemaphore", () => {
   })
 
   describe("concurrency", () => {
+    const acquisitions = [
+      ["withPermits", (semaphore: TxSemaphore.TxSemaphore) => TxSemaphore.withPermits(semaphore, 2, Effect.void)],
+      [
+        "withPermitScoped",
+        (semaphore: TxSemaphore.TxSemaphore) => Effect.scoped(TxSemaphore.withPermitScoped(semaphore))
+      ]
+    ] as const
+
+    for (const [name, acquire] of acquisitions) {
+      it.effect(
+        name + " can be interrupted while waiting for permits",
+        () =>
+          Effect.gen(function*() {
+            const semaphore = yield* TxSemaphore.make(2)
+            yield* TxSemaphore.acquireN(semaphore, 2)
+
+            const waiter = yield* Effect.forkChild(acquire(semaphore), { startImmediately: true })
+            const interruptor = yield* Effect.forkChild(Fiber.interrupt(waiter), { startImmediately: true })
+            yield* Effect.yieldNow
+            yield* Effect.yieldNow
+
+            const interrupted = interruptor.pollUnsafe() !== undefined
+            const available = yield* TxSemaphore.available(semaphore)
+            // Release before asserting so a masked waiter cannot hang test cleanup.
+            yield* TxSemaphore.releaseN(semaphore, 2)
+            yield* Fiber.join(interruptor)
+
+            assert.isTrue(interrupted, "interruption must complete before the holder releases")
+            assert.strictEqual(available, 0)
+            assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiter)))
+            assert.strictEqual(yield* TxSemaphore.available(semaphore), 2)
+          })
+      )
+    }
+
     it.effect("withPermit bounds concurrent work and releases for the next waiter", () =>
       Effect.gen(function*() {
         const semaphore = yield* Effect.tx(TxSemaphore.make(3))

@@ -1,4 +1,7 @@
 /**
+ * Vitest integration for scoped Effect tests, shared layers, and property tests.
+ *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arbitrary from "effect/Arbitrary"
@@ -19,16 +22,24 @@ import * as internal from "./internal/internal.ts"
 export * from "vitest"
 
 /**
+ * Vitest test API without additional fixtures.
+ *
  * @stability unstable
+ * @category models
  * @since 4.0.0
  */
 export type API = V.TestAPI<{}>
 
 /**
+ * Types for Effect-aware Vitest tests and helpers.
+ *
+ * @stability unstable
  * @since 4.0.0
  */
-export namespace Vitest {
+export declare namespace Vitest {
   /**
+   * An Effect-returning test callback with the specified arguments.
+   *
    * @since 4.0.0
    */
   export interface TestFunction<A, E, R, TestArgs extends Array<any>> {
@@ -36,6 +47,8 @@ export namespace Vitest {
   }
 
   /**
+   * Registers an Effect test with a name and optional Vitest options.
+   *
    * @since 4.0.0
    */
   export interface Test<R, ExtraContext = {}> {
@@ -47,6 +60,8 @@ export namespace Vitest {
   }
 
   /**
+   * Schema or Arbitrary inputs for tuple-based or keyed property tests.
+   *
    * @since 4.0.0
    */
   export type Arbitraries =
@@ -58,6 +73,8 @@ export namespace Vitest {
     : never
 
   /**
+   * Effect test registration API with modifiers and property testing.
+   *
    * @since 4.0.0
    */
   export interface Tester<R, ExtraContext = {}> extends Vitest.Test<R, ExtraContext> {
@@ -115,6 +132,8 @@ export namespace Vitest {
   }
 
   /**
+   * Vitest test helpers with test services and shared layers.
+   *
    * @since 4.0.0
    */
   export interface MethodsNonLive<R = never, ExtraContext = {}> extends V.TestAPI<ExtraContext> {
@@ -168,6 +187,8 @@ export namespace Vitest {
   }
 
   /**
+   * Vitest test helpers including live-service tests and shared layers.
+   *
    * @since 4.0.0
    */
   export interface Methods<R = never, ExtraContext = {}> extends MethodsNonLive<R, ExtraContext> {
@@ -188,16 +209,28 @@ export namespace Vitest {
 }
 
 /**
+ * Invokes the Effect Vitest equality-tester registration hook.
+ *
+ * @stability unstable
+ * @category utils
  * @since 4.0.0
  */
 export const addEqualityTesters: () => void = internal.addEqualityTesters
 
 /**
+ * Runs a scoped Effect test with test clock and console services.
+ *
+ * @stability unstable
+ * @category testing
  * @since 4.0.0
  */
 export const effect: Vitest.Tester<Scope.Scope> = internal.effect
 
 /**
+ * Runs a scoped Effect test with live services.
+ *
+ * @stability unstable
+ * @category testing
  * @since 4.0.0
  */
 export const live: Vitest.Tester<Scope.Scope> = internal.live
@@ -206,11 +239,13 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * Share a `Layer` between multiple tests, optionally wrapping
  * the tests in a `describe` block if a name is provided.
  *
+ * **Details**
+ *
  * Named layers accept `concurrent` to override inherited suite concurrency.
  * Anonymous layers always inherit the enclosing suite's concurrency.
  * Use `ctx.expect` in concurrent tests for test-local snapshots and assertion counts.
  *
- * @since 4.0.0
+ * **Example** (Sharing layers between tests)
  *
  * ```ts
  * import { assert, layer } from "@effect/vitest"
@@ -245,6 +280,10 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  *   })
  * })
  * ```
+ *
+ * @stability unstable
+ * @category testing
+ * @since 4.0.0
  */
 export const layer: <R, E>(
   layer_: Layer.Layer<R, E>,
@@ -260,6 +299,10 @@ export const layer: <R, E>(
 } = internal.layer
 
 /**
+ * Retries a scoped Effect to tolerate intermittent test failures, dying on exhausted retries.
+ *
+ * @stability unstable
+ * @category testing
  * @since 4.0.0
  */
 export const flakyTest: <A, E, R>(
@@ -268,15 +311,19 @@ export const flakyTest: <A, E, R>(
 ) => Effect.Effect<A, never, R> = internal.flakyTest
 
 /**
+ * Runs a synchronous property test using schemas or arbitraries.
+ *
+ * @stability unstable
+ * @category testing
  * @since 4.0.0
  */
 export const prop: Vitest.Methods["prop"] = internal.prop
 
 /**
- * @since 4.0.0
- */
-
-/**
+ * Vitest test API extended with Effect test helpers.
+ *
+ * @stability unstable
+ * @category testing
  * @since 4.0.0
  */
 export const it: Vitest.Methods = internal.it
@@ -312,12 +359,18 @@ export const it: Vitest.Methods = internal.it
  *   }))
  * ```
  *
+ * @stability unstable
+ * @category constructors
  * @since 4.0.0
  */
 export const makeMethods: <ExtraContext>(it: V.TestAPI<ExtraContext>) => Vitest.Methods<never, ExtraContext> =
   internal.makeMethods
 
 /**
+ * Creates a named Vitest suite whose callback receives Effect test helpers.
+ *
+ * @stability unstable
+ * @category testing
  * @since 4.0.0
  */
 export const describeWrapped: (name: string, f: (it: Vitest.Methods) => void) => V.SuiteCollector =

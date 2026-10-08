@@ -2817,7 +2817,7 @@ const annotateRequest = (
   request: typeof Generated.BetaCreateMessageParams.Encoded
 ): void => {
   addGenAIAnnotations(span, {
-    system: "anthropic",
+    provider: { name: "anthropic" },
     operation: { name: "chat" },
     request: {
       model: request.model,
@@ -2833,6 +2833,8 @@ const annotateRequest = (
 }
 
 const annotateResponse = (span: Span, response: Generated.BetaMessage): void => {
+  const cacheRead = response.usage.cache_read_input_tokens ?? 0
+  const cacheWrite = response.usage.cache_creation_input_tokens ?? 0
   addGenAIAnnotations(span, {
     response: {
       id: response.id,
@@ -2840,10 +2842,11 @@ const annotateResponse = (span: Span, response: Generated.BetaMessage): void => 
       finishReasons: response.stop_reason ? [response.stop_reason] : undefined
     },
     usage: {
-      inputTokens: response.usage.input_tokens,
+      inputTokens: response.usage.input_tokens + cacheRead + cacheWrite,
       outputTokens: response.usage.output_tokens
     }
   })
+  annotateCacheUsage(span, cacheRead, cacheWrite)
 }
 
 const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) => {
@@ -2861,11 +2864,18 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
         finishReasons: [part.reason]
       },
       usage: {
-        inputTokens: part.usage.inputTokens.uncached,
+        inputTokens: part.usage.inputTokens.total,
         outputTokens: part.usage.outputTokens.total
       }
     })
+    annotateCacheUsage(span, part.usage.inputTokens.cacheRead, part.usage.inputTokens.cacheWrite)
   }
+}
+
+// Cache counts are included in `gen_ai.usage.input_tokens`.
+const annotateCacheUsage = (span: Span, cacheRead: number | undefined, cacheWrite: number | undefined): void => {
+  if (Predicate.isNotNullish(cacheRead)) span.attribute("gen_ai.usage.cache_read.input_tokens", cacheRead)
+  if (Predicate.isNotNullish(cacheWrite)) span.attribute("gen_ai.usage.cache_write.input_tokens", cacheWrite)
 }
 
 // =============================================================================

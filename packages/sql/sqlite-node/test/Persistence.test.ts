@@ -2,6 +2,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, expect, it } from "@effect/vitest"
 import { Duration, Effect, FileSystem, Layer } from "effect"
+import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
 import { PersistedQueue, Persistence } from "effect/persistence"
@@ -173,6 +174,8 @@ PersistedQueueTest.suite(
   "sql-sqlite-node",
   PersistedQueue.layerStoreSql().pipe(Layer.provide(ClientLayer))
 )
+
+it.layer(ClientLayer)((it) => PersistedQueueSqlTest.suiteWith(it))
 
 it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
   it.effect("deletes expired entries in batches", () =>

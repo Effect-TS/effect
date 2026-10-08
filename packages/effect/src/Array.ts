@@ -7,6 +7,7 @@
  * arrays and preserve non-empty array types when the result is guaranteed to
  * contain values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equal from "./Equal.ts"
@@ -45,6 +46,7 @@ import type { NoInfer, TupleOf } from "./Types.ts"
  * Array.Array === globalThis.Array // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -53,6 +55,7 @@ export const Array = globalThis.Array
 /**
  * Type lambda for `ReadonlyArray`, used for higher-kinded type operations.
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -82,6 +85,7 @@ export interface ReadonlyArrayTypeLambda extends TypeLambda {
  * @see {@link NonEmptyArray} — mutable counterpart
  * @see {@link isReadonlyArrayNonEmpty} — narrow a `ReadonlyArray` to this type
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -115,6 +119,7 @@ export type NonEmptyReadonlyArray<A> = readonly [A, ...Array<A>]
  * @see {@link NonEmptyReadonlyArray} — readonly counterpart
  * @see {@link isArrayNonEmpty} — narrow an `Array` to this type
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -143,6 +148,7 @@ export type NonEmptyArray<A> = [A, ...Array<A>]
  * @see {@link of} — create a single-element array
  * @see {@link fromIterable} — create from any iterable
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -172,6 +178,7 @@ export const make = <Elements extends NonEmptyArray<unknown>>(
  *
  * @see {@link makeBy} — create an array by computing each element
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -201,6 +208,7 @@ export const allocate = <A = never>(n: number): Array<A | undefined> => new Arra
  * @see {@link range} — create a range of integers
  * @see {@link replicate} — repeat a single value
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -238,6 +246,7 @@ export const makeBy: {
  *
  * @see {@link makeBy} — generate values from a function
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -267,6 +276,7 @@ export const range = (start: number, end: number): NonEmptyArray<number> =>
  *
  * @see {@link makeBy} — vary values based on index
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -299,6 +309,7 @@ export const replicate: {
  * @see {@link ensure} — wrap a single value or return an existing array
  * @see {@link copy} — create a shallow copy of an array
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -331,6 +342,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
  * @see {@link of} — always wrap in a single-element array
  * @see {@link fromIterable} — convert any iterable
  *
+ * @stability stable
  * @category constructors
  * @since 3.3.0
  */
@@ -360,6 +372,7 @@ export const ensure = <A>(self: ReadonlyArray<A> | A): Array<A> => Array.isArray
  * @see {@link Record.toEntries} the equivalent function from the Record module
  * @see {@link Record.fromEntries} to build a record from an array of tuples
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -383,6 +396,7 @@ export const fromRecord: <K extends string, A>(self: Readonly<Record<K, A>>) => 
  *
  * @see {@link getSomes} — extract `Some` values from an array of Options
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -417,6 +431,7 @@ export const fromOption: <A>(self: Option.Option<A>) => Array<A> = Option.toArra
  * @see {@link matchLeft} — destructures into head + tail
  * @see {@link matchRight} — destructures into init + last
  *
+ * @stability stable
  * @category pattern matching
  * @since 2.0.0
  */
@@ -472,6 +487,7 @@ export const match: {
  * @see {@link match} — receives the full non-empty array
  * @see {@link matchRight} — destructures into init + last
  *
+ * @stability stable
  * @category pattern matching
  * @since 2.0.0
  */
@@ -527,6 +543,7 @@ export const matchLeft: {
  * @see {@link match} — receives the full non-empty array
  * @see {@link matchLeft} — destructures into head + tail
  *
+ * @stability stable
  * @category pattern matching
  * @since 2.0.0
  */
@@ -574,6 +591,7 @@ export const matchRight: {
  * @see {@link append} — add to the end
  * @see {@link prependAll} — prepend multiple elements
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -604,6 +622,7 @@ export const prepend: {
  * @see {@link prepend} — add a single element to the front
  * @see {@link appendAll} — add elements to the end
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -638,6 +657,7 @@ export const prependAll: {
  * @see {@link prepend} — add to the front
  * @see {@link appendAll} — append multiple elements
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -669,6 +689,7 @@ export const append: {
  * @see {@link append} — add a single element to the end
  * @see {@link prependAll} — add elements to the front
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -708,6 +729,7 @@ export const appendAll: {
  * @see {@link scanRight} — right-to-left scan
  * @see {@link reduce} — fold without intermediate values
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -748,6 +770,7 @@ export const scan: {
  * @see {@link scan} — left-to-right scan
  * @see {@link reduceRight} — fold without intermediate values
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -788,6 +811,7 @@ export const scanRight: {
  * @see {@link isArrayEmpty} — check for an empty array
  * @see {@link isArrayNonEmpty} — check for a non-empty array
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -811,6 +835,7 @@ export const isArray: {
  * @see {@link isReadonlyArrayEmpty} — readonly variant
  * @see {@link isArrayNonEmpty} — opposite check
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -831,6 +856,7 @@ export const isArrayEmpty = <A>(self: Array<A>): self is [] => self.length === 0
  * @see {@link isArrayEmpty} — mutable variant
  * @see {@link isReadonlyArrayNonEmpty} — opposite check
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -857,6 +883,7 @@ export const isReadonlyArrayEmpty: <A>(self: ReadonlyArray<A>) => self is readon
  * @see {@link isReadonlyArrayNonEmpty} — readonly variant
  * @see {@link isArrayEmpty} — opposite check
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -883,6 +910,7 @@ export const isArrayNonEmpty: <A>(self: Array<A>) => self is NonEmptyArray<A> = 
  * @see {@link isArrayNonEmpty} — mutable variant
  * @see {@link isReadonlyArrayEmpty} — opposite check
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -904,6 +932,7 @@ export const isReadonlyArrayNonEmpty: <A>(self: ReadonlyArray<A>) => self is Non
  * Array.length([1, 2, 3]) // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -952,6 +981,7 @@ export function isOutOfBounds<A>(i: number, as: ReadonlyArray<A>): boolean {
  * @see {@link head} for reading the first element as an `Option`
  * @see {@link last} for reading the last element as an `Option`
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -987,6 +1017,7 @@ export const get: {
  *
  * @see {@link get} — safe version returning `Option`
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -1025,6 +1056,7 @@ export const getUnsafe: {
  * @see {@link headNonEmpty} for getting only the first element
  * @see {@link tailNonEmpty} for getting only the elements after the first
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -1057,6 +1089,7 @@ export const unprepend = <A>(
  * @see {@link initNonEmpty} for getting only the elements before the last
  * @see {@link lastNonEmpty} for getting only the last element
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -1084,6 +1117,7 @@ export const unappend = <A>(
  * @see {@link headNonEmpty} — direct access when array is known non-empty
  * @see {@link last} — get the last element
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1108,6 +1142,7 @@ export const head: <A>(self: ReadonlyArray<A>) => Option.Option<A> = get(0)
  *
  * @see {@link head} — safe version for possibly-empty arrays
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1133,6 +1168,7 @@ export const headNonEmpty: <A>(self: NonEmptyReadonlyArray<A>) => A = getUnsafe(
  * @see {@link lastNonEmpty} — direct access when array is known non-empty
  * @see {@link head} — get the first element
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1158,6 +1194,7 @@ export const last = <A>(self: ReadonlyArray<A>): Option.Option<A> =>
  *
  * @see {@link last} — safe version for possibly-empty arrays
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1186,6 +1223,7 @@ export const lastNonEmpty = <A>(self: NonEmptyReadonlyArray<A>): A => self[self.
  * @see {@link tailNonEmpty} — when the array is known non-empty
  * @see {@link init} — all elements except the last
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1212,6 +1250,7 @@ export function tail<A>(self: Iterable<A>): Option.Option<Array<A>> {
  * @see {@link tail} — safe version for possibly-empty arrays
  * @see {@link initNonEmpty} — all elements except the last
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1241,6 +1280,7 @@ export const tailNonEmpty = <A>(self: NonEmptyReadonlyArray<A>): Array<A> => sel
  * @see {@link initNonEmpty} — when the array is known non-empty
  * @see {@link tail} — all elements except the first
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1267,6 +1307,7 @@ export function init<A>(self: Iterable<A>): Option.Option<Array<A>> {
  * @see {@link init} — safe version for possibly-empty arrays
  * @see {@link tailNonEmpty} — all elements except the first
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1298,6 +1339,7 @@ const clampCount = (n: number, length: number): number => Math.min(Count.normali
  * @see {@link takeWhile} for keeping an initial prefix while a predicate holds
  * @see {@link drop} for removing elements from the start
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1332,6 +1374,7 @@ export const take: {
  * @see {@link take} — keep from the start
  * @see {@link dropRight} — remove from the end
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1370,6 +1413,7 @@ export const takeRight: {
  * @see {@link dropWhile} for removing the matching prefix and keeping the rest
  * @see {@link span} for splitting the matching prefix from the remaining elements
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1407,6 +1451,7 @@ export const takeWhile: {
  *
  * @see {@link takeWhile} for taking a prefix based on a boolean predicate
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -1465,6 +1510,7 @@ const spanIndex = <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean
  * @see {@link dropWhile} for keeping only the elements after the matching prefix
  * @see {@link splitWhere} for splitting at the first element that satisfies a predicate
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -1511,6 +1557,7 @@ export const span: {
  * @see {@link dropWhile} for removing a prefix based on a predicate instead of a fixed count
  * @see {@link take} for keeping a fixed number of elements from the start
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1544,6 +1591,7 @@ export const drop: {
  * @see {@link drop} — remove from the start
  * @see {@link takeRight} — keep from the end
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1577,6 +1625,7 @@ export const dropRight: {
  * @see {@link takeWhile} — keep the matching prefix instead
  * @see {@link drop} — drop a fixed count
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -1611,6 +1660,7 @@ export const dropWhile: {
  * @see {@link dropWhile} for dropping a prefix with a simple boolean predicate
  * @see {@link takeWhileFilter} for keeping only the matching prefix
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -1652,6 +1702,7 @@ export const dropWhileFilter: {
  * @see {@link findLastIndex} — search from the end
  * @see {@link findFirst} — get the element itself
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -1688,6 +1739,7 @@ export const findFirstIndex: {
  * @see {@link findFirstIndex} — search from the start
  * @see {@link findLast} — get the element itself
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -1731,6 +1783,7 @@ export const findLastIndex: {
  * @see {@link findFirstIndex} — get the index instead
  * @see {@link findFirstWithIndex} — get both element and index
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -1768,6 +1821,7 @@ export const findFirst: {
  * @see {@link findFirst} — get only the element
  * @see {@link findFirstIndex} — get only the index
  *
+ * @stability stable
  * @category searching
  * @since 3.17.0
  */
@@ -1826,6 +1880,7 @@ export const findFirstWithIndex: {
  * @see {@link findFirst} — search from the start
  * @see {@link findLastIndex} — get the index instead
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -1883,6 +1938,7 @@ export const findLast: {
  * @see {@link replace} — replace an existing element
  * @see {@link modify} — transform an element at an index
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -1922,6 +1978,7 @@ export const insertAt: {
  * @see {@link modify} — transform an element with a function
  * @see {@link insertAt} — insert without removing
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -1968,6 +2025,7 @@ export const replace: {
  * @see {@link modifyHeadNonEmpty} — modify the first element
  * @see {@link modifyLastNonEmpty} — modify the last element
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2014,6 +2072,7 @@ export const modify: {
  * @see {@link insertAt} — insert an element
  * @see {@link filter} — remove elements by predicate
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2050,6 +2109,7 @@ export const remove: {
  * Array.reverse([1, 2, 3, 4]) // => [4, 3, 2, 1]
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2081,6 +2141,7 @@ export const reverse = <S extends Iterable<any>>(
  * @see {@link sortWith} — sort by a mapping function
  * @see {@link sortBy} — sort by multiple orders
  *
+ * @stability stable
  * @category sorting
  * @since 2.0.0
  */
@@ -2120,6 +2181,7 @@ export const sort: {
  * @see {@link sort} for sorting with an `Order` that compares the elements directly
  * @see {@link sortBy} for sorting with multiple `Order`s applied in sequence
  *
+ * @stability stable
  * @category sorting
  * @since 2.0.0
  */
@@ -2175,6 +2237,7 @@ export const sortWith: {
  * @see {@link sort} — sort by a single `Order`
  * @see {@link sortWith} — sort by a derived key
  *
+ * @stability stable
  * @category sorting
  * @since 2.0.0
  */
@@ -2216,6 +2279,7 @@ export const sortBy = <S extends Iterable<any>>(
  * @see {@link zipWith} — zip with a combiner function
  * @see {@link unzip} — inverse operation
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -2248,6 +2312,7 @@ export const zip: {
  *
  * @see {@link zip} — zip into tuples
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -2283,6 +2348,7 @@ export const zipWith: {
  *
  * @see {@link zip} — combine two arrays into pairs
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -2326,6 +2392,7 @@ export const unzip: <S extends Iterable<readonly [any, any]>>(
  *
  * @see {@link join} — intersperse and join into a string
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2370,6 +2437,7 @@ export const intersperse: {
  * @see {@link setHeadNonEmpty} — replace with a fixed value
  * @see {@link modifyLastNonEmpty} — modify the last element
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2403,6 +2471,7 @@ export const modifyHeadNonEmpty: {
  * @see {@link modifyHeadNonEmpty} — transform the head with a function
  * @see {@link setLastNonEmpty} — replace the last element
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2434,6 +2503,7 @@ export const setHeadNonEmpty: {
  * @see {@link setLastNonEmpty} — replace with a fixed value
  * @see {@link modifyHeadNonEmpty} — modify the first element
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2465,6 +2535,7 @@ export const modifyLastNonEmpty: {
  * @see {@link modifyLastNonEmpty} — transform the last element with a function
  * @see {@link setHeadNonEmpty} — replace the first element
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2502,6 +2573,7 @@ export const setLastNonEmpty: {
  * @see {@link take} for taking a fixed number of elements from the start
  * @see {@link drop} for dropping a fixed number of elements from the start
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2547,6 +2619,7 @@ export const rotate: {
  *
  * @see {@link contains} for the `Equal.equivalence()` variant
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -2582,6 +2655,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  *
  * @see {@link containsWith} — use custom equality
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -2615,6 +2689,7 @@ export const contains: {
  * @see {@link chunksOf} — split into fixed-size chunks
  * @see {@link splitAt} — split at an index
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2672,6 +2747,7 @@ export const chop: {
  * @see {@link splitAtNonEmpty} — for non-empty arrays
  * @see {@link splitWhere} — split at a predicate boundary
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2713,6 +2789,7 @@ export const splitAt: {
  *
  * @see {@link splitAt} — for possibly-empty arrays
  *
+ * @stability stable
  * @category splitting
  * @since 4.0.0
  */
@@ -2748,6 +2825,7 @@ export const splitAtNonEmpty: {
  *
  * @see {@link chunksOf} — split into fixed-size chunks
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2779,6 +2857,7 @@ export const split: {
  * @see {@link span} — splits at the first element that fails the predicate
  * @see {@link splitAt} — split at a fixed index
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2820,6 +2899,7 @@ export const splitWhere: {
  *
  * @see {@link fromIterable} — returns the same reference for arrays
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -2852,6 +2932,7 @@ export const copy: {
  * @see {@link take} — truncate without padding
  * @see {@link replicate} — create an array of a single repeated value
  *
+ * @stability stable
  * @category transforming
  * @since 3.8.4
  */
@@ -2901,6 +2982,7 @@ export const pad: {
  * @see {@link split} — split into a given number of groups
  * @see {@link window} — sliding windows
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -2946,6 +3028,7 @@ export const chunksOf: {
  *
  * @see {@link chunksOf} — non-overlapping chunks
  *
+ * @stability stable
  * @category splitting
  * @since 3.13.2
  */
@@ -2991,6 +3074,7 @@ export const window: {
  * @see {@link group} for grouping adjacent elements with `Equal.equivalence()`
  * @see {@link groupBy} for grouping all elements into a record by key, regardless of adjacency
  *
+ * @stability stable
  * @category grouping
  * @since 2.0.0
  */
@@ -3039,6 +3123,7 @@ export const groupWith: {
  * @see {@link groupWith} — use custom equality
  * @see {@link groupBy} — group by a key function into a record
  *
+ * @stability stable
  * @category grouping
  * @since 2.0.0
  */
@@ -3083,6 +3168,7 @@ export const group: <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<NonEmpt
  * @see {@link group} — group adjacent equal elements
  * @see {@link groupWith} — group adjacent elements by custom equality
  *
+ * @stability stable
  * @category grouping
  * @since 2.0.0
  */
@@ -3171,6 +3257,7 @@ const hashBucketsHas = (buckets: HashBuckets, value: unknown): boolean => {
  * @see {@link intersectionWith} for keeping elements present in both arrays
  * @see {@link differenceWith} for keeping elements present only in the first array
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -3219,6 +3306,7 @@ export const unionWith: {
  * @see {@link intersection} — elements in both arrays
  * @see {@link difference} — elements only in the first array
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -3268,6 +3356,7 @@ export const union: {
  * @see {@link unionWith} for keeping values from either array with custom equality
  * @see {@link differenceWith} for keeping values only from the first array with custom equality
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -3306,6 +3395,7 @@ export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean)
  * @see {@link union} — elements in either array
  * @see {@link difference} — elements only in the first array
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -3343,6 +3433,7 @@ export const intersection: {
  * @see {@link unionWith} for keeping values from either array with custom equality
  * @see {@link intersectionWith} for keeping values present in both arrays with custom equality
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -3381,6 +3472,7 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
  * @see {@link union} — elements in either array
  * @see {@link intersection} — elements in both arrays
  *
+ * @stability stable
  * @category set operations
  * @since 2.0.0
  */
@@ -3418,6 +3510,7 @@ export const difference: {
  * @see {@link of} — create a single-element array
  * @see {@link make} — create from multiple values
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -3437,6 +3530,7 @@ export const empty: <A = never>() => Array<A> = () => []
  * @see {@link make} — create from multiple values
  * @see {@link empty} — create an empty array
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -3446,6 +3540,7 @@ export const of = <A>(a: A): NonEmptyArray<A> => [a]
  * Utility types for working with `ReadonlyArray` at the type level. Use these
  * to infer element types, preserve non-emptiness, and flatten nested arrays.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace ReadonlyArray {
@@ -3583,6 +3678,7 @@ export declare namespace ReadonlyArray {
  *
  * @see {@link flatMap} — map and flatten
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -3617,6 +3713,7 @@ export const map: {
  * @see {@link map} — transform without flattening
  * @see {@link flatten} — flatten without mapping
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -3661,6 +3758,7 @@ export const flatMap: {
  *
  * @see {@link flatMap} — map then flatten in one step
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -3686,6 +3784,7 @@ export const flatten: <const S extends ReadonlyArray<ReadonlyArray<any>>>(self: 
  * @see {@link fromOption} — convert a single Option
  * @see {@link getSuccesses} — extract successes from Results
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -3722,6 +3821,7 @@ export const getSomes: <T extends Iterable<Option.Option<X>>, X = any>(
  * @see {@link getSuccesses} — extract success values
  * @see {@link separate} — split into successes and failures
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3758,6 +3858,7 @@ export const getFailures = <T extends Iterable<Result.Result<any, any>>>(
  * @see {@link getFailures} — extract failure values
  * @see {@link separate} — split into successes and failures
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3797,6 +3898,7 @@ export const getSuccesses = <T extends Iterable<Result.Result<any, any>>>(
  * @see {@link filter} — keep original elements matching a predicate
  * @see {@link partition} for keeping both successes and failures
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -3839,6 +3941,7 @@ export const filterMap: {
  * @see {@link partition} — split into matching and non-matching
  * @see {@link filterMap} for transforming while filtering
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -3887,6 +3990,7 @@ export const filter: {
  * @see {@link filterMap} for discarding failures
  * @see {@link separate} — split an iterable of `Result` values
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -3943,6 +4047,7 @@ export const partition: {
  * @see {@link getSuccesses} — extract only successes
  * @see {@link partition} for computing `Result` values while splitting
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -3975,6 +4080,7 @@ export const separate: <T extends Iterable<Result.Result<any, any>>>(
  * @see {@link reduceRight} — fold from right to left
  * @see {@link scan} — fold keeping intermediate values
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -4009,6 +4115,7 @@ export const reduce: {
  * @see {@link reduce} — fold from left to right
  * @see {@link scanRight} — fold keeping intermediate values
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -4038,6 +4145,7 @@ export const reduceRight: {
  *
  * @see {@link liftOption} — lift an Option-returning function
  *
+ * @stability stable
  * @category lifting
  * @since 2.0.0
  */
@@ -4072,6 +4180,7 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
  * @see {@link liftPredicate} — lift a boolean predicate
  * @see {@link liftResult} — lift a Result-returning function
  *
+ * @stability stable
  * @category lifting
  * @since 2.0.0
  */
@@ -4101,6 +4210,7 @@ export const liftOption = <A extends Array<unknown>, B>(
  * @see {@link liftNullishOr} — lift a nullable-returning function
  * @see {@link fromOption} — convert from Option
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -4127,6 +4237,7 @@ export const fromNullishOr = <A>(a: A): Array<NonNullable<A>> => a == null ? emp
  * @see {@link fromNullishOr} — convert a single nullable value
  * @see {@link liftOption} — lift an Option-returning function
  *
+ * @stability stable
  * @category lifting
  * @since 4.0.0
  */
@@ -4155,6 +4266,7 @@ export const liftNullishOr = <A extends Array<unknown>, B>(
  * @see {@link flatMap} for mapping each element to an array and flattening
  * @see {@link fromNullishOr} for converting a single nullable value to an array
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -4194,6 +4306,7 @@ export const flatMapNullishOr: {
  * @see {@link liftOption} — lift an Option-returning function
  * @see {@link liftPredicate} — lift a boolean predicate
  *
+ * @stability stable
  * @category lifting
  * @since 4.0.0
  */
@@ -4225,6 +4338,7 @@ export const liftResult = <A extends Array<unknown>, E, B>(
  *
  * @see {@link some} — test if any element matches
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -4257,6 +4371,7 @@ export const every: {
  * @see {@link every} — test if all elements match
  * @see {@link contains} — test for a specific value
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -4294,6 +4409,7 @@ export const some: {
  *
  * @see {@link scan} for keeping intermediate accumulator values during a fold
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -4320,6 +4436,7 @@ export const extend: {
  * @see {@link max} — find the maximum
  * @see {@link sort} — sort the entire array
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -4343,6 +4460,7 @@ export const min: {
  * @see {@link min} — find the minimum
  * @see {@link sort} — sort the entire array
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -4367,6 +4485,7 @@ export const max: {
  * @see {@link makeBy} — generate from index
  * @see {@link range} — generate a numeric range
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -4402,6 +4521,7 @@ export const unfold = <B, A>(b: B, f: (b: B) => Option.Option<readonly [A, B]>):
  *
  * @see {@link makeEquivalence} — create an equivalence for arrays
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -4424,6 +4544,7 @@ export const makeOrder: <A>(O: Order.Order<A>) => Order.Order<ReadonlyArray<A>> 
  *
  * @see {@link makeOrder} — create an ordering for arrays
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -4452,6 +4573,7 @@ export const makeEquivalence: <A>(
  *
  * @see {@link map} for transforming each element into a new array
  *
+ * @stability stable
  * @category traversing
  * @since 2.0.0
  */
@@ -4480,6 +4602,7 @@ export const forEach: {
  * @see {@link dedupe} — uses default equality
  * @see {@link dedupeAdjacentWith} — only dedupes consecutive elements
  *
+ * @stability stable
  * @category deduplication
  * @since 2.0.0
  */
@@ -4523,6 +4646,7 @@ export const dedupeWith: {
  * @see {@link dedupeWith} — use custom equality
  * @see {@link dedupeAdjacent} — only dedupes consecutive elements
  *
+ * @stability stable
  * @category deduplication
  * @since 2.0.0
  */
@@ -4567,6 +4691,7 @@ export const dedupe = <S extends Iterable<any>>(
  * @see {@link dedupeAdjacent} — uses default equality
  * @see {@link dedupeWith} — dedupes all duplicates, not just adjacent
  *
+ * @stability stable
  * @category deduplication
  * @since 2.0.0
  */
@@ -4604,6 +4729,7 @@ export const dedupeAdjacentWith: {
  * @see {@link dedupeAdjacentWith} — use custom equality
  * @see {@link dedupe} — remove all duplicates
  *
+ * @stability stable
  * @category deduplication
  * @since 2.0.0
  */
@@ -4622,6 +4748,7 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Array<A> = dedupeAdjacent
  *
  * @see {@link intersperse} — insert separator elements without joining
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -4656,6 +4783,7 @@ export const join: {
  * @see {@link scan} — when you only need the accumulated results (not the final state)
  * @see {@link reduce} — when you only need the final accumulated value
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -4709,6 +4837,7 @@ export const mapAccum: {
  *
  * @see {@link cartesian} for returning tuples instead of applying a combiner
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -4743,6 +4872,7 @@ export const cartesianWith: {
  *
  * @see {@link cartesianWith} — apply a combiner to each pair
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -4790,6 +4920,7 @@ export const cartesian: {
  * @see {@link bindTo} — start a pipeline by naming the first array
  * @see {@link let_ let} — introduce a plain computed value
  *
+ * @stability stable
  * @category constructors
  * @since 3.2.0
  */
@@ -4825,6 +4956,7 @@ export const Do: ReadonlyArray<{}> = of({})
  * @see {@link bindTo} — name the first array in a pipeline
  * @see {@link let_ let} — add a plain computed value
  *
+ * @stability stable
  * @category sequencing
  * @since 3.2.0
  */
@@ -4866,6 +4998,7 @@ export const bind: {
  * @see {@link Do} — start with an empty scope
  * @see {@link bind} — add another array variable to the scope
  *
+ * @stability stable
  * @category mapping
  * @since 3.2.0
  */
@@ -4916,24 +5049,34 @@ export {
    * @see {@link Do} — start a do-notation pipeline
    * @see {@link bind} — introduce an array variable (produces cartesian product)
    *
+   * @stability stable
    * @category mapping
    * @since 3.2.0
    */
   let_ as let
 }
 
-const reducer = Reducer.make((a, b) => a.concat(b), [] as any)
+const combineConcat = <A>(a: ReadonlyArray<A>, b: ReadonlyArray<A>): Array<A> => a.concat(b)
+
+const combineAllConcat = <A>(collection: Iterable<ReadonlyArray<A>>): Array<A> => {
+  let out: Array<A> = []
+  for (const value of collection) {
+    out = out.concat(value)
+  }
+  return out
+}
 
 /**
  * Returns a `Reducer` that combines `ReadonlyArray` values by concatenation.
  *
  * @see {@link makeReducerConcat} — mutable `Array` variant
  *
+ * @stability stable
  * @category folding
  * @since 4.0.0
  */
 export function getReadonlyReducerConcat<A>(): Reducer.Reducer<ReadonlyArray<A>> {
-  return reducer
+  return Reducer.make<ReadonlyArray<A>>(combineConcat, [], combineAllConcat)
 }
 
 /**
@@ -4941,11 +5084,12 @@ export function getReadonlyReducerConcat<A>(): Reducer.Reducer<ReadonlyArray<A>>
  *
  * @see {@link getReadonlyReducerConcat} — readonly variant
  *
+ * @stability stable
  * @category folding
  * @since 4.0.0
  */
 export function makeReducerConcat<A>(): Reducer.Reducer<Array<A>> {
-  return reducer
+  return Reducer.make<Array<A>>(combineConcat, [], combineAllConcat)
 }
 
 /**
@@ -4971,6 +5115,7 @@ export function makeReducerConcat<A>(): Reducer.Reducer<Array<A>> {
  *
  * @see {@link filter} — when you need the matching elements, not just the count
  *
+ * @stability stable
  * @category folding
  * @since 3.16.0
  */

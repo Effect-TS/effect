@@ -5,12 +5,74 @@ import { assert, describe, it } from "@effect/vitest"
 import { SeverityNumber } from "@opentelemetry/api-logs"
 import { InMemoryLogRecordExporter, type LogRecordProcessor, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
+import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
+import * as ConfigProvider from "effect/ConfigProvider"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as References from "effect/References"
+import { TestClock } from "effect/testing"
+import * as Version from "effect/Version"
 
 describe("Logger", () => {
+  const makeTestLayer = (exporter: InMemoryLogRecordExporter) =>
+    NodeSdk.layer(Effect.sync(() => ({
+      resource: { serviceName: "test", serviceVersion: "service-version" },
+      logRecordProcessor: [new SimpleLogRecordProcessor({ exporter })]
+    })))
+
+  it.effect("adds SDK resource defaults when the resource comes only from the environment", () => {
+    const exporter = new InMemoryLogRecordExporter()
+    return Effect.gen(function*() {
+      yield* Effect.log("test")
+      const record = exporter.getFinishedLogRecords()[0]!
+      assert.strictEqual(record.instrumentationScope.name, "effect")
+      assert.strictEqual(record.instrumentationScope.version, Version.getCurrentVersion())
+      assert.deepStrictEqual(record.resource.attributes, {
+        "service.name": "env-service",
+        "telemetry.sdk.name": "@effect/opentelemetry",
+        "telemetry.sdk.language": "nodejs",
+        "telemetry.sdk.version": Version.getCurrentVersion()
+      })
+    }).pipe(
+      Effect.provide(NodeSdk.layer(() => ({ logRecordProcessor: [new SimpleLogRecordProcessor({ exporter })] }))),
+      Effect.provideService(
+        ConfigProvider.ConfigProvider,
+        ConfigProvider.fromEnv({ env: { OTEL_SERVICE_NAME: "env-service" } })
+      )
+    )
+  })
+
+  it.effect("namespaces generated attributes and lets them override annotations", () => {
+    const exporter = new InMemoryLogRecordExporter()
+    return Effect.gen(function*() {
+      const fiber = yield* Effect.fiber
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust("5 millis")
+        yield* Effect.logError(
+          "boom",
+          Cause.fail(new TypeError("cause message", { cause: new Error("nested failure") }))
+        )
+      }).pipe(
+        Effect.withLogSpan("op"),
+        Effect.annotateLogs({
+          "effect.fiberId": -1,
+          "effect.log_span.op": -1,
+          "exception.type": "annotated type",
+          "exception.message": "annotated message",
+          "exception.stacktrace": "annotated stack"
+        })
+      )
+
+      const attributes = exporter.getFinishedLogRecords()[0]!.attributes
+      assert.strictEqual(attributes["effect.fiberId"], fiber.id)
+      assert.strictEqual(attributes["effect.log_span.op"], 5)
+      assert.strictEqual(attributes["exception.type"], "TypeError")
+      assert.strictEqual(attributes["exception.message"], "cause message")
+      assert.include(attributes["exception.stacktrace"], "nested failure")
+    }).pipe(Effect.provide(makeTestLayer(exporter)))
+  })
+
   it.effect("shuts down the logger provider after forceFlush rejects", () =>
     Effect.gen(function*() {
       let shutdowns = 0
@@ -75,7 +137,7 @@ describe("Logger", () => {
       )
     })
 
-    it.effect("uses wall-clock timestamps and keeps them aligned with spans", () => {
+    it.effect("keeps event time separate from observed time and uses wall-clock span time", () => {
       const logExporter = new InMemoryLogRecordExporter()
       const spanExporter = new InMemorySpanExporter()
       const wallTimeNanos = 1_735_689_600_123_456_789n
@@ -114,9 +176,9 @@ describe("Logger", () => {
         const log = logs[0]!
         const span = spans[0]!
 
-        assert.deepStrictEqual(log.hrTime, expectedTime)
+        assert.deepStrictEqual(log.hrTime, [0, 1_000_000])
         assert.deepStrictEqual(log.hrTimeObserved, expectedTime)
-        assert.deepStrictEqual(log.hrTime, span.startTime)
+        assert.deepStrictEqual(log.hrTimeObserved, span.startTime)
         assert.strictEqual(log.attributes.spanId, span.spanContext().spanId)
         assert.strictEqual(log.attributes.traceId, span.spanContext().traceId)
       }).pipe(

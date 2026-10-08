@@ -245,6 +245,35 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [8])).rows, [{ n: 8 }])
     }))
 
+  it.effect("preserves a stale-plan error in a transaction and reparses after rollback", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("CREATE TEMP TABLE stale_in_transaction (a int4)")
+      yield* connection.query("INSERT INTO stale_in_transaction VALUES (1)")
+      yield* connection.query("SELECT * FROM stale_in_transaction")
+      yield* connection.query("ALTER TABLE stale_in_transaction ADD COLUMN b text DEFAULT 'added'")
+      yield* connection.query("BEGIN")
+      const error = yield* Effect.flip(connection.query("SELECT * FROM stale_in_transaction"))
+      assert.propertyVal(error.reason.cause, "code", "0A000")
+      yield* connection.query("ROLLBACK")
+      assert.deepStrictEqual((yield* connection.query("SELECT * FROM stale_in_transaction")).rows, [{
+        a: 1,
+        b: "added"
+      }])
+    }))
+
+  it.effect("preserves a missing-statement error in a transaction and reparses after rollback", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      yield* connection.query("SELECT $1::int4 AS n", [7])
+      yield* connection.query("DEALLOCATE ALL")
+      yield* connection.query("BEGIN")
+      const error = yield* Effect.flip(connection.query("SELECT $1::int4 AS n", [8]))
+      assert.propertyVal(error.reason.cause, "code", "26000")
+      yield* connection.query("ROLLBACK")
+      assert.deepStrictEqual((yield* connection.query("SELECT $1::int4 AS n", [9])).rows, [{ n: 9 }])
+    }))
+
   it.effect("closes statements it evicts from a full cache", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection({ preparedStatementCacheSize: 3 })

@@ -4,6 +4,7 @@
  * method at {@link symbol}; consumers can check unknown values with
  * {@link isPrimaryKey} and read the key with {@link value}.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -21,6 +22,7 @@ import { hasProperty } from "./Predicate.ts"
  * @see {@link value} for reading the string key from a `PrimaryKey` value
  * @see {@link isPrimaryKey} for checking whether an unknown value carries this method
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -56,6 +58,7 @@ export const symbol = "~effect/PrimaryKey"
  * PrimaryKey.value(productId) // => "electronics-42"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -81,6 +84,7 @@ export interface PrimaryKey {
  * @see {@link PrimaryKey} for the protocol being checked
  * @see {@link value} for extracting the string value after narrowing
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -117,6 +121,7 @@ export const isPrimaryKey = (u: unknown): u is PrimaryKey => hasProperty(u, symb
  * PrimaryKey.value(simpleKey) // => "simple-key-123"
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */

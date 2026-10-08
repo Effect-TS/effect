@@ -791,7 +791,9 @@ function resolveBarrelImport(
 
 function resolveJSDocImports(
   cwd: string,
-  filename: string
+  filename: string,
+  sourceFile: ts.SourceFile,
+  checker: ts.TypeChecker
 ): Result<ParsedJSDocImports, string> {
   const absoluteFilename = path.resolve(filename)
   const packageRoot = findPackageRoot(absoluteFilename)
@@ -810,20 +812,17 @@ function resolveJSDocImports(
       error: `${relativeFilename} is not under ${normalizePathName(path.relative(cwd, metadata.value.sourceRoot))}`
     }
   }
-  if (path.basename(absoluteFilename) === "index.ts") {
-    return {
-      _tag: "Failure",
-      error: `${relativeFilename} is a barrel file; exclude it from jsdocs`
-    }
-  }
   if (path.extname(absoluteFilename) !== ".ts" || absoluteFilename.endsWith(".d.ts")) {
     return {
       _tag: "Failure",
       error: `${relativeFilename} is not a TypeScript source module`
     }
   }
-  const moduleSubpath = relativeToSourceRoot.slice(0, -".ts".length)
-  const moduleExportSubpath = `./${moduleSubpath}`
+  const isIndex = path.basename(absoluteFilename) === "index.ts"
+  const moduleSubpath = isIndex
+    ? relativeToSourceRoot.slice(0, -"index.ts".length).replace(/\/$/, "")
+    : relativeToSourceRoot.slice(0, -".ts".length)
+  const moduleExportSubpath = moduleSubpath === "" ? "." : `./${moduleSubpath}`
   const moduleExportTarget = `./src/${relativeToSourceRoot}`
   if (!isPackageSubpathExported(metadata.value.exports, moduleExportSubpath, moduleExportTarget)) {
     return {
@@ -833,7 +832,16 @@ function resolveJSDocImports(
       } for ${relativeFilename}`
     }
   }
-  const barrel = resolveBarrelImport(metadata.value, absoluteFilename)
+  const symbol = checker.getSymbolAtLocation(sourceFile)
+  const barrel = isIndex
+    ? {
+      _tag: "Success",
+      value: {
+        barrel: null,
+        flatNames: symbol === undefined ? [] : checker.getExportsOfModule(symbol).map((item) => item.name)
+      }
+    } as const
+    : resolveBarrelImport(metadata.value, absoluteFilename)
   if (barrel._tag === "Failure") {
     return barrel
   }
@@ -1470,7 +1478,8 @@ function extractParsedInlineLinks(source: string): ReadonlyArray<ParsedInlineLin
 
 function buildTags(
   scope: DocScope,
-  tags: ReadonlyArray<JSDocTag>
+  tags: ReadonlyArray<JSDocTag>,
+  requireStability = false
 ): Result<ParsedModuleTags | ParsedDeclarationTags | ParsedNamespaceTags | ParsedMemberTags, JSDocParseError> {
   const diagnostics: Array<JSDocDiagnostic> = []
   const allowed = scope === "declaration"
@@ -1527,8 +1536,18 @@ function buildTags(
   }
   const deprecated = values.get("deprecated")?.[0] ?? null
   const stability = values.get("stability")?.[0]
-  if (stability !== undefined && stability !== "unstable" && stability !== "experimental") {
-    diagnostics.push(diagnostic("invalid-stability", "@stability must have the value unstable or experimental"))
+  if (stability !== undefined && stability !== "stable" && stability !== "unstable" && stability !== "experimental") {
+    diagnostics.push(
+      diagnostic("invalid-stability", "@stability must have the value stable, unstable, or experimental")
+    )
+  }
+  if (requireStability && stability === undefined) {
+    diagnostics.push(
+      diagnostic(
+        "missing-tag",
+        scope === "module" ? "Module JSDoc must include @stability" : "Public JSDoc must include @stability"
+      )
+    )
   }
   const resolvedStability: JSDocStability = stability === "unstable" || stability === "experimental"
     ? stability
@@ -2546,8 +2565,9 @@ function createExampleImportPolicy(files: ReadonlyArray<JSDocModelFile>): Exampl
       })
       continue
     }
-    for (const name of rootValues) addAllowed(file.imports.module, name)
-    namedModuleBySource.set(file.imports.module, new Set(rootValues))
+    const names = new Set([...rootValues, ...file.imports.flatNames])
+    for (const name of names) addAllowed(file.imports.module, name)
+    namedModuleBySource.set(file.imports.module, names)
   }
   return { allowedNamedBySource: allowedNamed, namespaceModuleBySource, flatModuleBySource, namedModuleBySource }
 }
@@ -2746,7 +2766,21 @@ function parseDocumentedTs(
   required = true,
   linkContext?: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
 ) {
-  const block = getNodeJSDoc(node)
+  let block = getNodeJSDoc(node)
+  // Barrel re-exports intentionally use minimal, tag-only JSDoc.
+  if (block !== undefined && (ts.isExportDeclaration(node) || ts.isExportSpecifier(node))) {
+    const loose = parseLooseJSDocBlock(block.raw, block.range)
+    if (loose.tags[0]?.line === 0) {
+      block = {
+        ...loose,
+        parsed: {
+          description: { short: "", whenToUse: null, details: null, gotchas: null },
+          examples: [],
+          tags: loose.tags
+        }
+      }
+    }
+  }
   if (block?.internal) return undefined
   if (block === undefined) {
     if (required) {
@@ -2759,7 +2793,9 @@ function parseDocumentedTs(
   }
   addModelDiagnostics(diagnostics, block.range, block.diagnostics)
   if (block.parsed === undefined) return undefined
-  const tags = buildTags(scope, block.parsed.tags)
+  // Only names that can be imported directly require @stability.
+  const requireStability = scope === "declaration" || (scope === "namespace" && ts.isSourceFile(node.parent))
+  const tags = buildTags(scope, block.parsed.tags, requireStability)
   if (tags._tag === "Failure") {
     addModelDiagnostics(diagnostics, block.range, tags.error.diagnostics)
     return undefined
@@ -3282,7 +3318,7 @@ function parseModuleJSDocTs(
 ): ParsedModuleJSDoc | undefined {
   const block = parseLooseJSDocBlock(moduleJSDoc.raw, [moduleJSDoc.range[0], moduleJSDoc.range[1]])
   if (block.internal) return undefined
-  const tags = buildTags("module", block.tags)
+  const tags = buildTags("module", block.tags, true)
   if (tags._tag === "Failure") addModelDiagnostics(diagnostics, block.range, tags.error.diagnostics)
   const examples = parseModuleExamples(block)
   addModelDiagnostics(diagnostics, block.range, examples.diagnostics)
@@ -3310,6 +3346,22 @@ function parseSourceFileDocs(
     if (ts.isExportAssignment(statement)) continue
     if (ts.isExportDeclaration(statement)) {
       if (statement.exportClause === undefined) continue
+      if (ts.isNamespaceExport(statement.exportClause)) {
+        const documented = parseDocumentedTs(statement, "namespace", diagnostics, true, linkContext)
+        if (documented !== undefined) {
+          namespaces.push({
+            name: statement.exportClause.name.text,
+            signature: statement.getText(sourceFile),
+            range: nodeRange(statement),
+            description: documented.core.description,
+            examples: documented.core.examples,
+            tags: documented.tags as ParsedNamespaceTags,
+            declarations: [],
+            namespaces: []
+          })
+        }
+        continue
+      }
       if (ts.isNamedExports(statement.exportClause) && statement.exportClause.elements.length === 0) {
         diagnostics.push({
           ...diagnostic("empty-export", "Empty export declarations are not allowed"),
@@ -3458,7 +3510,7 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
       result.parsed.declarations.length > 0 || result.parsed.namespaces.length > 0 ||
       result.parsed.moduleJSDoc !== undefined
     ) {
-      const imports = resolveJSDocImports(cwd, filename)
+      const imports = resolveJSDocImports(cwd, filename, sourceFile, checker)
       if (imports._tag === "Success") importsValue = imports.value
       else {
         fileDiagnostics.push({

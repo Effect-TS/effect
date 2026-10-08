@@ -1,7 +1,7 @@
 {
   "name": "effect",
   "type": "module",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "license": "MIT",
   "description": "The missing standard library for TypeScript, for writing production-grade software.",
   "homepage": "https://effect.website",
@@ -110,11 +110,11 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "ajv": "^8.20.0",
     "ajv-draft-04": "^1.0.0",
     "ast-types": "^0.16.3",
-    "immer": "^11.1.18",
+    "immer": "^11.1.21",
     "protobufjs": "^8.8.0",
     "tinybench": "^6.2.0",
     "valibot": "^1.5.0"

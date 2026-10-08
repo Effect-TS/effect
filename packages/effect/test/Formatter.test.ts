@@ -13,6 +13,7 @@ import {
   SchemaParser
 } from "effect"
 import { format, formatJson } from "effect/Formatter"
+import { runInNewContext } from "node:vm"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "./utils/assert.ts"
 
 class SensitiveData implements Redactable.Redactable {
@@ -338,6 +339,22 @@ describe("Formatter", () => {
       strictEqual(formatJson({ left: shared, right: shared }), `{"left":{"a":1},"right":{"a":1}}`)
     })
 
+    it.each([
+      ["Number", Object(42), `42`],
+      ["Boolean", Object(false), `false`],
+      ["String", Object("abc"), `"abc"`],
+      ["cross-realm Number", runInNewContext("new Number(42)"), `42`],
+      ["cross-realm Boolean", runInNewContext("new Boolean(false)"), `false`],
+      ["cross-realm String", runInNewContext("new String(\"abc\")"), `"abc"`]
+    ])("should serialize boxed %s values", (_, value, expected) => {
+      strictEqual(formatJson(value), expected)
+      strictEqual(formatJson({ value }), `{"value":${expected}}`)
+      // JSON.stringify unboxes wrappers and ignores their own properties
+      Object.defineProperty(value, "extra", { get: () => 1, enumerable: true })
+      strictEqual(formatJson(value), expected)
+      strictEqual(formatJson({ value }), `{"value":${expected}}`)
+    })
+
     it("should stringify BigInt values", () => {
       strictEqual(formatJson(123n), `"123n"`)
       strictEqual(formatJson({ value: 123n }), `{"value":"123n"}`)
@@ -382,6 +399,51 @@ describe("Formatter", () => {
       strictEqual(formatJson({ a: data }), `{"a":{"secret":"[REDACTED]"}}`)
       strictEqual(formatJson([data]), `[{"secret":"[REDACTED]"}]`)
       strictEqual(formatJson(date), `"[REDACTED]"`)
+    })
+
+    it("should redact sensitive data returned from a getter", () => {
+      strictEqual(
+        formatJson({
+          get a() {
+            return data
+          }
+        }),
+        `{"a":{"secret":"[REDACTED]"}}`
+      )
+    })
+
+    it("should read getters once with the original receiver", () => {
+      let receiverIsHolder = false
+      let reads = 0
+      const holder = {
+        get a() {
+          receiverIsHolder = Object.is(this, holder)
+          // unstable getter: a second read would leak the raw secret
+          return reads++ === 0 ? data : { secret: "my-secret-key" }
+        }
+      }
+
+      strictEqual(formatJson(holder), `{"a":{"secret":"[REDACTED]"}}`)
+      strictEqual(reads, 1)
+      assertTrue(receiverIsHolder)
+    })
+
+    it("should redact sensitive data returned from a frozen accessor", () => {
+      strictEqual(
+        formatJson(Object.freeze({
+          get a() {
+            return data
+          }
+        })),
+        `{"a":{"secret":"[REDACTED]"}}`
+      )
+    })
+
+    it("should redact sensitive data returned from a non-enumerable array index getter", () => {
+      const array: Array<unknown> = []
+      // JSON.stringify reads array indices regardless of enumerability
+      Object.defineProperty(array, "0", { get: () => data })
+      strictEqual(formatJson(array), `[{"secret":"[REDACTED]"}]`)
     })
   })
 

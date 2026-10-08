@@ -1,8 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream, Tracer } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
+import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
@@ -425,6 +425,91 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason._tag, "SocketReadError")
     }))
 
+  it.effect("keeps in-flight streams alive on non-pong frames without any pongs", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const frames = yield* Queue.unbounded<string>()
+      const events = yield* Queue.unbounded<string>()
+      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup, {
+        generateRequestId: () => RpcMessage.RequestId("0")
+      }).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const streamFiber = yield* client.Events().pipe(
+        Stream.runForEach((event) => Queue.offer(events, event)),
+        Effect.forkChild
+      )
+
+      yield* Deferred.await(requestSent)
+      for (const event of ["first", "second", "third"]) {
+        yield* TestClock.adjust("4 seconds")
+        assert.isUndefined(streamFiber.pollUnsafe())
+        yield* Queue.offer(frames, JSON.stringify({ _tag: "Chunk", requestId: "0", values: [event] }) + "\n")
+        assert.strictEqual(yield* Queue.take(events), event)
+      }
+      // Cross another ping tick after the third frame, still without a pong.
+      yield* TestClock.adjust("4 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+    }))
+
+  it.effect("allows a delayed pong within a custom ping timeout but fails after silence", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const frames = yield* Queue.unbounded<string>()
+      const frameRead = yield* Deferred.make<void>()
+      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(frames).pipe(
+            Effect.tap(() => Deferred.succeed(frameRead, void 0)),
+            Effect.map((frame) => [frame] as const)
+          ),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const context = yield* Layer.build(
+        RpcClient.layerProtocolSocket({
+          pingInterval: "2 seconds",
+          pingTimeout: "15 seconds",
+          retryPolicy: Schedule.spaced("1 hour")
+        }).pipe(
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Layer.succeed(Socket.Socket, socket))
+        )
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(Effect.provide(context))
+      const streamFiber = yield* client.Events().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+
+      yield* Deferred.await(requestSent)
+      // The old fixed timeout fails at 10s, before this delayed pong arrives.
+      yield* TestClock.adjust("12 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+      yield* Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n")
+      yield* Deferred.await(frameRead)
+      yield* TestClock.adjust("14 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+
+      // At 28s the next 2s tick is 16s after the last frame, beyond the 15s timeout.
+      yield* TestClock.adjust("2 seconds")
+      assert.isDefined(streamFiber.pollUnsafe())
+      const exit = yield* Fiber.join(streamFiber)
+      assert(Exit.isFailure(exit))
+      const error = Cause.squash(exit.cause)
+      assert.instanceOf(error, RpcClientError)
+      assert.strictEqual(error.reason._tag, "SocketReadError")
+    }))
+
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
@@ -516,4 +601,72 @@ describe("RpcClient", () => {
       assert.instanceOf(error, RpcClientError)
       assert.strictEqual(error.reason._tag, "SocketOpenError")
     }))
+
+  describe("tracing", () => {
+    const SpanGroup = TestGroup.prefix("Echo.")
+
+    const call = (
+      method: "Ping" | "Events",
+      options: { spanPrefix?: string; spanAttributes?: Record<string, unknown> } = {}
+    ) => {
+      const spans: Array<Tracer.NativeSpan> = []
+      return Effect.gen(function*() {
+        // oxlint-disable-next-line prefer-const
+        let client!: Effect.Success<
+          ReturnType<typeof RpcClient.makeNoSerialization<RpcGroup.Rpcs<typeof SpanGroup>, never>>
+        >
+        const server = yield* RpcServer.makeNoSerialization(SpanGroup, {
+          ...options,
+          onFromServer: (response) => client.write(response)
+        })
+        client = yield* RpcClient.makeNoSerialization(SpanGroup, {
+          ...options,
+          supportsAck: true,
+          onFromClient: ({ message }) => server.write(0, message)
+        })
+        yield* method === "Ping" ? client.client["Echo.Ping"]() : Stream.runDrain(client.client["Echo.Events"]())
+        return spans
+      }).pipe(
+        Effect.provide(SpanGroup.toLayer({
+          "Echo.Ping": () => Effect.succeed("pong"),
+          "Echo.Events": () => Stream.make("event")
+        })),
+        Effect.provideService(
+          Tracer.Tracer,
+          Tracer.make({
+            span(options) {
+              const span = new Tracer.NativeSpan(options)
+              spans.push(span)
+              return span
+            }
+          })
+        )
+      )
+    }
+
+    it.effect("records RPC span defaults for streaming calls", () =>
+      Effect.gen(function*() {
+        const spans = yield* call("Events")
+        assert.deepStrictEqual(spans.map((span) => span.kind).sort(), ["client", "server"])
+        for (const span of spans) {
+          assert.strictEqual(span.name, "Echo.Events")
+          assert.strictEqual(span.attributes.get("rpc.system.name"), "effect_rpc")
+          assert.strictEqual(span.attributes.get("rpc.method"), "Echo.Events")
+        }
+      }))
+
+    it.effect("uses spanPrefix and spanAttributes for unary calls", () =>
+      Effect.gen(function*() {
+        const spans = yield* call("Ping", {
+          spanPrefix: "Custom",
+          spanAttributes: { "rpc.system.name": "custom_rpc", "rpc.method": "custom_method" }
+        })
+        assert.deepStrictEqual(spans.map((span) => span.kind).sort(), ["client", "server"])
+        for (const span of spans) {
+          assert.strictEqual(span.name, "Custom.Echo.Ping")
+          assert.strictEqual(span.attributes.get("rpc.system.name"), "custom_rpc")
+          assert.strictEqual(span.attributes.get("rpc.method"), "custom_method")
+        }
+      }))
+  })
 })

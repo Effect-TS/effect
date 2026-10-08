@@ -91,7 +91,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
         SUBCOMMANDS
@@ -341,7 +341,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
         EXAMPLES
@@ -386,7 +386,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
     }).pipe(Effect.provide(TestLayer)))
@@ -417,7 +417,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
     }).pipe(Effect.provide(TestLayer)))
@@ -446,7 +446,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
     }).pipe(Effect.provide(TestLayer)))
@@ -478,7 +478,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
     }).pipe(Effect.provide(TestLayer)))
@@ -505,7 +505,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
         SUBCOMMANDS
@@ -540,7 +540,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)"
       `)
     }).pipe(Effect.provide(TestLayer)))
@@ -641,7 +641,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
         SUBCOMMANDS
@@ -684,7 +684,7 @@ describe("Command help output", () => {
           --help, -h                                                          Show help information
           --version, -v                                                       Show version information
           --wizard                                                            Start wizard mode for a command
-          --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)
+          --completions <bash|zsh|fish|powershell|sh|pwsh>                    Print shell completion script (choices: bash, zsh, fish, powershell, sh, pwsh)
           --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)
 
         SUBCOMMANDS

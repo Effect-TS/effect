@@ -7,6 +7,7 @@
  * interrupt background work by a stable key while keeping all fibers tied to
  * one scope.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Cause from "./Cause.ts"
@@ -54,6 +55,7 @@ const TypeId = "~effect/FiberMap"
  * actual // => 2
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -92,6 +94,7 @@ export interface FiberMap<in out K, out A = unknown, out E = unknown>
  * actual // => [true, false, false]
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -156,6 +159,7 @@ const makeUnsafe = <K, A = unknown, E = unknown>(
  * actual // => 2
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -208,6 +212,7 @@ export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A
  * actual // => ["Hello", "World"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -265,6 +270,7 @@ export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
  * actual // => ["Hello", "World"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.13.0
  */
@@ -331,6 +337,7 @@ const isInternalInterruption = Filter.toPredicate(Filter.compose(
  * actual // => "Hello"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -437,6 +444,7 @@ export const setUnsafe: {
  * actual // => "Hello"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -500,6 +508,7 @@ export const set: {
  * actual // => Option.some("Hello")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -544,6 +553,7 @@ export const getUnsafe: {
  * actual // => Option.some("Hello")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -578,6 +588,7 @@ export const get: {
  * actual // => [true, false]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -613,6 +624,7 @@ export const hasUnsafe: {
  * actual // => [true, false]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -651,6 +663,7 @@ export const has: {
  * actual // => [2, 1]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -705,6 +718,7 @@ export const remove: {
  * actual // => [3, 0]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -758,6 +772,7 @@ const constInterruptedFiber = (function() {
  * actual // => ["Hello", "World", 0]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -855,6 +870,7 @@ const runImpl = <K, A, E, R, XE extends E, XA extends A>(
  * actual // => [0, 0]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -932,6 +948,7 @@ export const runtime: <K, A, E>(
  * actual // => ["Hello", "World"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 3.13.0
  */
@@ -995,6 +1012,7 @@ export const runtimePromise = <K, A, E>(self: FiberMap<K, A, E>): <R = never>() 
  * actual // => [0, 2]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1028,6 +1046,7 @@ export const size = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<number> =>
  * actual // => Exit.fail("error")
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1059,6 +1078,7 @@ export const join = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void, E> =
  * actual // => 0
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 3.13.0
  */

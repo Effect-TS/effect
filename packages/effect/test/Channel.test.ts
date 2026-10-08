@@ -33,6 +33,20 @@ describe("Channel", () => {
   })
 
   describe("constructors", () => {
+    for (
+      const [name, constructor] of [["callback", Channel.callback], ["callbackArray", Channel.callbackArray]] as const
+    ) {
+      it.live(`${name} propagates registration effect failures`, () =>
+        Effect.gen(function*() {
+          const exit = yield* constructor(() => Effect.fail("setup failed")).pipe(
+            Channel.runDrain,
+            Effect.timeout("500 millis"),
+            Effect.exit
+          )
+          assert.deepStrictEqual(exit, Exit.fail("setup failed"))
+        }))
+    }
+
     it.effect("empty", () =>
       Effect.gen(function*() {
         const result = yield* Channel.empty.pipe(
@@ -215,6 +229,32 @@ describe("Channel", () => {
         assert.isTrue(yield* Ref.get(released))
       }))
 
+    it.effect("acquireUseRelease releases resource when interrupted during acquisition", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const gate = yield* Deferred.make<void>()
+        const released: Array<number> = []
+        const acquire = Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          yield* Deferred.await(gate)
+          return 1
+        })
+        const fiber = yield* Effect.forkChild(Channel.runDrain(Channel.acquireUseRelease(
+          acquire,
+          () => Channel.never,
+          (resource) =>
+            Effect.sync(() => {
+              released.push(resource)
+            })
+        )))
+        yield* Deferred.await(started)
+        yield* Effect.forkChild(Fiber.interrupt(fiber), { startImmediately: true })
+        yield* Deferred.succeed(gate, undefined)
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.deepStrictEqual(released, [1])
+      }))
+
     it.effect("acquireUseRelease combines usage and release failures", () =>
       Effect.gen(function*() {
         const result = yield* Channel.acquireUseRelease(
@@ -373,6 +413,32 @@ describe("Channel", () => {
   })
 
   describe("merging", () => {
+    for (const kind of ["mergeAll", "concurrent flatMap"] as const) {
+      const flatten = <E>(inner: Channel.Channel<number, E>) =>
+        kind === "mergeAll"
+          ? Channel.succeed(inner).pipe(Channel.mergeAll({ concurrency: 1 }))
+          : Channel.succeed(1).pipe(Channel.flatMap(() => inner, { concurrency: 2 }))
+
+      it.effect(`${kind} surfaces inner release failure after successful usage`, () =>
+        Effect.gen(function*() {
+          const inner = Channel.acquireRelease(Effect.succeed(1), () => Effect.die("release failure"))
+          const result = yield* flatten(inner).pipe(Channel.runCollect, Effect.exit)
+          assert.deepStrictEqual(result, Exit.die("release failure"))
+        }))
+
+      it.effect(`${kind} combines inner usage and release failures`, () =>
+        Effect.gen(function*() {
+          const inner = Channel.acquireRelease(Effect.succeed(1), () => Effect.die("release failure")).pipe(
+            Channel.mapEffect(() => Effect.fail("usage failure"))
+          )
+          const result = yield* flatten(inner).pipe(Channel.runCollect, Effect.exit)
+          assert.deepStrictEqual(
+            result,
+            Exit.failCause(Cause.combine(Cause.fail("usage failure"), Cause.die("release failure")))
+          )
+        }))
+    }
+
     it.effect("merge - interrupts left side if halt strategy is set to 'right'", () =>
       Effect.gen(function*() {
         const latch = yield* Latch.make(false)
@@ -431,6 +497,17 @@ describe("Channel", () => {
           haltStrategy: "both"
         }).pipe(Channel.runCollect)
         assert.deepStrictEqual(result, [1, 2])
+      }))
+
+    it.live("merge - propagates a finalizer defect after the other side completes", () =>
+      Effect.gen(function*() {
+        const left = Channel.acquireRelease(Effect.succeed(1), () => Effect.die("release defect"))
+        const result = yield* Channel.merge(left, Channel.empty).pipe(
+          Channel.runCollect,
+          Effect.timeout("500 millis"),
+          Effect.exit
+        )
+        assert.deepStrictEqual(result, Exit.die("release defect"))
       }))
 
     it.effect("merge - prioritizes failure", () =>

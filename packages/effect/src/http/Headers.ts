@@ -424,7 +424,9 @@ export const isRedactedName = (
  *
  * **Details**
  *
- * Defaults include `authorization`, `cookie`, `set-cookie`, and `x-api-key`.
+ * Defaults include `authorization`, `cookie`, `set-cookie`, `x-api-key` and
+ * `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`. Names match
+ * case-insensitively, and providing a new list replaces the defaults.
  *
  * @stability unstable
  * @category services
@@ -437,6 +439,10 @@ export const CurrentRedactedNames = Context.Reference<
     "authorization",
     "cookie",
     "set-cookie",
-    "x-api-key"
+    "x-api-key",
+    "AWSAccessKeyId",
+    "Signature",
+    "sig",
+    "X-Goog-Signature"
   ]
 })

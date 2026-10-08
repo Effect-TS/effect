@@ -8,6 +8,7 @@
  * values, and comparison helpers that avoid exposing the wrapped value at the
  * call site.
  *
+ * @stability stable
  * @since 3.3.0
  */
 import * as Equal from "./Equal.ts"
@@ -50,6 +51,7 @@ const TypeId = "~effect/Redacted"
  * Array.of(String(apiKey), String(userPassword)) // => ["<redacted>", "<redacted>"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 3.3.0
  */
@@ -76,6 +78,7 @@ export interface Redacted<out A = string> extends Redacted.Variance<A>, Equal.Eq
  * Redacted.isRedacted(secret) // => true
  * ```
  *
+ * @stability stable
  * @since 3.3.0
  */
 export declare namespace Redacted {
@@ -153,6 +156,7 @@ export declare namespace Redacted {
  * Redacted.isRedacted(plainString) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 3.3.0
  */
@@ -181,6 +185,7 @@ export const isRedacted = (u: unknown): u is Redacted<unknown> => hasProperty(u,
  * String(API_KEY) // => "<redacted>"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.3.0
  */
@@ -239,6 +244,7 @@ const Proto = {
  * Redacted.value(API_KEY) // => "1234567890"
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 3.3.0
  */
@@ -277,6 +283,7 @@ export const value: <T>(self: Redacted<T>) => T = redacted.value
  * failure // => Result.fail("Unable to get redacted value")
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -307,6 +314,7 @@ export const wipeUnsafe = <T>(self: Redacted<T>): boolean => redacted.redactedRe
  * equivalence(API_KEY1, API_KEY3) // => true
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */

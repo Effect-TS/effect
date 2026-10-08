@@ -585,6 +585,29 @@ describe("NetAddress", () => {
       assert.strictEqual(NetAddress.formatUrlHost(success(NetAddress.ipv6FromString("::1"))), "[::1]")
     })
 
+    it("constructs frozen native addresses matching checked parsing", () => {
+      for (const host of ["127.0.0.1", "2001:db8::1", "::ffff:192.0.2.128"]) {
+        const actual = NetAddress.inetAddressFromNativeUnsafe(host, 4567)
+        assert.deepStrictEqual(actual, success(NetAddress.inetAddressFromIpString(host, 4567)))
+        assert.isTrue(Object.isFrozen(actual))
+        assert.isTrue(Object.isFrozen(actual.address))
+      }
+    })
+
+    it("resolves native IPv6 zones and rejects unknown interfaces", () => {
+      const scopeIds = new Map([["eth0", 7]])
+      for (const host of ["fe80::1%7", "fe80::1%eth0"]) {
+        assert.deepStrictEqual(
+          NetAddress.inetAddressFromNativeUnsafe(host, 4567, scopeIds),
+          NetAddress.inetAddressFromStringUnsafe("[fe80::1%7]:4567")
+        )
+      }
+      assert.throws(
+        () => NetAddress.inetAddressFromNativeUnsafe("fe80::1%missing", 4567, scopeIds),
+        /unknown IPv6 interface: missing/
+      )
+    })
+
     it("formats separate socket hosts while preserving IPv6 scope", () => {
       for (
         const [input, expected] of [

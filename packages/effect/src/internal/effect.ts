@@ -345,6 +345,8 @@ export const causePrettyError = (
     error = new globalThis.Error(
       !original ? `Unknown error: ${original}` : kind === "string" ? original as any : formatJson(original)
     )
+    const stack = `${error.name}: ${error.message}`
+    error.stack = annotations ? addStackAnnotations(stack, annotations) : stack
   }
   return error
 }
@@ -629,44 +631,46 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.currentOpCount = 0
     try {
       while (true) {
-        if (this._deferredInterrupt) {
-          this._deferredInterrupt = false
-          current = failCause(this._interruptedCause!) as any
-        }
-        this.currentOpCount++
-        // Refresh the cache because a primitive can replace the fiber context.
-        const cache = this.cache
-        if (
-          !yielding &&
-          !cache.preventYield &&
-          cache.scheduler.shouldYield(this as any)
-        ) {
-          yielding = true
-          const prev = current
-          current = flatMap(yieldNow, () => prev as any) as any
-        }
-        current = cache.tracerContext
-          ? cache.tracerContext(current as any, this)
-          : (current as any)[evaluate](this)
-        if (current === Yield) {
-          const yielded = this._yielded!
-          if (ExitTypeId in yielded) {
+        try {
+          if (this._deferredInterrupt) {
             this._deferredInterrupt = false
-            this._yielded = undefined
-            return yielded
-          } else if (this._deferredInterrupt) {
-            this._yielded = undefined
-            yielded()
-            continue
+            current = failCause(this._interruptedCause!) as any
           }
-          return Yield
+          this.currentOpCount++
+          // Refresh the cache because a primitive can replace the fiber context.
+          const cache = this.cache
+          if (
+            !yielding &&
+            !cache.preventYield &&
+            cache.scheduler.shouldYield(this as any)
+          ) {
+            yielding = true
+            const prev = current
+            current = flatMap(yieldNow, () => prev as any) as any
+          }
+          current = cache.tracerContext
+            ? cache.tracerContext(current as any, this)
+            : (current as any)[evaluate](this)
+          if (current === Yield) {
+            const yielded = this._yielded!
+            if (ExitTypeId in yielded) {
+              this._deferredInterrupt = false
+              this._yielded = undefined
+              return yielded
+            } else if (this._deferredInterrupt) {
+              this._yielded = undefined
+              yielded()
+              continue
+            }
+            return Yield
+          }
+        } catch (error) {
+          if (!hasProperty(current, evaluate)) {
+            return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
+          }
+          current = exitDie(error) as any
         }
       }
-    } catch (error) {
-      if (!hasProperty(current, evaluate)) {
-        return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
-      }
-      return this.runLoop(exitDie(error) as any)
     } finally {
       this._running = prevRunning
       ;(globalThis as any)[currentFiberTypeId] = prevFiber
@@ -3928,10 +3932,8 @@ export const scopeTag: Context.Service<Scope.Scope, Scope.Scope> = Context.Servi
 /** @internal */
 export const scopeClose = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
   withFiber((fiber) => {
-    const close = scopeCloseUnsafe(self, exit_)
-    if (close === undefined) return void_
     fiberEnterUninterruptibleUnsafe(fiber)
-    return close
+    return scopeCloseUnsafe(self, exit_) ?? void_
   })
 
 /** @internal */
@@ -5524,16 +5526,16 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   const parentRuntime = parent as FiberImpl<FA, FE>
   const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
   const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
+  if (!daemon) {
+    parentRuntime.children().add(child)
+    child._parent = parentRuntime
+  }
   if (immediate) {
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
-  }
-  if (!daemon && !child._exit) {
-    parentRuntime.children().add(child)
-    child._parent = parentRuntime
   }
   return child
 }
@@ -5711,9 +5713,9 @@ export const fiberRunIn: {
     self.interruptUnsafe(self.id)
     return self
   }
-  const key = {}
-  scopeAddFinalizerUnsafe(scope, key, () => fiberInterrupt(self))
-  self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
+  scopeRemoveFinalizerUnsafe(scope, self)
+  scopeAddFinalizerUnsafe(scope, self, () => fiberInterrupt(self))
+  self.addObserver(() => scopeRemoveFinalizerUnsafe(scope, self))
   return self
 })
 
@@ -6026,7 +6028,7 @@ export const makeSpanUnsafe = <XA, XE>(
       links,
       startTime: timingEnabled ? clock.currentTimeNanosUnsafe() : bigint0,
       kind: options?.kind ?? "internal",
-      root: options?.root ?? Option.isNone(parent),
+      root: options?.root ?? false,
       sampled: options?.sampled ??
         (Option.isSome(parent) && parent.value.sampled === false
           ? false

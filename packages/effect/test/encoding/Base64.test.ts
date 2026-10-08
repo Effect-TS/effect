@@ -3,6 +3,18 @@ import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
 
 describe("Base64", () => {
+  it("encodes and decodes binary subarrays with and without padding", () => {
+    const bytes = new Uint8Array([42, 251, 255, 128, 42])
+    const vectors = ["", "+w==", "+/8=", "+/+A"]
+
+    for (const [length, encoded] of vectors.entries()) {
+      const view = bytes.subarray(1, 1 + length)
+      assert.strictEqual(Base64.encode(view), encoded)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), view)
+    }
+    assert.deepStrictEqual(bytes, new Uint8Array([42, 251, 255, 128, 42]))
+  })
+
   it("encodes strings and bytes", () => {
     assert.strictEqual(Base64.encode("hello"), "aGVsbG8=")
     assert.strictEqual(Base64.encode(new Uint8Array([72, 101, 108, 108, 111])), "SGVsbG8=")

@@ -1469,6 +1469,21 @@ describe("McpServer protocol adapters", () => {
       assert.isDefined(currentShared)
       assert.notProperty(oldShared, "title")
       assert.strictEqual(currentShared.title, "Shared tool title")
+
+      const response = yield* fixture.post({ jsonrpc: "2.0", id: 2, method: "ping", params: {} }, {
+        "Mcp-Protocol-Version": "2025-11-25",
+        "Mcp-Session-Id": currentClient.sessionId
+      })
+
+      assert.strictEqual(response.status, 400)
+      assert.deepStrictEqual(yield* readJsonRpcResponse(response), {
+        jsonrpc: "2.0",
+        id: 2,
+        error: {
+          code: McpSchema.HEADER_MISMATCH_ERROR_CODE,
+          message: "MCP-Protocol-Version header '2025-11-25' does not match negotiated protocol version '2025-06-18'"
+        }
+      })
     }))
 
   for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {

@@ -7,6 +7,7 @@
  * resolver shapes and tools for controlling batching, grouping, delays,
  * tracing, caching, racing, hooks around resolver execution, and persistence.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { NonEmptyArray } from "./Array.ts"
@@ -75,6 +76,7 @@ const TypeId = "~effect/RequestResolver"
  * await Effect.runPromise(program) // => "User 1"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -108,6 +110,7 @@ export interface RequestResolver<in A extends Request.Any> extends RequestResolv
 /**
  * Namespace containing type-level helpers associated with `RequestResolver`.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace RequestResolver {
@@ -149,6 +152,7 @@ const RequestResolverProto = {
  *
  * @see {@link RequestResolver} for the type narrowed by this guard
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -179,6 +183,7 @@ export const isRequestResolver = (u: unknown): u is RequestResolver<any> => hasP
  * @see {@link make} for constructing a resolver from a batch runner
  * @see {@link makeGrouped} for constructing a resolver that groups requests by key
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -231,6 +236,7 @@ const defaultKey = (_request: unknown): unknown => defaultKeyObject
  * await Effect.runPromise(getUserEffect) // => "User 123"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -289,6 +295,7 @@ export const make = <A extends Request.Any>(
  * result // => ["User 1 with role admin", "User 2 with role admin"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -343,6 +350,7 @@ const hashGroupKey = <A, K>(get: (entry: Request.Entry<A>) => K) => {
  * await Effect.runPromise(getSquareEffect) // => 25
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -388,6 +396,7 @@ export const fromFunction = <A extends Request.Any>(
  * await Effect.runPromise(batchedEffect) // => [2, 4, 6]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -434,6 +443,7 @@ export const fromFunctionBatched = <A extends Request.Any>(
  * await Effect.runPromise(getUserEffect) // => "User 123 from API"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -500,6 +510,7 @@ export const fromEffect = <A extends Request.Any>(
  * await Effect.runPromise(program) // => ["User 1", "Post 2"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -584,6 +595,7 @@ export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string
  * Array.of(delayRan, RequestResolver.isRequestResolver(resolverWithCustomDelay)) // => [true, true]
  * ```
  *
+ * @stability stable
  * @category delays & timeouts
  * @since 4.0.0
  */
@@ -627,6 +639,7 @@ export const setDelayEffect: {
  * await Effect.runPromise(program) // => "data"
  * ```
  *
+ * @stability stable
  * @category delays & timeouts
  * @since 4.0.0
  */
@@ -686,6 +699,7 @@ export const setDelay: {
  * result // => "data"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -729,6 +743,7 @@ export const around: {
  *
  * @see {@link make} for constructing a resolver that executes batches and completes request entries
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -784,6 +799,7 @@ export const never: RequestResolver<never> = make(() => Effect.never)
  * Array.of(result[0], result[11]) // => ["data-0", "data-11"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -855,6 +871,7 @@ export const batchN: {
  * result // => ["User 1", "User 2", "User 3"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -916,6 +933,7 @@ export const grouped: {
  * await Effect.runPromise(program) // => "fast-1"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -975,6 +993,7 @@ export const race: {
  * await Effect.runPromise(effect) // => "data-123"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -1041,6 +1060,7 @@ export const withSpan: {
  * @see {@link persisted} for storing persistable request results outside process memory
  * @see {@link Cache.Cache} for operations available on the returned cache
  *
+ * @stability stable
  * @category caching
  * @since 4.0.0
  */
@@ -1102,6 +1122,12 @@ export const asCache: {
     requireServicesAt: options.requireServicesAt ?? "lookup" as ServiceMode
   }) as any)
 
+interface CacheEntry<A extends Request.Any> {
+  readonly entry: Request.Entry<A>
+  exit: Request.Result<A> | undefined
+  pending: Array<Request.Entry<A>>
+}
+
 /**
  * Adds a bounded in-memory cache to a request resolver.
  *
@@ -1126,6 +1152,7 @@ export const asCache: {
  * @see {@link asCache} for exposing the resolver as a `Cache` with time-to-live and service lookup controls
  * @see {@link persisted} for backing persistable requests with the configured persistence store
  *
+ * @stability stable
  * @category caching
  * @since 4.0.0
  */
@@ -1144,10 +1171,7 @@ export const withCache: {
 }): Effect.Effect<RequestResolver<A>> =>
   Effect.sync(() => {
     const strategy = options.strategy ?? "lru"
-    const cache = MutableHashMap.empty<A, {
-      readonly entry: Request.Entry<A>
-      exit: Request.Result<A> | undefined
-    }>()
+    const cache = MutableHashMap.empty<A, CacheEntry<A>>()
     return makeWith({
       ...self,
       runAll(entries, key) {
@@ -1165,7 +1189,7 @@ export const withCache: {
       preCheck(entry) {
         const ocached = MutableHashMap.get(cache, entry.request)
         if (ocached._tag === "None") {
-          const cached = { entry, exit: undefined as Request.Result<A> | undefined }
+          const cached: CacheEntry<A> = { entry, exit: undefined, pending: [] }
           MutableHashMap.set(cache, entry.request, cached)
           const prevComplete = entry.completeUnsafe
           entry.completeUnsafe = function(exit) {
@@ -1179,7 +1203,12 @@ export const withCache: {
             } else {
               cached.exit = exit as any
             }
+            const pending = cached.pending
+            cached.pending = []
             prevComplete(exit)
+            for (const pendingEntry of pending) {
+              pendingEntry.completeUnsafe(exit)
+            }
           }
           return true
         }
@@ -1192,11 +1221,7 @@ export const withCache: {
           entry.completeUnsafe(cached.exit as any)
         } else {
           cached.entry.uninterruptible = true
-          const prevComplete = cached.entry.completeUnsafe
-          cached.entry.completeUnsafe = function(exit) {
-            prevComplete(exit)
-            entry.completeUnsafe(exit)
-          }
+          cached.pending.push(entry)
         }
         return false
       }
@@ -1223,6 +1248,7 @@ export const withCache: {
  * @see {@link withCache} for in-memory resolver caching that does not require persistable request values or a persistence store
  * @see {@link asCache} for exposing resolver results through a `Cache` instead of returning another resolver
  *
+ * @stability unstable
  * @category caching
  * @since 4.0.0
  */

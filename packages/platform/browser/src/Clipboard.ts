@@ -7,6 +7,7 @@
  * supports reading and writing text, reading and writing `ClipboardItem`
  * payloads, writing one `Blob`, and clearing the clipboard.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -38,6 +39,7 @@ const ErrorTypeId = "~@effect/platform-browser/Clipboard/ClipboardError"
  * MIME type support varies by browser. Failed browser operations are surfaced
  * as `ClipboardError`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -54,6 +56,7 @@ export interface Clipboard {
 /**
  * Tagged error raised when a browser clipboard operation fails.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -75,6 +78,7 @@ export class ClipboardError extends Data.TaggedError("ClipboardError")<{
  * @see {@link make} for building a custom clipboard service
  * @see {@link layer} for providing the browser-backed clipboard service
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -83,6 +87,7 @@ export const Clipboard: Context.Service<Clipboard, Clipboard> = Context.Service<
 /**
  * Builds a `Clipboard` service from primitive read and write operations, deriving `clear` and `writeBlob` helpers.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -99,6 +104,7 @@ export const make = (
 /**
  * Layer that directly interfaces with the browser Clipboard API.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
