@@ -6,6 +6,6 @@
 "@effect/platform-deno": patch
 ---
 
-Add experimental `Host`, `Dns`, and `AddressResolver` modules to `effect/net` for host parsing, DNS queries, and endpoint resolution, with Node, Bun, and Deno implementations. Add host and DNS record schemas, including tagged-object JSON codecs for records.
+Add experimental `Host`, `Dns`, and `AddressResolver` modules to `effect/net` for host parsing, DNS queries, and endpoint resolution, with Node, Bun, and Deno services. DNS operations accept and normalize domain-name strings; endpoint resolution also accepts `host:port` strings. Add scoped IPv6 literals and host and DNS record schemas, including JSON codecs for records.
 
-Provide the services explicitly; they are not part of the platform service layers. For example, use `NodeAddressResolver.layer.pipe(Layer.provideMerge(NodeDns.layer))`.
+Provide the services explicitly; they are not included in the platform `*Services` layers. Use `NodeAddressResolver.layer.pipe(Layer.provideMerge(NodeDns.layer))` to provide both Node services.
