@@ -478,7 +478,7 @@ describe("SqlRunnerStorage", () => {
               table: "legacy_runner_migrations"
             })
 
-            // The tables as created before runner storage used a migrator.
+            // Advisory-lock deployments had no locks table or migration history.
             yield* sql`CREATE TABLE legacy_runners (
               machine_id SERIAL PRIMARY KEY,
               address VARCHAR(255) NOT NULL,
@@ -487,18 +487,15 @@ describe("SqlRunnerStorage", () => {
               last_heartbeat TIMESTAMP NOT NULL DEFAULT NOW(),
               UNIQUE(address)
             )`
-            yield* sql`CREATE TABLE legacy_locks (
-              shard_id VARCHAR(50) PRIMARY KEY,
-              address VARCHAR(255) NOT NULL,
-              acquired_at TIMESTAMP NOT NULL
-            )`
             yield* sql`INSERT INTO legacy_runners (address, runner) VALUES ('legacy:1', 'legacy')`
+            const rows = yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`
             expect(yield* pending).toEqual([[1, "create_tables"]])
 
             yield* Effect.scoped(Layer.build(SqlRunnerStorage.layerMigrations({ prefix: "legacy" })))
 
             expect(yield* pending).toEqual([])
-            expect(yield* sql`SELECT address FROM legacy_runners`).toEqual([{ address: "legacy:1" }])
+            expect(yield* sql`SELECT machine_id, address, runner, healthy FROM legacy_runners`).toEqual(rows)
+            expect(yield* sql`SELECT * FROM legacy_locks`).toEqual([])
           }))
       }
     })
