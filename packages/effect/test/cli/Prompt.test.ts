@@ -1,17 +1,22 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Data, DateTime, Deferred, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/cli"
-import { afterEach, beforeEach, vi } from "vitest"
+import { afterEach, vi } from "vitest"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
 const FileSystemLayer = FileSystem.layerNoop({})
 const PathLayer = Path.layer
 const TerminalLayer = MockTerminal.layer
 
+// Styling assertions assume a color-capable terminal, independent of the test
+// process environment.
+const ThemeLayer = Layer.succeed(Prompt.Theme, Prompt.makeTheme({ colors: true }))
+
 const TestLayer = Layer.mergeAll(
   FileSystemLayer,
   PathLayer,
-  TerminalLayer
+  TerminalLayer,
+  ThemeLayer
 )
 const Action = Data.taggedEnum<Prompt.ActionDefinition>()
 
@@ -50,42 +55,89 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
 
-describe("Prompt NO_COLOR", { concurrent: false }, () => {
-  beforeEach(() => {
-    vi.stubEnv("NO_COLOR", "1")
+describe("Prompt colors", () => {
+  describe("makeTheme detection", { concurrent: false }, () => {
+    const isTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY")
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      if (isTTY === undefined) {
+        delete (process.stdout as { isTTY?: boolean }).isTTY
+      } else {
+        Object.defineProperty(process.stdout, "isTTY", isTTY)
+      }
+    })
+
+    const cases: ReadonlyArray<{
+      readonly name: string
+      readonly isTTY: boolean
+      readonly noColor: string | undefined
+      readonly options?: Partial<Prompt.Theme>
+      readonly expected: boolean
+    }> = [
+      { name: "enables colors on a TTY", isTTY: true, noColor: undefined, expected: true },
+      { name: "ignores an empty NO_COLOR", isTTY: true, noColor: "", expected: true },
+      { name: "disables colors when NO_COLOR is set", isTTY: true, noColor: "1", expected: false },
+      { name: "disables colors without a TTY", isTTY: false, noColor: undefined, expected: false },
+      {
+        name: "prefers an explicit colors option",
+        isTTY: true,
+        noColor: "1",
+        options: { colors: true },
+        expected: true
+      }
+    ]
+
+    for (const testCase of cases) {
+      it(testCase.name, () => {
+        Object.defineProperty(process.stdout, "isTTY", { value: testCase.isTTY, configurable: true })
+        vi.stubEnv("NO_COLOR", testCase.noColor)
+
+        assert.strictEqual(Prompt.makeTheme(testCase.options).colors, testCase.expected)
+      })
+    }
   })
 
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
+  const selectBlue = (theme?: Partial<Prompt.Theme>) =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("enter")
 
-  for (const emptyColors of [false, true]) {
-    it.effect(`omits styles but preserves redraw controls with ${emptyColors ? "empty" : "default"} theme colors`, () =>
-      Effect.gen(function*() {
-        yield* MockTerminal.inputKey("down")
-        yield* MockTerminal.inputKey("enter")
+      const result = yield* Prompt.run(Prompt.Select({
+        message: "Choose a color",
+        choices: [
+          { title: "Red", value: "red" },
+          { title: "Blue", value: "blue" }
+        ],
+        ...(theme === undefined ? {} : { theme })
+      }))
 
-        const result = yield* Prompt.run(Prompt.Select({
-          message: "Choose a color",
-          choices: [
-            { title: "Red", value: "red" },
-            { title: "Blue", value: "blue" }
-          ],
-          theme: emptyColors
-            ? { primaryColor: "", mutedColor: "", successColor: "", errorColor: "", submittedColor: "" }
-            : {}
-        }))
+      assert.strictEqual(result, "blue")
+      return (yield* MockTerminal.displayLines).join("\n")
+    })
 
-        assert.strictEqual(result, "blue")
-        const output = (yield* MockTerminal.displayLines).join("\n")
-        assert.include(stripAnsi(output), "Choose a color")
-        assert.include(stripAnsi(output), "Blue")
-        assert.include(output, `${escape}[?25l`)
-        assert.include(output, `${escape}[?25h`)
-        assert.include(output, `${escape}[2K`)
-        assert.notMatch(output, new RegExp(`${escape}\\[[0-9;]*m`))
-      }).pipe(Effect.provide(TestLayer)))
+  const assertUnstyled = (output: string) => {
+    assert.include(stripAnsi(output), "Choose a color")
+    assert.include(stripAnsi(output), "Blue")
+    assert.include(output, `${escape}[?25l`)
+    assert.include(output, `${escape}[?25h`)
+    assert.include(output, `${escape}[2K`)
+    assert.notMatch(output, new RegExp(`${escape}\\[[0-9;]*m`))
   }
+
+  it.effect("omits styles but preserves redraw controls when the context theme disables colors", () =>
+    Effect.gen(function*() {
+      const output = yield* selectBlue().pipe(
+        Effect.provideService(Prompt.Theme, Prompt.makeTheme({ colors: false }))
+      )
+      assertUnstyled(output)
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("omits styles when a prompt theme override disables colors", () =>
+    Effect.gen(function*() {
+      const output = yield* selectBlue({ colors: false })
+      assertUnstyled(output)
+    }).pipe(Effect.provide(TestLayer)))
 })
 
 describe("Prompt.Date", () => {
@@ -291,6 +343,7 @@ describe("Prompt.String", () => {
         Effect.provideService(
           Prompt.Theme,
           Prompt.makeTheme({
+            colors: true,
             primaryColor: `${escape}[31m`,
             mutedColor: `${escape}[34m`,
             successColor: `${escape}[33m`,

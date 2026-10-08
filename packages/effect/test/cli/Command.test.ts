@@ -1,10 +1,9 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
-import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag } from "effect/cli"
+import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag, Prompt } from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
 import { TestConsole } from "effect/testing"
-import { afterEach, beforeEach, vi } from "vitest"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
 import * as MockTerminal from "./services/MockTerminal.ts"
 import * as TestActions from "./services/TestActions.ts"
@@ -48,14 +47,8 @@ const TestLayerWithoutFormatter = Layer.mergeAll(
 )
 
 describe("Command", () => {
-  describe("wizard NO_COLOR", { concurrent: false }, () => {
-    beforeEach(() => {
-      vi.stubEnv("NO_COLOR", "1")
-    })
-
-    afterEach(() => {
-      vi.unstubAllEnvs()
-    })
+  describe("wizard colors", () => {
+    const NoColorTheme = Layer.succeed(Prompt.Theme, Prompt.makeTheme({ colors: false }))
 
     it.effect("omits styles from headings, command blocks and prompts while preserving redraw controls", () =>
       Effect.gen(function*() {
@@ -88,7 +81,7 @@ describe("Command", () => {
         const sgr = new RegExp(`${escape}\\[[0-9;]*m`)
         assert.notMatch(logs, sgr)
         assert.notMatch(terminal, sgr)
-      }).pipe(Effect.provide(TestLayer)))
+      }).pipe(Effect.provide([TestLayer, NoColorTheme])))
 
     it.effect("omits styles from the cancellation message", () =>
       Effect.gen(function*() {
@@ -107,7 +100,19 @@ describe("Command", () => {
         const cancellation = logs.find((line) => String(line).includes("Wizard cancelled."))
         assert.isDefined(cancellation)
         assert.notMatch(String(cancellation), new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`))
-      }).pipe(Effect.provide(TestLayer)))
+      }).pipe(Effect.provide([TestLayer, NoColorTheme])))
+
+    it.effect("styles headings when the theme enables colors", () =>
+      Effect.gen(function*() {
+        const command = Command.make("greet", { name: Flag.String("name") }, () => Effect.void)
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputKey("c", { ctrl: true })
+        yield* Fiber.join(fiber)
+
+        const logs = (yield* TestConsole.logLines).join("\n")
+        assert.match(logs, new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*mgreet`))
+      }).pipe(Effect.provide([TestLayer, Layer.succeed(Prompt.Theme, Prompt.makeTheme({ colors: true }))])))
   })
 
   describe("annotations", () => {
