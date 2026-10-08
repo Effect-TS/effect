@@ -398,6 +398,95 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(context))
     }), 20_000)
 
+  it.effect("advances an inner durable race that starts after an outer arm has parked", () =>
+    Effect.gen(function*() {
+      const fixture = makeParkedSiblingFixture("ParkedSiblingLateInner")
+      const innerCancel = DurableDeferred.make("ParkedSiblingLateInner/InnerCancel")
+      const outerCancel = DurableDeferred.make("ParkedSiblingLateInner/OuterCancel")
+      const race = DurableDeferred.raceAll({
+        name: "outer",
+        success: Schema.String,
+        error: Schema.Never,
+        effects: [
+          DurableDeferred.await(outerCancel).pipe(Effect.as("outer-cancel")),
+          // Uncounted, so the outer await arm parks before the inner race starts.
+          Effect.sleep(50).pipe(Effect.andThen(DurableDeferred.raceAll({
+            name: "inner",
+            success: Schema.String,
+            error: Schema.Never,
+            effects: [
+              Workflow.wrapActivityResult(Effect.as(Effect.sleep(1000), "timer"), () => false),
+              DurableDeferred.await(innerCancel).pipe(Effect.as("inner-cancel"))
+            ]
+          })))
+        ]
+      })
+      const context = yield* Layer.build(
+        fixture.layer(race).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* fixture.workflow.execute({}, { discard: true })
+        yield* fixture.expectContinuationBeforeEvent(executionId, "timer")
+      }).pipe(Effect.provide(context))
+    }), 20_000)
+
+  it.effect("advances a DurableDeferred.into continuation while a sibling is parked", () =>
+    Effect.gen(function*() {
+      const fixture = makeParkedSiblingFixture("ParkedSiblingInto")
+      const result = DurableDeferred.make("ParkedSiblingInto/Result", { success: Schema.String })
+      const race = Workflow.wrapActivityResult(Effect.as(Effect.sleep(1000), "timer"), () => false).pipe(
+        DurableDeferred.into(result)
+      )
+      const context = yield* Layer.build(
+        fixture.layer(race).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* fixture.workflow.execute({}, { discard: true })
+        yield* fixture.expectContinuationBeforeEvent(executionId, "timer")
+      }).pipe(Effect.provide(context))
+    }), 20_000)
+
+  it.effect(
+    "lets an active sibling finish before a DurableDeferred.into body parks the run",
+    () =>
+      Effect.gen(function*() {
+        const gate = DurableDeferred.make("ActiveSiblingInto/Gate", { success: Schema.String })
+        const result = DurableDeferred.make("ActiveSiblingInto/Result", { success: Schema.String })
+        const workflow = Workflow.make("ActiveSiblingInto", {
+          payload: {},
+          success: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const nextStepRuns: Array<string> = []
+        const context = yield* Layer.build(
+          workflow.toLayer(() =>
+            Effect.all([
+              Workflow.wrapActivityResult(Effect.sleep(100), () => false).pipe(
+                Effect.andThen(nextStepActivity(nextStepRuns, "sibling"))
+              ),
+              DurableDeferred.await(gate).pipe(DurableDeferred.into(result))
+            ], { concurrency: "unbounded" }).pipe(Effect.map(([sibling, value]) => `${sibling}:${value}`))
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+        )
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          // The parked body must not suspend the run while the sibling is counted.
+          yield* pollUntil(workflow, executionId, "Suspended")
+          assert.deepStrictEqual(nextStepRuns, ["sibling"])
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: "gate"
+          })
+          assert.deepStrictEqual(
+            yield* pollUntil(workflow, executionId, "Complete"),
+            new Workflow.Complete({ exit: Exit.succeed("sibling:next:gate") })
+          )
+          assert.deepStrictEqual(nextStepRuns, ["sibling"])
+        }).pipe(Effect.provide(context))
+      }),
+    20_000
+  )
+
   it.effect("retries a deferred wake after a transient run reset failure", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("ResetRetry/Gate", { success: Schema.String })
@@ -2296,8 +2385,8 @@ const nextStepActivity = (runs: Array<string>, label: string) =>
 
 /**
  * A string workflow whose body runs a race, then `next-step`, concurrently
- * with a sibling parked on an unrelated durable event. Durable race winner
- * writes are delayed to stand in for a persistence round trip.
+ * with a sibling parked on an unrelated durable event. Deferred writes made by
+ * the race are delayed to stand in for a persistence round trip.
  */
 const makeParkedSiblingFixture = (name: string) => {
   const workflow = Workflow.make(name, {
@@ -2316,10 +2405,7 @@ const makeParkedSiblingFixture = (name: string) => {
           const raced = race.pipe(
             Effect.provideService(WorkflowEngine, {
               ...engine,
-              deferredDone: (deferred, done) =>
-                engine.deferredDone(deferred, done).pipe(
-                  Effect.delay(deferred.name.startsWith("raceAll/") ? 10 : 0)
-                )
+              deferredDone: (deferred, done) => engine.deferredDone(deferred, done).pipe(Effect.delay(10))
             }),
             Effect.flatMap((winner) => nextStepActivity(nextStepRuns, winner))
           )
