@@ -5,9 +5,8 @@
  * the operating system resolver (`getaddrinfo`) and therefore also reads the
  * hosts file. Bun's `node:dns` lookup uses c-ares instead, which bypasses the
  * system's name service configuration. Record queries and reverse lookups use
- * Bun's `dns.Resolver` like `NodeDns`, without the Latin-1 correction that
- * Node.js needs, because Bun already decodes TXT and CAA character strings as
- * UTF-8.
+ * the shared `node:dns` resolver from `@effect/platform-node-shared/NodeDns`;
+ * unlike Node.js, Bun already decodes TXT and CAA character strings as UTF-8.
  *
  * **Gotchas**
  *

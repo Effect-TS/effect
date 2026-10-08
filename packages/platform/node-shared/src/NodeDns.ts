@@ -1,38 +1,36 @@
 /**
- * Node.js implementation of Effect's `Dns` service.
+ * `node:dns` building blocks for the `Dns` services of runtimes that implement
+ * the `node:dns` module.
  *
- * Address lookups use `dns.lookup`, which calls the operating system resolver
- * (`getaddrinfo`) and therefore also reads the hosts file. Record queries and
- * reverse lookups send DNS queries with pooled `dns.Resolver` instances, each
- * used by one operation at a time, so interrupting a query cancels it. Records
- * whose data cannot be represented, such as names that are not valid
- * `Host.DomainName` values, are skipped. Node.js decodes each byte of TXT and
- * CAA character strings as one Latin-1 character; this service decodes those
- * bytes as UTF-8.
+ * `lookup` resolves addresses with `dns.lookup`, which calls the operating
+ * system resolver (`getaddrinfo`) and therefore also reads the hosts file.
+ * `makeResolver` sends record queries and reverse lookups with pooled
+ * `dns.Resolver` instances, each used by one operation at a time, so
+ * interrupting a query cancels it. Records whose data cannot be represented,
+ * such as names that are not valid `Host.DomainName` values, are skipped.
+ * Runtime packages combine these with `Dns.make` and apply their own
+ * corrections.
  *
  * @stability experimental
  * @since 4.0.0
  */
-import * as Arr from "effect/Array"
-import * as Config from "effect/Config"
+import type * as Arr from "effect/Array"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as NodeDns from "node:dns"
 
 /**
- * Options for the Node.js `Dns` service.
+ * Options for `makeResolver`.
  *
  * **Details**
  *
- * `nameServers` replaces the system name servers for record queries and
- * reverse lookups; IP addresses without a port use port 53, and an empty list
- * keeps the system name servers. `timeout` is the time allowed for each attempt
- * and `tries` the number of attempts per name server. Address lookups always
- * use the operating system resolver.
+ * `nameServers` replaces the system name servers; IP addresses without a port
+ * use port 53, and an empty list keeps the system name servers. `timeout` is
+ * the time allowed for each attempt and `tries` the number of attempts per name
+ * server.
  *
  * **Gotchas**
  *
@@ -224,11 +222,18 @@ export const lookup = (
 const maxIdleResolvers = 8
 
 /**
- * Record queries and reverse lookups backed by the runtime's `node:dns` module,
- * returning TXT and CAA character strings as the runtime decodes them. Shared
- * with `BunDns`.
+ * Creates record query and reverse lookup operations backed by the runtime's
+ * `node:dns` module.
  *
- * @internal
+ * **Details**
+ *
+ * Names in records are fully qualified, and TXT and CAA character strings are
+ * returned as the runtime decodes them. Pass the operations to `Dns.make`,
+ * together with a lookup, to build a `Dns` service.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
  */
 export const makeResolver = (options?: Options) => {
   const resolverOptions: NodeDns.ResolverOptions = {
@@ -300,55 +305,3 @@ export const makeResolver = (options?: Options) => {
     }
   }
 }
-
-const decoder = new TextDecoder()
-
-const utf8FromLatin1 = (value: string): string =>
-  // oxlint-disable-next-line no-control-regex
-  /[^\x00-\x7f]/.test(value) ? decoder.decode(Uint8Array.from(value, (character) => character.charCodeAt(0))) : value
-
-// Node.js decodes each byte of TXT and CAA character strings as one Latin-1
-// character; decoding the bytes as UTF-8 matches other runtimes.
-const utf8Strings = (record: Dns.DnsRecord): Dns.DnsRecord =>
-  record._tag === "TXT"
-    ? Dns.makeRecordUnsafe("TXT", { chunks: Arr.map(record.chunks, utf8FromLatin1) })
-    : record._tag === "CAA"
-    ? Dns.makeRecordUnsafe("CAA", { critical: record.critical, tag: record.tag, value: utf8FromLatin1(record.value) })
-    : record
-
-/**
- * Creates a Node.js `Dns` service.
- *
- * @stability experimental
- * @category constructors
- * @since 4.0.0
- */
-export const make = (options?: Options): Dns.Dns["Service"] => {
-  const resolver = makeResolver(options)
-  return Dns.make({
-    lookup,
-    resolve: (name, type) => Effect.map(resolver.resolve(name, type), Arr.map(utf8Strings)),
-    reverse: resolver.reverse
-  })
-}
-
-/**
- * Layer that provides the Node.js `Dns` service using the system resolver
- * configuration.
- *
- * @stability experimental
- * @category layers
- * @since 4.0.0
- */
-export const layer: Layer.Layer<Dns.Dns> = Layer.sync(Dns.Dns, () => make())
-
-/**
- * Creates a layer that provides the Node.js `Dns` service with options read
- * from configuration.
- *
- * @stability experimental
- * @category layers
- * @since 4.0.0
- */
-export const layerConfig = (options: Config.Wrap<Options>): Layer.Layer<Dns.Dns, Config.ConfigError> =>
-  Layer.effect(Dns.Dns, Effect.map(Config.unwrap(options), make))
