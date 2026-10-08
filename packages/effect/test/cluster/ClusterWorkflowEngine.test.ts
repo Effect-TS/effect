@@ -304,6 +304,61 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     20_000
   )
 
+  it.effect(
+    "lets an active sibling finish before a race of durable awaits suspends the run",
+    () =>
+      Effect.gen(function*() {
+        const gateA = DurableDeferred.make("ActiveSiblingAwaits/A")
+        const gateB = DurableDeferred.make("ActiveSiblingAwaits/B")
+        const workflow = Workflow.make("ActiveSiblingAwaits", {
+          payload: {},
+          success: Schema.String,
+          idempotencyKey: () => "one"
+        })
+        const nextStepRuns: Array<string> = []
+        const nextStep = Activity.make({
+          name: "next-step",
+          success: Schema.String,
+          execute: Effect.sync(() => {
+            nextStepRuns.push("sibling")
+            return "sibling:next"
+          })
+        })
+        const context = yield* Layer.build(
+          workflow.toLayer(() =>
+            Effect.all([
+              Workflow.wrapActivityResult(Effect.sleep(100), () => false).pipe(Effect.andThen(nextStep)),
+              DurableDeferred.raceAll({
+                name: "race",
+                success: Schema.String,
+                error: Schema.Never,
+                effects: [
+                  DurableDeferred.await(gateA).pipe(Effect.as("a")),
+                  DurableDeferred.await(gateB).pipe(Effect.as("b"))
+                ]
+              })
+            ], { concurrency: "unbounded" }).pipe(Effect.map(([sibling, winner]) => `${sibling}:${winner}`))
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+        )
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          // Parked race arms must not suspend the run while the sibling is counted.
+          yield* pollUntil(workflow, executionId, "Suspended")
+          assert.deepStrictEqual(nextStepRuns, ["sibling"])
+          yield* DurableDeferred.succeed(gateA, {
+            token: DurableDeferred.tokenFromExecutionId(gateA, { workflow, executionId }),
+            value: undefined
+          })
+          assert.deepStrictEqual(
+            yield* pollUntil(workflow, executionId, "Complete"),
+            new Workflow.Complete({ exit: Exit.succeed("sibling:next:a") })
+          )
+          assert.deepStrictEqual(nextStepRuns, ["sibling"])
+        }).pipe(Effect.provide(context))
+      }),
+    20_000
+  )
+
   it.effect("advances a nested durable race continuation while a sibling is parked", () =>
     Effect.gen(function*() {
       const innerCancel = DurableDeferred.make("ParkedSiblingNested/InnerCancel")
