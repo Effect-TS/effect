@@ -78,7 +78,7 @@
  * }).pipe(Effect.scoped)
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -96,7 +96,7 @@ import * as Os from "node:os"
  * `node:dns.lookup`, avoiding Bun's synchronous `getaddrinfo`.
  * An `InetAddress` can be passed directly.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -109,7 +109,7 @@ export interface Endpoint {
  * The local address and port to bind. Defaults to `0.0.0.0` (or `::` for
  * `family: "ipv6"`) and an ephemeral port.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -122,7 +122,7 @@ export interface BindOptions {
  * Options for `fromUdpSocket`. The caller configures the adopted socket, so
  * only the options that live in JavaScript apply.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -152,7 +152,7 @@ export interface AdoptOptions {
  * which is a different socket option from the ingress `interface` of
  * `Reader.joinMulticast`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -181,7 +181,7 @@ export type Options =
 /**
  * A native Bun UDP socket, connected or not.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -201,7 +201,7 @@ export type UdpSocket = Bun.udp.Socket<"buffer"> | Bun.udp.ConnectedSocket<"buff
  * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
  * safe integer.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export const make = (options: Options = {}): Effect.Effect<DatagramSocket.Datagr
  * `Bun.udpSocket`. Packets that arrive before `acquire` completes still go to
  * the caller's handlers.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -238,7 +238,7 @@ export const fromUdpSocket = <R>(
 /**
  * Provides a `DatagramSocket` built with `make`.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

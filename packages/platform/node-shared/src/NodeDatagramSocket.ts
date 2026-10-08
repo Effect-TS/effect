@@ -104,7 +104,7 @@
  * }).pipe(Effect.scoped)
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -122,7 +122,7 @@ import * as Os from "node:os"
  * `node:dns.lookup`.
  * An `InetAddress` can be passed directly.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -135,7 +135,7 @@ export interface Endpoint {
  * The local address and port to bind. Defaults to `0.0.0.0` (or `::` for
  * `family: "ipv6"`) and an ephemeral port.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -165,7 +165,7 @@ export interface BindOptions {
  * which is a different socket option from the ingress `interface` of
  * `Reader.joinMulticast`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -197,7 +197,7 @@ export type Options =
  * Options for `fromSocket`. The caller configures the adopted socket, so only
  * the options that live in JavaScript apply.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -222,7 +222,7 @@ export interface FromSocketOptions {
  * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
  * safe integer.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -239,7 +239,7 @@ export const make = (options: Options = {}): Effect.Effect<DatagramSocket.Datagr
  * by the time `acquire` completes. Whether it is connected is checked once at
  * open.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -255,7 +255,7 @@ export const fromSocket = <R>(
 /**
  * Provides a `DatagramSocket` built with `make`.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */

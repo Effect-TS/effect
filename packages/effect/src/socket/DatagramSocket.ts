@@ -29,7 +29,7 @@
  *   }).pipe(Effect.scoped)
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "../Array.ts"
@@ -48,7 +48,7 @@ import * as Scope from "../Scope.ts"
 /**
  * Runtime type identifier attached to `DatagramSocket` services.
  *
- * @stability unstable
+ * @stability experimental
  * @category type IDs
  * @since 4.0.0
  */
@@ -57,7 +57,7 @@ export const TypeId = "~effect/socket/DatagramSocket"
 /**
  * Service tag for UDP socket transports.
  *
- * @stability unstable
+ * @stability experimental
  * @category services
  * @since 4.0.0
  */
@@ -70,7 +70,7 @@ export const DatagramSocket: Context.Service<DatagramSocket, DatagramSocket> = C
  * binds a native socket; subsequent acquisitions wait for its scope to close.
  * Acquiring `writer` cannot fail, but writes wait for an open reader.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -93,7 +93,7 @@ export interface DatagramSocket {
  * adapter or `makeFromBackingSocket`. For hand-built datagrams or custom
  * readers, use `{ payload, address: received.address }`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -117,7 +117,7 @@ export interface Datagram {
  * datagram from a platform adapter or `makeFromBackingSocket`. Hand-built
  * datagrams and custom readers must pass an explicit `InetAddress` instead.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -149,7 +149,7 @@ export interface OutgoingDatagram {
  * ignored. Its `interface` selects where packets arrive (ingress), not the
  * platform's `multicast.interface` for sending (egress).
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -180,7 +180,7 @@ export interface Reader {
  *
  * There is no built-in write timeout; use `Effect.timeout`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -202,7 +202,7 @@ export interface Writer {
  * packet and `"sliding"` discards the oldest queued one. Both count the
  * packet in `Reader.dropped`.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -214,7 +214,7 @@ export interface ReceiveBufferOptions {
 /**
  * Creates a `DatagramSocket` from its `reader` and `writer` effects.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -231,7 +231,7 @@ export const make = (options: {
 /**
  * A native host and port, parsed on demand.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -260,7 +260,7 @@ export interface BackingAddress {
  *
  * `close` must not throw.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -301,7 +301,7 @@ export interface BackingSocket {
  * Each callback can be passed on its own, for example as a runtime's event
  * listener.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -315,7 +315,7 @@ export interface BackingEvents {
 /**
  * The normalized kind of a send or receive failure.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -325,7 +325,7 @@ export type IoErrorKind = "MessageTooLarge" | "Unreachable" | "ConnectionRefused
  * Opening or binding the native socket, applying its options, or resolving
  * a name failed.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -340,7 +340,7 @@ export class DatagramSocketOpenError
 /**
  * A receive failed, or an ICMP report arrived with no write left to fail.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -355,7 +355,7 @@ export class DatagramSocketReadError
 /**
  * A send failed. `address` is the destination when it is known.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -372,7 +372,7 @@ export class DatagramSocketWriteError
  * The native socket closed underneath the reader, or the reader's scope
  * closed.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -385,7 +385,7 @@ export class DatagramSocketClosedError
 /**
  * The runtime lacks a capability, such as source-specific multicast on Deno.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -399,7 +399,7 @@ export class DatagramSocketUnsupportedError
   /**
    * Names the runtime and the capability it lacks.
    *
-   * @stability unstable
+   * @stability experimental
    * @since 4.0.0
    */
   override get message() {
@@ -410,7 +410,7 @@ export class DatagramSocketUnsupportedError
 /**
  * Schema for the union of `DatagramSocketError` reasons.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -424,7 +424,7 @@ export const DatagramSocketErrorReason = Schema.Union([
 /**
  * The union of `DatagramSocketError` reasons.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -433,7 +433,7 @@ export type DatagramSocketErrorReason = typeof DatagramSocketErrorReason.Type
 /**
  * Runtime type identifier attached to `DatagramSocketError` values.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -442,7 +442,7 @@ export const DatagramSocketErrorTypeId = "~effect/socket/DatagramSocket/Datagram
 /**
  * Returns `true` when a value is a `DatagramSocketError`.
  *
- * @stability unstable
+ * @stability experimental
  * @category guards
  * @since 4.0.0
  */
@@ -453,7 +453,7 @@ export const isDatagramSocketError = (u: unknown): u is DatagramSocketError =>
  * The error raised by `DatagramSocket` operations, wrapping a specific
  * reason. Its `cause` and `message` come from the reason.
  *
- * @stability unstable
+ * @stability experimental
  * @category errors
  * @since 4.0.0
  */
@@ -506,7 +506,7 @@ export class DatagramSocketError
  * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
  * safe integer.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */

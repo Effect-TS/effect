@@ -97,7 +97,7 @@
  * }).pipe(Effect.scoped)
  * ```
  *
- * @stability unstable
+ * @stability experimental
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -114,7 +114,7 @@ import * as Net from "node:net"
  * `node:dns.lookup`.
  * An `InetAddress` can be passed directly.
  *
- * @stability unstable
+ * @stability experimental
  * @category models
  * @since 4.0.0
  */
@@ -141,7 +141,7 @@ export interface Endpoint {
  * host. Deno has no egress multicast interface setting; the `interface` of
  * `Reader.joinMulticast` is the ingress interface, a different socket option.
  *
- * @stability unstable
+ * @stability experimental
  * @category options
  * @since 4.0.0
  */
@@ -159,7 +159,7 @@ export interface Options {
  * Options for `fromDatagramConn`. The caller configures the adopted
  * connection, so only the options that live in JavaScript apply.
  *
- * @stability unstable
+ * @stability experimental
  * @category options
  * @since 4.0.0
  */
@@ -179,7 +179,7 @@ export type AdoptOptions = Pick<Options, "peer" | "receiveBuffer" | "onError">
  * Invalid `receiveBuffer.capacity` values cause a defect; use a positive
  * safe integer.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -196,7 +196,7 @@ export const make = (options: Options = {}): Effect.Effect<DatagramSocket.Datagr
  * reading as soon as `acquire` completes, so nothing else should read from the
  * connection.
  *
- * @stability unstable
+ * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
@@ -212,7 +212,7 @@ export const fromDatagramConn = <R>(
 /**
  * Provides a `DatagramSocket` built with `make`.
  *
- * @stability unstable
+ * @stability experimental
  * @category layers
  * @since 4.0.0
  */
