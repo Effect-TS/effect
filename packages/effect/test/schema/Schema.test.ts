@@ -35,6 +35,7 @@ import {
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
+import { inspect } from "node:util"
 import {
   assertExitSuccess,
   assertFalse,
@@ -99,6 +100,33 @@ describe("Schema", () => {
   })
 
   describe("SchemaError", () => {
+    it("serializes nested symbol paths as compact JSON", () => {
+      const key = Symbol("email")
+      const schema = Schema.Struct({ profile: Schema.Struct({ [key]: Schema.String }) })
+      const result = SchemaParser.decodeUnknownResult(schema)({ profile: { [key]: null } })
+      assertTrue(Result.isFailure(result))
+
+      deepStrictEqual(JSON.parse(JSON.stringify(new Schema.SchemaError(result.failure))), {
+        _tag: "SchemaError",
+        message: "Expected string\n  at [\"profile\"][Symbol(email)]",
+        issues: [{ path: ["profile", "Symbol(email)"], message: "Expected string" }]
+      })
+    })
+
+    it("inspects failures as a compact object", () => {
+      const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
+      assertTrue(Result.isFailure(result))
+
+      strictEqual(
+        inspect(new Schema.SchemaError(result.failure), { depth: null }),
+        inspect({
+          _tag: "SchemaError",
+          message: "Expected string",
+          issues: [{ path: [], message: "Expected string" }]
+        }, { depth: null })
+      )
+    })
+
     it("extends Error and exposes the issue", () => {
       const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
       assertTrue(Result.isFailure(result))
