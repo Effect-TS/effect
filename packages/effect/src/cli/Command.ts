@@ -1934,14 +1934,15 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         if (!hasEntry) continue
         const [, value] = yield* flag.flag.parse(emptyArgs)
         if (flag === GlobalFlag.Wizard) {
+          const { colors } = yield* Prompt.Theme
           return yield* Effect.gen(function*() {
-            yield* Console.log(Wizard.renderIntroduction(command.name, config.version, command.description))
+            yield* Console.log(Wizard.renderIntroduction(command.name, config.version, command.description, colors))
             const prefix = [
               command.name,
               ...args.filter((arg) => arg !== "--wizard" && !arg.startsWith("--wizard="))
             ]
             const wizardResult = yield* Wizard.run(command, { commandPath, prefix })
-            yield* Console.log(Wizard.renderCompletion(wizardResult.displayArgs))
+            yield* Console.log(Wizard.renderCompletion(wizardResult.displayArgs, colors))
             const shouldRun = yield* Prompt.run(Prompt.Toggle({
               message: "Run this command?",
               initial: true,
@@ -1953,7 +1954,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
               yield* runWith(command, { ...config, renderErrors: false })(wizardResult.args.slice(1))
             }
           }).pipe(
-            Effect.catchTag("QuitError", () => Console.log(Wizard.renderQuit()))
+            Effect.catchTag("QuitError", () => Console.log(Wizard.renderQuit(colors)))
           )
         }
         yield* flag.run(value, handlerCtx)

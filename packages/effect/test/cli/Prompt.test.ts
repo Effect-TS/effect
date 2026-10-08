@@ -1,16 +1,22 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Data, DateTime, Deferred, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/cli"
+import { afterEach, vi } from "vitest"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
 const FileSystemLayer = FileSystem.layerNoop({})
 const PathLayer = Path.layer
 const TerminalLayer = MockTerminal.layer
 
+// Styling assertions assume a color-capable terminal, independent of the test
+// process environment.
+const ThemeLayer = Layer.succeed(Prompt.Theme, Prompt.makeTheme({ colors: true }))
+
 const TestLayer = Layer.mergeAll(
   FileSystemLayer,
   PathLayer,
-  TerminalLayer
+  TerminalLayer,
+  ThemeLayer
 )
 const Action = Data.taggedEnum<Prompt.ActionDefinition>()
 
@@ -48,6 +54,44 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
     .filter((line) => stripAnsi(line).split(bell).join("").trim().length > 0)
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
+
+describe("Prompt colors", () => {
+  describe("makeTheme detection", { concurrent: false }, () => {
+    const isTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY")
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      if (isTTY === undefined) {
+        delete (process.stdout as { isTTY?: boolean }).isTTY
+      } else {
+        Object.defineProperty(process.stdout, "isTTY", isTTY)
+      }
+    })
+
+    it("disables colors when NO_COLOR is set on a TTY", () => {
+      Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true })
+      vi.stubEnv("NO_COLOR", "1")
+
+      assert.isFalse(Prompt.makeTheme().colors)
+    })
+  })
+
+  it.effect("omits styles when the context theme disables colors", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputKey("enter")
+      yield* Prompt.run(Prompt.Select({
+        message: "Choose a color",
+        choices: [{ title: "Blue", value: "blue" }]
+      }))
+
+      const output = (yield* MockTerminal.displayLines).join("\n")
+      assert.include(output, "Choose a color")
+      assert.notMatch(output, new RegExp(`${escape}\\[[0-9;]*m`))
+    }).pipe(
+      Effect.provideService(Prompt.Theme, Prompt.makeTheme({ colors: false })),
+      Effect.provide(TestLayer)
+    ))
+})
 
 describe("Prompt.Date", () => {
   it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
@@ -252,6 +296,7 @@ describe("Prompt.String", () => {
         Effect.provideService(
           Prompt.Theme,
           Prompt.makeTheme({
+            colors: true,
             primaryColor: `${escape}[31m`,
             mutedColor: `${escape}[34m`,
             successColor: `${escape}[33m`,

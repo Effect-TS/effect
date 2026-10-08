@@ -1,6 +1,6 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Redacted, Runtime, Stdio } from "effect"
-import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag } from "effect/cli"
+import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag, Prompt } from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
 import { TestConsole } from "effect/testing"
@@ -47,6 +47,21 @@ const TestLayerWithoutFormatter = Layer.mergeAll(
 )
 
 describe("Command", () => {
+  it.effect("omits styles from wizard headings and command blocks when colors are disabled", () =>
+    Effect.gen(function*() {
+      const command = Command.make("greet", { name: Flag.String("name") }, () => Effect.void)
+
+      const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+      yield* MockTerminal.inputText("Alice")
+      yield* MockTerminal.inputKey("enter")
+      yield* MockTerminal.inputKey("enter")
+      yield* Fiber.join(fiber)
+
+      const logs = (yield* TestConsole.logLines).join("\n")
+      assert.include(logs, "$ greet --name Alice")
+      assert.notMatch(logs, new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`))
+    }).pipe(Effect.provide([TestLayer, Layer.succeed(Prompt.Theme, Prompt.makeTheme({ colors: false }))])))
+
   describe("annotations", () => {
     it.effect("should expose annotations in help docs", () =>
       Effect.gen(function*() {
