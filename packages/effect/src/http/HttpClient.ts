@@ -1211,7 +1211,6 @@ export const withRateLimiter: {
     }
     return budget
   }
-  // milliseconds until the reported budget covers `tokens`
   const budgetWait = (key: string, tokens: number, now: number): number => {
     const budget = getBudget(key)
     // requests sent after the observed one are not reflected in its count
@@ -1340,8 +1339,8 @@ export const withRateLimiter: {
                 }
                 return attempt
               }
-              // admissions are stale after the wait. Learning admissions are kept,
-              // as they are already counted and do not pace requests.
+              // renew admissions after waiting, except learning admissions, which
+              // are already counted and do not pace requests
               if (adaptive !== undefined && adaptive.phase !== "learning") {
                 return Effect.flatMap(Effect.sleep(Duration.millis(wait)), () => loop(effect, request, retries))
               }
@@ -1419,7 +1418,7 @@ interface RateLimitBudget {
   sent: number
   /** The `sent` total of the request whose remaining count was last applied. */
   observed: number
-  /** The server-reported remaining count. */
+  /** The remaining count reported in response to the `observed` request. */
   remaining: number
   /** When the server budget resets, in epoch milliseconds. */
   resetAt: number

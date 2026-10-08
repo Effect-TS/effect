@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Honor reported remaining request counts when `HttpClient.withRateLimiter` responses also include an explicit rate limit.
+Make `HttpClient.withRateLimiter` wait for the reported reset once a response's remaining budget is exhausted, including when a limit header is also present.
