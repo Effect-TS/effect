@@ -22,4 +22,20 @@ describe("Crypto", () => {
     expect(crypto.randomUUIDv7({ format })).type.toBe<Effect.Effect<string | Uint8Array, PlatformError.PlatformError>>()
     expect(crypto.randomUUIDv7).type.not.toBeCallableWith({ format: "base64" })
   })
+
+  it("randomUUIDv4 only promises bytes when the byte format is required", () => {
+    const options: { readonly format?: "bytes" | undefined } = {}
+    expect(crypto.randomUUIDv4(options)).type.toBe<Effect.Effect<string | Uint8Array, PlatformError.PlatformError>>()
+
+    expect(crypto.randomUUIDv4<"bytes">).type.toBeCallableWith({ format: "bytes" })
+    expect(crypto.randomUUIDv4<"bytes">).type.not.toBeCallableWith()
+  })
+
+  it("randomUUIDv7 only promises bytes when the byte format is required", () => {
+    const options: { readonly format?: "bytes" | undefined } = {}
+    expect(crypto.randomUUIDv7(options)).type.toBe<Effect.Effect<string | Uint8Array, PlatformError.PlatformError>>()
+
+    expect(crypto.randomUUIDv7<"bytes">).type.toBeCallableWith({ format: "bytes" })
+    expect(crypto.randomUUIDv7<"bytes">).type.not.toBeCallableWith()
+  })
 })
