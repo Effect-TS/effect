@@ -12,8 +12,43 @@
  * @since 4.0.0
  */
 
-/**
- * @stability experimental
- * @since 4.0.0
- */
-export * from "@effect/platform-node-shared/NodeDns"
+export type {
+  /**
+   * Options for the Node.js `Dns` service: name servers, timeout, and tries
+   * for record queries and reverse lookups.
+   *
+   * @stability experimental
+   * @category re-exports
+   * @since 4.0.0
+   */
+  Options
+} from "@effect/platform-node-shared/NodeDns"
+
+export {
+  /**
+   * Layer that provides the Node.js `Dns` service using the system resolver
+   * configuration.
+   *
+   * @stability experimental
+   * @category re-exports
+   * @since 4.0.0
+   */
+  layer,
+  /**
+   * Creates a layer that provides the Node.js `Dns` service with options read
+   * from configuration.
+   *
+   * @stability experimental
+   * @category re-exports
+   * @since 4.0.0
+   */
+  layerConfig,
+  /**
+   * Creates a Node.js `Dns` service whose resolver lives as long as the scope.
+   *
+   * @stability experimental
+   * @category re-exports
+   * @since 4.0.0
+   */
+  make
+} from "@effect/platform-node-shared/NodeDns"

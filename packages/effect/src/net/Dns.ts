@@ -688,6 +688,10 @@ const asciiName = /^[\w.-]+$/
  * are those of the PTR records at the address's `reverseName`, and failures of
  * that query are reported as failures of `reverse`.
  *
+ * Only `lookup` is required. Platforms that can resolve addresses but cannot
+ * query records, such as browsers, omit `resolve`; record queries, and reverse
+ * lookups without a `reverse` operation, then fail with `Unsupported`.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
@@ -697,7 +701,9 @@ export const make = (impl: {
     host: Host.DomainName,
     family: NetAddress.IpFamily | undefined
   ) => Effect.Effect<ReadonlyArray<NetAddress.IpAddress>, DnsError>
-  readonly resolve: (name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>
+  readonly resolve?:
+    | ((name: Host.DomainName, type: RecordType) => Effect.Effect<ReadonlyArray<DnsRecord>, DnsError>)
+    | undefined
   readonly reverse?:
     | ((address: NetAddress.IpAddress) => Effect.Effect<ReadonlyArray<string>, DnsError>)
     | undefined
@@ -705,9 +711,13 @@ export const make = (impl: {
   const inFamily = (family: NetAddress.IpFamily | undefined) => (address: NetAddress.IpAddress): boolean =>
     family === undefined || NetAddress.isFamily(address, family)
 
+  const resolveRecords = impl.resolve ??
+    ((name: Host.DomainName, type: RecordType) =>
+      Effect.fail(new DnsError({ reason: "Unsupported", method: "resolve", hostname: name, recordType: type })))
+
   const reverseNames = impl.reverse ??
     ((address: NetAddress.IpAddress) =>
-      impl.resolve(reverseName(address), "PTR").pipe(
+      resolveRecords(reverseName(address), "PTR").pipe(
         Effect.map(Arr.flatMap((record) => record._tag === "PTR" ? [record.host] : [])),
         Effect.mapError((error) =>
           new DnsError({
@@ -732,7 +742,7 @@ export const make = (impl: {
   return Dns.of({
     lookup,
     resolve: <T extends RecordType>(name: Host.DomainName, type: T) =>
-      impl.resolve(name, type).pipe(
+      resolveRecords(name, type).pipe(
         Effect.flatMap((records) =>
           Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
             onEmpty: () => notFound("resolve", name, type),
