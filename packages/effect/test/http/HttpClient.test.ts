@@ -1,6 +1,6 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
+import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
 import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
@@ -697,6 +697,53 @@ Missing key
         const response = yield* Fiber.join(fiber)
         strictEqual(response.status, 200)
         strictEqual(yield* Ref.get(attempts), 2)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("ignores stale remaining headers from out-of-order responses", () =>
+      Effect.gen(function*() {
+        const attempts = yield* Ref.make(0)
+        const releaseFirst = yield* Deferred.make<void>()
+        const client = HttpClient.make((request) =>
+          Effect.flatMap(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) => {
+              const response = (headers: Record<string, string> = {}) =>
+                HttpClientResponse.fromWeb(request, new Response(null, { status: 200, headers }))
+              if (attempt === 1) {
+                return Effect.as(
+                  Deferred.await(releaseFirst),
+                  response({ "ratelimit-remaining": "5", "ratelimit-reset-after": "60" })
+                )
+              }
+              return Effect.succeed(
+                attempt === 2
+                  ? response({ "ratelimit-remaining": "0", "ratelimit-reset-after": "60" })
+                  : response()
+              )
+            }
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "stale-remaining",
+            limit: 800,
+            window: "1 minute"
+          })
+        )
+
+        const first = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* client.get("http://test/")
+        yield* Deferred.succeed(releaseFirst, undefined)
+        yield* Fiber.join(first)
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* TestClock.adjust("59 seconds")
+        strictEqual(yield* Ref.get(attempts), 2)
+
+        yield* TestClock.adjust("1 second")
+        yield* Fiber.join(fiber)
+        strictEqual(yield* Ref.get(attempts), 3)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
     it.effect("inspects custom remaining and reset-after headers", () =>
