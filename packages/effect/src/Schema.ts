@@ -12024,16 +12024,48 @@ const inetAddressFamilyFromString = <A extends NetAddress_.InetAddress>(
         : Result_.fail(new NetAddress_.NetAddressError({ message: `expected ${expected}`, input }))
   )
 
+/**
+ * Type-level representation of {@link Port}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Port extends Int {
+  readonly "Rebuild": Port
+}
+
+/**
+ * Schema for TCP and UDP port numbers from 0 through 65535.
+ *
+ * **Details**
+ *
+ * Port 0 is accepted because it asks the operating system to choose a port
+ * when binding, and it matches the port range of `InetAddress` and `HostPort`.
+ * `Config.Port` accepts only 1 through 65535.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Port: Port = Int.check(isBetween({ minimum: 0, maximum: 65535 }, { expected: "a port number" }))
+
 // Arbitraries for network values generate structured parts and build the value
 // from them, mixing in well-known addresses so that refinements such as
 // loopback or multicast addresses can be generated.
 const netAddressArbitrary = <T, S extends Constraint>(
-  schema: () => S,
+  schema: S,
   decode: (value: S["Type"]) => T
 ) =>
-(): SchemaAST.Link => linkDecoding<T>()(schema(), SchemaGetter.transform(decode))
+(): SchemaAST.Link => linkDecoding<T>()(schema, SchemaGetter.transform(decode))
 
 const arbitraryInteger = (minimum: number, maximum: number) => Int.check(isBetween({ minimum, maximum }))
+
+const arbitraryOctet = arbitraryInteger(0, 0xff)
+
+const arbitraryUint16 = arbitraryInteger(0, 0xffff)
+
+const arbitraryUint32 = arbitraryInteger(0, 0xffffffff)
 
 const arbitraryIpv4Addresses = [
   "0.0.0.0",
@@ -12057,10 +12089,10 @@ const arbitraryIpv6Addresses = [
 ] as const
 
 const arbitraryIpv4 = netAddressArbitrary(
-  () => {
-    const octet = arbitraryInteger(0, 255)
-    return Union([Tuple([octet, octet, octet, octet]), Literals(arbitraryIpv4Addresses)])
-  },
+  Union([
+    Tuple([arbitraryOctet, arbitraryOctet, arbitraryOctet, arbitraryOctet]),
+    Literals(arbitraryIpv4Addresses)
+  ]),
   (value) =>
     typeof value === "string"
       ? Result_.getOrThrow(NetAddress_.ipv4FromString(value))
@@ -12068,10 +12100,19 @@ const arbitraryIpv4 = netAddressArbitrary(
 )
 
 const arbitraryIpv6 = netAddressArbitrary(
-  () => {
-    const word = arbitraryInteger(0, 0xffff)
-    return Union([Tuple([word, word, word, word, word, word, word, word]), Literals(arbitraryIpv6Addresses)])
-  },
+  Union([
+    Tuple([
+      arbitraryUint16,
+      arbitraryUint16,
+      arbitraryUint16,
+      arbitraryUint16,
+      arbitraryUint16,
+      arbitraryUint16,
+      arbitraryUint16,
+      arbitraryUint16
+    ]),
+    Literals(arbitraryIpv6Addresses)
+  ]),
   (value) =>
     Result_.getOrThrow(
       NetAddress_.ipv6FromString(typeof value === "string" ? value : value.map((word) => word.toString(16)).join(":"))
@@ -12079,10 +12120,10 @@ const arbitraryIpv6 = netAddressArbitrary(
 )
 
 const arbitraryMac = netAddressArbitrary(
-  () => {
-    const octet = arbitraryInteger(0, 255)
-    return Union([Tuple([octet, octet, octet, octet, octet, octet]), Literal("ff:ff:ff:ff:ff:ff")])
-  },
+  Union([
+    Tuple([arbitraryOctet, arbitraryOctet, arbitraryOctet, arbitraryOctet, arbitraryOctet, arbitraryOctet]),
+    Literal("ff:ff:ff:ff:ff:ff")
+  ]),
   (value) =>
     typeof value === "string"
       ? NetAddress_.macAddressFromStringUnsafe(value)
@@ -12095,12 +12136,11 @@ const arbitraryPrefix = <A extends NetAddress_.IpAddress, T>(
   make: (address: A, prefixLength: number) => T
 ) =>
   netAddressArbitrary(
-    () => Struct({ address, prefixLength: arbitraryInteger(0, maximum) }),
+    Struct({ address, prefixLength: arbitraryInteger(0, maximum) }),
     ({ address, prefixLength }) => make(address, prefixLength)
   )
 
-const arbitraryUnion = <T>(members: () => ReadonlyArray<Codec<T>>) =>
-  netAddressArbitrary(() => Union(members()), (value): T => value)
+const arbitraryUnion = <T>(members: ReadonlyArray<Codec<T>>) => netAddressArbitrary(Union(members), (value): T => value)
 
 /**
  * Type-level representation of {@link MacAddress}.
@@ -12269,7 +12309,7 @@ export interface IpAddress extends declare<NetAddress_.IpAddress> {
  */
 export const IpAddress: IpAddress = declare(NetAddress_.isIpAddress, {
   identifier: "IpAddress",
-  toCodecArbitrary: arbitraryUnion<NetAddress_.IpAddress>(() => [Ipv4Address, Ipv6Address]),
+  toCodecArbitrary: arbitraryUnion<NetAddress_.IpAddress>([Ipv4Address, Ipv6Address]),
   toCodecJson: netAddressJson(NetAddress_.ipFromString, NetAddress_.formatIp)
 })
 
@@ -13119,7 +13159,7 @@ export interface IpInterface extends declare<IpInterface_.IpInterface> {
  */
 export const IpInterface: IpInterface = declare(IpInterface_.isIpInterface, {
   identifier: "IpInterface",
-  toCodecArbitrary: arbitraryUnion<IpInterface_.IpInterface>(() => [Ipv4Interface, Ipv6Interface]),
+  toCodecArbitrary: arbitraryUnion<IpInterface_.IpInterface>([Ipv4Interface, Ipv6Interface]),
   toCodecJson: netAddressJson(IpInterface_.fromString, IpInterface_.format)
 })
 
@@ -13266,7 +13306,7 @@ export interface IpNetwork extends declare<IpNetwork_.IpNetwork> {
  */
 export const IpNetwork: IpNetwork = declare(IpNetwork_.isIpNetwork, {
   identifier: "IpNetwork",
-  toCodecArbitrary: arbitraryUnion<IpNetwork_.IpNetwork>(() => [Ipv4Network, Ipv6Network]),
+  toCodecArbitrary: arbitraryUnion<IpNetwork_.IpNetwork>([Ipv4Network, Ipv6Network]),
   toCodecJson: netAddressJson(IpNetwork_.fromString, IpNetwork_.format)
 })
 
@@ -13316,7 +13356,7 @@ export interface InetAddressV4 extends declare<NetAddress_.InetAddressV4> {
 export const InetAddressV4: InetAddressV4 = declare(NetAddress_.isInetAddressV4, {
   identifier: "InetAddressV4",
   toCodecArbitrary: netAddressArbitrary(
-    () => Struct({ address: Ipv4Address, port: Port }),
+    Struct({ address: Ipv4Address, port: Port }),
     ({ address, port }) => Result_.getOrThrow(NetAddress_.inetAddressV4(address, port))
   ),
   toCodecJson: netAddressJson(
@@ -13346,12 +13386,11 @@ export interface InetAddressV6 extends declare<NetAddress_.InetAddressV6> {
 export const InetAddressV6: InetAddressV6 = declare(NetAddress_.isInetAddressV6, {
   identifier: "InetAddressV6",
   toCodecArbitrary: netAddressArbitrary(
-    () =>
-      Struct({
-        address: Ipv6Address,
-        port: Port,
-        scopeId: Union([Literal(0), arbitraryInteger(1, 0xffffffff)])
-      }),
+    Struct({
+      address: Ipv6Address,
+      port: Port,
+      scopeId: Union([Literal(0), arbitraryInteger(1, 0xffffffff)])
+    }),
     ({ address, port, scopeId }) => Result_.getOrThrow(NetAddress_.inetAddressV6(address, port, { scopeId }))
   ),
   toCodecJson: netAddressJson(
@@ -13380,7 +13419,7 @@ export interface InetAddress extends declare<NetAddress_.InetAddress> {
  */
 export const InetAddress: InetAddress = declare(NetAddress_.isInetAddress, {
   identifier: "InetAddress",
-  toCodecArbitrary: arbitraryUnion<NetAddress_.InetAddress>(() => [InetAddressV4, InetAddressV6]),
+  toCodecArbitrary: arbitraryUnion<NetAddress_.InetAddress>([InetAddressV4, InetAddressV6]),
   toCodecJson: netAddressJson(NetAddress_.inetAddressFromString, NetAddress_.formatInet)
 })
 
@@ -13500,7 +13539,7 @@ export interface SocketAddress extends declare<NetAddress_.SocketAddress> {
  */
 export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress, {
   identifier: "SocketAddress",
-  toCodecArbitrary: arbitraryUnion<NetAddress_.SocketAddress>(() => [InetAddress, UnixPathAddress]),
+  toCodecArbitrary: arbitraryUnion<NetAddress_.SocketAddress>([InetAddress, UnixPathAddress]),
   toCodecJson: () =>
     link<NetAddress_.SocketAddress>()(Union([InetAddress, UnixPathAddress]), SchemaTransformation.passthrough())
 })
@@ -13526,15 +13565,14 @@ export interface DomainName extends declare<Host_.DomainName> {
 export const DomainName: DomainName = declare(Host_.isDomainName, {
   identifier: "DomainName",
   toCodecArbitrary: netAddressArbitrary(
-    () =>
-      Union([
-        Struct({
-          labels: ArraySchema(String.check(isPattern(/^[a-z0-9_](?:[a-z0-9-]{0,8}[a-z0-9])?$/))).check(isMaxLength(3)),
-          tld: String.check(isPattern(/^[a-z]{2,6}$/)),
-          absolute: Boolean
-        }),
-        Literal(".")
-      ]),
+    Union([
+      Struct({
+        labels: ArraySchema(String.check(isPattern(/^[a-z0-9_](?:[a-z0-9-]{0,8}[a-z0-9])?$/))).check(isMaxLength(3)),
+        tld: String.check(isPattern(/^[a-z]{2,6}$/)),
+        absolute: Boolean
+      }),
+      Literal(".")
+    ]),
     (value) =>
       Host_.domainNameFromStringUnsafe(
         typeof value === "string" ? value : `${[...value.labels, value.tld].join(".")}${value.absolute ? "." : ""}`
@@ -13590,12 +13628,11 @@ export interface Host extends declare<Host_.Host> {
 export const Host: Host = declare(Host_.isHost, {
   identifier: "Host",
   toCodecArbitrary: netAddressArbitrary(
-    () =>
-      Union([
-        IpAddress,
-        DomainName,
-        Struct({ address: Ipv6Address, zone: Union([Literals(["eth0", "en0"]), arbitraryInteger(1, 16)]) })
-      ]),
+    Union([
+      IpAddress,
+      DomainName,
+      Struct({ address: Ipv6Address, zone: Union([Literals(["eth0", "en0"]), arbitraryInteger(1, 16)]) })
+    ]),
     (value): Host_.Host =>
       typeof value === "string" || NetAddress_.isIpAddress(value)
         ? value
@@ -13653,7 +13690,7 @@ export interface HostPort extends declare<Host_.HostPort> {
 export const HostPort: HostPort = declare(Host_.isHostPort, {
   identifier: "HostPort",
   toCodecArbitrary: netAddressArbitrary(
-    () => Struct({ host: Host, port: Port }),
+    Struct({ host: Host, port: Port }),
     ({ host, port }) => Host_.hostPortUnsafe(host, port)
   ),
   toCodecJson: netAddressJson(Host_.hostPortFromString, Host_.formatHostPort)
@@ -13684,32 +13721,6 @@ export const HostPortFromString: HostPortFromString = netAddressFromString(
   Host_.formatHostPort,
   "HostPortFromString"
 )
-
-/**
- * Type-level representation of {@link Port}.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface Port extends Int {
-  readonly "Rebuild": Port
-}
-
-/**
- * Schema for TCP and UDP port numbers from 0 through 65535.
- *
- * **Details**
- *
- * Port 0 is accepted because it asks the operating system to choose a port
- * when binding, and it matches the port range of `InetAddress` and `HostPort`.
- * `Config.Port` accepts only 1 through 65535.
- *
- * @stability experimental
- * @category schemas
- * @since 4.0.0
- */
-export const Port: Port = Int.check(isBetween({ minimum: 0, maximum: 65535 }, { expected: "a port number" }))
 
 // -----------------------------------------------------------------------------
 // Duration schemas
@@ -13951,37 +13962,36 @@ export interface DnsRecordType extends Literals<ReadonlyArray<Dns_.RecordType>> 
 export const DnsRecordType: DnsRecordType = Literals(Dns_.recordTypes)
 
 // Field ranges and names are checked by `Dns.makeRecord` when decoding.
-const dnsRecordJson = () =>
-  TaggedUnion({
-    A: { address: Ipv4Address },
-    AAAA: { address: Ipv6Address },
-    CAA: { critical: Boolean, tag: String, value: String },
-    CNAME: { target: DomainName },
-    MX: { exchange: DomainName, priority: Int },
-    NAPTR: {
-      order: Int,
-      preference: Int,
-      flags: String,
-      service: String,
-      regexp: String,
-      replacement: DomainName
-    },
-    NS: { host: DomainName },
-    PTR: { host: DomainName },
-    SOA: {
-      primary: DomainName,
-      admin: String,
-      serial: Int,
-      refresh: Duration,
-      retry: Duration,
-      expire: Duration,
-      minimum: Duration
-    },
-    SRV: { target: DomainName, port: Int, priority: Int, weight: Int },
-    TXT: { chunks: NonEmptyArray(String) }
-  })
+const dnsRecordJson = TaggedUnion({
+  A: { address: Ipv4Address },
+  AAAA: { address: Ipv6Address },
+  CAA: { critical: Boolean, tag: String, value: String },
+  CNAME: { target: DomainName },
+  MX: { exchange: DomainName, priority: Int },
+  NAPTR: {
+    order: Int,
+    preference: Int,
+    flags: String,
+    service: String,
+    regexp: String,
+    replacement: DomainName
+  },
+  NS: { host: DomainName },
+  PTR: { host: DomainName },
+  SOA: {
+    primary: DomainName,
+    admin: String,
+    serial: Int,
+    refresh: Duration,
+    retry: Duration,
+    expire: Duration,
+    minimum: Duration
+  },
+  SRV: { target: DomainName, port: Int, priority: Int, weight: Int },
+  TXT: { chunks: NonEmptyArray(String) }
+})
 
-type DnsRecordJson = ReturnType<typeof dnsRecordJson>["Type"]
+type DnsRecordJson = typeof dnsRecordJson["Type"]
 
 /**
  * Type-level representation of {@link DnsRecord}.
@@ -14010,38 +14020,34 @@ export interface DnsRecord extends declare<Dns_.DnsRecord> {
 export const DnsRecord: DnsRecord = declare(Dns_.isDnsRecord, {
   identifier: "DnsRecord",
   toCodecArbitrary: netAddressArbitrary(
-    () => {
-      const uint16 = arbitraryInteger(0, 0xffff)
-      const uint32 = arbitraryInteger(0, 0xffffffff)
-      return TaggedUnion({
-        A: { address: Ipv4Address },
-        AAAA: { address: Ipv6Address },
-        CAA: { critical: Boolean, tag: Literals(["issue", "issuewild", "iodef"]), value: String },
-        CNAME: { target: DomainName },
-        MX: { exchange: DomainName, priority: uint16 },
-        NAPTR: {
-          order: uint16,
-          preference: uint16,
-          flags: String,
-          service: String,
-          regexp: String,
-          replacement: DomainName
-        },
-        NS: { host: DomainName },
-        PTR: { host: DomainName },
-        SOA: {
-          primary: DomainName,
-          admin: DomainName,
-          serial: uint32,
-          refresh: uint32,
-          retry: uint32,
-          expire: uint32,
-          minimum: uint32
-        },
-        SRV: { target: DomainName, port: uint16, priority: uint16, weight: uint16 },
-        TXT: { chunks: NonEmptyArray(String) }
-      })
-    },
+    TaggedUnion({
+      A: { address: Ipv4Address },
+      AAAA: { address: Ipv6Address },
+      CAA: { critical: Boolean, tag: Literals(["issue", "issuewild", "iodef"]), value: String },
+      CNAME: { target: DomainName },
+      MX: { exchange: DomainName, priority: arbitraryUint16 },
+      NAPTR: {
+        order: arbitraryUint16,
+        preference: arbitraryUint16,
+        flags: String,
+        service: String,
+        regexp: String,
+        replacement: DomainName
+      },
+      NS: { host: DomainName },
+      PTR: { host: DomainName },
+      SOA: {
+        primary: DomainName,
+        admin: DomainName,
+        serial: arbitraryUint32,
+        refresh: arbitraryUint32,
+        retry: arbitraryUint32,
+        expire: arbitraryUint32,
+        minimum: arbitraryUint32
+      },
+      SRV: { target: DomainName, port: arbitraryUint16, priority: arbitraryUint16, weight: arbitraryUint16 },
+      TXT: { chunks: NonEmptyArray(String) }
+    }),
     (value) =>
       Dns_.makeRecordUnsafe(
         value._tag,
@@ -14058,7 +14064,7 @@ export const DnsRecord: DnsRecord = declare(Dns_.isDnsRecord, {
   ),
   toCodecJson: () =>
     link<Dns_.DnsRecord>()(
-      dnsRecordJson(),
+      dnsRecordJson,
       SchemaTransformation.transformEffect<Dns_.DnsRecord, DnsRecordJson>({
         decode: (input, options) => {
           const { _tag, ...fields } = input
