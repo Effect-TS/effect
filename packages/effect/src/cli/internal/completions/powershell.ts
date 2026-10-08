@@ -17,14 +17,15 @@ import type * as Completions from "../../Completions.ts"
  * Encode a string as an ASCII-only PowerShell expression. Windows PowerShell
  * 5.1 reads a script without a BOM, and native command output, in the ANSI
  * code page, where UTF-8 bytes can decode to the typographic quotes PowerShell
- * also treats as string delimiters. Non-ASCII characters are therefore emitted
- * as `[char]` code units.
+ * also treats as string delimiters. Non-ASCII and control characters are
+ * therefore emitted as `[char]` code units.
  */
 const quotePs = (s: string): string => {
   const parts: Array<string> = []
   let literal = ""
-  for (const char of s.replace(/[\r\n]+/g, " ")) {
-    if (char.charCodeAt(0) < 0x80) {
+  for (const char of s) {
+    const code = char.charCodeAt(0)
+    if (code >= 0x20 && code < 0x80) {
       literal += char === "'" ? "''" : char
       continue
     }
@@ -67,31 +68,33 @@ const argumentEntry = (argument: Completions.ArgumentDescriptor): string =>
 
 const pushList = (lines: Array<string>, field: string, entries: ReadonlyArray<string>): void => {
   if (entries.length === 0) {
-    lines.push(`    ${field} = @()`)
+    lines.push(`  ${field} = @()`)
     return
   }
-  lines.push(`    ${field} = @(`)
+  lines.push(`  ${field} = @(`)
   for (const entry of entries) {
-    lines.push(`      ${entry}`)
+    lines.push(`    ${entry}`)
   }
-  lines.push(`    )`)
+  lines.push(`  )`)
 }
 
 /**
  * Emit one context per command, keyed by its space-joined subcommand path.
- * PowerShell hash literal keys compare case-insensitively, so a repeated or
- * case-variant path (e.g. a subcommand alias) is emitted only once.
+ * Subcommands are case-sensitive, so the contexts go in an ordinal hashtable
+ * rather than a hash literal, whose keys compare case-insensitively. A path
+ * repeated in a hand-built descriptor is emitted once.
  */
 const generateContexts = (
+  dataName: string,
   descriptor: Completions.CommandDescriptor,
   path: ReadonlyArray<string>,
   lines: Array<string>,
   seen: Set<string>
 ): void => {
   const key = path.join(" ")
-  if (seen.has(key.toLowerCase())) return
-  seen.add(key.toLowerCase())
-  lines.push(`  ${quotePs(key)} = @{`)
+  if (seen.has(key)) return
+  seen.add(key)
+  lines.push(`${dataName}[${quotePs(key)}] = @{`)
   pushList(
     lines,
     "subcommands",
@@ -101,9 +104,9 @@ const generateContexts = (
   )
   pushList(lines, "flags", descriptor.flags.map(flagEntry))
   pushList(lines, "arguments", descriptor.arguments.map(argumentEntry))
-  lines.push(`  }`)
+  lines.push(`}`)
   for (const sub of descriptor.subcommands) {
-    generateContexts(sub, [...path, sub.name], lines, seen)
+    generateContexts(dataName, sub, [...path, sub.name], lines, seen)
   }
 }
 
@@ -209,7 +212,12 @@ const completer = (dataName: string): string =>
       break
     }
 
-    if ($null -ne $expecting) { $expecting = $null; continue }
+    # A pending flag value is never an option or '--'.
+    $isOption = $word -match '^-.' -and $word -notmatch '^-(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$'
+    if ($null -ne $expecting) {
+      $expecting = $null
+      if (-not $isOption) { continue }
+    }
     if ($afterBoolean) {
       $afterBoolean = $false
       if ($booleanLiterals -ccontains $word) { continue }
@@ -217,7 +225,7 @@ const completer = (dataName: string): string =>
     if ($endOfOptions) { $position++; continue }
     if ($word -ceq '--') { $endOfOptions = $true; continue }
 
-    if ($word -match '^-.' -and $word -notmatch '^-(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$') {
+    if ($isOption) {
       $forms = @($word)
       $hasValue = $word.Contains('=')
       if ($hasValue) {
@@ -323,9 +331,8 @@ export const generate = (
   lines.push(`#   . <PATH>\\${executableName}-completion.ps1`)
   lines.push(`#`)
   lines.push(``)
-  lines.push(`${dataName} = @{`)
-  generateContexts(descriptor, [], lines, new Set())
-  lines.push(`}`)
+  lines.push(`${dataName} = [hashtable]::new([System.StringComparer]::Ordinal)`)
+  generateContexts(dataName, descriptor, [], lines, new Set())
   lines.push(``)
   lines.push(`Register-ArgumentCompleter -Native -CommandName ${quotePs(executableName)} -ScriptBlock {`)
   lines.push(completer(dataName))
