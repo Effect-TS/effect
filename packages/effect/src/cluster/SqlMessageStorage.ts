@@ -37,7 +37,7 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
-import { failOnMigrationDefect } from "./internal/migrations.ts"
+import { runMigrations } from "./internal/migrations.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -78,16 +78,14 @@ export const makeEncoded: (options?: {
   MessageStorage.Encoded,
   never,
   SqlClient.SqlClient | Crypto.Crypto
-> = (options) => Effect.andThen(Effect.orDie(runMigrations(options)), makeEncodedStorage(options))
+> = (options) => Effect.andThen(Effect.orDie(runMessageMigrations(options)), makeEncodedStorage(options))
 
 // Builds the encoded driver without issuing DDL; the tables must already exist.
-const makeEncodedStorage: (options?: {
-  readonly prefix?: string | undefined
-}) => Effect.Effect<
-  MessageStorage.Encoded,
-  never,
-  SqlClient.SqlClient | Crypto.Crypto
-> = Effect.fnUntraced(function*(options) {
+const makeEncodedStorage = Effect.fnUntraced(function*(
+  options: {
+    readonly prefix?: string | undefined
+  } | undefined
+) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const crypto = yield* Crypto.Crypto
   const prefix = options?.prefix ?? "cluster"
@@ -838,159 +836,7 @@ export const make: (options?: {
  */
 export const migrations = (options?: {
   readonly prefix?: string | undefined
-}): Migrator.Loader => makeMigrations(options)
-
-const runMigrations = (options?: {
-  readonly prefix?: string | undefined
-}): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  // Suspended because `layer` is built at module load, before the migrations
-  // below are defined.
-  Effect.suspend(() =>
-    Migrator.make({})({
-      loader: migrations(options),
-      table: `${options?.prefix ?? "cluster"}_migrations`
-    })
-  ).pipe(Effect.asVoid, failOnMigrationDefect)
-
-/**
- * Layer that runs the SQL message storage migrations without providing
- * storage.
- *
- * **When to use**
- *
- * Use when a deploy step should migrate the tables with a connection that can
- * create them, so the runtime can use `layerStorage` with a connection that
- * can only read and write rows.
- *
- * **Details**
- *
- * The migrations are recorded in `<prefix>_migrations`. Unlike `layer`, this
- * layer fails with migration errors instead of turning them into defects.
- *
- * **Gotchas**
- *
- * On PostgreSQL the migrations name an index after the prefix, so a
- * schema-qualified prefix such as `app.cluster` produces an invalid index
- * name. To use another schema, set the `search_path` of the database role
- * instead.
- *
- * @see {@link migrations} for the migration loader
- * @see {@link layerStorage} for the storage layer that does not run migrations
- *
- * @stability unstable
- * @category layers
- * @since 4.1.0
- */
-export const layerMigrations = (options: {
-  readonly prefix?: string | undefined
-}): Layer.Layer<never, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  Layer.effectDiscard(runMigrations(options))
-
-/**
- * Layer that provides SQL-backed `MessageStorage` without running migrations.
- *
- * **When to use**
- *
- * Use when the tables are migrated separately, for example by `layerMigrations`
- * in a deploy step, and the runtime connection cannot create tables.
- *
- * **Details**
- *
- * Like `layerWith`, this supplies `Snowflake.layerGenerator` internally.
- *
- * **Gotchas**
- *
- * This layer issues no DDL and does not check the schema at startup. Use
- * `Migrator.pending` with `migrations` if you want to check that the tables
- * are migrated.
- *
- * @see {@link layerMigrations} for the layer that runs the migrations
- * @see {@link layerWith} for a layer that runs the migrations first
- *
- * @stability unstable
- * @category layers
- * @since 4.1.0
- */
-export const layerStorage = (options: {
-  readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
-  Layer.effect(
-    MessageStorage.MessageStorage,
-    Effect.flatMap(makeEncodedStorage(options), MessageStorage.makeEncoded)
-  ).pipe(
-    Layer.provide(Snowflake.layerGenerator)
-  )
-
-/**
- * Layer that provides SQL-backed `MessageStorage` using a custom table prefix,
- * running the message storage migrations first.
- *
- * **Details**
- *
- * This is `layerStorage` with `layerMigrations` provided, except that
- * migration errors are defects.
- *
- * @see {@link layerMigrations} for running the migrations in a deploy step
- * @see {@link layerStorage} for a storage layer that does not run migrations
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerWith = (options: {
-  readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
-  layerStorage(options).pipe(
-    Layer.provide(Layer.effectDiscard(Effect.orDie(runMigrations(options))))
-  )
-
-/**
- * Layer that provides SQL-backed `MessageStorage` using the default table prefix
- * and the default snowflake generator.
- *
- * **When to use**
- *
- * Use when a cluster should persist mailbox messages and replies in SQL using
- * the default `cluster` table prefix and the standard snowflake generator.
- *
- * **Details**
- *
- * The layer runs the SQL migrations, provides `MessageStorage`, and supplies
- * `Snowflake.layerGenerator` internally. The connection needs permission to
- * create tables; on PostgreSQL the migrator also takes an exclusive lock on the
- * migrations table while it runs. Callers still provide
- * `SqlClient`, `ShardingConfig`, and `Crypto.Crypto`, which is used to hash
- * message deduplication keys that would overflow the fixed-width
- * `message_id` column.
- *
- * **Gotchas**
- *
- * This layer always uses the `cluster` table prefix. Use `layerWith` before
- * deployment if you need a different stable prefix, because changing prefixes
- * later points the runtime at a different set of tables.
- *
- * @see {@link layerWith} for the same SQL storage layer with a custom table prefix
- * @see {@link make} for the lower-level service constructor that uses an existing `Snowflake.Generator`
- * @see {@link layerMigrations} for running the migrations in a deploy step
- * @see {@link layerStorage} for a storage layer that does not run migrations
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layer: Layer.Layer<
-  MessageStorage.MessageStorage,
-  never,
-  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
-> = layerWith({})
-
-// -------------------------------------------------------------------------------------------------
-// internal
-// -------------------------------------------------------------------------------------------------
-
-const makeMigrations = (options?: {
-  readonly prefix?: string | undefined
-}) => {
+}): Migrator.Loader => {
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
   const messagesTable = table("messages")
@@ -1285,6 +1131,150 @@ const makeMigrations = (options?: {
     })
   })
 }
+
+const runMessageMigrations = (options?: {
+  readonly prefix?: string | undefined
+}): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
+  runMigrations({
+    loader: migrations(options),
+    table: `${options?.prefix ?? "cluster"}_migrations`
+  })
+
+/**
+ * Layer that runs the SQL message storage migrations without providing
+ * storage.
+ *
+ * **When to use**
+ *
+ * Use when a deploy step should migrate the tables with a connection that can
+ * create them, so the runtime can use `layerStorage` with a connection that
+ * can only read and write rows.
+ *
+ * **Details**
+ *
+ * The migrations are recorded in `<prefix>_migrations`. Unlike `layer`, this
+ * layer fails with migration errors instead of turning them into defects.
+ *
+ * **Gotchas**
+ *
+ * On PostgreSQL the migrations name an index after the prefix, so a
+ * schema-qualified prefix such as `app.cluster` produces an invalid index
+ * name. To use another schema, set the `search_path` of the database role
+ * instead.
+ *
+ * @see {@link migrations} for the migration loader
+ * @see {@link layerStorage} for the storage layer that does not run migrations
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerMigrations = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<never, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
+  Layer.effectDiscard(runMessageMigrations(options))
+
+/**
+ * Layer that provides SQL-backed `MessageStorage` without running migrations.
+ *
+ * **When to use**
+ *
+ * Use when the tables are migrated separately, for example by `layerMigrations`
+ * in a deploy step, and the runtime connection cannot create tables.
+ *
+ * **Details**
+ *
+ * Like `layerWith`, this supplies `Snowflake.layerGenerator` internally.
+ *
+ * **Gotchas**
+ *
+ * This layer issues no DDL and does not check the schema at startup. Use
+ * `Migrator.pending` with `migrations` if you want to check that the tables
+ * are migrated.
+ *
+ * @see {@link layerMigrations} for the layer that runs the migrations
+ * @see {@link layerWith} for a layer that runs the migrations first
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerStorage = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+  Layer.effect(
+    MessageStorage.MessageStorage,
+    Effect.flatMap(makeEncodedStorage(options), MessageStorage.makeEncoded)
+  ).pipe(
+    Layer.provide(Snowflake.layerGenerator)
+  )
+
+/**
+ * Layer that provides SQL-backed `MessageStorage` using a custom table prefix,
+ * running the message storage migrations first.
+ *
+ * **Details**
+ *
+ * This is `layerStorage` with `layerMigrations` provided, except that
+ * migration errors are defects.
+ *
+ * @see {@link layerMigrations} for running the migrations in a deploy step
+ * @see {@link layerStorage} for a storage layer that does not run migrations
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerWith = (options: {
+  readonly prefix?: string | undefined
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
+  layerStorage(options).pipe(
+    Layer.provide(Layer.orDie(layerMigrations(options)))
+  )
+
+/**
+ * Layer that provides SQL-backed `MessageStorage` using the default table prefix
+ * and the default snowflake generator.
+ *
+ * **When to use**
+ *
+ * Use when a cluster should persist mailbox messages and replies in SQL using
+ * the default `cluster` table prefix and the standard snowflake generator.
+ *
+ * **Details**
+ *
+ * The layer runs the SQL migrations, provides `MessageStorage`, and supplies
+ * `Snowflake.layerGenerator` internally. The connection needs permission to
+ * create tables; on PostgreSQL the migrator also takes an exclusive lock on the
+ * migrations table while it runs. Callers still provide
+ * `SqlClient`, `ShardingConfig`, and `Crypto.Crypto`, which is used to hash
+ * message deduplication keys that would overflow the fixed-width
+ * `message_id` column.
+ *
+ * **Gotchas**
+ *
+ * This layer always uses the `cluster` table prefix. Use `layerWith` before
+ * deployment if you need a different stable prefix, because changing prefixes
+ * later points the runtime at a different set of tables.
+ *
+ * @see {@link layerWith} for the same SQL storage layer with a custom table prefix
+ * @see {@link make} for the lower-level service constructor that uses an existing `Snowflake.Generator`
+ * @see {@link layerMigrations} for running the migrations in a deploy step
+ * @see {@link layerStorage} for a storage layer that does not run migrations
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer: Layer.Layer<
+  MessageStorage.MessageStorage,
+  never,
+  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
+> = layerWith({})
+
+// -------------------------------------------------------------------------------------------------
+// internal
+// -------------------------------------------------------------------------------------------------
 
 const messageKind = {
   "Request": 0,

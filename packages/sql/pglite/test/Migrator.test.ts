@@ -46,13 +46,11 @@ describe("PgliteMigrator", () => {
 })
 
 describe("Migrator.pending", () => {
-  const recordingLoader = Migrator.fromRecord({
+  const loader = Migrator.fromRecord({
     "1_first": Effect.void,
     "2_second": Effect.void,
     "3_third": Effect.void
   })
-  const ids = (migrations: ReadonlyArray<readonly [id: number, name: string, ...rest: Array<unknown>]>) =>
-    migrations.map(([id, name]) => [id, name])
   const tableExists = (table: string) =>
     Effect.gen(function*() {
       const sql = yield* SqlClient
@@ -65,9 +63,9 @@ describe("Migrator.pending", () => {
     it.effect("treats every migration as pending without creating a missing migrations table", () =>
       Effect.gen(function*() {
         const table = "pending_missing_migrations"
-        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+        const pending = yield* Migrator.pending({ loader, table })
 
-        assert.deepStrictEqual(ids(pending), [[1, "first"], [2, "second"], [3, "third"]])
+        assert.deepStrictEqual(pending, [[1, "first"], [2, "second"], [3, "third"]])
         assert.isFalse(yield* tableExists(table))
       }))
 
@@ -79,29 +77,29 @@ describe("Migrator.pending", () => {
           table
         })
 
-        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+        const pending = yield* Migrator.pending({ loader, table })
 
-        assert.deepStrictEqual(ids(pending), [[3, "third"]])
+        assert.deepStrictEqual(pending, [[3, "third"]])
       }))
 
     it.effect("returns nothing when every migration is applied", () =>
       Effect.gen(function*() {
         const table = "pending_complete_migrations"
-        yield* PgliteMigrator.run({ loader: recordingLoader, table })
+        yield* PgliteMigrator.run({ loader, table })
 
-        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+        const pending = yield* Migrator.pending({ loader, table })
 
-        assert.deepStrictEqual(ids(pending), [])
+        assert.deepStrictEqual(pending, [])
       }))
 
     it.effect("finds a migrations table whose name needs quoting", () =>
       Effect.gen(function*() {
         const table = "MixedCase_pending_migrations"
-        yield* PgliteMigrator.run({ loader: recordingLoader, table })
+        yield* PgliteMigrator.run({ loader, table })
 
-        const pending = yield* Migrator.pending({ loader: recordingLoader, table })
+        const pending = yield* Migrator.pending({ loader, table })
 
-        assert.deepStrictEqual(ids(pending), [])
+        assert.deepStrictEqual(pending, [])
       }))
 
     it.effect("does not lock the migrations table or run pending migrations", () =>
@@ -122,7 +120,7 @@ describe("Migrator.pending", () => {
             }),
             table
           })
-          assert.deepStrictEqual(ids(pending), [[2, "create_table"]])
+          assert.deepStrictEqual(pending, [[2, "create_table"]])
           return yield* sql<{ mode: string }>`
             SELECT mode FROM pg_locks
             WHERE relation = to_regclass(${table}) AND mode = 'AccessExclusiveLock'

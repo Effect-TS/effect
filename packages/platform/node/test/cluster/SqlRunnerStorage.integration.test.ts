@@ -533,7 +533,7 @@ const pendingRunnerMigrations = (prefix: string) =>
   Migrator.pending({
     loader: SqlRunnerStorage.migrations({ prefix }),
     table: `${prefix}_runner_migrations`
-  }).pipe(Effect.map((pending) => pending.map(([id, name]) => [id, name])))
+  })
 
 // The runner and lock tables as created before runner storage used a migrator.
 const createLegacyRunnerTables = Effect.fnUntraced(function*(prefix: string) {

@@ -28,7 +28,7 @@ import type { Connection } from "../sql/SqlConnection.ts"
 import { isSqlError, type SqlError } from "../sql/SqlError.ts"
 import type * as Statement from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
-import { failOnMigrationDefect } from "./internal/migrations.ts"
+import { runMigrations } from "./internal/migrations.ts"
 import { ResourceRef } from "./internal/resourceRef.ts"
 import { effectiveInterval } from "./internal/shardLock.ts"
 import * as RunnerStorage from "./RunnerStorage.ts"
@@ -691,7 +691,17 @@ export const make = (options: {
   RunnerStorage.RunnerStorage["Service"],
   SqlError,
   SqlClient.SqlClient | ShardingConfig.ShardingConfig | Scope.Scope
-> => Effect.andThen(runMigrationsOrDie(options), makeStorage(options))
+> =>
+  Effect.andThen(
+    // Keep the typed SqlError these constructors failed with before the runner
+    // tables moved into a migration.
+    Effect.catchTag(
+      runRunnerMigrations(options),
+      "MigrationError",
+      (error) => error.kind === "Failed" && isSqlError(error.cause) ? Effect.fail(error.cause) : Effect.die(error)
+    ),
+    makeStorage(options)
+  )
 
 /**
  * Migration loader for the SQL runner storage tables.
@@ -716,7 +726,7 @@ export const make = (options: {
 export const migrations = (options: {
   readonly prefix?: string | undefined
 }): Migrator.Loader => {
-  const prefix = options?.prefix ?? "cluster"
+  const prefix = options.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
   const runnersTable = table("runners")
   const locksTable = table("locks")
@@ -818,28 +828,15 @@ export const migrations = (options: {
   })
 }
 
-const runMigrations = (options: {
+const runRunnerMigrations = (options: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  Effect.asVoid(
-    Migrator.make({})({
-      loader: migrations(options),
-      // Separate from the message storage history, which already records ids
-      // that would hide runner migrations with the same ids.
-      table: `${options?.prefix ?? "cluster"}_runner_migrations`
-    })
-  ).pipe(failOnMigrationDefect)
-
-const runMigrationsOrDie = (options: {
-  readonly prefix?: string | undefined
-}): Effect.Effect<void, SqlError, SqlClient.SqlClient> =>
-  // Keep the typed SqlError these constructors failed with before the runner
-  // tables moved into a migration.
-  Effect.catchTag(
-    runMigrations(options),
-    "MigrationError",
-    (error) => error.kind === "Failed" && isSqlError(error.cause) ? Effect.fail(error.cause) : Effect.die(error)
-  )
+  runMigrations({
+    loader: migrations(options),
+    // Separate from the message storage history, which already records ids
+    // that would hide runner migrations with the same ids.
+    table: `${options.prefix ?? "cluster"}_runner_migrations`
+  })
 
 /**
  * Layer that runs the SQL runner storage migrations without providing storage.
@@ -865,7 +862,7 @@ const runMigrationsOrDie = (options: {
 export const layerMigrations = (options: {
   readonly prefix?: string | undefined
 }): Layer.Layer<never, SqlError | Migrator.MigrationError, SqlClient.SqlClient> =>
-  Layer.effectDiscard(runMigrations(options))
+  Layer.effectDiscard(runRunnerMigrations(options))
 
 /**
  * Layer that provides SQL-backed `RunnerStorage` without running migrations.
@@ -899,10 +896,9 @@ export const layerStorage = (options: {
  *
  * **Details**
  *
- * This is `layerStorage` with `layerMigrations` provided, except that
- * migration errors other than `SqlError` are defects. The connection needs
- * permission to create tables; on PostgreSQL the migrator also takes an
- * exclusive lock on the migrations table while it runs.
+ * Built from `make`, so the connection needs permission to create tables and,
+ * on PostgreSQL, the migrator takes an exclusive lock on the migrations table
+ * while it runs.
  *
  * @see {@link layerMigrations} for running the migrations in a deploy step
  * @see {@link layerStorage} for a storage layer that does not run migrations
@@ -914,9 +910,7 @@ export const layerStorage = (options: {
 export const layerWith = (options: {
   readonly prefix?: string | undefined
 }): Layer.Layer<RunnerStorage.RunnerStorage, SqlError, SqlClient.SqlClient | ShardingConfig.ShardingConfig> =>
-  layerStorage(options).pipe(
-    Layer.provide(Layer.effectDiscard(runMigrationsOrDie(options)))
-  )
+  Layer.effect(RunnerStorage.RunnerStorage)(make(options))
 
 /**
  * Layer that provides SQL-backed `RunnerStorage` using the default table prefix,

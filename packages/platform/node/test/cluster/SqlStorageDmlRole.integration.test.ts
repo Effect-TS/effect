@@ -67,13 +67,6 @@ const pendingIds = (loader: Migrator.Loader, table: string) =>
     Effect.map((pending) => pending.map(([id]) => id))
   )
 
-const assertAuthorizationError = (exit: Exit.Exit<unknown, unknown>) => {
-  assert(Exit.isFailure(exit))
-  const error = Cause.squash(exit.cause)
-  assert(SqlError.isSqlError(error), `expected a SqlError, got ${error}`)
-  assert.strictEqual(error.reason._tag, "AuthorizationError")
-}
-
 // A typed failure, not a defect.
 const assertFail = (exit: Exit.Exit<unknown, unknown>): unknown => {
   assert(Exit.isFailure(exit))
@@ -98,12 +91,8 @@ const assertFailedMigration = (error: unknown) => {
 // the migrator gets past its own table and fails inside a migration.
 const provisionHistoryTable = (table: string) =>
   Effect.gen(function*() {
+    yield* Migrator.make({})({ loader: Migrator.fromRecord({}), table })
     const sql = yield* SqlClient.SqlClient
-    yield* sql.unsafe(`CREATE TABLE ${table} (
-      migration_id integer primary key,
-      created_at timestamp with time zone not null default now(),
-      name text not null
-    )`)
     yield* sql.unsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${table} TO ${appRole}`)
   }).pipe(Effect.provide(OwnerClient))
 
@@ -190,16 +179,13 @@ describe("cluster SQL storage with a DML-only role", () => {
 
     it.effect("fails with an authorization error from the migrating layers", () =>
       Effect.gen(function*() {
-        assertAuthorizationError(
-          yield* asApp(Effect.scoped(Layer.build(SqlRunnerStorage.layerWith({ prefix: "denied" })))).pipe(
-            Effect.exit
-          )
-        )
-        assertAuthorizationError(
-          yield* asApp(Effect.scoped(Layer.build(SqlMessageStorage.layerWith({ prefix: "denied" })))).pipe(
-            Effect.exit
-          )
-        )
+        const runnerExit = yield* buildAsApp(SqlRunnerStorage.layerWith({ prefix: "denied" }))
+        assert(Exit.isFailure(runnerExit))
+        assertAuthorizationSqlError(Cause.squash(runnerExit.cause))
+
+        const messageExit = yield* buildAsApp(SqlMessageStorage.layerWith({ prefix: "denied" }))
+        assert(Exit.isFailure(messageExit))
+        assertAuthorizationSqlError(Cause.squash(messageExit.cause))
       }))
   })
 })

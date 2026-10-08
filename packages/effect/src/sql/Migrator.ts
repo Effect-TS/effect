@@ -233,37 +233,12 @@ export const make = <RD = never>({
         orElse: () => Effect.void
       })
 
-      const [latestMigrationId, current] = yield* Effect.all([
-        Effect.map(
-          latestMigration,
-          Option.match({
-            onNone: () => 0,
-            onSome: (_) => _.id
-          })
-        ),
-        loader
-      ])
-
-      if (new Set(current.map(([id]) => id)).size !== current.length) {
-        return yield* new MigrationError({
-          kind: "Duplicates",
-          message: "Found duplicate migration id's"
-        })
-      }
+      const [latestId, current] = yield* Effect.all([latestMigrationId(sql, table), loader])
 
       const required: Array<ResolvedMigration> = []
 
-      for (const resolved of current) {
-        const [currentId, currentName] = resolved
-        if (currentId <= latestMigrationId) {
-          continue
-        }
-
-        required.push([
-          currentId,
-          currentName,
-          yield* loadMigration(resolved)
-        ])
+      for (const resolved of yield* selectPending(current, latestId)) {
+        required.push([resolved[0], resolved[1], yield* loadMigration(resolved)])
       }
 
       if (required.length > 0) {
@@ -375,29 +350,31 @@ export const pending = <R = never>({
   Effect.gen(function*() {
     const sql = yield* Client.SqlClient
 
-    const tableExists = yield* migrationsTableExists(sql, table)
+    const latestId = (yield* migrationsTableExists(sql, table)) ? yield* latestMigrationId(sql, table) : 0
+    const pending = yield* selectPending(yield* loader, latestId)
+    return pending.map(([id, name]) => [id, name] as const)
+  })
 
-    const latestMigrationId = tableExists
-      ? yield* Effect.map(
-        sql<{ migration_id: number | string | null }>`SELECT MAX(migration_id) AS migration_id FROM ${sql(table)}`
-          .withoutTransform,
-        (rows) => Number(rows[0]?.migration_id ?? 0)
-      )
-      : 0
+const latestMigrationId = (sql: Client.SqlClient, table: string): Effect.Effect<number, SqlError> =>
+  Effect.map(
+    sql<{ migration_id: number | string | null }>`SELECT MAX(migration_id) AS migration_id FROM ${sql(table)}`
+      .withoutTransform,
+    (rows) => Number(rows[0]?.migration_id ?? 0)
+  )
 
-    const current = yield* loader
-
-    if (new Set(current.map(([id]) => id)).size !== current.length) {
-      return yield* new MigrationError({
+// A migration is pending when its id is greater than the latest recorded id.
+const selectPending = (
+  current: ReadonlyArray<ResolvedMigration>,
+  latestId: number
+): Effect.Effect<ReadonlyArray<ResolvedMigration>, MigrationError> =>
+  new Set(current.map(([id]) => id)).size !== current.length
+    ? Effect.fail(
+      new MigrationError({
         kind: "Duplicates",
         message: "Found duplicate migration id's"
       })
-    }
-
-    return current
-      .filter(([id]) => id > latestMigrationId)
-      .map(([id, name]) => [id, name] as const)
-  })
+    )
+    : Effect.succeed(current.filter(([id]) => id > latestId))
 
 // Checks the catalog rather than reading the table and catching the error, so a
 // missing table does not abort an enclosing PostgreSQL transaction.
@@ -408,9 +385,12 @@ const migrationsTableExists = (sql: Client.SqlClient, table: string): Effect.Eff
       mysql: () =>
         sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
       // `to_regclass` parses its argument as SQL and folds unquoted names to
-      // lower case, so pass the name quoted as statements quote it, without
-      // transforms, like the queries that read the table.
-      pg: () => sql`SELECT 1 AS found WHERE to_regclass(${sql`${sql(table)}`.compile(true)[0]}) IS NOT NULL`,
+      // lower case, so pass the name quoted as the statements that read the
+      // table quote it.
+      pg: () => {
+        const quotedTable = sql`${sql(table)}`.compile(true)[0]
+        return sql`SELECT 1 AS found WHERE to_regclass(${quotedTable}) IS NOT NULL`
+      },
       orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
     }).withoutTransform,
     (rows) => rows.length > 0

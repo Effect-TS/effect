@@ -743,7 +743,7 @@ const pendingMessageMigrations = (prefix: string) =>
   Migrator.pending({
     loader: SqlMessageStorage.migrations({ prefix }),
     table: `${prefix}_migrations`
-  }).pipe(Effect.map((pending) => pending.map(([id, name]) => [id, name])))
+  })
 
 const SqliteLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
