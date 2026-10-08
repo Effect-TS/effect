@@ -37,6 +37,7 @@
  * }).pipe(Effect.provide(Cloudflare.Workers.CronEventSourceLive)))
  * ```
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cloudflare from "alchemy/Cloudflare"
@@ -62,6 +63,7 @@ import type { Cluster } from "./internal/cluster.ts"
  * service (also as `CloudflareSharding`, for `CloudflareCluster.toLayer`), the
  * workflow engine, and the persisted queue factory.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -77,6 +79,7 @@ export type {
    * Reading them during plan evaluation throws a diagnostic; `provide` and
    * `wake` remain inert during planning.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -86,6 +89,7 @@ export type {
 /**
  * The entity definitions and handler layer the cluster is built from.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -163,6 +167,7 @@ const makeUnsafe = Effect.fnUntraced(function*(options: MakeOptions<any, any, an
  * (`Cloudflare.Workers.cron(expr, cluster.wake("name"))`), and the four
  * native namespace bindings as escape hatches.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

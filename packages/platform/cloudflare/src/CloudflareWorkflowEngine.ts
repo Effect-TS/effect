@@ -12,6 +12,7 @@
  * path is disabled, so even sub-minute sleeps persist a due row and arm the
  * alarm.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { Clock } from "effect/Clock"
@@ -35,6 +36,7 @@ import { decodeExit, decodeResult, encodeExit, encodePayload } from "./internal/
 /**
  * The workflow Durable Object namespace binding the engine is built from.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -53,6 +55,7 @@ export interface LayerOptions {
  * else it resolves the target execution's object with `getByName` and drives
  * it over the same-Worker binding.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -170,6 +173,7 @@ export const make = Effect.fnUntraced(function*(options: LayerOptions) {
  * `CloudflareCluster.layer` already includes this layer; use it directly only
  * when the workflow engine is needed without the rest of the cluster.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
