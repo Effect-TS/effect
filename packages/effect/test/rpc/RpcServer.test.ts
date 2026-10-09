@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Logger, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
+import {
+  Deferred,
+  Effect,
+  ErrorReporter,
+  Exit,
+  Fiber,
+  Layer,
+  Queue,
+  Ref,
+  Schema,
+  Scope,
+  Sink,
+  Stdio,
+  Stream
+} from "effect"
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
@@ -75,8 +89,8 @@ describe("RpcServer", () => {
       }))
   }
 
-  it.effect("logs an error naming the rpc when a success value fails to encode", () => {
-    const logs: Array<string> = []
+  it.effect("reports a success encode failure and names the rpc in the client defect", () => {
+    const reports: Array<string> = []
     return Effect.gen(function*() {
       const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }))
       const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
@@ -86,7 +100,7 @@ describe("RpcServer", () => {
         ))
       )
       const handler = HttpEffect.toWebHandler(httpEffect)
-      yield* Effect.promise(() =>
+      const body = yield* Effect.promise(() =>
         handler(
           new Request("http://test/rpc", {
             method: "POST",
@@ -95,11 +109,19 @@ describe("RpcServer", () => {
         ).then((response) => response.text())
       )
 
-      assert.isTrue(
-        logs.some((log) => log.includes("level=ERROR") && log.includes("getUserAge")),
-        JSON.stringify(logs)
+      const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
+      assert.strictEqual(response._tag, "Exit")
+      assert(response.exit._tag === "Failure")
+      assert.strictEqual(response.exit.cause[0]._tag, "Die")
+      const defect = JSON.stringify(response.exit.cause[0])
+      const identifiesFailure = (message: string) =>
+        message.includes("getUserAge") && message.includes("Expected number")
+      assert.deepStrictEqual(
+        { reported: reports.some(identifiesFailure), clientDefect: identifiesFailure(defect) },
+        { reported: true, clientDefect: true },
+        JSON.stringify({ reports, defect })
       )
-    }).pipe(Effect.provide(Logger.layer([Logger.map(Logger.formatLogFmt, (log) => logs.push(log))])))
+    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
   })
 
   it.effect("should drain the response when stdin ends during request startup", () =>
