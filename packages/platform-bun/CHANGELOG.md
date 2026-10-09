@@ -1,5 +1,18 @@
 # @effect/platform-bun
 
+## 0.91.3
+
+### Patch Changes
+
+- [#8588](https://github.com/Effect-TS/effect/pull/8588) [`7d64291`](https://github.com/Effect-TS/effect/commit/7d64291c1c5c2501003f6878090920055015bb04) Thanks @janecakemaster! - Close server WebSockets with code 1001 (Going Away) instead of 1011 when the handler fiber is only interrupted.
+
+- [#8950](https://github.com/Effect-TS/effect/pull/8950) [`21c2c2c`](https://github.com/Effect-TS/effect/commit/21c2c2c021086657f1f0257d5ab06d3ea56786bb) Thanks @Tanner-Scadden! - Fix Bun HTTP server WebSocket compression by preserving options and compressing outgoing messages.
+
+- Updated dependencies [[`97d80c9`](https://github.com/Effect-TS/effect/commit/97d80c91fef755966ffd0adbfb00b3eb4ae7eace), [`e730f59`](https://github.com/Effect-TS/effect/commit/e730f59d29db5f1e312be6476a95d07bcad45788), [`6bb0ea2`](https://github.com/Effect-TS/effect/commit/6bb0ea2de7b19d753bcb381ec767b09ce17639e6), [`05803bd`](https://github.com/Effect-TS/effect/commit/05803bd0219a71ea91d7e99e3d5a86b56f832c1c), [`0553466`](https://github.com/Effect-TS/effect/commit/0553466eee317bfa32c9769f6f861a7801520b69), [`2568ce7`](https://github.com/Effect-TS/effect/commit/2568ce7ad085cc3c887f415544491d6f8a390933), [`a7209e4`](https://github.com/Effect-TS/effect/commit/a7209e4f48c5dfe89417e073b19d1d5efc31cb4e), [`9c29d45`](https://github.com/Effect-TS/effect/commit/9c29d45d1df82929ba4709587291e6c7e90e198e), [`70d4bdf`](https://github.com/Effect-TS/effect/commit/70d4bdf32c23a3dfa2e508b36d3043641611fc04)]:
+  - effect@3.22.3
+  - @effect/rpc@0.76.3
+  - @effect/cluster@0.60.3
+
 ## 0.91.2
 
 ### Patch Changes
