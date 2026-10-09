@@ -1484,64 +1484,86 @@ export const make = (impl: Backend): Crypto => {
         return Effect.map(backend.hmac(algorithm, key, data), (actual) => equalBytes(actual, expected))
       }),
     pbkdf2: (options) =>
-      // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
-      // larger values instead of rejecting them. Node.js accepts only signed
-      // 32-bit iteration counts, so that is the portable limit.
-      isIntegerIn(options.iterations, 1, 0x7fff_ffff) && isIntegerIn(options.length, 1, 0x1fff_ffff)
-        ? backend.pbkdf2(options)
-        : failArgument("pbkdf2", "iterations must be between 1 and 2^31 - 1 and length between 1 and 2^29 - 1"),
+      owned(options, (options) =>
+        // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
+        // larger values instead of rejecting them. Node.js accepts only signed
+        // 32-bit iteration counts, so that is the portable limit.
+        isIntegerIn(options.iterations, 1, 0x7fff_ffff) && isIntegerIn(options.length, 1, 0x1fff_ffff)
+          ? backend.pbkdf2(options)
+          : failArgument("pbkdf2", "iterations must be between 1 and 2^31 - 1 and length between 1 and 2^29 - 1")),
     hkdf: (options) =>
-      isIntegerIn(options.length, 1, 255 * (hashLengths[options.hash] ?? 0))
-        ? backend.hkdf(options)
-        : failArgument("hkdf", "length must be between 1 and 255 times the hash output size"),
-    argon2id: (options) => {
-      const uint32 = (n: number) => isIntegerIn(n, 1, 0xffff_ffff)
-      return uint32(options.memoryKiB) && uint32(options.passes) && isIntegerIn(options.parallelism, 1, 0xff_ffff) &&
-          options.memoryKiB >= 8 * options.parallelism && isIntegerIn(options.length, 4, 0xffff_ffff) &&
-          options.salt.length >= 8
-        ? backend.argon2id(options)
-        : failArgument("argon2id", "invalid Argon2id memory, passes, parallelism, output length, or salt")
-    },
+      owned(options, (options) =>
+        isIntegerIn(options.length, 1, 255 * (hashLengths[options.hash] ?? 0))
+          ? backend.hkdf(options)
+          : failArgument("hkdf", "length must be between 1 and 255 times the hash output size")),
+    argon2id: (options) =>
+      owned(options, (options) => {
+        const uint32 = (n: number) => isIntegerIn(n, 1, 0xffff_ffff)
+        return uint32(options.memoryKiB) && uint32(options.passes) && isIntegerIn(options.parallelism, 1, 0xff_ffff) &&
+            options.memoryKiB >= 8 * options.parallelism && isIntegerIn(options.length, 4, 0xffff_ffff) &&
+            options.salt.length >= 8
+          ? backend.argon2id(options)
+          : failArgument("argon2id", "invalid Argon2id memory, passes, parallelism, output length, or salt")
+      }),
     xchacha20poly1305Encrypt: (options) =>
-      Effect.flatMap(
-        validateXChaCha("xchacha20poly1305Encrypt", options),
-        () => backend.xchacha20poly1305Encrypt(options)
-      ),
+      owned(options, (options) =>
+        Effect.flatMap(
+          validateXChaCha("xchacha20poly1305Encrypt", options),
+          () => backend.xchacha20poly1305Encrypt(options)
+        )),
     xchacha20poly1305Decrypt: (options) =>
-      Effect.flatMap(
-        validateXChaCha("xchacha20poly1305Decrypt", options),
-        () => backend.xchacha20poly1305Decrypt(options)
-      ),
+      owned(options, (options) =>
+        Effect.flatMap(
+          validateXChaCha("xchacha20poly1305Decrypt", options),
+          () => backend.xchacha20poly1305Decrypt(options)
+        )),
     importJwk: (jwk, algorithm, options) =>
-      Effect.flatMap(
-        validateKeyAlgorithm("importJwk", algorithm, false),
-        () => backend.importJwk(jwk, algorithm, options)
-      ),
+      owned(algorithm, (algorithm) =>
+        Effect.flatMap(
+          validateKeyAlgorithm("importJwk", algorithm, false),
+          () => backend.importJwk(jwk, algorithm, options)
+        )),
     exportJwk: backend.exportJwk,
     generateSecretKey: (algorithm, options) =>
-      Effect.flatMap(
-        validateKeyAlgorithm("generateSecretKey", algorithm, true),
-        () => backend.generateSecretKey(algorithm, options)
-      ),
+      owned(algorithm, (algorithm) =>
+        Effect.flatMap(
+          validateKeyAlgorithm("generateSecretKey", algorithm, true),
+          () => backend.generateSecretKey(algorithm, options)
+        )),
     generateKeyPair: (algorithm, options) =>
-      Effect.flatMap(
-        validateKeyAlgorithm("generateKeyPair", algorithm, true),
-        () => backend.generateKeyPair(algorithm, options)
-      ),
+      owned(algorithm, (algorithm) =>
+        Effect.flatMap(
+          validateKeyAlgorithm("generateKeyPair", algorithm, true),
+          () => backend.generateKeyPair(algorithm, options)
+        )),
     importKey: (format, data, algorithm, options) =>
-      Effect.flatMap(
-        validateKeyAlgorithm("importKey", algorithm, false),
-        () => backend.importKey(format, data, algorithm, options)
-      ),
+      owned(algorithm, (algorithm) =>
+        Effect.flatMap(
+          validateKeyAlgorithm("importKey", algorithm, false),
+          () => backend.importKey(format, data, algorithm, options)
+        )),
     exportKey: backend.exportKey,
     encrypt: (options, key, data) =>
-      Effect.flatMap(validateCipher("encrypt", options), () => backend.encrypt(options, key, data)),
+      owned(
+        options,
+        (options) => Effect.flatMap(validateCipher("encrypt", options), () => backend.encrypt(options, key, data))
+      ),
     decrypt: (options, key, data) =>
-      Effect.flatMap(validateCipher("decrypt", options), () => backend.decrypt(options, key, data)),
+      owned(
+        options,
+        (options) => Effect.flatMap(validateCipher("decrypt", options), () => backend.decrypt(options, key, data))
+      ),
     sign: (options, key, data) =>
-      Effect.flatMap(validateSigning("sign", options), () => backend.sign(options, key, data)),
+      owned(
+        options,
+        (options) => Effect.flatMap(validateSigning("sign", options), () => backend.sign(options, key, data))
+      ),
     verify: (options, key, signature, data) =>
-      Effect.flatMap(validateSigning("verify", options), () => backend.verify(options, key, signature, data)),
+      owned(
+        options,
+        (options) =>
+          Effect.flatMap(validateSigning("verify", options), () => backend.verify(options, key, signature, data))
+      ),
     deriveSharedSecret: (privateKey, publicKey) => {
       const algorithm = privateKey.algorithm
       if (
@@ -1627,6 +1649,15 @@ const failArgument = (method: string, description: string): Effect.Effect<never,
   Effect.fail(PlatformError.badArgument({ module: "Crypto", method, description }))
 
 const isIntegerIn = (n: number, min: number, max: number): boolean => Number.isSafeInteger(n) && n >= min && n <= max
+
+// Validates and runs an operation on a shallow copy of its options taken when
+// the effect starts, so a caller that changes the options object afterwards
+// cannot alter or bypass the validated values. Backends copy byte fields
+// before their first asynchronous step.
+const owned = <O extends object, A>(
+  options: O,
+  f: (options: O) => Effect.Effect<A, PlatformError.PlatformError>
+): Effect.Effect<A, PlatformError.PlatformError> => Effect.suspend(() => f({ ...options }))
 
 const byteOperations = [
   "digest",
