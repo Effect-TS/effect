@@ -1094,6 +1094,54 @@ describe("Sharding shutdown drain", () => {
         assert.isNull(harness.closeFiber.unsafePoll())
       }).pipe(Effect.ensuring(harness.cleanup))
     }), 30_000)
+
+  it.effect("retries the shard lock release after a failed attempt", () =>
+    Effect.gen(function*() {
+      const entityTerminationTimeout = 2000
+      const harness = yield* makeDrainHarness({
+        shardLockExpiration,
+        shardLockRefreshInterval,
+        entityTerminationTimeout,
+        uninterruptible: true,
+        storage: { releaseAllFailures: 1 }
+      })
+      yield* Effect.gen(function*() {
+        const shutdownAt = yield* harness.shutdown
+        const deadline = shutdownAt + entityTerminationTimeout + shardLockRefreshInterval
+        yield* harness.advanceTo(deadline)
+        assert.strictEqual(harness.storageState.releaseAllFailures, 0)
+        assert.strictEqual(harness.releasedCount(), 0)
+
+        // the failed release is retried on the next refresh tick
+        yield* harness.advanceTo(deadline + shardLockRefreshInterval)
+        assert.isAbove(harness.releasedCount(), 0)
+
+        yield* harness.advanceTo(deadline + shardLockExpiration)
+        assert.isAtMost(harness.lastRefreshAt(), deadline)
+      }).pipe(Effect.ensuring(harness.cleanup))
+    }), 30_000)
+
+  it.effect("stops singletons when the drain window expires", () =>
+    Effect.gen(function*() {
+      const entityTerminationTimeout = 2000
+      const harness = yield* makeDrainHarness({
+        shardLockExpiration,
+        shardLockRefreshInterval,
+        entityTerminationTimeout,
+        uninterruptible: true,
+        // shard assignments do not observe the shutdown before the deadline
+        storage: { keepRunnerOnUnregister: true },
+        singleton: true
+      })
+      yield* Effect.gen(function*() {
+        assert.isTrue(harness.singleton.started)
+        const shutdownAt = yield* harness.shutdown
+        yield* harness.advanceTo(shutdownAt + entityTerminationTimeout + shardLockRefreshInterval)
+
+        assert.isAbove(harness.releasedCount(), 0)
+        assert.isTrue(harness.singleton.interrupted)
+      }).pipe(Effect.ensuring(harness.cleanup))
+    }), 30_000)
 })
 
 const DrainEntity = Entity.make("DrainEntity", [
@@ -1105,8 +1153,10 @@ const makeDrainHarness = Effect.fnUntraced(function*(options: {
   readonly shardLockRefreshInterval: number
   readonly entityTerminationTimeout: number
   readonly uninterruptible: boolean
+  readonly storage?: Partial<FailoverStorageState>
+  readonly singleton?: boolean
 }) {
-  const storageState = makeFailoverStorageState()
+  const storageState = makeFailoverStorageState(options.storage)
   const latch = yield* Effect.makeLatch(false)
   const handler = { started: false, interrupted: false }
   const entityLayer = DrainEntity.toLayer({
@@ -1151,6 +1201,27 @@ const makeDrainHarness = Effect.fnUntraced(function*(options: {
     yield* TestClock.adjust(100)
   }
 
+  // the singleton outlives the sharding scope, like one whose finalizer is
+  // stuck behind the entity drain
+  const singletonScope = yield* Scope.make()
+  const singleton = { started: false, interrupted: false }
+  if (options.singleton) {
+    yield* sharding.registerSingleton(
+      "DrainSingleton",
+      Effect.sync(() => {
+        singleton.started = true
+      }).pipe(
+        Effect.andThen(Effect.never),
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            singleton.interrupted = true
+          })
+        )
+      )
+    ).pipe(Scope.extend(singletonScope))
+    yield* TestClock.adjust(1)
+  }
+
   const makeClient = yield* DrainEntity.client.pipe(Effect.provide(context))
   yield* makeClient("1").Drain().pipe(Effect.ignore, Effect.fork)
   while (!handler.started) {
@@ -1176,6 +1247,7 @@ const makeDrainHarness = Effect.fnUntraced(function*(options: {
     storageState,
     latch,
     handler,
+    singleton,
     advanceTo,
     awaitShutdown,
     get closeFiber() {
@@ -1187,7 +1259,9 @@ const makeDrainHarness = Effect.fnUntraced(function*(options: {
       yield* TestClock.adjust(1)
       return now
     }),
-    releasedCount: () => storageState.releaseCalls.filter(isShard).length + storageState.releaseAllCalls.length,
+    releasedCount: () =>
+      storageState.releaseCalls.filter(isShard).length +
+      storageState.releaseAllCalls.filter((call) => call.completed).length,
     lastRefreshAt: () =>
       Math.max(
         ...storageState.refreshCalls.filter((call) => call.shards.some(isShard)).map((call) => call.at)
@@ -1198,6 +1272,7 @@ const makeDrainHarness = Effect.fnUntraced(function*(options: {
         closeFiber = yield* Effect.forkDaemon(Scope.close(scope, Exit.void))
       }
       yield* awaitShutdown
+      yield* Scope.close(singletonScope, Exit.void)
     })
   }
 })
@@ -1206,7 +1281,9 @@ interface FailoverStorageState {
   blackholed: boolean
   assignSelf: boolean
   otherRunnerHealthy: boolean
+  keepRunnerOnUnregister: boolean
   releaseAllDuration: number
+  releaseAllFailures: number
   runner: Runner.Runner | undefined
   readonly acquireCalls: Array<{
     readonly shards: ReadonlyArray<ShardId.ShardId>
@@ -1226,7 +1303,9 @@ const makeFailoverStorageState = (
   blackholed: false,
   assignSelf: true,
   otherRunnerHealthy: false,
+  keepRunnerOnUnregister: false,
   releaseAllDuration: 0,
+  releaseAllFailures: 0,
   runner: undefined,
   acquireCalls: [],
   refreshCalls: [],
@@ -1249,7 +1328,7 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
       }),
     unregister: () =>
       Effect.sync(() => {
-        state.runner = undefined
+        if (!state.keepRunnerOnUnregister) state.runner = undefined
       }),
     setRunnerHealth: () => Effect.void,
     acquire: (_address, shardIds) =>
@@ -1278,6 +1357,10 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
       Effect.suspend(() => {
         const call = { completed: false }
         state.releaseAllCalls.push(call)
+        if (state.releaseAllFailures > 0) {
+          state.releaseAllFailures--
+          return Effect.fail(new ClusterError.PersistenceError({ cause: "releaseAll failed" }))
+        }
         return Effect.andThen(
           Effect.sleep(state.releaseAllDuration),
           Effect.sync(() => {
