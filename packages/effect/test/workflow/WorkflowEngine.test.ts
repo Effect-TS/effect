@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/workflow"
 
@@ -220,6 +220,63 @@ describe("WorkflowEngine", () => {
         )
       }))
   }
+
+  it.effect("layerMemory reruns an activity interrupted by replay preemption", () =>
+    Effect.gen(function*() {
+      const Probe = Workflow.make("WorkflowEngine/PreemptedActivity", {
+        payload: { id: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ id }) => id
+      })
+      let executions = 0
+      let writes = 0
+      const writing = yield* Deferred.make<void>()
+      const written = yield* Deferred.make<void>()
+      const layer = Probe.toLayer(Effect.fnUntraced(function*() {
+        executions++
+        if (executions === 2) {
+          // Advance once the clock result is stored, but before its wake-up preempts this replay.
+          const engine = yield* WorkflowEngine.WorkflowEngine
+          const room = DurableDeferred.make("DurableClock/room")
+          while (Option.isNone(yield* engine.deferredResult(room))) yield* Effect.yieldNow
+        }
+        yield* DurableClock.sleep({ name: "room", duration: "5 seconds", inMemoryThreshold: 0 })
+        yield* Activity.make({
+          name: "write",
+          execute: Effect.gen(function*() {
+            writes++
+            yield* Deferred.succeed(writing, undefined)
+            yield* Deferred.await(written)
+          })
+        })
+        return "ended"
+      })).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Probe.execute({ id: "probe" }, { discard: true })
+        let polled = yield* Probe.poll(executionId)
+        while (Option.isNone(polled) || polled.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          polled = yield* Probe.poll(executionId)
+        }
+        // Start a replay as the clock comes due; its delayed wake-up interrupts the activity.
+        yield* Probe.resume(executionId)
+        yield* TestClock.adjust("5 seconds")
+        yield* Deferred.await(writing)
+        // The workflow fiber increments executions.
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (executions < 3) yield* Effect.yieldNow
+        yield* Deferred.succeed(written, undefined)
+        polled = yield* Probe.poll(executionId)
+        while (Option.isNone(polled) || polled.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          polled = yield* Probe.poll(executionId)
+        }
+        assert.deepStrictEqual(polled.value.exit, Exit.succeed("ended"))
+        assert.strictEqual(executions, 3)
+        assert.strictEqual(writes, 2)
+      }).pipe(Effect.provide(layer))
+    }))
 
   it.effect("layerMemory resumes when children complete during activity cleanup", () =>
     Effect.gen(function*() {
