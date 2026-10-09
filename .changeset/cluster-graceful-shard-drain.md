@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Release cluster shards one at a time on shutdown so live runners can take them over before the final `releaseAll`, and add `Sharding.drain` to hand every shard off while the runner keeps running. Releasing a shard no longer waits forever on an entity whose id is also active on another shard.
+Hand cluster shards off one at a time when `Sharding` shuts down, after their entities and singletons have stopped, so live runners can take them over without waiting for the final `releaseAll`. A runner that is shutting down no longer acquires new shards, and releasing a shard no longer waits forever on an entity whose id is also active on another shard.
