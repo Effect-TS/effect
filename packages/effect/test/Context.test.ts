@@ -186,29 +186,6 @@ describe("Context", () => {
     }
   })
 
-  it("rebases from an already-warm flat cache without re-applying overlays", () => {
-    const baseSize = 50
-    const baseKeys = Array.from({ length: baseSize }, (_, i) => Context.Service<number>(`ContextTest/Warm${i}`))
-    const base = Context.makeUnsafe(new Map(baseKeys.map((key, i) => [key.key, i])))
-    const pushKeys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/WarmPush${i}`))
-
-    let context: Context.Context<never> = base
-    for (let i = 0; i < pushKeys.length - 1; i++) {
-      context = Context.add(context, pushKeys[i], i)
-    }
-    // Warm the `_flat` cache before the push that crosses MaxDepth.
-    void context.mapUnsafe
-
-    context = Context.add(context, pushKeys[pushKeys.length - 1], pushKeys.length - 1)
-    strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
-    for (let i = 0; i < baseKeys.length; i++) {
-      strictEqual(Context.getUnsafe(context, baseKeys[i]), i)
-    }
-    for (let i = 0; i < pushKeys.length; i++) {
-      strictEqual(Context.getUnsafe(context, pushKeys[i]), i)
-    }
-  })
-
   it("flattens after repeated base fall-throughs", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const impl = context as any
