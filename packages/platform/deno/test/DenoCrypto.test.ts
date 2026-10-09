@@ -288,10 +288,11 @@ it.effect("preserves synchronous and asynchronous primitive failures as platform
         assert.strictEqual(error.reason._tag, "Unknown")
         assert.strictEqual(error.reason.method, method)
         assert.strictEqual(error.reason.module, "Crypto")
-        assert.strictEqual(
-          mode === "missing" ? error.reason.cause instanceof TypeError : error.reason.cause === failure,
-          true
-        )
+        if (mode === "missing") {
+          assert.strictEqual(error.reason.description, "SubtleCrypto is not available")
+        } else {
+          assert.strictEqual(error.reason.cause, failure)
+        }
       }
     }
   }))

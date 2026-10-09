@@ -156,6 +156,15 @@ describe("Crypto", () => {
       assert.strictEqual(yield* crypto.randomIntBetween(1, 3), 1)
     }))
 
+  it.effect("maps draws exactly onto the widest range below 53 bits", () =>
+    Effect.gen(function*() {
+      const max = Number.MAX_SAFE_INTEGER - 1
+      assert.strictEqual(yield* makeCrypto(0n).randomIntBetween(0, max), 0)
+      assert.strictEqual(yield* makeCrypto((1n << 53n) - 2n).randomIntBetween(0, max), max)
+      const crypto = makeSequence([(1n << 53n) - 1n, 5n])
+      assert.strictEqual(yield* crypto.randomIntBetween(0, max), 5)
+    }))
+
   it.effect("preserves adjacent integers throughout ranges wider than 53 bits", () =>
     Effect.gen(function*() {
       for (
@@ -302,7 +311,7 @@ describe("Crypto", () => {
       })
       const bytes = new Uint8Array()
       for (const invalid of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
-        for (const [iterations, length] of [[invalid, 32], [1, invalid]]) {
+        for (const [iterations, length] of [[invalid, 32], [1, invalid], [2 ** 32, 32], [1, 2 ** 29]]) {
           const error = yield* Effect.flip(
             Crypto.pbkdf2("SHA-256", bytes, bytes, iterations, length).pipe(
               Effect.provideService(Crypto.Crypto, crypto)
@@ -313,6 +322,15 @@ describe("Crypto", () => {
           assert.strictEqual(error.reason.module, "Crypto")
         }
       }
+    }))
+
+  it.effect("reports a missing SubtleCrypto backend as a PlatformError", () =>
+    Effect.gen(function*() {
+      const subtle = Crypto.makeSubtle(undefined as unknown as SubtleCrypto)
+      const error = yield* Effect.flip(subtle.generateSecretKey({ name: "AES-GCM", length: 256 }))
+      assert.instanceOf(error.reason, PlatformError.SystemError)
+      assert.strictEqual(error.reason.method, "generateSecretKey")
+      assert.strictEqual(error.reason.description, "SubtleCrypto is not available")
     }))
 
   it("uses the module path for its type ID", () => {

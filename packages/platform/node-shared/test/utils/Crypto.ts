@@ -228,6 +228,12 @@ export const cryptoTests = (layer: Layer.Layer<Crypto.Crypto>, md5: boolean, nat
         const signature = yield* Crypto.sign({ name: "HMAC" }, key, data)
         assert.strictEqual(yield* Crypto.verify({ name: "HMAC" }, verifier, signature, data), true)
         assert.strictEqual((yield* Effect.flip(Crypto.sign({ name: "HMAC" }, verifier, data))).reason.method, "sign")
+        const signer = yield* Crypto.generateSecretKey({ name: "HMAC", hash: "SHA-256" }, {
+          extractable: true,
+          usages: ["sign"]
+        })
+        const restored = yield* Crypto.importJwk(yield* Crypto.exportJwk(signer), { name: "HMAC", hash: "SHA-256" })
+        assert.deepStrictEqual(restored.usages, ["sign"])
         for (const invalid of [{ ...jwk, alg: "HS512" }, { kty: "oct", k: "not-base64url!" }]) {
           const error = yield* Effect.flip(Crypto.importJwk(invalid, { name: "HMAC", hash: "SHA-256" }))
           assert.strictEqual(error.reason.method, "importJwk")

@@ -47,10 +47,24 @@ export const hchacha20 = (key: Uint8Array, nonce: Uint8Array): Uint8Array => {
   return output
 }
 
+let nativeAvailable: boolean | undefined
+
+// Copies into a fresh array so no plaintext lands in Node's shared Buffer pool.
+const concat = (parts: ReadonlyArray<Uint8Array>): Uint8Array => {
+  const output = new Uint8Array(parts.reduce((length, part) => length + part.length, 0))
+  let offset = 0
+  for (const part of parts) {
+    output.set(part, offset)
+    offset += part.length
+  }
+  return output
+}
+
 const perform = (decrypt: boolean, options: Crypto.XChaCha20Poly1305Options) =>
   Effect.try({
     try: () => {
-      if (!NodeCrypto.getCiphers().includes("chacha20-poly1305")) {
+      nativeAvailable ??= NodeCrypto.getCiphers().includes("chacha20-poly1305")
+      if (!nativeAvailable) {
         throw new Error("Native ChaCha20-Poly1305 is unavailable")
       }
       const key = hchacha20(options.key, options.nonce.subarray(0, 16))
@@ -66,11 +80,11 @@ const perform = (decrypt: boolean, options: Crypto.XChaCha20Poly1305Options) =>
           cipher.setAuthTag(options.data.subarray(options.data.length - 16))
           prefix = cipher.update(options.data.subarray(0, options.data.length - 16))
           suffix = cipher.final()
-          return Uint8Array.from(Buffer.concat([prefix, suffix]))
+          return concat([prefix, suffix])
         }
         const cipher = NodeCrypto.createCipheriv("chacha20-poly1305", key, iv, { authTagLength: 16 })
         if (options.additionalData !== undefined) cipher.setAAD(options.additionalData)
-        return Uint8Array.from(Buffer.concat([cipher.update(options.data), cipher.final(), cipher.getAuthTag()]))
+        return concat([cipher.update(options.data), cipher.final(), cipher.getAuthTag()])
       } finally {
         key.fill(0)
         prefix?.fill(0)
