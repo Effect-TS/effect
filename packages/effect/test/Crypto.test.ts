@@ -70,9 +70,9 @@ describe("Crypto", () => {
       assert.strictEqual(yield* Crypto.randomBetween(10, 20), 17.5)
       assert.strictEqual(yield* Crypto.randomIntBetween(1, 6), 5)
       assert.deepStrictEqual(yield* Crypto.randomShuffle(new Set([1, 2, 3])), [1, 2, 3])
-      assert.strictEqual(yield* Crypto.randomUUIDv4, "00010203-0405-4607-8809-0a0b0c0d0e0f")
+      assert.strictEqual(yield* Crypto.randomUUIDv4(), "00010203-0405-4607-8809-0a0b0c0d0e0f")
       yield* TestClock.setTime(0x0123456789ab)
-      assert.strictEqual(yield* Crypto.randomUUIDv7, "01234567-89ab-7607-8809-0a0b0c0d0e0f")
+      assert.strictEqual(yield* Crypto.randomUUIDv7(), "01234567-89ab-7607-8809-0a0b0c0d0e0f")
       assert.strictEqual(yield* Crypto.randomULID, "014D2PF2DB000G40R40M30E209")
     }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
 
@@ -118,8 +118,8 @@ describe("Crypto", () => {
           ]
         > = [
           ["randomBytes", Crypto.randomBytes(1)],
-          ["randomUUIDv4", Crypto.randomUUIDv4],
-          ["randomUUIDv7", Crypto.randomUUIDv7],
+          ["randomUUIDv4", Crypto.randomUUIDv4()],
+          ["randomUUIDv7", Crypto.randomUUIDv7()],
           ["randomULID", Crypto.randomULID]
         ]
         for (const [method, program] of operations) {
