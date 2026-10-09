@@ -51,31 +51,43 @@ export type Ipv4Interface = IpInterface<NetAddress.Ipv4Address>
 export type Ipv6Interface = IpInterface<NetAddress.Ipv6Address>
 
 /**
- * An interface address or a string to parse as one.
+ * An interface address, or a string or an address and prefix length to
+ * convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type IpInterfaceInput = IpInterface | string
+export type IpInterfaceInput =
+  | IpInterface
+  | string
+  | { readonly address: NetAddress.IpAddressInput; readonly prefixLength: number }
 
 /**
- * An IPv4 interface address or a string to parse as one.
+ * An IPv4 interface address, or a string or an IPv4 address and prefix length
+ * to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv4InterfaceInput = Ipv4Interface | string
+export type Ipv4InterfaceInput =
+  | Ipv4Interface
+  | string
+  | { readonly address: NetAddress.Ipv4AddressInput; readonly prefixLength: number }
 
 /**
- * An IPv6 interface address or a string to parse as one.
+ * An IPv6 interface address, or a string or an IPv6 address and prefix length
+ * to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv6InterfaceInput = Ipv6Interface | string
+export type Ipv6InterfaceInput =
+  | Ipv6Interface
+  | string
+  | { readonly address: NetAddress.Ipv6AddressInput; readonly prefixLength: number }
 
 /**
  * Companion types for parsing IP interface addresses.
@@ -258,10 +270,18 @@ export const fromString = (
         make(address, parts.prefixLength ?? NetAddress.width(address)))
   )
 
+const fromParts = <I, A extends NetAddress.IpAddress>(
+  input: { readonly address: I; readonly prefixLength: number },
+  toAddress: (input: I) => Result.Result<A, NetAddress.NetAddressError>
+): Result.Result<IpInterface<A>, NetAddress.NetAddressError> =>
+  hasProperty(input, "address") && hasProperty(input, "prefixLength")
+    ? Result.flatMap(toAddress(input.address), (address) => make(address, input.prefixLength))
+    : interfaceError(input, "expected an address and prefix length")
+
 /**
  * Converts an `Ipv4InterfaceInput` to an IPv4 interface address, parsing
- * strings like `ipv4FromString` with the given options and returning interface
- * addresses unchanged.
+ * strings like `ipv4FromString` with the given options, converting parts like
+ * `make`, and returning interface addresses unchanged.
  *
  * @stability unstable
  * @category constructors
@@ -270,13 +290,16 @@ export const fromString = (
 export const ipv4FromInput = (
   input: Ipv4InterfaceInput,
   options?: IpInterface.ParseOptions
-): Result.Result<Ipv4Interface, NetAddress.NetAddressError> =>
-  isIpv4Interface(input) ? Result.succeed(input) : ipv4FromString(input, options)
+): Result.Result<Ipv4Interface, NetAddress.NetAddressError> => {
+  if (isIpv4Interface(input)) return Result.succeed(input)
+  if (typeof input === "string") return ipv4FromString(input, options)
+  return fromParts(input, NetAddress.ipv4FromInput)
+}
 
 /**
  * Converts an `Ipv6InterfaceInput` to an IPv6 interface address, parsing
- * strings like `ipv6FromString` with the given options and returning interface
- * addresses unchanged.
+ * strings like `ipv6FromString` with the given options, converting parts like
+ * `make`, and returning interface addresses unchanged.
  *
  * @stability unstable
  * @category constructors
@@ -285,13 +308,16 @@ export const ipv4FromInput = (
 export const ipv6FromInput = (
   input: Ipv6InterfaceInput,
   options?: IpInterface.ParseOptions
-): Result.Result<Ipv6Interface, NetAddress.NetAddressError> =>
-  isIpv6Interface(input) ? Result.succeed(input) : ipv6FromString(input, options)
+): Result.Result<Ipv6Interface, NetAddress.NetAddressError> => {
+  if (isIpv6Interface(input)) return Result.succeed(input)
+  if (typeof input === "string") return ipv6FromString(input, options)
+  return fromParts(input, NetAddress.ipv6FromInput)
+}
 
 /**
  * Converts an `IpInterfaceInput` to an interface address, parsing strings like
- * `fromString` with the given options and returning interface addresses
- * unchanged.
+ * `fromString` with the given options, converting parts like `make`, and
+ * returning interface addresses unchanged.
  *
  * @stability unstable
  * @category constructors
@@ -300,8 +326,11 @@ export const ipv6FromInput = (
 export const fromInput = (
   input: IpInterfaceInput,
   options?: IpInterface.ParseOptions
-): Result.Result<IpInterface, NetAddress.NetAddressError> =>
-  isIpInterface(input) ? Result.succeed(input) : fromString(input, options)
+): Result.Result<IpInterface, NetAddress.NetAddressError> => {
+  if (isIpInterface(input)) return Result.succeed(input)
+  if (typeof input === "string") return fromString(input, options)
+  return fromParts(input, NetAddress.ipFromInput)
+}
 
 /**
  * Converts a trusted `IpInterfaceInput` to an interface address, throwing on failure.

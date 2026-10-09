@@ -84,6 +84,24 @@ describe("fromInput", () => {
     failure(Host.hostPortFromInput("example.com"))
   })
 
+  it("converts IP address inputs and parts", () => {
+    const address = success(NetAddress.ipFromString("192.0.2.1"))
+
+    assertTrue(Equal.equals(success(Host.hostFromInput([192, 0, 2, 1])), address))
+    assertTrue(Equal.equals(
+      success(Host.hostPortFromInput({ host: "Example.COM", port: 443 })),
+      success(Host.hostPortFromString("example.com:443"))
+    ))
+    assertTrue(Equal.equals(
+      success(Host.hostPortFromInput({ host: new Uint8Array([192, 0, 2, 1]), port: 53 })),
+      success(Host.hostPortFromString("192.0.2.1:53"))
+    ))
+
+    failure(Host.hostFromInput(new Uint8Array(5)))
+    failure(Host.hostPortFromInput({ host: "bad name", port: 443 }))
+    failure(Host.hostPortFromInput({ host: "example.com", port: 65536 }))
+  })
+
   it("has unsafe variants that throw on failure", () => {
     const endpoint = Host.hostPortFromStringUnsafe("example.com:443")
     assert.strictEqual(Host.domainNameFromInputUnsafe("Example.COM"), "example.com")

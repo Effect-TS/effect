@@ -53,31 +53,43 @@ export type Ipv4Network = IpNetwork<NetAddress.Ipv4Address>
 export type Ipv6Network = IpNetwork<NetAddress.Ipv6Address>
 
 /**
- * An IP network prefix or a CIDR string to parse as one.
+ * An IP network prefix, or a CIDR string or an address and prefix length to
+ * convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type IpNetworkInput = IpNetwork | string
+export type IpNetworkInput =
+  | IpNetwork
+  | string
+  | { readonly address: NetAddress.IpAddressInput; readonly prefixLength: number }
 
 /**
- * An IPv4 network prefix or a CIDR string to parse as one.
+ * An IPv4 network prefix, or a CIDR string or an IPv4 address and prefix
+ * length to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv4NetworkInput = Ipv4Network | string
+export type Ipv4NetworkInput =
+  | Ipv4Network
+  | string
+  | { readonly address: NetAddress.Ipv4AddressInput; readonly prefixLength: number }
 
 /**
- * An IPv6 network prefix or a CIDR string to parse as one.
+ * An IPv6 network prefix, or a CIDR string or an IPv6 address and prefix
+ * length to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv6NetworkInput = Ipv6Network | string
+export type Ipv6NetworkInput =
+  | Ipv6Network
+  | string
+  | { readonly address: NetAddress.Ipv6AddressInput; readonly prefixLength: number }
 
 /**
  * Returns `true` when a value is an IPv4 network prefix.
@@ -261,38 +273,62 @@ export const fromString = (input: string): Result.Result<IpNetwork, NetAddress.N
   )
 }
 
+const fromParts = <I, A extends NetAddress.IpAddress>(
+  input: { readonly address: I; readonly prefixLength: number },
+  toAddress: (input: I) => Result.Result<A, NetAddress.NetAddressError>
+): Result.Result<IpNetwork<A>, NetAddress.NetAddressError> =>
+  hasProperty(input, "address") && hasProperty(input, "prefixLength")
+    ? Result.flatMap(toAddress(input.address), (address) => make(address, input.prefixLength))
+    : Result.fail(new NetAddress.NetAddressError({ input, message: "expected an address and prefix length" }))
+
 /**
  * Converts an `Ipv4NetworkInput` to an IPv4 network prefix, parsing strings
- * like `ipv4FromString` and returning network prefixes unchanged.
+ * like `ipv4FromString`, converting parts like `make`, and returning network
+ * prefixes unchanged.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const ipv4FromInput = (input: Ipv4NetworkInput): Result.Result<Ipv4Network, NetAddress.NetAddressError> =>
-  isIpv4Network(input) ? Result.succeed(input) : ipv4FromString(input)
+export const ipv4FromInput = (input: Ipv4NetworkInput): Result.Result<Ipv4Network, NetAddress.NetAddressError> => {
+  if (isIpv4Network(input)) return Result.succeed(input)
+  if (typeof input === "string") return ipv4FromString(input)
+  return fromParts(input, NetAddress.ipv4FromInput)
+}
 
 /**
  * Converts an `Ipv6NetworkInput` to an IPv6 network prefix, parsing strings
- * like `ipv6FromString` and returning network prefixes unchanged.
+ * like `ipv6FromString`, converting parts like `make`, and returning network
+ * prefixes unchanged.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const ipv6FromInput = (input: Ipv6NetworkInput): Result.Result<Ipv6Network, NetAddress.NetAddressError> =>
-  isIpv6Network(input) ? Result.succeed(input) : ipv6FromString(input)
+export const ipv6FromInput = (input: Ipv6NetworkInput): Result.Result<Ipv6Network, NetAddress.NetAddressError> => {
+  if (isIpv6Network(input)) return Result.succeed(input)
+  if (typeof input === "string") return ipv6FromString(input)
+  return fromParts(input, NetAddress.ipv6FromInput)
+}
 
 /**
  * Converts an `IpNetworkInput` to a network prefix, parsing strings like
- * `fromString` and returning network prefixes unchanged.
+ * `fromString`, converting parts like `make`, and returning network prefixes
+ * unchanged.
+ *
+ * **Gotchas**
+ *
+ * Like `make`, an address with host bits set is rejected rather than truncated.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const fromInput = (input: IpNetworkInput): Result.Result<IpNetwork, NetAddress.NetAddressError> =>
-  isIpNetwork(input) ? Result.succeed(input) : fromString(input)
+export const fromInput = (input: IpNetworkInput): Result.Result<IpNetwork, NetAddress.NetAddressError> => {
+  if (isIpNetwork(input)) return Result.succeed(input)
+  if (typeof input === "string") return fromString(input)
+  return fromParts(input, NetAddress.ipFromInput)
+}
 
 /**
  * Converts a trusted `IpNetworkInput` to a network prefix, throwing on failure.

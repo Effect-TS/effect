@@ -30,6 +30,17 @@ describe("AddressResolver", () => {
       assert.deepStrictEqual(scoped.map(NetAddress.formatInet), ["[fe80::1%2]:80"])
     }))
 
+  it.effect("converts host and port objects", () =>
+    Effect.gen(function*() {
+      const resolve = yield* resolver()
+      const addresses = yield* resolve.resolve({ host: "DB.internal", port: 5432 }, { family: "IPv4" })
+      assert.deepStrictEqual(addresses.map(NetAddress.formatInet), ["10.0.0.5:5432"])
+      const numeric = yield* resolve.resolve({ host: [10, 0, 0, 1], port: 80 })
+      assert.deepStrictEqual(numeric.map(NetAddress.formatInet), ["10.0.0.1:80"])
+      const error = yield* Effect.flip(resolve.resolve({ host: "db.internal", port: 70000 }))
+      assert.strictEqual(error._tag, "NetAddressError")
+    }))
+
   it.effect("reports invalid string endpoints as NetAddressError", () =>
     Effect.gen(function*() {
       const resolve = yield* resolver()

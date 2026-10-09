@@ -127,6 +127,24 @@ describe("fromInput", () => {
     failure(IpInterface.ipv6FromInput("192.0.2.1/24"))
   })
 
+  it("converts an address and prefix length", () => {
+    const ipv4 = interfaceAddress("192.0.2.1/24")
+    const ipv6 = interfaceAddress("2001:db8::1/64")
+
+    assertTrue(Equal.equals(success(IpInterface.fromInput({ address: [192, 0, 2, 1], prefixLength: 24 })), ipv4))
+    assertTrue(Equal.equals(success(IpInterface.ipv4FromInput({ address: "192.0.2.1", prefixLength: 24 })), ipv4))
+    assertTrue(
+      Equal.equals(
+        success(IpInterface.ipv6FromInput({ address: ip("2001:db8::1") as NetAddress.Ipv6Address, prefixLength: 64 })),
+        ipv6
+      )
+    )
+
+    failure(IpInterface.fromInput({ address: "192.0.2.1", prefixLength: 33 }))
+    failure(IpInterface.ipv4FromInput({ address: "2001:db8::1", prefixLength: 64 }))
+    failure(IpInterface.ipv6FromInput({ address: "192.0.2.1", prefixLength: 24 }))
+  })
+
   it("has an unsafe variant that throws on failure", () => {
     const address = interfaceAddress("192.0.2.1/24")
     assert.strictEqual(IpInterface.fromInputUnsafe(address), address)

@@ -61,13 +61,13 @@ export type DomainNameInput = DomainName | string
 export type Host = NetAddress.IpAddress | NetAddress.ScopedIpv6Literal | DomainName
 
 /**
- * A host or a string to parse as one.
+ * A host, or a string or any `IpAddressInput` to convert to one.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export type HostInput = Host | string
+export type HostInput = Host | NetAddress.IpAddressInput
 
 /**
  * An unresolved host and port.
@@ -86,13 +86,13 @@ export interface HostPort extends Equal.Equal, Hash.Hash, Inspectable.Inspectabl
 }
 
 /**
- * An endpoint or a `host:port` string to parse.
+ * An endpoint, or a `host:port` string or a host and port to convert to one.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export type HostPortInput = HostPort | string
+export type HostPortInput = HostPort | string | { readonly host: HostInput; readonly port: number }
 
 const hostError = (input: unknown, message: string): Result.Result<never, NetAddress.NetAddressError> =>
   Result.fail(new NetAddress.NetAddressError({ input, message }))
@@ -271,14 +271,14 @@ export const hostFromStringUnsafe = (input: string): Host => Result.getOrThrow(h
 
 /**
  * Converts a `HostInput` to a host, parsing strings like `hostFromString` and
- * returning IP addresses unchanged.
+ * converting other inputs like `NetAddress.ipFromInput`.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
 export const hostFromInput = (input: HostInput): Result.Result<Host, NetAddress.NetAddressError> =>
-  NetAddress.isIpAddress(input) ? Result.succeed(input) : hostFromString(input)
+  typeof input === "string" ? hostFromString(input) : NetAddress.ipFromInput(input)
 
 /**
  * Converts a trusted `HostInput` to a host, throwing on failure.
@@ -419,14 +419,22 @@ export const hostPortFromStringUnsafe = (input: string): HostPort => Result.getO
 
 /**
  * Converts a `HostPortInput` to an endpoint, parsing strings like
- * `hostPortFromString` and returning endpoints unchanged.
+ * `hostPortFromString`, converting parts like `hostPort`, and returning
+ * endpoints unchanged.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const hostPortFromInput = (input: HostPortInput): Result.Result<HostPort, NetAddress.NetAddressError> =>
-  isHostPort(input) ? Result.succeed(input) : hostPortFromString(input)
+export const hostPortFromInput = (input: HostPortInput): Result.Result<HostPort, NetAddress.NetAddressError> => {
+  if (isHostPort(input)) return Result.succeed(input)
+  if (typeof input === "string") return hostPortFromString(input)
+  if (!hasProperty(input, "host") || !hasProperty(input, "port")) {
+    return hostError(input, "expected a host and port")
+  }
+  const port = input.port
+  return Result.flatMap(hostFromInput(input.host), (host) => hostPort(host, port))
+}
 
 /**
  * Converts a trusted `HostPortInput` to an endpoint, throwing on failure.
