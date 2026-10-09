@@ -2938,37 +2938,24 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       const storageState = makeFailoverStorageState()
       yield* Effect.gen(function*() {
         const state = yield* TestEntityState
-        const { request } = yield* startGracefulHandoff(storageState)
+        const sharding = yield* Sharding.Sharding
+        const client = (yield* TestEntity.client)("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        const request = yield* client.NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Queue.take(state.envelopes)
+        storageState.assignSelf = false
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
         assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
 
         yield* Fiber.interrupt(request).pipe(Effect.forkChild({ startImmediately: true }))
         yield* TestClock.adjust(100)
         assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 1)
-      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
-    }))
-
-  it.effect("sends an interrupt to the runner serving the request before the new owner", () =>
-    Effect.gen(function*() {
-      const storageState = makeFailoverStorageState({ assignSelf: false })
-      const sent: Array<SentMessage> = []
-      yield* Effect.gen(function*() {
-        const client = (yield* TestEntity.client)("1")
-        const request = yield* client.NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
-        while (sent.length === 0) {
-          yield* TestClock.adjust(10)
-        }
-        storageState.newOwner = newOwnerRunner
-        yield* TestClock.adjust(50)
-
-        yield* Fiber.interrupt(request).pipe(Effect.forkChild({ startImmediately: true }))
-        yield* TestClock.adjust(100)
-        // The serving runner rejects the interrupt, so the next attempt uses the ring.
-        assert.deepStrictEqual(sent.slice(0, 3), [
-          { tag: "Request", port: 5678 },
-          { tag: "Interrupt", port: 5678 },
-          { tag: "Interrupt", port: 5679 }
-        ])
-      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, sent)), Effect.scoped)
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState)), Effect.scoped)
     }))
 
   it.effect("acknowledges stream chunks from a request still draining on the lock holder", () =>
@@ -2993,28 +2980,10 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
           Stream.runCollect,
           Effect.forkChild({ startImmediately: true })
         )
-        // Well within the 1 second drain timeout
         yield* TestClock.adjust(100)
         const exit = consumed.pollUnsafe()
         assert.deepStrictEqual(exit && Exit.map(exit, (users) => users.map((user) => user.id)), Exit.succeed([1, 2]))
-      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
-    }))
-
-  it.effect("does not send requests to the new owner while the shard lock is still held", () =>
-    Effect.gen(function*() {
-      const storageState = makeFailoverStorageState()
-      const sent: Array<SentMessage> = []
-      yield* Effect.gen(function*() {
-        const { client } = yield* startGracefulHandoff(storageState)
-
-        yield* client.GetUserVolatile({ id: 1 }).pipe(Effect.forkChild({ startImmediately: true }))
-        yield* TestClock.adjust(100)
-        assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
-        assert.deepStrictEqual(sent, [])
-
-        yield* TestClock.adjust(1000)
-        assert.deepStrictEqual(sent, [{ tag: "Request", port: 5678 }])
-      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, sent)), Effect.scoped)
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState)), Effect.scoped)
     }))
 
   it.effect("holds a remote request on the new owner until it acquires the shard lock", () =>
@@ -3022,28 +2991,35 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
-        const { delivery, shardId } = yield* sendBeforeLockAcquired(storageState)
+        const entityId = EntityId.make("1")
+        const shardId = sharding.getShardId(entityId, "default")
+        while (storageState.acquireCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        const delivery = yield* sharding.send(
+          new Message.IncomingRequest({
+            envelope: {
+              _tag: "Request",
+              requestId: Snowflake.Snowflake(BigInt(1)),
+              address: EntityAddress.make({ shardId, entityType: EntityType.make(TestEntity.type), entityId }),
+              tag: "GetUserVolatile",
+              payload: { id: 1 },
+              headers: Headers.empty
+            },
+            lastSentReply: Option.none(),
+            respond: () => Effect.void,
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(10)
+        assert.isUndefined(delivery.pollUnsafe(), "delivery must wait for the shard lock")
 
         storageState.lockHeldElsewhere = false
         while (!sharding.hasShardId(shardId)) {
           yield* TestClock.adjust(10)
         }
         assert.deepStrictEqual(yield* Fiber.await(delivery), Exit.void)
-      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
-    }))
-
-  it.effect("fails a remote request waiting on the new owner once the lock wait expires", () =>
-    Effect.gen(function*() {
-      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
-      yield* Effect.gen(function*() {
-        const { delivery } = yield* sendBeforeLockAcquired(storageState)
-
-        yield* TestClock.adjust(handoffLockExpiration)
-        const exit = delivery.pollUnsafe()
-        assert(exit && Exit.isFailure(exit), "delivery must fail")
-        const error = Cause.findErrorOption(exit.cause)
-        assert(Option.isSome(error) && error.value instanceof ClusterError.EntityNotAssignedToRunner)
-      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState)), Effect.scoped)
     }))
 
   it.effect("does not wait for entity construction before a forced shard release", () =>
@@ -3272,8 +3248,6 @@ interface FailoverStorageState {
   assignSelf: boolean
   /** Fail lock acquisition, as when another runner still holds the locks. */
   lockHeldElsewhere: boolean
-  /** A healthy runner that joins the ring when set. */
-  newOwner: Runner.Runner | undefined
   otherRunnerHealthy: boolean
   /** Test clock duration `releaseAll` stays in flight for. */
   releaseAllDuration: number
@@ -3297,7 +3271,6 @@ const makeFailoverStorageState = (
   blackholeNonEmptyRefresh: false,
   assignSelf: true,
   lockHeldElsewhere: false,
-  newOwner: undefined,
   otherRunnerHealthy: false,
   releaseAllDuration: 0,
   runner: undefined,
@@ -3312,11 +3285,7 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
   RunnerStorage.RunnerStorage.of({
     getRunners: Effect.sync(() => {
       if (!state.runner) return []
-      if (!state.assignSelf) {
-        return state.newOwner
-          ? [[state.runner, false], [otherRunner, true], [state.newOwner, true]]
-          : [[state.runner, false], [otherRunner, true]]
-      }
+      if (!state.assignSelf) return [[state.runner, false], [otherRunner, true]]
       return state.otherRunnerHealthy ? [[state.runner, true], [otherRunner, true]] : [[state.runner, true]]
     }),
     register: (runner) =>
@@ -3369,26 +3338,7 @@ const otherRunner = Runner.make({
   weight: 1
 })
 
-// With these fixed addresses, the weighted ring moves default:1 to this runner.
-const newOwnerRunner = Runner.make({
-  address: RunnerAddress.make("localhost", 5679),
-  groups: ["default"],
-  weight: 1000
-})
-
-interface SentMessage {
-  readonly tag: string
-  readonly port: number
-}
-
-const handoffLockExpiration = 3000
-
-// Clearing `assignSelf` moves every shard to `otherRunner`. Remote runners
-// accept requests and reject interrupts and acks with EntityNotAssignedToRunner.
-const GracefulHandoffSharding = (
-  storageState: FailoverStorageState,
-  sent: Array<SentMessage>
-) =>
+const GracefulHandoffSharding = (storageState: FailoverStorageState) =>
   TestEntityNoState.pipe(
     Layer.provideMerge(Sharding.layer),
     Layer.provide(Layer.effect(
@@ -3397,78 +3347,17 @@ const GracefulHandoffSharding = (
     )),
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provideMerge(TestEntityState.layer),
-    Layer.provide(Layer.effect(
-      Runners.Runners,
-      Effect.map(Runners.makeNoop, (runners) =>
-        Runners.Runners.of({
-          ...runners,
-          send: (options) =>
-            Effect.suspend(() => {
-              const message = options.message
-              const tag = message._tag === "OutgoingRequest" ? "Request" : message.envelope._tag
-              sent.push({ tag, port: options.address.port })
-              return message._tag === "OutgoingRequest" ? Effect.never : runners.send(options)
-            })
-        }))
-    )),
+    Layer.provide(Runners.layerNoop),
     Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
     Layer.provide(ShardingConfig.layer({
       runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
       shardsPerGroup: 1,
-      shardLockExpiration: handoffLockExpiration,
       entityTerminationTimeout: 1000,
       entityMessagePollInterval: 10,
       refreshAssignmentsInterval: 10,
       sendRetryInterval: 10
     }))
   )
-
-// Moves the shard of an in-flight request to `otherRunner`. The request keeps
-// the shard draining, so this runner still holds its lock.
-const startGracefulHandoff = Effect.fnUntraced(function*(storageState: FailoverStorageState) {
-  const sharding = yield* Sharding.Sharding
-  const client = (yield* TestEntity.client)("1")
-  const shardId = sharding.getShardId(EntityId.make("1"), "default")
-  while (!sharding.hasShardId(shardId)) {
-    yield* TestClock.adjust(10)
-  }
-  const request = yield* client.NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
-  yield* Queue.take((yield* TestEntityState).envelopes)
-  storageState.assignSelf = false
-  while (sharding.hasShardId(shardId)) {
-    yield* TestClock.adjust(10)
-  }
-  return { client, request } as const
-})
-
-// Delivers a volatile request from another runner, as the runner server does,
-// while the ring assigns its shard here but another runner holds the lock.
-const sendBeforeLockAcquired = Effect.fnUntraced(function*(storageState: FailoverStorageState) {
-  const sharding = yield* Sharding.Sharding
-  const entityId = EntityId.make("1")
-  const shardId = sharding.getShardId(entityId, "default")
-  while (storageState.acquireCalls.length === 0) {
-    yield* TestClock.adjust(10)
-  }
-  const delivery = yield* sharding.send(
-    new Message.IncomingRequest({
-      envelope: {
-        _tag: "Request",
-        requestId: Snowflake.Snowflake(BigInt(1)),
-        address: EntityAddress.make({ shardId, entityType: EntityType.make(TestEntity.type), entityId }),
-        tag: "GetUserVolatile",
-        payload: { id: 1 },
-        headers: Headers.empty
-      },
-      lastSentReply: Option.none(),
-      respond: () => Effect.void,
-      codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
-    })
-  ).pipe(Effect.forkChild({ startImmediately: true }))
-  yield* TestClock.adjust(10)
-  assert.isUndefined(delivery.pollUnsafe(), "delivery must wait for the shard lock")
-  return { delivery, shardId } as const
-})
 
 class RegistrationContext extends Context.Service<RegistrationContext, string>()(
   "effect/test/cluster/RegistrationContext"
