@@ -62,7 +62,7 @@
   "peerDependencies": {
     "effect": "workspace:^",
     "react": ">=19.0.0 <20.0.0",
-    "scheduler": ">=0.25.0 <0.28.0"
+    "scheduler": ">=0.25.0 <0.29.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
