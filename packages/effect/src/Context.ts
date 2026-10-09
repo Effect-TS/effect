@@ -489,9 +489,8 @@ interface ContextImpl<in Services> extends Context<Services> {
   overlay: Overlay | undefined
   depth: number
   _flat: ReadonlyMap<string, any> | undefined
-  // User-supplied override from `makeUnsafe`'s `maxDepth` option, inherited
-  // unchanged by every context derived from this one (pushes and rebases
-  // alike). `undefined` means "use the default (`MaxDepth`)."
+  // `makeUnsafe`'s `maxDepth` option, inherited unchanged by every context
+  // derived from this one. `undefined` means "use `MaxDepth`."
   maxDepthOverride: number | undefined
 }
 
@@ -501,14 +500,9 @@ interface Overlay {
   readonly parent: Overlay | undefined
 }
 
-// A rebase costs O(base size); an overlay-chain lookup costs O(depth). The
-// right threshold depends on how large and how read-heavy a particular base
-// is, which this module cannot know -- a bigger default is not always
-// better, since a deeper chain costs more per lookup too. So the default
-// stays fixed, and a context builder opts in explicitly (see `makeUnsafe`'s
-// `maxDepth` option) when they've measured their own base and want a
-// different tradeoff. The override travels with every context derived from
-// it via `add`, so a runtime sets it once where it builds its root.
+// A rebase costs O(base size); a lookup costs O(depth). The right threshold
+// depends on the base, which this module can't know, so it stays fixed and
+// a builder opts in via `makeUnsafe`'s `maxDepth` option instead.
 const MaxDepth = 8
 const effectiveMaxDepth = (impl: ContextImpl<any>): number => impl.maxDepthOverride ?? MaxDepth
 
@@ -607,9 +601,8 @@ const lookup = (self: Context<any>, key: string): unknown => {
  * @category constructors
  * @since 4.0.0
  */
-// `options.maxDepth`, if given, overrides how many `add` calls a context
-// derived from this one tolerates before it is rebased into a flat map,
-// in place of the default (`MaxDepth`, currently 8).
+// `options.maxDepth` overrides `MaxDepth` for this context and every one
+// derived from it via `add`.
 export const makeUnsafe = <Services = never>(
   mapUnsafe: ReadonlyMap<string, any>,
   options?: { readonly maxDepth?: number }
