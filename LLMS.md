@@ -376,13 +376,6 @@ Use the `effect/process` modules to define child processes and run them with `Ch
 
 - **[Working with child processes](./ai-docs/src/60_child-process/10_working-with-child-processes.ts)**: This example shows how to collect process output, compose pipelines, and stream long-running command output.
 
-## Working with SSH
-
-Use the `effect/ssh` modules to connect to SSH servers. The `Ssh` service is a connection factory: provide a backend layer once, then open scoped connections with `ssh.connect({ host })` wherever and whenever your program needs them. `SshClient.layer` is a dependency-free client built on `Socket` and the `Crypto` service, and `OpenSsh.layer` drives the host's `ssh` executable so the user's OpenSSH configuration applies. `Sftp` exposes a connection's remote file system (also as a `FileSystem`), and `SshChildProcessSpawner` runs `ChildProcess` commands remotely.
-
-- **[Deploying to several hosts over SSH](./ai-docs/src/61_ssh/10_ssh-client.ts)**: This example provides the built-in SSH client as a connection factory and opens one connection per host on demand.
-- **[Using the system OpenSSH client](./ai-docs/src/61_ssh/20_openssh.ts)**: This example opens connections through the backend-independent `Ssh` factory and runs them with the host's `ssh` executable.
-
 ## Building CLI applications
 
 Use the "effect/cli" modules to build CLI applications. These modules
