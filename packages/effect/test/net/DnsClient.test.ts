@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Fiber, Layer, Queue, Result } from "effect"
+import { Duration, Effect, Equal, Exit, Fiber, Layer, Queue, Result } from "effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Hex from "effect/encoding/Hex"
 import * as HttpClient from "effect/http/HttpClient"
@@ -154,6 +154,14 @@ const fakeNetwork = (handle: (request: Request) => ReadonlyArray<Reply>) => {
   return { udp, tcp, requests, state }
 }
 
+const udpTransport = (
+  network: Pick<ReturnType<typeof fakeNetwork>, "udp" | "tcp">,
+  options?: Partial<DnsClient.TransportUdpOptions>
+) => DnsClient.makeTransportUdp({ nameServers: [primary, secondary], udp: network.udp, tcp: network.tcp, ...options })
+
+const tcpTransport = (network: ReturnType<typeof fakeNetwork>, options?: Partial<DnsClient.TransportTcpOptions>) =>
+  DnsClient.makeTransportTcp({ nameServers: [primary, secondary], tcp: network.tcp, ...options })
+
 const answer = (
   request: Pick<Request, "header">,
   options?: Omit<Parameters<typeof response>[0], "id" | "question">
@@ -166,19 +174,10 @@ const answer = (
   })
 })
 
-const run = (
-  network: ReturnType<typeof fakeNetwork>,
-  options?: Partial<Parameters<typeof DnsClient.make>[0]>,
-  query: { readonly name?: string; readonly type?: Dns.RecordType } = {}
-) =>
+const run = <R>(transport: Effect.Effect<DnsClient.Transport["Service"], never, R>, options?: DnsClient.MakeOptions) =>
   Effect.gen(function*() {
-    const client = yield* DnsClient.make({
-      nameServers: [primary, secondary],
-      udp: network.udp,
-      tcp: network.tcp,
-      ...options
-    })
-    const fiber = yield* Effect.forkChild(client.query(name(query.name ?? "example.test"), query.type ?? "A"))
+    const client = yield* DnsClient.make(options).pipe(Effect.provideServiceEffect(DnsClient.Transport, transport))
+    const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
     yield* TestClock.adjust("1 minute")
     return yield* Fiber.await(fiber)
   })
@@ -190,7 +189,7 @@ describe("DnsClient", () => {
   it.effect("sends a query and returns the response", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [answer(request, { answers: 2 })])
-      const exit = yield* run(network)
+      const exit = yield* run(udpTransport(network))
       assert.isTrue(Exit.isSuccess(exit))
       const response = Exit.isSuccess(exit) ? exit.value : undefined!
       assert.deepStrictEqual(response.answer.map((record) => [record.owner, Duration.toSeconds(record.ttl)]), [
@@ -210,7 +209,7 @@ describe("DnsClient", () => {
   it.effect("uses a new socket and a random ID for every attempt", () =>
     Effect.gen(function*() {
       const network = fakeNetwork(() => [])
-      yield* run(network, { attempts: 3 })
+      yield* run(udpTransport(network), { attempts: 3 })
       assert.strictEqual(network.requests.length, 6)
       assert.strictEqual(network.state.opened, 6)
       assert.strictEqual(network.state.open, 0)
@@ -234,7 +233,7 @@ describe("DnsClient", () => {
           { payload: response({ id, question: ["Example.TEST.", 1], answers: 2 }) }
         ]
       })
-      const exit = yield* run(network)
+      const exit = yield* run(udpTransport(network))
       assert.isTrue(Exit.isSuccess(exit))
       assert.strictEqual(Exit.isSuccess(exit) ? exit.value.answer.length : 0, 2)
       assert.strictEqual(network.requests.length, 1)
@@ -245,7 +244,7 @@ describe("DnsClient", () => {
       const network = fakeNetwork((request) =>
         request.transport === "udp" ? [answer(request, { truncated: true })] : [answer(request, { answers: 3 })]
       )
-      const exit = yield* run(network)
+      const exit = yield* run(udpTransport(network))
       assert.strictEqual(Exit.isSuccess(exit) ? exit.value.answer.length : 0, 3)
       assert.deepStrictEqual(network.requests.map((request) => [request.transport, request.server]), [
         ["udp", primary],
@@ -261,13 +260,13 @@ describe("DnsClient", () => {
           ? [answer(request, { truncated: true })]
           : [{ payload: response({ id: request.header.id ^ 1, question: ["example.test.", 1] }) }]
       )
-      assert.strictEqual(reasonOf(yield* run(network, { attempts: 1 })), "InvalidResponse")
+      assert.strictEqual(reasonOf(yield* run(udpTransport(network), { attempts: 1 })), "InvalidResponse")
     }))
 
   it.effect("tries the next name server after a timeout", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => request.server === primary ? [] : [answer(request)])
-      const exit = yield* run(network)
+      const exit = yield* run(udpTransport(network))
       assert.isTrue(Exit.isSuccess(exit))
       assert.deepStrictEqual(network.requests.map((request) => request.server), [primary, secondary])
     }))
@@ -275,7 +274,7 @@ describe("DnsClient", () => {
   it.effect("fails with Timeout when no name server answers", () =>
     Effect.gen(function*() {
       const network = fakeNetwork(() => [])
-      assert.strictEqual(reasonOf(yield* run(network)), "Timeout")
+      assert.strictEqual(reasonOf(yield* run(udpTransport(network))), "Timeout")
       assert.deepStrictEqual(network.requests.map((request) => request.server), [
         primary,
         secondary,
@@ -287,13 +286,9 @@ describe("DnsClient", () => {
   it.effect("waits the timeout for each attempt", () =>
     Effect.gen(function*() {
       const network = fakeNetwork(() => [])
-      const client = yield* DnsClient.make({
-        nameServers: [primary],
-        udp: network.udp,
-        tcp: network.tcp,
-        timeout: "2 seconds",
-        attempts: 2
-      })
+      const client = yield* DnsClient.make({ timeout: "2 seconds", attempts: 2 }).pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network, { nameServers: [primary] }))
+      )
       const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
       yield* TestClock.adjust("1999 millis")
       assert.strictEqual(network.requests.length, 1)
@@ -315,29 +310,29 @@ describe("DnsClient", () => {
         ] as const
       ) {
         const network = fakeNetwork((request) => [answer(request, { rcode, answers: 0 })])
-        const exit = yield* run(network, { attempts: 1 })
+        const exit = yield* run(udpTransport(network), { attempts: 1 })
         assert.strictEqual(reasonOf(exit), reason)
         assert.strictEqual(network.requests.length, 2)
       }
       const recovered = fakeNetwork((
         request
       ) => [answer(request, request.server === primary ? { rcode: 2, answers: 0 } : {})])
-      assert.isTrue(Exit.isSuccess(yield* run(recovered)))
+      assert.isTrue(Exit.isSuccess(yield* run(udpTransport(recovered))))
     }))
 
   it.effect("accepts format errors without a question", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [{ payload: response({ id: request.header.id, rcode: 1 }) }])
-      assert.strictEqual(reasonOf(yield* run(network, { attempts: 1 })), "InvalidResponse")
+      assert.strictEqual(reasonOf(yield* run(udpTransport(network), { attempts: 1 })), "InvalidResponse")
       // Responses without a question are otherwise ignored.
       const ignored = fakeNetwork((request) => [{ payload: response({ id: request.header.id }) }])
-      assert.strictEqual(reasonOf(yield* run(ignored, { attempts: 1 })), "Timeout")
+      assert.strictEqual(reasonOf(yield* run(udpTransport(ignored), { attempts: 1 })), "Timeout")
     }))
 
   it.effect("returns NXDOMAIN responses without trying other name servers", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [answer(request, { rcode: 3, answers: 0 })])
-      const exit = yield* run(network)
+      const exit = yield* run(udpTransport(network))
       assert.strictEqual(Exit.isSuccess(exit) ? exit.value.rcode : undefined, 3)
       assert.strictEqual(network.requests.length, 1)
     }))
@@ -348,7 +343,7 @@ describe("DnsClient", () => {
         const { payload } = answer(request)
         return [{ payload: payload.subarray(0, payload.length - 1) }]
       })
-      const exit = yield* run(network)
+      const exit = yield* run(udpTransport(network))
       assert.strictEqual(reasonOf(exit), "InvalidResponse")
       assert.strictEqual(network.requests.length, 4)
     }))
@@ -370,7 +365,7 @@ describe("DnsClient", () => {
               writeAll: () => Effect.die("unused")
             })
           }))
-      const exit = yield* run(network, { udp, attempts: 1 })
+      const exit = yield* run(udpTransport({ udp, tcp: network.tcp }), { attempts: 1 })
       assert.strictEqual(reasonOf(exit), "Refused")
       assert.strictEqual(network.state.open, 0)
     }))
@@ -378,12 +373,9 @@ describe("DnsClient", () => {
   it.effect("rotates the first name server when rotate is set", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [answer(request)])
-      const client = yield* DnsClient.make({
-        nameServers: [primary, secondary],
-        udp: network.udp,
-        tcp: network.tcp,
-        rotate: true
-      })
+      const client = yield* DnsClient.make({ rotate: true }).pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network))
+      )
       for (let i = 0; i < 3; i++) yield* client.query(name("example.test"), "A")
       assert.deepStrictEqual(network.requests.map((request) => request.server), [primary, secondary, primary])
     }))
@@ -391,7 +383,9 @@ describe("DnsClient", () => {
   it.effect("closes the socket when the query is interrupted", () =>
     Effect.gen(function*() {
       const network = fakeNetwork(() => [])
-      const client = yield* DnsClient.make({ nameServers: [primary], udp: network.udp, tcp: network.tcp })
+      const client = yield* DnsClient.make().pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network, { nameServers: [primary] }))
+      )
       const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
       yield* TestClock.adjust("1 second")
       assert.strictEqual(network.state.open, 1)
@@ -402,7 +396,7 @@ describe("DnsClient", () => {
   it.effect("uses port 53 for name servers given as IP addresses", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [answer(request)])
-      const exit = yield* run(network, { nameServers: [NetAddress.ipFromStringUnsafe("192.0.2.53")] })
+      const exit = yield* run(udpTransport(network, { nameServers: [NetAddress.ipFromStringUnsafe("192.0.2.53")] }))
       assert.isTrue(Exit.isSuccess(exit))
       assert.deepStrictEqual(network.requests.map((request) => NetAddress.formatInet(request.server)), [
         "192.0.2.53:53"
@@ -412,7 +406,9 @@ describe("DnsClient", () => {
   it.effect("sends queries without recursion when requested", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [answer(request)])
-      const client = yield* DnsClient.make({ nameServers: [primary], udp: network.udp, tcp: network.tcp })
+      const client = yield* DnsClient.make().pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network, { nameServers: [primary] }))
+      )
       yield* client.query(name("example.test."), "A", { recursionDesired: false })
       assert.isFalse(network.requests[0].header.flags.recursionDesired)
     }))
@@ -421,25 +417,88 @@ describe("DnsClient", () => {
     Effect.gen(function*() {
       const network = fakeNetwork(() => [])
       for (
-        const options of [
-          { attempts: 0 },
-          { attempts: 1.5 },
-          { timeout: Duration.zero },
-          { timeout: Duration.infinity },
-          { udpPayloadSize: 511 },
-          { udpPayloadSize: 65536 },
-          { nameServers: [] as any }
-        ]
+        const options of [{ attempts: 0 }, { attempts: 1.5 }, { timeout: Duration.zero }, {
+          timeout: Duration.infinity
+        }, { ndots: -1 }]
       ) {
         const exit = yield* Effect.exit(
-          DnsClient.make({ nameServers: [primary], udp: network.udp, tcp: network.tcp, ...options })
+          DnsClient.make(options).pipe(Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network)))
         )
         assert.isTrue(Exit.hasDies(exit), JSON.stringify(options))
+      }
+      for (const options of [{ udpPayloadSize: 511 }, { udpPayloadSize: 65536 }, { nameServers: [] as any }]) {
+        assert.isTrue(Exit.hasDies(yield* Effect.exit(udpTransport(network, options))), JSON.stringify(options))
       }
     }))
 })
 
-describe("makeHttps", () => {
+describe("makeTransportTcp", () => {
+  it.effect("sends every query over TCP with a random ID", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request, { answers: 2 })])
+      const exit = yield* run(tcpTransport(network), { attempts: 3 })
+      assert.strictEqual(Exit.isSuccess(exit) ? exit.value.answer.length : 0, 2)
+      const other = fakeNetwork((request) => [answer(request)])
+      yield* run(tcpTransport(other))
+      const requests = [...network.requests, ...other.requests]
+      assert.deepStrictEqual(requests.map((request) => [request.transport, request.server]), [
+        ["tcp", primary],
+        ["tcp", primary]
+      ])
+      assert.notStrictEqual(requests[0].header.id, requests[1].header.id)
+      // The query has an EDNS(0) OPT record.
+      assert.strictEqual(requests[0].payload.length, 12 + 14 + 4 + 11)
+    }))
+
+  it.effect("connects to the port of each name server", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      yield* run(
+        tcpTransport(network, {
+          nameServers: [inet("[2001:db8::53]:5353"), NetAddress.ipFromStringUnsafe("192.0.2.53")]
+        })
+      )
+      assert.deepStrictEqual(network.requests.slice(0, 2).map((request) => NetAddress.formatInet(request.server)), [
+        "[2001:db8::53]:5353",
+        "192.0.2.53:53"
+      ])
+    }))
+
+  it.effect("returns truncated responses as received", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request, { truncated: true })])
+      const exit = yield* run(tcpTransport(network))
+      assert.isTrue(Exit.isSuccess(exit) && exit.value.flags.truncated)
+      assert.strictEqual(network.requests.length, 1)
+    }))
+
+  it.effect("rejects responses that do not match the query", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [
+        { payload: response({ id: request.header.id ^ 1, question: ["example.test.", 1], answers: 1 }) }
+      ])
+      assert.strictEqual(reasonOf(yield* run(tcpTransport(network), { attempts: 1 })), "InvalidResponse")
+      assert.strictEqual(network.requests.length, 2)
+    }))
+
+  it.effect("tries each name server, including IPv6 addresses, until one answers", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => Equal.equals(request.server, primary) ? [] : [answer(request)])
+      assert.isTrue(Exit.isSuccess(yield* run(tcpTransport(network))))
+      assert.deepStrictEqual(network.requests.map((request) => request.server), [primary, secondary])
+      const silent = fakeNetwork(() => [])
+      assert.strictEqual(reasonOf(yield* run(tcpTransport(silent))), "Timeout")
+      assert.strictEqual(silent.requests.length, 4)
+    }))
+
+  it.effect("rejects an empty name server list", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      assert.isTrue(Exit.hasDies(yield* Effect.exit(tcpTransport(network, { nameServers: [] as any }))))
+    }))
+})
+
+describe("makeTransportHttps", () => {
   const first = "https://dns.example/dns-query"
   const second = "https://backup.example/resolve?key=1"
 
@@ -508,16 +567,13 @@ describe("makeHttps", () => {
     return { layer, requests }
   }
 
+  const httpsTransport = (http: ReturnType<typeof fakeHttp>, options?: Partial<DnsClient.TransportHttpsOptions>) =>
+    DnsClient.makeTransportHttps({ urls: [first, second], ...options }).pipe(Effect.provide(http.layer))
+
   const runHttps = (
     http: ReturnType<typeof fakeHttp>,
-    options?: Partial<DnsClient.MakeHttpsOptions>
-  ) =>
-    Effect.gen(function*() {
-      const client = yield* DnsClient.makeHttps({ urls: [first, second], ...options })
-      const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
-      yield* TestClock.adjust("1 minute")
-      return yield* Fiber.await(fiber)
-    }).pipe(Effect.provide(http.layer))
+    { method, urls, ...options }: Partial<DnsClient.TransportHttpsOptions> & DnsClient.MakeOptions = {}
+  ) => run(httpsTransport(http, { method, ...(urls === undefined ? {} : { urls }) }), options)
 
   // The padded query for example.test. A with ID 0 and recursion desired.
   const paddedQuery = Result.getOrThrow(Hex.decode(
@@ -572,7 +628,9 @@ describe("makeHttps", () => {
   it.effect("sends queries with ID 0 padded to 128 bytes", () =>
     Effect.gen(function*() {
       const http = fakeHttp((request) => answer(request))
-      const client = yield* DnsClient.makeHttps({ urls: [first] }).pipe(Effect.provide(http.layer))
+      const client = yield* DnsClient.make().pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, httpsTransport(http, { urls: [first] }))
+      )
       for (const host of ["a.test", `${"a".repeat(63)}.${"b".repeat(32)}.test`]) {
         yield* client.query(name(host), "AAAA", { recursionDesired: false })
       }
@@ -665,8 +723,8 @@ describe("makeHttps", () => {
   it.effect("times out and aborts each request", () =>
     Effect.gen(function*() {
       const http = fakeHttp(() => "hang")
-      const client = yield* DnsClient.makeHttps({ urls: [first, second], timeout: "2 seconds", attempts: 2 }).pipe(
-        Effect.provide(http.layer)
+      const client = yield* DnsClient.make({ timeout: "2 seconds", attempts: 2 }).pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, httpsTransport(http))
       )
       const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
       yield* TestClock.adjust("1999 millis")
@@ -695,8 +753,8 @@ describe("makeHttps", () => {
   it.effect("rotates the first URL when rotate is set", () =>
     Effect.gen(function*() {
       const http = fakeHttp((request) => answer(request))
-      const client = yield* DnsClient.makeHttps({ urls: [first, new URL(second)], rotate: true }).pipe(
-        Effect.provide(http.layer)
+      const client = yield* DnsClient.make({ rotate: true }).pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, httpsTransport(http, { urls: [first, new URL(second)] }))
       )
       for (let i = 0; i < 3; i++) yield* client.query(name("example.test"), "A")
       assert.deepStrictEqual(http.requests.map((request) => request.url.origin), [
@@ -706,23 +764,11 @@ describe("makeHttps", () => {
       ])
     }))
 
-  it.effect("rejects invalid options when the service is created", () =>
+  it.effect("rejects invalid URLs", () =>
     Effect.gen(function*() {
       const http = fakeHttp(() => "hang")
-      for (
-        const options of [
-          { urls: [] as any },
-          { urls: ["dns.example"] as const },
-          { urls: ["ftp://dns.example/"] as const },
-          { attempts: 0 },
-          { timeout: Duration.zero },
-          { ndots: -1 }
-        ]
-      ) {
-        const exit = yield* Effect.exit(
-          DnsClient.makeHttps({ urls: [first], ...options }).pipe(Effect.provide(http.layer))
-        )
-        assert.isTrue(Exit.hasDies(exit), JSON.stringify(options))
+      for (const urls of [[] as any, ["dns.example"] as const, ["ftp://dns.example/"] as const]) {
+        assert.isTrue(Exit.hasDies(yield* Effect.exit(httpsTransport(http, { urls }))), JSON.stringify(urls))
       }
     }))
 })

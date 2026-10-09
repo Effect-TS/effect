@@ -2,11 +2,12 @@
  * A DNS client that speaks the DNS protocol itself, returning full responses
  * with their sections, TTLs, and header flags.
  *
- * `make` sends each query over UDP from a new socket, so every attempt gets a
- * fresh source port and a random query ID, and retries over TCP when the
- * response is truncated. Name servers are tried in order, with a timeout per
- * attempt, until one answers. `makeHttps` sends queries as DNS over HTTPS
- * with any `HttpClient`, which also works in browsers.
+ * `make` creates a client that sends queries with a `Transport`, trying name
+ * servers in order with a timeout per attempt until one answers. Transports
+ * are provided by layers, so they can be replaced: UDP with retries over TCP
+ * and TCP from the platform packages, such as `NodeDnsClient`, and DNS over
+ * HTTPS with any `HttpClient` from `layerTransportHttps`, which also works in
+ * browsers.
  *
  * Record data reuses the `Dns` record values. Records that `Dns` cannot
  * represent, such as unknown record types or names that are not valid
@@ -211,270 +212,265 @@ const concat = (head: Uint8Array, chunks: ReadonlyArray<Uint8Array>): Uint8Array
   return out
 }
 
-// Creates the service around a transport. `send` exchanges one query with a
-// server and returns the response that matches it, using `limit` to bound each
-// exchange by the timeout. The servers are tried in turn until one returns a
-// response with no error or NXDOMAIN.
-const makeWith = <Server>(options: {
-  readonly servers: Arr.NonEmptyReadonlyArray<Server>
-  readonly udpPayloadSize: number
-  readonly padding?: number | undefined
-  readonly timeout?: Duration.Input | undefined
-  readonly attempts?: number | undefined
-  readonly rotate?: boolean | undefined
-  readonly search?: ReadonlyArray<Host.DomainName> | undefined
-  readonly ndots?: number | undefined
-  readonly hosts?: Effect.Effect<Hosts> | undefined
-  readonly send: (server: Server, query: {
-    readonly encode: (id: number) => Uint8Array
-    readonly matches: (header: DnsMessage.Header, id: number) => boolean
-    readonly limit: <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) => Effect.Effect<A, Dns.DnsError>
-    readonly fail: (reason: Dns.DnsErrorReason, cause?: unknown) => Dns.DnsError
-  }) => Effect.Effect<Uint8Array, Dns.DnsError>
-}): DnsClient["Service"] => {
-  const timeout = Duration.fromInputUnsafe(options.timeout ?? Duration.seconds(5))
-  const attempts = options.attempts ?? 2
-  if (!Duration.isFinite(timeout) || !Duration.isPositive(timeout)) {
-    throw new RangeError(`DnsClient timeout must be a positive finite duration, received ${timeout}`)
-  }
-  if (!Number.isSafeInteger(attempts) || attempts < 1) {
-    throw new RangeError(`DnsClient attempts must be a positive integer, received ${attempts}`)
-  }
-  const ndots = options.ndots ?? 1
-  if (!Number.isSafeInteger(ndots) || ndots < 0) {
-    throw new RangeError(`DnsClient ndots must be a non-negative integer, received ${ndots}`)
-  }
-  const { servers } = options
-  let rotation = 0
-
-  const query = Effect.fnUntraced(function*(
-    name: Host.DomainName,
-    type: Dns.RecordType,
-    queryOptions?: { readonly recursionDesired?: boolean | undefined }
-  ) {
-    const fail = (reason: Dns.DnsErrorReason, cause?: unknown) =>
-      new Dns.DnsError({ reason, method: "resolve", hostname: name, recordType: type, cause })
-    const question = { name: absolute(name), type: DnsMessage.typeCodes[type] }
-    const recursionDesired = queryOptions?.recursionDesired ?? true
-
-    const context = {
-      encode: (id: number) =>
-        DnsMessage.encodeQuery({
-          id,
-          name,
-          type: question.type,
-          recursionDesired,
-          udpPayloadSize: options.udpPayloadSize,
-          padding: options.padding
-        }),
-      matches: (header: DnsMessage.Header, id: number): boolean => {
-        if (header.id !== id || !header.isResponse || header.opcode !== 0) return false
-        // Some servers leave the question out of format error responses.
-        if (header.questions.length === 0) return header.rcode === 1
-        if (header.questions.length !== 1) return false
-        const [{ class: klass, name, type }] = header.questions
-        return type === question.type && klass === 1 && asciiLowerCase(name) === question.name
-      },
-      limit: <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
-        effect.pipe(
-          Effect.scoped,
-          Effect.mapError((cause) => fail("Refused", cause)),
-          Effect.timeoutOrElse({ duration: timeout, orElse: () => Effect.fail(fail("Timeout")) })
-        ),
-      fail
-    }
-
-    const exchange = Effect.fnUntraced(function*(server: Server) {
-      const payload = yield* options.send(server, context)
-      const response = yield* Effect.mapError(
-        Effect.fromResult(DnsMessage.decodeResponse(payload)),
-        (cause) => fail("InvalidResponse", cause)
-      )
-      if (response.rcode !== 0 && response.rcode !== 3) {
-        return yield* fail(rcodeReasons[response.rcode] ?? "Unknown", response)
-      }
-      return response
-    })
-
-    const start = options.rotate ? rotation++ % servers.length : 0
-    let error: Dns.DnsError | undefined
-    for (let attempt = 0; attempt < attempts; attempt++) {
-      for (let i = 0; i < servers.length; i++) {
-        const result = yield* Effect.result(exchange(servers[(start + i) % servers.length]))
-        if (Result.isSuccess(result)) return result.success
-        error = result.failure
-      }
-    }
-    return yield* error!
-  })
-
-  return DnsClient.of({
-    query,
-    search: options.search ?? [],
-    ndots,
-    hosts: options.hosts ?? Effect.succeed(new Map())
-  })
-}
+// =============================================================================
+// Transports
+// =============================================================================
 
 /**
- * Options for `make`.
+ * One query that a `Transport` sends to a name server.
  *
  * **Details**
  *
- * - `udp(server)` opens a socket for one UDP attempt. The socket must send to
- *   `server` by default, as a `peer` or connected socket, and should bind an
- *   ephemeral port so the operating system picks a random source port.
- * - `tcp(server)` opens a connection for a query whose UDP response was
- *   truncated.
- * - Name servers given as IP addresses use port 53. They are tried in order,
- *   starting with the next one for each query when `rotate` is set, for
- *   `attempts` rounds (default 2). Each UDP or TCP exchange is limited to
- *   `timeout` (default 5 seconds).
- * - Queries advertise a UDP payload size of `udpPayloadSize` bytes (default
- *   1232) with EDNS(0).
- * - `search` (default none), `ndots` (default 1), and `hosts` (default empty)
- *   configure the address lookups of `layerDns`.
+ * - `encode` encodes the query with an ID and the EDNS(0) options of the
+ *   transport: the advertised UDP payload size and, optionally, the padding
+ *   block size.
+ * - `matches` returns whether a message answers the query: it must be a
+ *   response with the ID and a question with the query's name (in any letter
+ *   case), type, and class. A format error without a question also matches.
+ * - `limit` runs one exchange in its own scope and limits it to the client's
+ *   timeout. Failures become `Refused` errors and timeouts `Timeout` errors.
+ * - `fail` creates the `Dns.DnsError` of the query.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export interface MakeOptions {
-  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
-  readonly udp: (server: NetAddress.InetAddress) => Effect.Effect<DatagramSocket.DatagramSocket>
-  readonly tcp: (server: NetAddress.InetAddress) => Effect.Effect<Socket.Socket>
-  readonly timeout?: Duration.Input | undefined
-  readonly attempts?: number | undefined
-  readonly rotate?: boolean | undefined
-  readonly udpPayloadSize?: number | undefined
-  readonly search?: ReadonlyArray<Host.DomainName> | undefined
-  readonly ndots?: number | undefined
-  readonly hosts?: Effect.Effect<Hosts> | undefined
+export interface Exchange {
+  readonly encode: (options: {
+    readonly id: number
+    readonly udpPayloadSize: number
+    readonly padding?: number | undefined
+  }) => Uint8Array
+  readonly matches: (message: Uint8Array, id: number) => boolean
+  readonly limit: <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) => Effect.Effect<A, Dns.DnsError>
+  readonly fail: (reason: Dns.DnsErrorReason, cause?: unknown) => Dns.DnsError
 }
 
 /**
- * Creates a `DnsClient` that sends queries to name servers with the given
- * socket constructors.
+ * Service that sends the queries of a `DnsClient` to name servers.
+ *
+ * **When to use**
+ *
+ * Use to choose how `make` reaches its name servers: over UDP or TCP with
+ * the platform transport layers, such as `NodeDnsClient.layerTransportUdp`,
+ * or as DNS over HTTPS with `layerTransportHttps`.
+ *
+ * **Details**
+ *
+ * `servers` holds one entry per name server, in the order they are tried.
+ * `send` exchanges a query with the server and returns the response message
+ * that matches it; the client decodes the response and maps its response
+ * code.
+ *
+ * @see {@link makeTransportUdp} for UDP with retries over TCP
+ * @see {@link makeTransportTcp} for TCP
+ * @see {@link makeTransportHttps} for DNS over HTTPS
+ * @stability experimental
+ * @category services
+ * @since 4.0.0
+ */
+export class Transport extends Context.Service<Transport, {
+  readonly servers: Arr.NonEmptyReadonlyArray<{
+    readonly send: (exchange: Exchange) => Effect.Effect<Uint8Array, Dns.DnsError>
+  }>
+}>()("effect/net/DnsClient/Transport") {}
+
+// Uses port 53 for name servers given as IP addresses.
+const nameServerAddresses = (
+  nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+): Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> => {
+  if (nameServers.length === 0) {
+    throw new RangeError("DnsClient needs at least one name server")
+  }
+  return Arr.map(
+    nameServers,
+    (server) => NetAddress.isIpAddress(server) ? NetAddress.inetAddressUnsafe(server, 53) : server
+  )
+}
+
+// Sends a query with a new random ID over a new TCP connection and returns the
+// response, which must match the query.
+const sendTcp = Effect.fnUntraced(function*(
+  open: Effect.Effect<Socket.Socket>,
+  udpPayloadSize: number,
+  { encode, fail, limit, matches }: Exchange
+) {
+  const id = randomId()
+  const payload = yield* limit(Effect.gen(function*() {
+    const socket = yield* open
+    const pull = yield* Socket.readerBytes(socket)
+    const writer = yield* socket.writer
+    yield* writer.write(tcpFrame(encode({ id, udpPayloadSize })))
+    let buffer: Uint8Array = new Uint8Array(0)
+    while (buffer.length < 2 || buffer.length < 2 + ((buffer[0] << 8) | buffer[1])) {
+      buffer = concat(buffer, yield* pull)
+    }
+    return buffer.subarray(2, 2 + ((buffer[0] << 8) | buffer[1]))
+  }))
+  if (!matches(payload, id)) {
+    return yield* fail("InvalidResponse", new Error("the TCP response does not match the query"))
+  }
+  return payload
+})
+
+/**
+ * Options for `makeTransportUdp`.
+ *
+ * **Details**
+ *
+ * - Name servers given as IP addresses use port 53.
+ * - `udp(server)` opens a socket for one UDP attempt. The socket must send to
+ *   `server` by default, as a `peer` or connected socket, and should bind an
+ *   ephemeral port so the operating system picks a random source port.
+ * - `tcp(server)` opens a connection for a query whose UDP response was
+ *   truncated.
+ * - Queries advertise a UDP payload size of `udpPayloadSize` bytes (default
+ *   1232) with EDNS(0).
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface TransportUdpOptions {
+  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+  readonly udp: (server: NetAddress.InetAddress) => Effect.Effect<DatagramSocket.DatagramSocket>
+  readonly tcp: (server: NetAddress.InetAddress) => Effect.Effect<Socket.Socket>
+  readonly udpPayloadSize?: number | undefined
+}
+
+/**
+ * Creates a `Transport` that sends queries over UDP and retries truncated
+ * responses over TCP.
+ *
+ * **When to use**
+ *
+ * Use to build a transport from your own socket constructors; the platform
+ * packages provide it with their sockets, for example with
+ * `NodeDnsClient.layerTransportUdp`.
  *
  * **Details**
  *
  * - Each attempt opens a new socket and uses a new random query ID; the socket
  *   is closed when the attempt ends or is interrupted.
  * - A response is accepted only if it comes from the name server and matches
- *   the query's ID, name (in any letter case), type, and class; other packets
- *   are ignored. A truncated response is retried over TCP.
- * - Server failures, refusals, malformed responses, timeouts, and transport
- *   errors move on to the next name server.
+ *   the query; other packets are ignored. A truncated response is retried over
+ *   TCP with a new query ID.
  *
  * **Gotchas**
  *
- * Invalid options cause a defect when the service is created: `attempts` must
- * be a positive integer, `timeout` a positive finite duration,
- * `udpPayloadSize` an integer from 512 to 65535, and `ndots` a non-negative
- * integer.
+ * Invalid options cause a defect: `nameServers` must not be empty and
+ * `udpPayloadSize` must be an integer from 512 to 65535.
  *
- * @see {@link MakeOptions} for the options and their defaults
+ * @see {@link TransportUdpOptions} for the options and their defaults
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = (options: MakeOptions): Effect.Effect<DnsClient["Service"]> =>
+export const makeTransportUdp = (options: TransportUdpOptions): Effect.Effect<Transport["Service"]> =>
   Effect.sync(() => {
     const udpPayloadSize = options.udpPayloadSize ?? 1232
     if (!Number.isInteger(udpPayloadSize) || udpPayloadSize < 512 || udpPayloadSize > 0xffff) {
       throw new RangeError(`DnsClient udpPayloadSize must be an integer from 512 to 65535, received ${udpPayloadSize}`)
     }
-    if (options.nameServers.length === 0) {
-      throw new RangeError("DnsClient needs at least one name server")
-    }
-    const servers = Arr.map(options.nameServers, (server) =>
-      NetAddress.isIpAddress(server) ? NetAddress.inetAddressUnsafe(server, 53) : server)
-
-    return makeWith({
-      ...options,
-      servers,
-      udpPayloadSize,
-      send: Effect.fnUntraced(function*(server, { encode, fail, limit, matches }) {
-        const udpId = randomId()
-        const received = yield* limit(Effect.gen(function*() {
-          const socket = yield* options.udp(server)
-          const reader = yield* socket.reader
-          const writer = yield* socket.writer
-          yield* writer.write({ payload: encode(udpId) })
-          while (true) {
-            for (const datagram of yield* reader.pull) {
-              if (!Equal.equals(datagram.address, server)) {
-                continue
-              }
-              const header = Result.getOrUndefined(DnsMessage.decodeHeader(datagram.payload))
-              if (header !== undefined && matches(header, udpId)) {
-                return { header, payload: datagram.payload }
+    return Transport.of({
+      servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
+        send: Effect.fnUntraced(function*(exchange) {
+          const id = randomId()
+          const received = yield* exchange.limit(Effect.gen(function*() {
+            const socket = yield* options.udp(server)
+            const reader = yield* socket.reader
+            const writer = yield* socket.writer
+            yield* writer.write({ payload: exchange.encode({ id, udpPayloadSize }) })
+            while (true) {
+              for (const datagram of yield* reader.pull) {
+                if (Equal.equals(datagram.address, server) && exchange.matches(datagram.payload, id)) {
+                  return datagram.payload
+                }
               }
             }
-          }
-        }))
-        if (!received.header.flags.truncated) {
-          return received.payload
-        }
-        const tcpId = randomId()
-        const payload = yield* limit(Effect.gen(function*() {
-          const socket = yield* options.tcp(server)
-          const pull = yield* Socket.readerBytes(socket)
-          const writer = yield* socket.writer
-          yield* writer.write(tcpFrame(encode(tcpId)))
-          let buffer: Uint8Array = new Uint8Array(0)
-          while (buffer.length < 2 || buffer.length < 2 + ((buffer[0] << 8) | buffer[1])) {
-            buffer = concat(buffer, yield* pull)
-          }
-          return buffer.subarray(2, 2 + ((buffer[0] << 8) | buffer[1]))
-        }))
-        const header = Result.getOrUndefined(DnsMessage.decodeHeader(payload))
-        if (header === undefined || !matches(header, tcpId)) {
-          return yield* fail("InvalidResponse", new Error("the TCP response does not match the query"))
-        }
-        return payload
-      })
+          }))
+          // The TC bit of a matching response, which has a complete header.
+          return (received[2] & 0x02) !== 0
+            ? yield* sendTcp(options.tcp(server), udpPayloadSize, exchange)
+            : received
+        })
+      }))
     })
   })
 
-// =============================================================================
-// DNS over HTTPS
-// =============================================================================
-
 /**
- * Options for `makeHttps`.
+ * Options for `makeTransportTcp`.
  *
  * **Details**
  *
- * - `urls` are the DNS over HTTPS endpoints, such as
- *   `"https://cloudflare-dns.com/dns-query"`. They are tried in order,
- *   starting with the next one for each query when `rotate` is set, for
- *   `attempts` rounds (default 2). Each request is limited to `timeout`
- *   (default 5 seconds).
- * - `method` (default `"GET"`) sends the query in the `dns` URL parameter
- *   with `"GET"` or as the request body with `"POST"`.
- * - `search` (default none), `ndots` (default 1), and `hosts` (default empty)
- *   configure the address lookups of `layerDns`.
+ * Name servers given as IP addresses use port 53, and `tcp(server)` opens the
+ * connection for one attempt.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export interface MakeHttpsOptions {
+export interface TransportTcpOptions {
+  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+  readonly tcp: (server: NetAddress.InetAddress) => Effect.Effect<Socket.Socket>
+}
+
+/**
+ * Creates a `Transport` that sends every query over TCP.
+ *
+ * **When to use**
+ *
+ * Use when UDP is blocked or unreliable on the path to the name servers, like
+ * the `use-vc` option of `resolv.conf`. The platform packages provide it with
+ * their sockets, for example with `NodeDnsClient.layerTransportTcp`.
+ *
+ * **Details**
+ *
+ * Each attempt opens a new connection and uses a new random query ID. A
+ * response must match the query, or the attempt fails with `InvalidResponse`.
+ *
+ * **Gotchas**
+ *
+ * An empty `nameServers` list causes a defect.
+ *
+ * @see {@link TransportTcpOptions} for the options
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTransportTcp = (options: TransportTcpOptions): Effect.Effect<Transport["Service"]> =>
+  Effect.sync(() =>
+    Transport.of({
+      servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
+        // Advertises EDNS(0) support; the UDP payload size does not apply over TCP.
+        send: (exchange) => sendTcp(options.tcp(server), 1232, exchange)
+      }))
+    })
+  )
+
+/**
+ * Options for `makeTransportHttps`.
+ *
+ * **Details**
+ *
+ * - `urls` are the DNS over HTTPS endpoints, such as
+ *   `"https://cloudflare-dns.com/dns-query"`, in the order they are tried.
+ * - `method` (default `"GET"`) sends the query in the `dns` URL parameter
+ *   with `"GET"` or as the request body with `"POST"`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface TransportHttpsOptions {
   readonly urls: Arr.NonEmptyReadonlyArray<string | URL>
   readonly method?: "GET" | "POST" | undefined
-  readonly timeout?: Duration.Input | undefined
-  readonly attempts?: number | undefined
-  readonly rotate?: boolean | undefined
-  readonly search?: ReadonlyArray<Host.DomainName> | undefined
-  readonly ndots?: number | undefined
-  readonly hosts?: Effect.Effect<Hosts> | undefined
 }
 
 const dnsMessage = "application/dns-message"
 
 /**
- * Creates a `DnsClient` that sends queries over HTTP with the `HttpClient`
+ * Creates a `Transport` that sends queries over HTTP with the `HttpClient`
  * service, as DNS over HTTPS (RFC 8484).
  *
  * **When to use**
@@ -490,26 +486,23 @@ const dnsMessage = "application/dns-message"
  *   parameter, which keeps browser requests free of CORS preflights.
  * - A response must have a 2xx status, the `application/dns-message` content
  *   type, and the query's name (in any letter case), type, and class, or the
- *   query fails with `InvalidResponse`; 5xx statuses fail with
- *   `ServerFailure`.
- * - Server failures, refusals, malformed responses, timeouts, and HTTP client
- *   errors move on to the next URL.
+ *   attempt fails with `InvalidResponse`; 5xx statuses fail with
+ *   `ServerFailure`. HTTP client errors fail with `Refused`.
  *
  * **Gotchas**
  *
- * Invalid options cause a defect when the service is created: `urls` must be
- * HTTP or HTTPS URLs, `attempts` a positive integer, `timeout` a positive
- * finite duration, and `ndots` a non-negative integer.
+ * Invalid options cause a defect: `urls` must be a non-empty list of HTTP or
+ * HTTPS URLs.
  *
- * @see {@link MakeHttpsOptions} for the options and their defaults
- * @see {@link layerHttps} for a layer
+ * @see {@link TransportHttpsOptions} for the options and their defaults
+ * @see {@link layerTransportHttps} for a layer
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const makeHttps = (
-  options: MakeHttpsOptions
-): Effect.Effect<DnsClient["Service"], never, HttpClient.HttpClient> =>
+export const makeTransportHttps = (
+  options: TransportHttpsOptions
+): Effect.Effect<Transport["Service"], never, HttpClient.HttpClient> =>
   Effect.map(Effect.service(HttpClient.HttpClient), (httpClient) => {
     if (options.urls.length === 0) {
       throw new RangeError("DnsClient needs at least one URL")
@@ -524,48 +517,45 @@ export const makeHttps = (
     const client = HttpClient.withScope(httpClient)
     const post = options.method === "POST"
 
-    return makeWith({
-      ...options,
-      servers: urls,
-      // The padding needs an OPT record, whose UDP payload size does not
-      // apply over HTTP.
-      udpPayloadSize: 1232,
-      padding: 128,
-      send: Effect.fnUntraced(function*(url, { encode, fail, limit, matches }) {
-        const query = encode(0)
-        const request = HttpClientRequest.setHeader(
-          post
-            ? HttpClientRequest.bodyUint8Array(HttpClientRequest.post(url), query, dnsMessage)
-            : HttpClientRequest.setUrlParam(HttpClientRequest.get(url), "dns", Base64Url.encode(query)),
-          "accept",
-          dnsMessage
-        )
-        const { payload, status } = yield* limit(Effect.gen(function*() {
-          const response = yield* client.execute(request)
-          const ok = response.status >= 200 && response.status < 300 &&
-            response.headers["content-type"]?.split(";")[0].trim().toLowerCase() === dnsMessage
-          return {
-            status: response.status,
-            payload: ok ? new Uint8Array(yield* response.arrayBuffer) : undefined
-          }
-        }))
-        if (payload === undefined) {
-          return yield* fail(
-            status >= 500 ? "ServerFailure" : "InvalidResponse",
-            new Error(`the server responded with status ${status} and no DNS message`)
+    return Transport.of({
+      servers: Arr.map(urls, (url) => ({
+        send: Effect.fnUntraced(function*({ encode, fail, limit, matches }) {
+          // The padding needs an OPT record, whose UDP payload size does not
+          // apply over HTTP.
+          const query = encode({ id: 0, udpPayloadSize: 1232, padding: 128 })
+          const request = HttpClientRequest.setHeader(
+            post
+              ? HttpClientRequest.bodyUint8Array(HttpClientRequest.post(url), query, dnsMessage)
+              : HttpClientRequest.setUrlParam(HttpClientRequest.get(url), "dns", Base64Url.encode(query)),
+            "accept",
+            dnsMessage
           )
-        }
-        const header = Result.getOrUndefined(DnsMessage.decodeHeader(payload))
-        if (header === undefined || !matches(header, 0)) {
-          return yield* fail("InvalidResponse", new Error("the response does not match the query"))
-        }
-        return payload
-      })
+          const { payload, status } = yield* limit(Effect.gen(function*() {
+            const response = yield* client.execute(request)
+            const ok = response.status >= 200 && response.status < 300 &&
+              response.headers["content-type"]?.split(";")[0].trim().toLowerCase() === dnsMessage
+            return {
+              status: response.status,
+              payload: ok ? new Uint8Array(yield* response.arrayBuffer) : undefined
+            }
+          }))
+          if (payload === undefined) {
+            return yield* fail(
+              status >= 500 ? "ServerFailure" : "InvalidResponse",
+              new Error(`the server responded with status ${status} and no DNS message`)
+            )
+          }
+          if (!matches(payload, 0)) {
+            return yield* fail("InvalidResponse", new Error("the response does not match the query"))
+          }
+          return payload
+        })
+      }))
     })
   })
 
 /**
- * Layer that provides a `DnsClient` sending queries over HTTP with the
+ * Layer that provides a `Transport` sending queries over HTTP with the
  * `HttpClient` service, as DNS over HTTPS (RFC 8484).
  *
  * **Example** (Resolving names over HTTPS in a browser)
@@ -576,18 +566,170 @@ export const makeHttps = (
  * import { DnsClient } from "effect/net"
  *
  * const DnsLive = DnsClient.layerDns.pipe(
- *   Layer.provide(DnsClient.layerHttps({ urls: ["https://cloudflare-dns.com/dns-query"] })),
+ *   Layer.provide(DnsClient.layer()),
+ *   Layer.provide(DnsClient.layerTransportHttps({ urls: ["https://cloudflare-dns.com/dns-query"] })),
  *   Layer.provide(FetchHttpClient.layer)
  * )
  * ```
  *
- * @see {@link makeHttps} for the behavior and options
+ * @see {@link makeTransportHttps} for the behavior and options
  * @stability experimental
  * @category layers
  * @since 4.0.0
  */
-export const layerHttps = (options: MakeHttpsOptions): Layer.Layer<DnsClient, never, HttpClient.HttpClient> =>
-  Layer.effect(DnsClient, makeHttps(options))
+export const layerTransportHttps = (
+  options: TransportHttpsOptions
+): Layer.Layer<Transport, never, HttpClient.HttpClient> => Layer.effect(Transport, makeTransportHttps(options))
+
+// =============================================================================
+// Client
+// =============================================================================
+
+/**
+ * Options for `make`.
+ *
+ * **Details**
+ *
+ * - The name servers of the `Transport` are tried in order, starting with the
+ *   next one for each query when `rotate` is set, for `attempts` rounds
+ *   (default 2). Each exchange is limited to `timeout` (default 5 seconds).
+ * - `search` (default none), `ndots` (default 1), and `hosts` (default empty)
+ *   configure the address lookups of `layerDns`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface MakeOptions {
+  readonly timeout?: Duration.Input | undefined
+  readonly attempts?: number | undefined
+  readonly rotate?: boolean | undefined
+  readonly search?: ReadonlyArray<Host.DomainName> | undefined
+  readonly ndots?: number | undefined
+  readonly hosts?: Effect.Effect<Hosts> | undefined
+}
+
+/**
+ * Creates a `DnsClient` that sends queries with the `Transport` service.
+ *
+ * **Details**
+ *
+ * - Responses with no error and responses for names that do not exist
+ *   (NXDOMAIN) are returned. Server failures, refusals, malformed responses,
+ *   timeouts, and transport errors move on to the next name server.
+ * - Response codes map to `Dns.DnsError` reasons: format errors to
+ *   `InvalidResponse`, server failures to `ServerFailure`, unimplemented
+ *   queries to `Unsupported`, refusals to `Refused`, and others to `Unknown`.
+ *
+ * **Gotchas**
+ *
+ * Invalid options cause a defect when the service is created: `attempts` must
+ * be a positive integer, `timeout` a positive finite duration, and `ndots` a
+ * non-negative integer.
+ *
+ * @see {@link MakeOptions} for the options and their defaults
+ * @see {@link layer} for a layer
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Service"], never, Transport> =>
+  Effect.map(Effect.service(Transport), (transport) => {
+    const timeout = Duration.fromInputUnsafe(options.timeout ?? Duration.seconds(5))
+    const attempts = options.attempts ?? 2
+    if (!Duration.isFinite(timeout) || !Duration.isPositive(timeout)) {
+      throw new RangeError(`DnsClient timeout must be a positive finite duration, received ${timeout}`)
+    }
+    if (!Number.isSafeInteger(attempts) || attempts < 1) {
+      throw new RangeError(`DnsClient attempts must be a positive integer, received ${attempts}`)
+    }
+    const ndots = options.ndots ?? 1
+    if (!Number.isSafeInteger(ndots) || ndots < 0) {
+      throw new RangeError(`DnsClient ndots must be a non-negative integer, received ${ndots}`)
+    }
+    const { servers } = transport
+    let rotation = 0
+
+    const query = Effect.fnUntraced(function*(
+      name: Host.DomainName,
+      type: Dns.RecordType,
+      queryOptions?: { readonly recursionDesired?: boolean | undefined }
+    ) {
+      const fail = (reason: Dns.DnsErrorReason, cause?: unknown) =>
+        new Dns.DnsError({ reason, method: "resolve", hostname: name, recordType: type, cause })
+      const question = { name: absolute(name), type: DnsMessage.typeCodes[type] }
+      const recursionDesired = queryOptions?.recursionDesired ?? true
+
+      const exchange: Exchange = {
+        encode: ({ id, padding, udpPayloadSize }) =>
+          DnsMessage.encodeQuery({ id, name, type: question.type, recursionDesired, udpPayloadSize, padding }),
+        matches: (message, id) => {
+          const header = Result.getOrUndefined(DnsMessage.decodeHeader(message))
+          if (header === undefined || header.id !== id || !header.isResponse || header.opcode !== 0) return false
+          // Some servers leave the question out of format error responses.
+          if (header.questions.length === 0) return header.rcode === 1
+          if (header.questions.length !== 1) return false
+          const [{ class: klass, name, type }] = header.questions
+          return type === question.type && klass === 1 && asciiLowerCase(name) === question.name
+        },
+        limit: (effect) =>
+          effect.pipe(
+            Effect.scoped,
+            Effect.mapError((cause) => fail("Refused", cause)),
+            Effect.timeoutOrElse({ duration: timeout, orElse: () => Effect.fail(fail("Timeout")) })
+          ),
+        fail
+      }
+
+      const attempt = Effect.fnUntraced(function*(server: Transport["Service"]["servers"][number]) {
+        const payload = yield* server.send(exchange)
+        const response = yield* Effect.mapError(
+          Effect.fromResult(DnsMessage.decodeResponse(payload)),
+          (cause) => fail("InvalidResponse", cause)
+        )
+        if (response.rcode !== 0 && response.rcode !== 3) {
+          return yield* fail(rcodeReasons[response.rcode] ?? "Unknown", response)
+        }
+        return response
+      })
+
+      const start = options.rotate ? rotation++ % servers.length : 0
+      let error: Dns.DnsError | undefined
+      for (let round = 0; round < attempts; round++) {
+        for (let i = 0; i < servers.length; i++) {
+          const result = yield* Effect.result(attempt(servers[(start + i) % servers.length]))
+          if (Result.isSuccess(result)) return result.success
+          error = result.failure
+        }
+      }
+      return yield* error!
+    })
+
+    return DnsClient.of({
+      query,
+      search: options.search ?? [],
+      ndots,
+      hosts: options.hosts ?? Effect.succeed(new Map())
+    })
+  })
+
+/**
+ * Layer that provides a `DnsClient` sending queries with the `Transport`
+ * service.
+ *
+ * **Details**
+ *
+ * The platform packages provide a client configured from the system, such as
+ * `NodeDnsClient.layer`, and transport layers such as
+ * `NodeDnsClient.layerTransportUdp`.
+ *
+ * @see {@link make} for the behavior and options
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer = (options?: MakeOptions): Layer.Layer<DnsClient, never, Transport> =>
+  Layer.effect(DnsClient, make(options))
 
 // =============================================================================
 // System configuration

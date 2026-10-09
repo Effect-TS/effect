@@ -1,8 +1,8 @@
 /**
- * The `BunDnsClient` module provides Bun's `DnsClient` service, which speaks
- * the DNS protocol over Bun UDP sockets connected to the name server and
- * `node:net` connections for truncated responses. The system configuration
- * is read with `NodeDnsClient.systemOptions`.
+ * The `BunDnsClient` module provides Bun's `DnsClient` service and its UDP and
+ * TCP transports, which speak the DNS protocol over Bun UDP sockets connected
+ * to the name server and `node:net` connections. The system configuration is
+ * read with `NodeDnsClient.systemOptions`.
  *
  * @stability experimental
  * @since 4.0.0
@@ -28,20 +28,99 @@ export type {
   Options
 } from "@effect/platform-node-shared/NodeDnsClient"
 
+const isScoped = (server: NetAddress.IpAddress | NetAddress.InetAddress): boolean =>
+  NetAddress.isInetAddressV6(server) && server.scopeId !== 0
+
+const rejectScoped = (
+  nameServers: ReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+): Effect.Effect<void, NetAddress.NetAddressError> => {
+  const scoped = nameServers.find(isScoped)
+  return scoped === undefined ? Effect.void : Effect.fail(
+    new NetAddress.NetAddressError({ input: scoped, message: "IPv6 name servers with a scope ID are not supported" })
+  )
+}
+
+const udp = (server: NetAddress.InetAddress) =>
+  BunDatagramSocket.make({ connect: { address: server.address, port: server.port } })
+
+const tcp = (server: NetAddress.InetAddress) =>
+  NodeSocket.makeNet({ host: NetAddress.formatIp(server.address), port: server.port })
+
+/**
+ * Creates a `DnsClient.Transport` that sends queries over UDP with
+ * Bun UDP sockets connected to the name server, and retries truncated responses over
+ * `node:net` connections.
+ *
+ * **Gotchas**
+ *
+ * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
+ *
+ * @see {@link layerTransportUdp} for a layer
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTransportUdp = (
+  options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
+): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
+  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportUdp({ ...options, udp, tcp }))
+
+/**
+ * Layer that provides a `DnsClient.Transport` sending queries over UDP, with
+ * truncated responses retried over TCP.
+ *
+ * @see {@link makeTransportUdp} for the behavior
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerTransportUdp = (
+  options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
+): Layer.Layer<DnsClient.Transport, NetAddress.NetAddressError> =>
+  Layer.effect(DnsClient.Transport, makeTransportUdp(options))
+
+/**
+ * Creates a `DnsClient.Transport` that sends every query over
+ * `node:net` connections.
+ *
+ * **Gotchas**
+ *
+ * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
+ *
+ * @see {@link layerTransportTcp} for a layer
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTransportTcp = (
+  options: Omit<DnsClient.TransportTcpOptions, "tcp">
+): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
+  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportTcp({ ...options, tcp }))
+
+/**
+ * Layer that provides a `DnsClient.Transport` sending every query over TCP.
+ *
+ * @see {@link makeTransportTcp} for the behavior
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerTransportTcp = (
+  options: Omit<DnsClient.TransportTcpOptions, "tcp">
+): Layer.Layer<DnsClient.Transport, NetAddress.NetAddressError> =>
+  Layer.effect(DnsClient.Transport, makeTransportTcp(options))
+
 /**
  * Creates a Bun `DnsClient` service from the system configuration and
- * options.
+ * options, sending queries with `makeTransportUdp`.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(options?: NodeDnsClient.Options) {
-  return yield* DnsClient.make({
-    ...yield* NodeDnsClient.systemOptions(options),
-    udp: (server) => BunDatagramSocket.make({ connect: { address: server.address, port: server.port } }),
-    tcp: (server) => NodeSocket.makeNet({ host: NetAddress.formatIp(server.address), port: server.port })
-  })
+  const config = yield* NodeDnsClient.systemOptions(options)
+  return yield* DnsClient.make(config).pipe(Effect.provideServiceEffect(DnsClient.Transport, makeTransportUdp(config)))
 })
 
 /**

@@ -9,17 +9,47 @@ import * as DnsClient from "effect/net/DnsClient"
 import * as NetAddress from "effect/net/NetAddress"
 import { describeDnsClient, describeDnsServer } from "../../node-shared/test/Dns.test-utils.ts"
 
-describeDnsClient("DnsClient (Bun)", ({ nameServer, tcpNameServer, udpPayloadSize }) =>
-  DnsClient.make({
-    nameServers: [nameServer],
-    udp: (server) => BunDatagramSocket.make({ connect: { address: server.address, port: server.port } }),
-    tcp: () => BunSocket.makeNet({ host: NetAddress.formatIp(tcpNameServer.address), port: tcpNameServer.port }),
-    timeout: "2 seconds",
-    udpPayloadSize
-  }))
+describeDnsClient(
+  "DnsClient over UDP (Bun)",
+  ({ nameServer, tcpNameServer, udpPayloadSize }) =>
+    DnsClient.make({ timeout: "2 seconds" }).pipe(
+      Effect.provideServiceEffect(
+        DnsClient.Transport,
+        DnsClient.makeTransportUdp({
+          nameServers: [nameServer],
+          udpPayloadSize,
+          udp: (server) => BunDatagramSocket.make({ connect: { address: server.address, port: server.port } }),
+          // The container maps its TCP listener to a different port.
+          tcp: () => BunSocket.makeNet({ host: NetAddress.formatIp(tcpNameServer.address), port: tcpNameServer.port })
+        })
+      )
+    )
+)
+
+describeDnsClient(
+  "DnsClient over TCP (Bun)",
+  ({ tcpNameServer }) =>
+    DnsClient.make({ timeout: "2 seconds" }).pipe(
+      Effect.provideServiceEffect(
+        DnsClient.Transport,
+        Effect.orDie(BunDnsClient.makeTransportTcp({ nameServers: [tcpNameServer] }))
+      )
+    ),
+  { stream: true }
+)
+
+describeDnsClient(
+  "DnsClient over HTTPS (Bun)",
+  ({ dohUrl }) =>
+    DnsClient.make({ timeout: "2 seconds" }).pipe(
+      Effect.provideServiceEffect(DnsClient.Transport, DnsClient.makeTransportHttps({ urls: [dohUrl] })),
+      Effect.provide(FetchHttpClient.layer)
+    ),
+  { stream: true }
+)
 
 describeDnsServer(
-  "DnsClient.layerDns (Bun)",
+  "DnsClient.layerDns over UDP (Bun)",
   (nameServer) =>
     Effect.service(Dns.Dns).pipe(
       Effect.provide(
@@ -32,26 +62,19 @@ describeDnsServer(
     )
 )
 
-describeDnsClient(
-  "DnsClient.makeHttps (Bun)",
-  ({ dohUrl }) =>
-    DnsClient.makeHttps({ urls: [dohUrl], timeout: "2 seconds" }).pipe(Effect.provide(FetchHttpClient.layer)),
-  { https: true }
-)
-
 describeDnsServer(
-  "DnsClient.layerHttps (Bun)",
+  "DnsClient.layerDns over HTTPS (Bun)",
   (_, { dohUrl }) =>
     Effect.service(Dns.Dns).pipe(
       Effect.provide(
         DnsClient.layerDns.pipe(
           Layer.provide(
-            DnsClient.layerHttps({
-              urls: [dohUrl],
+            DnsClient.layer({
               timeout: "2 seconds",
               hosts: Effect.succeed(DnsClient.parseHosts("127.0.0.1 localhost"))
             })
           ),
+          Layer.provide(DnsClient.layerTransportHttps({ urls: [dohUrl] })),
           Layer.provide(FetchHttpClient.layer)
         )
       )

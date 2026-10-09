@@ -1,13 +1,14 @@
 /**
- * Node.js implementation of Effect's `DnsClient` service.
+ * Node.js implementation of Effect's `DnsClient` service and its UDP and TCP
+ * transports.
  *
  * Queries are sent with `node:dgram` sockets connected to the name server, so
  * the kernel drops packets from other addresses, and with `node:net`
- * connections for truncated responses. The system configuration is read from
- * `/etc/resolv.conf` when the service is created, and the hosts file is read
- * again at most every 5 seconds. Provide `Dns` from the client with
- * `DnsClient.layerDns`. Other runtimes reuse `systemOptions` with their own
- * sockets.
+ * connections for truncated responses or TCP-only transports. The system
+ * configuration is read from `/etc/resolv.conf` when the service is created,
+ * and the hosts file is read again at most every 5 seconds. Provide `Dns` from
+ * the client with `DnsClient.layerDns`. Other runtimes reuse `systemOptions`
+ * with their own transports.
  *
  * @stability experimental
  * @since 4.0.0
@@ -33,7 +34,7 @@ import * as NodeSocket from "./NodeSocket.ts"
  * `nameServers` replaces the system name servers; IP addresses without a port
  * use port 53, and an empty list keeps the system name servers. The other
  * options replace the matching `resolv.conf` values and are described by
- * `DnsClient.MakeOptions`.
+ * `DnsClient.MakeOptions` and `DnsClient.TransportUdpOptions`.
  *
  * **Gotchas**
  *
@@ -59,6 +60,15 @@ export interface Options {
 const isScoped = (server: NetAddress.IpAddress | NetAddress.InetAddress): boolean =>
   NetAddress.isInetAddressV6(server) && server.scopeId !== 0
 
+const rejectScoped = (
+  nameServers: ReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+): Effect.Effect<void, NetAddress.NetAddressError> => {
+  const scoped = nameServers.find(isScoped)
+  return scoped === undefined ? Effect.void : Effect.fail(
+    new NetAddress.NetAddressError({ input: scoped, message: "IPv6 name servers with a scope ID are not supported" })
+  )
+}
+
 // Missing or unreadable files count as empty, like in glibc.
 const readFile = (path: string): Effect.Effect<string> =>
   Effect.promise(() => Fs.readFile(path, "utf8").catch(() => ""))
@@ -75,8 +85,8 @@ const localNameServers: Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> = [
 
 /**
  * Reads the system resolver configuration and hosts file and combines them
- * with options, returning everything `DnsClient.make` needs except the socket
- * constructors.
+ * with options, returning the options of `DnsClient.make` and the name servers
+ * and UDP payload size of a UDP transport.
  *
  * **Details**
  *
@@ -95,17 +105,11 @@ const localNameServers: Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> = [
  */
 export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
   const nameServers = options?.nameServers ?? []
-  const scoped = nameServers.find(isScoped)
-  if (scoped !== undefined) {
-    return yield* new NetAddress.NetAddressError({
-      input: scoped,
-      message: "IPv6 name servers with a scope ID are not supported"
-    })
-  }
+  yield* rejectScoped(nameServers)
   const config = DnsClient.parseResolvConf(yield* readFile("/etc/resolv.conf"))
   const system = config.nameServers.filter((server) => !isScoped(server))
   const hosts = yield* Effect.cachedWithTTL(Effect.map(readFile(hostsPath), DnsClient.parseHosts), "5 seconds")
-  const combined: Omit<DnsClient.MakeOptions, "udp" | "tcp"> = {
+  const combined: DnsClient.MakeOptions & Omit<DnsClient.TransportUdpOptions, "udp" | "tcp"> = {
     nameServers: Arr.isReadonlyArrayNonEmpty(nameServers)
       ? nameServers
       : Arr.isReadonlyArrayNonEmpty(system)
@@ -122,20 +126,87 @@ export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
   return combined
 })
 
+const udp = (server: NetAddress.InetAddress) =>
+  NodeDatagramSocket.make({ connect: { address: server.address, port: server.port } })
+
+const tcp = (server: NetAddress.InetAddress) =>
+  NodeSocket.makeNet({ host: NetAddress.formatIp(server.address), port: server.port })
+
+/**
+ * Creates a `DnsClient.Transport` that sends queries over UDP with
+ * `node:dgram` sockets connected to the name server, and retries truncated
+ * responses over `node:net` connections.
+ *
+ * **Gotchas**
+ *
+ * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
+ *
+ * @see {@link layerTransportUdp} for a layer
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTransportUdp = (
+  options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
+): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
+  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportUdp({ ...options, udp, tcp }))
+
+/**
+ * Layer that provides a `DnsClient.Transport` sending queries over UDP, with
+ * truncated responses retried over TCP.
+ *
+ * @see {@link makeTransportUdp} for the behavior
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerTransportUdp = (
+  options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
+): Layer.Layer<DnsClient.Transport, NetAddress.NetAddressError> =>
+  Layer.effect(DnsClient.Transport, makeTransportUdp(options))
+
+/**
+ * Creates a `DnsClient.Transport` that sends every query over a `node:net`
+ * connection.
+ *
+ * **Gotchas**
+ *
+ * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
+ *
+ * @see {@link layerTransportTcp} for a layer
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTransportTcp = (
+  options: Omit<DnsClient.TransportTcpOptions, "tcp">
+): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
+  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportTcp({ ...options, tcp }))
+
+/**
+ * Layer that provides a `DnsClient.Transport` sending every query over TCP.
+ *
+ * @see {@link makeTransportTcp} for the behavior
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerTransportTcp = (
+  options: Omit<DnsClient.TransportTcpOptions, "tcp">
+): Layer.Layer<DnsClient.Transport, NetAddress.NetAddressError> =>
+  Layer.effect(DnsClient.Transport, makeTransportTcp(options))
+
 /**
  * Creates a Node.js `DnsClient` service from the system configuration and
- * options.
+ * options, sending queries with `makeTransportUdp`.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(options?: Options) {
-  return yield* DnsClient.make({
-    ...yield* systemOptions(options),
-    udp: (server) => NodeDatagramSocket.make({ connect: { address: server.address, port: server.port } }),
-    tcp: (server) => NodeSocket.makeNet({ host: NetAddress.formatIp(server.address), port: server.port })
-  })
+  const config = yield* systemOptions(options)
+  return yield* DnsClient.make(config).pipe(Effect.provideServiceEffect(DnsClient.Transport, makeTransportUdp(config)))
 })
 
 /**

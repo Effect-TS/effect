@@ -338,8 +338,8 @@ export const describeDnsClient = (
     readonly udpPayloadSize?: number | undefined
   }) => Effect.Effect<DnsClient.DnsClient["Service"]>,
   options?: {
-    // The client sends queries over HTTPS, where responses are never truncated.
-    readonly https?: boolean | undefined
+    // The client sends queries over TCP or HTTPS, where responses are not truncated.
+    readonly stream?: boolean | undefined
   }
 ) =>
   describe(label, () => {
@@ -438,7 +438,7 @@ export const describeDnsClient = (
         assert.strictEqual(response.answer.length, 16)
       }))
 
-    it.effect.skipIf(options?.https === true)("retries truncated responses over TCP", () =>
+    it.effect.skipIf(options?.stream === true)("retries truncated responses over TCP", () =>
       Effect.gen(function*() {
         const tcp = yield* (yield* client(512)).query(name("big.example.test."), "TXT")
         assert.isFalse(tcp.flags.truncated)

@@ -6,8 +6,6 @@
 "@effect/platform-deno": patch
 ---
 
-Add the experimental `DnsClient` service to `effect/net`, a DNS client that speaks the DNS protocol over `DatagramSocket` and `Socket`. `DnsClient.query` returns full responses with header flags, response codes, TTLs, and the answer, authority, and additional sections, reusing the `Dns` record values. Queries use a new socket and a random ID for every attempt, retry truncated responses over TCP, and try each name server in turn.
+Add an experimental `DnsClient` module to `effect/net`, a DNS client that speaks the DNS protocol and returns full responses with header flags, response codes, TTLs, and every record section. Queries go through a `DnsClient.Transport` provided by a layer: `NodeDnsClient`, `BunDnsClient`, and `DenoDnsClient` provide UDP transports, which retry truncated responses over TCP, and TCP transports, and `DnsClient.layerTransportHttps` sends queries as DNS over HTTPS (RFC 8484) with any `HttpClient`, which also works in browsers.
 
-`DnsClient.layerDns` provides `Dns` from a `DnsClient`, with hosts file lookups, search domains, and CNAME following; `parseResolvConf` and `parseHosts` read the system configuration. `NodeDnsClient`, `BunDnsClient`, and `DenoDnsClient` provide the client from the system configuration, for example with `DnsClient.layerDns.pipe(Layer.provide(NodeDnsClient.layer))`.
-
-`DnsClient.makeHttps` and `DnsClient.layerHttps` send queries as DNS over HTTPS (RFC 8484) with any `HttpClient`, using GET requests by default and padding queries to a multiple of 128 bytes, so `layerDns` also works in browsers with `FetchHttpClient`.
+`DnsClient.layerDns` provides `Dns` from a client, with hosts file lookups, search domains, and CNAME following. The platform modules also provide a client configured from the system, for example with `DnsClient.layerDns.pipe(Layer.provide(NodeDnsClient.layer))`.
