@@ -1,6 +1,8 @@
 import type { Runner, ShardId } from "@effect/cluster"
 import {
   ClusterError,
+  ClusterSchema,
+  Entity,
   EntityId,
   MachineId,
   MessageStorage,
@@ -13,12 +15,16 @@ import {
   ShardingConfig,
   Snowflake
 } from "@effect/cluster"
+import { Rpc } from "@effect/rpc"
 import { assert, describe, expect, it } from "@effect/vitest"
 import {
   Array,
   Cause,
   Chunk,
+  Clock,
+  Context,
   Effect,
+  Equal,
   Exit,
   Fiber,
   FiberId,
@@ -26,10 +32,10 @@ import {
   Mailbox,
   MutableRef,
   Option,
+  Scope,
   Stream,
   TestClock
 } from "effect"
-import type { Clock } from "effect"
 import * as RunnerHealth from "../src/RunnerHealth.js"
 import {
   CallerId,
@@ -1034,6 +1040,168 @@ describe("Sharding shard lock failover", () => {
     }))
 })
 
+describe("Sharding shutdown drain", () => {
+  // the lease is shorter than the drain in both tests
+  const shardLockExpiration = 3000
+  const shardLockRefreshInterval = 1000
+
+  it.effect("keeps renewing shard locks while a drain outlasts the lease", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeDrainHarness({
+        shardLockExpiration,
+        shardLockRefreshInterval,
+        entityTerminationTimeout: 10_000,
+        uninterruptible: false
+      })
+      yield* Effect.gen(function*() {
+        const shutdownAt = yield* harness.shutdown
+        yield* harness.advanceTo(shutdownAt + 2 * shardLockExpiration)
+
+        assert.isFalse(harness.handler.interrupted)
+        assert.strictEqual(harness.releasedCount(), 0)
+        assert.isAtLeast(harness.lastRefreshAt(), shutdownAt + 2 * shardLockExpiration - shardLockRefreshInterval)
+
+        yield* harness.latch.open
+        yield* harness.awaitShutdown
+        assert.isFalse(harness.handler.interrupted)
+        assert.isAbove(harness.releasedCount(), 0)
+      }).pipe(Effect.ensuring(harness.cleanup))
+    }), 30_000)
+
+  it.effect("releases shard locks when a drain is stuck past entityTerminationTimeout", () =>
+    Effect.gen(function*() {
+      const entityTerminationTimeout = 5000
+      const harness = yield* makeDrainHarness({
+        shardLockExpiration,
+        shardLockRefreshInterval,
+        entityTerminationTimeout,
+        uninterruptible: true
+      })
+      yield* Effect.gen(function*() {
+        const shutdownAt = yield* harness.shutdown
+        yield* harness.advanceTo(shutdownAt + entityTerminationTimeout - shardLockRefreshInterval)
+        assert.strictEqual(harness.releasedCount(), 0)
+
+        // the runner may take one refresh interval to give up the shard
+        const deadline = shutdownAt + entityTerminationTimeout + shardLockRefreshInterval
+        yield* harness.advanceTo(deadline)
+        // stopping renewal is not enough for advisory locks, so the shard must
+        // also be released explicitly
+        assert.isAbove(harness.releasedCount(), 0)
+
+        yield* harness.advanceTo(deadline + shardLockExpiration)
+        assert.isAtMost(harness.lastRefreshAt(), deadline)
+        assert.isNull(harness.closeFiber.unsafePoll())
+      }).pipe(Effect.ensuring(harness.cleanup))
+    }), 30_000)
+})
+
+const DrainEntity = Entity.make("DrainEntity", [
+  Rpc.make("Drain").annotate(ClusterSchema.Persisted, false)
+])
+
+const makeDrainHarness = Effect.fnUntraced(function*(options: {
+  readonly shardLockExpiration: number
+  readonly shardLockRefreshInterval: number
+  readonly entityTerminationTimeout: number
+  readonly uninterruptible: boolean
+}) {
+  const storageState = makeFailoverStorageState()
+  const latch = yield* Effect.makeLatch(false)
+  const handler = { started: false, interrupted: false }
+  const entityLayer = DrainEntity.toLayer({
+    Drain: () => {
+      handler.started = true
+      return (options.uninterruptible ? Effect.uninterruptible(latch.await) : latch.await).pipe(
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            handler.interrupted = true
+          })
+        )
+      )
+    }
+  })
+  const runnerStorage = Layer.effect(
+    RunnerStorage.RunnerStorage,
+    Effect.map(Effect.clock, (clock) => makeFailoverStorage(storageState, clock))
+  )
+  const layer = entityLayer.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(runnerStorage),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(Runners.layerNoop),
+    Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      shardLockExpiration: options.shardLockExpiration,
+      shardLockRefreshInterval: options.shardLockRefreshInterval,
+      entityTerminationTimeout: options.entityTerminationTimeout,
+      entityMessagePollInterval: 100,
+      refreshAssignmentsInterval: 100,
+      sendRetryInterval: 100
+    }))
+  )
+
+  const scope = yield* Scope.make()
+  const context = yield* Layer.buildWithScope(layer, scope)
+  const sharding = Context.get(context, Sharding.Sharding)
+  const shardId = sharding.getShardId(EntityId.make("1"), "default")
+  while (!sharding.hasShardId(shardId)) {
+    yield* TestClock.adjust(100)
+  }
+
+  const makeClient = yield* DrainEntity.client.pipe(Effect.provide(context))
+  yield* makeClient("1").Drain().pipe(Effect.ignore, Effect.fork)
+  while (!handler.started) {
+    yield* TestClock.adjust(1)
+  }
+
+  const isShard = (shard: ShardId.ShardId) => shard[Equal.symbol](shardId)
+  let closeFiber: Fiber.RuntimeFiber<void> | undefined
+  const advanceTo = (time: number) =>
+    Effect.gen(function*() {
+      while ((yield* Clock.currentTimeMillis) < time) {
+        yield* TestClock.adjust(100)
+      }
+    })
+  const awaitShutdown = Effect.gen(function*() {
+    for (let i = 0; i < 1000 && closeFiber?.unsafePoll() === null; i++) {
+      yield* TestClock.adjust(100)
+    }
+    assert.isNotNull(closeFiber?.unsafePoll() ?? null)
+  })
+
+  return {
+    storageState,
+    latch,
+    handler,
+    advanceTo,
+    awaitShutdown,
+    get closeFiber() {
+      return closeFiber!
+    },
+    shutdown: Effect.gen(function*() {
+      const now = yield* Clock.currentTimeMillis
+      closeFiber = yield* Effect.forkDaemon(Scope.close(scope, Exit.void))
+      yield* TestClock.adjust(1)
+      return now
+    }),
+    releasedCount: () => storageState.releaseCalls.filter(isShard).length + storageState.releaseAllCalls.length,
+    lastRefreshAt: () =>
+      Math.max(
+        ...storageState.refreshCalls.filter((call) => call.shards.some(isShard)).map((call) => call.at)
+      ),
+    cleanup: Effect.gen(function*() {
+      yield* latch.open
+      if (!closeFiber) {
+        closeFiber = yield* Effect.forkDaemon(Scope.close(scope, Exit.void))
+      }
+      yield* awaitShutdown
+    })
+  }
+})
+
 interface FailoverStorageState {
   blackholed: boolean
   assignSelf: boolean
@@ -1079,7 +1247,10 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
         state.runner = runner
         return MachineId.make(1)
       }),
-    unregister: () => Effect.void,
+    unregister: () =>
+      Effect.sync(() => {
+        state.runner = undefined
+      }),
     setRunnerHealth: () => Effect.void,
     acquire: (_address, shardIds) =>
       Effect.sync(() => {

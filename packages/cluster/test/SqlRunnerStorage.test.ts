@@ -161,37 +161,33 @@ describe("SqlRunnerStorage", () => {
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
 
-      it.effect("refresh drops shards held by an unregistered runner", () =>
+      it.effect("refresh keeps shard locks for an unregistered runner", () =>
         Effect.gen(function*() {
           const storage = yield* RunnerStorage.RunnerStorage
-          const shards = [ShardId.make("default", 4)]
+          const shard = ShardId.make("default", 4)
 
           yield* storage.register(runner1, true)
-          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+          expect(yield* storage.acquire(runnerAddress1, [shard])).toContainEqual(shard)
           yield* storage.unregister(runnerAddress1)
-          const refreshed = yield* storage.refresh(runnerAddress1, shards)
+          expect(yield* storage.refresh(runnerAddress1, [shard])).toContainEqual(shard)
 
-          if (label.startsWith("sqlite") || label.endsWith(" (no advisory)")) {
-            const runnerAddress2 = RunnerAddress.make("localhost", 1235)
-            yield* storage.register(
-              Runner.make({
-                address: runnerAddress2,
-                groups: ["default"],
-                weight: 1
-              }),
-              true
-            )
-            expect(yield* storage.acquire(runnerAddress2, shards)).toEqual([])
+          // advisory locks are held by the connection and never expire
+          if (!label.startsWith("sqlite") && !label.endsWith(" (no advisory)")) return
 
-            for (let i = 0; i < 8; i++) {
-              yield* Effect.sleep(500)
-              yield* storage.refresh(runnerAddress1, shards)
-            }
+          const runnerAddress2 = RunnerAddress.make("localhost", 1235)
+          yield* storage.register(Runner.make({ address: runnerAddress2, groups: ["default"], weight: 1 }), true)
 
-            expect(yield* storage.acquire(runnerAddress2, shards)).toEqual(shards)
+          // refresh at a quarter of the 2 second lease, for longer than the lease
+          for (let i = 0; i < 6; i++) {
+            yield* Effect.sleep(500)
+            expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([shard])
           }
+          expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
 
-          expect(refreshed).toEqual([])
+          // once refreshes stop, the lease expires. Wait the 2 second lease plus
+          // 2 seconds for whole-second SQL timestamps
+          yield* Effect.sleep(4000)
+          expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([shard])
         }).pipe(TestServices.provideLive), 30_000)
     })
   })
