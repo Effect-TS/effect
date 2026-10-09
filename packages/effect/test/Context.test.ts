@@ -218,6 +218,30 @@ describe("Context", () => {
     strictEqual(impl.depth, 0)
   })
 
+  it("resets mergeAll to the default depth of 8 instead of inheriting overrides", () => {
+    const first = Context.add(Context.makeUnsafe(new Map(), { maxDepth: 2 }), A, 1)
+    const second = Context.add(Context.makeUnsafe(new Map(), { maxDepth: 32 }), B, 2)
+    let context = Context.mergeAll(first, second)
+    const keys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/MergeAllDefault${i}`))
+
+    for (let i = 0; i < 8; i++) {
+      context = Context.add(context, keys[i], i)
+    }
+    let impl = context as any as ContextInternals
+    strictEqual(impl.overlay !== undefined, true)
+    strictEqual(impl.depth, 8)
+
+    context = Context.add(context, keys[8], 8)
+    impl = context as any as ContextInternals
+    strictEqual(impl.overlay, undefined)
+    strictEqual(impl.depth, 0)
+    deepStrictEqual([...context.mapUnsafe], [
+      [A.key, 1],
+      [B.key, 2],
+      ...keys.map((key, i) => [key.key, i])
+    ])
+  })
+
   it("flattens after repeated base fall-throughs", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const impl = context as any
