@@ -17,8 +17,8 @@ import * as Stream from "../../Stream.ts"
 import type { SessionExit, SshChannel } from "../SshClient.ts"
 import { SshChannelError, SshChannelOpenError, SshError, SshRequestError } from "../SshError.ts"
 import * as Constants from "./constants.ts"
+import { protocolError } from "./errors.ts"
 import type { Transport } from "./transport.ts"
-import { protocolError } from "./transport.ts"
 import { Reader, utf8, Writer } from "./wire.ts"
 
 /** @internal */

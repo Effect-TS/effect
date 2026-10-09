@@ -9,9 +9,9 @@ import type { AuthMethod, KeyboardInteractivePrompt } from "../SshClient.ts"
 import { SshAuthenticationError, SshError } from "../SshError.ts"
 import type * as SshKey from "../SshKey.ts"
 import * as Constants from "./constants.ts"
-import * as Crypto from "./crypto.ts"
+import { protocolError, trySync } from "./errors.ts"
+import * as Signatures from "./signatures.ts"
 import type { Transport } from "./transport.ts"
-import { protocolError, trySync } from "./transport.ts"
 import { Reader, Writer } from "./wire.ts"
 
 type Outcome =
@@ -35,7 +35,7 @@ const signatureAlgorithmsFor = (
   keyType: string,
   serverAlgorithms: ReadonlyArray<string> | undefined
 ): ReadonlyArray<string> => {
-  const supported = Crypto.signatureAlgorithmsForKeyType(keyType)
+  const supported = Signatures.signatureAlgorithmsForKeyType(keyType)
   if (supported.length === 0) {
     // Unknown key types (for example agent-held security keys or
     // certificates) sign with their own type name.
@@ -62,7 +62,7 @@ export const authenticate = Effect.fnUntraced(function*(
       const payload = yield* transport.receive
       if (payload[0] !== Constants.MSG_USERAUTH_BANNER) return payload
       if (options.onBanner !== undefined) {
-        const message = yield* trySync(() => new Reader(payload, 1).utf8())
+        const message = yield* trySync("malformed banner", () => new Reader(payload, 1).utf8())
         yield* options.onBanner(message)
       }
     }
@@ -73,7 +73,7 @@ export const authenticate = Effect.fnUntraced(function*(
       return Effect.succeed({ _tag: "Success" })
     }
     if (payload[0] === Constants.MSG_USERAUTH_FAILURE) {
-      return trySync(() => {
+      return trySync("malformed authentication failure", () => {
         const reader = new Reader(payload, 1)
         return { _tag: "Failure", allowed: reader.nameList(), partial: reader.bool() }
       })
@@ -140,7 +140,7 @@ export const authenticate = Effect.fnUntraced(function*(
         if (reply[0] !== Constants.MSG_USERAUTH_INFO_REQUEST) {
           return yield* outcome(reply)
         }
-        const prompt = yield* trySync((): KeyboardInteractivePrompt => {
+        const prompt = yield* trySync("malformed keyboard-interactive request", (): KeyboardInteractivePrompt => {
           const reader = new Reader(reply, 1)
           const name = reader.utf8()
           const instruction = reader.utf8()

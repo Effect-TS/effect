@@ -21,8 +21,8 @@ import * as Inspectable from "../Inspectable.ts"
 import * as Layer from "../Layer.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Result from "../Result.ts"
-import * as SshCrypto from "./internal/crypto.ts"
 import * as Der from "./internal/der.ts"
+import * as Signatures from "./internal/signatures.ts"
 import {
   bigIntToBytes,
   bytesToBigInt,
@@ -234,7 +234,7 @@ export const formatPublicKey = (key: PublicKey): string =>
  * @since 4.0.0
  */
 export const signatureAlgorithms = (keyType: string): ReadonlyArray<string> =>
-  SshCrypto.signatureAlgorithmsForKeyType(keyType)
+  Signatures.signatureAlgorithmsForKeyType(keyType)
 
 // -----------------------------------------------------------------------------
 // Private keys
@@ -323,7 +323,7 @@ const fromJwk = Effect.fnUntraced(function*(crypto: Crypto.Crypto, jwk: Crypto.J
 
   const type = jwk.kty === "EC" && jwk.crv !== undefined ? curveForJwk[jwk.crv] : undefined
   if (type !== undefined && decoded.x !== undefined && decoded.y !== undefined) {
-    const curve = SshCrypto.ecdsaCurves[type]
+    const curve = Signatures.ecdsaCurves[type]
     const point = new Uint8Array(1 + curve.size * 2)
     point[0] = 4
     point.set(padStart(decoded.x, curve.size), 1)
@@ -334,7 +334,7 @@ const fromJwk = Effect.fnUntraced(function*(crypto: Crypto.Crypto, jwk: Crypto.J
       type,
       blob,
       comment,
-      signer({ [type]: { key, options: { name: "ECDSA", hash: curve.hash } } }, SshCrypto.ecdsaP1363ToSsh)
+      signer({ [type]: { key, options: { name: "ECDSA", hash: curve.hash } } }, Signatures.ecdsaP1363ToSsh)
     )
   }
 
@@ -404,7 +404,7 @@ const decodeOpenSshPrivateKey = (data: Uint8Array): KeyMaterial => {
     case "ecdsa-sha2-nistp256":
     case "ecdsa-sha2-nistp384":
     case "ecdsa-sha2-nistp521": {
-      const curve = SshCrypto.ecdsaCurves[type]
+      const curve = Signatures.ecdsaCurves[type]
       section.utf8()
       const point = section.string()
       const d = section.mpint()
@@ -586,7 +586,7 @@ const generate = Effect.fnUntraced(function*(
     ? { name: "Ed25519" }
     : type === "ssh-rsa"
     ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", modulusLength: options?.bits ?? 3072 }
-    : { name: "ECDSA", namedCurve: SshCrypto.ecdsaCurves[type].namedCurve }
+    : { name: "ECDSA", namedCurve: Signatures.ecdsaCurves[type].namedCurve }
   const jwk = yield* crypto.generateKeyPair(algorithm, { extractable: true }).pipe(
     Effect.flatMap((pair) => crypto.exportJwk(pair.privateKey)),
     Effect.mapError((cause) => keyError(`could not generate ${type} key`, cause))
@@ -658,12 +658,12 @@ export const make: Effect.Effect<SshKeys["Service"], never, Crypto.Crypto> = Eff
       generate: (type, options) => generate(crypto, type, options),
       verify: (key, data, signature) =>
         Effect.mapError(
-          SshCrypto.verifySignature(crypto, { publicKey: key.blob, signature, data }),
+          Signatures.verifySignature(crypto, { publicKey: key.blob, signature, data }),
           (cause) => keyError("could not verify signature", cause)
         ),
       fingerprint: (key) =>
         Effect.mapError(
-          SshCrypto.fingerprintSha256(crypto, key.blob),
+          Signatures.fingerprintSha256(crypto, key.blob),
           (cause) => keyError("could not compute fingerprint", cause)
         )
     })

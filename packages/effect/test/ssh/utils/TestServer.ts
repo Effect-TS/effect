@@ -15,8 +15,8 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Socket from "effect/socket/Socket"
 import * as Constants from "effect/ssh/internal/constants"
-import * as Crypto from "effect/ssh/internal/crypto"
-import type { Bytes } from "effect/ssh/internal/wire"
+import * as Kex from "effect/ssh/internal/kex"
+import * as Packet from "effect/ssh/internal/packet"
 import { concat, equals, fromUtf8, Reader, utf8, Writer } from "effect/ssh/internal/wire"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
@@ -160,8 +160,8 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
   }
 
   // Packet I/O -----------------------------------------------------------------
-  let sealer: Crypto.Sealer = Crypto.noneSealer(crypto)
-  let opener: Crypto.Opener = Crypto.noneOpener
+  let sealer: Packet.Sealer = Packet.noneSealer(crypto)
+  let opener: Packet.Opener = Packet.noneOpener
   let sendSequence = 0
   let receiveSequence = 0
   const lock = Semaphore.makeUnsafe(1)
@@ -217,7 +217,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
   }
 
   // Key exchange ----------------------------------------------------------------
-  let sessionId: Bytes | undefined
+  let sessionId: Uint8Array | undefined
   let firstKex = true
   let strict = false
   let ourKexInit: Uint8Array | undefined
@@ -287,17 +287,16 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       choose(clientHostKey, [hostKeyAlgorithm])
       const cipherCS = choose(clientCipherCS, ciphers)
       const cipherSC = choose(clientCipherSC, ciphers)
-      const macCS = Crypto.cipherAlgorithms[cipherCS].mode === "gcm" ? undefined : choose(clientMacCS, macs)
-      const macSC = Crypto.cipherAlgorithms[cipherSC].mode === "gcm" ? undefined : choose(clientMacSC, macs)
+      const macCS = Packet.cipherAlgorithms[cipherCS].mode === "gcm" ? undefined : choose(clientMacCS, macs)
+      const macSC = Packet.cipherAlgorithms[cipherSC].mode === "gcm" ? undefined : choose(clientMacSC, macs)
 
       const init = yield* readExpect(Constants.MSG_KEX_ECDH_INIT)
       const clientPublic = new Reader(init, 1).string()
-      const method = Crypto.kexMethods[kexName]
-      const pair = yield* Effect.orDie(Crypto.generateKeyAgreement(crypto, method))
+      const method = Kex.kexMethods[kexName]
+      const pair = yield* Effect.orDie(Kex.generateKeyAgreement(crypto, method))
       const secret = yield* Effect.orDie(pair.agree(clientPublic))
       const exchangeHash = yield* Effect.orDie(
-        Crypto.digest(
-          crypto,
+        crypto.digest(
           method.hash,
           new Writer()
             .string(clientVersion)
@@ -314,11 +313,11 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       if (sessionId === undefined) sessionId = exchangeHash
       const signature = yield* Effect.orDie(hostKey.sign(exchangeHash, hostKeyAlgorithm))
       const derive = (letter: string, length: number) =>
-        Effect.orDie(Crypto.deriveKey(crypto, method.hash, secret, exchangeHash, letter, sessionId!, length))
+        Effect.orDie(Kex.deriveKey(crypto, method.hash, secret, exchangeHash, letter, sessionId!, length))
       const keys = (cipherName: string, macName: string | undefined, letters: readonly [string, string, string]) =>
         Effect.gen(function*() {
-          const cipher = Crypto.cipherAlgorithms[cipherName]
-          const mac = macName === undefined ? undefined : Crypto.macAlgorithms[macName]
+          const cipher = Packet.cipherAlgorithms[cipherName]
+          const mac = macName === undefined ? undefined : Packet.macAlgorithms[macName]
           return {
             cipher,
             mac,
@@ -329,8 +328,8 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
         })
       const outgoing = yield* keys(cipherSC, macSC, ["B", "D", "F"])
       const incoming = yield* keys(cipherCS, macCS, ["A", "C", "E"])
-      const nextSealer = yield* Effect.orDie(Crypto.makeSealer(crypto, outgoing))
-      const nextOpener = yield* Effect.orDie(Crypto.makeOpener(crypto, incoming))
+      const nextSealer = yield* Effect.orDie(Packet.makeSealer(crypto, outgoing))
+      const nextOpener = yield* Effect.orDie(Packet.makeOpener(crypto, incoming))
 
       yield* lock.withPermit(Effect.gen(function*() {
         yield* writeRaw(

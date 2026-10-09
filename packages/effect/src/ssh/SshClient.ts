@@ -70,7 +70,8 @@ import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import * as Auth from "./internal/auth.ts"
 import * as Connection from "./internal/connection.ts"
-import * as SshCrypto from "./internal/crypto.ts"
+import { protocolError } from "./internal/errors.ts"
+import * as Signatures from "./internal/signatures.ts"
 import * as Streams from "./internal/streams.ts"
 import * as Transport from "./internal/transport.ts"
 import { concat, Reader, Writer } from "./internal/wire.ts"
@@ -730,7 +731,7 @@ export const make = Effect.fnUntraced(function*(
       algorithms,
       verifyHostKey: (key) =>
         Effect.flatMap(
-          SshCrypto.fingerprintSha256(crypto, key.blob),
+          Signatures.fingerprintSha256(crypto, key.blob),
           (fingerprint) => verifier({ host: options.host, port, key, fingerprint })
         ),
       rekeyBytes: options.rekeyLimit?.bytes ?? 1024 * 1024 * 1024,
@@ -894,7 +895,7 @@ export const make = Effect.fnUntraced(function*(
         const allocated = listener.port === 0
           ? yield* Effect.try({
             try: () => new Reader(reply).uint32(),
-            catch: () => Transport.protocolError("missing allocated port")
+            catch: () => protocolError("missing allocated port")
           })
           : listener.port
         const key = `${bindAddress}:${allocated}`
