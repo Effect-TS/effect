@@ -19,7 +19,7 @@ import {
 } from "effect"
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
-import { Rpc, RpcGroup, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
+import { Rpc, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
 
@@ -179,6 +179,39 @@ describe("RpcServer", () => {
         ages: [`Failed to encode response for RPC "ages": Expected number\n  at [0]`]
       })
     }))
+
+  it.effect("sends a stream encode failure once when middleware rewrites defects", () => {
+    const reports: Array<string> = []
+    return Effect.gen(function*() {
+      class Sanitize extends RpcMiddleware.Service<Sanitize>()("Sanitize") {}
+      const group = RpcGroup.make(
+        Rpc.make("ages", { payload: Schema.Struct({}), success: Schema.Number, stream: true }).middleware(Sanitize)
+      )
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ ages: () => Stream.make("not a number" as unknown as number) }),
+            Layer.succeed(Sanitize, (effect) => Effect.catchDefect(effect, () => Effect.die("internal error"))),
+            RpcSerialization.layerNdjson
+          ))
+        )
+      )
+      const body = yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"ages","payload":{},"headers":[]}\n`
+          })
+        ).then((response) => response.text())
+      )
+
+      const message = `Failed to encode response for RPC "ages": Expected number\n  at [0]`
+      assert.deepStrictEqual(body.trim().split("\n").map((line) => JSON.parse(line)), [
+        { _tag: "Exit", requestId: 1, exit: { _tag: "Failure", cause: [{ _tag: "Die", defect: message }] } }
+      ])
+      assert.deepStrictEqual(reports, [message])
+    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
+  })
 
   it.effect("should drain the response when stdin ends during request startup", () =>
     Effect.gen(function*() {
