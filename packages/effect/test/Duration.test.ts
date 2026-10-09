@@ -353,6 +353,12 @@ describe("Duration", () => {
     deepStrictEqual(Duration.times(Duration.infinity, 60), Duration.infinity)
   })
 
+  it("times supports non-integer multipliers of nanosecond durations", () => {
+    deepStrictEqual(Duration.times(Duration.micros(10n), 1.5), Duration.micros(15n))
+    deepStrictEqual(Duration.times(Duration.nanos(1n), Infinity), Duration.infinity)
+    deepStrictEqual(Duration.times(Duration.nanos(1n), NaN), Duration.zero)
+  })
+
   it("sum", () => {
     // millis
     deepStrictEqual(Duration.sum(Duration.seconds(30), Duration.seconds(30)), Duration.minutes(1))

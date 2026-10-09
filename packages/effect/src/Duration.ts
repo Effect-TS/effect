@@ -1434,10 +1434,9 @@ export const divideUnsafe: {
  *
  * **Details**
  *
- * For nanosecond-backed durations, the multiplier must be convertible to a
- * `bigint`; fractional or non-finite multipliers can throw. Infinite
- * durations return positive infinity, negative infinity, or zero depending on
- * the multiplier sign.
+ * For nanosecond-backed durations, non-integer multipliers round the result to
+ * the nearest nanosecond. Infinite durations return positive infinity,
+ * negative infinity, or zero depending on the multiplier sign.
  *
  * **Example** (Multiplying durations)
  *
@@ -1459,7 +1458,8 @@ export const times: {
   (self: Duration, times: number): Duration =>
     match(self, {
       onMillis: (millis) => make(millis * times),
-      onNanos: (nanos) => make(nanos * BigInt(times)),
+      onNanos: (nanos) =>
+        Number.isInteger(times) ? make(nanos * BigInt(times)) : fromNanosNumber(Number(nanos) * times),
       onInfinity: () => times > 0 ? infinity : times < 0 ? negativeInfinity : zero,
       onNegativeInfinity: () => times > 0 ? negativeInfinity : times < 0 ? infinity : zero
     })
