@@ -101,7 +101,6 @@ const perform = (decrypt: boolean, options: Crypto.XChaCha20Poly1305Options) => 
       PlatformError.systemError({
         module: "Crypto",
         method,
-        // Decryption fails only when the ciphertext or its tag is invalid.
         _tag: decrypt ? "InvalidData" : "Unknown",
         description: decrypt ? "Could not authenticate or decrypt data" : "Could not encrypt data",
         cause
