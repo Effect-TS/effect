@@ -840,8 +840,6 @@ const make = Effect.gen(function*() {
     > {
       const address = message.envelope.address
       const isEnvelope = message._tag === "IncomingEnvelope" || message._tag === "OutgoingEnvelope"
-      // envelopes are accepted while the shard drains, so in-flight requests
-      // can still be interrupted
       if (
         !isEntityOnLocalShards(address) && !(isEnvelope && MutableHashSet.has(releasingShards, address.shardId))
       ) {
@@ -1223,8 +1221,6 @@ const make = Effect.gen(function*() {
                 }),
                 rpc: entry.rpc
               })
-              // volatile requests are interrupted on the runner processing
-              // them, which may differ from the current shard owner
               return Effect.ignore(
                 entry.runner ?
                   sendToRunner(entry.runner, message).pipe(

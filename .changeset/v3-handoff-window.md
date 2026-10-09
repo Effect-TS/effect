@@ -1,4 +1,6 @@
 ---
+"@effect/cluster": patch
+"@effect/rpc": patch
 ---
 
-Add failing tests: Failing tests: shard handoff loses client interrupts and routes away from the lock holder (v3)
+Deliver client interrupts to draining entities during shard handoff and handle interrupts and acknowledgements after RPC EOF.

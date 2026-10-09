@@ -423,7 +423,6 @@ export const make = Effect.fnUntraced(function*<
   function sendLocal<R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
   ): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> {
-    // envelopes can still reach entities that are draining
     const draining = message._tag === "IncomingEnvelope"
       ? drainingServers.get(message.envelope.address.entityId)
       : undefined
