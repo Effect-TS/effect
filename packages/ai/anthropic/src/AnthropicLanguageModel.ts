@@ -665,10 +665,8 @@ declare module "effect/ai/Response" {
    *
    * **Details**
    *
-   * When the API hands a refused reply to a fallback model, the stream (or the
-   * message content) carries a `fallback` block naming both models and the
-   * refusal; the response metadata part emitted for it names the fallback
-   * model as `modelId` and keeps the block here.
+   * Fallback blocks are stored in `anthropic.fallback`; the part's `modelId`
+   * identifies the fallback model.
    *
    * @stability unstable
    * @category models
