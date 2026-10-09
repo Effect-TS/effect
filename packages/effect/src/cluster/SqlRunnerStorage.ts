@@ -507,23 +507,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  // A refresh that finds no runner row, such as after shutdown starts, does not
-  // renew row-based leases, though a refresh already past this check may still
-  // complete one final renewal. The locks stay held until they are released or
-  // expire after their last renewal.
-  const usesRowLocks = sql.onDialectOrElse({
-    pg: () => disableAdvisoryLocks,
-    mysql: () => disableAdvisoryLocks,
-    orElse: () => true
-  })
-  const refreshLocks = usesRowLocks
-    ? (address: string, shardIds: ReadonlyArray<string>) =>
-      sql`SELECT 1 FROM ${runnersTableSql} WHERE address = ${address}`.pipe(
-        execWithLockConnValues,
-        Effect.flatMap((rows) => rows.length > 0 ? refreshShards(address, shardIds) : Effect.succeed([]))
-      )
-    : refreshShards
-
   // On failure, replace the connection ready at entry. If none was ready,
   // retry only a failed rebuild, leaving pending or newly ready connections alone.
   const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
@@ -644,7 +627,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       return withLockOperationDeadline(
         heartbeat.pipe(
           execWithLockConn,
-          Effect.andThen(refreshLocks(address, shardIds))
+          Effect.andThen(refreshShards(address, shardIds))
         )
       ).pipe(
         PersistenceError.refail,
