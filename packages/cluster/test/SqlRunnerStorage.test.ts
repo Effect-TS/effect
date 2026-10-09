@@ -128,6 +128,7 @@ describe("SqlRunnerStorage", () => {
       it.effect("acquireShards", () =>
         Effect.gen(function*() {
           const storage = yield* RunnerStorage.RunnerStorage
+          yield* storage.register(runner1, true)
 
           let acquired = yield* storage.acquire(runnerAddress1, [
             ShardId.make("default", 1),
@@ -152,11 +153,28 @@ describe("SqlRunnerStorage", () => {
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
+
+      it.effect("refresh drops shards held by an unregistered runner", () =>
+        Effect.gen(function*() {
+          const storage = yield* RunnerStorage.RunnerStorage
+          const shards = [ShardId.make("default", 4)]
+
+          yield* storage.register(runner1, true)
+          yield* storage.acquire(runnerAddress1, shards)
+          yield* storage.unregister(runnerAddress1)
+
+          expect(yield* storage.refresh(runnerAddress1, shards)).toEqual([])
+        }))
     })
   })
 })
 
 const runnerAddress1 = RunnerAddress.make("localhost", 1234)
+const runner1 = Runner.make({
+  address: runnerAddress1,
+  groups: ["default"],
+  weight: 1
+})
 
 interface PartitionState {
   current: boolean
