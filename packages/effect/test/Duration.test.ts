@@ -358,6 +358,7 @@ describe("Duration", () => {
     deepStrictEqual(Duration.times(Duration.nanos(3n), -0.5), Duration.nanos(-2n))
     deepStrictEqual(Duration.times(Duration.nanos(9007199254740993n), 0.5), Duration.nanos(4503599627370497n))
     deepStrictEqual(Duration.times(Duration.nanos(9007199254740991n), 1.5), Duration.nanos(13510798882111487n))
+    deepStrictEqual(Duration.times(Duration.nanos(3002399751580334n), 1.5), Duration.nanos(4503599627370501n))
     deepStrictEqual(Duration.times(Duration.nanos(10n ** 400n), 0.5), Duration.nanos(10n ** 400n / 2n))
     deepStrictEqual(Duration.times(Duration.nanos(1n), Infinity), Duration.infinity)
     deepStrictEqual(Duration.times(Duration.nanos(1n), NaN), Duration.zero)
