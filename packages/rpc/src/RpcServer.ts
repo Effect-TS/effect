@@ -513,7 +513,8 @@ export const make: <Rpcs extends Rpc.Any>(
             schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeChunk(response.values), schemas.context),
-            (values) => ({ _tag: "Chunk", requestId: String(response.requestId), values })
+            (values) => ({ _tag: "Chunk", requestId: String(response.requestId), values }),
+            false
           )
         }
         case "Exit": {
@@ -593,28 +594,21 @@ export const make: <Rpcs extends Rpc.Any>(
     collector: Transferable.CollectorService | undefined,
     effect: Effect.Effect<A, ParseError, R>,
     onSuccess: (a: A) => FromServerEncoded,
-    failOnEncodeError = false
-  ) => {
-    const handleFailure = (cause: Cause.Cause<ParseError>, die = false) => {
-      client.schemas.delete(requestId)
-      const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
-      return Effect.zipRight(
-        sendRequestDefect(client, requestId, encodeDefect, defect),
-        die ? Effect.die(defect) : server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
-      )
-    }
-    return Effect.matchCauseEffect(
-      collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
-      {
-        onFailure: (cause) => handleFailure(cause, failOnEncodeError && !Cause.isInterrupted(cause)),
-        onSuccess: (a) =>
-          Effect.catchAllCause(
-            Effect.suspend(() => send(client.id, onSuccess(a), collector && collector.unsafeClear())),
-            (cause) => handleFailure(cause)
-          )
-      }
+    isExit: boolean
+  ) =>
+    (collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect).pipe(
+      Effect.flatMap((a) => send(client.id, onSuccess(a), collector && collector.unsafeClear())),
+      Effect.catchAllCause((cause) => {
+        client.schemas.delete(requestId)
+        const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
+        return Effect.zipRight(
+          sendRequestDefect(client, requestId, encodeDefect, defect),
+          isExit && Cause.isFailure(cause)
+            ? Effect.die(defect)
+            : server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
+        )
+      })
     )
-  }
 
   const encodeDefect = Schema.encodeSync(Schema.Defect)
 

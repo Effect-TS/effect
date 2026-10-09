@@ -2,4 +2,4 @@
 "@effect/rpc": patch
 ---
 
-Mark RPC server spans as failed when Exit response encoding fails, preserving the client defect response.
+Fail the RPC server span when a response Exit cannot be encoded.

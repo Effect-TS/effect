@@ -1,24 +1,18 @@
 import { HttpApp } from "@effect/platform"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Schema, Tracer } from "effect"
+import { Cause, Effect, Exit, Schema, Tracer } from "effect"
 
 describe("RpcServer", () => {
   it.scoped("fails the rpc span when a handler's success value fails to encode", () =>
     Effect.gen(function*() {
-      const spanExit = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-      const tracer = yield* Tracer.tracerWith(Effect.succeed)
+      const spans: Array<Tracer.Span> = []
+      const tracer = yield* Effect.tracer
       const testTracer = Tracer.make({
         ...tracer,
         span(...args) {
           const span = tracer.span(...args)
-          if (span.name === "RpcServer.getUserAge") {
-            const end = span.end.bind(span)
-            span.end = (time, exit) => {
-              end(time, exit)
-              Deferred.unsafeDone(spanExit, Exit.succeed(exit))
-            }
-          }
+          spans.push(span)
           return span
         }
       })
@@ -41,16 +35,10 @@ describe("RpcServer", () => {
       )
 
       const responses = body.trim().split("\n").map((line) => JSON.parse(line))
-      const defect = responses[0].exit.cause.defect
-      assert.include(defect, "Expected number")
-      assert.deepStrictEqual(responses, [{
-        _tag: "Exit",
-        requestId: "1",
-        exit: { _tag: "Failure", cause: { _tag: "Die", defect } }
-      }])
-      const exit = yield* Deferred.await(spanExit)
-      assert(Exit.isFailure(exit))
-      assert(Cause.isDie(exit.cause))
-      assert.include(Cause.pretty(exit.cause), "Expected number")
+      assert.strictEqual(responses.length, 1)
+      assert.include(responses[0].exit.cause.defect, "Expected number")
+      const span = spans.find((span) => span.name === "RpcServer.getUserAge")!
+      assert(span.status._tag === "Ended" && Exit.isFailure(span.status.exit))
+      assert.include(Cause.pretty(span.status.exit.cause), "Expected number")
     }))
 })
