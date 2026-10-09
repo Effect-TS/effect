@@ -66,20 +66,18 @@ export interface EntityManager {
   readonly activeEntityCount: Effect.Effect<number>
 }
 
-/** @internal */
-export type ActiveRequest = {
-  readonly rpc: Rpc.AnyWithProps
-  readonly message: Message.IncomingRequestLocal<any>
-  sentReply: boolean
-  lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
-  sequence: number
-}
-
+// Represents the entities managed by this entity manager
 /** @internal */
 export type EntityState = {
   readonly address: EntityAddress
   readonly scope: Scope.Scope
-  readonly activeRequests: Map<bigint, ActiveRequest>
+  readonly activeRequests: Map<bigint, {
+    readonly rpc: Rpc.AnyWithProps
+    readonly message: Message.IncomingRequestLocal<any>
+    sentReply: boolean
+    lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
+    sequence: number
+  }>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
   readonly keepAliveLatch: Effect.Latch
@@ -241,7 +239,32 @@ export const make = Effect.fnUntraced(function*<
                   activeRequests.delete(response.requestId)
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
-                return respondExit(request, response.exit)
+                return retryRespond(
+                  4,
+                  Effect.suspend(() =>
+                    request.message.respond(
+                      new Reply.WithExit({
+                        requestId: Snowflake.Snowflake(response.requestId),
+                        id: snowflakeGen.unsafeNext(),
+                        exit: response.exit
+                      })
+                    )
+                  )
+                ).pipe(
+                  Effect.flatMap(() => {
+                    processedRequestIds.add(request.message.envelope.requestId)
+                    activeRequests.delete(response.requestId)
+
+                    // ensure that the reaper does not remove the entity as we haven't
+                    // been "idle" yet
+                    if (activeRequests.size === 0) {
+                      state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
+                    }
+
+                    return Effect.void
+                  }),
+                  Effect.orDie
+                )
               }
               case "Chunk": {
                 const request = activeRequests.get(response.requestId)
@@ -307,38 +330,6 @@ export const make = Effect.fnUntraced(function*<
       })
     )
 
-    function respondExit(
-      request: ActiveRequest,
-      exit: Exit.Exit<any, any>
-    ): Effect.Effect<void> {
-      const requestId = request.message.envelope.requestId
-      return retryRespond(
-        4,
-        Effect.suspend(() =>
-          request.message.respond(
-            new Reply.WithExit({
-              requestId,
-              id: snowflakeGen.unsafeNext(),
-              exit
-            })
-          )
-        )
-      ).pipe(
-        Effect.flatMap(() => {
-          processedRequestIds.add(requestId)
-          activeRequests.delete(requestId)
-
-          // Start the idle period when the last request finishes.
-          if (activeRequests.size === 0) {
-            state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
-          }
-
-          return Effect.void
-        }),
-        Effect.orDie
-      )
-    }
-
     function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
       if (!activeServers.has(address.entityId)) {
         return endLatch.open
@@ -348,14 +339,18 @@ export const make = Effect.fnUntraced(function*<
       }
       // Interrupt non-persisted streams instead of replaying them.
       defectRequestIds = new Set()
-      const interrupted: Array<ActiveRequest> = []
+      const interrupted: Array<Message.IncomingRequestLocal<any>> = []
       for (const [id, request] of activeRequests) {
-        if (isVolatileStream(request.rpc)) {
+        if (!Context.get(request.rpc.annotations, Persisted) && RpcSchema.isStreamSchema(request.rpc.successSchema)) {
           activeRequests.delete(id)
-          interrupted.push(request)
+          processedRequestIds.add(request.message.envelope.requestId)
+          interrupted.push(request.message)
         } else {
           defectRequestIds.add(id)
         }
+      }
+      if (activeRequests.size === 0) {
+        state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
       }
       isRestartingDueToDefect = true
       const effect = writeRef.unsafeRebuild()
@@ -363,7 +358,19 @@ export const make = Effect.fnUntraced(function*<
         Effect.andThen(Effect.forkIn(
           Effect.forEach(
             interrupted,
-            (request) => Effect.ignore(Effect.sandbox(respondExit(request, Exit.interrupt(FiberId.none)))),
+            (message) =>
+              Effect.exit(retryRespond(
+                4,
+                Effect.suspend(() =>
+                  message.respond(
+                    new Reply.WithExit({
+                      requestId: message.envelope.requestId,
+                      id: snowflakeGen.unsafeNext(),
+                      exit: Exit.interrupt(FiberId.none)
+                    })
+                  )
+                )
+              )),
             { concurrency: "unbounded", discard: true }
           ),
           managerScope
@@ -727,9 +734,6 @@ const makeMessageDecode = <Type extends string, Rpcs extends Rpc.Any>(
     >
   }
 }
-
-const isVolatileStream = (rpc: Rpc.AnyWithProps): boolean =>
-  !Context.get(rpc.annotations, Persisted) && RpcSchema.isStreamSchema(rpc.successSchema)
 
 const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   times === 0 ?
