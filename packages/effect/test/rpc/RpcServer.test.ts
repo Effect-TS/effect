@@ -1,5 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
+  Cause,
+  Context,
   Deferred,
   Effect,
   ErrorReporter,
@@ -12,7 +14,8 @@ import {
   Scope,
   Sink,
   Stdio,
-  Stream
+  Stream,
+  Tracer
 } from "effect"
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
@@ -116,6 +119,63 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(reports, [message])
     }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
   })
+
+  it.effect("ends the server span with the encode defect when a response fails to encode", () =>
+    Effect.gen(function*() {
+      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          if (span.kind === "server") {
+            const end = span.end.bind(span)
+            span.end = (endTime, exit) => {
+              end(endTime, exit)
+              Queue.offerUnsafe(ended, span)
+            }
+          }
+          return span
+        }
+      })
+      const group = RpcGroup.make(
+        Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }),
+        Rpc.make("ages", { payload: Schema.Struct({}), success: Schema.Number, stream: true })
+      )
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({
+              getUserAge: () => Effect.succeed("not a number" as unknown as number),
+              ages: () => Stream.make("not a number" as unknown as number)
+            }),
+            RpcSerialization.layerNdjson
+          ))
+        )
+      )
+      yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"getUserAge","payload":{},"headers":[]}\n` +
+              `{"_tag":"Request","id":2,"tag":"ages","payload":{},"headers":[]}\n`
+          }),
+          Context.make(Tracer.Tracer, tracer)
+        ).then((response) => response.text())
+      )
+
+      const exits = Object.fromEntries((yield* Queue.takeN(ended, 2)).map((span) => {
+        const exit = span.status._tag === "Ended" ? span.status.exit : undefined
+        return [
+          span.name,
+          exit && Exit.isFailure(exit)
+            ? exit.cause.reasons.map((reason) => Cause.isDieReason(reason) ? reason.defect : reason._tag)
+            : exit
+        ]
+      }))
+      assert.deepStrictEqual(exits, {
+        getUserAge: [`Failed to encode response for RPC "getUserAge": Expected number\n  at ["value"]`],
+        ages: [`Failed to encode response for RPC "ages": Expected number\n  at [0]`]
+      })
+    }))
 
   it.effect("should drain the response when stdin ends during request startup", () =>
     Effect.gen(function*() {
