@@ -130,6 +130,75 @@ describe("Context", () => {
     assertTrue(Context.hasSameCache(Context.empty(), context))
   })
 
+  it("rebases a large base by copying it exactly once", () => {
+    const baseSize = 50
+    const baseKeys = Array.from({ length: baseSize }, (_, i) => Context.Service<number>(`ContextTest/Rebase${i}`))
+    const base = Context.makeUnsafe(new Map(baseKeys.map((key, i) => [key.key, i])))
+    const pushKeys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/Push${i}`))
+
+    let setCalls = 0
+    const originalSet = Map.prototype.set
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Map.prototype.set = function(this: Map<unknown, unknown>, ...args: any[]) {
+      setCalls++
+      return originalSet.apply(this, args as [unknown, unknown])
+    }
+    let context: Context.Context<never> = base
+    try {
+      for (let i = 0; i < pushKeys.length; i++) {
+        context = Context.add(context, pushKeys[i], i)
+      }
+    } finally {
+      Map.prototype.set = originalSet
+    }
+
+    // The 9th push crosses MaxDepth (8) and triggers exactly one rebase.
+    // A single pass over the base (50 entries) plus the 8 prior overlays
+    // plus the new key costs 59 Map.set() calls. A rebase that copies the
+    // base twice (once to flatten, once more in the rebase itself) costs
+    // about double that -- this pins the single-copy behavior.
+    strictEqual(setCalls, baseSize + 8 + 1)
+    strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
+    for (let i = 0; i < baseKeys.length; i++) {
+      strictEqual(Context.getUnsafe(context, baseKeys[i]), i)
+    }
+    for (let i = 0; i < pushKeys.length; i++) {
+      strictEqual(Context.getUnsafe(context, pushKeys[i]), i)
+    }
+  })
+
+  it("rebases by copying the cached flat map once when already warm", () => {
+    const baseSize = 50
+    const baseKeys = Array.from({ length: baseSize }, (_, i) => Context.Service<number>(`ContextTest/Warm${i}`))
+    const base = Context.makeUnsafe(new Map(baseKeys.map((key, i) => [key.key, i])))
+    const pushKeys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/WarmPush${i}`))
+
+    let context: Context.Context<never> = base
+    for (let i = 0; i < pushKeys.length - 1; i++) {
+      context = Context.add(context, pushKeys[i], i)
+    }
+    // Warm the `_flat` cache before the push that crosses MaxDepth.
+    void context.mapUnsafe
+
+    let setCalls = 0
+    const originalSet = Map.prototype.set
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Map.prototype.set = function(this: Map<unknown, unknown>, ...args: any[]) {
+      setCalls++
+      return originalSet.apply(this, args as [unknown, unknown])
+    }
+    try {
+      context = Context.add(context, pushKeys[pushKeys.length - 1], pushKeys.length - 1)
+    } finally {
+      Map.prototype.set = originalSet
+    }
+
+    // `_flat` was already warm, so the rebase copies that cached 58-entry
+    // map once (no re-applying of overlays) plus the new key: 59 set() calls.
+    strictEqual(setCalls, baseSize + 8 + 1)
+    strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
+  })
+
   it("flattens after repeated base fall-throughs", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const impl = context as any
