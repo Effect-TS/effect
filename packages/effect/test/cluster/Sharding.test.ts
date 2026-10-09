@@ -3503,6 +3503,7 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
 
       yield* gate.open
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
       assert.deepStrictEqual(storageState.releaseCalls, [heldShard])
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [1])
     }).pipe(Effect.scoped))
@@ -3533,15 +3534,21 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
 
       yield* gate.open
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [2])
     }).pipe(Effect.scoped))
 
   it.effect("closes a singleton registration whose singleton registered another singleton", () =>
     Effect.gen(function*() {
-      // A deadlocked teardown must not block test cleanup.
+      // Await cleanup, but keep a regressed uninterruptible teardown bounded.
       const makeDetachedScope = Effect.acquireRelease(
         Scope.make(),
-        (scope) => Effect.forkDetach(Scope.close(scope, Exit.void))
+        (scope) =>
+          Effect.gen(function*() {
+            const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+            yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+            assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
+          })
       )
       const storageState = makeFailoverStorageState()
       const shardingScope = yield* makeDetachedScope
@@ -3557,6 +3564,7 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
 
       const closing = yield* Effect.forkDetach(Scope.close(registrationScope, Exit.void))
       yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
     }).pipe(Effect.scoped))
 })
 
