@@ -41,7 +41,7 @@ import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
-import type { MailboxFull, PersistenceError, RunnerUnavailable } from "./ClusterError.ts"
+import type { MailboxFull, PersistenceError } from "./ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner } from "./ClusterError.ts"
 import * as ClusterMetrics from "./ClusterMetrics.ts"
 import { Persisted } from "./ClusterSchema.ts"
@@ -303,24 +303,19 @@ const make = Effect.gen(function*() {
 
   // Requests wait out a shard handoff, for at most `shardLockExpiration`,
   // instead of retrying against a runner that cannot serve them yet.
-  const shardWaiters = new Set<() => void>()
-  const shardWaitTimeout = Duration.fromInputUnsafe(config.shardLockExpiration)
+  const shardsChanged = Latch.makeUnsafe(false)
   const notifyShardWaiters = () => {
-    for (const waiter of Array.from(shardWaiters)) waiter()
+    shardsChanged.openUnsafe()
+    shardsChanged.closeUnsafe()
   }
   const awaitShards = (done: () => boolean): Effect.Effect<void> =>
-    Effect.callback<void>((resume) => {
-      const waiter = () => {
-        if (!done()) return
-        shardWaiters.delete(waiter)
-        resume(Effect.void)
-      }
-      shardWaiters.add(waiter)
-      waiter()
-      return Effect.sync(() => {
-        shardWaiters.delete(waiter)
-      })
-    }).pipe(Effect.timeoutOption(shardWaitTimeout), Effect.asVoid)
+    Effect.suspend(() =>
+      done() ? Effect.void : shardsChanged.await.pipe(
+        Effect.repeat({ until: done }),
+        Effect.timeoutOption(config.shardLockExpiration),
+        Effect.asVoid
+      )
+    )
 
   yield* Scope.addFinalizer(
     shardingScope,
@@ -1066,44 +1061,41 @@ const make = Effect.gen(function*() {
 
   // --- Sending messages ---
 
-  const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(message: M) =>
-    Effect.suspend(() => {
-      const isRequest = message._tag === "IncomingRequest" || message._tag === "OutgoingRequest"
-      let waitedForLock = false
-      return Effect.suspend(function loop(): Effect.Effect<
-        void,
-        | EntityNotAssignedToRunner
-        | MailboxFull
-        | AlreadyProcessingMessage
-        | (M extends Message.Incoming<any> ? never : PersistenceError)
-      > {
-        const address = message.envelope.address
-        if (!isEntityOnLocalShards(address)) {
-          if (isRequest && !waitedForLock && isAwaitingShardLock(address.shardId)) {
-            waitedForLock = true
-            return Effect.flatMap(awaitShards(() => !isAwaitingShardLock(address.shardId)), loop)
-          } else if (isRequest || !MutableHashSet.has(releasingShards, address.shardId)) {
-            return Effect.fail(new EntityNotAssignedToRunner({ address }))
-          }
-          // Entities draining from a released shard still accept interrupts and acks
-        }
-        const state = entityManagers.get(address.entityType)
-        if (!state) {
-          return Effect.flatMap(waitForEntityManager(address.entityType), loop)
-        } else if (state.status === "closed" || (state.status === "closing" && message._tag === "IncomingRequest")) {
-          // if we are shutting down, we don't accept new requests
-          return Effect.fail(new EntityNotAssignedToRunner({ address }))
-        }
+  const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(message: M) => {
+    const address = message.envelope.address
+    const isRequest = message._tag === "IncomingRequest" || message._tag === "OutgoingRequest"
+    const send = Effect.suspend(function loop(): Effect.Effect<
+      void,
+      | EntityNotAssignedToRunner
+      | MailboxFull
+      | AlreadyProcessingMessage
+      | (M extends Message.Incoming<any> ? never : PersistenceError)
+    > {
+      if (
+        !isEntityOnLocalShards(address) &&
+        // Entities draining from a released shard still accept interrupts and acks
+        (isRequest || !MutableHashSet.has(releasingShards, address.shardId))
+      ) {
+        return Effect.fail(new EntityNotAssignedToRunner({ address }))
+      }
+      const state = entityManagers.get(address.entityType)
+      if (!state) {
+        return Effect.flatMap(waitForEntityManager(address.entityType), loop)
+      } else if (state.status === "closed" || (state.status === "closing" && message._tag === "IncomingRequest")) {
+        // if we are shutting down, we don't accept new requests
+        return Effect.fail(new EntityNotAssignedToRunner({ address }))
+      }
 
-        return message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope" ?
-          state.manager.send(message) :
-          runnersService.sendLocal({
-            message,
-            send: state.manager.sendLocal,
-            simulateRemoteSerialization: config.simulateRemoteSerialization
-          }) as any
-      })
+      return message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope" ?
+        state.manager.send(message) :
+        runnersService.sendLocal({
+          message,
+          send: state.manager.sendLocal,
+          simulateRemoteSerialization: config.simulateRemoteSerialization
+        }) as any
     })
+    return isRequest ? Effect.andThen(awaitShards(() => !isAwaitingShardLock(address.shardId)), send) : send
+  }
 
   type PendingNotification = {
     resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
@@ -1206,52 +1198,45 @@ const make = Effect.gen(function*() {
         )
       )
     }
-    let waitedForRelease = false
-    return Effect.catchFilter(
-      Effect.suspend(function loop(): Effect.Effect<
-        void,
-        MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner | RunnerUnavailable
-      > {
-        const address = message.envelope.address
-        if (isPersisted && !storageEnabled) {
-          return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
-        }
-        if (shouldFail && MutableRef.get(isShutdown)) {
-          return Effect.fail(new EntityNotAssignedToRunner({ address }))
-        }
-        if (
-          !isPersisted && message._tag === "OutgoingRequest" && !waitedForRelease &&
-          MutableHashSet.has(releasingShards, address.shardId)
-        ) {
-          // This runner holds the shard lock until its entities drain, so the
-          // new owner cannot serve the request before the release.
-          waitedForRelease = true
-          return Effect.flatMap(
-            awaitShards(() => MutableRef.get(isShutdown) || !MutableHashSet.has(releasingShards, address.shardId)),
-            loop
-          )
-        }
-        const maybeRunner = runner !== undefined && !isPersisted
-          ? Option.some(runner)
-          : MutableHashMap.get(shardAssignments, address.shardId)
-        const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
-        if (message._tag === "OutgoingRequest" && !isPersisted && Option.isSome(maybeRunner)) {
-          const entry = clientRequests.get(message.envelope.requestId)
-          if (entry) entry.runner = maybeRunner.value
-        }
-        if (isPersisted) {
-          return runnerIsLocal
-            ? notifyLocal(message, discard)
-            : runnersService.notify({ address: maybeRunner, message, discard })
-        } else if (Option.isNone(maybeRunner)) {
-          return Effect.fail(new EntityNotAssignedToRunner({ address }))
-        }
+    const send = Effect.suspend(() => {
+      const address = message.envelope.address
+      if (isPersisted && !storageEnabled) {
+        return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
+      }
+      if (shouldFail && MutableRef.get(isShutdown)) {
+        return Effect.fail(new EntityNotAssignedToRunner({ address }))
+      }
+      const maybeRunner = runner !== undefined && !isPersisted
+        ? Option.some(runner)
+        : MutableHashMap.get(shardAssignments, address.shardId)
+      const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
+      if (message._tag === "OutgoingRequest" && !isPersisted && Option.isSome(maybeRunner)) {
+        const entry = clientRequests.get(message.envelope.requestId)
+        if (entry) entry.runner = maybeRunner.value
+      }
+      if (isPersisted) {
         return runnerIsLocal
-          ? sendLocal(message)
-          : discard
-          ? runnersService.notify({ address: maybeRunner, message, discard })
-          : runnersService.send({ address: maybeRunner.value, message })
-      }),
+          ? notifyLocal(message, discard)
+          : runnersService.notify({ address: maybeRunner, message, discard })
+      } else if (Option.isNone(maybeRunner)) {
+        return Effect.fail(new EntityNotAssignedToRunner({ address }))
+      }
+      return runnerIsLocal
+        ? sendLocal(message)
+        : discard
+        ? runnersService.notify({ address: maybeRunner, message, discard })
+        : runnersService.send({ address: maybeRunner.value, message })
+    })
+    const shardId = message.envelope.address.shardId
+    return Effect.catchFilter(
+      !isPersisted && message._tag === "OutgoingRequest"
+        // This runner holds the shard lock until its entities drain, so the
+        // new owner cannot serve the request before the release.
+        ? Effect.andThen(
+          awaitShards(() => MutableRef.get(isShutdown) || !MutableHashSet.has(releasingShards, shardId)),
+          send
+        )
+        : send,
       (error) =>
         error._tag === "EntityNotAssignedToRunner" || error._tag === "RunnerUnavailable"
           ? Result.succeed(error)
