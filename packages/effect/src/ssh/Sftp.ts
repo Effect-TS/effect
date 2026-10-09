@@ -25,7 +25,6 @@ import * as FileSystem from "../FileSystem.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PlatformError from "../PlatformError.ts"
-import * as Predicate from "../Predicate.ts"
 import * as Queue from "../Queue.ts"
 import * as Random from "../Random.ts"
 import type * as Scope from "../Scope.ts"
@@ -35,15 +34,6 @@ import * as Glob from "./internal/glob.ts"
 import { concat, Reader, WireError, Writer } from "./internal/wire.ts"
 import * as Ssh from "./Ssh.ts"
 import { SshChannelError, SshError, SshProtocolError, SshSftpError } from "./SshError.ts"
-
-/**
- * Type identifier attached to `Sftp` values.
- *
- * @stability experimental
- * @category type IDs
- * @since 4.0.0
- */
-export const TypeId = "~effect/ssh/Sftp"
 
 const FXP_INIT = 1
 const FXP_VERSION = 2
@@ -160,7 +150,7 @@ export interface SftpFile {
 }
 
 /**
- * An SFTP session.
+ * Service for an SFTP session.
  *
  * **Details**
  *
@@ -170,11 +160,10 @@ export interface SftpFile {
  * which requires `posix-rename@openssh.com`.
  *
  * @stability experimental
- * @category models
+ * @category services
  * @since 4.0.0
  */
-export interface Sftp {
-  readonly [TypeId]: typeof TypeId
+export class Sftp extends Context.Service<Sftp, {
   readonly version: number
   readonly extensions: ReadonlyMap<string, string>
   readonly maxReadLength: number
@@ -224,25 +213,7 @@ export interface Sftp {
     }
   ) => Stream.Stream<Uint8Array, SshError>
   readonly extended: (request: string, data?: Uint8Array) => Effect.Effect<Uint8Array, SshError>
-}
-
-/**
- * Service tag for an SFTP session.
- *
- * @stability experimental
- * @category services
- * @since 4.0.0
- */
-export const Sftp: Context.Service<Sftp, Sftp> = Context.Service<Sftp>("effect/ssh/Sftp")
-
-/**
- * Returns `true` when a value is an `Sftp` session.
- *
- * @stability experimental
- * @category guards
- * @since 4.0.0
- */
-export const isSftp = (u: unknown): u is Sftp => Predicate.hasProperty(u, TypeId)
+}>()("effect/ssh/Sftp") {}
 
 const statusMessages: Record<number, string> = {
   0: "OK",
@@ -354,7 +325,7 @@ const PIPELINE = 32
  */
 export const fromChannel = Effect.fnUntraced(function*(
   channel: Ssh.SshStream
-): Effect.fn.Return<Sftp, SshError, Scope.Scope> {
+): Effect.fn.Return<Sftp["Service"], SshError, Scope.Scope> {
   const pending = new Map<number, Deferred.Deferred<Response, SshError>>()
   const versionReply = Deferred.makeUnsafe<Response, SshError>()
   let nextId = 0
@@ -638,7 +609,7 @@ export const fromChannel = Effect.fnUntraced(function*(
             : Effect.fail(protocolError("empty readlink response")))
     )
 
-  const open: Sftp["open"] = (path, options) =>
+  const open: Sftp["Service"]["open"] = (path, options) =>
     Effect.map(
       openHandle(
         path,
@@ -693,7 +664,7 @@ export const fromChannel = Effect.fnUntraced(function*(
       return concat(chunks)
     }))
 
-  const writeFile: Sftp["writeFile"] = (path, data, options) =>
+  const writeFile: Sftp["Service"]["writeFile"] = (path, data, options) =>
     Effect.scoped(Effect.gen(function*() {
       const flag = options?.flag ?? "w"
       const handle = yield* openHandle(
@@ -738,7 +709,7 @@ export const fromChannel = Effect.fnUntraced(function*(
       }
     }))
 
-  const stream: Sftp["stream"] = (path, options) =>
+  const stream: Sftp["Service"]["stream"] = (path, options) =>
     Stream.unwrap(Effect.gen(function*() {
       const scope = yield* Effect.scope
       const handle = yield* openHandle(path, FXF_READ, undefined)
@@ -770,7 +741,7 @@ export const fromChannel = Effect.fnUntraced(function*(
       return Stream.fromPull(Effect.succeed(pull))
     }))
 
-  const rename: Sftp["rename"] = (oldPath, newPath, options) => {
+  const rename: Sftp["Service"]["rename"] = (oldPath, newPath, options) => {
     if (options?.overwrite === true) {
       if (!extensions.has("posix-rename@openssh.com")) {
         return unsupported("posix-rename@openssh.com", "rename", oldPath)
@@ -785,8 +756,7 @@ export const fromChannel = Effect.fnUntraced(function*(
     )
   }
 
-  return {
-    [TypeId]: TypeId,
+  return Sftp.of({
     version: versionNumber,
     extensions,
     maxReadLength,
@@ -829,7 +799,7 @@ export const fromChannel = Effect.fnUntraced(function*(
     copyFile,
     stream,
     extended
-  }
+  })
 })
 
 /**
@@ -844,8 +814,8 @@ export const fromChannel = Effect.fnUntraced(function*(
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(
-  ssh: Ssh.Ssh
-): Effect.fn.Return<Sftp, SshError, Scope.Scope> {
+  ssh: Ssh.Ssh["Service"]
+): Effect.fn.Return<Sftp["Service"], SshError, Scope.Scope> {
   const channel = yield* ssh.subsystem("sftp")
   return yield* fromChannel(channel)
 })
@@ -938,7 +908,7 @@ const dirname = (path: string) => {
  * @category file system
  * @since 4.0.0
  */
-export const fileSystem = (sftp: Sftp): FileSystem.FileSystem => {
+export const fileSystem = (sftp: Sftp["Service"]): FileSystem.FileSystem => {
   const toPlatformError = (method: string, path?: string) => (error: SshError): PlatformError.PlatformError => {
     const reason = error.reason
     if (reason._tag === "SshSftpError") {

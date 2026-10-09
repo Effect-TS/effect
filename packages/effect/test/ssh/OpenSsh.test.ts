@@ -15,7 +15,6 @@ import {
 } from "effect/process/ChildProcessSpawner"
 import * as Sink from "effect/Sink"
 import * as OpenSsh from "effect/ssh/OpenSsh"
-import * as Ssh from "effect/ssh/Ssh"
 import * as SshChildProcessSpawner from "effect/ssh/SshChildProcessSpawner"
 import * as Stream from "effect/Stream"
 
@@ -161,7 +160,6 @@ describe("OpenSsh", () => {
     Effect.gen(function*() {
       const fake = makeFakeSsh()
       const ssh = yield* OpenSsh.make(baseOptions).pipe(provide(fake))
-      assert.isTrue(Ssh.isSsh(ssh))
       assert.strictEqual(ssh.backend, "openssh")
       assert.deepStrictEqual(ssh.capabilities, { signals: false, exitSignals: false })
       const result = yield* ssh.run("echo hello").pipe(provide(fake))

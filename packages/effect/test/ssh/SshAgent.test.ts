@@ -73,7 +73,7 @@ interface AgentSocket {
  * closes the connection without an answer.
  */
 const makeAgentSocket = (
-  agent: SshAgent.SshAgent,
+  agent: SshAgent.SshAgent["Service"],
   options?: {
     readonly chunkSize?: number | undefined
     readonly respond?: ((payload: Uint8Array) => Effect.Effect<Uint8Array, SshError.SshError>) | undefined
@@ -177,7 +177,6 @@ layer(CryptoLive, { excludeTestServices: true })("SshAgent", (it) => {
       Effect.gen(function*() {
         const privateKeys = yield* keys
         const agent = SshAgent.fromKeys(privateKeys)
-        assert.isTrue(SshAgent.isSshAgent(agent))
         const identities = yield* agent.identities
         assert.strictEqual(identities.length, 3)
         for (let i = 0; i < privateKeys.length; i++) {
@@ -279,7 +278,6 @@ layer(CryptoLive, { excludeTestServices: true })("SshAgent", (it) => {
               .finish()
           })
         )
-        assert.isTrue(SshAgent.isSshAgent(agent))
         const identities = yield* agent.identities
         assert.deepStrictEqual(requests.map((request) => Array.from(request)), [[AGENTC_REQUEST_IDENTITIES]])
         assert.strictEqual(identities.length, 2)
@@ -395,7 +393,6 @@ layer(CryptoLive, { excludeTestServices: true })("SshAgent", (it) => {
         const privateKeys = yield* keys
         const backend = makeAgentSocket(SshAgent.fromKeys(privateKeys))
         const agent = SshAgent.make(backend.socket)
-        assert.isTrue(SshAgent.isSshAgent(agent))
 
         const response = yield* agent.request(new Uint8Array([AGENTC_REQUEST_IDENTITIES]))
         assert.strictEqual(response[0], AGENT_IDENTITIES_ANSWER)

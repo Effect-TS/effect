@@ -54,7 +54,6 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as InternalVersion from "../internal/version.ts"
 import * as Layer from "../Layer.ts"
-import * as Predicate from "../Predicate.ts"
 import * as Queue from "../Queue.ts"
 import * as Redacted from "../Redacted.ts"
 import type * as Scope from "../Scope.ts"
@@ -70,15 +69,6 @@ import * as Ssh from "./Ssh.ts"
 import type * as SshAgent from "./SshAgent.ts"
 import { SshError, SshHostKeyError, SshTimeoutError } from "./SshError.ts"
 import * as SshKey from "./SshKey.ts"
-
-/**
- * Type identifier attached to `SshClient` values.
- *
- * @stability experimental
- * @category type IDs
- * @since 4.0.0
- */
-export const TypeId = "~effect/ssh/SshClient"
 
 // -----------------------------------------------------------------------------
 // Host key verification
@@ -241,7 +231,10 @@ export const publicKey = (signer: SshKey.Signer): AuthMethod => ({ _tag: "Public
  * @category authentication
  * @since 4.0.0
  */
-export const agent = (agent: SshAgent.SshAgent): AuthMethod => ({ _tag: "Agent", identities: agent.identities })
+export const agent = (agent: SshAgent.SshAgent["Service"]): AuthMethod => ({
+  _tag: "Agent",
+  identities: agent.identities
+})
 
 /**
  * Creates a keyboard-interactive authentication method. `respond` returns one
@@ -524,7 +517,7 @@ export const defaultAlgorithms: AlgorithmPreferences = Transport.defaultAlgorith
 // -----------------------------------------------------------------------------
 
 /**
- * An authenticated SSH connection.
+ * Service for an authenticated SSH connection.
  *
  * **Details**
  *
@@ -545,11 +538,10 @@ export const defaultAlgorithms: AlgorithmPreferences = Transport.defaultAlgorith
  * target's reply has been written.
  *
  * @stability experimental
- * @category models
+ * @category services
  * @since 4.0.0
  */
-export interface SshClient {
-  readonly [TypeId]: typeof TypeId
+export class SshClient extends Context.Service<SshClient, {
   readonly serverVersion: string
   readonly hostKey: SshKey.PublicKey
   readonly sessionId: Uint8Array
@@ -580,25 +572,7 @@ export interface SshClient {
   ) => Effect.Effect<Uint8Array, SshError>
   readonly rekey: Effect.Effect<void, SshError>
   readonly closed: Effect.Effect<never, SshError>
-}
-
-/**
- * Service tag for an SSH client.
- *
- * @stability experimental
- * @category services
- * @since 4.0.0
- */
-export const SshClient: Context.Service<SshClient, SshClient> = Context.Service<SshClient>("effect/ssh/SshClient")
-
-/**
- * Returns `true` when a value is an `SshClient`.
- *
- * @stability experimental
- * @category guards
- * @since 4.0.0
- */
-export const isSshClient = (u: unknown): u is SshClient => Predicate.hasProperty(u, TypeId)
+}>()("effect/ssh/SshClient") {}
 
 /**
  * Options for connecting and authenticating.
@@ -643,7 +617,7 @@ export interface ConnectOptions {
   } | undefined
   readonly windowSize?: number | undefined
   readonly maxPacketSize?: number | undefined
-  readonly agentForwarding?: SshAgent.SshAgent | undefined
+  readonly agentForwarding?: SshAgent.SshAgent["Service"] | undefined
   readonly onBanner?: ((message: string) => Effect.Effect<void>) | undefined
 }
 
@@ -681,7 +655,7 @@ const encodePty = (pty: PtyOptions): Uint8Array => {
     .finish()
 }
 
-const proxyAgent = (agent: SshAgent.SshAgent, channel: SshChannel) =>
+const proxyAgent = (agent: SshAgent.SshAgent["Service"], channel: SshChannel) =>
   Effect.gen(function*() {
     let buffer = new Uint8Array(0)
     yield* Stream.runForEach(channel.stdout, (chunk) =>
@@ -718,7 +692,7 @@ const proxyAgent = (agent: SshAgent.SshAgent, channel: SshChannel) =>
 export const make = Effect.fnUntraced(function*(
   socket: Socket.Socket,
   options: ConnectOptions
-): Effect.fn.Return<SshClient, SshError, Crypto.Crypto | Scope.Scope> {
+): Effect.fn.Return<SshClient["Service"], SshError, Crypto.Crypto | Scope.Scope> {
   const scope = yield* Effect.scope
   const crypto = yield* Crypto.Crypto
   const port = options.port ?? 22
@@ -875,7 +849,7 @@ export const make = Effect.fnUntraced(function*(
   const subsystem = (name: string, sessionOptions?: SessionOptions) =>
     openSession(sessionOptions, (channel) => channel.requestOrFail("subsystem", new Writer().string(name).finish()))
 
-  const run: SshClient["run"] = Streams.run(exec)
+  const run: SshClient["Service"]["run"] = Streams.run(exec)
 
   // Forwarding ---------------------------------------------------------------
 
@@ -933,8 +907,7 @@ export const make = Effect.fnUntraced(function*(
         })
     ).pipe(Effect.map(({ forward }) => forward))
 
-  return {
-    [TypeId]: TypeId,
+  return SshClient.of({
     serverVersion: transport.serverVersion,
     hostKey: transport.hostKey,
     sessionId: transport.sessionId,
@@ -952,7 +925,7 @@ export const make = Effect.fnUntraced(function*(
       connection.globalRequest(name, requestOptions?.data, requestOptions?.wantReply ?? true),
     rekey: transport.rekey,
     closed: transport.failed
-  }
+  })
 })
 
 /**

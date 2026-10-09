@@ -252,7 +252,7 @@ const startMaster = Effect.fnUntraced(function*(
  */
 export const make = Effect.fnUntraced(function*(
   options: Options
-): Effect.fn.Return<Ssh.Ssh, SshError, ChildProcessSpawner | FileSystem.FileSystem | Scope.Scope> {
+): Effect.fn.Return<Ssh.Ssh["Service"], SshError, ChildProcessSpawner | FileSystem.FileSystem | Scope.Scope> {
   const spawner = yield* ChildProcessSpawner
   const executable = options.executable ?? "ssh"
   const base = baseArguments(options)

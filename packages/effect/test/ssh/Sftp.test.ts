@@ -92,7 +92,6 @@ layer(CryptoLive, { excludeTestServices: true })("Sftp", (it) => {
         assert.strictEqual(sftp.version, 3)
         assert.strictEqual(server.stats.clientVersion, 3)
         assert.deepStrictEqual([...sftp.extensions.keys()].sort(), [...SftpServer.defaultExtensions].sort())
-        assert.isTrue(Sftp.isSftp(sftp))
         // limits@openssh.com reports 255 KiB, which the client accepts.
         assert.strictEqual(sftp.maxReadLength, 255 * 1024)
         assert.strictEqual(sftp.maxWriteLength, 255 * 1024)

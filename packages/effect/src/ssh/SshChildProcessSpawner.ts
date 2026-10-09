@@ -246,7 +246,7 @@ const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Arr
  * @category constructors
  * @since 4.0.0
  */
-export const make = (ssh: Ssh.Ssh): ChildProcessSpawner["Service"] => {
+export const make = (ssh: Ssh.Ssh["Service"]): ChildProcessSpawner["Service"] => {
   let nextPid = 1
   const reportsPid = !ssh.capabilities.signals
 

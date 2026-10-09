@@ -17,7 +17,6 @@
  */
 import * as Context from "../Context.ts"
 import type * as Effect from "../Effect.ts"
-import * as Predicate from "../Predicate.ts"
 import type * as Scope from "../Scope.ts"
 import type * as Sink from "../Sink.ts"
 import type * as Socket from "../socket/Socket.ts"
@@ -25,15 +24,6 @@ import type * as Stream from "../Stream.ts"
 import * as Streams from "./internal/streams.ts"
 import type { ForwardTarget, RunResult, SessionExit, SessionOptions, SshClient } from "./SshClient.ts"
 import type { SshError } from "./SshError.ts"
-
-/**
- * Type identifier attached to `Ssh` values.
- *
- * @stability experimental
- * @category type IDs
- * @since 4.0.0
- */
-export const TypeId = "~effect/ssh/Ssh"
 
 /**
  * A bidirectional byte stream carried over SSH, such as a subsystem or a
@@ -108,11 +98,13 @@ export interface Capabilities {
  *   `Socket.Socket`, and `forwardSocket` pipes a local socket through one.
  *
  * @stability experimental
- * @category models
+ * @category services
  * @since 4.0.0
  */
-export interface Ssh {
-  readonly [TypeId]: typeof TypeId
+export class Ssh extends Context.Service<Ssh, {
+  /**
+   * A name identifying the backend, such as `effect` or `openssh`.
+   */
   readonly backend: string
   readonly capabilities: Capabilities
   readonly exec: (command: string, options?: SessionOptions) => Effect.Effect<SshProcess, SshError, Scope.Scope>
@@ -129,25 +121,7 @@ export interface Ssh {
     socket: Socket.Socket,
     target: ForwardTarget
   ) => Effect.Effect<void, SshError | Socket.SocketError>
-}
-
-/**
- * Service tag for the backend-independent SSH service.
- *
- * @stability experimental
- * @category services
- * @since 4.0.0
- */
-export const Ssh: Context.Service<Ssh, Ssh> = Context.Service<Ssh>("effect/ssh/Ssh")
-
-/**
- * Returns `true` when a value is an `Ssh` service.
- *
- * @stability experimental
- * @category guards
- * @since 4.0.0
- */
-export const isSsh = (u: unknown): u is Ssh => Predicate.hasProperty(u, TypeId)
+}>()("effect/ssh/Ssh") {}
 
 /**
  * Creates an `Ssh` service from a backend's primitive operations, deriving
@@ -165,20 +139,20 @@ export const isSsh = (u: unknown): u is Ssh => Predicate.hasProperty(u, TypeId)
 export const make = (impl: {
   readonly backend: string
   readonly capabilities: Capabilities
-  readonly exec: Ssh["exec"]
-  readonly subsystem: Ssh["subsystem"]
-  readonly forwardOut: Ssh["forwardOut"]
-}): Ssh => ({
-  [TypeId]: TypeId,
-  backend: impl.backend,
-  capabilities: impl.capabilities,
-  exec: impl.exec,
-  run: Streams.run(impl.exec),
-  subsystem: impl.subsystem,
-  forwardOut: impl.forwardOut,
-  forwardOutSocket: (target) => Streams.toSocket(impl.forwardOut(target)),
-  forwardSocket: (socket, target) => Streams.pipeSocket(socket, impl.forwardOut(target))
-})
+  readonly exec: Ssh["Service"]["exec"]
+  readonly subsystem: Ssh["Service"]["subsystem"]
+  readonly forwardOut: Ssh["Service"]["forwardOut"]
+}): Ssh["Service"] =>
+  Ssh.of({
+    backend: impl.backend,
+    capabilities: impl.capabilities,
+    exec: impl.exec,
+    run: Streams.run(impl.exec),
+    subsystem: impl.subsystem,
+    forwardOut: impl.forwardOut,
+    forwardOutSocket: (target) => Streams.toSocket(impl.forwardOut(target)),
+    forwardSocket: (socket, target) => Streams.pipeSocket(socket, impl.forwardOut(target))
+  })
 
 /**
  * Adapts an `SshClient` to the `Ssh` service.
@@ -192,14 +166,14 @@ export const make = (impl: {
  * @category constructors
  * @since 4.0.0
  */
-export const fromClient = (client: SshClient): Ssh => ({
-  [TypeId]: TypeId,
-  backend: "effect",
-  capabilities: { signals: true, exitSignals: true },
-  exec: client.exec,
-  run: client.run,
-  subsystem: (name) => client.subsystem(name),
-  forwardOut: client.forwardOut,
-  forwardOutSocket: client.forwardOutSocket,
-  forwardSocket: client.forwardSocket
-})
+export const fromClient = (client: SshClient["Service"]): Ssh["Service"] =>
+  Ssh.of({
+    backend: "effect",
+    capabilities: { signals: true, exitSignals: true },
+    exec: client.exec,
+    run: client.run,
+    subsystem: (name) => client.subsystem(name),
+    forwardOut: client.forwardOut,
+    forwardOutSocket: client.forwardOutSocket,
+    forwardSocket: client.forwardSocket
+  })

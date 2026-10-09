@@ -12,22 +12,12 @@
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
-import * as Predicate from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Socket from "../socket/Socket.ts"
 import { concat, equals, Reader, WireError, Writer } from "./internal/wire.ts"
 import { SshAgentError, SshError } from "./SshError.ts"
 import * as SshKey from "./SshKey.ts"
-
-/**
- * Type identifier attached to `SshAgent` values.
- *
- * @stability experimental
- * @category type IDs
- * @since 4.0.0
- */
-export const TypeId = "~effect/ssh/SshAgent"
 
 const AGENT_FAILURE = 5
 const AGENTC_REQUEST_IDENTITIES = 11
@@ -38,7 +28,8 @@ const AGENT_RSA_SHA2_256 = 2
 const AGENT_RSA_SHA2_512 = 4
 
 /**
- * A source of SSH identities and signatures speaking the SSH agent protocol.
+ * Service for a source of SSH identities and signatures speaking the SSH
+ * agent protocol.
  *
  * **Details**
  *
@@ -47,11 +38,10 @@ const AGENT_RSA_SHA2_512 = 4
  * the agent, so private keys never leave it.
  *
  * @stability experimental
- * @category models
+ * @category services
  * @since 4.0.0
  */
-export interface SshAgent {
-  readonly [TypeId]: typeof TypeId
+export class SshAgent extends Context.Service<SshAgent, {
   readonly request: (message: Uint8Array) => Effect.Effect<Uint8Array, SshError>
   readonly identities: Effect.Effect<ReadonlyArray<SshKey.Signer>, SshError>
   readonly sign: (
@@ -59,25 +49,7 @@ export interface SshAgent {
     data: Uint8Array,
     algorithm: string
   ) => Effect.Effect<Uint8Array, SshError>
-}
-
-/**
- * Service tag for an SSH agent.
- *
- * @stability experimental
- * @category services
- * @since 4.0.0
- */
-export const SshAgent: Context.Service<SshAgent, SshAgent> = Context.Service<SshAgent>("effect/ssh/SshAgent")
-
-/**
- * Returns `true` when a value is an `SshAgent`.
- *
- * @stability experimental
- * @category guards
- * @since 4.0.0
- */
-export const isSshAgent = (u: unknown): u is SshAgent => Predicate.hasProperty(u, TypeId)
+}>()("effect/ssh/SshAgent") {}
 
 const agentError = (description: string, cause?: unknown) =>
   new SshError({ reason: new SshAgentError({ description, cause }) })
@@ -98,7 +70,7 @@ const decode = <A>(f: () => A): Effect.Effect<A, SshError> =>
  */
 export const fromRequest = (
   request: (message: Uint8Array) => Effect.Effect<Uint8Array, SshError>
-): SshAgent => {
+): SshAgent["Service"] => {
   const sign = (key: SshKey.PublicKey, data: Uint8Array, algorithm: string) =>
     Effect.gen(function*() {
       const flags = algorithm === "rsa-sha2-256"
@@ -136,7 +108,7 @@ export const fromRequest = (
       sign: (data, algorithm) => sign(publicKey, data, algorithm)
     }))
   })
-  return { [TypeId]: TypeId, request, identities, sign }
+  return SshAgent.of({ request, identities, sign })
 }
 
 /**
@@ -163,7 +135,7 @@ export const fromRequest = (
  * @category constructors
  * @since 4.0.0
  */
-export const make = (socket: Socket.Socket): SshAgent => {
+export const make = (socket: Socket.Socket): SshAgent["Service"] => {
   const lock = Semaphore.makeUnsafe(1)
   const request = (message: Uint8Array) =>
     Effect.gen(function*() {
@@ -207,7 +179,7 @@ export const make = (socket: Socket.Socket): SshAgent => {
  * @category constructors
  * @since 4.0.0
  */
-export const fromKeys = (keys: ReadonlyArray<SshKey.PrivateKey>): SshAgent =>
+export const fromKeys = (keys: ReadonlyArray<SshKey.PrivateKey>): SshAgent["Service"] =>
   fromRequest((message) =>
     Effect.gen(function*() {
       const failure = new Uint8Array([AGENT_FAILURE])
