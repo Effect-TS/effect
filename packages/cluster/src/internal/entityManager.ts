@@ -120,6 +120,7 @@ export const make = Effect.fnUntraced(function*<
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
   const activeServers = new Map<EntityId, EntityState>()
+  const drainingServers = new Map<EntityId, EntityState>()
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Effect.Latch
     readonly force: Effect.Latch
@@ -379,6 +380,7 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.withFiberRuntime((fiber) => {
         activeServers.delete(address.entityId)
+        drainingServers.set(address.entityId, state)
         internalInterruptors.add(fiber.id())
         return Effect.raceFirst(
           state.write(0, { _tag: "Eof" }).pipe(
@@ -387,6 +389,12 @@ export const make = Effect.fnUntraced(function*<
             Effect.interruptible
           ),
           Effect.interruptible(closeLatches.force.await)
+        ).pipe(
+          Effect.ensuring(Effect.sync(() => {
+            if (drainingServers.get(address.entityId) === state) {
+              drainingServers.delete(address.entityId)
+            }
+          }))
         )
       })
     )
@@ -419,9 +427,12 @@ export const make = Effect.fnUntraced(function*<
   function sendLocal<R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
   ): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> {
+    const draining = message._tag === "IncomingEnvelope"
+      ? drainingServers.get(message.envelope.address.entityId)
+      : undefined
     return Effect.locally(
       Effect.flatMap(
-        entities.get(message.envelope.address),
+        draining ? Effect.succeed(draining) : entities.get(message.envelope.address),
         (server): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> => {
           switch (message._tag) {
             case "IncomingRequestLocal": {
