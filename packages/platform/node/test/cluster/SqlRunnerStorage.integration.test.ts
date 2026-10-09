@@ -586,6 +586,7 @@ describe("SqlRunnerStorage", () => {
               yield* storage.unregister(runnerAddress1)
               expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
               expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([])
+              expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
 
               yield* storage.refresh(runnerAddress1, [shard]).pipe(
                 Effect.andThen(storage.acquire(runnerAddress2, [shard])),
