@@ -634,6 +634,41 @@ describe.concurrent("Sharding", () => {
       yield* TestClock.adjust(1)
       assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(4))
     }).pipe(Effect.provide(TestSharding)))
+
+  it.effect("interrupts non-persisted streams when restarting after a defect", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+
+      const fiber = yield* client.NeverStreamVolatile().pipe(Stream.runDrain, Effect.fork)
+      yield* TestClock.adjust(1)
+
+      MutableRef.set(state.defectTrigger, true)
+      yield* client.GetUser({ id: 123 })
+      yield* TestClock.adjust(1)
+
+      const exit = fiber.unsafePoll()
+      assert(exit && Exit.isInterrupted(exit))
+      assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(3))
+    }).pipe(Effect.provide(TestSharding)))
+
+  it.effect("interrupts a non-persisted stream that defects instead of replaying it", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+
+      MutableRef.set(state.defectTrigger, true)
+      const fiber = yield* client.NeverStreamVolatile().pipe(Stream.runDrain, Effect.fork)
+      yield* TestClock.adjust(1000)
+
+      const exit = fiber.unsafePoll()
+      assert(exit && Exit.isInterrupted(exit))
+      assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(1))
+    }).pipe(Effect.provide(TestSharding)))
 })
 
 describe("Sharding shard lock failover", () => {

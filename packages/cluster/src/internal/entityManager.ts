@@ -1,5 +1,6 @@
 import type * as Rpc from "@effect/rpc/Rpc"
 import { RequestId } from "@effect/rpc/RpcMessage"
+import * as RpcSchema from "@effect/rpc/RpcSchema"
 import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
@@ -10,6 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
+import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
@@ -335,10 +337,44 @@ export const make = Effect.fnUntraced(function*<
       if (isRestartingDueToDefect) {
         return Effect.void
       }
-      defectRequestIds = new Set(activeRequests.keys())
+      // Interrupt non-persisted streams instead of replaying them.
+      defectRequestIds = new Set()
+      const interrupted: Array<Message.IncomingRequestLocal<any>> = []
+      for (const [id, request] of activeRequests) {
+        if (!Context.get(request.rpc.annotations, Persisted) && RpcSchema.isStreamSchema(request.rpc.successSchema)) {
+          activeRequests.delete(id)
+          processedRequestIds.add(request.message.envelope.requestId)
+          interrupted.push(request.message)
+        } else {
+          defectRequestIds.add(id)
+        }
+      }
+      if (activeRequests.size === 0) {
+        state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
+      }
       isRestartingDueToDefect = true
       const effect = writeRef.unsafeRebuild()
       return Effect.logError("Defect in entity, restarting", cause).pipe(
+        Effect.andThen(Effect.forkIn(
+          Effect.forEach(
+            interrupted,
+            (message) =>
+              Effect.exit(retryRespond(
+                4,
+                Effect.suspend(() =>
+                  message.respond(
+                    new Reply.WithExit({
+                      requestId: message.envelope.requestId,
+                      id: snowflakeGen.unsafeNext(),
+                      exit: Exit.interrupt(FiberId.none)
+                    })
+                  )
+                )
+              )),
+            { concurrency: "unbounded", discard: true }
+          ),
+          managerScope
+        )),
         Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
         Effect.flatMap(() => activeServers.has(address.entityId) ? effect : endLatch.open),
         Effect.ensuring(Effect.sync(() => {

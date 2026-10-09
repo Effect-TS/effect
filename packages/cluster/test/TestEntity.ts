@@ -34,6 +34,7 @@ export const TestEntity = Entity.make("TestEntity", [
   Rpc.make("Never"),
   Rpc.make("NeverFork"),
   Rpc.make("NeverVolatile").annotate(ClusterSchema.Persisted, false),
+  Rpc.make("NeverStreamVolatile", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, false),
   Rpc.make("RequestWithKey", {
     payload: { key: Schema.String },
     primaryKey: ({ key }) => key
@@ -113,6 +114,15 @@ export const TestEntityNoState = TestEntity.toLayer(
       Never: never,
       NeverFork: (envelope) => Rpc.fork(never(envelope)),
       NeverVolatile: never,
+      NeverStreamVolatile: (envelope) =>
+        Rpc.fork(Stream.suspend(() => {
+          state.envelopes.unsafeOffer(envelope)
+          if (state.defectTrigger.current) {
+            MutableRef.set(state.defectTrigger, false)
+            return Stream.die("Stream defect")
+          }
+          return Stream.never
+        })),
       RequestWithKey: (envelope) => {
         state.envelopes.unsafeOffer(envelope)
         return Effect.orDie(state.messages.take)
