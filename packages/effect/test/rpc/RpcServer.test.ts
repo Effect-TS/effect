@@ -19,7 +19,7 @@ import {
 } from "effect"
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
-import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
+import { Rpc, RpcGroup, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
 
@@ -164,6 +164,9 @@ describe("RpcServer", () => {
 
       const exits = Object.fromEntries((yield* Queue.takeN(ended, 2)).map((span) => {
         const exit = span.status._tag === "Ended" ? span.status.exit : undefined
+        if (exit && Exit.isFailure(exit)) {
+          assert.strictEqual(Context.getOrUndefined(Cause.annotations(exit.cause), RpcSchema.ClientAbort), undefined)
+        }
         return [
           span.name,
           exit && Exit.isFailure(exit)
