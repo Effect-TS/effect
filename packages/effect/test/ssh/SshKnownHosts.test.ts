@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as PlatformError from "effect/PlatformError"
@@ -7,6 +7,7 @@ import type { HostKeyInfo } from "effect/ssh/SshClient"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import * as SshKnownHosts from "effect/ssh/SshKnownHosts"
+import { it } from "./utils/crypto.ts"
 
 // Public keys of the fixtures in ./fixtures/keys
 const ed25519Text = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpbD3y/yIaPewNbIgtE7MgXJjuZWGYI+O8Ewf2VmOb1"

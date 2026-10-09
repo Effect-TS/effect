@@ -9,13 +9,13 @@
  * @stability experimental
  * @since 4.0.0
  */
+import * as Crypto from "../Crypto.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as FileSystem from "../FileSystem.ts"
 import type * as PlatformError from "../PlatformError.ts"
 import * as Result from "../Result.ts"
-import * as Crypto from "./internal/crypto.ts"
-import { copy, equals, utf8 } from "./internal/wire.ts"
+import { equals, utf8 } from "./internal/wire.ts"
 import type { HostKeyInfo, HostKeyVerifier } from "./SshClient.ts"
 import { SshError, SshHostKeyError, SshKeyError } from "./SshError.ts"
 import * as SshKey from "./SshKey.ts"
@@ -102,28 +102,31 @@ const wildcardToRegExp = (pattern: string): RegExp =>
     "i"
   )
 
-const matchHashed = async (pattern: string, name: string): Promise<boolean> => {
+const matchHashed = (crypto: Crypto.Crypto, pattern: string, name: string): Effect.Effect<boolean> => {
   const [, , salt, hash] = pattern.split("|")
-  if (salt === undefined || hash === undefined) return false
+  if (salt === undefined || hash === undefined) return Effect.succeed(false)
   const saltBytes = Base64.decode(salt)
   const hashBytes = Base64.decode(hash)
-  if (Result.isFailure(saltBytes) || Result.isFailure(hashBytes)) return false
-  const computed = await Crypto.hmac("SHA-1", copy(saltBytes.success), utf8(name))
-  return equals(computed, hashBytes.success)
+  if (Result.isFailure(saltBytes) || Result.isFailure(hashBytes)) return Effect.succeed(false)
+  // A hashing failure never counts as a match.
+  return crypto.hmac("SHA-1", saltBytes.success, utf8(name)).pipe(
+    Effect.map((computed) => equals(computed, hashBytes.success)),
+    Effect.orElseSucceed(() => false)
+  )
 }
 
-const matchesPatterns = async (hosts: string, name: string): Promise<boolean> => {
-  if (hosts.startsWith("|1|")) return matchHashed(hosts, name)
+const matchesPatterns = (crypto: Crypto.Crypto, hosts: string, name: string): Effect.Effect<boolean> => {
+  if (hosts.startsWith("|1|")) return matchHashed(crypto, hosts, name)
   let matched = false
   for (const raw of hosts.split(",")) {
     const negated = raw.startsWith("!")
     const pattern = negated ? raw.slice(1) : raw
     if (wildcardToRegExp(pattern).test(name)) {
-      if (negated) return false
+      if (negated) return Effect.succeed(false)
       matched = true
     }
   }
-  return matched
+  return Effect.succeed(matched)
 }
 
 /**
@@ -133,8 +136,8 @@ const matchesPatterns = async (hosts: string, name: string): Promise<boolean> =>
  * @category predicates
  * @since 4.0.0
  */
-export const matches = (entry: Entry, host: string, port: number): Effect.Effect<boolean> =>
-  Effect.promise(() => matchesPatterns(entry.hosts, hostName(host, port)))
+export const matches = (entry: Entry, host: string, port: number): Effect.Effect<boolean, never, Crypto.Crypto> =>
+  Effect.flatMap(Crypto.Crypto, (crypto) => matchesPatterns(crypto, entry.hosts, hostName(host, port)))
 
 /**
  * Checks a server host key against `known_hosts`.
@@ -154,13 +157,14 @@ export const check = (
   host: string,
   port: number,
   key: SshKey.PublicKey
-): Effect.Effect<Status> =>
-  Effect.promise(async () => {
+): Effect.Effect<Status, never, Crypto.Crypto> =>
+  Effect.gen(function*() {
+    const crypto = yield* Crypto.Crypto
     const name = hostName(host, port)
     let status: Status = "Unknown"
     for (const entry of knownHosts.entries) {
       if (entry.marker === "cert-authority") continue
-      if (!(await matchesPatterns(entry.hosts, name))) continue
+      if (!(yield* matchesPatterns(crypto, entry.hosts, name))) continue
       const same = SshKey.equals(entry.key, key)
       if (entry.marker === "revoked") {
         if (same) return "Revoked"
@@ -183,13 +187,18 @@ export const check = (
  * @category getters
  * @since 4.0.0
  */
-export const keyTypes = (knownHosts: KnownHosts, host: string, port: number): Effect.Effect<ReadonlyArray<string>> =>
-  Effect.promise(async () => {
+export const keyTypes = (
+  knownHosts: KnownHosts,
+  host: string,
+  port: number
+): Effect.Effect<ReadonlyArray<string>, never, Crypto.Crypto> =>
+  Effect.gen(function*() {
+    const crypto = yield* Crypto.Crypto
     const name = hostName(host, port)
     const types: Array<string> = []
     for (const entry of knownHosts.entries) {
       if (entry.marker !== undefined || types.includes(entry.key.type)) continue
-      if (await matchesPatterns(entry.hosts, name)) types.push(entry.key.type)
+      if (yield* matchesPatterns(crypto, entry.hosts, name)) types.push(entry.key.type)
     }
     return types
   })
@@ -207,13 +216,20 @@ export const formatEntry = (
   port: number,
   key: SshKey.PublicKey,
   options?: { readonly hash?: boolean | undefined }
-): Effect.Effect<string> =>
-  Effect.promise(async () => {
+): Effect.Effect<string, SshError, Crypto.Crypto> =>
+  Effect.gen(function*() {
     const name = hostName(host, port)
     const keyText = `${key.type} ${Base64.encode(key.blob)}`
     if (options?.hash !== true) return `${name} ${keyText}`
-    const salt = Crypto.randomBytes(20)
-    const hash = await Crypto.hmac("SHA-1", salt, utf8(name))
+    const crypto = yield* Crypto.Crypto
+    const { hash, salt } = yield* Effect.gen(function*() {
+      const salt = yield* crypto.randomBytes(20)
+      return { salt, hash: yield* crypto.hmac("SHA-1", salt, utf8(name)) }
+    }).pipe(
+      Effect.mapError((cause) =>
+        new SshError({ reason: new SshKeyError({ description: "could not hash host name", cause }) })
+      )
+    )
     return `|1|${Base64.encode(salt)}|${Base64.encode(hash)} ${keyText}`
   })
 
@@ -242,11 +258,11 @@ const hostKeyError = (kind: SshHostKeyError["kind"], info: HostKeyInfo) =>
 export const verifier = (
   knownHosts: KnownHosts,
   options?: {
-    readonly onUnknown?: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError>) | undefined
+    readonly onUnknown?: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError, Crypto.Crypto>) | undefined
   }
 ): HostKeyVerifier =>
   Object.assign(
-    (info: HostKeyInfo): Effect.Effect<void, SshError> =>
+    (info: HostKeyInfo): Effect.Effect<void, SshError, Crypto.Crypto> =>
       Effect.flatMap(check(knownHosts, info.host, info.port, info.key), (status) => {
         switch (status) {
           case "Match":

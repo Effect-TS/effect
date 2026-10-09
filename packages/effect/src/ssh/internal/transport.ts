@@ -5,6 +5,7 @@
  * @internal
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
+import type * as EffectCrypto from "../../Crypto.ts"
 import * as Deferred from "../../Deferred.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
@@ -82,6 +83,7 @@ export interface TransportOptions {
   readonly host: string
   readonly clientVersion: string
   readonly algorithms: AlgorithmPreferences
+  readonly crypto: EffectCrypto.Crypto
   readonly verifyHostKey: (key: SshKey.PublicKey) => Effect.Effect<void, SshError>
   readonly rekeyBytes: number
   readonly rekeyInterval: Duration.Duration | undefined
@@ -124,19 +126,15 @@ export interface Transport {
 export const protocolError = (description: string, cause?: unknown) =>
   new SshError({ reason: new SshProtocolError({ description, cause }) })
 
-const fromCryptoFailure = (cause: unknown): SshError => {
-  if (cause instanceof SshError) return cause
-  if (cause instanceof Crypto.MacError) return protocolError("message authentication failed")
-  if (cause instanceof WireError) return protocolError(cause.message)
-  return protocolError("cryptographic operation failed", cause)
-}
-
 /** @internal */
-export const tryAsync = <A>(f: () => Promise<A>): Effect.Effect<A, SshError> =>
-  Effect.tryPromise({ try: f, catch: fromCryptoFailure })
-
-/** @internal */
-export const trySync = <A>(f: () => A): Effect.Effect<A, SshError> => Effect.try({ try: f, catch: fromCryptoFailure })
+export const trySync = <A>(f: () => A): Effect.Effect<A, SshError> =>
+  Effect.try({
+    try: f,
+    catch: (cause) =>
+      cause instanceof SshError
+        ? cause
+        : protocolError(cause instanceof WireError ? cause.message : "malformed message", cause)
+  })
 
 const connectionError = (cause: unknown) => new SshError({ reason: new SshConnectionError({ cause }) })
 
@@ -319,7 +317,8 @@ export const make = Effect.fnUntraced(function*(
   // Packet I/O
   // ---------------------------------------------------------------------------
 
-  let sealer: Crypto.Sealer = Crypto.noneSealer
+  const crypto = options.crypto
+  let sealer: Crypto.Sealer = Crypto.noneSealer(crypto)
   let opener: Crypto.Opener = Crypto.noneOpener
   let sendSequence = 0
   let receiveSequence = 0
@@ -329,12 +328,12 @@ export const make = Effect.fnUntraced(function*(
     const current = opener
     yield* fill(current.headerLength)
     const header = inbox.take(current.headerLength)
-    const remaining = yield* tryAsync(() => current.begin(header))
+    const remaining = yield* current.begin(header)
     yield* fill(remaining)
     const rest = inbox.take(remaining)
     const sequence = receiveSequence
     receiveSequence = (receiveSequence + 1) >>> 0
-    const payload = yield* tryAsync(() => current.finish(sequence, header, rest))
+    const payload = yield* current.finish(sequence, header, rest)
     bytesSinceKex += header.length + rest.length
     if (payload.length === 0) return yield* protocolError("empty packet")
     return payload
@@ -353,7 +352,7 @@ export const make = Effect.fnUntraced(function*(
       const sequence = sendSequence
       sendSequence = (sendSequence + 1) >>> 0
       const current = sealer
-      const wire = yield* tryAsync(() => current.seal(sequence, payload))
+      const wire = yield* current.seal(sequence, payload)
       bytesSinceKex += wire.length
       wires.push(wire)
     }
@@ -417,11 +416,11 @@ export const make = Effect.fnUntraced(function*(
   let negotiated: NegotiatedAlgorithms | undefined
   let serverSignatureAlgorithms: ReadonlyArray<string> | undefined
 
-  const buildKexInit = (): Bytes => {
+  const buildKexInit = (cookie: Uint8Array): Bytes => {
     const kex = firstKex ? [...options.algorithms.kex, EXT_INFO_CLIENT, STRICT_KEX_CLIENT] : options.algorithms.kex
     return new Writer(512)
       .byte(Constants.MSG_KEXINIT)
-      .raw(Crypto.randomBytes(16))
+      .raw(cookie)
       .nameList(kex)
       .nameList(options.algorithms.hostKey)
       .nameList(options.algorithms.cipher)
@@ -437,13 +436,14 @@ export const make = Effect.fnUntraced(function*(
       .finish()
   }
 
-  const startKex: Effect.Effect<void, SshError> = lock.withPermit(Effect.suspend(() => {
-    if (kexInProgress) return Effect.void
+  const startKex: Effect.Effect<void, SshError> = lock.withPermit(Effect.gen(function*() {
+    if (kexInProgress) return
+    const cookie = yield* Effect.mapError(crypto.randomBytes(16), Crypto.cryptoError("could not generate cookie"))
     kexInProgress = true
     gate.closeUnsafe()
-    const payload = buildKexInit()
+    const payload = buildKexInit(cookie)
     ourKexInit = payload
-    return writeUnlocked([payload])
+    yield* writeUnlocked([payload])
   }))
 
   let rekeyEnabled = false
@@ -487,7 +487,7 @@ export const make = Effect.fnUntraced(function*(
     }
 
     const method = Crypto.kexMethods[algorithms.kex]
-    const pair = yield* tryAsync(method.generate)
+    const pair = yield* method.generate
     yield* writeKex(new Writer().byte(Constants.MSG_KEX_ECDH_INIT).string(pair.publicKey).finish())
 
     const reply = yield* readKexMessage(Constants.MSG_KEX_ECDH_REPLY)
@@ -495,39 +495,36 @@ export const make = Effect.fnUntraced(function*(
       const reader = new Reader(reply, 1)
       return { hostKeyBlob: reader.string(), serverPublic: reader.string(), signature: reader.string() }
     })
-    const sharedSecret = yield* tryAsync(() => pair.agree(serverPublic))
-    const exchangeHash = yield* tryAsync(() =>
-      Crypto.digest(
-        method.hash,
-        new Writer(2048)
-          .string(clientVersion)
-          .string(serverVersion)
-          .string(clientPayload)
-          .string(serverPayload)
-          .string(hostKeyBlob)
-          .string(pair.publicKey)
-          .string(serverPublic)
-          .mpint(sharedSecret)
-          .finish()
-      )
+    const sharedSecret = yield* pair.agree(serverPublic)
+    const exchangeHash = yield* Crypto.digest(
+      crypto,
+      method.hash,
+      new Writer(2048)
+        .string(clientVersion)
+        .string(serverVersion)
+        .string(clientPayload)
+        .string(serverPayload)
+        .string(hostKeyBlob)
+        .string(pair.publicKey)
+        .string(serverPublic)
+        .mpint(sharedSecret)
+        .finish()
     )
 
     const serverKey = yield* Effect.fromResult(SshKey.fromBlob(hostKeyBlob))
     const hostKeyError = (kind: SshHostKeyError["kind"]) =>
-      Effect.flatMap(SshKey.fingerprint(serverKey), (fingerprint) =>
+      Effect.flatMap(Crypto.fingerprintSha256(crypto, serverKey.blob), (fingerprint) =>
         Effect.fail(
           new SshError({
             reason: new SshHostKeyError({ kind, host: options.host, keyType: serverKey.type, fingerprint })
           })
         ))
-    const valid = yield* tryAsync(() =>
-      Crypto.verifySignature({
-        publicKey: hostKeyBlob,
-        signature,
-        data: exchangeHash,
-        expectedAlgorithm: algorithms.hostKey
-      })
-    )
+    const valid = yield* Crypto.verifySignature(crypto, {
+      publicKey: hostKeyBlob,
+      signature,
+      data: exchangeHash,
+      expectedAlgorithm: algorithms.hostKey
+    })
     if (!valid) return yield* hostKeyError("InvalidSignature")
     if (firstKex) {
       yield* options.verifyHostKey(serverKey)
@@ -538,7 +535,7 @@ export const make = Effect.fnUntraced(function*(
     }
 
     const derive = (letter: string, length: number) =>
-      tryAsync(() => Crypto.deriveKey(method.hash, sharedSecret, exchangeHash, letter, sessionId!, length))
+      Crypto.deriveKey(crypto, method.hash, sharedSecret, exchangeHash, letter, sessionId!, length)
     const directionKeys = Effect.fnUntraced(function*(
       cipherName: string,
       macName: string | undefined,
@@ -564,8 +561,8 @@ export const make = Effect.fnUntraced(function*(
       "D",
       "F"
     ])
-    const nextSealer = yield* tryAsync(() => Crypto.makeSealer(outgoingKeys))
-    const nextOpener = yield* tryAsync(() => Crypto.makeOpener(incomingKeys))
+    const nextSealer = yield* Crypto.makeSealer(crypto, outgoingKeys)
+    const nextOpener = yield* Crypto.makeOpener(crypto, incomingKeys)
 
     yield* lock.withPermit(Effect.gen(function*() {
       yield* writeUnlocked([new Uint8Array([Constants.MSG_NEWKEYS])])

@@ -1,23 +1,25 @@
 /**
- * SSH public and private keys backed by WebCrypto.
+ * SSH public and private keys backed by the `Crypto` service.
  *
  * Private keys are parsed from unencrypted OpenSSH (`openssh-key-v1`),
  * PKCS#8, PKCS#1 (RSA), and SEC1 (EC) PEM files, or generated in memory.
  * Supported key types are `ssh-ed25519`, `ecdsa-sha2-nistp256`,
  * `ecdsa-sha2-nistp384`, `ecdsa-sha2-nistp521`, and `ssh-rsa` (signing with
  * `rsa-sha2-256` / `rsa-sha2-512`). Imported private key material is held in
- * non-extractable `CryptoKey`s.
+ * non-extractable `Crypto.Key`s, which sign without requiring `Crypto` in the
+ * context.
  *
  * @stability experimental
  * @since 4.0.0
  */
+import * as Crypto from "../Crypto.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Inspectable from "../Inspectable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Result from "../Result.ts"
-import * as Crypto from "./internal/crypto.ts"
+import * as SshCrypto from "./internal/crypto.ts"
 import * as Der from "./internal/der.ts"
 import {
   bigIntToBytes,
@@ -105,7 +107,7 @@ export interface Signer {
 }
 
 /**
- * An SSH private key whose secret material is held by WebCrypto.
+ * An SSH private key whose secret material is held by the `Crypto` service.
  *
  * @stability experimental
  * @category models
@@ -229,8 +231,13 @@ export const formatPublicKey = (key: PublicKey): string =>
  * @category getters
  * @since 4.0.0
  */
-export const fingerprint = (key: PublicKey): Effect.Effect<string> =>
-  Effect.promise(() => Crypto.fingerprintSha256(key.blob))
+export const fingerprint = (key: PublicKey): Effect.Effect<string, SshError, Crypto.Crypto> =>
+  Effect.flatMap(
+    Crypto.Crypto,
+    (crypto) =>
+      Effect.mapError(SshCrypto.fingerprintSha256(crypto, key.blob), (cause) =>
+        keyError("could not compute fingerprint", cause))
+  )
 
 /**
  * Returns the signature algorithms this module supports for a key type, in
@@ -241,7 +248,7 @@ export const fingerprint = (key: PublicKey): Effect.Effect<string> =>
  * @since 4.0.0
  */
 export const signatureAlgorithms = (keyType: string): ReadonlyArray<string> =>
-  Crypto.signatureAlgorithmsForKeyType(keyType)
+  SshCrypto.signatureAlgorithmsForKeyType(keyType)
 
 /**
  * Verifies an SSH signature blob produced for `data` by the private half of
@@ -261,17 +268,16 @@ export const verify = (
   key: PublicKey,
   data: Uint8Array,
   signature: Uint8Array
-): Effect.Effect<boolean, SshError> =>
-  Effect.tryPromise({
-    try: () => Crypto.verifySignature({ publicKey: key.blob, signature, data: copy(data) }),
-    catch: (cause) => keyError("could not verify signature", cause)
-  })
+): Effect.Effect<boolean, SshError, Crypto.Crypto> =>
+  Effect.flatMap(Crypto.Crypto, (crypto) =>
+    Effect.mapError(
+      SshCrypto.verifySignature(crypto, { publicKey: key.blob, signature, data }),
+      (cause) => keyError("could not verify signature", cause)
+    ))
 
 // -----------------------------------------------------------------------------
 // Private keys
 // -----------------------------------------------------------------------------
-
-type PrivateJwk = JsonWebKey & { readonly kty: string }
 
 const PrivateKeyProto = {
   [PrivateKeyTypeId]: PrivateKeyTypeId,
@@ -281,6 +287,8 @@ const PrivateKeyProto = {
   }
 }
 
+class UnsupportedKeyError extends Error {}
+
 const decodeB64Url = (value: string | undefined, name: string): Uint8Array => {
   if (value === undefined) throw new Error(`missing JWK member ${name}`)
   const decoded = Base64Url.decode(value)
@@ -288,90 +296,117 @@ const decodeB64Url = (value: string | undefined, name: string): Uint8Array => {
   return decoded.success
 }
 
-const curveForJwk: Record<string, string> = {
+const curveForJwk: Record<string, KeyType> = {
   "P-256": "ecdsa-sha2-nistp256",
   "P-384": "ecdsa-sha2-nistp384",
   "P-521": "ecdsa-sha2-nistp521"
-}
-
-const fromJwk = async (jwk: PrivateJwk, comment: string): Promise<PrivateKey> => {
-  const subtle = Crypto.subtle()
-  // `alg` pins RSA keys to a single hash, so it is dropped to allow importing
-  // one key per signature algorithm.
-  const { alg: _alg, ...material } = jwk
-  const importJwk = (algorithm: AlgorithmIdentifier | EcKeyImportParams | RsaHashedImportParams) =>
-    subtle.importKey("jwk", { ...material, ext: false, key_ops: ["sign"] }, algorithm, false, ["sign"])
-
-  if (jwk.kty === "OKP" && jwk.crv === "Ed25519") {
-    const publicKey = decodeB64Url(jwk.x, "x")
-    const blob = new Writer().string("ssh-ed25519").string(publicKey).finish()
-    const key = await importJwk({ name: "Ed25519" })
-    return makePrivateKey("ssh-ed25519", blob, comment, async (data, algorithm) => {
-      if (algorithm !== "ssh-ed25519") throw new Error(`unsupported signature algorithm ${algorithm}`)
-      const signature = new Uint8Array(await subtle.sign("Ed25519", key, data))
-      return new Writer().string(algorithm).string(signature).finish()
-    })
-  }
-
-  if (jwk.kty === "EC" && jwk.crv !== undefined && jwk.crv in curveForJwk) {
-    const type = curveForJwk[jwk.crv] as KeyType
-    const curve = Crypto.ecdsaCurves[type]
-    const x = padStart(decodeB64Url(jwk.x, "x"), curve.size)
-    const y = padStart(decodeB64Url(jwk.y, "y"), curve.size)
-    const point = new Uint8Array(1 + curve.size * 2)
-    point[0] = 4
-    point.set(x, 1)
-    point.set(y, 1 + curve.size)
-    const blob = new Writer().string(type).string(curve.identifier).string(point).finish()
-    const key = await importJwk({ name: "ECDSA", namedCurve: curve.namedCurve })
-    return makePrivateKey(type, blob, comment, async (data, algorithm) => {
-      if (algorithm !== type) throw new Error(`unsupported signature algorithm ${algorithm}`)
-      const signature = new Uint8Array(await subtle.sign({ name: "ECDSA", hash: curve.hash }, key, data))
-      return new Writer().string(algorithm).string(Crypto.ecdsaP1363ToSsh(signature)).finish()
-    })
-  }
-
-  if (jwk.kty === "RSA") {
-    const n = decodeB64Url(jwk.n, "n")
-    const e = decodeB64Url(jwk.e, "e")
-    const blob = new Writer().string("ssh-rsa").mpint(e).mpint(n).finish()
-    const modulusLength = stripLeadingZeros(n).length
-    const keys = {
-      "rsa-sha2-256": await importJwk({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }),
-      "rsa-sha2-512": await importJwk({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-512" })
-    }
-    return makePrivateKey("ssh-rsa", blob, comment, async (data, algorithm) => {
-      const key = keys[algorithm as keyof typeof keys]
-      if (key === undefined) throw new Error(`unsupported signature algorithm ${algorithm}`)
-      const signature = new Uint8Array(await subtle.sign("RSASSA-PKCS1-v1_5", key, data))
-      return new Writer().string(algorithm).string(padStart(signature, modulusLength)).finish()
-    })
-  }
-
-  throw new Error(`unsupported key type ${jwk.kty}${jwk.crv ? ` (${jwk.crv})` : ""}`)
 }
 
 const makePrivateKey = (
   type: KeyType,
   blob: Uint8Array,
   comment: string,
-  sign: (data: Uint8Array<ArrayBuffer>, algorithm: string) => Promise<Uint8Array>
-): PrivateKey => {
-  const publicKey = makePublicKeyUnsafe(type, blob, comment)
-  return Object.assign(Object.create(PrivateKeyProto), {
+  sign: PrivateKey["sign"]
+): PrivateKey =>
+  Object.assign(Object.create(PrivateKeyProto), {
     type,
-    publicKey,
-    sign: (data: Uint8Array, algorithm: string) =>
-      Effect.tryPromise({
-        try: () => sign(copy(data), algorithm),
-        catch: (cause) => keyError(`could not sign with ${algorithm}`, cause)
-      })
+    publicKey: makePublicKeyUnsafe(type, blob, comment),
+    sign
   })
-}
+
+/**
+ * Imports private key material as non-extractable signing keys and builds the
+ * SSH public key blob from the public JWK members.
+ */
+const fromJwk = Effect.fnUntraced(function*(crypto: Crypto.Crypto, jwk: Crypto.Jwk, comment: string) {
+  // `alg` pins RSA keys to a single hash, so it is dropped to allow importing
+  // one key per signature algorithm.
+  const { alg: _alg, ext: _ext, key_ops: _keyOps, ...material } = jwk
+  const importSigningKey = (algorithm: Crypto.KeyPairAlgorithm) =>
+    Effect.mapError(
+      crypto.importJwk(material, algorithm, { extractable: false, usages: ["sign"] }),
+      (cause) => keyError("could not import private key", cause)
+    )
+  const signer = (
+    algorithms: Record<string, { readonly key: Crypto.Key; readonly options: Crypto.SigningOptions }>,
+    encode: (signature: Uint8Array) => Uint8Array
+  ): PrivateKey["sign"] =>
+  (data, algorithm) => {
+    const entry = algorithms[algorithm]
+    if (entry === undefined) return Effect.fail(keyError(`unsupported signature algorithm ${algorithm}`))
+    return crypto.sign(entry.options, entry.key, data).pipe(
+      Effect.map((signature) => new Writer().string(algorithm).string(encode(signature)).finish()),
+      Effect.mapError((cause) => keyError(`could not sign with ${algorithm}`, cause))
+    )
+  }
+  const decoded = yield* Effect.try({
+    try: () => ({
+      x: jwk.x === undefined ? undefined : decodeB64Url(jwk.x, "x"),
+      y: jwk.y === undefined ? undefined : decodeB64Url(jwk.y, "y"),
+      n: jwk.n === undefined ? undefined : decodeB64Url(jwk.n, "n"),
+      e: jwk.e === undefined ? undefined : decodeB64Url(jwk.e, "e")
+    }),
+    catch: (cause) => keyError("invalid private key", cause)
+  })
+
+  if (jwk.kty === "OKP" && jwk.crv === "Ed25519" && decoded.x !== undefined) {
+    const blob = new Writer().string("ssh-ed25519").string(decoded.x).finish()
+    const key = yield* importSigningKey({ name: "Ed25519" })
+    return makePrivateKey(
+      "ssh-ed25519",
+      blob,
+      comment,
+      signer({ "ssh-ed25519": { key, options: { name: "Ed25519" } } }, (signature) => signature)
+    )
+  }
+
+  const type = jwk.kty === "EC" && jwk.crv !== undefined ? curveForJwk[jwk.crv] : undefined
+  if (type !== undefined && decoded.x !== undefined && decoded.y !== undefined) {
+    const curve = SshCrypto.ecdsaCurves[type]
+    const point = new Uint8Array(1 + curve.size * 2)
+    point[0] = 4
+    point.set(padStart(decoded.x, curve.size), 1)
+    point.set(padStart(decoded.y, curve.size), 1 + curve.size)
+    const blob = new Writer().string(type).string(curve.identifier).string(point).finish()
+    const key = yield* importSigningKey({ name: "ECDSA", namedCurve: curve.namedCurve })
+    return makePrivateKey(
+      type,
+      blob,
+      comment,
+      signer({ [type]: { key, options: { name: "ECDSA", hash: curve.hash } } }, SshCrypto.ecdsaP1363ToSsh)
+    )
+  }
+
+  if (jwk.kty === "RSA" && decoded.n !== undefined && decoded.e !== undefined) {
+    const blob = new Writer().string("ssh-rsa").mpint(decoded.e).mpint(decoded.n).finish()
+    const modulusLength = stripLeadingZeros(decoded.n).length
+    const options: Crypto.SigningOptions = { name: "RSASSA-PKCS1-v1_5" }
+    const sha256 = yield* importSigningKey({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" })
+    const sha512 = yield* importSigningKey({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-512" })
+    return makePrivateKey(
+      "ssh-rsa",
+      blob,
+      comment,
+      signer(
+        { "rsa-sha2-256": { key: sha256, options }, "rsa-sha2-512": { key: sha512, options } },
+        (signature) => padStart(signature, modulusLength)
+      )
+    )
+  }
+
+  return yield* keyError(`unsupported key type ${jwk.kty}${jwk.crv ? ` (${jwk.crv})` : ""}`)
+})
+
+/**
+ * Private key material decoded from a key file, ready for import.
+ */
+type KeyMaterial =
+  | { readonly _tag: "Jwk"; readonly jwk: Crypto.Jwk; readonly comment: string }
+  | { readonly _tag: "Pkcs8"; readonly der: Uint8Array; readonly algorithm: Crypto.KeyPairAlgorithm }
 
 const b64u = (bytes: Uint8Array): string => Base64Url.encode(stripLeadingZeros(bytes))
 
-const parseOpenSshPrivateKey = async (data: Uint8Array): Promise<PrivateKey> => {
+const decodeOpenSshPrivateKey = (data: Uint8Array): KeyMaterial => {
   const magic = utf8("openssh-key-v1\0")
   for (let i = 0; i < magic.length; i++) {
     if (data[i] !== magic[i]) throw new Error("invalid OpenSSH private key magic")
@@ -394,29 +429,37 @@ const parseOpenSshPrivateKey = async (data: Uint8Array): Promise<PrivateKey> => 
       const publicKey = section.string()
       const secret = section.string()
       const comment = section.utf8()
-      return fromJwk({
-        kty: "OKP",
-        crv: "Ed25519",
-        x: Base64Url.encode(publicKey),
-        d: Base64Url.encode(secret.subarray(0, 32))
-      }, comment)
+      return {
+        _tag: "Jwk",
+        jwk: {
+          kty: "OKP",
+          crv: "Ed25519",
+          x: Base64Url.encode(publicKey),
+          d: Base64Url.encode(secret.subarray(0, 32))
+        },
+        comment
+      }
     }
     case "ecdsa-sha2-nistp256":
     case "ecdsa-sha2-nistp384":
     case "ecdsa-sha2-nistp521": {
-      const curve = Crypto.ecdsaCurves[type]
+      const curve = SshCrypto.ecdsaCurves[type]
       section.utf8()
       const point = section.string()
       const d = section.mpint()
       const comment = section.utf8()
       if (point[0] !== 4 || point.length !== 1 + curve.size * 2) throw new Error("invalid EC public point")
-      return fromJwk({
-        kty: "EC",
-        crv: curve.namedCurve,
-        x: Base64Url.encode(point.subarray(1, 1 + curve.size)),
-        y: Base64Url.encode(point.subarray(1 + curve.size)),
-        d: Base64Url.encode(padStart(d, curve.size))
-      }, comment)
+      return {
+        _tag: "Jwk",
+        jwk: {
+          kty: "EC",
+          crv: curve.namedCurve,
+          x: Base64Url.encode(point.subarray(1, 1 + curve.size)),
+          y: Base64Url.encode(point.subarray(1 + curve.size)),
+          d: Base64Url.encode(padStart(d, curve.size))
+        },
+        comment
+      }
     }
     case "ssh-rsa": {
       const n = section.mpint()
@@ -428,45 +471,41 @@ const parseOpenSshPrivateKey = async (data: Uint8Array): Promise<PrivateKey> => 
       const comment = section.utf8()
       const dBig = bytesToBigInt(d)
       const one = BigInt(1)
-      return fromJwk({
-        kty: "RSA",
-        n: b64u(n),
-        e: b64u(e),
-        d: b64u(d),
-        p: b64u(p),
-        q: b64u(q),
-        dp: b64u(bigIntToBytes(dBig % (bytesToBigInt(p) - one))),
-        dq: b64u(bigIntToBytes(dBig % (bytesToBigInt(q) - one))),
-        qi: b64u(iqmp)
-      }, comment)
+      return {
+        _tag: "Jwk",
+        jwk: {
+          kty: "RSA",
+          n: b64u(n),
+          e: b64u(e),
+          d: b64u(d),
+          p: b64u(p),
+          q: b64u(q),
+          dp: b64u(bigIntToBytes(dBig % (bytesToBigInt(p) - one))),
+          dq: b64u(bigIntToBytes(dBig % (bytesToBigInt(q) - one))),
+          qi: b64u(iqmp)
+        },
+        comment
+      }
     }
     default:
       throw new UnsupportedKeyError(`unsupported key type ${type}`)
   }
 }
 
-class UnsupportedKeyError extends Error {}
-
-const importPkcs8 = async (der: Uint8Array<ArrayBuffer>, comment: string): Promise<PrivateKey> => {
+const decodePkcs8 = (der: Uint8Array): KeyMaterial => {
   const [, algorithm] = Der.children(Der.read(der).value)
   const [oid, params] = Der.children(algorithm.value)
   const algorithmOid = Der.decodeOid(oid.value)
-  const subtle = Crypto.subtle()
-  let importParams: AlgorithmIdentifier | EcKeyImportParams | RsaHashedImportParams
-  if (algorithmOid === Der.OID_ED25519) {
-    importParams = { name: "Ed25519" }
-  } else if (algorithmOid === Der.OID_EC_PUBLIC_KEY) {
+  if (algorithmOid === Der.OID_ED25519) return { _tag: "Pkcs8", der, algorithm: { name: "Ed25519" } }
+  if (algorithmOid === Der.OID_EC_PUBLIC_KEY) {
     const namedCurve = params !== undefined ? Der.curveOids[Der.decodeOid(params.value)] : undefined
     if (namedCurve === undefined) throw new UnsupportedKeyError("unsupported EC curve")
-    importParams = { name: "ECDSA", namedCurve }
-  } else if (algorithmOid === Der.OID_RSA_ENCRYPTION) {
-    importParams = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }
-  } else {
-    throw new UnsupportedKeyError(`unsupported PKCS#8 key algorithm ${algorithmOid}`)
+    return { _tag: "Pkcs8", der, algorithm: { name: "ECDSA", namedCurve: namedCurve as Crypto.NamedCurve } }
   }
-  const extractable = await subtle.importKey("pkcs8", der, importParams, true, ["sign"])
-  const jwk = await subtle.exportKey("jwk", extractable) as PrivateJwk
-  return fromJwk(jwk, comment)
+  if (algorithmOid === Der.OID_RSA_ENCRYPTION) {
+    return { _tag: "Pkcs8", der, algorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" } }
+  }
+  throw new UnsupportedKeyError(`unsupported PKCS#8 key algorithm ${algorithmOid}`)
 }
 
 const wrapPkcs8 = (algorithm: Uint8Array, privateKey: Uint8Array): Uint8Array<ArrayBuffer> =>
@@ -527,6 +566,29 @@ const parsePem = (text: string): Pem | undefined => {
   return { label: match[1], headers, body: decoded.success }
 }
 
+const decodePrivateKey = (input: string | Uint8Array): KeyMaterial => {
+  const text = typeof input === "string" ? input : new TextDecoder().decode(input)
+  const pem = parsePem(text)
+  if (pem === undefined) throw new Error("no PEM block found")
+  if (pem.headers.get("Proc-Type")?.includes("ENCRYPTED") === true) {
+    throw new UnsupportedKeyError("encrypted PEM private keys are not supported")
+  }
+  switch (pem.label) {
+    case "OPENSSH PRIVATE KEY":
+      return decodeOpenSshPrivateKey(pem.body)
+    case "PRIVATE KEY":
+      return decodePkcs8(pem.body)
+    case "RSA PRIVATE KEY":
+      return decodePkcs8(wrapPkcs1(pem.body))
+    case "EC PRIVATE KEY":
+      return decodePkcs8(wrapSec1(pem.body))
+    case "ENCRYPTED PRIVATE KEY":
+      throw new UnsupportedKeyError("encrypted PKCS#8 private keys are not supported")
+    default:
+      throw new UnsupportedKeyError(`unsupported PEM block ${pem.label}`)
+  }
+}
+
 /**
  * Parses an unencrypted private key file.
  *
@@ -535,6 +597,8 @@ const parsePem = (text: string): Pem | undefined => {
  * Accepts `OPENSSH PRIVATE KEY`, `PRIVATE KEY` (PKCS#8), `RSA PRIVATE KEY`
  * (PKCS#1), and `EC PRIVATE KEY` (SEC1) PEM blocks, as text or UTF-8 bytes.
  * The comment of OpenSSH keys is preserved; `options.comment` overrides it.
+ * Keys are imported through the `Crypto` service as non-extractable signing
+ * keys.
  *
  * **Gotchas**
  *
@@ -545,55 +609,32 @@ const parsePem = (text: string): Pem | undefined => {
  * @category decoding
  * @since 4.0.0
  */
-export const parsePrivateKey = (
+export const parsePrivateKey = Effect.fnUntraced(function*(
   input: string | Uint8Array,
   options?: { readonly comment?: string | undefined }
-): Effect.Effect<PrivateKey, SshError> =>
-  Effect.tryPromise({
-    try: async () => {
-      const text = typeof input === "string" ? input : new TextDecoder().decode(input)
-      const pem = parsePem(text)
-      if (pem === undefined) throw new Error("no PEM block found")
-      if (pem.headers.get("Proc-Type")?.includes("ENCRYPTED") === true) {
-        throw new UnsupportedKeyError("encrypted PEM private keys are not supported")
-      }
-      const body = copy(pem.body)
-      let key: PrivateKey
-      switch (pem.label) {
-        case "OPENSSH PRIVATE KEY":
-          key = await parseOpenSshPrivateKey(body)
-          break
-        case "PRIVATE KEY":
-          key = await importPkcs8(body, "")
-          break
-        case "RSA PRIVATE KEY":
-          key = await importPkcs8(wrapPkcs1(body), "")
-          break
-        case "EC PRIVATE KEY":
-          key = await importPkcs8(wrapSec1(body), "")
-          break
-        case "ENCRYPTED PRIVATE KEY":
-          throw new UnsupportedKeyError("encrypted PKCS#8 private keys are not supported")
-        default:
-          throw new UnsupportedKeyError(`unsupported PEM block ${pem.label}`)
-      }
-      return options?.comment !== undefined ? withComment(key, options.comment) : key
-    },
+): Effect.fn.Return<PrivateKey, SshError, Crypto.Crypto> {
+  const crypto = yield* Crypto.Crypto
+  const material = yield* Effect.try({
+    try: () => decodePrivateKey(input),
     catch: (cause) =>
       cause instanceof UnsupportedKeyError
         ? keyError(cause.message)
         : keyError("could not parse private key", cause)
   })
-
-const withComment = (key: PrivateKey, comment: string): PrivateKey =>
-  Object.assign(Object.create(PrivateKeyProto), {
-    type: key.type,
-    publicKey: makePublicKeyUnsafe(key.publicKey.type, key.publicKey.blob, comment),
-    sign: key.sign
-  })
+  if (material._tag === "Jwk") return yield* fromJwk(crypto, material.jwk, options?.comment ?? material.comment)
+  // PKCS#8 keys are exported to JWK to obtain the public key members.
+  const jwk = yield* crypto.importKey("pkcs8", copy(material.der), material.algorithm, {
+    extractable: true,
+    usages: ["sign"]
+  }).pipe(
+    Effect.flatMap((key) => crypto.exportJwk(key)),
+    Effect.mapError((cause) => keyError("could not parse private key", cause))
+  )
+  return yield* fromJwk(crypto, jwk, options?.comment ?? "")
+})
 
 /**
- * Generates a new private key in memory.
+ * Generates a new private key with the `Crypto` service.
  *
  * **Details**
  *
@@ -604,32 +645,22 @@ const withComment = (key: PrivateKey, comment: string): PrivateKey =>
  * @category constructors
  * @since 4.0.0
  */
-export const generate = (
+export const generate = Effect.fnUntraced(function*(
   type: KeyType,
   options?: {
     readonly comment?: string | undefined
     readonly bits?: number | undefined
   }
-): Effect.Effect<PrivateKey, SshError> =>
-  Effect.tryPromise({
-    try: async () => {
-      const subtle = Crypto.subtle()
-      let algorithm: AlgorithmIdentifier | EcKeyGenParams | RsaHashedKeyGenParams
-      if (type === "ssh-ed25519") {
-        algorithm = { name: "Ed25519" }
-      } else if (type === "ssh-rsa") {
-        algorithm = {
-          name: "RSASSA-PKCS1-v1_5",
-          modulusLength: options?.bits ?? 3072,
-          publicExponent: new Uint8Array([1, 0, 1]),
-          hash: "SHA-256"
-        }
-      } else {
-        algorithm = { name: "ECDSA", namedCurve: Crypto.ecdsaCurves[type].namedCurve }
-      }
-      const pair = await subtle.generateKey(algorithm, true, ["sign", "verify"]) as CryptoKeyPair
-      const jwk = await subtle.exportKey("jwk", pair.privateKey) as PrivateJwk
-      return fromJwk(jwk, options?.comment ?? "")
-    },
-    catch: (cause) => keyError(`could not generate ${type} key`, cause)
-  })
+): Effect.fn.Return<PrivateKey, SshError, Crypto.Crypto> {
+  const crypto = yield* Crypto.Crypto
+  const algorithm: Crypto.KeyPairAlgorithm = type === "ssh-ed25519"
+    ? { name: "Ed25519" }
+    : type === "ssh-rsa"
+    ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", modulusLength: options?.bits ?? 3072 }
+    : { name: "ECDSA", namedCurve: SshCrypto.ecdsaCurves[type].namedCurve }
+  const jwk = yield* crypto.generateKeyPair(algorithm, { extractable: true }).pipe(
+    Effect.flatMap((pair) => crypto.exportJwk(pair.privateKey)),
+    Effect.mapError((cause) => keyError(`could not generate ${type} key`, cause))
+  )
+  return yield* fromJwk(crypto, jwk, options?.comment ?? "")
+})

@@ -27,10 +27,10 @@ import * as Option from "../Option.ts"
 import * as PlatformError from "../PlatformError.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Queue from "../Queue.ts"
+import * as Random from "../Random.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import * as Crypto from "./internal/crypto.ts"
 import * as Glob from "./internal/glob.ts"
 import { concat, Reader, WireError, Writer } from "./internal/wire.ts"
 import * as Ssh from "./Ssh.ts"
@@ -1082,13 +1082,14 @@ export const fileSystem = (sftp: Sftp): FileSystem.FileSystem => {
       return out
     })
 
-  const randomName = () => Array.from(Crypto.randomBytes(6), (byte) => byte.toString(16).padStart(2, "0")).join("")
+  const randomPart = Effect.map(Random.nextIntBetween(0, 0xffffff), (n) => n.toString(16).padStart(6, "0"))
+  const randomName = Effect.map(Effect.all([randomPart, randomPart]), (parts) => parts.join(""))
 
   const makeTempDirectory: FileSystem.FileSystem["makeTempDirectory"] = (options) =>
     Effect.gen(function*() {
       const directory = options?.directory ?? "/tmp"
       for (let attempt = 0; attempt < 8; attempt++) {
-        const path = joinPath(directory, `${options?.prefix ?? ""}${randomName()}`)
+        const path = joinPath(directory, `${options?.prefix ?? ""}${yield* randomName}`)
         const created = yield* sftp.makeDirectory(path, { mode: 0o700 }).pipe(
           Effect.as(true),
           Effect.catchReason("SshError", "SshSftpError", (reason, error) =>
@@ -1104,7 +1105,7 @@ export const fileSystem = (sftp: Sftp): FileSystem.FileSystem => {
   const makeTempFile: FileSystem.FileSystem["makeTempFile"] = (options) =>
     Effect.gen(function*() {
       const directory = yield* makeTempDirectory(options)
-      const path = joinPath(directory, `${randomName()}${options?.suffix ?? ""}`)
+      const path = joinPath(directory, `${yield* randomName}${options?.suffix ?? ""}`)
       yield* lift("makeTempFile", path)(sftp.writeFile(path, new Uint8Array(0), { flag: "wx" }))
       return path
     })

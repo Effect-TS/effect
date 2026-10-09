@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe } from "@effect/vitest"
 import type * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -8,6 +8,7 @@ import { concat, Reader, utf8, Writer } from "effect/ssh/internal/wire"
 import * as SshAgent from "effect/ssh/SshAgent"
 import * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
+import { it, runWithCrypto } from "./utils/crypto.ts"
 
 const AGENT_FAILURE = 5
 const AGENTC_REQUEST_IDENTITIES = 11
@@ -15,9 +16,9 @@ const AGENT_IDENTITIES_ANSWER = 12
 const AGENTC_SIGN_REQUEST = 13
 const AGENT_SIGN_RESPONSE = 14
 
-const ed25519 = Effect.succeed(await Effect.runPromise(SshKey.generate("ssh-ed25519", { comment: "ed25519 key" })))
-const ecdsa = Effect.succeed(await Effect.runPromise(SshKey.generate("ecdsa-sha2-nistp384", { comment: "ecdsa key" })))
-const rsa = Effect.succeed(await Effect.runPromise(SshKey.generate("ssh-rsa", { comment: "rsa key", bits: 2048 })))
+const ed25519 = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519", { comment: "ed25519 key" })))
+const ecdsa = Effect.succeed(await runWithCrypto(SshKey.generate("ecdsa-sha2-nistp384", { comment: "ecdsa key" })))
+const rsa = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-rsa", { comment: "rsa key", bits: 2048 })))
 const keys = Effect.all([ed25519, ecdsa, rsa])
 
 const data = utf8("session data")

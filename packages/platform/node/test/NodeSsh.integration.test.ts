@@ -4,9 +4,11 @@
  * `sshd` cannot run unprivileged); the agent tests additionally need
  * `ssh-agent` and `ssh-add`.
  */
-import { NodeServices, NodeSocket } from "@effect/platform-node"
-import { afterAll, assert, beforeAll, describe, it } from "@effect/vitest"
+import { NodeCrypto as EffectNodeCrypto, NodeServices, NodeSocket } from "@effect/platform-node"
+import type { Vitest } from "@effect/vitest"
+import { afterAll, assert, beforeAll, describe, it as vitest } from "@effect/vitest"
 import * as Cause from "effect/Cause"
+import type * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -15,6 +17,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
+import type * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as OpenSsh from "effect/ssh/OpenSsh"
 import * as Sftp from "effect/ssh/Sftp"
@@ -36,6 +39,33 @@ import * as Path from "node:path"
 // -----------------------------------------------------------------------------
 // Tool detection
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Crypto
+// -----------------------------------------------------------------------------
+
+/** Provides the Node `Crypto` service, which the SSH client requires. */
+const provideCrypto = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, Crypto.Crypto>> =>
+  Effect.provide(effect, EffectNodeCrypto.layer)
+
+const runWithCrypto = <A, E>(effect: Effect.Effect<A, E, Crypto.Crypto>): Promise<A> =>
+  Effect.runPromise(provideCrypto(effect))
+
+type CryptoTest = <A, E>(
+  name: string,
+  self: () => Effect.Effect<A, E, Scope.Scope | Crypto.Crypto>,
+  timeout?: Parameters<Vitest.Test<Scope.Scope>>[2]
+) => void
+
+const wrapTest = (test: Vitest.Test<Scope.Scope>): CryptoTest => (name, self, timeout) =>
+  test(name, () => provideCrypto(self()), timeout)
+
+/** `it` from `@effect/vitest`, with the Node `Crypto` service provided to every Effect test. */
+const it = {
+  live: Object.assign(wrapTest(vitest.live), {
+    skipIf: (condition: unknown) => wrapTest(vitest.live.skipIf(condition))
+  })
+}
 
 const which = (name: string): string | undefined => {
   const dirs = [...(process.env.PATH ?? "").split(Path.delimiter), "/usr/sbin", "/usr/local/sbin", "/sbin"]
@@ -241,14 +271,14 @@ const startSshd = async (): Promise<Fixture> => {
 
     const userKeys: Record<string, SshKey.PrivateKey> = {}
     for (const name of Object.keys(userKeyFiles)) {
-      userKeys[name] = await Effect.runPromise(
+      userKeys[name] = await runWithCrypto(
         SshKey.parsePrivateKey(Fs.readFileSync(Path.join(dir, `user_${name}`), "utf8"))
       )
     }
-    userKeys["generated-ed25519"] = await Effect.runPromise(SshKey.generate("ssh-ed25519", { comment: "gen" }))
-    userKeys["generated-ecdsa-p384"] = await Effect.runPromise(SshKey.generate("ecdsa-sha2-nistp384"))
-    userKeys["generated-rsa"] = await Effect.runPromise(SshKey.generate("ssh-rsa", { bits: 2048 }))
-    const unauthorizedKey = await Effect.runPromise(SshKey.generate("ssh-ed25519"))
+    userKeys["generated-ed25519"] = await runWithCrypto(SshKey.generate("ssh-ed25519", { comment: "gen" }))
+    userKeys["generated-ecdsa-p384"] = await runWithCrypto(SshKey.generate("ecdsa-sha2-nistp384"))
+    userKeys["generated-rsa"] = await runWithCrypto(SshKey.generate("ssh-rsa", { bits: 2048 }))
+    const unauthorizedKey = await runWithCrypto(SshKey.generate("ssh-ed25519"))
 
     Fs.writeFileSync(
       Path.join(dir, "authorized_keys"),

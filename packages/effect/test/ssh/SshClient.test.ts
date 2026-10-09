@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -11,14 +11,15 @@ import * as SshClient from "effect/ssh/SshClient"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
+import { it, runWithCrypto } from "./utils/crypto.ts"
 import * as TestServer from "./utils/TestServer.ts"
 
 const decoder = new TextDecoder()
 const text = (stream: Stream.Stream<Uint8Array, SshError.SshError>) =>
   Effect.map(Stream.runCollect(stream), (chunks) => chunks.map((chunk) => decoder.decode(chunk)).join(""))
 
-const hostKey = Effect.succeed(await Effect.runPromise(SshKey.generate("ssh-ed25519")))
-const userKey = Effect.succeed(await Effect.runPromise(SshKey.generate("ssh-ed25519", { comment: "user" })))
+const hostKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519")))
+const userKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519", { comment: "user" })))
 
 /** Session handler implementing a few commands used by the tests. */
 const shell: NonNullable<TestServer.ServerOptions["onSession"]> = (channel, start) =>

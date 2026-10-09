@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import * as Result from "effect/Result"
@@ -6,6 +6,7 @@ import { Reader, utf8, Writer } from "effect/ssh/internal/wire"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import { readFileSync } from "node:fs"
+import { it } from "./utils/crypto.ts"
 
 // Fixtures were generated with OpenSSH_10.5p1 `ssh-keygen`. The fingerprints
 // below are the output of `ssh-keygen -lf <name>.pub` for each fixture.
@@ -522,7 +523,7 @@ describe("SshKey", () => {
         ]
         for (const [name, algorithm] of cases) {
           const key = yield* SshKey.parsePrivateKey(fixture(name))
-          assertKeyError(yield* Effect.flip(key.sign(data, algorithm)), `could not sign with ${algorithm}`)
+          assertKeyError(yield* Effect.flip(key.sign(data, algorithm)), `unsupported signature algorithm ${algorithm}`)
         }
       }))
 

@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
@@ -10,6 +10,7 @@ import * as SshClient from "effect/ssh/SshClient"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
+import { it, runWithCrypto } from "./utils/crypto.ts"
 import * as SftpServer from "./utils/SftpServer.ts"
 import * as TestServer from "./utils/TestServer.ts"
 
@@ -39,8 +40,8 @@ const concatAll = (chunks: ReadonlyArray<Uint8Array>) => {
   return out
 }
 
-const hostKey = Effect.succeed(await Effect.runPromise(SshKey.generate("ssh-ed25519")))
-const userKey = Effect.succeed(await Effect.runPromise(SshKey.generate("ssh-ed25519", { comment: "user" })))
+const hostKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519")))
+const userKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519", { comment: "user" })))
 
 const connectClient = Effect.fnUntraced(function*(server: SftpServer.SftpServer) {
   const key = yield* userKey

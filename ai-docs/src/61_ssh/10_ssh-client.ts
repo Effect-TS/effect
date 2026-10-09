@@ -3,7 +3,7 @@
  *
  * This example connects with a private key and `known_hosts`, runs commands, uploads files over SFTP, and tunnels a port.
  */
-import { NodeFileSystem, NodeSocket } from "@effect/platform-node"
+import { NodeServices, NodeSocket } from "@effect/platform-node"
 import { Config, Context, Effect, FileSystem, Layer, Schema } from "effect"
 import { ChildProcess } from "effect/process"
 import { Sftp, Ssh, SshChildProcessSpawner, SshClient, SshKey, SshKnownHosts } from "effect/ssh"
@@ -18,7 +18,8 @@ export const SshLive = Layer.unwrap(Effect.gen(function*() {
   const host = yield* Config.String("DEPLOY_HOST")
   const fs = yield* FileSystem.FileSystem
 
-  // Private keys are parsed with WebCrypto. Passphrase-protected keys are not
+  // Private keys are imported with the `Crypto` service, which
+  // `NodeServices.layer` provides. Passphrase-protected keys are not
   // supported directly; load them into an SSH agent and use
   // `SshClient.agent(...)` instead.
   const key = yield* SshKey.parsePrivateKey(yield* fs.readFileString("/home/deploy/.ssh/id_ed25519"))
@@ -35,7 +36,7 @@ export const SshLive = Layer.unwrap(Effect.gen(function*() {
     // Detect dead connections instead of hanging forever.
     keepAlive: { interval: "30 seconds" }
   }).pipe(Layer.provide(NodeSocket.layerNet({ host, port: 22 })))
-})).pipe(Layer.provide(NodeFileSystem.layer))
+})).pipe(Layer.provide(NodeServices.layer))
 
 export class Deployer extends Context.Service<Deployer, {
   release(version: string, artifact: Uint8Array): Effect.Effect<string, DeployError>

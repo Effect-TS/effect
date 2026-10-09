@@ -19,6 +19,7 @@ import type { Bytes } from "effect/ssh/internal/wire"
 import { concat, equals, fromUtf8, Reader, utf8, Writer } from "effect/ssh/internal/wire"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
+import { crypto, provideCrypto } from "./crypto.ts"
 
 // -----------------------------------------------------------------------------
 // In-memory socket pair
@@ -157,7 +158,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
   }
 
   // Packet I/O -----------------------------------------------------------------
-  let sealer: Crypto.Sealer = Crypto.noneSealer
+  let sealer: Crypto.Sealer = Crypto.noneSealer(crypto)
   let opener: Crypto.Opener = Crypto.noneOpener
   let sendSequence = 0
   let receiveSequence = 0
@@ -170,7 +171,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       const sequence = sendSequence
       sendSequence = (sendSequence + 1) >>> 0
       const current = sealer
-      const wire = yield* Effect.promise(() => current.seal(sequence, payload))
+      const wire = yield* Effect.orDie(current.seal(sequence, payload))
       yield* Queue.offer(pipe.toClient, wire)
     })
 
@@ -189,12 +190,12 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
     const current = opener
     yield* fill(current.headerLength)
     const header = take(current.headerLength)
-    const remaining = yield* Effect.promise(() => current.begin(header))
+    const remaining = yield* Effect.orDie(current.begin(header))
     yield* fill(remaining)
     const rest = take(remaining)
     const sequence = receiveSequence
     receiveSequence = (receiveSequence + 1) >>> 0
-    return yield* Effect.promise(() => current.finish(sequence, header, rest))
+    return yield* Effect.orDie(current.finish(sequence, header, rest))
   })
 
   // Version exchange ------------------------------------------------------------
@@ -224,7 +225,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
   const buildKexInit = () =>
     new Writer()
       .byte(Constants.MSG_KEXINIT)
-      .raw(Crypto.randomBytes(16))
+      .raw(globalThis.crypto.getRandomValues(new Uint8Array(16)))
       .nameList(
         firstKex && options.strictKex !== false ? [...kexAlgorithms, "kex-strict-s-v00@openssh.com"] : kexAlgorithms
       )
@@ -290,10 +291,11 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       const init = yield* readExpect(Constants.MSG_KEX_ECDH_INIT)
       const clientPublic = new Reader(init, 1).string()
       const method = Crypto.kexMethods[kexName]
-      const pair = yield* Effect.promise(() => method.generate())
-      const secret = yield* Effect.promise(() => pair.agree(clientPublic))
-      const exchangeHash = yield* Effect.promise(() =>
+      const pair = yield* Effect.orDie(method.generate)
+      const secret = yield* Effect.orDie(pair.agree(clientPublic))
+      const exchangeHash = yield* Effect.orDie(
         Crypto.digest(
+          crypto,
           method.hash,
           new Writer()
             .string(clientVersion)
@@ -310,7 +312,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       if (sessionId === undefined) sessionId = exchangeHash
       const signature = yield* Effect.orDie(hostKey.sign(exchangeHash, hostKeyAlgorithm))
       const derive = (letter: string, length: number) =>
-        Effect.promise(() => Crypto.deriveKey(method.hash, secret, exchangeHash, letter, sessionId!, length))
+        Effect.orDie(Crypto.deriveKey(crypto, method.hash, secret, exchangeHash, letter, sessionId!, length))
       const keys = (cipherName: string, macName: string | undefined, letters: readonly [string, string, string]) =>
         Effect.gen(function*() {
           const cipher = Crypto.cipherAlgorithms[cipherName]
@@ -325,8 +327,8 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
         })
       const outgoing = yield* keys(cipherSC, macSC, ["B", "D", "F"])
       const incoming = yield* keys(cipherCS, macCS, ["A", "C", "E"])
-      const nextSealer = yield* Effect.promise(() => Crypto.makeSealer(outgoing))
-      const nextOpener = yield* Effect.promise(() => Crypto.makeOpener(incoming))
+      const nextSealer = yield* Effect.orDie(Crypto.makeSealer(crypto, outgoing))
+      const nextOpener = yield* Effect.orDie(Crypto.makeOpener(crypto, incoming))
 
       yield* lock.withPermit(Effect.gen(function*() {
         yield* writeRaw(
@@ -456,7 +458,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
             .string(sessionId!)
             .raw(payload.subarray(0, payload.length - signature.length - 4))
             .finish()
-          const valid = yield* Effect.orDie(SshKey.verify(known, data, signature))
+          const valid = yield* Effect.orDie(provideCrypto(SshKey.verify(known, data, signature)))
           return yield* authOutcome("publickey", valid)
         }
         case "keyboard-interactive": {

@@ -1,6 +1,6 @@
 /**
- * An SSH client implemented on top of `Socket` and WebCrypto, with no
- * native dependencies.
+ * An SSH client implemented on top of `Socket` and the `Crypto` service, with
+ * no native dependencies.
  *
  * A client authenticates over any `Socket.Socket` transport (for example a
  * Node TCP socket or a WebSocket tunnel) and then multiplexes channels over
@@ -16,6 +16,11 @@
  * - Ciphers: `aes256-gcm@openssh.com`, `aes128-gcm@openssh.com`,
  *   `aes256-ctr`, `aes128-ctr`.
  * - MACs: `hmac-sha2-256(-etm@openssh.com)`, `hmac-sha2-512(-etm@openssh.com)`.
+ *
+ * Hashing, signatures, AES-GCM, and HMAC use the `Crypto` service from the
+ * context (provided by the platform packages, for example
+ * `NodeServices.layer`). Key agreement and AES-CTR currently use
+ * `globalThis.crypto.subtle` directly.
  *
  * **Example** (Running a remote command on Node)
  *
@@ -44,6 +49,7 @@
  */
 import type * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Crypto from "../Crypto.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as InternalVersion from "../internal/version.ts"
@@ -113,8 +119,10 @@ export interface HostKeyInfo {
  * @since 4.0.0
  */
 export interface HostKeyVerifier {
-  (info: HostKeyInfo): Effect.Effect<void, SshError>
-  readonly keyTypes?: ((host: string, port: number) => Effect.Effect<ReadonlyArray<string>>) | undefined
+  (info: HostKeyInfo): Effect.Effect<void, SshError, Crypto.Crypto>
+  readonly keyTypes?:
+    | ((host: string, port: number) => Effect.Effect<ReadonlyArray<string>, never, Crypto.Crypto>)
+    | undefined
 }
 
 /**
@@ -710,8 +718,9 @@ const proxyAgent = (agent: SshAgent.SshAgent, channel: SshChannel) =>
 export const make = Effect.fnUntraced(function*(
   socket: Socket.Socket,
   options: ConnectOptions
-): Effect.fn.Return<SshClient, SshError, Scope.Scope> {
+): Effect.fn.Return<SshClient, SshError, Crypto.Crypto | Scope.Scope> {
   const scope = yield* Effect.scope
+  const crypto = yield* Crypto.Crypto
   const port = options.port ?? 22
   // Unsupported algorithm names are dropped so they can never be negotiated.
   const supported = (category: keyof AlgorithmPreferences) => {
@@ -734,6 +743,7 @@ export const make = Effect.fnUntraced(function*(
 
   const handshake = Effect.gen(function*() {
     const transport = yield* Transport.make(socket, {
+      crypto,
       host: options.host,
       clientVersion: `SSH-2.0-${options.clientVersion ?? `Effect_${InternalVersion.version}`}`,
       algorithms,
@@ -741,7 +751,7 @@ export const make = Effect.fnUntraced(function*(
         Effect.flatMap(
           SshKey.fingerprint(key),
           (fingerprint) => verifier({ host: options.host, port, key, fingerprint })
-        ),
+        ).pipe(Effect.provideService(Crypto.Crypto, crypto)),
       rekeyBytes: options.rekeyLimit?.bytes ?? 1024 * 1024 * 1024,
       rekeyInterval: Duration.fromInputUnsafe(options.rekeyLimit?.interval ?? Duration.hours(1))
     })
@@ -968,7 +978,9 @@ export const make = Effect.fnUntraced(function*(
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options: ConnectOptions): Layer.Layer<SshClient | Ssh.Ssh, SshError, Socket.Socket> =>
+export const layer = (
+  options: ConnectOptions
+): Layer.Layer<SshClient | Ssh.Ssh, SshError, Socket.Socket | Crypto.Crypto> =>
   Layer.effectContext(
     Effect.gen(function*() {
       const client = yield* make(yield* Socket.Socket, options)

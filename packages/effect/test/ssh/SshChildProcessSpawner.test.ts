@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
@@ -10,9 +10,10 @@ import * as SshChildProcessSpawner from "effect/ssh/SshChildProcessSpawner"
 import * as SshClient from "effect/ssh/SshClient"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
+import { CryptoLive, it, runWithCrypto } from "./utils/crypto.ts"
 import * as TestServer from "./utils/TestServer.ts"
 
-const hostKey = await Effect.runPromise(SshKey.generate("ssh-ed25519"))
+const hostKey = await runWithCrypto(SshKey.generate("ssh-ed25519"))
 
 /**
  * Interprets the command lines produced by the spawner. Each recognised
@@ -74,7 +75,7 @@ const SpawnerLive = Layer.effect(
     })
     return SshChildProcessSpawner.make(Ssh.fromClient(client))
   })
-)
+).pipe(Layer.provide(CryptoLive))
 
 describe("SshChildProcessSpawner", () => {
   describe("commandLine", () => {
