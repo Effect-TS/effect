@@ -37,18 +37,6 @@ export type {
   Options
 } from "@effect/platform-node-shared/NodeDnsClient"
 
-const isScoped = (server: NetAddress.IpAddress | NetAddress.InetAddress): boolean =>
-  NetAddress.isInetAddressV6(server) && server.scopeId !== 0
-
-const rejectScoped = (
-  nameServers: ReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
-): Effect.Effect<void, NetAddress.NetAddressError> => {
-  const scoped = nameServers.find(isScoped)
-  return scoped === undefined ? Effect.void : Effect.fail(
-    new NetAddress.NetAddressError({ input: scoped, message: "IPv6 name servers with a scope ID are not supported" })
-  )
-}
-
 const udp = (server: NetAddress.InetAddress) =>
   DenoDatagramSocket.make({ peer: { address: server.address, port: server.port } })
 
@@ -73,7 +61,7 @@ export const makeTransportUdp = (
   options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
   Effect.andThen(
-    rejectScoped(options.nameServers),
+    NodeDnsClient.checkNameServers(options.nameServers),
     DnsClient.makeTransportUdp({ ...options, udp, tcp }).pipe(Effect.provide(DenoCrypto.layer))
   )
 
@@ -108,7 +96,7 @@ export const makeTransportTcp = (
   options: Omit<DnsClient.TransportTcpOptions, "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
   Effect.andThen(
-    rejectScoped(options.nameServers),
+    NodeDnsClient.checkNameServers(options.nameServers),
     DnsClient.makeTransportTcp({ ...options, tcp }).pipe(Effect.provide(DenoCrypto.layer))
   )
 

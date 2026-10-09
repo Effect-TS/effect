@@ -453,6 +453,20 @@ describe("DnsClient", () => {
       ])
     }))
 
+  it.effect("parses name servers given as strings", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      yield* run(udpTransport(network, { nameServers: ["192.0.2.53", "2001:db8::53", "[2001:db8::53]:5353"] }), {
+        attempts: 1
+      })
+      assert.deepStrictEqual(network.requests.map((request) => NetAddress.formatInet(request.server)), [
+        "192.0.2.53:53",
+        "[2001:db8::53]:53",
+        "[2001:db8::53]:5353"
+      ])
+      assert.isTrue(Exit.hasDies(yield* Effect.exit(udpTransport(network, { nameServers: ["ns.example"] }))))
+    }))
+
   it.effect("sends queries without recursion when requested", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [answer(request)])
@@ -821,6 +835,25 @@ describe("makeTransportHttps", () => {
         assert.isTrue(Exit.hasDies(yield* Effect.exit(httpsTransport(http, { urls }))), JSON.stringify(urls))
       }
     }))
+})
+
+describe("nameServerFromString", () => {
+  it("parses IP addresses with and without a port", () => {
+    const format = (input: string) => Result.map(DnsClient.nameServerFromString(input), NetAddress.formatInet)
+    assert.deepStrictEqual(
+      ["192.0.2.53", "192.0.2.53:5353", "2001:db8::53", "[2001:db8::53]:5353", "fe80::1%2"].map(format),
+      [
+        Result.succeed("192.0.2.53:53"),
+        Result.succeed("192.0.2.53:5353"),
+        Result.succeed("[2001:db8::53]:53"),
+        Result.succeed("[2001:db8::53]:5353"),
+        Result.succeed("[fe80::1%2]:53")
+      ]
+    )
+    for (const input of ["ns.example", "ns.example:53", "192.0.2.53:", "[2001:db8::53]", "192.0.2.256", ""]) {
+      assert.isTrue(Result.isFailure(DnsClient.nameServerFromString(input)), input)
+    }
+  })
 })
 
 describe("parseResolvConf", () => {

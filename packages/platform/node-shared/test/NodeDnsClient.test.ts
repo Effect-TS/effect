@@ -17,12 +17,15 @@ const files = (contents: Record<string, string>) => {
 }
 
 describe("NodeDnsClient", () => {
-  it.effect("rejects name servers with a scope ID", () =>
+  it.effect("rejects invalid name servers and name servers with a scope ID", () =>
     Effect.gen(function*() {
       const effects: ReadonlyArray<Effect.Effect<unknown, NetAddress.NetAddressError>> = [
         NodeDnsClient.makeTransportUdp({ nameServers: [global, scoped] }),
         NodeDnsClient.makeTransportTcp({ nameServers: [scoped] }),
-        NodeDnsClient.make({ nameServers: [scoped] })
+        NodeDnsClient.make({ nameServers: [scoped] }),
+        NodeDnsClient.makeTransportUdp({ nameServers: ["fe80::1%1"] }),
+        NodeDnsClient.makeTransportTcp({ nameServers: ["192.0.2.53", "ns.example"] }),
+        NodeDnsClient.make({ nameServers: ["ns.example"] })
       ]
       for (const effect of effects) {
         const error = yield* Effect.flip(effect)
@@ -34,6 +37,8 @@ describe("NodeDnsClient", () => {
     Effect.gen(function*() {
       const transport = yield* NodeDnsClient.makeTransportUdp({ nameServers: [global, NetAddress.ipv4Loopback] })
       assert.strictEqual(transport.servers.length, 2)
+      const fromStrings = yield* NodeDnsClient.makeTransportTcp({ nameServers: ["192.0.2.53", "[2001:db8::53]:5353"] })
+      assert.strictEqual(fromStrings.servers.length, 2)
     }))
 
   it.effect("reads the system configuration with the FileSystem service", () =>

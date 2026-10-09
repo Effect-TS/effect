@@ -33,24 +33,25 @@ import * as NodeSocket from "./NodeSocket.ts"
  *
  * **Details**
  *
- * `nameServers` replaces the system name servers; IP addresses without a port
- * use port 53, and an empty list keeps the system name servers. The other
+ * `nameServers` replaces the system name servers; strings are parsed like
+ * `DnsClient.nameServerFromString`, IP addresses without a port use port 53,
+ * and an empty list keeps the system name servers. The other
  * options replace the matching `resolv.conf` values and are described by
  * `DnsClient.MakeOptions` and `DnsClient.TransportUdpOptions`.
  *
  * **Gotchas**
  *
- * IPv6 name servers with a scope ID, such as link-local addresses, are not
- * supported because the sockets cannot be bound to a zone; creating the
- * service fails with a `NetAddress.NetAddressError`. Such name servers in
- * `resolv.conf` are skipped.
+ * Invalid name servers, and IPv6 name servers with a scope ID such as
+ * link-local addresses, which the sockets cannot be bound to, fail with a
+ * `NetAddress.NetAddressError` when the service is created. Name servers with
+ * a scope ID in `resolv.conf` are skipped.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface Options {
-  readonly nameServers?: ReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress> | undefined
+  readonly nameServers?: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput> | undefined
   readonly search?: ReadonlyArray<Host.DomainName> | undefined
   readonly ndots?: number | undefined
   readonly timeout?: Duration.Input | undefined
@@ -62,14 +63,33 @@ export interface Options {
 const isScoped = (server: NetAddress.IpAddress | NetAddress.InetAddress): boolean =>
   NetAddress.isInetAddressV6(server) && server.scopeId !== 0
 
-const rejectScoped = (
-  nameServers: ReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
-): Effect.Effect<void, NetAddress.NetAddressError> => {
-  const scoped = nameServers.find(isScoped)
-  return scoped === undefined ? Effect.void : Effect.fail(
-    new NetAddress.NetAddressError({ input: scoped, message: "IPv6 name servers with a scope ID are not supported" })
-  )
-}
+/**
+ * Checks the name servers of a platform transport, failing for strings that
+ * are not name server addresses and for IPv6 addresses with a scope ID, which
+ * the sockets cannot be bound to.
+ *
+ * **Details**
+ *
+ * Strings are parsed like `DnsClient.nameServerFromString`. The transports of
+ * other runtimes reuse this check.
+ *
+ * @stability experimental
+ * @category validation
+ * @since 4.0.0
+ */
+export const checkNameServers = Effect.fnUntraced(function*(
+  nameServers: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
+) {
+  for (const input of nameServers) {
+    const server = typeof input === "string" ? yield* Effect.fromResult(DnsClient.nameServerFromString(input)) : input
+    if (isScoped(server)) {
+      return yield* new NetAddress.NetAddressError({
+        input,
+        message: "IPv6 name servers with a scope ID are not supported"
+      })
+    }
+  }
+})
 
 const hostsPath = typeof process !== "undefined" && process.platform === "win32"
   ? `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\drivers\\etc\\hosts`
@@ -107,7 +127,7 @@ export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
   // Missing or unreadable files count as empty, like in glibc.
   const readFile = (path: string) => fs.readFileString(path).pipe(Effect.orElseSucceed(() => ""))
   const nameServers = options?.nameServers ?? []
-  yield* rejectScoped(nameServers)
+  yield* checkNameServers(nameServers)
   const config = DnsClient.parseResolvConf(yield* readFile("/etc/resolv.conf"))
   const system = config.nameServers.filter((server) => !isScoped(server))
   const hosts = yield* Effect.cachedWithTTL(Effect.map(readFile(hostsPath), DnsClient.parseHosts), "5 seconds")
@@ -152,7 +172,7 @@ export const makeTransportUdp = (
   options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
   Effect.andThen(
-    rejectScoped(options.nameServers),
+    checkNameServers(options.nameServers),
     DnsClient.makeTransportUdp({ ...options, udp, tcp }).pipe(Effect.provide(NodeCrypto.layer))
   )
 
@@ -187,7 +207,7 @@ export const makeTransportTcp = (
   options: Omit<DnsClient.TransportTcpOptions, "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
   Effect.andThen(
-    rejectScoped(options.nameServers),
+    checkNameServers(options.nameServers),
     DnsClient.makeTransportTcp({ ...options, tcp }).pipe(Effect.provide(NodeCrypto.layer))
   )
 

@@ -33,7 +33,7 @@ describeDnsClient(
     DnsClient.make({ timeout: "2 seconds" }).pipe(
       Effect.provideServiceEffect(
         DnsClient.Transport,
-        Effect.orDie(NodeDnsClient.makeTransportTcp({ nameServers: [tcpNameServer] }))
+        Effect.orDie(NodeDnsClient.makeTransportTcp({ nameServers: [NetAddress.formatInet(tcpNameServer)] }))
       )
     ),
   { stream: true }

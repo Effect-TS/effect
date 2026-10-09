@@ -274,17 +274,54 @@ export class Transport extends Context.Service<Transport, {
   }>
 }>()("effect/net/DnsClient/Transport") {}
 
-// Uses port 53 for name servers given as IP addresses.
+/**
+ * Parses the address of a name server: an IP address, which uses port 53, or
+ * an IP address and port.
+ *
+ * **Details**
+ *
+ * IPv6 addresses with a port are written in brackets, and IPv6 addresses
+ * without one are not.
+ *
+ * **Example** (Parsing name server addresses)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { DnsClient, NetAddress } from "effect/net"
+ *
+ * const format = (input: string) => Result.map(DnsClient.nameServerFromString(input), NetAddress.formatInet)
+ *
+ * format("192.0.2.53") // => Result.succeed("192.0.2.53:53")
+ * format("2001:db8::53") // => Result.succeed("[2001:db8::53]:53")
+ * format("[2001:db8::53]:5353") // => Result.succeed("[2001:db8::53]:5353")
+ * Result.isFailure(format("ns.example")) // => true
+ * ```
+ *
+ * @stability experimental
+ * @category decoding
+ * @since 4.0.0
+ */
+export const nameServerFromString = (
+  input: string
+): Result.Result<NetAddress.InetAddress, NetAddress.NetAddressError> =>
+  NetAddress.inetAddressFromString(
+    input.startsWith("[") || /^[^:]*:\d+$/.test(input) ? input : input.includes(":") ? `[${input}]:53` : `${input}:53`
+  )
+
+// Parses name servers given as strings and uses port 53 for those given as IP
+// addresses.
 const nameServerAddresses = (
-  nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+  nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
 ): Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> => {
   if (nameServers.length === 0) {
     throw new RangeError("DnsClient needs at least one name server")
   }
-  return Arr.map(
-    nameServers,
-    (server) => NetAddress.isIpAddress(server) ? NetAddress.inetAddressUnsafe(server, 53) : server
-  )
+  return Arr.map(nameServers, (server) =>
+    typeof server === "string"
+      ? Result.getOrThrow(nameServerFromString(server))
+      : NetAddress.isIpAddress(server)
+      ? NetAddress.inetAddressUnsafe(server, 53)
+      : server)
 }
 
 /**
@@ -292,15 +329,16 @@ const nameServerAddresses = (
  *
  * **Details**
  *
- * Name servers given as IP addresses use port 53, and `tcp(server)` opens the
- * connection for one attempt.
+ * Name servers are parsed like `nameServerFromString` when given as strings,
+ * and IP addresses use port 53. `tcp(server)` opens the connection for one
+ * attempt.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface TransportTcpOptions {
-  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
   readonly tcp: (server: NetAddress.InetAddress) => Effect.Effect<Socket.Socket>
 }
 
@@ -321,7 +359,8 @@ export interface TransportTcpOptions {
  *
  * **Gotchas**
  *
- * An empty `nameServers` list causes a defect.
+ * Invalid options cause a defect: `nameServers` must be a non-empty list of
+ * valid name server addresses.
  *
  * @see {@link TransportTcpOptions} for the options
  * @stability experimental
@@ -364,7 +403,8 @@ export const makeTransportTcp = (
  *
  * **Details**
  *
- * - Name servers given as IP addresses use port 53.
+ * - Name servers are parsed like `nameServerFromString` when given as strings,
+ *   and IP addresses use port 53.
  * - `udp(server)` opens a socket for one UDP attempt. The socket must send to
  *   `server` by default, as a `peer` or connected socket, and should bind an
  *   ephemeral port so the operating system picks a random source port.
@@ -378,7 +418,7 @@ export const makeTransportTcp = (
  * @since 4.0.0
  */
 export interface TransportUdpOptions {
-  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
   readonly udp: (server: NetAddress.InetAddress) => Effect.Effect<DatagramSocket.DatagramSocket>
   readonly tcp: (server: NetAddress.InetAddress) => Effect.Effect<Socket.Socket>
   readonly udpPayloadSize?: number | undefined
@@ -405,8 +445,9 @@ export interface TransportUdpOptions {
  *
  * **Gotchas**
  *
- * Invalid options cause a defect: `nameServers` must not be empty and
- * `udpPayloadSize` must be an integer from 512 to 65535.
+ * Invalid options cause a defect: `nameServers` must be a non-empty list of
+ * valid name server addresses, and `udpPayloadSize` an integer from 512 to
+ * 65535.
  *
  * @see {@link TransportUdpOptions} for the options and their defaults
  * @stability experimental
