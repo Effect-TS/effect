@@ -558,8 +558,9 @@ export interface Crypto {
   /**
    * Computes the full-length ECDH or X25519 shared secret between a private
    * key with `deriveBits` usage and a public key of the same algorithm and
-   * curve. Mismatched keys and all-zero X25519 secrets fail with
-   * `PlatformError.BadArgument` when constructed with `make`.
+   * curve. When constructed with `make`, mismatched keys fail with
+   * `PlatformError.BadArgument`; all-zero X25519 secrets fail with a
+   * `PlatformError.SystemError` tagged `InvalidData`.
    */
   deriveSharedSecret(privateKey: Key, publicKey: Key): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
@@ -1256,7 +1257,8 @@ export const verify = (
  *
  * The secret is raw key-agreement output. Derive keys from it with a KDF such
  * as `hkdf` instead of using it directly. X25519 secrets that are all zeros
- * fail with `PlatformError`, as RFC 7748 requires.
+ * fail with a `PlatformError.SystemError` tagged `InvalidData`, as RFC 7748
+ * requires. Mismatched keys fail with `PlatformError.BadArgument`.
  *
  * **Example** (Agreeing on an X25519 secret)
  *
@@ -1564,22 +1566,23 @@ export const make = (impl: Backend): Crypto => {
         (options) =>
           Effect.flatMap(validateSigning("verify", options), () => backend.verify(options, key, signature, data))
       ),
-    deriveSharedSecret: (privateKey, publicKey) => {
-      const algorithm = privateKey.algorithm
-      if (
-        privateKey.type !== "private" || publicKey.type !== "public" || !privateKey.usages.includes("deriveBits") ||
-        (algorithm.name !== "ECDH" && algorithm.name !== "X25519") || publicKey.algorithm.name !== algorithm.name ||
-        (algorithm.name === "ECDH" && (publicKey.algorithm as typeof algorithm).namedCurve !== algorithm.namedCurve)
-      ) {
-        return failArgument(
-          "deriveSharedSecret",
-          "requires an ECDH or X25519 private key with deriveBits usage and a public key of the same algorithm and curve"
-        )
-      }
-      return algorithm.name === "X25519"
-        ? Effect.flatMap(backend.deriveSharedSecret(privateKey, publicKey), rejectAllZeroSecret)
-        : backend.deriveSharedSecret(privateKey, publicKey)
-    },
+    deriveSharedSecret: (privateKey, publicKey) =>
+      Effect.suspend(() => {
+        const algorithm = privateKey.algorithm
+        if (
+          privateKey.type !== "private" || publicKey.type !== "public" || !privateKey.usages.includes("deriveBits") ||
+          (algorithm.name !== "ECDH" && algorithm.name !== "X25519") || publicKey.algorithm.name !== algorithm.name ||
+          (algorithm.name === "ECDH" && (publicKey.algorithm as typeof algorithm).namedCurve !== algorithm.namedCurve)
+        ) {
+          return failArgument(
+            "deriveSharedSecret",
+            "requires an ECDH or X25519 private key with deriveBits usage and a public key of the same algorithm and curve"
+          )
+        }
+        return algorithm.name === "X25519"
+          ? Effect.flatMap(backend.deriveSharedSecret(privateKey, publicKey), rejectAllZeroSecret)
+          : backend.deriveSharedSecret(privateKey, publicKey)
+      }),
     random: Effect.sync(() => nextDoubleUnsafe()),
     randomBoolean: Effect.sync(() => nextDoubleUnsafe() >= 0.5),
     randomInt: Effect.sync(() => nextIntUnsafe()),
@@ -1754,9 +1757,10 @@ const rejectAllZeroSecret = (secret: Uint8Array): Effect.Effect<Uint8Array, Plat
   let bits = 0
   for (const byte of secret) bits |= byte
   return bits === 0
-    ? Effect.fail(PlatformError.badArgument({
+    ? Effect.fail(PlatformError.systemError({
       module: "Crypto",
       method: "deriveSharedSecret",
+      _tag: "InvalidData",
       description: "X25519 shared secret must not be all zeros"
     }))
     : Effect.succeed(secret)
@@ -1783,8 +1787,11 @@ const makeSubtle = (subtle: SubtleCrypto): Partial<Operations> => {
       catch: (cause) => {
         if (PlatformError.isPlatformError(cause)) return cause
         const name = (cause as { readonly name?: unknown } | undefined)?.name
-        // Failed authenticated decryption, or malformed key data.
-        if ((name === "OperationError" && method === "decrypt") || name === "DataError") {
+        // Failed decryption or key agreement, or malformed key data.
+        if (
+          (name === "OperationError" && (method === "decrypt" || method === "deriveSharedSecret")) ||
+          name === "DataError"
+        ) {
           return PlatformError.systemError({
             module: "Crypto",
             method,
