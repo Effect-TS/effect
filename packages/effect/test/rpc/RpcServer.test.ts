@@ -171,7 +171,7 @@ describe("RpcServer", () => {
       }])
     }))
 
-  it.effect("should accept only cancellation of an active request when client input has ended", () =>
+  it.effect("should accept cancellation of an active request and reject new requests when client input has ended", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()
       const interrupted = yield* Deferred.make<void>()
@@ -205,7 +205,7 @@ describe("RpcServer", () => {
       for (
         const message of [
           { ...request, id: RpcMessage.RequestId("new") },
-          { _tag: "Ack" as const, requestId: request.id },
+          { _tag: "Ack" as const, requestId: RpcMessage.RequestId("unknown") },
           RpcMessage.constEof,
           { _tag: "Interrupt" as const, requestId: RpcMessage.RequestId("unknown"), interruptors: [] }
         ]
@@ -233,6 +233,52 @@ describe("RpcServer", () => {
         exit: Exit.succeed("kept")
       })
       assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 2 })
+    }))
+
+  it.effect("should acknowledge an active stream but reject new requests after EOF", () =>
+    Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("events", { success: Schema.Number, stream: true }))
+      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
+      let requests = 0
+      const server = yield* RpcServer.makeNoSerialization(group, {
+        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
+      }).pipe(Effect.provide(group.toLayerHandler("events", () => {
+        requests++
+        return Stream.make(1).pipe(Stream.concat(Stream.make(2)))
+      })))
+      const request = {
+        _tag: "Request" as const,
+        id: RpcMessage.RequestId("stream"),
+        tag: "events" as const,
+        payload: undefined,
+        headers: Headers.empty
+      }
+      yield* server.write(1, request)
+      assert.deepStrictEqual(yield* Queue.take(messages), {
+        _tag: "Chunk",
+        clientId: 1,
+        requestId: request.id,
+        values: [1]
+      })
+      yield* server.write(1, RpcMessage.constEof)
+      assert(Exit.isFailure(yield* Effect.exit(server.write(1, { ...request, id: RpcMessage.RequestId("new") }))))
+      assert.strictEqual(requests, 1)
+      const ack = { _tag: "Ack" as const, requestId: request.id }
+      assert.deepStrictEqual(yield* Effect.exit(server.write(1, ack)), Exit.void)
+      assert.deepStrictEqual(yield* Queue.take(messages), {
+        _tag: "Chunk",
+        clientId: 1,
+        requestId: request.id,
+        values: [2]
+      })
+      yield* server.write(1, ack)
+      assert.deepStrictEqual(yield* Queue.take(messages), {
+        _tag: "Exit",
+        clientId: 1,
+        requestId: request.id,
+        exit: Exit.void
+      })
+      assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 1 })
     }))
 
   it.effect("should backpressure STDIO sends when the output buffer is full", () =>
