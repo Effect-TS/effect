@@ -411,10 +411,11 @@ export interface Crypto {
   ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Derives a password key with PBKDF2 using a positive iteration count and
-   * an output length measured in bytes. Invalid iterations or lengths fail
-   * with `PlatformError.BadArgument` before invoking the platform primitive
-   * when constructed with `make`.
+   * Derives a password key with PBKDF2 using a positive 32-bit iteration count
+   * and an output length measured in bytes, below 2^29 so the bit length fits
+   * in 32 bits. Invalid iterations or lengths fail with
+   * `PlatformError.BadArgument` before invoking the platform primitive when
+   * constructed with `make`.
    */
   pbkdf2(
     algorithm: HmacAlgorithm,
@@ -456,7 +457,8 @@ export interface Crypto {
   xchacha20poly1305Decrypt(options: XChaCha20Poly1305Options): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Imports JSON Web Key material into the native backend.
+   * Imports JSON Web Key material into the native backend. Without explicit
+   * usages, the key uses the JWK's `key_ops` when present.
    */
   importJwk(jwk: Jwk, algorithm: KeyAlgorithm, options?: KeyOptions): Effect.Effect<Key, PlatformError.PlatformError>
 
@@ -1281,17 +1283,27 @@ export const make = (
     if (!Number.isSafeInteger(minInt) || !Number.isSafeInteger(maxInt)) {
       throw new RangeError("bounds must round to safe integers")
     }
-    const lower = BigInt(minInt)
-    const count = BigInt(maxInt) - lower + (halfOpen ? BigInt("0") : BigInt("1"))
-    if (count <= BigInt("0")) {
-      throw new RangeError("range must contain at least one integer")
+    if (maxInt - minInt < Number.MAX_SAFE_INTEGER) {
+      // Every intermediate stays below 2^53, and `%` is exact, so the
+      // divisions below are exact without BigInt.
+      const count = maxInt - minInt + (halfOpen ? 0 : 1)
+      if (count <= 0) {
+        throw new RangeError("range must contain at least one integer")
+      }
+      if (count === 1) return minInt
+      const bucketSize = (2 ** 53 - (2 ** 53 % count)) / count
+      const limit = bucketSize * count
+      while (true) {
+        const draw = readUint53(randomBytesUnsafe(7))
+        if (draw < limit) return minInt + (draw - (draw % bucketSize)) / bucketSize
+      }
     }
-    if (count === BigInt("1")) return minInt
     // Use 54 bits only for ranges wider than a 53-bit draw. BigInt keeps
     // every integer distinct when the range crosses the safe-integer domain.
-    const wide = count > (BigInt("1") << BigInt("53"))
-    const total = BigInt("1") << (wide ? BigInt("54") : BigInt("53"))
-    const bucketSize = total / count
+    const lower = BigInt(minInt)
+    const count = BigInt(maxInt) - lower + (halfOpen ? BigInt("0") : BigInt("1"))
+    const wide = count > BigInt("1") << BigInt("53")
+    const bucketSize = (wide ? BigInt("1") << BigInt("54") : BigInt("1") << BigInt("53")) / count
     const limit = bucketSize * count
     while (true) {
       const bytes = randomBytesUnsafe(7)
@@ -1359,11 +1371,16 @@ export const make = (
     sign: impl.sign,
     verify: impl.verify,
     pbkdf2: (algorithm, password, salt, iterations, length) => {
-      if (!Number.isSafeInteger(iterations) || iterations <= 0 || !Number.isSafeInteger(length) || length <= 0) {
+      // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
+      // larger values instead of rejecting them.
+      if (
+        !Number.isSafeInteger(iterations) || iterations <= 0 || iterations > 0xffff_ffff ||
+        !Number.isSafeInteger(length) || length <= 0 || length > 0x1fff_ffff
+      ) {
         return Effect.fail(PlatformError.badArgument({
           module: "Crypto",
           method: "pbkdf2",
-          description: "iterations and length must be positive safe integers"
+          description: "iterations must be a positive 32-bit integer and length a positive integer below 2^29"
         }))
       }
       return impl.pbkdf2(algorithm, password, salt, iterations, length)
@@ -1492,7 +1509,18 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
 
   const run = <A>(method: string, f: () => Promise<A>): Effect.Effect<A, PlatformError.PlatformError> =>
     Effect.tryPromise({
-      try: f,
+      try: () => {
+        if (!subtle) {
+          // Browsers omit SubtleCrypto outside secure contexts.
+          throw PlatformError.systemError({
+            module: "Crypto",
+            method,
+            _tag: "Unknown",
+            description: "SubtleCrypto is not available"
+          })
+        }
+        return f()
+      },
       catch: (cause) =>
         PlatformError.isPlatformError(cause) ? cause : PlatformError.systemError({
           module: "Crypto",
@@ -1695,7 +1723,7 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
           snapshot,
           algorithmParams("importJwk", algorithm, false),
           options?.extractable ?? (type === "public" && jwk.ext !== false),
-          Array.from(options?.usages ?? usagesFor(algorithm, type))
+          Array.from(options?.usages ?? jwk.key_ops ?? usagesFor(algorithm, type))
         )
         if (algorithm.name === "AES-GCM" && (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length) {
           return badArgument("importJwk", "AES key length does not match the requested algorithm")

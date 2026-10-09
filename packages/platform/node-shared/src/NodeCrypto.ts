@@ -141,28 +141,20 @@ export const make: EffectCrypto.Crypto = EffectCrypto.make({
     }),
   pbkdf2: (algorithm, password, salt, iterations, length) =>
     Effect.callback((resume) => {
-      try {
-        NodeCrypto.pbkdf2(password, salt, iterations, length, toHashAlgorithm(algorithm), (cause, key) => {
-          resume(
-            cause
-              ? Effect.fail(PlatformError.systemError({
-                module: "Crypto",
-                method: "pbkdf2",
-                _tag: "Unknown",
-                description: "Could not derive password key",
-                cause
-              }))
-              : Effect.succeed(Uint8Array.from(key))
-          )
-        })
-      } catch (cause) {
-        resume(Effect.fail(PlatformError.systemError({
+      const fail = (cause: unknown) =>
+        Effect.fail(PlatformError.systemError({
           module: "Crypto",
           method: "pbkdf2",
           _tag: "Unknown",
           description: "Could not derive password key",
           cause
-        })))
+        }))
+      try {
+        NodeCrypto.pbkdf2(password, salt, iterations, length, toHashAlgorithm(algorithm), (cause, key) => {
+          resume(cause ? fail(cause) : Effect.succeed(Uint8Array.from(key)))
+        })
+      } catch (cause) {
+        resume(fail(cause))
       }
     })
 })

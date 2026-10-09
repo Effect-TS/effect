@@ -15,8 +15,6 @@ import * as Context from "effect/Context"
 import * as EffectCrypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as PlatformError from "effect/PlatformError"
-import { createHash } from "node:crypto"
 
 /**
  * Provides the Web Crypto API used by the Crypto service implementation.
@@ -50,44 +48,17 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
       }
       return bytes
     }
-
-    const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) => {
-      if (algorithm === "MD5") {
-        return Effect.try({
-          try: () => Uint8Array.from(createHash("md5").update(data).digest()),
-          catch: (cause) =>
-            PlatformError.systemError({
-              module: "Crypto",
-              method: "digest",
-              _tag: "Unknown",
-              description: "Could not compute digest",
-              cause
-            })
-        })
-      }
-      return Effect.map(
-        Effect.tryPromise({
-          try: () => crypto.subtle.digest(algorithm, new Uint8Array(data)),
-          catch: (cause) =>
-            PlatformError.systemError({
-              module: "Crypto",
-              method: "digest",
-              _tag: "Unknown",
-              description: "Could not compute digest",
-              cause
-            })
-        }),
-        (buffer) => new Uint8Array(buffer)
-      )
-    }
+    const subtle = EffectCrypto.makeSubtle(crypto.subtle)
 
     return EffectCrypto.make({
-      ...EffectCrypto.makeSubtle(crypto.subtle),
+      ...subtle,
       randomBytes,
       argon2id: NodeCrypto.make.argon2id,
       xchacha20poly1305Encrypt: NodeCrypto.make.xchacha20poly1305Encrypt,
       xchacha20poly1305Decrypt: NodeCrypto.make.xchacha20poly1305Decrypt,
-      digest
+      // Web Crypto has no MD5, so legacy MD5 digests use the Node-compatible backend.
+      digest: (algorithm, data) =>
+        algorithm === "MD5" ? NodeCrypto.make.digest(algorithm, data) : subtle.digest(algorithm, data)
     })
   })
 )
