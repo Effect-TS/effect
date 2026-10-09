@@ -17,13 +17,14 @@ import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as DnsClient from "effect/net/DnsClient"
 import type * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
-import * as Fs from "node:fs/promises"
 import * as NodeCrypto from "./NodeCrypto.ts"
 import * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
+import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as NodeSocket from "./NodeSocket.ts"
 
 /**
@@ -70,10 +71,6 @@ const rejectScoped = (
   )
 }
 
-// Missing or unreadable files count as empty, like in glibc.
-const readFile = (path: string): Effect.Effect<string> =>
-  Effect.promise(() => Fs.readFile(path, "utf8").catch(() => ""))
-
 const hostsPath = typeof process !== "undefined" && process.platform === "win32"
   ? `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\drivers\\etc\\hosts`
   : "/etc/hosts"
@@ -85,9 +82,10 @@ const localNameServers: Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> = [
 ]
 
 /**
- * Reads the system resolver configuration and hosts file and combines them
- * with options, returning the options of `DnsClient.make` and the name servers
- * and UDP payload size of a UDP transport.
+ * Reads the system resolver configuration and hosts file with the
+ * `FileSystem` service and combines them with options, returning the options
+ * of `DnsClient.make` and the name servers and UDP payload size of a UDP
+ * transport.
  *
  * **Details**
  *
@@ -105,6 +103,9 @@ const localNameServers: Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> = [
  * @since 4.0.0
  */
 export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
+  const fs = yield* FileSystem.FileSystem
+  // Missing or unreadable files count as empty, like in glibc.
+  const readFile = (path: string) => fs.readFileString(path).pipe(Effect.orElseSucceed(() => ""))
   const nameServers = options?.nameServers ?? []
   yield* rejectScoped(nameServers)
   const config = DnsClient.parseResolvConf(yield* readFile("/etc/resolv.conf"))
@@ -212,7 +213,7 @@ export const layerTransportTcp = (
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(options?: Options) {
-  const config = yield* systemOptions(options)
+  const config = yield* systemOptions(options).pipe(Effect.provide(NodeFileSystem.layer))
   return yield* DnsClient.make(config).pipe(Effect.provideServiceEffect(DnsClient.Transport, makeTransportUdp(config)))
 })
 

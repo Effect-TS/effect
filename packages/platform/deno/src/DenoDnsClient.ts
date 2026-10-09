@@ -22,6 +22,7 @@ import * as DnsClient from "effect/net/DnsClient"
 import * as NetAddress from "effect/net/NetAddress"
 import * as DenoCrypto from "./DenoCrypto.ts"
 import * as DenoDatagramSocket from "./DenoDatagramSocket.ts"
+import * as DenoFileSystem from "./DenoFileSystem.ts"
 import * as DenoSocket from "./DenoSocket.ts"
 
 export type {
@@ -133,7 +134,7 @@ export const layerTransportTcp = (
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(options?: NodeDnsClient.Options) {
-  const config = yield* NodeDnsClient.systemOptions(options)
+  const config = yield* NodeDnsClient.systemOptions(options).pipe(Effect.provide(DenoFileSystem.layer))
   return yield* DnsClient.make(config).pipe(Effect.provideServiceEffect(DnsClient.Transport, makeTransportUdp(config)))
 })
 
