@@ -1720,11 +1720,16 @@ const make = Effect.gen(function*() {
         yield* FiberMap.run(singletonFibers, address, wrappedRun)
       }
 
-      yield* Effect.addFinalizer(() => {
-        const map = singletons.get(address.shardId)!
-        MutableHashMap.remove(map, address)
-        return FiberMap.remove(singletonFibers, address)
-      })
+      // Hold the singleton lock until the singleton has stopped, so a shard
+      // release, which syncs singletons first, waits for its teardown, and a
+      // sync cannot restart it in between.
+      yield* Effect.addFinalizer(() =>
+        withSingletonLock(Effect.suspend(() => {
+          const map = singletons.get(address.shardId)!
+          MutableHashMap.remove(map, address)
+          return FiberMap.remove(singletonFibers, address)
+        }))
+      )
     },
     withSingletonLock
   )
