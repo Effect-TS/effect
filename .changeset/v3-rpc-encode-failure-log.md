@@ -2,4 +2,4 @@
 "@effect/rpc": patch
 ---
 
-Log response encoding failures at Error level with the RPC tag and cause.
+Mark RPC server spans as failed when Exit response encoding fails, preserving the client defect response.

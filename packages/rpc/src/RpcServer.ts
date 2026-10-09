@@ -510,7 +510,6 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
-            schemas.tag,
             schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeChunk(response.values), schemas.context),
@@ -524,11 +523,11 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
-            schemas.tag,
             schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeExit(response.exit), schemas.context),
-            (exit) => ({ _tag: "Exit", requestId: String(response.requestId), exit })
+            (exit) => ({ _tag: "Exit", requestId: String(response.requestId), exit }),
+            true
           )
         }
         case "Defect": {
@@ -553,7 +552,6 @@ export const make: <Rpcs extends Rpc.Any>(
   })))
 
   type Schemas = {
-    readonly tag: string
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, ParseError>
     readonly encodeChunk: (u: ReadonlyArray<unknown>) => Effect.Effect<NonEmptyReadonlyArray<unknown>, ParseError>
     readonly encodeExit: (u: unknown) => Effect.Effect<Schema.ExitEncoded<unknown, unknown, unknown>, ParseError>
@@ -569,7 +567,6 @@ export const make: <Rpcs extends Rpc.Any>(
       const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs["_tag"]>
       const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema.ast)
       schemas = {
-        tag: rpc._tag,
         decode: Schema.decodeUnknown(rpc.payloadSchema as any),
         encodeChunk: Schema.encodeUnknown(
           Schema.Array(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
@@ -592,26 +589,32 @@ export const make: <Rpcs extends Rpc.Any>(
   const handleEncode = <A, R>(
     client: Client,
     requestId: RequestId,
-    tag: string,
     encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>,
     collector: Transferable.CollectorService | undefined,
     effect: Effect.Effect<A, ParseError, R>,
-    onSuccess: (a: A) => FromServerEncoded
-  ) =>
-    (collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect).pipe(
-      Effect.tapErrorCause((cause) =>
-        Effect.annotateLogs(Effect.logError("Failed to encode RPC response", cause), { rpc: tag })
-      ),
-      Effect.flatMap((a) => send(client.id, onSuccess(a), collector && collector.unsafeClear())),
-      Effect.catchAllCause((cause) => {
-        client.schemas.delete(requestId)
-        const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
-        return Effect.zipRight(
-          sendRequestDefect(client, requestId, encodeDefect, defect),
-          server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
-        )
-      })
+    onSuccess: (a: A) => FromServerEncoded,
+    failOnEncodeError = false
+  ) => {
+    const handleFailure = (cause: Cause.Cause<ParseError>, die = false) => {
+      client.schemas.delete(requestId)
+      const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
+      return Effect.zipRight(
+        sendRequestDefect(client, requestId, encodeDefect, defect),
+        die ? Effect.die(defect) : server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
+      )
+    }
+    return Effect.matchCauseEffect(
+      collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
+      {
+        onFailure: (cause) => handleFailure(cause, failOnEncodeError && !Cause.isInterrupted(cause)),
+        onSuccess: (a) =>
+          Effect.catchAllCause(
+            Effect.suspend(() => send(client.id, onSuccess(a), collector && collector.unsafeClear())),
+            (cause) => handleFailure(cause)
+          )
+      }
     )
+  }
 
   const encodeDefect = Schema.encodeSync(Schema.Defect)
 
