@@ -14,8 +14,9 @@
  * same error as a missing name, so refused queries and server failures
  * (`REFUSED`, `SERVFAIL`, `FORMERR`, `NOTIMP`) fail with `NotFound` instead of
  * `Refused`, `ServerFailure`, `InvalidResponse`, or `Unsupported`. Server
- * failures are therefore not reported as temporary. Queries require the
- * `--allow-net` permission.
+ * failures are therefore not reported as temporary. `Deno.resolveDns` cannot
+ * query TLSA records, so TLSA queries fail with `Unsupported`. Queries require
+ * the `--allow-net` permission.
  *
  * @stability experimental
  * @since 4.0.0
@@ -28,7 +29,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
 import * as NetAddress from "effect/net/NetAddress"
-import type * as Result from "effect/Result"
+import * as Result from "effect/Result"
 
 /**
  * Options for the Deno `Dns` service.
@@ -132,6 +133,8 @@ const queries: {
       priority: srv.priority,
       weight: srv.weight
     })),
+  TLSA: async (name) =>
+    Result.fail(new Dns.DnsError({ reason: "Unsupported", method: "resolve", hostname: name, recordType: "TLSA" })),
   TXT: async (name, options) =>
     NodeDns.recordsFromResolver(name, "TXT", await Deno.resolveDns(name, "TXT", options), (chunks) => ({
       chunks: chunks.map(NodeDns.utf8FromLatin1) as unknown as Arr.NonEmptyReadonlyArray<string>

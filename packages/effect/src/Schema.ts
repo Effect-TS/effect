@@ -13828,6 +13828,8 @@ const dnsCanonicalAddress = <A extends NetAddress_.IpAddress>(
     })
   ))
 
+const dnsUint8 = Int.check(isBetween({ minimum: 0, maximum: 0xff }))
+
 const dnsUint16 = Int.check(isBetween({ minimum: 0, maximum: 0xffff }))
 
 const dnsUint32 = Int.check(isBetween({ minimum: 0, maximum: 0xffffffff }))
@@ -14094,6 +14096,36 @@ export const DnsSrvRecord: DnsSrvRecord = dnsRecordOfType("SRV", {
 })
 
 /**
+ * Type-level representation of {@link DnsTlsaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsTlsaRecord extends declare<Dns_.Tlsa> {
+  readonly "Rebuild": DnsTlsaRecord
+}
+
+/**
+ * Schema for already-constructed TLS authentication (`TLSA`) DNS records.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes the certificate association `data` as a
+ * hex string.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsTlsaRecord: DnsTlsaRecord = dnsRecordOfType("TLSA", {
+  certUsage: dnsUint8,
+  selector: dnsUint8,
+  matchingType: dnsUint8,
+  data: Uint8ArrayFromHex
+})
+
+/**
  * Type-level representation of {@link DnsTxtRecord}.
  *
  * @stability experimental
@@ -14133,6 +14165,7 @@ export interface DnsRecord extends
       DnsPtrRecord,
       DnsSoaRecord,
       DnsSrvRecord,
+      DnsTlsaRecord,
       DnsTxtRecord
     ]
   >
@@ -14146,8 +14179,8 @@ export interface DnsRecord extends
  * **Details**
  *
  * The default JSON serializer encodes records as objects tagged by record type,
- * with addresses and names as canonical strings and SOA timers as whole
- * seconds, such as
+ * with addresses and names as canonical strings, SOA timers as whole seconds,
+ * and TLSA data as hex, such as
  * `{ "_tag": "SRV", "target": "db.internal", "port": 5432, "priority": 10, "weight": 5 }`.
  * Decoding accepts only canonical addresses and normalized domain names, and
  * reports invalid fields with their path.
@@ -14167,6 +14200,7 @@ export const DnsRecord: DnsRecord = Union([
   DnsPtrRecord,
   DnsSoaRecord,
   DnsSrvRecord,
+  DnsTlsaRecord,
   DnsTxtRecord
 ]).annotate({ identifier: "DnsRecord" })
 

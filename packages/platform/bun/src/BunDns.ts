@@ -14,6 +14,9 @@
  * a record made of several strings arrives as several TXT records whose chunks
  * cannot be reassembled (https://github.com/oven-sh/bun/issues/44692).
  *
+ * Bun's resolver cannot query TLSA records, so TLSA queries fail with
+ * `Unsupported`.
+ *
  * @stability experimental
  * @since 4.0.0
  */

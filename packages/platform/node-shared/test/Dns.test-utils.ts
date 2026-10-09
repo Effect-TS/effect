@@ -1,10 +1,12 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Hex from "effect/encoding/Hex"
 import * as Equal from "effect/Equal"
 import * as Dns from "effect/net/Dns"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
+import * as Result from "effect/Result"
 import type * as Scope from "effect/Scope"
 import * as NodeDnsApi from "node:dns"
 import * as Fs from "node:fs/promises"
@@ -52,6 +54,14 @@ const expected: { readonly [K in Dns.RecordType]: ReadonlyArray<Dns.RecordFor<K>
     })
   ],
   SRV: [Dns.makeRecordUnsafe("SRV", { target: name("db1.example.test."), port: 5432, priority: 10, weight: 5 })],
+  TLSA: [
+    Dns.makeRecordUnsafe("TLSA", {
+      certUsage: 3,
+      selector: 1,
+      matchingType: 1,
+      data: Result.getOrThrow(Hex.decode("38a88126a15ae8e643ce9447c3ce9a874ea0e05255d07ee12227809edbe5c7f1"))
+    })
+  ],
   TXT: [Dns.makeRecordUnsafe("TXT", { chunks: ["v=spf1 ", "-all"] })]
 }
 
@@ -98,6 +108,7 @@ $TTL 300
 ns1         IN A     192.0.2.53
 www         IN CNAME example.test.
 _pg._tcp    IN SRV   10 5 5432 db1.example.test.
+_443._tcp   IN TLSA  3 1 1 38a88126a15ae8e643ce9447c3ce9a874ea0e05255d07ee12227809edbe5c7f1
 bad-mx      IN MX    10 bad\\032host.example.test.
 `
 
@@ -214,6 +225,19 @@ export const describeDnsServer = (
         }
         assertRecords(yield* resolver.resolve(name("www.example.test"), "CNAME"), expected.CNAME)
         assertRecords(yield* resolver.resolve(name("_pg._tcp.example.test"), "SRV"), expected.SRV)
+      }))
+
+    // Bun's resolver and `Deno.resolveDns` cannot query TLSA records.
+    it.effect("queries TLSA records where the runtime supports them", () =>
+      Effect.gen(function*() {
+        const query = (yield* dns()).resolve(name("_443._tcp.example.test"), "TLSA")
+        if (isBun || isDeno) {
+          const error = yield* Effect.flip(query)
+          assert.strictEqual(error.reason, "Unsupported")
+          assert.strictEqual(error.recordType, "TLSA")
+        } else {
+          assertRecords(yield* query, expected.TLSA)
+        }
       }))
 
     // Bun returns each character string of a TXT record as a separate record,
