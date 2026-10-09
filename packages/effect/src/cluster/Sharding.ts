@@ -295,16 +295,14 @@ const make = Effect.gen(function*() {
     return MutableHashSet.has(acquiredShards, address.shardId)
   }
 
-  // The shard is assigned to this runner, but its lock is still held elsewhere
   function isAwaitingShardLock(shardId: ShardId): boolean {
     return !MutableRef.get(isShutdown) &&
       MutableHashSet.has(selfShards, shardId) &&
       !MutableHashSet.has(acquiredShards, shardId)
   }
 
-  // Requests wait for a shard handoff instead of retrying against a runner that
-  // cannot serve them yet. Waits are bounded by the lock expiration, after
-  // which a lock held by another runner has been released or has expired.
+  // Requests wait out a shard handoff, for at most `shardLockExpiration`,
+  // instead of retrying against a runner that cannot serve them yet.
   const shardWaiters = new Set<() => void>()
   const shardWaitTimeout = Duration.fromInputUnsafe(config.shardLockExpiration)
   const notifyShardWaiters = () => {
