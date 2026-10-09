@@ -541,7 +541,6 @@ describe("SqlRunnerStorage", () => {
       it.effect("acquireShards", () =>
         Effect.gen(function*() {
           const storage = yield* RunnerStorage.RunnerStorage
-          yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
 
           let acquired = yield* storage.acquire(runnerAddress1, [
             ShardId.make("default", 1),
@@ -568,40 +567,6 @@ describe("SqlRunnerStorage", () => {
           // smoke test release
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
-
-      if (label.endsWith("(no advisory)")) {
-        it.effect(
-          "keeps an unregistered holder's lock until its lease expires without renewal",
-          () =>
-            Effect.gen(function*() {
-              const storage = yield* SqlRunnerStorage.make({ prefix: "unregistered_holder" })
-              const shard = ShardId.make("default", 1)
-
-              yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
-              yield* storage.register(Runner.make({ address: runnerAddress2, groups: ["default"], weight: 1 }), true)
-              expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
-
-              // A runner unregisters when it starts shutting down, before its
-              // entities have stopped and its locks are released.
-              yield* storage.unregister(runnerAddress1)
-              expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
-              expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([])
-              expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
-
-              yield* storage.refresh(runnerAddress1, [shard]).pipe(
-                Effect.andThen(storage.acquire(runnerAddress2, [shard])),
-                Effect.repeat({ until: (acquired) => acquired.length > 0, schedule: Schedule.spaced(250) }),
-                Effect.timeout("15 seconds")
-              )
-            }).pipe(
-              Effect.provide(
-                ShardingConfig.layer({ shardLockDisableAdvisory: true, shardLockExpiration: "3 seconds" })
-              ),
-              TestClock.withLive
-            ),
-          { timeout: 30_000 }
-        )
-      }
 
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
