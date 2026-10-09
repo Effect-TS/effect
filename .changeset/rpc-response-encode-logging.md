@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Log RPC response encoding failures at Error level with the RPC tag and schema error.
+Report RPC response encoding failures to ErrorReporter and include the RPC tag in client defects.

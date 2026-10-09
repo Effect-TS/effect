@@ -693,18 +693,24 @@ export const make: <Rpcs extends Rpc.Any>(
     const write = Exit.isExit(effect) && Exit.isSuccess(effect)
       ? send(client.id, responseEnvelope(requestId, tag, effect.value), collector && collector.clearUnsafe())
       : Effect.flatMap(
-        Effect.tapError(
+        Effect.catchCause(
           Effect.provideContext(
             collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
             schemas.context
           ),
-          (error) => Effect.annotateLogs(Effect.logError("Failed to encode RPC response", error), { rpc: schemas.tag })
+          (cause) =>
+            Effect.withFiber((fiber) => {
+              const error = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
+              const defect = Cause.die(`Failed to encode response for RPC "${schemas.tag}": ${error}`)
+              reportCauseUnsafe(fiber, defect)
+              return Effect.failCause(defect)
+            })
         ),
         (value) => send(client.id, responseEnvelope(requestId, tag, value), collector && collector.clearUnsafe())
       )
     return Effect.catchCause(write, (cause) => {
       client.schemas.delete(requestId)
-      const defect = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
+      const defect = Cause.squash(cause)
       return Effect.andThen(
         sendRequestDefect(client, requestId, schemas.encodeExit, defect),
         server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
