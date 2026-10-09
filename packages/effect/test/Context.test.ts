@@ -5,6 +5,13 @@ import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import { describe, it } from "vitest"
 
+// `_flat` has no public accessor; casting through this explicit shape
+// instead of bare `any` matches the double-cast already used internally
+// (Proto.mapUnsafe: `this as any as ContextImpl<any>`).
+interface ContextInternals {
+  readonly _flat: unknown
+}
+
 describe("Context", () => {
   const A = Context.Service<number>("ContextTest/A")
   const B = Context.Service<number>("ContextTest/B")
@@ -146,7 +153,7 @@ describe("Context", () => {
     // A rebase through `impl.mapUnsafe` would warm `_flat` on the discarded
     // pre-rebase context as a side effect; building from `_flat ?? base`
     // directly does not.
-    strictEqual((preRebase as any)._flat, undefined)
+    strictEqual((preRebase as any as ContextInternals)._flat, undefined)
 
     strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
     for (let i = 0; i < baseKeys.length; i++) {
