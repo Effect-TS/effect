@@ -593,28 +593,31 @@ describe("SqlRunnerStorage", () => {
 
       if (label.endsWith("(no advisory)")) {
         it.effect(
-          "keeps an unregistered holder's lock until its lease expires without renewal",
+          "keeps a lock its holder renews and frees it once renewals stop",
           () =>
             Effect.gen(function*() {
-              const storage = yield* SqlRunnerStorage.make({ prefix: "unregistered_holder" })
+              const storage = yield* SqlRunnerStorage.make({ prefix: "renewed_holder" })
               const shard = ShardId.make("default", 1)
 
               yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
               yield* storage.register(Runner.make({ address: runnerAddress2, groups: ["default"], weight: 1 }), true)
               expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
 
-              // A runner unregisters when it starts shutting down, before its
-              // entities have stopped and its locks are released.
+              // A runner unregisters when it starts shutting down and decides
+              // itself how long to keep renewing while it drains.
               yield* storage.unregister(runnerAddress1)
               expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
-              expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([])
-              expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
+              for (let i = 0; i < 10; i++) {
+                expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([shard])
+                expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
+                yield* Effect.sleep(500)
+              }
 
-              yield* storage.refresh(runnerAddress1, [shard]).pipe(
-                Effect.andThen(storage.acquire(runnerAddress2, [shard])),
+              yield* storage.acquire(runnerAddress2, [shard]).pipe(
                 Effect.repeat({ until: (acquired) => acquired.length > 0, schedule: Schedule.spaced(250) }),
                 Effect.timeout("15 seconds")
               )
+              expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([])
             }).pipe(
               Effect.provide(
                 ShardingConfig.layer({ shardLockDisableAdvisory: true, shardLockExpiration: "3 seconds" })

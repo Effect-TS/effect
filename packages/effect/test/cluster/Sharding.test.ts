@@ -3715,34 +3715,42 @@ describe("Sharding singleton cancellation", { concurrent: false }, () => {
 
 interface ShutdownStorageState {
   runner: Runner.Runner | undefined
+  reaped: boolean
   holdSingletonShard: boolean
   singletonAcquires: number
   readonly acquireGate: Deferred.Deferred<void>
   readonly refreshes: Array<ReadonlyArray<ShardId.ShardId>>
+  failNextReleases: number
+  releaseAttempts: number
+  releaseSuccesses: number
   readonly releases: Array<ShardId.ShardId>
-  releaseAlls: number
 }
 
-const makeShutdownStorageState = (holdSingletonShard = false): ShutdownStorageState => ({
+const makeShutdownStorageState = (overrides?: Partial<ShutdownStorageState>): ShutdownStorageState => ({
   runner: undefined,
-  holdSingletonShard,
+  reaped: false,
+  holdSingletonShard: false,
   singletonAcquires: 0,
   acquireGate: Deferred.makeUnsafe<void>(),
   refreshes: [],
+  failNextReleases: 0,
+  releaseAttempts: 0,
+  releaseSuccesses: 0,
   releases: [],
-  releaseAlls: 0
+  ...overrides
 })
 
 // `unregister` leaves the runner assigned, as when deregistration fails or has
-// not been observed yet. The first acquisition of the singleton shard finds it
+// not been observed yet. A reaped runner is missing from `getRunners` and
+// cannot register again. The first acquisition of the singleton shard finds it
 // held elsewhere, and the retry waits for `acquireGate`.
 const ShutdownRunnerStorage = (state: ShutdownStorageState) =>
   Layer.succeed(
     RunnerStorage.RunnerStorage,
     RunnerStorage.RunnerStorage.of({
-      getRunners: Effect.sync(() => state.runner ? [[state.runner, true] as const] : []),
+      getRunners: Effect.sync(() => state.runner && !state.reaped ? [[state.runner, true] as const] : []),
       register: (runner) =>
-        Effect.sync(() => {
+        state.reaped ? Effect.fail(new ClusterError.PersistenceError({ cause: "reaped" })) : Effect.sync(() => {
           state.runner = runner
           return MachineId.make(1)
         }),
@@ -3766,15 +3774,23 @@ const ShutdownRunnerStorage = (state: ShutdownStorageState) =>
           return shards
         }),
       release: (_address, shardId) =>
-        Effect.sync(() => {
+        attemptRelease(state).pipe(Effect.andThen(Effect.sync(() => {
           state.releases.push(shardId)
-        }),
-      releaseAll: () =>
-        Effect.sync(() => {
-          state.releaseAlls++
-        })
+        }))),
+      releaseAll: () => attemptRelease(state)
     })
   )
+
+const attemptRelease = (state: ShutdownStorageState) =>
+  Effect.suspend(() => {
+    state.releaseAttempts++
+    if (state.failNextReleases > 0) {
+      state.failNextReleases--
+      return Effect.fail(new ClusterError.PersistenceError({ cause: "release failed" }))
+    }
+    state.releaseSuccesses++
+    return Effect.void
+  })
 
 const shutdownConfig = {
   ...testConfigDefaults,
@@ -3814,7 +3830,7 @@ const waitUntil = Effect.fnUntraced(function*(message: string, condition: () => 
 })
 
 // These tests share the internal teardown registry, so do not run concurrently.
-describe("Sharding shutdown safety", { concurrent: false }, () => {
+describe("Sharding shard handoff safety", { concurrent: false }, () => {
   it.effect("interrupts every singleton on a released shard while one is still stopping", () =>
     Effect.gen(function*() {
       const storageState = makeSingletonStorageState()
@@ -3879,7 +3895,7 @@ describe("Sharding shutdown safety", { concurrent: false }, () => {
 
   it.effect("does not start singletons from an acquisition that completes after shutdown starts", () =>
     Effect.gen(function*() {
-      const state = makeShutdownStorageState(true)
+      const state = makeShutdownStorageState({ holdSingletonShard: true })
       let started = false
       const scope = yield* Scope.make()
       const context = yield* Layer.buildWithScope(ShutdownSharding(TestEntityNoState, state), scope)
@@ -3901,15 +3917,38 @@ describe("Sharding shutdown safety", { concurrent: false }, () => {
         yield* Deferred.succeed(state.acquireGate, void 0)
         yield* TestClock.adjust(100)
         assert.isFalse(started, "a singleton started after shutdown began")
+        assert.isTrue(
+          state.releases.some((shardId) => shardId.group === "singleton"),
+          "the shard acquired after shutdown began was not released"
+        )
 
         yield* TestClock.adjust(shutdownConfig.entityTerminationTimeout)
         yield* Fiber.join(closing)
       }).pipe(Effect.provideContext(context))
     }))
 
-  it.effect("stops renewing and releases shard locks when shutdown cannot finish", () =>
+  it.effect("stops renewing and releases shard locks after losing its registration", () =>
     Effect.gen(function*() {
       const state = makeShutdownStorageState()
+      const renewals = () =>
+        state.refreshes.filter((shards) => shards.some((shard) => shard.group === "default")).length
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* waitUntil("the default shard was not acquired", () => sharding.hasShardId(destinationShard))
+
+        // The runner is removed from the cluster and cannot register again.
+        state.reaped = true
+        yield* TestClock.adjust(4 * shutdownConfig.shardLockExpiration)
+        const before = renewals()
+        yield* TestClock.adjust(2 * shutdownConfig.shardLockExpiration)
+        assert.strictEqual(renewals(), before, "a runner that lost its registration kept renewing")
+        assert.isTrue(state.releaseSuccesses > 0, "a runner that lost its registration did not release its shard locks")
+      }).pipe(Effect.provide(ShutdownSharding(TestEntityNoState, state)), Effect.scoped)
+    }))
+
+  it.effect("stops renewing and releases shard locks when shutdown cannot finish", () =>
+    Effect.gen(function*() {
+      const state = makeShutdownStorageState({ failNextReleases: 1 })
       const entered = yield* Deferred.make<void>()
       const unblock = yield* Deferred.make<void>()
       const entities = StuckShutdownEntity.toLayer({
@@ -3933,8 +3972,9 @@ describe("Sharding shutdown safety", { concurrent: false }, () => {
         const before = renewals()
         yield* TestClock.adjust(2 * shutdownConfig.shardLockExpiration)
         assert.strictEqual(renewals(), before, "the runner kept renewing after its shutdown deadline")
+        assert.isTrue(state.releaseAttempts > 1, "the runner did not retry a failed release")
         assert.isTrue(
-          state.releaseAlls > 0 || state.releases.length > 0,
+          state.releaseSuccesses > 0,
           "the runner did not release its shard locks after its shutdown deadline"
         )
 
