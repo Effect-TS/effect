@@ -979,26 +979,6 @@ export const BetaResponseCodeExecutionOutputBlock = Schema.Struct({
   "file_id": Schema.String.annotate({ "title": "File Id" }),
   "type": Schema.Literal("code_execution_output").annotate({ "title": "Type", "default": "code_execution_output" })
 }).annotate({ "title": "ResponseCodeExecutionOutputBlock" })
-/**
- * Marks where a fallback model took over a refused reply. Hand-written: mirrors
- * `BetaFallbackBlock` in `@anthropic-ai/sdk` (beta/messages); see
- * https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback.
- * `trigger` is kept optional because the docs' example block omits it.
- */
-export type BetaResponseFallbackBlock = {
-  readonly "type": "fallback"
-  readonly "from": { readonly "model": string }
-  readonly "to": { readonly "model": string }
-  readonly "trigger"?: { readonly "type": string; readonly "category"?: string | null }
-}
-export const BetaResponseFallbackBlock = Schema.Struct({
-  "type": Schema.Literal("fallback"),
-  "from": Schema.Struct({ "model": Schema.String }),
-  "to": Schema.Struct({ "model": Schema.String }),
-  "trigger": Schema.optionalKey(
-    Schema.Struct({ "type": Schema.String, "category": Schema.optionalKey(Schema.NullOr(Schema.String)) })
-  )
-})
 export type BetaResponseCompactionBlock = { readonly "content": string | null; readonly "type": "compaction" }
 export const BetaResponseCompactionBlock = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -2935,6 +2915,52 @@ export const Model = Schema.Union([
   "description":
     "The model that will complete your prompt.\n\nSee [models](https://docs.anthropic.com/en/docs/models-overview) for additional details and options."
 })
+export type BetaResponseFallbackHopInfo = { readonly "model": Model }
+export const BetaResponseFallbackHopInfo = Schema.Struct({ "model": Model }).annotate({
+  "title": "ResponseFallbackHopInfo",
+  "description": "Identifies one hop of a fallback transition."
+})
+export type BetaRefusalCategory = "cyber" | "bio" | "frontier_llm" | "reasoning_extraction" | "general_harms"
+export const BetaRefusalCategory = Schema.Literals([
+  "cyber",
+  "bio",
+  "frontier_llm",
+  "reasoning_extraction",
+  "general_harms"
+]).annotate({ "title": "RefusalCategory", "description": "The policy category that triggered a refusal." })
+export type BetaFallbackRefusalTrigger = { readonly "category": BetaRefusalCategory | null; readonly "type": "refusal" }
+export const BetaFallbackRefusalTrigger = Schema.Struct({
+  "category": Schema.Union([BetaRefusalCategory, Schema.Null]).annotate({
+    "description":
+      "The policy category that triggered the `from` model's refusal at this hop. `null` when the refusal doesn't map to a named category. Same vocabulary as `stop_details.category`.",
+    "default": null
+  }),
+  "type": Schema.Literal("refusal").annotate({ "title": "Type", "default": "refusal" })
+}).annotate({ "title": "FallbackRefusalTrigger", "description": "The `from` model declined for policy reasons." })
+export type BetaResponseFallbackBlock = {
+  readonly "from": BetaResponseFallbackHopInfo
+  readonly "to": BetaResponseFallbackHopInfo
+  readonly "trigger": BetaFallbackRefusalTrigger
+  readonly "type": "fallback"
+}
+export const BetaResponseFallbackBlock = Schema.Struct({
+  "from": BetaResponseFallbackHopInfo.annotate({
+    "description":
+      "The model whose output ends at this point — the model that declined at this hop. When the declining hop is the requested model, its `model` echoes the top-level `model` string the caller sent (alias or canonical); when the declining hop is a fallback model, its `model` is that model's canonical id."
+  }),
+  "to": BetaResponseFallbackHopInfo.annotate({
+    "description":
+      "The fallback model producing the content that follows this block. Its `model` is always the canonical id."
+  }),
+  "trigger": BetaFallbackRefusalTrigger.annotate({
+    "description": "What caused the `from` model to hand over at this hop."
+  }),
+  "type": Schema.Literal("fallback").annotate({ "title": "Type", "default": "fallback" })
+}).annotate({
+  "title": "ResponseFallbackBlock",
+  "description":
+    "Marks the point in `content` where one model's output gives way to the next.\n\nOne block appears per hop where a preceding model actually ran this turn and\ndeclined. A turn where no preceding model ran and declined has no such\nboundary and carries no block — the signal for whether a fallback model\nserved the response is the presence of a `fallback_message` entry in\n`usage.iterations`, not this block.\n\nThe block is treated like a server-tool content block for streaming: it\narrives via the standard `content_block_start` / `content_block_stop`\npair and carries no deltas."
+})
 export type BetaMemoryTool_20250818_ViewCommand = {
   readonly "command": "view"
   readonly "path": string
@@ -3363,9 +3389,9 @@ export type BetaMessageIterationUsage = {
   readonly "cache_creation_input_tokens": number
   readonly "cache_read_input_tokens": number
   readonly "input_tokens": number
+  readonly "model"?: Model
   readonly "output_tokens": number
   readonly "type": "message"
-  readonly "model"?: string | null
 }
 export const BetaMessageIterationUsage = Schema.Struct({
   "cache_creation": Schema.Union([BetaCacheCreation, Schema.Null]).annotate({
@@ -3386,6 +3412,7 @@ export const BetaMessageIterationUsage = Schema.Struct({
     "title": "Input Tokens",
     "description": "The number of input tokens which were used."
   }).check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+  "model": Schema.optionalKey(Model),
   "output_tokens": Schema.Number.annotate({
     "title": "Output Tokens",
     "description": "The number of output tokens which were used."
@@ -3394,9 +3421,7 @@ export const BetaMessageIterationUsage = Schema.Struct({
     "title": "Type",
     "description": "Usage for a sampling iteration",
     "default": "message"
-  }),
-  // Hand-written: the model that ran this iteration (`model` on `BetaMessageIterationUsage` in `@anthropic-ai/sdk`).
-  "model": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]))
+  })
 }).annotate({ "title": "MessageIterationUsage", "description": "Token usage for a sampling iteration." })
 export type BetaRequestCodeExecutionToolResultError = {
   readonly "error_code": BetaCodeExecutionToolResultErrorCode
@@ -6695,19 +6720,48 @@ export const BetaRequestToolSearchToolSearchResultBlock = Schema.Struct({
   "tool_references": Schema.Array(BetaRequestToolReferenceBlock).annotate({ "title": "Tool References" }),
   "type": Schema.Literal("tool_search_tool_search_result").annotate({ "title": "Type" })
 }).annotate({ "title": "RequestToolSearchToolSearchResultBlock" })
-/**
- * Usage for an iteration the API served with a fallback model. Hand-written:
- * mirrors `BetaFallbackMessageIterationUsage` in `@anthropic-ai/sdk`
- * (beta/messages); see https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback.
- */
-export type BetaFallbackMessageIterationUsage = Omit<BetaMessageIterationUsage, "type"> & {
+export type BetaFallbackMessageIterationUsage = {
+  readonly "cache_creation": BetaCacheCreation | null
+  readonly "cache_creation_input_tokens": number
+  readonly "cache_read_input_tokens": number
+  readonly "input_tokens": number
+  readonly "model": Model
+  readonly "output_tokens": number
   readonly "type": "fallback_message"
-  readonly "model"?: string | null
 }
 export const BetaFallbackMessageIterationUsage = Schema.Struct({
-  ...BetaMessageIterationUsage.fields,
-  "type": Schema.Literal("fallback_message"),
-  "model": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]))
+  "cache_creation": Schema.Union([BetaCacheCreation, Schema.Null]).annotate({
+    "description": "Breakdown of cached tokens by TTL",
+    "default": null
+  }),
+  "cache_creation_input_tokens": Schema.Number.annotate({
+    "title": "Cache Creation Input Tokens",
+    "description": "The number of input tokens used to create the cache entry.",
+    "default": 0
+  }).check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+  "cache_read_input_tokens": Schema.Number.annotate({
+    "title": "Cache Read Input Tokens",
+    "description": "The number of input tokens read from the cache.",
+    "default": 0
+  }).check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+  "input_tokens": Schema.Number.annotate({
+    "title": "Input Tokens",
+    "description": "The number of input tokens which were used."
+  }).check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+  "model": Model,
+  "output_tokens": Schema.Number.annotate({
+    "title": "Output Tokens",
+    "description": "The number of output tokens which were used."
+  }).check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0)),
+  "type": Schema.Literal("fallback_message").annotate({
+    "title": "Type",
+    "description": "Usage for the fallback-model attempt that served the response",
+    "default": "fallback_message"
+  })
+}).annotate({
+  "title": "FallbackMessageIterationUsage",
+  "description":
+    "Token usage for the fallback-model attempt of a server-side fallback request.\n\nProduced in place of a `message` entry for whichever hop served the\nresponse. A declined hop produces the existing `message` entry. Whether\na fallback model served the response is signalled by the presence of this\nentry in `usage.iterations`."
 })
 export type BetaIterationsUsage =
   | ReadonlyArray<BetaMessageIterationUsage | BetaCompactionIterationUsage | BetaFallbackMessageIterationUsage>

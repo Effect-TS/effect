@@ -1064,10 +1064,7 @@ const prepareMessages = Effect.fnUntraced(
             pendingSystem = []
           }
 
-          // A fallback block only appears in responses; it is never sent back.
-          const content: Array<
-            Exclude<typeof Generated.BetaContentBlock.Encoded, typeof Generated.BetaResponseFallbackBlock.Encoded>
-          > = []
+          const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
           const mcpToolIds = new Set<string>()
 
           for (let j = 0; j < group.messages.length; j++) {
@@ -1675,7 +1672,6 @@ const makeResponse = Effect.fnUntraced(
     for (const part of rawResponse.content) {
       switch (part.type) {
         case "fallback": {
-          // A fallback model took over a refused reply: name it, as in the stream.
           parts.push({
             type: "response-metadata",
             modelId: part.to.model,
@@ -2292,17 +2288,6 @@ const makeStreamResponse = Effect.fnUntraced(
           case "content_block_start": {
             blockType = event.content_block.type
 
-            if (event.content_block.type === "fallback") {
-              // A fallback model takes over from here: name it, as message_start named the first.
-              parts.push({
-                type: "response-metadata",
-                modelId: event.content_block.to.model,
-                timestamp: DateTime.formatIso(yield* DateTime.now),
-                metadata: { anthropic: { fallback: event.content_block } }
-              })
-              break
-            }
-
             switch (event.content_block.type) {
               case "text": {
                 contentBlocks.set(event.index, { type: "text" })
@@ -2643,6 +2628,17 @@ const makeStreamResponse = Effect.fnUntraced(
                     }
                   })
                 }
+
+                break
+              }
+
+              case "fallback": {
+                parts.push({
+                  type: "response-metadata",
+                  modelId: event.content_block.to.model,
+                  timestamp: DateTime.formatIso(yield* DateTime.now),
+                  metadata: { anthropic: { fallback: event.content_block } }
+                })
 
                 break
               }
