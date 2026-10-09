@@ -3011,6 +3011,9 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         yield* TestClock.adjust(100)
         assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
         assert.deepStrictEqual(sent, [])
+
+        yield* TestClock.adjust(1000)
+        assert.deepStrictEqual(sent, [{ tag: "Request", port: 5678 }])
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState, sent)), Effect.scoped)
     }))
 
