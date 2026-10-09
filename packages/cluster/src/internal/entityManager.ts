@@ -401,26 +401,18 @@ export const make = Effect.fnUntraced(function*<
       return yield* new EntityNotAssignedToRunner({ address })
     }
 
-    // Interrupt non-persisted streams, then drain other requests until the termination timeout.
+    // During shutdown, signal that no more messages will be processed
+    // and wait for the fiber to complete.
+    //
+    // If the termination timeout is reached, let the server clean itself up
     yield* Scope.addFinalizer(
       scope,
       Effect.withFiberRuntime((fiber) => {
         activeServers.delete(address.entityId)
         drainingServers.set(address.entityId, state)
         internalInterruptors.add(fiber.id())
-        const interruptStreams = Effect.forEach(
-          Arr.filter(activeRequests.values(), (request) => isVolatileStream(request.rpc)),
-          (request) =>
-            state.write(0, {
-              _tag: "Interrupt",
-              requestId: RequestId(request.message.envelope.requestId),
-              interruptors: []
-            }),
-          { discard: true }
-        )
         return Effect.raceFirst(
-          interruptStreams.pipe(
-            Effect.andThen(state.write(0, { _tag: "Eof" })),
+          state.write(0, { _tag: "Eof" }).pipe(
             Effect.andThen(endLatch.await),
             Effect.timeoutOption(config.entityTerminationTimeout),
             Effect.interruptible
