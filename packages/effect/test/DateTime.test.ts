@@ -498,6 +498,17 @@ describe("DateTime", () => {
       }))
   })
 
+  describe("toDate", () => {
+    it("stores zoned wall-clock time in UTC fields", () => {
+      const zoned = DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", {
+        timeZone: "Europe/London"
+      })
+
+      strictEqual(DateTime.toDate(zoned).toISOString(), "2024-07-01T13:00:00.000Z")
+      strictEqual(DateTime.toDateUtc(zoned).toISOString(), "2024-07-01T12:00:00.000Z")
+    })
+  })
+
   describe("nowAsDate", () => {
     it.effect("should return the current Date", () =>
       Effect.gen(function*() {
