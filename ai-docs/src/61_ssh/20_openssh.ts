@@ -1,7 +1,7 @@
 /**
  * @title Using the system OpenSSH client
  *
- * This example writes code against the backend-independent `Ssh` service and runs it with the host's `ssh` executable.
+ * This example opens connections through the backend-independent `Ssh` factory and runs them with the host's `ssh` executable.
  */
 import { NodeServices } from "@effect/platform-node"
 import { Context, Effect, FileSystem, Layer, Schema } from "effect"
@@ -21,42 +21,50 @@ export class Backups extends Context.Service<Backups, {
   static readonly layer = Layer.effect(
     Backups,
     Effect.gen(function*() {
+      // Read the connection factory once.
       const ssh = yield* Ssh.Ssh
 
-      // Run `ChildProcess` commands on the server. Arguments are quoted for
-      // the remote shell, and `kill` works even though the OpenSSH backend
-      // cannot send signals over the connection.
-      const remote = SshChildProcessSpawner.make(ssh)
+      const snapshot = Effect.fn("Backups.snapshot")(
+        function*(database: string) {
+          // Each snapshot opens its own connection, closed when it finishes.
+          // With OpenSSH, `host` may be a `Host` alias from ~/.ssh/config.
+          const connection = yield* ssh.connect({ host: "db-backup" })
 
-      // An SFTP session exposed as a regular `FileSystem`.
-      const remoteFs = Sftp.fileSystem(yield* Sftp.make(ssh))
+          // Run `ChildProcess` commands on the server. Arguments are quoted for
+          // the remote shell, and `kill` works even though the OpenSSH backend
+          // cannot send signals over the connection.
+          const remote = SshChildProcessSpawner.make(connection)
 
-      const snapshot = Effect.fn("Backups.snapshot")(function*(database: string) {
-        const path = `/var/backups/${database}.sql.gz`
-        // Pass values as positional arguments instead of interpolating them
-        // into the script, so they are never parsed by the remote shell.
-        yield* remote.exitCode(
-          ChildProcess.make("sh", ["-c", `pg_dump "$1" | gzip > "$2"`, "sh", database, path])
-        )
-        const data = yield* remoteFs.readFile(path)
-        yield* remoteFs.remove(path)
-        return data
-      }, Effect.mapError((cause) => new BackupError({ cause })))
+          // An SFTP session exposed as a regular `FileSystem`.
+          const remoteFs = Sftp.fileSystem(yield* Sftp.make(connection))
+
+          const path = `/var/backups/${database}.sql.gz`
+          // Pass values as positional arguments instead of interpolating them
+          // into the script, so they are never parsed by the remote shell.
+          yield* remote.exitCode(
+            ChildProcess.make("sh", ["-c", `pg_dump "$1" | gzip > "$2"`, "sh", database, path])
+          )
+          const data = yield* remoteFs.readFile(path)
+          yield* remoteFs.remove(path)
+          return data
+        },
+        Effect.scoped,
+        Effect.mapError((cause) => new BackupError({ cause }))
+      )
 
       return { snapshot }
     })
   )
 }
 
-// `OpenSsh.layer` runs the system `ssh`, so authentication, host keys,
-// ProxyJump, certificates, and hardware keys come from the user's OpenSSH
-// configuration. One multiplexed connection (`ControlMaster`) is opened when
-// the layer starts and shared by every operation.
+// `OpenSsh.layer` provides the `Ssh` factory through the system `ssh`, so
+// authentication, host keys, ProxyJump, certificates, and hardware keys come
+// from the user's OpenSSH configuration. Each `connect` opens one multiplexed
+// connection (`ControlMaster`) shared by every operation on it.
 //
 // It needs a `ChildProcessSpawner` to run `ssh` and a `FileSystem` for the
 // control socket, both provided by `NodeServices.layer`.
 export const OpenSshLive = OpenSsh.layer({
-  host: "db-backup",
   options: { ServerAliveInterval: 30 }
 }).pipe(Layer.provide(NodeServices.layer))
 

@@ -56,7 +56,6 @@
  * @since 4.0.0
  */
 import type * as Cause from "../Cause.ts"
-import * as Context from "../Context.ts"
 import * as Crypto from "../Crypto.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
@@ -66,7 +65,7 @@ import * as Queue from "../Queue.ts"
 import * as Redacted from "../Redacted.ts"
 import type * as Scope from "../Scope.ts"
 import type * as Sink from "../Sink.ts"
-import * as Socket from "../socket/Socket.ts"
+import type * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import * as Auth from "./internal/auth.ts"
 import * as Connection from "./internal/connection.ts"
@@ -77,7 +76,7 @@ import * as Transport from "./internal/transport.ts"
 import { concat, Reader, Writer } from "./internal/wire.ts"
 import * as Ssh from "./Ssh.ts"
 import type * as SshAgent from "./SshAgent.ts"
-import { SshError, SshHostKeyError, SshTimeoutError } from "./SshError.ts"
+import { SshConnectionError, SshError, SshHostKeyError, SshTimeoutError } from "./SshError.ts"
 import type * as SshKey from "./SshKey.ts"
 
 // -----------------------------------------------------------------------------
@@ -525,7 +524,8 @@ export const defaultAlgorithms: AlgorithmPreferences = Transport.defaultAlgorith
 // -----------------------------------------------------------------------------
 
 /**
- * Service for an authenticated SSH connection.
+ * An authenticated SSH connection created by `make`, with the full client
+ * API (sessions, shells, forwarding in both directions, re-keying).
  *
  * **Details**
  *
@@ -545,11 +545,14 @@ export const defaultAlgorithms: AlgorithmPreferences = Transport.defaultAlgorith
  * with `allowHalfOpen: true`; otherwise Node ends the socket before the
  * target's reply has been written.
  *
+ * @see {@link Ssh.fromClient} to use a client as a backend-independent
+ * `SshConnection`
+ *
  * @stability experimental
- * @category services
+ * @category models
  * @since 4.0.0
  */
-export class SshClient extends Context.Service<SshClient, {
+export interface SshClient {
   readonly serverVersion: string
   readonly hostKey: SshKey.PublicKey
   readonly sessionId: Uint8Array
@@ -580,7 +583,7 @@ export class SshClient extends Context.Service<SshClient, {
   ) => Effect.Effect<Uint8Array, SshError>
   readonly rekey: Effect.Effect<void, SshError>
   readonly closed: Effect.Effect<never, SshError>
-}>()("effect/ssh/SshClient") {}
+}
 
 /**
  * Options for connecting and authenticating.
@@ -700,7 +703,7 @@ const proxyAgent = (agent: SshAgent.SshAgent["Service"], channel: SshChannel) =>
 export const make = Effect.fnUntraced(function*(
   socket: Socket.Socket,
   options: ConnectOptions
-): Effect.fn.Return<SshClient["Service"], SshError, Crypto.Crypto | Scope.Scope> {
+): Effect.fn.Return<SshClient, SshError, Crypto.Crypto | Scope.Scope> {
   const scope = yield* Effect.scope
   const crypto = yield* Crypto.Crypto
   const port = options.port ?? 22
@@ -857,7 +860,7 @@ export const make = Effect.fnUntraced(function*(
   const subsystem = (name: string, sessionOptions?: SessionOptions) =>
     openSession(sessionOptions, (channel) => channel.requestOrFail("subsystem", new Writer().string(name).finish()))
 
-  const run: SshClient["Service"]["run"] = Streams.run(exec)
+  const run: SshClient["run"] = Streams.run(exec)
 
   // Forwarding ---------------------------------------------------------------
 
@@ -915,7 +918,7 @@ export const make = Effect.fnUntraced(function*(
         })
     ).pipe(Effect.map(({ forward }) => forward))
 
-  return SshClient.of({
+  return {
     serverVersion: transport.serverVersion,
     hostKey: transport.hostKey,
     sessionId: transport.sessionId,
@@ -933,38 +936,91 @@ export const make = Effect.fnUntraced(function*(
       connection.globalRequest(name, requestOptions?.data, requestOptions?.wantReply ?? true),
     rekey: transport.rekey,
     closed: transport.failed
+  }
+})
+
+/**
+ * Options for `layer`: connection settings shared by every connection,
+ * plus how to open the transport socket.
+ *
+ * **Details**
+ *
+ * `makeSocket` opens the transport for a destination, for example
+ * `({ host, port }) => NodeSocket.makeNet({ host, port })`. `username` and
+ * `port` (default 22) are defaults that a `Destination` can override.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface LayerOptions extends Omit<ConnectOptions, "host" | "port" | "username"> {
+  readonly makeSocket: (destination: {
+    readonly host: string
+    readonly port: number
+  }) => Effect.Effect<Socket.Socket, SshError>
+  readonly username?: string | undefined
+  readonly port?: number | undefined
+}
+
+/**
+ * Creates an `Ssh` connection factory backed by the built-in client,
+ * capturing the `Crypto` service once.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeConnector = Effect.fnUntraced(function*(
+  options: LayerOptions
+): Effect.fn.Return<Ssh.Ssh["Service"], never, Crypto.Crypto> {
+  const crypto = yield* Crypto.Crypto
+  const { makeSocket, port: defaultPort, username: defaultUsername, ...connectOptions } = options
+  return Ssh.Ssh.of({
+    connect: Effect.fnUntraced(function*(destination) {
+      const username = destination.username ?? defaultUsername
+      if (username === undefined) {
+        return yield* new SshError({
+          reason: new SshConnectionError({ cause: new Error(`no username configured for ${destination.host}`) })
+        })
+      }
+      const port = destination.port ?? defaultPort ?? 22
+      const socket = yield* makeSocket({ host: destination.host, port })
+      const client = yield* make(socket, { ...connectOptions, host: destination.host, port, username }).pipe(
+        Effect.provideService(Crypto.Crypto, crypto)
+      )
+      return Ssh.fromClient(client)
+    })
   })
 })
 
 /**
- * Layer that connects an `SshClient` over the context's `Socket` and also
- * provides it as the backend-independent `Ssh` service.
+ * Layer that provides the `Ssh` connection factory backed by the built-in
+ * client.
  *
- * **Example** (Providing a client over TCP on Node)
+ * **Example** (Connecting over TCP on Node)
  *
  * ```ts skip-type-checking
- * import { NodeSocket } from "@effect/platform-node"
- * import { Layer } from "effect"
- * import { SshClient } from "effect/ssh"
+ * import { NodeServices, NodeSocket } from "@effect/platform-node"
+ * import { Effect, Layer } from "effect"
+ * import { Ssh, SshClient } from "effect/ssh"
  *
  * const SshLive = SshClient.layer({
- *   host: "example.com",
+ *   makeSocket: ({ host, port }) => NodeSocket.makeNet({ host, port }),
  *   username: "deploy",
  *   auth: SshClient.password("secret"),
  *   verifyHostKey: SshClient.trustFingerprints("SHA256:...")
- * }).pipe(Layer.provide(NodeSocket.layerNet({ host: "example.com", port: 22 })))
+ * }).pipe(Layer.provide(NodeServices.layer))
+ *
+ * const program = Effect.gen(function*() {
+ *   const ssh = yield* Ssh.Ssh
+ *   const connection = yield* ssh.connect({ host: "example.com" })
+ *   return yield* connection.run("uptime")
+ * }).pipe(Effect.scoped, Effect.provide(SshLive))
  * ```
  *
  * @stability experimental
  * @category layers
  * @since 4.0.0
  */
-export const layer = (
-  options: ConnectOptions
-): Layer.Layer<SshClient | Ssh.Ssh, SshError, Socket.Socket | Crypto.Crypto> =>
-  Layer.effectContext(
-    Effect.gen(function*() {
-      const client = yield* make(yield* Socket.Socket, options)
-      return Context.make(SshClient, client).pipe(Context.add(Ssh.Ssh, Ssh.fromClient(client)))
-    })
-  )
+export const layer = (options: LayerOptions): Layer.Layer<Ssh.Ssh, never, Crypto.Crypto> =>
+  Layer.effect(Ssh.Ssh, makeConnector(options))

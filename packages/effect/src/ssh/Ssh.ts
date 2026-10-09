@@ -1,16 +1,36 @@
 /**
- * A backend-independent SSH service.
+ * Backend-independent SSH connections.
  *
- * `Ssh` describes what SFTP, the remote `ChildProcessSpawner`, and port
- * forwarding need from an SSH connection: running commands, starting
- * subsystems, and opening tunnels. Two backends provide it:
+ * The `Ssh` service is a connection factory: `connect` opens a scoped
+ * `SshConnection` to a destination, which runs commands, starts subsystems
+ * such as SFTP, and opens tunnels. Connections are values owned by the code
+ * that opens them and close with their scope, so programs decide when, where,
+ * and how often to connect. Two backends provide the factory:
  *
- * - `SshClient`, the built-in client (`SshClient.layer` provides both
- *   `SshClient` and `Ssh`, and `Ssh.fromClient` adapts an existing client).
- * - `OpenSsh`, which drives the host's `ssh` executable and so uses the
+ * - `SshClient.layer`, the built-in client running over `Socket` and the
+ *   `Crypto` service.
+ * - `OpenSsh.layer`, which drives the host's `ssh` executable and so uses the
  *   user's OpenSSH configuration, agent, and `known_hosts`.
  *
  * Code that depends only on `Ssh` works with either backend.
+ *
+ * **Example** (Connecting to several hosts)
+ *
+ * ```ts skip-type-checking
+ * import { NodeServices } from "@effect/platform-node"
+ * import { Effect, Layer } from "effect"
+ * import { OpenSsh, Ssh } from "effect/ssh"
+ *
+ * const program = Effect.gen(function*() {
+ *   const ssh = yield* Ssh.Ssh
+ *   for (const host of ["web1", "web2"]) {
+ *     const connection = yield* ssh.connect({ host })
+ *     yield* connection.run("systemctl restart app")
+ *   }
+ * }).pipe(Effect.scoped)
+ *
+ * program.pipe(Effect.provide(OpenSsh.layer().pipe(Layer.provide(NodeServices.layer))))
+ * ```
  *
  * @stability experimental
  * @since 4.0.0
@@ -85,8 +105,7 @@ export interface Capabilities {
 }
 
 /**
- * Service for running commands, subsystems, and tunnels over an SSH
- * connection, independent of the backend.
+ * An open SSH connection, independent of the backend.
  *
  * **Details**
  *
@@ -98,10 +117,10 @@ export interface Capabilities {
  *   `Socket.Socket`, and `forwardSocket` pipes a local socket through one.
  *
  * @stability experimental
- * @category services
+ * @category models
  * @since 4.0.0
  */
-export class Ssh extends Context.Service<Ssh, {
+export interface SshConnection {
   /**
    * A name identifying the backend, such as `effect` or `openssh`.
    */
@@ -121,10 +140,45 @@ export class Ssh extends Context.Service<Ssh, {
     socket: Socket.Socket,
     target: ForwardTarget
   ) => Effect.Effect<void, SshError | Socket.SocketError>
+}
+
+/**
+ * Where to connect.
+ *
+ * **Details**
+ *
+ * `port` and `username` fall back to the backend's defaults (for OpenSSH,
+ * the user's configuration).
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Destination {
+  readonly host: string
+  readonly port?: number | undefined
+  readonly username?: string | undefined
+}
+
+/**
+ * Service that opens SSH connections, independent of the backend.
+ *
+ * **Details**
+ *
+ * `connect` opens a connection that closes when the surrounding scope
+ * closes. Backend layers (`SshClient.layer`, `OpenSsh.layer`) capture their
+ * dependencies and defaults once, so `connect` has no further requirements.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.0.0
+ */
+export class Ssh extends Context.Service<Ssh, {
+  readonly connect: (destination: Destination) => Effect.Effect<SshConnection, SshError, Scope.Scope>
 }>()("effect/ssh/Ssh") {}
 
 /**
- * Creates an `Ssh` service from a backend's primitive operations, deriving
+ * Creates an `SshConnection` from a backend's primitive operations, deriving
  * `run`, `forwardOutSocket`, and `forwardSocket`.
  *
  * **When to use**
@@ -136,44 +190,37 @@ export class Ssh extends Context.Service<Ssh, {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (impl: {
+export const makeConnection = (impl: {
   readonly backend: string
   readonly capabilities: Capabilities
-  readonly exec: Ssh["Service"]["exec"]
-  readonly subsystem: Ssh["Service"]["subsystem"]
-  readonly forwardOut: Ssh["Service"]["forwardOut"]
-}): Ssh["Service"] =>
-  Ssh.of({
-    backend: impl.backend,
-    capabilities: impl.capabilities,
-    exec: impl.exec,
-    run: Streams.run(impl.exec),
-    subsystem: impl.subsystem,
-    forwardOut: impl.forwardOut,
-    forwardOutSocket: (target) => Streams.toSocket(impl.forwardOut(target)),
-    forwardSocket: (socket, target) => Streams.pipeSocket(socket, impl.forwardOut(target))
-  })
+  readonly exec: SshConnection["exec"]
+  readonly subsystem: SshConnection["subsystem"]
+  readonly forwardOut: SshConnection["forwardOut"]
+}): SshConnection => ({
+  backend: impl.backend,
+  capabilities: impl.capabilities,
+  exec: impl.exec,
+  run: Streams.run(impl.exec),
+  subsystem: impl.subsystem,
+  forwardOut: impl.forwardOut,
+  forwardOutSocket: (target) => Streams.toSocket(impl.forwardOut(target)),
+  forwardSocket: (socket, target) => Streams.pipeSocket(socket, impl.forwardOut(target))
+})
 
 /**
- * Adapts an `SshClient` to the `Ssh` service.
- *
- * **Details**
- *
- * `SshClient.layer` already provides `Ssh` alongside `SshClient`; use this
- * when the client was created with `SshClient.make`.
+ * Adapts an `SshClient` to a backend-independent `SshConnection`.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const fromClient = (client: SshClient["Service"]): Ssh["Service"] =>
-  Ssh.of({
-    backend: "effect",
-    capabilities: { signals: true, exitSignals: true },
-    exec: client.exec,
-    run: client.run,
-    subsystem: (name) => client.subsystem(name),
-    forwardOut: client.forwardOut,
-    forwardOutSocket: client.forwardOutSocket,
-    forwardSocket: client.forwardSocket
-  })
+export const fromClient = (client: SshClient): SshConnection => ({
+  backend: "effect",
+  capabilities: { signals: true, exitSignals: true },
+  exec: client.exec,
+  run: client.run,
+  subsystem: (name) => client.subsystem(name),
+  forwardOut: client.forwardOut,
+  forwardOutSocket: client.forwardOutSocket,
+  forwardSocket: client.forwardSocket
+})

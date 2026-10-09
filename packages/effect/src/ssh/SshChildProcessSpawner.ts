@@ -3,7 +3,7 @@
  *
  * Commands built with `ChildProcess.make` run through the remote user's
  * login shell, so code written against `ChildProcessSpawner` can target a
- * remote machine by swapping the layer. Each command in a pipeline runs in
+ * remote machine by providing a spawner made from an `SshConnection`. Each command in a pipeline runs in
  * its own `exec` channel, with data piped between them locally, so pipe
  * options (`from: "stderr"`, `from: "all"`) behave as they do locally.
  *
@@ -13,23 +13,22 @@
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Layer from "../Layer.ts"
 import * as PlatformError from "../PlatformError.ts"
 import * as ChildProcess from "../process/ChildProcess.ts"
 import {
-  ChildProcessSpawner,
+  type ChildProcessHandle,
+  type ChildProcessSpawner,
   ExitCode,
   make as makeSpawner,
   makeHandle,
   ProcessId
 } from "../process/ChildProcessSpawner.ts"
-import type { ChildProcessHandle } from "../process/ChildProcessSpawner.ts"
 import * as Pull from "../Pull.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
 import { concat, equals, fromUtf8, utf8 } from "./internal/wire.ts"
-import * as Ssh from "./Ssh.ts"
+import type * as Ssh from "./Ssh.ts"
 import type * as SshClient from "./SshClient.ts"
 import type { SshError } from "./SshError.ts"
 
@@ -212,8 +211,8 @@ const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Arr
 })
 
 /**
- * Creates a `ChildProcessSpawner` that runs commands through an `Ssh`
- * service.
+ * Creates a `ChildProcessSpawner` that runs commands over an
+ * `SshConnection`.
  *
  * **Details**
  *
@@ -246,9 +245,9 @@ const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Arr
  * @category constructors
  * @since 4.0.0
  */
-export const make = (ssh: Ssh.Ssh["Service"]): ChildProcessSpawner["Service"] => {
+export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Service"] => {
   let nextPid = 1
-  const reportsPid = !ssh.capabilities.signals
+  const reportsPid = !connection.capabilities.signals
 
   const spawnStandard = Effect.fnUntraced(function*(
     command: ChildProcess.StandardCommand
@@ -260,7 +259,7 @@ export const make = (ssh: Ssh.Ssh["Service"]): ChildProcessSpawner["Service"] =>
         description: "additional file descriptors are not supported over SSH"
       })
     }
-    const session = yield* ssh.exec(reportsPid ? pidReportingCommandLine(command) : commandLine(command)).pipe(
+    const session = yield* connection.exec(reportsPid ? pidReportingCommandLine(command) : commandLine(command)).pipe(
       Effect.mapError(toPlatformError("spawn", command))
     )
     const exited = Deferred.makeUnsafe<SshClient.SessionExit, SshError>()
@@ -316,12 +315,12 @@ export const make = (ssh: Ssh.Ssh["Service"]): ChildProcessSpawner["Service"] =>
       if (!reportsPid) return Effect.ignore(session.signal(signal))
       if (remotePid === undefined) return Effect.void
       const name = signalName(signal)
-      return Effect.ignore(ssh.run(`kill -${name} -- -${remotePid} 2>/dev/null || kill -${name} ${remotePid}`))
+      return Effect.ignore(connection.run(`kill -${name} -- -${remotePid} 2>/dev/null || kill -${name} ${remotePid}`))
     }
 
     const signalled = (exit: SshClient.SessionExit): string | undefined => {
       if (exit._tag === "ExitSignal") return exit.signal
-      if (ssh.capabilities.exitSignals || lastSignal === undefined) return undefined
+      if (connection.capabilities.exitSignals || lastSignal === undefined) return undefined
       // Without exit signals, a signal death shows up as status 128 + n, or as
       // 255 when OpenSSH relays it through a multiplexed connection.
       const number = signalNumbers[lastSignal]
@@ -424,18 +423,3 @@ export const make = (ssh: Ssh.Ssh["Service"]): ChildProcessSpawner["Service"] =>
 
   return makeSpawner(spawn)
 }
-
-/**
- * Layer that provides a `ChildProcessSpawner` running commands through the
- * context's `Ssh` service.
- *
- * @stability experimental
- * @category layers
- * @since 4.0.0
- */
-export const layer: Layer.Layer<ChildProcessSpawner, never, Ssh.Ssh> = Layer.effect(
-  ChildProcessSpawner,
-  Effect.gen(function*() {
-    return make(yield* Ssh.Ssh)
-  })
-)

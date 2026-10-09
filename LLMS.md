@@ -378,10 +378,10 @@ Use the `effect/process` modules to define child processes and run them with `Ch
 
 ## Working with SSH
 
-Use the `effect/ssh` modules to connect to SSH servers. Write code against the backend-independent `Ssh` service, then choose a backend: `SshClient` is a dependency-free client built on `Socket` and the `Crypto` service, and `OpenSsh` drives the host's `ssh` executable so the user's OpenSSH configuration applies. `Sftp` exposes the remote file system (also as a `FileSystem`), and `SshChildProcessSpawner` runs `ChildProcess` commands remotely.
+Use the `effect/ssh` modules to connect to SSH servers. The `Ssh` service is a connection factory: provide a backend layer once, then open scoped connections with `ssh.connect({ host })` wherever and whenever your program needs them. `SshClient.layer` is a dependency-free client built on `Socket` and the `Crypto` service, and `OpenSsh.layer` drives the host's `ssh` executable so the user's OpenSSH configuration applies. `Sftp` exposes a connection's remote file system (also as a `FileSystem`), and `SshChildProcessSpawner` runs `ChildProcess` commands remotely.
 
-- **[Running commands and transferring files over SSH](./ai-docs/src/61_ssh/10_ssh-client.ts)**: This example connects with a private key and `known_hosts`, runs commands, uploads files over SFTP, and tunnels a port.
-- **[Using the system OpenSSH client](./ai-docs/src/61_ssh/20_openssh.ts)**: This example writes code against the backend-independent `Ssh` service and runs it with the host's `ssh` executable.
+- **[Deploying to several hosts over SSH](./ai-docs/src/61_ssh/10_ssh-client.ts)**: This example provides the built-in SSH client as a connection factory and opens one connection per host on demand.
+- **[Using the system OpenSSH client](./ai-docs/src/61_ssh/20_openssh.ts)**: This example opens connections through the backend-independent `Ssh` factory and runs them with the host's `ssh` executable.
 
 ## Building CLI applications
 

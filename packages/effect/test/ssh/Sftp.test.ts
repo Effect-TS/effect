@@ -122,16 +122,26 @@ layer(CryptoLive, { excludeTestServices: true })("Sftp", (it) => {
         assert.isFalse(server.stats.requests.includes("extended:limits@openssh.com"))
       }))
 
-    it.effect("provides a session through Sftp.layer", () =>
+    it.effect("opens a session on a connection from the Ssh factory", () =>
       Effect.gen(function*() {
         const server = SftpServer.make()
-        server.fs.writeFile("hello.txt", "from layer")
-        const client = yield* connectClient(server)
-        const content = yield* Effect.gen(function*() {
-          const sftp = yield* Sftp.Sftp
-          return text(yield* sftp.readFile("hello.txt"))
-        }).pipe(Effect.provide(Layer.provide(Sftp.layer, Layer.succeed(Ssh.Ssh, Ssh.fromClient(client)))))
-        assert.strictEqual(content, "from layer")
+        server.fs.writeFile("hello.txt", "from factory")
+        const key = yield* userKey
+        const { socket } = yield* TestServer.runServer({
+          hostKey: yield* hostKey,
+          publicKeys: [key.publicKey],
+          onSession: server.onSession
+        })
+        const ssh = yield* SshClient.makeConnector({
+          makeSocket: () => Effect.succeed(socket),
+          username: "tester",
+          auth: SshClient.publicKey(key),
+          verifyHostKey: SshClient.acceptAnyHostKey
+        })
+        const connection = yield* ssh.connect({ host: "test.local" })
+        assert.strictEqual(connection.backend, "effect")
+        const sftp = yield* Sftp.make(connection)
+        assert.strictEqual(text(yield* sftp.readFile("hello.txt")), "from factory")
       }))
 
     it.effect("reassembles responses split across many channel data chunks", () =>
@@ -662,15 +672,19 @@ layer(CryptoLive, { excludeTestServices: true })("Sftp", (it) => {
 })
 
 layer(CryptoLive, { excludeTestServices: true })("Sftp.fileSystem", (it) => {
-  it.effect("is provided by Sftp.layerFileSystem", () =>
+  it.effect("can back a userland FileSystem layer", () =>
     Effect.gen(function*() {
       const server = SftpServer.make()
       server.fs.writeFile("hello.txt", "hello")
       const client = yield* connectClient(server)
+      const RemoteFileSystem = Layer.effect(
+        FileSystem.FileSystem,
+        Effect.map(Sftp.make(Ssh.fromClient(client)), Sftp.fileSystem)
+      )
       const content = yield* Effect.gen(function*() {
         const fs = yield* FileSystem.FileSystem
         return yield* fs.readFileString("hello.txt")
-      }).pipe(Effect.provide(Layer.provide(Sftp.layerFileSystem, Layer.succeed(Ssh.Ssh, Ssh.fromClient(client)))))
+      }).pipe(Effect.provide(RemoteFileSystem))
       assert.strictEqual(content, "hello")
     }))
 

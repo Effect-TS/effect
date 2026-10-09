@@ -363,13 +363,14 @@ const connect = (options: Partial<SshClient.ConnectOptions> = {}) =>
     })
   })
 
-const ClientLayer = Layer.effect(SshClient.SshClient, Effect.suspend(() => connect()))
-const SshLayer = Layer.effect(
-  Ssh.Ssh,
-  Effect.gen(function*() {
-    return Ssh.fromClient(yield* SshClient.SshClient)
-  })
-).pipe(Layer.provide(ClientLayer))
+/** A backend-independent connection through the built-in client. */
+const clientConnection = Effect.suspend(() => connect()).pipe(Effect.map(Ssh.fromClient))
+
+/** Userland layers that run `FileSystem` / `ChildProcess` code over a connection. */
+const remoteFileSystem = <E, R>(connection: Effect.Effect<Ssh.SshConnection, E, R>) =>
+  Layer.effect(FileSystem.FileSystem, Effect.flatMap(connection, (c) => Effect.map(Sftp.make(c), Sftp.fileSystem)))
+const remoteSpawner = <E, R>(connection: Effect.Effect<Ssh.SshConnection, E, R>) =>
+  Layer.effect(ChildProcessSpawner, Effect.map(connection, SshChildProcessSpawner.make))
 
 const failure = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.flatMap(Effect.exit(effect), (exit) => {
@@ -1163,7 +1164,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
         assert.deepStrictEqual(contents, Array.from({ length: 50 }, (_, i) => String(i)))
       }))
 
-    it.live("Sftp.layerFileSystem implements FileSystem", () =>
+    it.live("Sftp.fileSystem implements FileSystem", () =>
       Effect.gen(function*() {
         const fs = yield* FileSystem.FileSystem
         const root = tmpPath("fs")
@@ -1263,11 +1264,11 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
         yield* fs.remove(root, { recursive: true })
         assert.isFalse(Fs.existsSync(root))
         yield* fs.remove(root, { force: true })
-      }).pipe(Effect.provide(Sftp.layerFileSystem.pipe(Layer.provide(SshLayer)))))
+      }).pipe(Effect.provide(remoteFileSystem(clientConnection))))
   })
 
   describe("SshChildProcessSpawner", () => {
-    const SpawnerLayer = SshChildProcessSpawner.layer.pipe(Layer.provide(SshLayer))
+    const SpawnerLayer = remoteSpawner(clientConnection)
 
     it.live("runs commands and collects output", () =>
       Effect.gen(function*() {
@@ -1472,13 +1473,53 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
       }))
   })
 
+  describe("SshClient connection factory", () => {
+    const FactoryLayer = Layer.unwrap(Effect.gen(function*() {
+      const { userKeys, username, knownHosts } = getFixture()
+      const verifier = (yield* SshKnownHosts.make(knownHosts)).verifier
+      return SshClient.layer({
+        makeSocket: ({ host, port }) => NodeSocket.makeNet({ host, port }),
+        username,
+        port: getFixture().port,
+        auth: SshClient.publicKey(userKeys["ed25519"]),
+        verifyHostKey: verifier
+      })
+    })).pipe(Layer.provide(EffectNodeCrypto.layer))
+
+    it.live("opens independent connections on demand", () =>
+      Effect.gen(function*() {
+        const ssh = yield* Ssh.Ssh
+        const outputs = yield* Effect.forEach(
+          ["first", "second", "third"],
+          (name) =>
+            Effect.scoped(Effect.gen(function*() {
+              const connection = yield* ssh.connect({ host: "127.0.0.1" })
+              assert.strictEqual(connection.backend, "effect")
+              return (yield* connection.run(`echo ${name}`)).stdout.trim()
+            })),
+          { concurrency: "unbounded" }
+        )
+        assert.deepStrictEqual(outputs, ["first", "second", "third"])
+      }).pipe(Effect.provide(FactoryLayer)))
+
+    it.live("lets the destination override the port", () =>
+      Effect.gen(function*() {
+        const ssh = yield* Ssh.Ssh
+        const error = yield* Effect.flip(
+          Effect.scoped(ssh.connect({ host: "127.0.0.1", port: 1 }))
+        )
+        assert.strictEqual(error.reason._tag, "SshConnectionError")
+        const connection = yield* ssh.connect({ host: "127.0.0.1", port: getFixture().port })
+        assert.strictEqual((yield* connection.run("echo ok")).stdout, "ok\n")
+      }).pipe(Effect.provide(FactoryLayer)))
+  })
+
   describe.skipIf(bin.ssh === undefined)("OpenSsh backend", () => {
     const openSshOptions = (overrides: Partial<OpenSsh.Options> = {}): OpenSsh.Options => {
       const { dir, knownHosts, port } = getFixture()
       const knownHostsFile = Path.join(dir, "openssh_known_hosts")
       if (!Fs.existsSync(knownHostsFile)) Fs.writeFileSync(knownHostsFile, knownHosts)
       return {
-        host: "127.0.0.1",
         port,
         identityFile: Path.join(dir, "user_ed25519"),
         executable: bin.ssh!,
@@ -1496,6 +1537,8 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
       Layer.unwrap(Effect.sync(() => OpenSsh.layer(openSshOptions(overrides)))).pipe(
         Layer.provide(NodeServices.layer)
       )
+    /** Opens a connection to the fixture sshd through the `Ssh` factory. */
+    const openSshConnection = Effect.flatMap(Ssh.Ssh, (ssh) => ssh.connect({ host: "127.0.0.1" }))
 
     for (const multiplex of [true, false]) {
       describe(multiplex ? "multiplexed" : "without multiplexing", () => {
@@ -1503,7 +1546,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
 
         it.live("runs commands", () =>
           Effect.gen(function*() {
-            const ssh = yield* Ssh.Ssh
+            const ssh = yield* openSshConnection
             assert.strictEqual(ssh.backend, "openssh")
             assert.isFalse(ssh.capabilities.signals)
             assert.deepStrictEqual(yield* ssh.run(sh("echo out; echo err >&2; exit 3")), {
@@ -1516,7 +1559,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
 
         it.live("passes environment variables and allocates terminals", () =>
           Effect.gen(function*() {
-            const ssh = yield* Ssh.Ssh
+            const ssh = yield* openSshConnection
             const env = yield* ssh.run(sh("echo \"[$EFFECT_A] [$EFFECT_B]\""), {
               env: { EFFECT_A: "plain", EFFECT_B: `with "quotes" and \\ backslash` }
             })
@@ -1527,7 +1570,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
 
         it.live("runs many sessions concurrently", () =>
           Effect.gen(function*() {
-            const ssh = yield* Ssh.Ssh
+            const ssh = yield* openSshConnection
             const results = yield* Effect.forEach(
               Array.from({ length: 12 }, (_, i) => i),
               (i) => Effect.map(ssh.run(`echo ${i}`), (result) => result.stdout.trim()),
@@ -1553,7 +1596,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
             assert.strictEqual(yield* fs.readFileString(`${dir}/a/renamed.txt`), "note")
             yield* fs.remove(dir, { recursive: true })
             assert.isFalse(yield* fs.exists(dir))
-          }).pipe(Effect.provide(Sftp.layerFileSystem.pipe(Layer.provide(layer)))))
+          }).pipe(Effect.provide(remoteFileSystem(openSshConnection).pipe(Layer.provide(layer)))))
 
         it.live("runs ChildProcess commands remotely", () =>
           Effect.gen(function*() {
@@ -1583,7 +1626,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
               "a\nb\n"
             )
             assert.strictEqual(yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "exit 9"])), 9)
-          }).pipe(Effect.provide(SshChildProcessSpawner.layer.pipe(Layer.provide(layer)))))
+          }).pipe(Effect.provide(remoteSpawner(openSshConnection).pipe(Layer.provide(layer)))))
 
         it.live("kills remote commands by process id", () =>
           Effect.gen(function*() {
@@ -1600,11 +1643,11 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
             assert.isBelow(Date.now() - started, 5_000)
             const killed = yield* Effect.flip(stubborn.exitCode)
             assert.include(killed.message, "SIGKILL")
-          }).pipe(Effect.scoped, Effect.provide(SshChildProcessSpawner.layer.pipe(Layer.provide(layer)))))
+          }).pipe(Effect.scoped, Effect.provide(remoteSpawner(openSshConnection).pipe(Layer.provide(layer)))))
 
         it.live("forwards TCP connections and Unix sockets", () =>
           Effect.gen(function*() {
-            const ssh = yield* Ssh.Ssh
+            const ssh = yield* openSshConnection
             const server = Net.createServer((connection) => connection.pipe(connection))
             yield* Effect.acquireRelease(
               Effect.promise(() => new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))),
@@ -1636,7 +1679,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
         const keyFile = tmpPath("unauthorized")
         yield* Effect.promise(() => run(bin.sshKeygen!, ["-q", "-N", "", "-t", "ed25519", "-f", keyFile]))
         const error = yield* Effect.flip(
-          Layer.build(OpenSshLayer({ identityFile: keyFile, connectTimeout: "10 seconds" }))
+          openSshConnection.pipe(Effect.provide(OpenSshLayer({ identityFile: keyFile, connectTimeout: "10 seconds" })))
         )
         assert.strictEqual(error._tag, "SshError")
         if (error._tag === "SshError") {
@@ -1650,11 +1693,11 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
         const knownHostsFile = tmpPath("empty_known_hosts")
         Fs.writeFileSync(knownHostsFile, "")
         const options = openSshOptions()
-        const error = yield* Effect.flip(Layer.build(
+        const error = yield* Effect.flip(openSshConnection.pipe(Effect.provide(
           OpenSsh.layer({ ...options, options: { ...options.options, UserKnownHostsFile: knownHostsFile } }).pipe(
             Layer.provide(NodeServices.layer)
           )
-        ))
+        )))
         assert.strictEqual(error._tag, "SshError")
         if (error._tag === "SshError") assert.strictEqual(error.reason._tag, "SshConnectionError")
       }).pipe(Effect.scoped))

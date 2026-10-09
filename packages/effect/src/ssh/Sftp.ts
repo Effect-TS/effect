@@ -8,21 +8,41 @@
  * `hardlink@openssh.com`, `fsync@openssh.com`, `limits@openssh.com`,
  * `copy-data`).
  *
- * `fileSystem` and `layerFileSystem` expose the remote file system as an
- * Effect `FileSystem`, so code written against `FileSystem` can operate on a
- * remote host.
+ * `fileSystem` exposes a session as an Effect `FileSystem`, so code written
+ * against `FileSystem` can operate on a remote host.
+ *
+ * **Example** (Using a remote file system)
+ *
+ * ```ts skip-type-checking
+ * import { Effect, FileSystem, Layer } from "effect"
+ * import { Sftp, Ssh } from "effect/ssh"
+ *
+ * const program = Effect.gen(function*() {
+ *   const ssh = yield* Ssh.Ssh
+ *   const connection = yield* ssh.connect({ host: "files.example.com" })
+ *   const fs = Sftp.fileSystem(yield* Sftp.make(connection))
+ *   yield* fs.writeFileString("/srv/app/VERSION", "1.2.3")
+ * }).pipe(Effect.scoped)
+ *
+ * // Or run existing `FileSystem` code against a remote host:
+ * const RemoteFileSystem = Layer.effect(
+ *   FileSystem.FileSystem,
+ *   Effect.gen(function*() {
+ *     const connection = yield* (yield* Ssh.Ssh).connect({ host: "files.example.com" })
+ *     return Sftp.fileSystem(yield* Sftp.make(connection))
+ *   })
+ * )
+ * ```
  *
  * @stability experimental
  * @since 4.0.0
  */
 import * as ByteSize from "../ByteSize.ts"
 import * as Cause from "../Cause.ts"
-import * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FileSystem from "../FileSystem.ts"
-import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PlatformError from "../PlatformError.ts"
 import * as Queue from "../Queue.ts"
@@ -32,7 +52,7 @@ import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
 import * as Glob from "./internal/glob.ts"
 import { concat, Reader, WireError, Writer } from "./internal/wire.ts"
-import * as Ssh from "./Ssh.ts"
+import type * as Ssh from "./Ssh.ts"
 import { SshChannelError, SshError, SshProtocolError, SshSftpError } from "./SshError.ts"
 
 const FXP_INIT = 1
@@ -150,7 +170,7 @@ export interface SftpFile {
 }
 
 /**
- * Service for an SFTP session.
+ * An SFTP session opened with `make`, which closes with its scope.
  *
  * **Details**
  *
@@ -160,10 +180,10 @@ export interface SftpFile {
  * which requires `posix-rename@openssh.com`.
  *
  * @stability experimental
- * @category services
+ * @category models
  * @since 4.0.0
  */
-export class Sftp extends Context.Service<Sftp, {
+export interface Sftp {
   readonly version: number
   readonly extensions: ReadonlyMap<string, string>
   readonly maxReadLength: number
@@ -213,7 +233,7 @@ export class Sftp extends Context.Service<Sftp, {
     }
   ) => Stream.Stream<Uint8Array, SshError>
   readonly extended: (request: string, data?: Uint8Array) => Effect.Effect<Uint8Array, SshError>
-}>()("effect/ssh/Sftp") {}
+}
 
 const statusMessages: Record<number, string> = {
   0: "OK",
@@ -325,7 +345,7 @@ const PIPELINE = 32
  */
 export const fromChannel = Effect.fnUntraced(function*(
   channel: Ssh.SshStream
-): Effect.fn.Return<Sftp["Service"], SshError, Scope.Scope> {
+): Effect.fn.Return<Sftp, SshError, Scope.Scope> {
   const pending = new Map<number, Deferred.Deferred<Response, SshError>>()
   const versionReply = Deferred.makeUnsafe<Response, SshError>()
   let nextId = 0
@@ -609,7 +629,7 @@ export const fromChannel = Effect.fnUntraced(function*(
             : Effect.fail(protocolError("empty readlink response")))
     )
 
-  const open: Sftp["Service"]["open"] = (path, options) =>
+  const open: Sftp["open"] = (path, options) =>
     Effect.map(
       openHandle(
         path,
@@ -664,7 +684,7 @@ export const fromChannel = Effect.fnUntraced(function*(
       return concat(chunks)
     }))
 
-  const writeFile: Sftp["Service"]["writeFile"] = (path, data, options) =>
+  const writeFile: Sftp["writeFile"] = (path, data, options) =>
     Effect.scoped(Effect.gen(function*() {
       const flag = options?.flag ?? "w"
       const handle = yield* openHandle(
@@ -709,7 +729,7 @@ export const fromChannel = Effect.fnUntraced(function*(
       }
     }))
 
-  const stream: Sftp["Service"]["stream"] = (path, options) =>
+  const stream: Sftp["stream"] = (path, options) =>
     Stream.unwrap(Effect.gen(function*() {
       const scope = yield* Effect.scope
       const handle = yield* openHandle(path, FXF_READ, undefined)
@@ -741,7 +761,7 @@ export const fromChannel = Effect.fnUntraced(function*(
       return Stream.fromPull(Effect.succeed(pull))
     }))
 
-  const rename: Sftp["Service"]["rename"] = (oldPath, newPath, options) => {
+  const rename: Sftp["rename"] = (oldPath, newPath, options) => {
     if (options?.overwrite === true) {
       if (!extensions.has("posix-rename@openssh.com")) {
         return unsupported("posix-rename@openssh.com", "rename", oldPath)
@@ -756,7 +776,7 @@ export const fromChannel = Effect.fnUntraced(function*(
     )
   }
 
-  return Sftp.of({
+  return {
     version: versionNumber,
     extensions,
     maxReadLength,
@@ -799,11 +819,11 @@ export const fromChannel = Effect.fnUntraced(function*(
     copyFile,
     stream,
     extended
-  })
+  }
 })
 
 /**
- * Opens an SFTP session on a new `sftp` subsystem channel.
+ * Opens an SFTP session on a new `sftp` subsystem of a connection.
  *
  * **Details**
  *
@@ -814,25 +834,11 @@ export const fromChannel = Effect.fnUntraced(function*(
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(
-  ssh: Ssh.Ssh["Service"]
-): Effect.fn.Return<Sftp["Service"], SshError, Scope.Scope> {
-  const channel = yield* ssh.subsystem("sftp")
+  connection: Ssh.SshConnection
+): Effect.fn.Return<Sftp, SshError, Scope.Scope> {
+  const channel = yield* connection.subsystem("sftp")
   return yield* fromChannel(channel)
 })
-
-/**
- * Layer that opens an SFTP session over the context's `Ssh` service.
- *
- * @stability experimental
- * @category layers
- * @since 4.0.0
- */
-export const layer: Layer.Layer<Sftp, SshError, Ssh.Ssh> = Layer.effect(
-  Sftp,
-  Effect.gen(function*() {
-    return yield* make(yield* Ssh.Ssh)
-  })
-)
 
 // -----------------------------------------------------------------------------
 // FileSystem
@@ -908,7 +914,7 @@ const dirname = (path: string) => {
  * @category file system
  * @since 4.0.0
  */
-export const fileSystem = (sftp: Sftp["Service"]): FileSystem.FileSystem => {
+export const fileSystem = (sftp: Sftp): FileSystem.FileSystem => {
   const toPlatformError = (method: string, path?: string) => (error: SshError): PlatformError.PlatformError => {
     const reason = error.reason
     if (reason._tag === "SshSftpError") {
@@ -1314,18 +1320,3 @@ export const fileSystem = (sftp: Sftp["Service"]): FileSystem.FileSystem => {
       ))
   })
 }
-
-/**
- * Layer that provides a `FileSystem` backed by an SFTP session over the
- * context's `Ssh` service.
- *
- * @stability experimental
- * @category layers
- * @since 4.0.0
- */
-export const layerFileSystem: Layer.Layer<FileSystem.FileSystem, SshError, Ssh.Ssh> = Layer.effect(
-  FileSystem.FileSystem,
-  Effect.gen(function*() {
-    return fileSystem(yield* make(yield* Ssh.Ssh))
-  })
-)

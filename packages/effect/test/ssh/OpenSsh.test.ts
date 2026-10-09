@@ -111,7 +111,7 @@ const provide = (fake: ReturnType<typeof makeFakeSsh>) =>
 
 const lastArgs = (fake: ReturnType<typeof makeFakeSsh>) => fake.invocations[fake.invocations.length - 1].args
 
-const baseOptions: OpenSsh.Options = {
+const baseOptions: OpenSsh.Options & { readonly host: string } = {
   host: "example.com",
   user: "deploy",
   port: 2222,
@@ -120,11 +120,15 @@ const baseOptions: OpenSsh.Options = {
   args: ["-F", "/etc/ssh/custom"]
 }
 
+/** Opens a connection through the factory, splitting the host from the defaults. */
+const openConnection = ({ host, ...defaults }: OpenSsh.Options & { readonly host: string }) =>
+  Effect.flatMap(OpenSsh.make(defaults), (ssh) => ssh.connect({ host }))
+
 describe("OpenSsh", () => {
   it.effect("starts a shared master connection", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh()
-      yield* OpenSsh.make(baseOptions).pipe(provide(fake))
+      yield* openConnection(baseOptions).pipe(provide(fake))
       const [master, check] = fake.invocations
       assert.deepStrictEqual(master.args, [
         "-o",
@@ -159,7 +163,7 @@ describe("OpenSsh", () => {
   it.effect("runs commands over the shared connection", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh()
-      const ssh = yield* OpenSsh.make(baseOptions).pipe(provide(fake))
+      const ssh = yield* openConnection(baseOptions).pipe(provide(fake))
       assert.strictEqual(ssh.backend, "openssh")
       assert.deepStrictEqual(ssh.capabilities, { signals: false, exitSignals: false })
       const result = yield* ssh.run("echo hello").pipe(provide(fake))
@@ -175,17 +179,32 @@ describe("OpenSsh", () => {
       assert.deepStrictEqual((yield* ssh.run("exit 7")).exit, { _tag: "ExitStatus", code: 7 })
     }))
 
+  it.effect("opens one master per connection with per-destination overrides", () =>
+    Effect.gen(function*() {
+      const fake = makeFakeSsh()
+      const ssh = yield* OpenSsh.make({ user: "deploy", port: 2222 }).pipe(provide(fake))
+      yield* ssh.connect({ host: "web1" })
+      yield* ssh.connect({ host: "web2", port: 2200, username: "admin" })
+      const masters = fake.invocations.filter((invocation) => invocation.args.includes("ControlMaster=yes"))
+      assert.strictEqual(masters.length, 2)
+      const [first, second] = masters.map((master) => master.args.join(" "))
+      assert.include(first, "-p 2222 -l deploy")
+      assert.isTrue(first.endsWith("web1"))
+      assert.include(second, "-p 2200 -l admin")
+      assert.isTrue(second.endsWith("web2"))
+    }).pipe(Effect.scoped))
+
   it.effect("streams standard input", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh()
-      const ssh = yield* OpenSsh.make({ host: "h" }).pipe(provide(fake))
+      const ssh = yield* openConnection({ host: "h" }).pipe(provide(fake))
       assert.strictEqual((yield* ssh.run("cat", { stdin: "via stdin" })).stdout, "via stdin")
     }))
 
   it.effect("maps terminal, agent, and environment options", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh()
-      const ssh = yield* OpenSsh.make({ host: "h" }).pipe(provide(fake))
+      const ssh = yield* openConnection({ host: "h" }).pipe(provide(fake))
       yield* ssh.run("echo tty", { pty: { term: "vt100" }, forwardAgent: true })
       assert.isTrue(lastArgs(fake).includes("-tt"))
       assert.isTrue(lastArgs(fake).includes("-A"))
@@ -201,7 +220,7 @@ describe("OpenSsh", () => {
   it.effect("starts subsystems and tunnels", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh()
-      const ssh = yield* OpenSsh.make({ host: "h" }).pipe(provide(fake))
+      const ssh = yield* openConnection({ host: "h" }).pipe(provide(fake))
       yield* Effect.scoped(ssh.subsystem("sftp"))
       assert.deepStrictEqual(lastArgs(fake).slice(-4), ["-T", "-s", "h", "sftp"])
       yield* Effect.scoped(ssh.forwardOut({ host: "db", port: 5432 }))
@@ -213,7 +232,7 @@ describe("OpenSsh", () => {
   it.effect("cannot deliver signals", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh()
-      const ssh = yield* OpenSsh.make({ host: "h" }).pipe(provide(fake))
+      const ssh = yield* openConnection({ host: "h" }).pipe(provide(fake))
       const process = yield* ssh.exec("echo x")
       const error = yield* Effect.flip(process.signal("SIGTERM"))
       assert.strictEqual(error.reason._tag, "SshChannelError")
@@ -222,7 +241,7 @@ describe("OpenSsh", () => {
   it.effect("skips the master connection without multiplexing", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh()
-      const ssh = yield* OpenSsh.make({ host: "h", multiplex: false, batchMode: false }).pipe(provide(fake))
+      const ssh = yield* openConnection({ host: "h", multiplex: false, batchMode: false }).pipe(provide(fake))
       yield* ssh.run("echo x")
       assert.strictEqual(fake.invocations.length, 1)
       assert.isFalse(lastArgs(fake).some((arg) => arg.startsWith("ControlPath=")))
@@ -232,7 +251,7 @@ describe("OpenSsh", () => {
   it.effect("reports master failures with ssh diagnostics", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh({ masterFails: "deploy@example.com: Permission denied (publickey)." })
-      const error = yield* Effect.flip(OpenSsh.make(baseOptions).pipe(provide(fake)))
+      const error = yield* Effect.flip(openConnection(baseOptions).pipe(provide(fake)))
       assert.strictEqual(error.reason._tag, "SshConnectionError")
       assert.include(String((error.reason as { readonly cause: unknown }).cause), "Permission denied")
     }))
@@ -241,7 +260,7 @@ describe("OpenSsh", () => {
     Effect.gen(function*() {
       const fake = makeFakeSsh({ neverReady: true })
       const error = yield* Effect.flip(
-        OpenSsh.make({ host: "h", connectTimeout: Duration.millis(100) }).pipe(provide(fake))
+        openConnection({ host: "h", connectTimeout: Duration.millis(100) }).pipe(provide(fake))
       )
       assert.strictEqual(error.reason._tag, "SshTimeoutError")
     }))
@@ -249,7 +268,7 @@ describe("OpenSsh", () => {
   it.effect("lets the remote spawner signal remote process ids", () =>
     Effect.gen(function*() {
       const fake = makeFakeSsh({ remotePid: 31337 })
-      const ssh = yield* OpenSsh.make({ host: "h" }).pipe(provide(fake))
+      const ssh = yield* openConnection({ host: "h" }).pipe(provide(fake))
       const spawner = SshChildProcessSpawner.make(ssh)
       const handle = yield* spawner.spawn(ChildProcess.make("sleep", ["30"], { cwd: "/srv" }))
       assert.strictEqual(handle.pid, 31337)

@@ -1,7 +1,7 @@
 /**
- * @title Running commands and transferring files over SSH
+ * @title Deploying to several hosts over SSH
  *
- * This example connects with a private key and `known_hosts`, runs commands, uploads files over SFTP, and tunnels a port.
+ * This example provides the built-in SSH client as a connection factory and opens one connection per host on demand.
  */
 import { NodeServices, NodeSocket } from "@effect/platform-node"
 import { Config, Context, Effect, FileSystem, Layer, Schema } from "effect"
@@ -12,15 +12,13 @@ export class DeployError extends Schema.TaggedError<DeployError>()("DeployError"
   cause: Schema.Defect()
 }) {}
 
-// The SSH connection is provided as a layer. The transport is any
-// `Socket.Socket`; here it is a TCP connection from `@effect/platform-node`.
+// `SshClient.layer` provides the `Ssh` service, a connection factory. It does
+// not connect: connections are opened later with `ssh.connect`, by the code
+// that needs them, and close with that code's scope.
 export const SshLive = Layer.unwrap(Effect.gen(function*() {
-  const host = yield* Config.String("DEPLOY_HOST")
   const fs = yield* FileSystem.FileSystem
-
-  // `SshKeys` and `SshKnownHosts` are services that capture the `Crypto`
-  // service (provided by `NodeServices.layer`) once, so their operations have
-  // no further requirements.
+  // `SshKeys` and `SshKnownHosts` capture the `Crypto` service (provided by
+  // `NodeServices.layer`) once, so their operations need nothing else.
   const keys = yield* SshKey.SshKeys
   const knownHosts = yield* SshKnownHosts.SshKnownHosts
 
@@ -28,72 +26,89 @@ export const SshLive = Layer.unwrap(Effect.gen(function*() {
   // SSH agent and use `SshClient.agent(...)` instead.
   const key = yield* keys.parsePrivateKey(yield* fs.readFileString("/home/deploy/.ssh/id_ed25519"))
 
+  // These settings apply to every connection the factory opens.
   return SshClient.layer({
-    host,
+    // The transport is any `Socket.Socket`; here a TCP connection.
+    makeSocket: ({ host, port }) => NodeSocket.makeNet({ host, port }),
     username: "deploy",
     auth: SshClient.publicKey(key),
-    // `verifyHostKey` is required. The known hosts verifier checks the
-    // server's key against an OpenSSH `known_hosts` file and rejects changed
-    // keys.
+    // Host keys are checked against an OpenSSH `known_hosts` file; changed or
+    // unknown keys are rejected.
     verifyHostKey: knownHosts.verifier,
     // Detect dead connections instead of hanging forever.
     keepAlive: { interval: "30 seconds" }
-  }).pipe(Layer.provide(NodeSocket.layerNet({ host, port: 22 })))
+  })
 })).pipe(
   Layer.provide([SshKey.layer, SshKnownHosts.layerFromFile("/home/deploy/.ssh/known_hosts")]),
   Layer.provide(NodeServices.layer)
 )
 
 export class Deployer extends Context.Service<Deployer, {
-  release(version: string, artifact: Uint8Array): Effect.Effect<string, DeployError>
+  release(hosts: ReadonlyArray<string>, version: string, artifact: Uint8Array): Effect.Effect<void, DeployError>
 }>()("docs/Deployer") {
   static readonly layer = Layer.effect(
     Deployer,
     Effect.gen(function*() {
-      // `SshClient.layer` provides both `SshClient` and the backend-independent
-      // `Ssh` service. SFTP and the remote spawner only need `Ssh`.
-      const client = yield* SshClient.SshClient
+      // Read the factory once; `connect` has no further requirements.
       const ssh = yield* Ssh.Ssh
 
-      // `Sftp.fileSystem` turns an SFTP session into a regular `FileSystem`,
-      // so existing file system code works against the remote host.
-      const remoteFs = Sftp.fileSystem(yield* Sftp.make(ssh))
+      const releaseOn = Effect.fn("Deployer.releaseOn")(
+        function*(host: string, version: string, artifact: Uint8Array) {
+          // The connection lives until this effect's scope closes.
+          const connection = yield* ssh.connect({ host })
 
-      // `SshChildProcessSpawner` runs `ChildProcess` commands remotely.
-      // Arguments are quoted for the remote shell.
-      const remote = SshChildProcessSpawner.make(ssh)
+          // `Sftp.fileSystem` turns an SFTP session into a regular
+          // `FileSystem`, so existing file system code works against the
+          // remote host.
+          const remoteFs = Sftp.fileSystem(yield* Sftp.make(connection))
+          const directory = `/srv/app/releases/${version}`
+          yield* remoteFs.makeDirectory(directory, { recursive: true })
+          yield* remoteFs.writeFile(`${directory}/app.tar.gz`, artifact)
 
-      const release = Effect.fn("Deployer.release")(function*(version: string, artifact: Uint8Array) {
-        const directory = `/srv/app/releases/${version}`
-        yield* remoteFs.makeDirectory(directory, { recursive: true })
-        yield* remoteFs.writeFile(`${directory}/app.tar.gz`, artifact)
+          // `SshChildProcessSpawner` gives the `ChildProcess` API on the
+          // remote host; arguments are quoted for the remote shell.
+          const remote = SshChildProcessSpawner.make(connection)
+          yield* remote.exitCode(ChildProcess.make("tar", ["-xzf", `${directory}/app.tar.gz`, "-C", directory]))
+          yield* remote.exitCode(ChildProcess.make("ln", ["-sfn", directory, "/srv/app/current"]))
 
-        // Commands can also run through `client.run`, which collects stdout,
-        // stderr, and the exit status.
-        const unpack = yield* client.run(`tar -xzf app.tar.gz -C ${directory}`)
-        if (unpack.exit._tag !== "ExitStatus" || unpack.exit.code !== 0) {
-          return yield* new DeployError({ cause: unpack.stderr })
-        }
+          // `connection.run` collects stdout, stderr, and the exit status.
+          const restart = yield* connection.run("systemctl --user restart app")
+          if (restart.exit._tag !== "ExitStatus" || restart.exit.code !== 0) {
+            return yield* new DeployError({ cause: restart.stderr })
+          }
+        },
+        Effect.scoped,
+        Effect.mapError((cause) => cause instanceof DeployError ? cause : new DeployError({ cause }))
+      )
 
-        // Use the spawner when you want the `ChildProcess` API (pipes, cwd,
-        // env, streaming output).
-        yield* remote.string(ChildProcess.make("ln", ["-sfn", directory, "/srv/app/current"]))
-        return yield* remote.string(ChildProcess.make("systemctl", ["--user", "restart", "app"], { cwd: directory }))
-      }, Effect.mapError((cause) => cause instanceof DeployError ? cause : new DeployError({ cause })))
+      // One connection per host, opened concurrently and closed when that
+      // host is done.
+      const release = (hosts: ReadonlyArray<string>, version: string, artifact: Uint8Array) =>
+        Effect.forEach(hosts, (host) => releaseOn(host, version, artifact), { concurrency: 4, discard: true })
 
       return { release }
     })
   ).pipe(Layer.provide(SshLive))
 }
 
-// Port forwarding: open a channel to a database that is only reachable from
-// the server (like `ssh -L`). `forwardOutSocket` returns a `Socket.Socket`, so
-// any Effect protocol client that accepts a socket can use the tunnel.
+// Port forwarding: tunnel to a database that is only reachable from a bastion
+// host (like `ssh -L`). `forwardOutSocket` returns a `Socket.Socket`, so any
+// Effect protocol client that accepts a socket can use the tunnel while the
+// connection's scope is open.
 export const databaseTunnel = Effect.gen(function*() {
-  const client = yield* SshClient.SshClient
-  return client.forwardOutSocket({ host: "10.0.0.5", port: 5432 })
+  const ssh = yield* Ssh.Ssh
+  const bastion = yield* ssh.connect({ host: "bastion.example.com" })
+  return bastion.forwardOutSocket({ host: "10.0.0.5", port: 5432 })
 })
 
-// The remote spawner can also be provided as a layer, so code written against
-// `ChildProcessSpawner` runs on the server without changes.
-export const RemoteSpawnerLive = SshChildProcessSpawner.layer.pipe(Layer.provide(SshLive))
+// Hosts can also be chosen at runtime, for example from configuration.
+export const restartAll = Effect.gen(function*() {
+  const hosts = (yield* Config.String("DEPLOY_HOSTS")).split(",")
+  const ssh = yield* Ssh.Ssh
+  yield* Effect.forEach(
+    hosts,
+    (host) =>
+      Effect.scoped(Effect.flatMap(ssh.connect({ host }), (connection) => connection.run("systemctl restart app"))),
+    { concurrency: "unbounded", discard: true }
+  )
+}).pipe(Effect.provide(SshLive))
