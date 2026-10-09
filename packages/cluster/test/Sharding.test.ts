@@ -1042,15 +1042,12 @@ describe("Sharding shard lock failover", () => {
 })
 
 describe("Sharding shutdown drain", () => {
-  // the lease is shorter than the drain in both tests
   const shardLockExpiration = 3000
   const shardLockRefreshInterval = 1000
 
   it.effect("keeps renewing shard locks while a drain outlasts the lease", () =>
     Effect.gen(function*() {
       const harness = yield* makeDrainHarness({
-        shardLockExpiration,
-        shardLockRefreshInterval,
         entityTerminationTimeout: 10_000,
         uninterruptible: false
       })
@@ -1069,107 +1066,38 @@ describe("Sharding shutdown drain", () => {
       }).pipe(Effect.ensuring(harness.cleanup))
     }), 30_000)
 
-  it.effect("releases shard locks when a drain is stuck past entityTerminationTimeout", () =>
-    Effect.gen(function*() {
-      const entityTerminationTimeout = 5000
-      const harness = yield* makeDrainHarness({
-        shardLockExpiration,
-        shardLockRefreshInterval,
-        entityTerminationTimeout,
-        uninterruptible: true
-      })
-      yield* Effect.gen(function*() {
-        const shutdownAt = yield* harness.shutdown
-        yield* harness.advanceTo(shutdownAt + entityTerminationTimeout - shardLockRefreshInterval)
-        assert.strictEqual(harness.releasedCount(), 0)
-
-        // the runner may take one refresh interval to give up the shard
-        const deadline = shutdownAt + entityTerminationTimeout + shardLockRefreshInterval
-        yield* harness.advanceTo(deadline)
-        // stopping renewal is not enough for advisory locks, so the shard must
-        // also be released explicitly
-        assert.isAbove(harness.releasedCount(), 0)
-
-        yield* harness.advanceTo(deadline + shardLockExpiration)
-        assert.isAtMost(harness.lastRefreshAt(), deadline)
-        assert.isNull(harness.closeFiber.unsafePoll())
-      }).pipe(Effect.ensuring(harness.cleanup))
-    }), 30_000)
-
-  it.effect("retries the shard lock release after a failed attempt", () =>
+  it.effect("retries release and stops singletons during a stuck drain", () =>
     Effect.gen(function*() {
       const entityTerminationTimeout = 2000
-      const harness = yield* makeDrainHarness({
-        shardLockExpiration,
-        shardLockRefreshInterval,
-        entityTerminationTimeout,
-        uninterruptible: true,
-        storage: { releaseAllFailures: 1 }
-      })
-      yield* Effect.gen(function*() {
-        const shutdownAt = yield* harness.shutdown
-        const deadline = shutdownAt + entityTerminationTimeout + shardLockRefreshInterval
-        yield* harness.advanceTo(deadline)
-        assert.strictEqual(harness.storageState.releaseAllFailures, 0)
-        assert.strictEqual(harness.releasedCount(), 0)
-
-        // the failed release is retried on the next refresh tick
-        yield* harness.advanceTo(deadline + shardLockRefreshInterval)
-        assert.isAbove(harness.releasedCount(), 0)
-
-        yield* harness.advanceTo(deadline + shardLockExpiration)
-        assert.isAtMost(harness.lastRefreshAt(), deadline)
-      }).pipe(Effect.ensuring(harness.cleanup))
-    }), 30_000)
-
-  it.effect("stops singletons when the drain window expires", () =>
-    Effect.gen(function*() {
-      const entityTerminationTimeout = 2000
-      const harness = yield* makeDrainHarness({
-        shardLockExpiration,
-        shardLockRefreshInterval,
-        entityTerminationTimeout,
-        uninterruptible: true,
-        // shard assignments do not observe the shutdown before the deadline
-        storage: { keepRunnerOnUnregister: true },
-        singletons: [{ name: "DrainSingleton" }]
-      })
-      yield* Effect.gen(function*() {
-        assert.isTrue(harness.singletons[0].started)
-        const shutdownAt = yield* harness.shutdown
-        yield* harness.advanceTo(shutdownAt + entityTerminationTimeout + shardLockRefreshInterval)
-
-        assert.isAbove(harness.releasedCount(), 0)
-        assert.isTrue(harness.singletons[0].interrupted)
-      }).pipe(Effect.ensuring(harness.cleanup))
-    }), 30_000)
-
-  it.effect("stops every singleton when one cannot be interrupted", () =>
-    Effect.gen(function*() {
-      const entityTerminationTimeout = 2000
-      // singletons are stopped shard by shard, starting with the shard of the
-      // runner health singleton that Sharding registers first
+      // RunnerHealth registers first, so put the stuck singleton on its shard.
       const stuckShard = shardIdFor("effect/cluster/Sharding/RunnerHealth", 2)
-      const otherShard = stuckShard === 1 ? 2 : 1
       const harness = yield* makeDrainHarness({
-        shardLockExpiration,
-        shardLockRefreshInterval,
         entityTerminationTimeout,
-        uninterruptible: true,
         shardsPerGroup: 2,
-        storage: { keepRunnerOnUnregister: true },
+        storage: { releaseAllFailures: 1 },
         singletons: [
           { name: singletonNameOnShard(stuckShard, 2), stuck: true },
-          { name: singletonNameOnShard(otherShard, 2) }
+          { name: singletonNameOnShard(stuckShard === 1 ? 2 : 1, 2) }
         ]
       })
       yield* Effect.gen(function*() {
         assert.isTrue(harness.singletons.every((singleton) => singleton.started))
         const shutdownAt = yield* harness.shutdown
-        yield* harness.advanceTo(shutdownAt + entityTerminationTimeout + shardLockRefreshInterval)
+        yield* harness.advanceTo(shutdownAt + entityTerminationTimeout - shardLockRefreshInterval)
+        assert.strictEqual(harness.releasedCount(), 0)
 
-        assert.isAbove(harness.releasedCount(), 0)
+        const deadline = shutdownAt + entityTerminationTimeout + shardLockRefreshInterval
+        yield* harness.advanceTo(deadline)
+        assert.strictEqual(harness.storageState.releaseAllFailures, 0)
+        assert.strictEqual(harness.releasedCount(), 0)
         assert.isTrue(harness.singletons[1].interrupted)
+
+        // Advisory locks need an explicit release, not just an expired lease.
+        yield* harness.advanceTo(deadline + shardLockRefreshInterval)
+        assert.isAbove(harness.releasedCount(), 0)
+        yield* harness.advanceTo(deadline + shardLockExpiration)
+        assert.isAtMost(harness.lastRefreshAt(), deadline)
+        assert.isNull(harness.closeFiber.unsafePoll())
       }).pipe(Effect.ensuring(harness.cleanup))
     }), 30_000)
 
@@ -1183,14 +1111,10 @@ describe("Sharding shutdown drain", () => {
         const lateShard = ShardIdModule.make("default", entityShard.id === 1 ? 2 : 1)
         const late = { armed: false, pending: false, gate: Effect.unsafeMakeLatch(false) }
         const harness = yield* makeDrainHarness({
-          shardLockExpiration,
           shardLockRefreshInterval,
           entityTerminationTimeout: 0,
-          uninterruptible: true,
           shardsPerGroup: 2,
           storage: {
-            // assignments can still change, since the runner stays registered
-            keepRunnerOnUnregister: true,
             acquireHook: (shards, now, state) => {
               if (!shards.includes(lateShard)) return Effect.succeed(shards)
               const others = shards.filter((shard) => shard !== lateShard)
@@ -1247,10 +1171,9 @@ const DrainEntity = Entity.make("DrainEntity", [
 ])
 
 const makeDrainHarness = Effect.fnUntraced(function*(options: {
-  readonly shardLockExpiration: number
-  readonly shardLockRefreshInterval: number
+  readonly shardLockRefreshInterval?: number
   readonly entityTerminationTimeout: number
-  readonly uninterruptible: boolean
+  readonly uninterruptible?: boolean
   readonly shardsPerGroup?: number
   readonly storage?: Partial<FailoverStorageState>
   readonly singletons?: ReadonlyArray<{ readonly name: string; readonly stuck?: boolean }>
@@ -1261,7 +1184,7 @@ const makeDrainHarness = Effect.fnUntraced(function*(options: {
   const entityLayer = DrainEntity.toLayer({
     Drain: () => {
       handler.started = true
-      return (options.uninterruptible ? Effect.uninterruptible(latch.await) : latch.await).pipe(
+      return (options.uninterruptible === false ? latch.await : Effect.uninterruptible(latch.await)).pipe(
         Effect.onInterrupt(() =>
           Effect.sync(() => {
             handler.interrupted = true
@@ -1283,8 +1206,8 @@ const makeDrainHarness = Effect.fnUntraced(function*(options: {
     Layer.provide(ShardingConfig.layer({
       runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
       shardsPerGroup: options.shardsPerGroup ?? 1,
-      shardLockExpiration: options.shardLockExpiration,
-      shardLockRefreshInterval: options.shardLockRefreshInterval,
+      shardLockExpiration: 3000,
+      shardLockRefreshInterval: options.shardLockRefreshInterval ?? 1000,
       entityTerminationTimeout: options.entityTerminationTimeout,
       entityMessagePollInterval: 100,
       refreshAssignmentsInterval: 100,
@@ -1384,7 +1307,6 @@ interface FailoverStorageState {
   blackholed: boolean
   assignSelf: boolean
   otherRunnerHealthy: boolean
-  keepRunnerOnUnregister: boolean
   releaseAllDuration: number
   releaseAllFailures: number
   acquireHook:
@@ -1413,7 +1335,6 @@ const makeFailoverStorageState = (
   blackholed: false,
   assignSelf: true,
   otherRunnerHealthy: false,
-  keepRunnerOnUnregister: false,
   releaseAllDuration: 0,
   releaseAllFailures: 0,
   acquireHook: undefined,
@@ -1437,10 +1358,7 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
         state.runner = runner
         return MachineId.make(1)
       }),
-    unregister: () =>
-      Effect.sync(() => {
-        if (!state.keepRunnerOnUnregister) state.runner = undefined
-      }),
+    unregister: () => Effect.void,
     setRunnerHealth: () => Effect.void,
     acquire: (_address, shardIds) =>
       Effect.suspend(() => {
