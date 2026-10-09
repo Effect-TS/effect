@@ -695,22 +695,23 @@ describe.concurrent("Sharding", () => {
       assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(1))
     }).pipe(Effect.provide(TestShardingWithFailingStreamReply)))
 
-  it.effect("interrupts non-persisted streams on shutdown without waiting for entityTerminationTimeout", () =>
+  it.effect("drains finite non-persisted streams on shutdown within entityTerminationTimeout", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
       const context = yield* Layer.buildWithScope(TestShardingWithTerminationTimeout, scope)
       yield* TestClock.adjust(1)
       const makeClient = yield* Effect.provide(TestEntity.client, context)
 
-      const fiber = yield* makeClient("1").NeverStreamVolatile().pipe(Stream.runDrain, Effect.fork)
+      const fiber = yield* makeClient("1").FiniteStreamVolatile().pipe(Stream.runCollect, Effect.fork)
       yield* TestClock.adjust(1)
 
       const closeFiber = yield* Effect.fork(Scope.close(scope, Exit.void))
-      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(1000)
 
       assert.isNotNull(closeFiber.unsafePoll())
       const exit = fiber.unsafePoll()
-      assert(exit && Exit.isInterrupted(exit))
+      assert(exit && Exit.isSuccess(exit))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(exit.value), [0, 1])
     }))
 })
 
