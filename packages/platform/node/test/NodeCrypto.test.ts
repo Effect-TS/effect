@@ -194,8 +194,7 @@ it.effect("rejects invalid runtime OAEP hashes rather than falling back to SHA-1
       }))
       assert.strictEqual(error._tag, "PlatformError")
       assert.strictEqual(error.reason.method, "rsaOaepEncrypt")
-      assert.strictEqual(error.reason._tag, "Unknown")
-      if (error.reason._tag === "Unknown") assert.instanceOf(error.reason.cause, TypeError)
+      assert.strictEqual(error.reason._tag, "BadArgument")
     }
   }).pipe(Effect.provide(NodeCrypto.layer)))
 

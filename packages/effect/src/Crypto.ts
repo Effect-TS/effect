@@ -1272,7 +1272,11 @@ export const deriveSharedSecret = (
  *
  * The constructor derives random numbers, booleans, integer ranges, shuffling,
  * and UUID generation from `impl.randomBytes`. Cryptographic operations and
- * key management delegate to the supplied platform functions.
+ * key management delegate to the supplied platform functions after validating
+ * arguments that do not depend on the backend, such as derivation lengths and
+ * iteration counts, IV and counter lengths, HMAC key lengths, RSA modulus
+ * lengths, RSA-PSS salt lengths, and RSA-OAEP hashes. Invalid arguments fail
+ * with `PlatformError.BadArgument` without calling the platform function.
  *
  * **Gotchas**
  *
@@ -1429,7 +1433,11 @@ export const make = (
     nextIntUnsafe,
     digest: impl.digest,
     hmac: impl.hmac,
-    importJwk: impl.importJwk,
+    importJwk: (jwk, algorithm, options) =>
+      Effect.flatMap(
+        validateKeyAlgorithm("importJwk", algorithm, false),
+        () => impl.importJwk(jwk, algorithm, options)
+      ),
     exportJwk: impl.exportJwk,
     hkdf: (algorithm, key, salt, info, length) => {
       if (!Number.isSafeInteger(length) || length <= 0 || length > 255 * hashLengths[algorithm]) {
@@ -1470,15 +1478,34 @@ export const make = (
         validateXChaCha("xchacha20poly1305Decrypt", options),
         () => impl.xchacha20poly1305Decrypt(options)
       ),
-    rsaOaepEncrypt: impl.rsaOaepEncrypt,
-    generateSecretKey: impl.generateSecretKey,
-    generateKeyPair: impl.generateKeyPair,
-    importKey: impl.importKey,
+    rsaOaepEncrypt: (options) =>
+      // A runtime value outside the type must not fall back to a default hash.
+      options.hash === undefined || ["SHA-1", "SHA-256", "SHA-384", "SHA-512"].includes(options.hash)
+        ? impl.rsaOaepEncrypt(options)
+        : failArgument("rsaOaepEncrypt", "RSA-OAEP hash must be SHA-1, SHA-256, SHA-384, or SHA-512"),
+    generateSecretKey: (algorithm, options) =>
+      Effect.flatMap(
+        validateKeyAlgorithm("generateSecretKey", algorithm, true),
+        () => impl.generateSecretKey(algorithm, options)
+      ),
+    generateKeyPair: (algorithm, options) =>
+      Effect.flatMap(
+        validateKeyAlgorithm("generateKeyPair", algorithm, true),
+        () => impl.generateKeyPair(algorithm, options)
+      ),
+    importKey: (format, data, algorithm, options) =>
+      Effect.flatMap(
+        validateKeyAlgorithm("importKey", algorithm, false),
+        () => impl.importKey(format, data, algorithm, options)
+      ),
     exportKey: impl.exportKey,
-    encrypt: impl.encrypt,
-    decrypt: impl.decrypt,
-    sign: impl.sign,
-    verify: impl.verify,
+    encrypt: (options, key, data) =>
+      Effect.flatMap(validateCipher("encrypt", options), () => impl.encrypt(options, key, data)),
+    decrypt: (options, key, data) =>
+      Effect.flatMap(validateCipher("decrypt", options), () => impl.decrypt(options, key, data)),
+    sign: (options, key, data) => Effect.flatMap(validateSigning("sign", options), () => impl.sign(options, key, data)),
+    verify: (options, key, signature, data) =>
+      Effect.flatMap(validateSigning("verify", options), () => impl.verify(options, key, signature, data)),
     deriveSharedSecret: (privateKey, publicKey) => {
       const algorithm = privateKey.algorithm
       if (
@@ -1578,6 +1605,62 @@ const validateXChaCha = (
       })
     )
 
+const failArgument = (method: string, description: string): Effect.Effect<never, PlatformError.PlatformError> =>
+  Effect.fail(PlatformError.badArgument({ module: "Crypto", method, description }))
+
+const validateCipher = (method: string, options: CipherOptions): Effect.Effect<void, PlatformError.PlatformError> => {
+  if (options.name === "AES-GCM" && options.iv.length !== 12) {
+    return failArgument(method, "AES-GCM IV must contain exactly 12 bytes")
+  }
+  if (options.name === "AES-CTR") {
+    if (options.counter.length !== 16) return failArgument(method, "AES-CTR counter must contain exactly 16 bytes")
+    if (!Number.isInteger(options.length) || options.length < 1 || options.length > 128) {
+      return failArgument(method, "AES-CTR counter length must be an integer between 1 and 128 bits")
+    }
+  }
+  return Effect.void
+}
+
+const validateKeyAlgorithm = (
+  method: string,
+  algorithm: KeyAlgorithm,
+  generating: boolean
+): Effect.Effect<void, PlatformError.PlatformError> => {
+  if (algorithm.name === "HMAC") {
+    const length = algorithm.length
+    if (
+      length !== undefined &&
+      (!Number.isSafeInteger(length) || length <= 0 || length > 0xffff_ffff || length % 8 !== 0)
+    ) {
+      return failArgument(method, "HMAC key length must be a positive multiple of 8 bits below 2^32")
+    }
+  }
+  if (
+    generating &&
+    (algorithm.name === "RSA-OAEP" || algorithm.name === "RSA-PSS" || algorithm.name === "RSASSA-PKCS1-v1_5")
+  ) {
+    const modulusLength = algorithm.modulusLength ?? 2048
+    if (
+      !Number.isSafeInteger(modulusLength) || modulusLength < 2048 || modulusLength > 0xffff_ffff ||
+      modulusLength % 8 !== 0
+    ) {
+      return failArgument(method, "RSA modulus length must be a multiple of 8 bits, at least 2048 bits, and below 2^32")
+    }
+  }
+  return Effect.void
+}
+
+const validateSigning = (method: string, options: SigningOptions): Effect.Effect<void, PlatformError.PlatformError> => {
+  // An omitted RSA-PSS salt length defaults to the hash length, which is valid.
+  if (options.name === "RSA-PSS" && options.saltLength !== undefined) {
+    const saltLength = options.saltLength
+    if (!Number.isSafeInteger(saltLength) || saltLength < 0 || saltLength > 0xffff_ffff) {
+      return failArgument(method, "RSA-PSS salt length must be a non-negative 32-bit integer")
+    }
+  }
+  return Effect.void
+}
+
 // RFC 7748 section 6.1: an all-zero X25519 output means the peer sent a
 // small-order point, and protocols such as SSH must abort.
 const rejectAllZeroSecret = (secret: Uint8Array): Effect.Effect<Uint8Array, PlatformError.PlatformError> => {
@@ -1616,6 +1699,8 @@ const hasRawPublicKey = (name: string): boolean =>
  * `randomBytes` separately to `make`. Runtime adapters can override individual
  * operations, including MD5 digests. Argon2id and XChaCha20-Poly1305 require
  * platform overrides; their default implementations fail with PlatformError.
+ * Argument validation that does not depend on the backend happens in `make`,
+ * so these operations assume they are called through a service built by it.
  *
  * **Gotchas**
  *
@@ -1732,48 +1817,29 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
     return handle ?? badArgument(method, "key does not belong to this cryptographic backend")
   }
 
-  const algorithmParams = (method: string, algorithm: KeyAlgorithm, generating: boolean): AlgorithmIdentifier => {
+  // Key algorithm parameters are validated by `make`.
+  const algorithmParams = (algorithm: KeyAlgorithm, generating: boolean): AlgorithmIdentifier => {
     switch (algorithm.name) {
       case "AES-GCM":
       case "AES-CTR":
         return { name: algorithm.name, length: algorithm.length } as AesKeyGenParams
-      case "HMAC": {
-        const length = algorithm.length
-        if (
-          length !== undefined &&
-          (!Number.isSafeInteger(length) || length <= 0 || length > 0xffff_ffff || length % 8 !== 0)
-        ) {
-          return badArgument(method, "HMAC key length must be a positive multiple of 8 bits below 2^32")
-        }
+      case "HMAC":
         return {
           name: algorithm.name,
           hash: algorithm.hash,
-          ...(length === undefined ? {} : { length })
+          ...(algorithm.length === undefined ? {} : { length: algorithm.length })
         } as HmacKeyGenParams
-      }
       case "RSA-OAEP":
       case "RSA-PSS":
-      case "RSASSA-PKCS1-v1_5": {
-        const modulusLength = algorithm.modulusLength ?? 2048
-        if (
-          generating &&
-          (!Number.isSafeInteger(modulusLength) || modulusLength < 2048 || modulusLength > 0xffff_ffff ||
-            modulusLength % 8 !== 0)
-        ) {
-          return badArgument(
-            method,
-            "RSA modulus length must be a multiple of 8 bits, at least 2048 bits, and below 2^32"
-          )
-        }
+      case "RSASSA-PKCS1-v1_5":
         return generating
           ? {
             name: algorithm.name,
             hash: algorithm.hash,
-            modulusLength,
+            modulusLength: algorithm.modulusLength ?? 2048,
             publicExponent: new Uint8Array(algorithm.publicExponent ?? [1, 0, 1])
           } as RsaHashedKeyGenParams
           : { name: algorithm.name, hash: algorithm.hash } as RsaHashedImportParams
-      }
       case "ECDSA":
       case "ECDH":
         return { name: algorithm.name, namedCurve: algorithm.namedCurve } as EcKeyGenParams
@@ -1793,9 +1859,9 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
     return type === "public" ? ["verify"] : type === "private" ? ["sign"] : ["sign", "verify"]
   }
 
-  const cipherParams = (method: string, options: CipherOptions): AlgorithmIdentifier => {
+  // Cipher and signing options are validated by `make`.
+  const cipherParams = (options: CipherOptions): AlgorithmIdentifier => {
     if (options.name === "AES-GCM") {
-      if (options.iv.length !== 12) return badArgument(method, "AES-GCM IV must contain exactly 12 bytes")
       return {
         name: options.name,
         iv: new Uint8Array(options.iv),
@@ -1804,10 +1870,6 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
       } as AesGcmParams
     }
     if (options.name === "AES-CTR") {
-      if (options.counter.length !== 16) return badArgument(method, "AES-CTR counter must contain exactly 16 bytes")
-      if (!Number.isInteger(options.length) || options.length < 1 || options.length > 128) {
-        return badArgument(method, "AES-CTR counter length must be an integer between 1 and 128 bits")
-      }
       return { name: options.name, counter: new Uint8Array(options.counter), length: options.length } as AesCtrParams
     }
     return {
@@ -1816,17 +1878,23 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
     } as RsaOaepParams
   }
 
-  const signingParams = (method: string, options: SigningOptions, key: CryptoKey): AlgorithmIdentifier => {
+  const signingParams = (options: SigningOptions, key: CryptoKey): AlgorithmIdentifier => {
     if (options.name === "ECDSA") return { name: options.name, hash: options.hash } as EcdsaParams
     if (options.name === "RSA-PSS") {
       const hash = (key.algorithm as RsaHashedKeyAlgorithm).hash?.name as HmacAlgorithm
-      const saltLength = options.saltLength ?? hashLengths[hash]
-      if (!Number.isSafeInteger(saltLength) || saltLength < 0 || saltLength > 0xffff_ffff) {
-        return badArgument(method, "RSA-PSS salt length must be a non-negative 32-bit integer")
-      }
-      return { name: options.name, saltLength } as RsaPssParams
+      return { name: options.name, saltLength: options.saltLength ?? hashLengths[hash] } as RsaPssParams
     }
     return { name: options.name }
+  }
+
+  const wrapImported = (method: string, algorithm: KeyAlgorithm, handle: CryptoKey): Key => {
+    if (
+      (algorithm.name === "AES-GCM" || algorithm.name === "AES-CTR") &&
+      (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length
+    ) {
+      return badArgument(method, "AES key length does not match the requested algorithm")
+    }
+    return wrap(handle)
   }
 
   return {
@@ -1889,17 +1957,11 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         const handle = await subtle.importKey(
           "jwk",
           snapshot,
-          algorithmParams("importJwk", algorithm, false),
+          algorithmParams(algorithm, false),
           options?.extractable ?? (type === "public" && jwk.ext !== false),
           Array.from(options?.usages ?? jwk.key_ops ?? usagesFor(algorithm, type))
         )
-        if (
-          (algorithm.name === "AES-GCM" || algorithm.name === "AES-CTR") &&
-          (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length
-        ) {
-          return badArgument("importJwk", "AES key length does not match the requested algorithm")
-        }
-        return wrap(handle)
+        return wrapImported("importJwk", algorithm, handle)
       }),
     exportJwk: (key) => run("exportJwk", async () => await subtle.exportKey("jwk", getKey("exportJwk", key)) as Jwk),
     digest: (algorithm, data) =>
@@ -1944,7 +2006,7 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
     generateSecretKey: (algorithm, options) =>
       run("generateSecretKey", async () => {
         const handle = await subtle.generateKey(
-          algorithmParams("generateSecretKey", algorithm, true),
+          algorithmParams(algorithm, true),
           options?.extractable ?? false,
           Array.from(options?.usages ?? usagesFor(algorithm))
         )
@@ -1953,7 +2015,7 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
     generateKeyPair: (algorithm, options) =>
       run("generateKeyPair", async () => {
         const pair = await subtle.generateKey(
-          algorithmParams("generateKeyPair", algorithm, true),
+          algorithmParams(algorithm, true),
           options?.extractable ?? false,
           Array.from(options?.usages ?? usagesFor(algorithm))
         ) as CryptoKeyPair
@@ -1975,17 +2037,11 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         const handle = await subtle.importKey(
           format,
           new Uint8Array(data),
-          algorithmParams("importKey", algorithm, false),
+          algorithmParams(algorithm, false),
           options?.extractable ?? (type === "public"),
           Array.from(options?.usages ?? usagesFor(algorithm, type))
         )
-        if (
-          (algorithm.name === "AES-GCM" || algorithm.name === "AES-CTR") &&
-          (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length
-        ) {
-          return badArgument("importKey", "AES key length does not match the requested algorithm")
-        }
-        return wrap(handle)
+        return wrapImported("importKey", algorithm, handle)
       }),
     exportKey: (format, key) =>
       run("exportKey", async () => {
@@ -2004,7 +2060,7 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         "encrypt",
         async () =>
           new Uint8Array(
-            await subtle.encrypt(cipherParams("encrypt", options), getKey("encrypt", key), new Uint8Array(data))
+            await subtle.encrypt(cipherParams(options), getKey("encrypt", key), new Uint8Array(data))
           )
       ),
     decrypt: (options, key, data) =>
@@ -2012,19 +2068,19 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         "decrypt",
         async () =>
           new Uint8Array(
-            await subtle.decrypt(cipherParams("decrypt", options), getKey("decrypt", key), new Uint8Array(data))
+            await subtle.decrypt(cipherParams(options), getKey("decrypt", key), new Uint8Array(data))
           )
       ),
     sign: (options, key, data) =>
       run("sign", async () => {
         const handle = getKey("sign", key)
-        return new Uint8Array(await subtle.sign(signingParams("sign", options, handle), handle, new Uint8Array(data)))
+        return new Uint8Array(await subtle.sign(signingParams(options, handle), handle, new Uint8Array(data)))
       }),
     verify: (options, key, signature, data) =>
       run("verify", () => {
         const handle = getKey("verify", key)
         return subtle.verify(
-          signingParams("verify", options, handle),
+          signingParams(options, handle),
           handle,
           new Uint8Array(signature),
           new Uint8Array(data)
