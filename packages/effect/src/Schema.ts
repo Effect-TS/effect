@@ -7889,7 +7889,8 @@ export function isMultipleOf(
  *
  * JSON Schema:
  *
- * This check corresponds to the `type: "integer"` constraint in JSON Schema.
+ * This check corresponds to `type: "integer"` with `minimum: Number.MIN_SAFE_INTEGER`
+ * and `maximum: Number.MAX_SAFE_INTEGER` in JSON Schema.
  *
  * Arbitrary:
  *
@@ -7908,7 +7909,11 @@ export function isInt(annotations?: Annotations.Filter) {
         id: "effect/schema/isInt",
         payload: null
       },
-      toJsonSchema: () => [{ type: "integer" }, true],
+      toJsonSchema: () => ({
+        type: "integer",
+        minimum: globalThis.Number.MIN_SAFE_INTEGER,
+        maximum: globalThis.Number.MAX_SAFE_INTEGER
+      }),
       toCode: () => ({ runtime: "Schema.isInt()" }),
       arbitraryConstraint: {
         number: "integer"
