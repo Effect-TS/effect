@@ -11,7 +11,6 @@ import { describe, it } from "vitest"
 interface ContextInternals {
   readonly depth: number
   readonly overlay: unknown
-  readonly maxDepthOverride: number | undefined
   readonly _flat: unknown
   readonly baseHits: number
 }
@@ -143,7 +142,7 @@ describe("Context", () => {
 
   it("honors an explicit maxDepth override, inherited across add and rebase", () => {
     const base = Context.makeUnsafe(new Map(), { maxDepth: 2 })
-    const keys = Array.from({ length: 4 }, (_, i) => Context.Service<number>(`ContextTest/Override${i}`))
+    const keys = Array.from({ length: 6 }, (_, i) => Context.Service<number>(`ContextTest/Override${i}`))
 
     let context: Context.Context<never> = base
     context = Context.add(context, keys[0], 0)
@@ -152,21 +151,28 @@ describe("Context", () => {
     let impl = context as any as ContextInternals
     strictEqual(impl.overlay !== undefined, true)
     strictEqual(impl.depth, 2)
-    strictEqual(impl.maxDepthOverride, 2)
 
     context = Context.add(context, keys[2], 2)
     // One push past the override -> rebase, well below the default floor of 8
     impl = context as any as ContextInternals
     strictEqual(impl.overlay, undefined)
     strictEqual(impl.depth, 0)
-    strictEqual(impl.maxDepthOverride, 2)
 
     // The override survives the rebase and keeps applying afterwards
     context = Context.add(context, keys[3], 3)
     impl = context as any as ContextInternals
     strictEqual(impl.overlay !== undefined, true)
     strictEqual(impl.depth, 1)
-    strictEqual(impl.maxDepthOverride, 2)
+
+    context = Context.add(context, keys[4], 4)
+    impl = context as any as ContextInternals
+    strictEqual(impl.depth, 2)
+    strictEqual(impl.overlay !== undefined, true)
+
+    context = Context.add(context, keys[5], 5)
+    impl = context as any as ContextInternals
+    strictEqual(impl.depth, 0)
+    strictEqual(impl.overlay, undefined)
 
     strictEqual(context.mapUnsafe.size, keys.length)
     for (let i = 0; i < keys.length; i++) {
@@ -175,19 +181,21 @@ describe("Context", () => {
   })
 
   it("falls back to the default depth for an invalid maxDepth", () => {
-    for (const invalid of [Number.NaN, -1, 1.5, -Infinity]) {
-      const impl = Context.makeUnsafe(new Map(), { maxDepth: invalid }) as any as ContextInternals
-      strictEqual(impl.maxDepthOverride, undefined)
-    }
+    const keys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/Invalid${i}`))
+    for (const invalid of [Number.NaN, -1, 1.5, -Infinity, Infinity]) {
+      let context: Context.Context<never> = Context.makeUnsafe(new Map(), { maxDepth: invalid })
+      for (let i = 0; i < 8; i++) {
+        context = Context.add(context, keys[i], i)
+      }
+      let impl = context as any as ContextInternals
+      strictEqual(impl.depth, 8)
+      strictEqual(impl.overlay !== undefined, true)
 
-    // A NaN override must not disable rebasing: depth(n) >= NaN is always
-    // false, so an unguarded override would let the overlay chain grow
-    // without bound.
-    let context: Context.Context<never> = Context.makeUnsafe(new Map(), { maxDepth: Number.NaN })
-    for (let i = 0; i < 20; i++) {
-      context = Context.add(context, Context.Service<number>(`ContextTest/Invalid${i}`), i)
+      context = Context.add(context, keys[8], 8)
+      impl = context as any as ContextInternals
+      strictEqual(impl.depth, 0)
+      strictEqual(impl.overlay, undefined)
     }
-    strictEqual((context as any as ContextInternals).depth <= 8, true)
   })
 
   it("preserves the maxDepth override through merge, omit, and pick", () => {
@@ -195,10 +203,25 @@ describe("Context", () => {
     const B = Context.Service<number>("ContextTest/OverrideMergeB")
     const base = Context.add(Context.makeUnsafe(new Map(), { maxDepth: 2 }), A, 1)
 
-    strictEqual((Context.omit(A)(base) as any as ContextInternals).maxDepthOverride, 2)
-    strictEqual((Context.merge(base, Context.make(B, 2)) as any as ContextInternals).maxDepthOverride, 2)
-    strictEqual((Context.pick(A)(base) as any as ContextInternals).maxDepthOverride, 2)
-    strictEqual((Context.addOrOmit(A, Option.none())(base) as any as ContextInternals).maxDepthOverride, 2)
+    for (
+      let context of [
+        Context.omit(A)(base),
+        Context.merge(base, Context.make(B, 2)),
+        Context.pick(A)(base),
+        Context.addOrOmit(A, Option.none())(base)
+      ]
+    ) {
+      context = Context.add(context, A, 3)
+      context = Context.add(context, B, 4)
+      let impl = context as any as ContextInternals
+      strictEqual(impl.depth, 2)
+      strictEqual(impl.overlay !== undefined, true)
+
+      context = Context.add(context, C, 5)
+      impl = context as any as ContextInternals
+      strictEqual(impl.depth, 0)
+      strictEqual(impl.overlay, undefined)
+    }
   })
 
   it("keeps the default depth of 8 when no maxDepth override is given", () => {
@@ -210,7 +233,6 @@ describe("Context", () => {
     let impl = context as any as ContextInternals
     strictEqual(impl.overlay !== undefined, true)
     strictEqual(impl.depth, 8)
-    strictEqual(impl.maxDepthOverride, undefined)
 
     context = Context.add(context, Context.Service<number>("ContextTest/DefaultPush"), -1)
     impl = context as any as ContextInternals
