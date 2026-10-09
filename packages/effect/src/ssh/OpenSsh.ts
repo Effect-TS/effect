@@ -110,170 +110,6 @@ const baseArguments = (options: Options): Array<string> => {
 }
 
 /**
- * Starts an `ssh` process and exposes it as an `SshProcess`.
- */
-const spawnProcess = Effect.fnUntraced(function*(
-  spawner: ChildProcessSpawner["Service"],
-  executable: string,
-  args: ReadonlyArray<string>,
-  env?: Record<string, string> | undefined
-): Effect.fn.Return<Ssh.SshProcess, SshError, Scope.Scope> {
-  const input = yield* Queue.bounded<Uint8Array, Cause.Done>(16)
-  const handle = yield* spawner.spawn(
-    ChildProcess.make(executable, args, {
-      stdin: Stream.fromQueue(input),
-      ...(env === undefined ? {} : { env, extendEnv: true })
-    })
-  ).pipe(Effect.mapError(connectionError))
-  const lift = (error: PlatformError.PlatformError) => connectionError(error)
-  const write = (data: Uint8Array | string) =>
-    Effect.flatMap(
-      Queue.offer(input, typeof data === "string" ? utf8(data) : data),
-      (accepted) => accepted ? Effect.void : Effect.fail(closedError())
-    )
-  const eof = Effect.asVoid(Queue.end(input))
-  return {
-    stdout: Stream.mapError(handle.stdout, lift),
-    stderr: Stream.mapError(handle.stderr, lift),
-    stdin: Sink.forEach(write).pipe(Sink.mapEffect(() => eof)),
-    write,
-    eof,
-    close: Effect.andThen(Queue.end(input), Effect.ignore(handle.kill())),
-    exit: handle.exitCode.pipe(
-      Effect.map((code) => ({ _tag: "ExitStatus", code }) as const),
-      Effect.mapError(lift)
-    ),
-    signal: () =>
-      Effect.fail(
-        new SshError({
-          reason: new SshChannelError({ description: "the OpenSSH backend cannot deliver signals" })
-        })
-      )
-  }
-})
-
-/**
- * Starts the shared `ControlMaster` connection and waits until it accepts
- * multiplexed sessions.
- */
-const startMaster = Effect.fnUntraced(function*(
-  spawner: ChildProcessSpawner["Service"],
-  fs: FileSystem.FileSystem,
-  executable: string,
-  base: ReadonlyArray<string>,
-  host: string,
-  timeout: Duration.Input
-) {
-  const directory = yield* fs.makeTempDirectoryScoped({ prefix: "effect-ssh-" }).pipe(
-    Effect.mapError(connectionError)
-  )
-  const controlPath = `${directory}/control`
-  const master = yield* spawner.spawn(
-    ChildProcess.make(executable, [
-      "-o",
-      `ControlPath=${controlPath}`,
-      "-o",
-      "ControlMaster=yes",
-      "-o",
-      "ControlPersist=no",
-      ...base,
-      "-N",
-      "-T",
-      host
-    ], { stdin: "ignore", stdout: "ignore" })
-  ).pipe(Effect.mapError(connectionError))
-
-  // Keep the last part of the master's diagnostics for error reports.
-  let diagnostics = ""
-  const decoder = new TextDecoder()
-  const collector = yield* Stream.runForEach(master.stderr, (chunk) =>
-    Effect.sync(() => {
-      diagnostics = (diagnostics + decoder.decode(chunk, { stream: true })).slice(-4096)
-    })).pipe(Effect.ignore, Effect.forkScoped)
-
-  const check = spawner.exitCode(
-    ChildProcess.make(executable, ["-o", `ControlPath=${controlPath}`, ...base, "-O", "check", host], {
-      stdin: "ignore",
-      stdout: "ignore",
-      stderr: "ignore"
-    })
-  )
-  const ready: Effect.Effect<void, SshError> = Effect.gen(function*() {
-    while (true) {
-      if (!(yield* Effect.orElseSucceed(master.isRunning, () => false))) {
-        // The master's stderr ends with the process; collect all of it.
-        yield* Fiber.await(collector)
-        return yield* connectionError(new Error(diagnostics.trim() || "ssh exited before connecting"))
-      }
-      if ((yield* Effect.orElseSucceed(check, () => -1)) === 0) return
-      yield* Effect.sleep(Duration.millis(25))
-    }
-  })
-  yield* ready.pipe(
-    Effect.timeoutOrElse({
-      duration: timeout,
-      orElse: () =>
-        Effect.fail(
-          new SshError({ reason: new SshTimeoutError({ description: "the OpenSSH connection did not start in time" }) })
-        )
-    })
-  )
-  return ["-o", `ControlPath=${controlPath}`, "-o", "ControlMaster=no"]
-})
-
-const connect = Effect.fnUntraced(function*(
-  spawner: ChildProcessSpawner["Service"],
-  fs: FileSystem.FileSystem,
-  defaults: Options,
-  destination: Ssh.Destination
-): Effect.fn.Return<Ssh.SshConnection, SshError, Scope.Scope> {
-  const options: Options = {
-    ...defaults,
-    port: destination.port ?? defaults.port,
-    user: destination.username ?? defaults.user
-  }
-  const host = destination.host
-  const executable = options.executable ?? "ssh"
-  const base = baseArguments(options)
-  const shared = options.multiplex === false
-    ? []
-    : yield* startMaster(spawner, fs, executable, base, host, options.connectTimeout ?? Duration.seconds(30))
-  const invoke = (
-    args: ReadonlyArray<string>,
-    options?: { readonly env?: Record<string, string> | undefined; readonly multiplex?: boolean | undefined }
-  ) =>
-    spawnProcess(
-      spawner,
-      executable,
-      [...(options?.multiplex === false ? [] : shared), ...base, ...args],
-      options?.env
-    )
-
-  const exec = (command: string, sessionOptions?: SessionOptions) => {
-    const args: Array<string> = [sessionOptions?.pty === undefined || sessionOptions.pty === false ? "-T" : "-tt"]
-    if (sessionOptions?.forwardAgent === true) args.push("-A")
-    const env = Object.entries(sessionOptions?.env ?? {})
-    if (env.length > 0) {
-      args.push("-o", `SetEnv=${env.map(([name, value]) => `${name}=${quoteConfigValue(value)}`).join(" ")}`)
-    }
-    args.push(host, "--", command)
-    const term = typeof sessionOptions?.pty === "object" ? sessionOptions.pty.term : undefined
-    // Multiplexed sessions do not forward environment variables, so sessions
-    // with an environment use their own connection.
-    return invoke(args, { env: term === undefined ? undefined : { TERM: term }, multiplex: env.length === 0 })
-  }
-
-  return Ssh.makeConnection({
-    backend: "openssh",
-    capabilities: { signals: false, exitSignals: false },
-    exec,
-    subsystem: (name) => invoke(["-T", "-s", host, name]),
-    forwardOut: (target: ForwardTarget) =>
-      invoke(["-T", "-W", "socketPath" in target ? target.socketPath : `${target.host}:${target.port}`, host])
-  })
-})
-
-/**
  * Creates an `Ssh` connection factory backed by the host's `ssh` executable,
  * capturing `ChildProcessSpawner` and `FileSystem` once.
  *
@@ -309,9 +145,168 @@ export const make = Effect.fnUntraced(function*(
 ): Effect.fn.Return<Ssh.Ssh["Service"], never, ChildProcessSpawner | FileSystem.FileSystem> {
   const spawner = yield* ChildProcessSpawner
   const fs = yield* FileSystem.FileSystem
-  return Ssh.Ssh.of({
-    connect: (destination) => connect(spawner, fs, options ?? {}, destination)
+  const defaults = options ?? {}
+
+  /**
+   * Starts an `ssh` process and exposes it as an `SshProcess`.
+   */
+  const spawnProcess = Effect.fnUntraced(function*(
+    executable: string,
+    args: ReadonlyArray<string>,
+    env?: Record<string, string> | undefined
+  ): Effect.fn.Return<Ssh.SshProcess, SshError, Scope.Scope> {
+    const input = yield* Queue.bounded<Uint8Array, Cause.Done>(16)
+    const handle = yield* spawner.spawn(
+      ChildProcess.make(executable, args, {
+        stdin: Stream.fromQueue(input),
+        ...(env === undefined ? {} : { env, extendEnv: true })
+      })
+    ).pipe(Effect.mapError(connectionError))
+    const lift = (error: PlatformError.PlatformError) => connectionError(error)
+    const write = (data: Uint8Array | string) =>
+      Effect.flatMap(
+        Queue.offer(input, typeof data === "string" ? utf8(data) : data),
+        (accepted) => accepted ? Effect.void : Effect.fail(closedError())
+      )
+    const eof = Effect.asVoid(Queue.end(input))
+    return {
+      stdout: Stream.mapError(handle.stdout, lift),
+      stderr: Stream.mapError(handle.stderr, lift),
+      stdin: Sink.forEach(write).pipe(Sink.mapEffect(() => eof)),
+      write,
+      eof,
+      close: Effect.andThen(Queue.end(input), Effect.ignore(handle.kill())),
+      exit: handle.exitCode.pipe(
+        Effect.map((code) => ({ _tag: "ExitStatus", code }) as const),
+        Effect.mapError(lift)
+      ),
+      signal: () =>
+        Effect.fail(
+          new SshError({
+            reason: new SshChannelError({ description: "the OpenSSH backend cannot deliver signals" })
+          })
+        )
+    }
   })
+
+  /**
+   * Starts the shared `ControlMaster` connection and waits until it accepts
+   * multiplexed sessions.
+   */
+  const startMaster = Effect.fnUntraced(function*(
+    executable: string,
+    base: ReadonlyArray<string>,
+    host: string,
+    timeout: Duration.Input
+  ) {
+    const directory = yield* fs.makeTempDirectoryScoped({ prefix: "effect-ssh-" }).pipe(
+      Effect.mapError(connectionError)
+    )
+    const controlPath = `${directory}/control`
+    const master = yield* spawner.spawn(
+      ChildProcess.make(executable, [
+        "-o",
+        `ControlPath=${controlPath}`,
+        "-o",
+        "ControlMaster=yes",
+        "-o",
+        "ControlPersist=no",
+        ...base,
+        "-N",
+        "-T",
+        host
+      ], { stdin: "ignore", stdout: "ignore" })
+    ).pipe(Effect.mapError(connectionError))
+
+    // Keep the last part of the master's diagnostics for error reports.
+    let diagnostics = ""
+    const decoder = new TextDecoder()
+    const collector = yield* Stream.runForEach(master.stderr, (chunk) =>
+      Effect.sync(() => {
+        diagnostics = (diagnostics + decoder.decode(chunk, { stream: true })).slice(-4096)
+      })).pipe(Effect.ignore, Effect.forkScoped)
+
+    const check = spawner.exitCode(
+      ChildProcess.make(executable, ["-o", `ControlPath=${controlPath}`, ...base, "-O", "check", host], {
+        stdin: "ignore",
+        stdout: "ignore",
+        stderr: "ignore"
+      })
+    )
+    const ready: Effect.Effect<void, SshError> = Effect.gen(function*() {
+      while (true) {
+        if (!(yield* Effect.orElseSucceed(master.isRunning, () => false))) {
+          // The master's stderr ends with the process; collect all of it.
+          yield* Fiber.await(collector)
+          return yield* connectionError(new Error(diagnostics.trim() || "ssh exited before connecting"))
+        }
+        if ((yield* Effect.orElseSucceed(check, () => -1)) === 0) return
+        yield* Effect.sleep(Duration.millis(25))
+      }
+    })
+    yield* ready.pipe(
+      Effect.timeoutOrElse({
+        duration: timeout,
+        orElse: () =>
+          Effect.fail(
+            new SshError({
+              reason: new SshTimeoutError({ description: "the OpenSSH connection did not start in time" })
+            })
+          )
+      })
+    )
+    return ["-o", `ControlPath=${controlPath}`, "-o", "ControlMaster=no"]
+  })
+
+  const connect = Effect.fnUntraced(function*(
+    destination: Ssh.Destination
+  ): Effect.fn.Return<Ssh.SshConnection, SshError, Scope.Scope> {
+    const options: Options = {
+      ...defaults,
+      port: destination.port ?? defaults.port,
+      user: destination.username ?? defaults.user
+    }
+    const host = destination.host
+    const executable = options.executable ?? "ssh"
+    const base = baseArguments(options)
+    const shared = options.multiplex === false
+      ? []
+      : yield* startMaster(executable, base, host, options.connectTimeout ?? Duration.seconds(30))
+    const invoke = (
+      args: ReadonlyArray<string>,
+      options?: { readonly env?: Record<string, string> | undefined; readonly multiplex?: boolean | undefined }
+    ) =>
+      spawnProcess(
+        executable,
+        [...(options?.multiplex === false ? [] : shared), ...base, ...args],
+        options?.env
+      )
+
+    const exec = (command: string, sessionOptions?: SessionOptions) => {
+      const args: Array<string> = [sessionOptions?.pty === undefined || sessionOptions.pty === false ? "-T" : "-tt"]
+      if (sessionOptions?.forwardAgent === true) args.push("-A")
+      const env = Object.entries(sessionOptions?.env ?? {})
+      if (env.length > 0) {
+        args.push("-o", `SetEnv=${env.map(([name, value]) => `${name}=${quoteConfigValue(value)}`).join(" ")}`)
+      }
+      args.push(host, "--", command)
+      const term = typeof sessionOptions?.pty === "object" ? sessionOptions.pty.term : undefined
+      // Multiplexed sessions do not forward environment variables, so sessions
+      // with an environment use their own connection.
+      return invoke(args, { env: term === undefined ? undefined : { TERM: term }, multiplex: env.length === 0 })
+    }
+
+    return Ssh.makeConnection({
+      backend: "openssh",
+      capabilities: { signals: false, exitSignals: false },
+      exec,
+      subsystem: (name) => invoke(["-T", "-s", host, name]),
+      forwardOut: (target: ForwardTarget) =>
+        invoke(["-T", "-W", "socketPath" in target ? target.socketPath : `${target.host}:${target.port}`, host])
+    })
+  })
+
+  return Ssh.Ssh.of({ connect })
 })
 
 /**

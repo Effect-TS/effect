@@ -5,7 +5,7 @@
  *
  * @internal
  */
-import type * as Crypto from "../../Crypto.ts"
+import * as Crypto from "../../Crypto.ts"
 import * as Effect from "../../Effect.ts"
 import type { SshError } from "../SshError.ts"
 import { protocolError, protocolErrorFrom } from "./errors.ts"
@@ -98,33 +98,6 @@ const extractPayload = (body: Uint8Array): Effect.Effect<Uint8Array, SshError> =
   return Effect.succeed(body.subarray(1, body.length - padding))
 }
 
-/**
- * Builds `padding_length || payload || padding`, optionally aligning the
- * packet length field with the cipher blocks.
- */
-const buildPlaintext = Effect.fnUntraced(function*(
-  crypto: Crypto.Crypto,
-  payload: Uint8Array,
-  blockSize: number,
-  lengthAligned: boolean
-) {
-  const padding = paddingFor(lengthAligned ? 5 + payload.length : 1 + payload.length, blockSize)
-  const random = yield* Effect.mapError(crypto.randomBytes(padding), protocolErrorFrom("could not generate padding"))
-  const body = new Uint8Array(1 + payload.length + padding)
-  body[0] = padding
-  body.set(payload, 1)
-  body.set(random, 1 + payload.length)
-  const lengthBytes = new Uint8Array(4)
-  new DataView(lengthBytes.buffer).setUint32(0, body.length)
-  return { lengthBytes, body }
-})
-
-/** @internal */
-export const noneSealer = (crypto: Crypto.Crypto): Sealer => ({
-  seal: (_sequence, payload) =>
-    Effect.map(buildPlaintext(crypto, payload, 8, true), ({ body, lengthBytes }) => concat([lengthBytes, body]))
-})
-
 /** @internal */
 export const noneOpener: Opener = {
   headerLength: 4,
@@ -162,144 +135,186 @@ const addCounter = (counter: Bytes, blocks: number): void => {
 }
 
 /**
- * Creates a stateful AES-CTR keystream: each call continues the 128-bit
- * counter where the previous one stopped.
+ * Packet sealing and opening backed by the `Crypto` service.
+ *
+ * @internal
  */
-const aesCtr = Effect.fnUntraced(function*(crypto: Crypto.Crypto, keyBytes: Uint8Array, iv: Uint8Array) {
-  const key = yield* Effect.mapError(
-    crypto.importKey("raw", keyBytes, { name: "AES-CTR", length: keyBytes.length * 8 as 128 | 256 }, {
-      usages: ["encrypt"]
-    }),
-    protocolErrorFrom("could not import AES-CTR key")
-  )
-  const counter = copy(iv)
-  return (data: Uint8Array): Effect.Effect<Uint8Array, SshError> => {
-    if (data.length === 0) return Effect.succeed(data)
-    const current = copy(counter)
-    addCounter(counter, Math.ceil(data.length / 16))
-    return Effect.mapError(
-      crypto.encrypt({ name: "AES-CTR", counter: current, length: 128 }, key, data),
-      protocolErrorFrom("AES-CTR encryption failed")
-    )
-  }
-})
-
-const importGcm = (crypto: Crypto.Crypto, key: Uint8Array, usage: Crypto.KeyUsage) =>
-  Effect.mapError(
-    crypto.importKey("raw", key, { name: "AES-GCM", length: key.length * 8 as 128 | 256 }, { usages: [usage] }),
-    protocolErrorFrom("could not import AES-GCM key")
-  )
-
-const importMac = (crypto: Crypto.Crypto, mac: MacAlgorithm, key: Uint8Array) =>
-  Effect.mapError(
-    crypto.importKey("raw", key, { name: "HMAC", hash: mac.hash, length: key.length * 8 }, {
-      usages: ["sign", "verify"]
-    }),
-    protocolErrorFrom("could not import MAC key")
-  )
+export interface Packet {
+  /**
+   * Seals packets before the first key exchange completes.
+   */
+  readonly noneSealer: Sealer
+  readonly makeSealer: (keys: DirectionKeys) => Effect.Effect<Sealer, SshError>
+  readonly makeOpener: (keys: DirectionKeys) => Effect.Effect<Opener, SshError>
+}
 
 /** @internal */
-export const makeSealer = Effect.fnUntraced(function*(crypto: Crypto.Crypto, keys: DirectionKeys) {
-  const blockSize = keys.cipher.blockSize
-  if (keys.cipher.mode === "gcm") {
-    const key = yield* importGcm(crypto, keys.key, "encrypt")
-    const iv = copy(keys.iv)
-    return {
-      seal: Effect.fnUntraced(function*(_sequence: number, payload: Uint8Array) {
-        const { body, lengthBytes } = yield* buildPlaintext(crypto, payload, blockSize, false)
-        const encrypted = yield* Effect.mapError(
-          crypto.encrypt({ name: "AES-GCM", iv: copy(iv), additionalData: lengthBytes }, key, body),
-          protocolErrorFrom("AES-GCM encryption failed")
-        )
-        incrementGcmIv(iv)
-        return concat([lengthBytes, encrypted])
-      })
-    } satisfies Sealer
+export const make: Effect.Effect<Packet, never, Crypto.Crypto> = Effect.map(Crypto.Crypto, (crypto) => {
+  /**
+   * Builds `padding_length || payload || padding`, optionally aligning the
+   * packet length field with the cipher blocks.
+   */
+  const buildPlaintext = Effect.fnUntraced(function*(
+    payload: Uint8Array,
+    blockSize: number,
+    lengthAligned: boolean
+  ) {
+    const padding = paddingFor(lengthAligned ? 5 + payload.length : 1 + payload.length, blockSize)
+    const random = yield* Effect.mapError(crypto.randomBytes(padding), protocolErrorFrom("could not generate padding"))
+    const body = new Uint8Array(1 + payload.length + padding)
+    body[0] = padding
+    body.set(payload, 1)
+    body.set(random, 1 + payload.length)
+    const lengthBytes = new Uint8Array(4)
+    new DataView(lengthBytes.buffer).setUint32(0, body.length)
+    return { lengthBytes, body }
+  })
+
+  const noneSealer: Sealer = {
+    seal: (_sequence, payload) =>
+      Effect.map(buildPlaintext(payload, 8, true), ({ body, lengthBytes }) => concat([lengthBytes, body]))
   }
-  const mac = keys.mac!
-  const ctr = yield* aesCtr(crypto, keys.key, keys.iv)
-  const macKey = yield* importMac(crypto, mac, keys.macKey!)
-  const sign = (data: Uint8Array) =>
-    Effect.mapError(crypto.sign({ name: "HMAC" }, macKey, data), protocolErrorFrom("MAC computation failed"))
-  if (mac.etm) {
+
+  /**
+   * Creates a stateful AES-CTR keystream: each call continues the 128-bit
+   * counter where the previous one stopped.
+   */
+  const aesCtr = Effect.fnUntraced(function*(keyBytes: Uint8Array, iv: Uint8Array) {
+    const key = yield* Effect.mapError(
+      crypto.importKey("raw", keyBytes, { name: "AES-CTR", length: keyBytes.length * 8 as 128 | 256 }, {
+        usages: ["encrypt"]
+      }),
+      protocolErrorFrom("could not import AES-CTR key")
+    )
+    const counter = copy(iv)
+    return (data: Uint8Array): Effect.Effect<Uint8Array, SshError> => {
+      if (data.length === 0) return Effect.succeed(data)
+      const current = copy(counter)
+      addCounter(counter, Math.ceil(data.length / 16))
+      return Effect.mapError(
+        crypto.encrypt({ name: "AES-CTR", counter: current, length: 128 }, key, data),
+        protocolErrorFrom("AES-CTR encryption failed")
+      )
+    }
+  })
+
+  const importGcm = (key: Uint8Array, usage: Crypto.KeyUsage) =>
+    Effect.mapError(
+      crypto.importKey("raw", key, { name: "AES-GCM", length: key.length * 8 as 128 | 256 }, { usages: [usage] }),
+      protocolErrorFrom("could not import AES-GCM key")
+    )
+
+  const importMac = (mac: MacAlgorithm, key: Uint8Array) =>
+    Effect.mapError(
+      crypto.importKey("raw", key, { name: "HMAC", hash: mac.hash, length: key.length * 8 }, {
+        usages: ["sign", "verify"]
+      }),
+      protocolErrorFrom("could not import MAC key")
+    )
+
+  const makeSealer = Effect.fnUntraced(function*(keys: DirectionKeys) {
+    const blockSize = keys.cipher.blockSize
+    if (keys.cipher.mode === "gcm") {
+      const key = yield* importGcm(keys.key, "encrypt")
+      const iv = copy(keys.iv)
+      return {
+        seal: Effect.fnUntraced(function*(_sequence: number, payload: Uint8Array) {
+          const { body, lengthBytes } = yield* buildPlaintext(payload, blockSize, false)
+          const encrypted = yield* Effect.mapError(
+            crypto.encrypt({ name: "AES-GCM", iv: copy(iv), additionalData: lengthBytes }, key, body),
+            protocolErrorFrom("AES-GCM encryption failed")
+          )
+          incrementGcmIv(iv)
+          return concat([lengthBytes, encrypted])
+        })
+      } satisfies Sealer
+    }
+    const mac = keys.mac!
+    const ctr = yield* aesCtr(keys.key, keys.iv)
+    const macKey = yield* importMac(mac, keys.macKey!)
+    const sign = (data: Uint8Array) =>
+      Effect.mapError(crypto.sign({ name: "HMAC" }, macKey, data), protocolErrorFrom("MAC computation failed"))
+    if (mac.etm) {
+      return {
+        seal: Effect.fnUntraced(function*(sequence: number, payload: Uint8Array) {
+          const { body, lengthBytes } = yield* buildPlaintext(payload, blockSize, false)
+          const encrypted = yield* ctr(body)
+          const tag = yield* sign(concat([sequenceBytes(sequence), lengthBytes, encrypted]))
+          return concat([lengthBytes, encrypted, tag])
+        })
+      } satisfies Sealer
+    }
     return {
       seal: Effect.fnUntraced(function*(sequence: number, payload: Uint8Array) {
-        const { body, lengthBytes } = yield* buildPlaintext(crypto, payload, blockSize, false)
-        const encrypted = yield* ctr(body)
-        const tag = yield* sign(concat([sequenceBytes(sequence), lengthBytes, encrypted]))
-        return concat([lengthBytes, encrypted, tag])
+        const { body, lengthBytes } = yield* buildPlaintext(payload, blockSize, true)
+        const plain = concat([lengthBytes, body])
+        const tag = yield* sign(concat([sequenceBytes(sequence), plain]))
+        return concat([yield* ctr(plain), tag])
       })
     } satisfies Sealer
-  }
-  return {
-    seal: Effect.fnUntraced(function*(sequence: number, payload: Uint8Array) {
-      const { body, lengthBytes } = yield* buildPlaintext(crypto, payload, blockSize, true)
-      const plain = concat([lengthBytes, body])
-      const tag = yield* sign(concat([sequenceBytes(sequence), plain]))
-      return concat([yield* ctr(plain), tag])
-    })
-  } satisfies Sealer
-})
+  })
 
-/** @internal */
-export const makeOpener = Effect.fnUntraced(function*(crypto: Crypto.Crypto, keys: DirectionKeys) {
-  const blockSize = keys.cipher.blockSize
-  if (keys.cipher.mode === "gcm") {
-    const key = yield* importGcm(crypto, keys.key, "decrypt")
-    const iv = copy(keys.iv)
+  const makeOpener = Effect.fnUntraced(function*(keys: DirectionKeys) {
+    const blockSize = keys.cipher.blockSize
+    if (keys.cipher.mode === "gcm") {
+      const key = yield* importGcm(keys.key, "decrypt")
+      const iv = copy(keys.iv)
+      return {
+        headerLength: 4,
+        begin: (header) => {
+          const length = readLength(header)
+          return Effect.as(checkPacketLength(length, blockSize, length), length + 16)
+        },
+        finish: (_sequence, header, rest) =>
+          crypto.decrypt({ name: "AES-GCM", iv: copy(iv), additionalData: header }, key, rest).pipe(
+            Effect.mapError(macFailure),
+            Effect.flatMap((plain) => {
+              incrementGcmIv(iv)
+              return extractPayload(plain)
+            })
+          )
+      } satisfies Opener
+    }
+    const mac = keys.mac!
+    const macLength = mac.keyLength
+    const ctr = yield* aesCtr(keys.key, keys.iv)
+    const macKey = yield* importMac(mac, keys.macKey!)
+    const verify = (tag: Uint8Array, data: Uint8Array) =>
+      crypto.verify({ name: "HMAC" }, macKey, tag, data).pipe(
+        Effect.mapError(protocolErrorFrom("MAC verification failed")),
+        Effect.flatMap((valid) => valid ? Effect.void : Effect.fail(macFailure()))
+      )
+    if (mac.etm) {
+      return {
+        headerLength: 4,
+        begin: (header) => {
+          const length = readLength(header)
+          return Effect.as(checkPacketLength(length, blockSize, length), length + macLength)
+        },
+        finish: Effect.fnUntraced(function*(sequence: number, header: Bytes, rest: Bytes) {
+          const encrypted = rest.subarray(0, rest.length - macLength)
+          yield* verify(rest.subarray(rest.length - macLength), concat([sequenceBytes(sequence), header, encrypted]))
+          return yield* extractPayload(yield* ctr(encrypted))
+        })
+      } satisfies Opener
+    }
+    let firstBlock: Uint8Array | undefined
     return {
-      headerLength: 4,
-      begin: (header) => {
-        const length = readLength(header)
-        return Effect.as(checkPacketLength(length, blockSize, length), length + 16)
-      },
-      finish: (_sequence, header, rest) =>
-        crypto.decrypt({ name: "AES-GCM", iv: copy(iv), additionalData: header }, key, rest).pipe(
-          Effect.mapError(macFailure),
-          Effect.flatMap((plain) => {
-            incrementGcmIv(iv)
-            return extractPayload(plain)
-          })
-        )
-    } satisfies Opener
-  }
-  const mac = keys.mac!
-  const macLength = mac.keyLength
-  const ctr = yield* aesCtr(crypto, keys.key, keys.iv)
-  const macKey = yield* importMac(crypto, mac, keys.macKey!)
-  const verify = (tag: Uint8Array, data: Uint8Array) =>
-    crypto.verify({ name: "HMAC" }, macKey, tag, data).pipe(
-      Effect.mapError(protocolErrorFrom("MAC verification failed")),
-      Effect.flatMap((valid) => valid ? Effect.void : Effect.fail(macFailure()))
-    )
-  if (mac.etm) {
-    return {
-      headerLength: 4,
-      begin: (header) => {
-        const length = readLength(header)
-        return Effect.as(checkPacketLength(length, blockSize, length), length + macLength)
-      },
-      finish: Effect.fnUntraced(function*(sequence: number, header: Bytes, rest: Bytes) {
-        const encrypted = rest.subarray(0, rest.length - macLength)
-        yield* verify(rest.subarray(rest.length - macLength), concat([sequenceBytes(sequence), header, encrypted]))
-        return yield* extractPayload(yield* ctr(encrypted))
+      headerLength: blockSize,
+      begin: Effect.fnUntraced(function*(header: Bytes) {
+        firstBlock = yield* ctr(header)
+        const length = readLength(firstBlock)
+        yield* checkPacketLength(length, blockSize, length + 4)
+        return length + 4 - blockSize + macLength
+      }),
+      finish: Effect.fnUntraced(function*(sequence: number, _header: Bytes, rest: Bytes) {
+        const plain = concat([firstBlock!, yield* ctr(rest.subarray(0, rest.length - macLength))])
+        firstBlock = undefined
+        yield* verify(rest.subarray(rest.length - macLength), concat([sequenceBytes(sequence), plain]))
+        return yield* extractPayload(plain.subarray(4))
       })
     } satisfies Opener
-  }
-  let firstBlock: Uint8Array | undefined
-  return {
-    headerLength: blockSize,
-    begin: Effect.fnUntraced(function*(header: Bytes) {
-      firstBlock = yield* ctr(header)
-      const length = readLength(firstBlock)
-      yield* checkPacketLength(length, blockSize, length + 4)
-      return length + 4 - blockSize + macLength
-    }),
-    finish: Effect.fnUntraced(function*(sequence: number, _header: Bytes, rest: Bytes) {
-      const plain = concat([firstBlock!, yield* ctr(rest.subarray(0, rest.length - macLength))])
-      firstBlock = undefined
-      yield* verify(rest.subarray(rest.length - macLength), concat([sequenceBytes(sequence), plain]))
-      return yield* extractPayload(plain.subarray(4))
-    })
-  } satisfies Opener
+  })
+
+  return { noneSealer, makeSealer, makeOpener }
 })

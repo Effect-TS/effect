@@ -104,95 +104,6 @@ const wildcardToRegExp = (pattern: string): RegExp =>
     "i"
   )
 
-const matchHashed = (crypto: Crypto.Crypto, pattern: string, name: string): Effect.Effect<boolean> => {
-  const [, , salt, hash] = pattern.split("|")
-  if (salt === undefined || hash === undefined) return Effect.succeed(false)
-  const saltBytes = Base64.decode(salt)
-  const hashBytes = Base64.decode(hash)
-  if (Result.isFailure(saltBytes) || Result.isFailure(hashBytes)) return Effect.succeed(false)
-  // A hashing failure never counts as a match.
-  return crypto.hmac("SHA-1", saltBytes.success, utf8(name)).pipe(
-    Effect.map((computed) => equals(computed, hashBytes.success)),
-    Effect.orElseSucceed(() => false)
-  )
-}
-
-const matchesPatterns = (crypto: Crypto.Crypto, hosts: string, name: string): Effect.Effect<boolean> => {
-  if (hosts.startsWith("|1|")) return matchHashed(crypto, hosts, name)
-  let matched = false
-  for (const raw of hosts.split(",")) {
-    const negated = raw.startsWith("!")
-    const pattern = negated ? raw.slice(1) : raw
-    if (wildcardToRegExp(pattern).test(name)) {
-      if (negated) return Effect.succeed(false)
-      matched = true
-    }
-  }
-  return Effect.succeed(matched)
-}
-
-const checkWith = Effect.fnUntraced(function*(
-  crypto: Crypto.Crypto,
-  entries: ReadonlyArray<Entry>,
-  host: string,
-  port: number,
-  key: SshKey.PublicKey
-) {
-  const name = hostName(host, port)
-  let status: Status = "Unknown"
-  for (const entry of entries) {
-    if (entry.marker === "cert-authority") continue
-    if (!(yield* matchesPatterns(crypto, entry.hosts, name))) continue
-    const same = SshKey.equals(entry.key, key)
-    if (entry.marker === "revoked") {
-      if (same) return "Revoked" as Status
-      continue
-    }
-    if (same) {
-      status = "Match"
-    } else if (entry.key.type === key.type && status !== "Match") {
-      status = "Mismatch"
-    }
-  }
-  return status
-})
-
-const keyTypesWith = Effect.fnUntraced(function*(
-  crypto: Crypto.Crypto,
-  entries: ReadonlyArray<Entry>,
-  host: string,
-  port: number
-) {
-  const name = hostName(host, port)
-  const types: Array<string> = []
-  for (const entry of entries) {
-    if (entry.marker !== undefined || types.includes(entry.key.type)) continue
-    if (yield* matchesPatterns(crypto, entry.hosts, name)) types.push(entry.key.type)
-  }
-  return types as ReadonlyArray<string>
-})
-
-const formatEntryWith = Effect.fnUntraced(function*(
-  crypto: Crypto.Crypto,
-  host: string,
-  port: number,
-  key: SshKey.PublicKey,
-  options?: { readonly hash?: boolean | undefined }
-) {
-  const name = hostName(host, port)
-  const keyText = `${key.type} ${Base64.encode(key.blob)}`
-  if (options?.hash !== true) return `${name} ${keyText}`
-  const { hash, salt } = yield* Effect.gen(function*() {
-    const salt = yield* crypto.randomBytes(20)
-    return { salt, hash: yield* crypto.hmac("SHA-1", salt, utf8(name)) }
-  }).pipe(
-    Effect.mapError((cause) =>
-      new SshError({ reason: new SshKeyError({ description: "could not hash host name", cause }) })
-    )
-  )
-  return `|1|${Base64.encode(salt)}|${Base64.encode(hash)} ${keyText}`
-})
-
 const hostKeyError = (kind: SshHostKeyError["kind"], info: HostKeyInfo) =>
   new SshError({
     reason: new SshHostKeyError({
@@ -238,13 +149,100 @@ export class SshKnownHosts extends Context.Service<SshKnownHosts, {
   readonly verifier: HostKeyVerifier
 }>()("effect/ssh/SshKnownHosts") {}
 
-const makeWith = (
-  crypto: Crypto.Crypto,
+/**
+ * Creates the service over `entries`, capturing the `Crypto` service used for
+ * hashed entries. `fromFile` appends accepted entries to the array.
+ */
+const makeService = Effect.fnUntraced(function*(
   entries: ReadonlyArray<Entry>,
   onUnknown: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError>) | undefined
-): SshKnownHosts["Service"] => {
-  const check: SshKnownHosts["Service"]["check"] = (host, port, key) => checkWith(crypto, entries, host, port, key)
-  const keyTypes: SshKnownHosts["Service"]["keyTypes"] = (host, port) => keyTypesWith(crypto, entries, host, port)
+): Effect.fn.Return<SshKnownHosts["Service"], never, Crypto.Crypto> {
+  const crypto = yield* Crypto.Crypto
+
+  const matchHashed = (pattern: string, name: string): Effect.Effect<boolean> => {
+    const [, , salt, hash] = pattern.split("|")
+    if (salt === undefined || hash === undefined) return Effect.succeed(false)
+    const saltBytes = Base64.decode(salt)
+    const hashBytes = Base64.decode(hash)
+    if (Result.isFailure(saltBytes) || Result.isFailure(hashBytes)) return Effect.succeed(false)
+    // A hashing failure never counts as a match.
+    return crypto.hmac("SHA-1", saltBytes.success, utf8(name)).pipe(
+      Effect.map((computed) => equals(computed, hashBytes.success)),
+      Effect.orElseSucceed(() => false)
+    )
+  }
+
+  const matchesPatterns = (hosts: string, name: string): Effect.Effect<boolean> => {
+    if (hosts.startsWith("|1|")) return matchHashed(hosts, name)
+    let matched = false
+    for (const raw of hosts.split(",")) {
+      const negated = raw.startsWith("!")
+      const pattern = negated ? raw.slice(1) : raw
+      if (wildcardToRegExp(pattern).test(name)) {
+        if (negated) return Effect.succeed(false)
+        matched = true
+      }
+    }
+    return Effect.succeed(matched)
+  }
+
+  const check = Effect.fnUntraced(function*(
+    host: string,
+    port: number,
+    key: SshKey.PublicKey
+  ) {
+    const name = hostName(host, port)
+    let status: Status = "Unknown"
+    for (const entry of entries) {
+      if (entry.marker === "cert-authority") continue
+      if (!(yield* matchesPatterns(entry.hosts, name))) continue
+      const same = SshKey.equals(entry.key, key)
+      if (entry.marker === "revoked") {
+        if (same) return "Revoked" as Status
+        continue
+      }
+      if (same) {
+        status = "Match"
+      } else if (entry.key.type === key.type && status !== "Match") {
+        status = "Mismatch"
+      }
+    }
+    return status
+  })
+
+  const keyTypes = Effect.fnUntraced(function*(
+    host: string,
+    port: number
+  ) {
+    const name = hostName(host, port)
+    const types: Array<string> = []
+    for (const entry of entries) {
+      if (entry.marker !== undefined || types.includes(entry.key.type)) continue
+      if (yield* matchesPatterns(entry.hosts, name)) types.push(entry.key.type)
+    }
+    return types as ReadonlyArray<string>
+  })
+
+  const formatEntry = Effect.fnUntraced(function*(
+    host: string,
+    port: number,
+    key: SshKey.PublicKey,
+    options?: { readonly hash?: boolean | undefined }
+  ) {
+    const name = hostName(host, port)
+    const keyText = `${key.type} ${Base64.encode(key.blob)}`
+    if (options?.hash !== true) return `${name} ${keyText}`
+    const { hash, salt } = yield* Effect.gen(function*() {
+      const salt = yield* crypto.randomBytes(20)
+      return { salt, hash: yield* crypto.hmac("SHA-1", salt, utf8(name)) }
+    }).pipe(
+      Effect.mapError((cause) =>
+        new SshError({ reason: new SshKeyError({ description: "could not hash host name", cause }) })
+      )
+    )
+    return `|1|${Base64.encode(salt)}|${Base64.encode(hash)} ${keyText}`
+  })
+
   const verify = (info: HostKeyInfo): Effect.Effect<void, SshError> =>
     Effect.flatMap(check(info.host, info.port, info.key), (status) => {
       switch (status) {
@@ -261,15 +259,16 @@ const makeWith = (
           return Effect.fail(hostKeyError(status, info))
       }
     })
+
   return SshKnownHosts.of({
     entries,
-    matches: (entry, host, port) => matchesPatterns(crypto, entry.hosts, hostName(host, port)),
+    matches: (entry, host, port) => matchesPatterns(entry.hosts, hostName(host, port)),
     check,
     keyTypes,
-    formatEntry: (host, port, key, options) => formatEntryWith(crypto, host, port, key, options),
+    formatEntry,
     verifier: Object.assign(verify, { keyTypes })
   })
-}
+})
 
 /**
  * Creates an `SshKnownHosts` service from `known_hosts` contents, capturing
@@ -290,9 +289,8 @@ export const make = Effect.fnUntraced(function*(
     readonly onUnknown?: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError>) | undefined
   }
 ): Effect.fn.Return<SshKnownHosts["Service"], never, Crypto.Crypto> {
-  const crypto = yield* Crypto.Crypto
   const entries = typeof knownHosts === "string" ? parse(knownHosts).entries : knownHosts.entries
-  return makeWith(crypto, entries, options?.onUnknown)
+  return yield* makeService(entries, options?.onUnknown)
 })
 
 /**
@@ -317,19 +315,17 @@ export const fromFile = Effect.fnUntraced(function*(
     readonly hashHosts?: boolean | undefined
   }
 ): Effect.fn.Return<SshKnownHosts["Service"], PlatformError.PlatformError, FileSystem.FileSystem | Crypto.Crypto> {
-  const crypto = yield* Crypto.Crypto
   const fs = yield* FileSystem.FileSystem
   const exists = yield* fs.exists(path)
   const content = exists ? yield* fs.readFileString(path) : ""
   const entries = [...parse(content).entries]
   let needsNewline = content.length > 0 && !content.endsWith("\n")
-  return makeWith(
-    crypto,
+  const service: SshKnownHosts["Service"] = yield* makeService(
     entries,
     options?.acceptNew === true
       ? (info) =>
         Effect.gen(function*() {
-          const line = yield* formatEntryWith(crypto, info.host, info.port, info.key, { hash: options.hashHosts })
+          const line = yield* service.formatEntry(info.host, info.port, info.key, { hash: options.hashHosts })
           yield* fs.writeFileString(path, `${needsNewline ? "\n" : ""}${line}\n`, { flag: "a" }).pipe(
             Effect.mapError((cause) =>
               new SshError({ reason: new SshKeyError({ description: `could not update ${path}`, cause }) })
@@ -342,6 +338,7 @@ export const fromFile = Effect.fnUntraced(function*(
         })
       : undefined
   )
+  return service
 })
 
 /**

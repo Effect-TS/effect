@@ -5,7 +5,7 @@
  * @internal
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
-import type * as EffectCrypto from "../../Crypto.ts"
+import * as Crypto from "../../Crypto.ts"
 import * as Deferred from "../../Deferred.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
@@ -79,7 +79,6 @@ export interface TransportOptions {
   readonly host: string
   readonly clientVersion: string
   readonly algorithms: AlgorithmPreferences
-  readonly crypto: EffectCrypto.Crypto
   readonly verifyHostKey: (key: SshKey.PublicKey) => Effect.Effect<void, SshError>
   readonly rekeyBytes: number
   readonly rekeyInterval: Duration.Duration | undefined
@@ -241,8 +240,12 @@ const EXT_INFO_CLIENT = "ext-info-c"
 export const make = Effect.fnUntraced(function*(
   socket: Socket.Socket,
   options: TransportOptions
-): Effect.fn.Return<Transport, SshError, Scope.Scope> {
+): Effect.fn.Return<Transport, SshError, Crypto.Crypto | Scope.Scope> {
   const scope = yield* Effect.scope
+  const crypto = yield* Crypto.Crypto
+  const kex = yield* Kex.make
+  const packet = yield* Packet.make
+  const signatures = yield* Signatures.make
   const pull = yield* Socket.readerBytes(socket).pipe(Effect.mapError(connectionError))
   const socketWriter = yield* socket.writer
 
@@ -299,8 +302,7 @@ export const make = Effect.fnUntraced(function*(
   // Packet I/O
   // ---------------------------------------------------------------------------
 
-  const crypto = options.crypto
-  let sealer: Packet.Sealer = Packet.noneSealer(crypto)
+  let sealer: Packet.Sealer = packet.noneSealer
   let opener: Packet.Opener = Packet.noneOpener
   let sendSequence = 0
   let receiveSequence = 0
@@ -469,7 +471,7 @@ export const make = Effect.fnUntraced(function*(
     }
 
     const method = Kex.kexMethods[algorithms.kex]
-    const pair = yield* Kex.generateKeyAgreement(crypto, method)
+    const pair = yield* kex.generateKeyAgreement(method)
     yield* writeKex(new Writer().byte(Constants.MSG_KEX_ECDH_INIT).string(pair.publicKey).finish())
 
     const reply = yield* readKexMessage(Constants.MSG_KEX_ECDH_REPLY)
@@ -497,13 +499,13 @@ export const make = Effect.fnUntraced(function*(
 
     const serverKey = yield* Effect.fromResult(SshKey.fromBlob(hostKeyBlob))
     const hostKeyError = (kind: SshHostKeyError["kind"]) =>
-      Effect.flatMap(Signatures.fingerprintSha256(crypto, serverKey.blob), (fingerprint) =>
+      Effect.flatMap(signatures.fingerprint(serverKey.blob), (fingerprint) =>
         Effect.fail(
           new SshError({
             reason: new SshHostKeyError({ kind, host: options.host, keyType: serverKey.type, fingerprint })
           })
         ))
-    const valid = yield* Signatures.verifySignature(crypto, {
+    const valid = yield* signatures.verify({
       publicKey: hostKeyBlob,
       signature,
       data: exchangeHash,
@@ -519,7 +521,7 @@ export const make = Effect.fnUntraced(function*(
     }
 
     const derive = (letter: string, length: number) =>
-      Kex.deriveKey(crypto, method.hash, sharedSecret, exchangeHash, letter, sessionId!, length)
+      kex.deriveKey(method.hash, sharedSecret, exchangeHash, letter, sessionId!, length)
     const directionKeys = Effect.fnUntraced(function*(
       cipherName: string,
       macName: string | undefined,
@@ -545,8 +547,8 @@ export const make = Effect.fnUntraced(function*(
       "D",
       "F"
     ])
-    const nextSealer = yield* Packet.makeSealer(crypto, outgoingKeys)
-    const nextOpener = yield* Packet.makeOpener(crypto, incomingKeys)
+    const nextSealer = yield* packet.makeSealer(outgoingKeys)
+    const nextOpener = yield* packet.makeOpener(incomingKeys)
 
     yield* lock.withPermit(Effect.gen(function*() {
       yield* writeUnlocked([new Uint8Array([Constants.MSG_NEWKEYS])])

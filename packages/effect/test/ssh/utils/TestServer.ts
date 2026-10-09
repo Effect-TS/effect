@@ -137,6 +137,8 @@ class ProtocolFailure extends Error {}
 export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptions) {
   const scope = yield* Effect.scope
   const crypto = yield* EffectCrypto.Crypto
+  const kex = yield* Kex.make
+  const packet = yield* Packet.make
   const sshKeys = yield* SshKey.make
   const hostKey = options.hostKey
   const hostKeyAlgorithm = options.hostKeyAlgorithm ?? SshKey.signatureAlgorithms(hostKey.type)[0]
@@ -160,7 +162,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
   }
 
   // Packet I/O -----------------------------------------------------------------
-  let sealer: Packet.Sealer = Packet.noneSealer(crypto)
+  let sealer: Packet.Sealer = packet.noneSealer
   let opener: Packet.Opener = Packet.noneOpener
   let sendSequence = 0
   let receiveSequence = 0
@@ -293,7 +295,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       const init = yield* readExpect(Constants.MSG_KEX_ECDH_INIT)
       const clientPublic = new Reader(init, 1).string()
       const method = Kex.kexMethods[kexName]
-      const pair = yield* Effect.orDie(Kex.generateKeyAgreement(crypto, method))
+      const pair = yield* Effect.orDie(kex.generateKeyAgreement(method))
       const secret = yield* Effect.orDie(pair.agree(clientPublic))
       const exchangeHash = yield* Effect.orDie(
         crypto.digest(
@@ -313,7 +315,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       if (sessionId === undefined) sessionId = exchangeHash
       const signature = yield* Effect.orDie(hostKey.sign(exchangeHash, hostKeyAlgorithm))
       const derive = (letter: string, length: number) =>
-        Effect.orDie(Kex.deriveKey(crypto, method.hash, secret, exchangeHash, letter, sessionId!, length))
+        Effect.orDie(kex.deriveKey(method.hash, secret, exchangeHash, letter, sessionId!, length))
       const keys = (cipherName: string, macName: string | undefined, letters: readonly [string, string, string]) =>
         Effect.gen(function*() {
           const cipher = Packet.cipherAlgorithms[cipherName]
@@ -328,8 +330,8 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
         })
       const outgoing = yield* keys(cipherSC, macSC, ["B", "D", "F"])
       const incoming = yield* keys(cipherCS, macCS, ["A", "C", "E"])
-      const nextSealer = yield* Effect.orDie(Packet.makeSealer(crypto, outgoing))
-      const nextOpener = yield* Effect.orDie(Packet.makeOpener(crypto, incoming))
+      const nextSealer = yield* Effect.orDie(packet.makeSealer(outgoing))
+      const nextOpener = yield* Effect.orDie(packet.makeOpener(incoming))
 
       yield* lock.withPermit(Effect.gen(function*() {
         yield* writeRaw(

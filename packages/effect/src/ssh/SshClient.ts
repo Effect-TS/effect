@@ -705,7 +705,7 @@ export const make = Effect.fnUntraced(function*(
   options: ConnectOptions
 ): Effect.fn.Return<SshClient, SshError, Crypto.Crypto | Scope.Scope> {
   const scope = yield* Effect.scope
-  const crypto = yield* Crypto.Crypto
+  const signatures = yield* Signatures.make
   const port = options.port ?? 22
   // Unsupported algorithm names are dropped so they can never be negotiated.
   const supported = (category: keyof AlgorithmPreferences) => {
@@ -728,13 +728,12 @@ export const make = Effect.fnUntraced(function*(
 
   const handshake = Effect.gen(function*() {
     const transport = yield* Transport.make(socket, {
-      crypto,
       host: options.host,
       clientVersion: `SSH-2.0-${options.clientVersion ?? `Effect_${InternalVersion.version}`}`,
       algorithms,
       verifyHostKey: (key) =>
         Effect.flatMap(
-          Signatures.fingerprintSha256(crypto, key.blob),
+          signatures.fingerprint(key.blob),
           (fingerprint) => verifier({ host: options.host, port, key, fingerprint })
         ),
       rekeyBytes: options.rekeyLimit?.bytes ?? 1024 * 1024 * 1024,
