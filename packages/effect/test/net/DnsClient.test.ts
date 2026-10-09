@@ -872,55 +872,6 @@ describe("makeTransportHttps", () => {
     }))
 })
 
-describe("nameServerFromString", () => {
-  it("parses IP addresses with and without a port", () => {
-    const format = (input: string) => Result.map(DnsClient.nameServerFromString(input), NetAddress.formatInet)
-    assert.deepStrictEqual(
-      ["192.0.2.53", "192.0.2.53:5353", "2001:db8::53", "[2001:db8::53]:5353", "fe80::1%2"].map(format),
-      [
-        Result.succeed("192.0.2.53:53"),
-        Result.succeed("192.0.2.53:5353"),
-        Result.succeed("[2001:db8::53]:53"),
-        Result.succeed("[2001:db8::53]:5353"),
-        Result.succeed("[fe80::1%2]:53")
-      ]
-    )
-    for (const input of ["ns.example", "ns.example:53", "192.0.2.53:", "[2001:db8::53]", "192.0.2.256", ""]) {
-      assert.isTrue(Result.isFailure(DnsClient.nameServerFromString(input)), input)
-    }
-  })
-})
-
-describe("nameServerFromInput", () => {
-  it("parses strings, converts address inputs, and uses port 53 for IP addresses", () => {
-    const inet = NetAddress.inetAddressFromStringUnsafe("192.0.2.53:5353")
-    const format = (input: NetAddress.IpAddressInput | NetAddress.InetAddressInput) =>
-      Result.map(DnsClient.nameServerFromInput(input), NetAddress.formatInet)
-    assert.deepStrictEqual(
-      [
-        "2001:db8::53",
-        NetAddress.ipFromStringUnsafe("192.0.2.53"),
-        [192, 0, 2, 53] as const,
-        inet,
-        { address: "2001:db8::53", port: 5353 }
-      ].map(format),
-      [
-        Result.succeed("[2001:db8::53]:53"),
-        Result.succeed("192.0.2.53:53"),
-        Result.succeed("192.0.2.53:53"),
-        Result.succeed("192.0.2.53:5353"),
-        Result.succeed("[2001:db8::53]:5353")
-      ]
-    )
-    assert.strictEqual(Result.getOrThrow(DnsClient.nameServerFromInput(inet)), inet)
-    for (
-      const input of ["ns.example", [192, 0, 2] as unknown as NetAddress.IpAddressInput, { address: "ns", port: 53 }]
-    ) {
-      assert.isTrue(Result.isFailure(DnsClient.nameServerFromInput(input)), JSON.stringify(input))
-    }
-  })
-})
-
 describe("parseResolvConf", () => {
   it("reads name servers, search domains, and options", () => {
     const config = DnsClient.parseResolvConf([

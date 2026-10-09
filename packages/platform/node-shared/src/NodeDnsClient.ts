@@ -19,6 +19,7 @@ import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Dns from "effect/net/Dns"
 import * as DnsClient from "effect/net/DnsClient"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
@@ -33,10 +34,9 @@ import * as NodeSocket from "./NodeSocket.ts"
  *
  * **Details**
  *
- * `nameServers` replaces the system name servers; strings are parsed like
- * `DnsClient.nameServerFromString`, IP addresses without a port use port 53,
- * and an empty list keeps the system name servers. The other
- * options replace the matching `resolv.conf` values and are described by
+ * `nameServers` replaces the system name servers, which are converted like
+ * `Dns.nameServerFromInput`, and an empty list keeps the system name servers.
+ * The other options replace the matching `resolv.conf` values and are described by
  * `DnsClient.MakeOptions` and `DnsClient.TransportUdpOptions`.
  *
  * **Gotchas**
@@ -70,7 +70,7 @@ const isScoped = (server: NetAddress.IpAddress | NetAddress.InetAddress): boolea
  *
  * **Details**
  *
- * Name servers are converted like `DnsClient.nameServerFromInput`. The
+ * Name servers are converted like `Dns.nameServerFromInput`. The
  * transports of other runtimes reuse this check.
  *
  * @stability experimental
@@ -81,7 +81,7 @@ export const checkNameServers = Effect.fnUntraced(function*(
   nameServers: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
 ) {
   for (const input of nameServers) {
-    const server = yield* Effect.fromResult(DnsClient.nameServerFromInput(input))
+    const server = yield* Effect.fromResult(Dns.nameServerFromInput(input))
     if (isScoped(server)) {
       return yield* new NetAddress.NetAddressError({
         input,
