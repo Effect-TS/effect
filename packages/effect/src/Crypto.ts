@@ -159,7 +159,7 @@ export interface Jwk {
 }
 
 /**
- * Elliptic curves supported for ECDSA keys.
+ * Elliptic curves supported for ECDSA and ECDH keys.
  *
  * @stability unstable
  * @category models
@@ -173,7 +173,7 @@ export type NamedCurve = "P-256" | "P-384" | "P-521"
  * **Details**
  *
  * HMAC lengths are measured in bits and default to the hash's block size.
- * AES-GCM keys contain 128, 192, or 256 bits.
+ * AES-GCM and AES-CTR keys contain 128, 192, or 256 bits.
  *
  * @stability unstable
  * @category models
@@ -181,15 +181,17 @@ export type NamedCurve = "P-256" | "P-384" | "P-521"
  */
 export type SecretKeyAlgorithm =
   | { readonly name: "AES-GCM"; readonly length: 128 | 192 | 256 }
+  | { readonly name: "AES-CTR"; readonly length: 128 | 192 | 256 }
   | { readonly name: "HMAC"; readonly hash: HmacAlgorithm; readonly length?: number | undefined }
 
 /**
- * Algorithms for RSA, ECDSA, and Ed25519 key pairs.
+ * Algorithms for RSA, ECDSA, Ed25519, ECDH, and X25519 key pairs.
  *
  * **Details**
  *
  * RSA generation defaults to a 2048-bit modulus and exponent 65537. RSA
  * keys bind the selected hash to subsequent encryption or signature operations.
+ * ECDH and X25519 keys perform key agreement with `deriveSharedSecret`.
  *
  * @stability unstable
  * @category models
@@ -204,6 +206,8 @@ export type KeyPairAlgorithm =
   }
   | { readonly name: "ECDSA"; readonly namedCurve: NamedCurve }
   | { readonly name: "Ed25519" }
+  | { readonly name: "ECDH"; readonly namedCurve: NamedCurve }
+  | { readonly name: "X25519" }
 
 /**
  * Algorithms supported by managed cryptographic keys.
@@ -221,7 +225,7 @@ export type KeyAlgorithm = SecretKeyAlgorithm | KeyPairAlgorithm
  * @category models
  * @since 4.0.0
  */
-export type KeyUsage = "encrypt" | "decrypt" | "sign" | "verify"
+export type KeyUsage = "encrypt" | "decrypt" | "sign" | "verify" | "deriveBits"
 
 /**
  * Exportability and permitted operations for generated or imported keys.
@@ -232,6 +236,8 @@ export type KeyUsage = "encrypt" | "decrypt" | "sign" | "verify"
  * default to extractable, and generated public keys are always extractable.
  * Usages default to the operations supported by the algorithm
  * and key type, and generated pairs divide usages between their two keys.
+ * ECDH and X25519 private keys default to `deriveBits`, and their public keys
+ * have no usages.
  *
  * @stability unstable
  * @category models
@@ -286,6 +292,9 @@ export interface KeyPair {
  *
  * `raw` represents secret keys, `spki` represents DER public keys, and `pkcs8`
  * represents DER private keys. PKCS8 exports are unencrypted key material.
+ * `raw` also represents ECDSA, ECDH, Ed25519, and X25519 public keys: an
+ * uncompressed `0x04 || X || Y` point for ECDSA and ECDH, and 32 bytes for
+ * Ed25519 and X25519.
  *
  * @stability unstable
  * @category models
@@ -294,18 +303,23 @@ export interface KeyPair {
 export type KeyFormat = "raw" | "spki" | "pkcs8"
 
 /**
- * Parameters for authenticated AES-GCM or RSA-OAEP encryption and decryption.
+ * Parameters for AES-GCM, AES-CTR, or RSA-OAEP encryption and decryption.
  *
  * **Details**
  *
  * AES-GCM uses a 12-byte IV and a 128-bit authentication tag appended to the
  * ciphertext. Additional data is authenticated without being encrypted.
+ * AES-CTR uses a 16-byte initial counter block whose low `length` bits (1 to
+ * 128) increment big-endian per block. Each call starts from the supplied
+ * counter, and decryption is the same operation as encryption.
  * RSA-OAEP uses the hash bound to the key and an optional binary label.
  *
  * **Gotchas**
  *
- * Never reuse an AES-GCM IV with the same key. Decryption must use the same
- * IV, additional data, or OAEP label as encryption.
+ * Never reuse an AES-GCM IV or AES-CTR counter block with the same key.
+ * AES-CTR does not authenticate data, so pair it with a MAC. Some backends,
+ * such as Deno, accept only 32-, 64-, or 128-bit AES-CTR counter lengths. Decryption must
+ * use the same IV, counter, additional data, or OAEP label as encryption.
  *
  * @stability unstable
  * @category models
@@ -317,6 +331,7 @@ export type CipherOptions =
     readonly iv: Uint8Array
     readonly additionalData?: Uint8Array | undefined
   }
+  | { readonly name: "AES-CTR"; readonly counter: Uint8Array; readonly length: number }
   | { readonly name: "RSA-OAEP"; readonly label?: Uint8Array | undefined }
 
 /**
@@ -499,12 +514,14 @@ export interface Crypto {
   exportKey(format: KeyFormat, key: Key): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Encrypts plaintext using an AES-GCM secret key or RSA-OAEP public key.
+   * Encrypts plaintext using an AES-GCM or AES-CTR secret key or an RSA-OAEP
+   * public key.
    */
   encrypt(options: CipherOptions, key: Key, data: Uint8Array): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Decrypts ciphertext using an AES-GCM secret key or RSA-OAEP private key.
+   * Decrypts ciphertext using an AES-GCM or AES-CTR secret key or an RSA-OAEP
+   * private key.
    */
   decrypt(options: CipherOptions, key: Key, data: Uint8Array): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
@@ -522,6 +539,14 @@ export interface Crypto {
     signature: Uint8Array,
     data: Uint8Array
   ): Effect.Effect<boolean, PlatformError.PlatformError>
+
+  /**
+   * Computes the full-length ECDH or X25519 shared secret between a private
+   * key with `deriveBits` usage and a public key of the same algorithm and
+   * curve. Mismatched keys and all-zero X25519 secrets fail with
+   * `PlatformError.BadArgument` when constructed with `make`.
+   */
+  deriveSharedSecret(privateKey: Key, publicKey: Key): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
    * Generates a cryptographically secure random number between 0 (inclusive)
@@ -1020,7 +1045,7 @@ export const exportJwk = (key: Key): Effect.Effect<Jwk, PlatformError.PlatformEr
   Effect.flatMap(Crypto, (crypto) => crypto.exportJwk(key))
 
 /**
- * Generates an AES-GCM or HMAC key using the Crypto service.
+ * Generates an AES-GCM, AES-CTR, or HMAC key using the Crypto service.
  *
  * **Details**
  *
@@ -1037,12 +1062,14 @@ export const generateSecretKey = (
   Effect.flatMap(Crypto, (crypto) => crypto.generateSecretKey(algorithm, options))
 
 /**
- * Generates an RSA, ECDSA, or Ed25519 key pair using the Crypto service.
+ * Generates an RSA, ECDSA, Ed25519, ECDH, or X25519 key pair using the Crypto
+ * service.
  *
  * **Details**
  *
  * Private keys default to non-extractable. Public keys remain extractable.
- * RSA generation requires a modulus of at least 2048 bits.
+ * RSA generation requires a modulus of at least 2048 bits. ECDH and X25519
+ * private keys default to `deriveBits` usage.
  *
  * @stability unstable
  * @category key management
@@ -1057,6 +1084,11 @@ export const generateKeyPair = (
 /**
  * Imports raw secret keys, DER SPKI public keys, or DER PKCS8 private keys using
  * the Crypto service.
+ *
+ * **Details**
+ *
+ * The `raw` format with an ECDSA, ECDH, Ed25519, or X25519 algorithm imports
+ * a public key.
  *
  * **Gotchas**
  *
@@ -1080,6 +1112,11 @@ export const importKey = (
  * Exports an extractable key in raw, DER SPKI, or DER PKCS8 format using the
  * Crypto service.
  *
+ * **Details**
+ *
+ * ECDSA, ECDH, Ed25519, and X25519 public keys export in both `raw` and `spki`
+ * formats.
+ *
  * **Gotchas**
  *
  * Exported secret and private key bytes are unencrypted sensitive material.
@@ -1096,14 +1133,15 @@ export const exportKey = (
   Effect.flatMap(Crypto, (crypto) => crypto.exportKey(format, key))
 
 /**
- * Encrypts data with an AES-GCM secret key or RSA-OAEP public key using the
- * Crypto service.
+ * Encrypts data with an AES-GCM or AES-CTR secret key or an RSA-OAEP public
+ * key using the Crypto service.
  *
  * **Gotchas**
  *
  * AES-GCM requires a fresh 12-byte IV for each encryption with the same key.
- * Its ciphertext includes the 16-byte authentication tag. The key must permit
- * encryption and match the selected algorithm.
+ * Its ciphertext includes the 16-byte authentication tag. AES-CTR output is
+ * unauthenticated, and a counter block must never repeat under the same key.
+ * The key must permit encryption and match the selected algorithm.
  *
  * @stability unstable
  * @category encryption
@@ -1117,7 +1155,7 @@ export const encrypt = (
   Effect.flatMap(Crypto, (crypto) => crypto.encrypt(options, key, data))
 
 /**
- * Decrypts AES-GCM or RSA-OAEP ciphertext using the Crypto service.
+ * Decrypts AES-GCM, AES-CTR, or RSA-OAEP ciphertext using the Crypto service.
  *
  * **Gotchas**
  *
@@ -1174,6 +1212,52 @@ export const verify = (
   data: Uint8Array
 ): Effect.Effect<boolean, PlatformError.PlatformError, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.verify(options, key, signature, data))
+
+/**
+ * Computes an ECDH or X25519 shared secret using the Crypto service.
+ *
+ * **Details**
+ *
+ * The secret has the curve's full length: 32 bytes for X25519 and P-256, 48
+ * bytes for P-384, and 66 bytes for P-521. The private key must permit
+ * `deriveBits`, and both keys must use the same algorithm and curve.
+ *
+ * **Gotchas**
+ *
+ * The secret is raw key-agreement output. Derive keys from it with a KDF such
+ * as `hkdf` instead of using it directly. X25519 secrets that are all zeros
+ * fail with `PlatformError`, as RFC 7748 requires.
+ *
+ * **Example** (Agreeing on an X25519 secret)
+ *
+ * ```ts import.meta.vitest
+ * import { Crypto, Effect } from "effect"
+ *
+ * const service = Crypto.make({
+ *   ...Crypto.makeSubtle(globalThis.crypto.subtle),
+ *   randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+ * })
+ * const program = Effect.gen(function*() {
+ *   const alice = yield* Crypto.generateKeyPair({ name: "X25519" })
+ *   const bob = yield* Crypto.generateKeyPair({ name: "X25519" })
+ *   const bobPublic = yield* Crypto.exportKey("raw", bob.publicKey)
+ *   const received = yield* Crypto.importKey("raw", bobPublic, { name: "X25519" })
+ *   const secret = yield* Crypto.deriveSharedSecret(alice.privateKey, received)
+ *   return secret.length
+ * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provideService(Crypto.Crypto, service))) // => 32
+ * ```
+ *
+ * @stability unstable
+ * @category key agreement
+ * @since 4.0.0
+ */
+export const deriveSharedSecret = (
+  privateKey: Key,
+  publicKey: Key
+): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.deriveSharedSecret(privateKey, publicKey))
 
 /**
  * Creates a `Crypto` service from the primitive implementation, deriving the
@@ -1238,6 +1322,7 @@ export const make = (
     readonly decrypt: Crypto["decrypt"]
     readonly sign: Crypto["sign"]
     readonly verify: Crypto["verify"]
+    readonly deriveSharedSecret: Crypto["deriveSharedSecret"]
   }
 ): Crypto => {
   const randomBytesUnsafe = impl.randomBytes
@@ -1370,6 +1455,24 @@ export const make = (
     decrypt: impl.decrypt,
     sign: impl.sign,
     verify: impl.verify,
+    deriveSharedSecret: (privateKey, publicKey) => {
+      const algorithm = privateKey.algorithm
+      if (
+        privateKey.type !== "private" || publicKey.type !== "public" || !privateKey.usages.includes("deriveBits") ||
+        (algorithm.name !== "ECDH" && algorithm.name !== "X25519") || publicKey.algorithm.name !== algorithm.name ||
+        (algorithm.name === "ECDH" && (publicKey.algorithm as typeof algorithm).namedCurve !== algorithm.namedCurve)
+      ) {
+        return Effect.fail(PlatformError.badArgument({
+          module: "Crypto",
+          method: "deriveSharedSecret",
+          description:
+            "requires an ECDH or X25519 private key with deriveBits usage and a public key of the same algorithm and curve"
+        }))
+      }
+      return algorithm.name === "X25519"
+        ? Effect.flatMap(impl.deriveSharedSecret(privateKey, publicKey), rejectAllZeroSecret)
+        : impl.deriveSharedSecret(privateKey, publicKey)
+    },
     pbkdf2: (algorithm, password, salt, iterations, length) => {
       // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
       // larger values instead of rejecting them.
@@ -1449,8 +1552,28 @@ const validateXChaCha = (
       })
     )
 
+// RFC 7748 section 6.1: an all-zero X25519 output means the peer sent a
+// small-order point, and protocols such as SSH must abort.
+const rejectAllZeroSecret = (secret: Uint8Array): Effect.Effect<Uint8Array, PlatformError.PlatformError> => {
+  let bits = 0
+  for (const byte of secret) bits |= byte
+  return bits === 0
+    ? Effect.fail(PlatformError.badArgument({
+      module: "Crypto",
+      method: "deriveSharedSecret",
+      description: "X25519 shared secret must not be all zeros"
+    }))
+    : Effect.succeed(secret)
+}
+
 const nativeKeys = new WeakMap<SubtleCrypto, WeakMap<Key, CryptoKey>>()
 const hashLengths: Record<HmacAlgorithm, number> = { "SHA-1": 20, "SHA-256": 32, "SHA-384": 48, "SHA-512": 64 }
+const keyUsageOrder: ReadonlyArray<KeyUsage> = ["encrypt", "decrypt", "sign", "verify", "deriveBits"]
+const sharedSecretBits: Record<NamedCurve, number> = { "P-256": 256, "P-384": 384, "P-521": 528 }
+const isSecretAlgorithm = (algorithm: KeyAlgorithm): algorithm is SecretKeyAlgorithm =>
+  algorithm.name === "AES-GCM" || algorithm.name === "AES-CTR" || algorithm.name === "HMAC"
+const hasRawPublicKey = (name: string): boolean =>
+  name === "ECDSA" || name === "ECDH" || name === "Ed25519" || name === "X25519"
 
 /**
  * Creates cryptographic operation implementations from an explicitly supplied
@@ -1540,7 +1663,8 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
     let algorithm: KeyAlgorithm
     switch (native.name) {
       case "AES-GCM":
-        algorithm = { name: "AES-GCM", length: native.length as 128 | 192 | 256 }
+      case "AES-CTR":
+        algorithm = { name: native.name, length: native.length as 128 | 192 | 256 }
         break
       case "HMAC":
         algorithm = { name: "HMAC", hash: native.hash.name as HmacAlgorithm, length: native.length }
@@ -1556,7 +1680,11 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         }
         break
       case "ECDSA":
-        algorithm = { name: "ECDSA", namedCurve: native.namedCurve as NamedCurve }
+      case "ECDH":
+        algorithm = { name: native.name, namedCurve: native.namedCurve as NamedCurve }
+        break
+      case "X25519":
+        algorithm = { name: "X25519" }
         break
       default:
         algorithm = { name: "Ed25519" }
@@ -1566,7 +1694,8 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
       type: handle.type,
       algorithm: Object.freeze(algorithm),
       extractable: handle.extractable,
-      usages: Object.freeze(Array.from(handle.usages) as Array<KeyUsage>)
+      // Backends report usages in different orders.
+      usages: Object.freeze(keyUsageOrder.filter((usage) => handle.usages.includes(usage)))
     })
     handles.set(key, handle)
     return key
@@ -1580,6 +1709,7 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
   const algorithmParams = (method: string, algorithm: KeyAlgorithm, generating: boolean): AlgorithmIdentifier => {
     switch (algorithm.name) {
       case "AES-GCM":
+      case "AES-CTR":
         return { name: algorithm.name, length: algorithm.length } as AesKeyGenParams
       case "HMAC": {
         const length = algorithm.length
@@ -1619,14 +1749,19 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
           : { name: algorithm.name, hash: algorithm.hash } as RsaHashedImportParams
       }
       case "ECDSA":
+      case "ECDH":
         return { name: algorithm.name, namedCurve: algorithm.namedCurve } as EcKeyGenParams
       case "Ed25519":
+      case "X25519":
         return { name: algorithm.name }
     }
   }
 
   const usagesFor = (algorithm: KeyAlgorithm, type?: Key["type"]): Array<KeyUsage> => {
-    if (algorithm.name === "AES-GCM" || algorithm.name === "RSA-OAEP") {
+    if (algorithm.name === "ECDH" || algorithm.name === "X25519") {
+      return type === "public" ? [] : ["deriveBits"]
+    }
+    if (algorithm.name === "AES-GCM" || algorithm.name === "AES-CTR" || algorithm.name === "RSA-OAEP") {
       return type === "public" ? ["encrypt"] : type === "private" ? ["decrypt"] : ["encrypt", "decrypt"]
     }
     return type === "public" ? ["verify"] : type === "private" ? ["sign"] : ["sign", "verify"]
@@ -1641,6 +1776,13 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         tagLength: 128,
         ...(options.additionalData === undefined ? {} : { additionalData: new Uint8Array(options.additionalData) })
       } as AesGcmParams
+    }
+    if (options.name === "AES-CTR") {
+      if (options.counter.length !== 16) return badArgument(method, "AES-CTR counter must contain exactly 16 bytes")
+      if (!Number.isInteger(options.length) || options.length < 1 || options.length > 128) {
+        return badArgument(method, "AES-CTR counter length must be an integer between 1 and 128 bits")
+      }
+      return { name: options.name, counter: new Uint8Array(options.counter), length: options.length } as AesCtrParams
     }
     return {
       name: options.name,
@@ -1725,7 +1867,10 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
           options?.extractable ?? (type === "public" && jwk.ext !== false),
           Array.from(options?.usages ?? jwk.key_ops ?? usagesFor(algorithm, type))
         )
-        if (algorithm.name === "AES-GCM" && (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length) {
+        if (
+          (algorithm.name === "AES-GCM" || algorithm.name === "AES-CTR") &&
+          (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length
+        ) {
           return badArgument("importJwk", "AES key length does not match the requested algorithm")
         }
         return wrap(handle)
@@ -1790,12 +1935,12 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
       }),
     importKey: (format, data, algorithm, options) =>
       run("importKey", async () => {
-        const type = format === "spki" ? "public" : format === "pkcs8" ? "private" : "secret"
-        const secret = algorithm.name === "AES-GCM" || algorithm.name === "HMAC"
-        if ((type === "secret") !== secret) {
+        const secret = isSecretAlgorithm(algorithm)
+        const type = format === "spki" ? "public" : format === "pkcs8" ? "private" : secret ? "secret" : "public"
+        if (format === "raw" ? !secret && !hasRawPublicKey(algorithm.name) : secret) {
           return badArgument(
             "importKey",
-            "raw format requires a secret key algorithm; SPKI and PKCS8 require an asymmetric algorithm"
+            "raw format requires a secret key or an ECDSA, ECDH, Ed25519, or X25519 public key; SPKI and PKCS8 require an asymmetric algorithm"
           )
         }
         if (format === "raw" && data.length === 0) {
@@ -1808,7 +1953,10 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
           options?.extractable ?? (type === "public"),
           Array.from(options?.usages ?? usagesFor(algorithm, type))
         )
-        if (algorithm.name === "AES-GCM" && (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length) {
+        if (
+          (algorithm.name === "AES-GCM" || algorithm.name === "AES-CTR") &&
+          (handle.algorithm as AesKeyAlgorithm).length !== algorithm.length
+        ) {
           return badArgument("importKey", "AES key length does not match the requested algorithm")
         }
         return wrap(handle)
@@ -1817,7 +1965,10 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
       run("exportKey", async () => {
         const handle = getKey("exportKey", key)
         const formatForType = { secret: "raw", public: "spki", private: "pkcs8" }
-        if (format !== formatForType[handle.type]) {
+        if (
+          format !== formatForType[handle.type] &&
+          !(format === "raw" && handle.type === "public" && hasRawPublicKey(handle.algorithm.name))
+        ) {
           return badArgument("exportKey", "format does not match the key type")
         }
         return new Uint8Array(await subtle.exportKey(format, handle))
@@ -1851,6 +2002,23 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
           handle,
           new Uint8Array(signature),
           new Uint8Array(data)
+        )
+      }),
+    deriveSharedSecret: (privateKey, publicKey) =>
+      run("deriveSharedSecret", async () => {
+        const privateHandle = getKey("deriveSharedSecret", privateKey)
+        const publicHandle = getKey("deriveSharedSecret", publicKey)
+        const native = privateHandle.algorithm as EcKeyAlgorithm
+        const bits = native.name === "X25519" ? 256 : sharedSecretBits[native.namedCurve as NamedCurve]
+        if (bits === undefined) {
+          return badArgument("deriveSharedSecret", "private key does not support key agreement")
+        }
+        return new Uint8Array(
+          await subtle.deriveBits(
+            { name: native.name, public: publicHandle } as EcdhKeyDeriveParams,
+            privateHandle,
+            bits
+          )
         )
       })
   }

@@ -5,7 +5,8 @@
  * random data, `createHash` and `createHmac` for digests and authentication,
  * asynchronous `pbkdf2` for password derivation, and `publicEncrypt` for RSA-OAEP
  * encryption. Node's native `webcrypto.subtle` provides managed keys, AES-GCM,
- * RSA-OAEP decryption, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, and Ed25519. Native
+ * AES-CTR, RSA-OAEP decryption, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, Ed25519, and
+ * ECDH and X25519 key agreement. Native
  * Argon2id is used when available. XChaCha20-Poly1305 uses HChaCha20 nonce
  * extension followed by native ChaCha20-Poly1305. It exports `make` as the
  * concrete service value and `layer` for providing it through Effect context.

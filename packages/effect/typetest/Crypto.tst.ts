@@ -42,6 +42,7 @@ describe("Crypto", () => {
           | "xchacha20poly1305Decrypt"
           | "importJwk"
           | "exportJwk"
+          | "deriveSharedSecret"
         >
       >
     >()
@@ -84,6 +85,7 @@ describe("Crypto", () => {
     expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, xchacha20poly1305Decrypt: undefined })
     expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, importJwk: undefined })
     expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, exportJwk: undefined })
+    expect(Crypto.make).type.not.toBeCallableWith({ ...implementation, deriveSharedSecret: undefined })
   })
 
   it("infers managed key results and the Crypto service requirement", () => {
@@ -105,6 +107,21 @@ describe("Crypto", () => {
     expect(Crypto.encrypt({ name: "AES-GCM", iv: data }, key, data)).type.toBe<
       Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto.Crypto>
     >()
+    expect(Crypto.deriveSharedSecret(key, key)).type.toBe<
+      Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto.Crypto>
+    >()
+    expect(Crypto.encrypt({ name: "AES-CTR", counter: data, length: 128 }, key, data)).type.toBe<
+      Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto.Crypto>
+    >()
+    expect(Crypto.encrypt).type.not.toBeCallableWith({ name: "AES-CTR", counter: data }, key, data)
+    expect(Crypto.generateSecretKey).type.toBeCallableWith({ name: "AES-CTR", length: 128 })
+    expect(Crypto.generateKeyPair).type.toBeCallableWith({ name: "X25519" })
+    expect(Crypto.generateKeyPair).type.toBeCallableWith({ name: "ECDH", namedCurve: "P-384" })
+    expect(Crypto.generateKeyPair).type.not.toBeCallableWith({ name: "ECDH" })
+    expect(Crypto.generateSecretKey).type.not.toBeCallableWith({ name: "X25519" })
+    expect(Crypto.generateKeyPair).type.toBeCallableWith({ name: "ECDH", namedCurve: "P-256" }, {
+      usages: ["deriveBits"]
+    })
     expect(Crypto.generateSecretKey).type.not.toBeCallableWith({ name: "Ed25519" })
     expect(Crypto.generateKeyPair).type.not.toBeCallableWith({ name: "AES-GCM", length: 256 })
     expect(Crypto.generateSecretKey).type.not.toBeCallableWith({ name: "AES-GCM", length: 64 })

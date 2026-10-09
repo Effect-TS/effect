@@ -567,13 +567,248 @@ export const cryptoTests = (layer: Layer.Layer<Crypto.Crypto>, md5: boolean, nat
         assert.deepStrictEqual(yield* Crypto.sign(algorithm, privateKey, data), expected)
         assert.strictEqual(yield* Crypto.verify(algorithm, publicKey, expected, data), true)
         assert.strictEqual(yield* Crypto.verify(algorithm, publicKey, new Uint8Array(63), data), false)
-        const wrongFormat = yield* Effect.flip(Crypto.exportKey("raw", publicKey))
+        assert.deepStrictEqual(
+          yield* Crypto.exportKey("raw", publicKey),
+          bytes("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
+        )
+        const wrongFormat = yield* Effect.flip(Crypto.exportKey("pkcs8", publicKey))
         assert.strictEqual(wrongFormat.reason._tag, "BadArgument")
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("matches the RFC 7748 X25519 vector and agrees on generated pairs", () =>
+      Effect.gen(function*() {
+        const bytes = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"))
+        // RFC 7748 section 6.1, with the private scalars wrapped in PKCS8.
+        const pkcs8 = (scalar: string) => bytes("302e020100300506032b656e04220420" + scalar)
+        const algorithm: Crypto.KeyPairAlgorithm = { name: "X25519" }
+        const alicePrivate = yield* Crypto.importKey(
+          "pkcs8",
+          pkcs8("77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a"),
+          algorithm
+        )
+        const bobPrivate = yield* Crypto.importKey(
+          "pkcs8",
+          pkcs8("5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb"),
+          algorithm
+        )
+        const alicePublic = yield* Crypto.importKey(
+          "raw",
+          slice(bytes("8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a")),
+          algorithm
+        )
+        const bobPublic = yield* Crypto.importKey(
+          "raw",
+          slice(bytes("de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f")),
+          algorithm
+        )
+        assert.strictEqual(alicePrivate.type, "private")
+        assert.deepStrictEqual(alicePrivate.usages, ["deriveBits"])
+        assert.strictEqual(bobPublic.type, "public")
+        assert.deepStrictEqual(bobPublic.usages, [])
+        const expected = "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742"
+        assert.strictEqual(hex(yield* Crypto.deriveSharedSecret(alicePrivate, bobPublic)), expected)
+        assert.strictEqual(hex(yield* Crypto.deriveSharedSecret(bobPrivate, alicePublic)), expected)
+
+        const alice = yield* Crypto.generateKeyPair(algorithm)
+        const bob = yield* Crypto.generateKeyPair(algorithm)
+        assert.deepStrictEqual(alice.privateKey.algorithm, { name: "X25519" })
+        assert.deepStrictEqual(alice.privateKey.usages, ["deriveBits"])
+        assert.deepStrictEqual(alice.publicKey.usages, [])
+        const raw = yield* Crypto.exportKey("raw", bob.publicKey)
+        assert.strictEqual(raw.length, 32)
+        const received = yield* Crypto.importKey("raw", raw, algorithm)
+        assert.deepStrictEqual(yield* Crypto.exportKey("raw", received), raw)
+        assert.deepStrictEqual(
+          yield* Crypto.exportKey("spki", received),
+          yield* Crypto.exportKey("spki", bob.publicKey)
+        )
+        const secret = yield* Crypto.deriveSharedSecret(alice.privateKey, received)
+        assert.strictEqual(secret.length, 32)
+        assert.deepStrictEqual(yield* Crypto.deriveSharedSecret(bob.privateKey, alice.publicKey), secret)
+
+        // A small-order point yields an all-zero secret, which RFC 7748 requires rejecting.
+        const smallOrder = yield* Crypto.importKey("raw", new Uint8Array(32), algorithm)
+        const error = yield* Effect.flip(Crypto.deriveSharedSecret(alice.privateKey, smallOrder))
+        assert.strictEqual(error.reason.method, "deriveSharedSecret")
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("agrees on full-length ECDH secrets for every curve", () =>
+      Effect.gen(function*() {
+        for (
+          const [namedCurve, pointLength, secretLength] of [
+            ["P-256", 65, 32],
+            ["P-384", 97, 48],
+            ["P-521", 133, 66]
+          ] as const
+        ) {
+          const algorithm: Crypto.KeyPairAlgorithm = { name: "ECDH", namedCurve }
+          const alice = yield* Crypto.generateKeyPair(algorithm, { extractable: true })
+          const bob = yield* Crypto.generateKeyPair(algorithm)
+          assert.deepStrictEqual(alice.privateKey.algorithm, algorithm)
+          assert.deepStrictEqual(alice.privateKey.usages, ["deriveBits"])
+          assert.deepStrictEqual(alice.publicKey.usages, [])
+          const raw = yield* Crypto.exportKey("raw", bob.publicKey)
+          assert.strictEqual(raw.length, pointLength)
+          assert.strictEqual(raw[0], 0x04)
+          const received = yield* Crypto.importKey("raw", slice(raw), algorithm)
+          assert.deepStrictEqual(yield* Crypto.exportKey("raw", received), raw)
+          const secret = yield* Crypto.deriveSharedSecret(alice.privateKey, received)
+          assert.strictEqual(secret.length, secretLength)
+          assert.deepStrictEqual(yield* Crypto.deriveSharedSecret(bob.privateKey, alice.publicKey), secret)
+          if (typeof NativeCrypto.diffieHellman === "function") {
+            const native = NativeCrypto.diffieHellman({
+              privateKey: createPrivateKey({
+                key: Buffer.from(yield* Crypto.exportKey("pkcs8", alice.privateKey)),
+                format: "der",
+                type: "pkcs8"
+              }),
+              publicKey: createPublicKey({
+                key: Buffer.from(yield* Crypto.exportKey("spki", bob.publicKey)),
+                format: "der",
+                type: "spki"
+              })
+            })
+            assert.strictEqual(hex(secret), native.toString("hex"))
+          }
+        }
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("rejects key agreement between mismatched or unsuitable keys", () =>
+      Effect.gen(function*() {
+        const p256 = yield* Crypto.generateKeyPair({ name: "ECDH", namedCurve: "P-256" })
+        const p384 = yield* Crypto.generateKeyPair({ name: "ECDH", namedCurve: "P-384" })
+        const x25519 = yield* Crypto.generateKeyPair({ name: "X25519" })
+        const ed25519 = yield* Crypto.generateKeyPair({ name: "Ed25519" })
+        const aes = yield* Crypto.generateSecretKey({ name: "AES-CTR", length: 128 })
+        for (
+          const [privateKey, publicKey] of [
+            [p256.privateKey, p384.publicKey],
+            [x25519.privateKey, p256.publicKey],
+            [p256.privateKey, x25519.publicKey],
+            [p256.publicKey, p256.publicKey],
+            [p256.privateKey, p256.privateKey],
+            [ed25519.privateKey, ed25519.publicKey],
+            [aes, aes]
+          ]
+        ) {
+          const error = yield* Effect.flip(Crypto.deriveSharedSecret(privateKey, publicKey))
+          assert.strictEqual(error.reason._tag, "BadArgument")
+          assert.strictEqual(error.reason.method, "deriveSharedSecret")
+        }
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("imports and exports raw ECDSA public keys", () =>
+      Effect.gen(function*() {
+        const algorithm: Crypto.KeyPairAlgorithm = { name: "ECDSA", namedCurve: "P-256" }
+        const pair = yield* Crypto.generateKeyPair(algorithm)
+        const raw = yield* Crypto.exportKey("raw", pair.publicKey)
+        assert.strictEqual(raw.length, 65)
+        const imported = yield* Crypto.importKey("raw", raw, algorithm)
+        assert.strictEqual(imported.type, "public")
+        assert.deepStrictEqual(imported.usages, ["verify"])
+        const data = Uint8Array.of(1, 2, 3)
+        const signature = yield* Crypto.sign({ name: "ECDSA", hash: "SHA-256" }, pair.privateKey, data)
+        assert.strictEqual(yield* Crypto.verify({ name: "ECDSA", hash: "SHA-256" }, imported, signature, data), true)
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("matches the NIST SP 800-38A AES-CTR vectors", () =>
+      Effect.gen(function*() {
+        const bytes = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"))
+        const counter = bytes("f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff")
+        const plaintext = bytes(
+          "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e51" +
+            "30c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710"
+        )
+        for (
+          const [length, key, expected] of [
+            [
+              128,
+              "2b7e151628aed2a6abf7158809cf4f3c",
+              "874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff" +
+              "5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee"
+            ],
+            [
+              256,
+              "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+              "601ec313775789a5b7a7f504bbf3d228f443e3ca4d62b59aca84e990cacaf5c5" +
+              "2b0930daa23de94ce87017ba2d84988ddfc9c58db67aada613c2dd08457941a6"
+            ]
+          ] as const
+        ) {
+          const imported = yield* Crypto.importKey("raw", slice(bytes(key)), { name: "AES-CTR", length })
+          assert.deepStrictEqual(imported.algorithm, { name: "AES-CTR", length })
+          assert.deepStrictEqual(imported.usages, ["encrypt", "decrypt"])
+          const options: Crypto.CipherOptions = { name: "AES-CTR", counter: slice(counter), length: 128 }
+          const ciphertext = yield* Crypto.encrypt(options, imported, slice(plaintext))
+          assert.strictEqual(hex(ciphertext), expected)
+          assert.deepStrictEqual(yield* Crypto.decrypt(options, imported, slice(ciphertext)), plaintext)
+          // Each call starts from the supplied counter block.
+          assert.deepStrictEqual(yield* Crypto.encrypt(options, imported, plaintext), ciphertext)
+          assert.deepStrictEqual(yield* Crypto.decrypt(options, imported, plaintext), ciphertext)
+        }
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("interoperates with native AES-CTR for partial blocks and wraps only the counter bits", () =>
+      Effect.gen(function*() {
+        const raw = Uint8Array.from({ length: 16 }, (_, i) => i * 7)
+        const key = yield* Crypto.importKey("raw", raw, { name: "AES-CTR", length: 128 })
+        const counter = Uint8Array.from({ length: 16 }, (_, i) => 0xf0 + i)
+        for (const size of [0, 1, 15, 16, 17, 33, 100]) {
+          const data = Uint8Array.from({ length: size }, (_, i) => (i * 31) & 0xff)
+          const native = createCipheriv("aes-128-ctr", raw, counter)
+          const expected = Buffer.concat([native.update(data), native.final()])
+          const ciphertext = yield* Crypto.encrypt({ name: "AES-CTR", counter, length: 128 }, key, data)
+          assert.strictEqual(hex(ciphertext), expected.toString("hex"))
+          assert.deepStrictEqual(
+            yield* Crypto.decrypt({ name: "AES-CTR", counter, length: 128 }, key, ciphertext),
+            data
+          )
+        }
+        // With a 32-bit counter, block 0x..ffffffff is followed by 0x..00000000
+        // without carrying into the nonce bytes.
+        const high = new Uint8Array(16).fill(0xab)
+        high.fill(0xff, 12)
+        const low = high.slice()
+        low.fill(0x00, 12)
+        const zeros = new Uint8Array(32)
+        const wrapped = yield* Crypto.encrypt({ name: "AES-CTR", counter: high, length: 32 }, key, zeros)
+        const restarted = yield* Crypto.encrypt({ name: "AES-CTR", counter: low, length: 32 }, key, zeros)
+        assert.deepStrictEqual(wrapped.subarray(16), restarted.subarray(0, 16))
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("generates AES-CTR keys and validates counter parameters", () =>
+      Effect.gen(function*() {
+        const key = yield* Crypto.generateSecretKey({ name: "AES-CTR", length: 256 }, { extractable: true })
+        assert.deepStrictEqual(key.algorithm, { name: "AES-CTR", length: 256 })
+        assert.deepStrictEqual(key.usages, ["encrypt", "decrypt"])
+        assert.strictEqual((yield* Crypto.exportKey("raw", key)).length, 32)
+        const data = new Uint8Array(5)
+        for (
+          const [counter, length] of [
+            [new Uint8Array(15), 128],
+            [new Uint8Array(17), 128],
+            [new Uint8Array(16), 0],
+            [new Uint8Array(16), 129],
+            [new Uint8Array(16), 1.5],
+            [new Uint8Array(16), NaN]
+          ] as const
+        ) {
+          for (const [method, operation] of [["encrypt", Crypto.encrypt], ["decrypt", Crypto.decrypt]] as const) {
+            const error = yield* Effect.flip(operation({ name: "AES-CTR", counter, length }, key, data))
+            assert.strictEqual(error.reason._tag, "BadArgument")
+            assert.strictEqual(error.reason.method, method)
+          }
+        }
+        const mismatched = yield* Effect.flip(
+          Crypto.importKey("raw", new Uint8Array(16), { name: "AES-CTR", length: 256 })
+        )
+        assert.strictEqual(mismatched.reason._tag, "BadArgument")
       }).pipe(Effect.provide(layer)))
 
     it.effect("reports malformed key material and mismatched algorithms as typed failures", () =>
       Effect.gen(function*() {
         const aes = yield* Crypto.generateSecretKey({ name: "AES-GCM", length: 128 })
+        const rsa = yield* Crypto.generateKeyPair({ name: "RSA-PSS", hash: "SHA-256" })
         const operations: ReadonlyArray<
           readonly [
             string,
@@ -583,6 +818,8 @@ export const cryptoTests = (layer: Layer.Layer<Crypto.Crypto>, md5: boolean, nat
           ["importKey", Crypto.importKey("raw", new Uint8Array(16), { name: "AES-GCM", length: 256 })],
           ["importKey", Crypto.importKey("raw", new Uint8Array(), { name: "HMAC", hash: "SHA-256" })],
           ["importKey", Crypto.importKey("spki", Uint8Array.of(0, 1, 2), { name: "Ed25519" })],
+          ["importKey", Crypto.importKey("raw", new Uint8Array(32), { name: "RSA-PSS", hash: "SHA-256" })],
+          ["importKey", Crypto.importKey("spki", new Uint8Array(16), { name: "AES-CTR", length: 128 })],
           ["generateSecretKey", Crypto.generateSecretKey({ name: "HMAC", hash: "SHA-256", length: 1 })],
           ["generateSecretKey", Crypto.generateSecretKey({ name: "HMAC", hash: "SHA-256", length: 2 ** 32 + 256 })],
           [
@@ -591,7 +828,8 @@ export const cryptoTests = (layer: Layer.Layer<Crypto.Crypto>, md5: boolean, nat
           ],
           ["sign", Crypto.sign({ name: "HMAC" }, aes, new Uint8Array())],
           ["encrypt", Crypto.encrypt({ name: "RSA-OAEP" }, aes, new Uint8Array())],
-          ["exportKey", Crypto.exportKey("spki", aes)]
+          ["exportKey", Crypto.exportKey("spki", aes)],
+          ["exportKey", Crypto.exportKey("raw", rsa.publicKey)]
         ]
         for (const [method, operation] of operations) {
           const error = yield* Effect.flip(operation)
