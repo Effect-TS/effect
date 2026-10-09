@@ -8,7 +8,6 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
@@ -59,7 +58,7 @@ export interface EntityManager {
   }) => boolean
   readonly clearProcessed: () => void
 
-  readonly interruptShard: (shardId: ShardId, options?: {
+  readonly interruptShards: (shardIds: Iterable<ShardId>, options?: {
     readonly force?: boolean
   }) => Effect.Effect<void>
 
@@ -580,28 +579,32 @@ export const make = Effect.fnUntraced(function*<
   )
 
   return identity<EntityManager>({
-    interruptShard: (shardId: ShardId, options) =>
-      Effect.suspend(function loop(): Effect.Effect<void> {
-        const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
-        if (options?.force === true) {
-          serverCloseLatches.forEach((latches, address) => {
-            if (shardId[Equal.symbol](address.shardId)) {
-              latches.force.unsafeOpen()
+    interruptShards: (shardIds, options) =>
+      Effect.suspend(() => {
+        const ids = new Set<string>()
+        for (const shardId of shardIds) ids.add(shardId.toString())
+        return Effect.suspend(function loop(): Effect.Effect<void> {
+          const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
+          if (options?.force === true) {
+            serverCloseLatches.forEach((latches, address) => {
+              if (ids.has(address.shardId.toString())) {
+                latches.force.unsafeOpen()
+              }
+            })
+          }
+          activeServers.forEach((state) => {
+            if (ids.has(state.address.shardId.toString())) {
+              fibers.push(runFork(entities.removeIgnore(state.address)))
             }
           })
-        }
-        activeServers.forEach((state) => {
-          if (shardId[Equal.symbol](state.address.shardId)) {
-            fibers.push(runFork(entities.removeIgnore(state.address)))
-          }
+          serverCloseLatches.forEach((latches, address) => {
+            if (ids.has(address.shardId.toString())) {
+              fibers.push(runFork(latches.closed.await))
+            }
+          })
+          if (fibers.length === 0) return Effect.void
+          return Effect.flatMap(joinAllDiscard(fibers), loop)
         })
-        serverCloseLatches.forEach((latches, address) => {
-          if (shardId[Equal.symbol](address.shardId)) {
-            fibers.push(runFork(latches.closed.await))
-          }
-        })
-        if (fibers.length === 0) return Effect.void
-        return Effect.flatMap(joinAllDiscard(fibers), loop)
       }),
     isProcessingFor(message, options) {
       if (options?.excludeReplies !== true && processedRequestIds.has(message.envelope.requestId)) {

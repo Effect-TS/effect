@@ -1106,7 +1106,7 @@ describe("Sharding graceful shutdown", () => {
       yield* waitFor(() => a.ownedShards() > 0 && b.ownedShards() > 0)
       const shardId = yield* a.startEntity
 
-      const draining = yield* Effect.fork(drain(a.sharding))
+      const draining = yield* Effect.fork(a.sharding.drain)
       yield* waitFor(() => draining.unsafePoll() !== null)
       assert.isNotNull(draining.unsafePoll(), "drain did not complete")
       yield* Fiber.join(draining)
@@ -1210,10 +1210,6 @@ const handoffShards = 4
 const HandoffEntity = Entity.make("HandoffEntity", [
   Rpc.make("Ping").annotate(ClusterSchema.Persisted, false)
 ])
-
-// placeholder until the drain API is decided
-const drain = (sharding: Sharding.Sharding["Type"]): Effect.Effect<void> =>
-  (sharding as { readonly drain?: Effect.Effect<void> }).drain ?? Effect.dieMessage("Sharding.drain is not implemented")
 
 const waitFor = (predicate: () => boolean) =>
   Effect.gen(function*() {

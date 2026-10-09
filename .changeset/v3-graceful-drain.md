@@ -1,4 +1,5 @@
 ---
+"@effect/cluster": minor
 ---
 
-Add failing tests for graceful cluster shard handoff on shutdown
+Add `Sharding.drain` and hand shards off to live runners before the final `releaseAll` on shutdown
