@@ -5,9 +5,6 @@ import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import { describe, it } from "vitest"
 
-// `_flat` has no public accessor; casting through this explicit shape
-// instead of bare `any` matches the double-cast already used internally
-// (Proto.mapUnsafe: `this as any as ContextImpl<any>`).
 interface ContextInternals {
   readonly _flat: unknown
 }
@@ -141,7 +138,7 @@ describe("Context", () => {
     const keys = Array.from({ length: 8 }, (_, i) => Context.Service<number>(`ContextTest/Rebase${i}`))
     const base = Context.make(A, 1).pipe(Context.add(B, 2))
     const flat = Context.makeUnsafe<never>(new Map(base.mapUnsafe))
-    // Depth 8: A is shadowed, so the next add rebases the overlay chain
+    // Build a depth-8 chain so the next add rebases.
     let parent = Context.add(flat, A, 10)
     for (let i = 0; i < 7; i++) {
       parent = Context.add(parent, keys[i], i)
@@ -151,7 +148,6 @@ describe("Context", () => {
     const cold = Context.add(parent, C, 3)
     deepStrictEqual([...cold.mapUnsafe], expected)
 
-    // Warm the parent's flattened map, then rebase from it again
     const parentEntries = [...parent.mapUnsafe]
     const warm = Context.add(parent, C, 3)
     deepStrictEqual([...warm.mapUnsafe], expected)
@@ -169,12 +165,8 @@ describe("Context", () => {
     for (let i = 0; i < pushKeys.length - 1; i++) {
       preRebase = Context.add(preRebase, pushKeys[i], i)
     }
-    // preRebase.depth === 8: the next push crosses MaxDepth and rebases.
     const context = Context.add(preRebase, pushKeys[pushKeys.length - 1], pushKeys.length - 1)
 
-    // A rebase through `impl.mapUnsafe` would warm `_flat` on the discarded
-    // pre-rebase context as a side effect; building from `_flat ?? base`
-    // directly does not.
     strictEqual((preRebase as any as ContextInternals)._flat, undefined)
 
     strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
