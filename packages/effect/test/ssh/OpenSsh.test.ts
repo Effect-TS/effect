@@ -225,6 +225,8 @@ describe("OpenSsh", () => {
       assert.deepStrictEqual(lastArgs(fake).slice(-4), ["-T", "-s", "h", "sftp"])
       yield* Effect.scoped(ssh.forwardOut({ host: "db", port: 5432 }))
       assert.deepStrictEqual(lastArgs(fake).slice(-4), ["-T", "-W", "db:5432", "h"])
+      yield* Effect.scoped(ssh.forwardOut({ host: "::1", port: 5432 }))
+      assert.deepStrictEqual(lastArgs(fake).slice(-4), ["-T", "-W", "[::1]:5432", "h"])
       yield* Effect.scoped(ssh.forwardOut({ socketPath: "/run/app.sock" }))
       assert.deepStrictEqual(lastArgs(fake).slice(-4), ["-T", "-W", "/run/app.sock", "h"])
     }))

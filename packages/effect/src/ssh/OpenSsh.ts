@@ -36,6 +36,7 @@ import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FileSystem from "../FileSystem.ts"
 import * as Layer from "../Layer.ts"
+import * as NetAddress from "../net/NetAddress.ts"
 import type * as PlatformError from "../PlatformError.ts"
 import * as ChildProcess from "../process/ChildProcess.ts"
 import { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
@@ -302,7 +303,14 @@ export const make = Effect.fnUntraced(function*(
       exec,
       subsystem: (name) => invoke(["-T", "-s", host, name]),
       forwardOut: (target: ForwardTarget) =>
-        invoke(["-T", "-W", "socketPath" in target ? target.socketPath : `${target.host}:${target.port}`, host])
+        invoke([
+          "-T",
+          "-W",
+          "socketPath" in target
+            ? target.socketPath
+            : `${NetAddress.formatUrlHostString(target.host)}:${target.port}`,
+          host
+        ])
     })
   })
 
