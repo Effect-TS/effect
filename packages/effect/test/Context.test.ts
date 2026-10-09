@@ -130,6 +130,40 @@ describe("Context", () => {
     assertTrue(Context.hasSameCache(Context.empty(), context))
   })
 
+  it("rebases a shadowing overlay chain from a cold or warm parent", () => {
+    const keys = Array.from({ length: 8 }, (_, i) => Context.Service<number>(`ContextTest/Rebase${i}`))
+    const base = Context.make(A, 1).pipe(Context.add(B, 2))
+    const flat = Context.makeUnsafe<never>(new Map(base.mapUnsafe))
+    // Depth 8: A is shadowed, so the next add rebases the overlay chain
+    let parent = Context.add(flat, A, 10)
+    for (let i = 0; i < 7; i++) {
+      parent = Context.add(parent, keys[i], i)
+    }
+    const expected = [[A.key, 10], [B.key, 2], ...keys.slice(0, 7).map((key, i) => [key.key, i]), [C.key, 3]]
+
+    const cold = Context.add(parent, C, 3)
+    deepStrictEqual([...cold.mapUnsafe], expected)
+
+    // Warm the parent's flattened map, then rebase from it again
+    const parentEntries = [...parent.mapUnsafe]
+    const warm = Context.add(parent, C, 3)
+    deepStrictEqual([...warm.mapUnsafe], expected)
+    deepStrictEqual([...parent.mapUnsafe], parentEntries)
+    strictEqual(Context.getOption(parent, C)._tag, "None")
+  })
+
+  it("rebases without flattening the parent context", () => {
+    const keys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/RebaseCold${i}`))
+    let parent = Context.empty()
+    for (let i = 0; i < 8; i++) {
+      parent = Context.add(parent, keys[i], i)
+    }
+
+    Context.add(parent, keys[8], 8)
+    // Flattening the parent first would copy the base map twice per rebase
+    strictEqual((parent as any)._flat, undefined)
+  })
+
   it("flattens after repeated base fall-throughs", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const impl = context as any
