@@ -21,6 +21,7 @@ import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
+import * as FiberHandle from "../FiberHandle.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, flow } from "../Function.ts"
 import * as HashRing from "../HashRing.ts"
@@ -212,6 +213,16 @@ export class Sharding extends Context.Service<Sharding, {
    * Retrieves the active entity count for the current runner.
    */
   readonly activeEntityCount: Effect.Effect<number>
+
+  /**
+   * Hands every shard off to other runners while the runner stays up, for
+   * example from a Kubernetes `preStop` hook.
+   *
+   * The runner unregisters, stops acquiring shards, and releases each shard
+   * once its entities have been interrupted. Completes when every shard has
+   * been released. Draining cannot be undone.
+   */
+  readonly drain: Effect.Effect<void>
 }>()("effect/cluster/Sharding") {}
 
 // -----------------------------------------------------------------------------
@@ -277,6 +288,10 @@ const make = Effect.gen(function*() {
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
   const activeShardsLatch = yield* Latch.make(false)
+  // open once the runner stops acquiring shards
+  const drainingLatch = Latch.makeUnsafe(false)
+  // open once a draining runner has released every shard
+  const drainedLatch = Latch.makeUnsafe(false)
 
   const events = yield* PubSub.unbounded<ShardingRegistrationEvent>()
   const getRegistrationEvents: Stream.Stream<ShardingRegistrationEvent> = Stream.fromPubSub(events)
@@ -349,16 +364,18 @@ const make = Effect.gen(function*() {
     })
 
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
+    const releaseDrainingShardsHandle = yield* FiberHandle.make()
     let forcedShardReleaseRunning = false
     // Interrupt the shards' entities, wait for lock health, run the storage
     // release, then clear the shards' bookkeeping.
     const runShardRelease = Effect.fnUntraced(function*<E>(
       shardIds: ReadonlyArray<ShardId>,
       force: boolean,
-      release: Effect.Effect<void, E>
+      release: Effect.Effect<void, E>,
+      interruptEntities = true
     ) {
       const fibers = Arr.empty<Fiber.Fiber<void>>()
-      for (const shardId of shardIds) {
+      for (const shardId of interruptEntities ? shardIds : []) {
         for (const state of entityManagers.values()) {
           if (state.status === "closed") continue
           fibers.push(yield* Effect.forkScoped(state.manager.interruptShard(shardId, { force })))
@@ -378,6 +395,7 @@ const make = Effect.gen(function*() {
           interrupt: MutableRef.get(isShutdown)
         })
       }
+      if (drainingLatch.isOpen()) activeShardsLatch.openUnsafe()
     })
     const retryShardRelease =
       (annotations: { readonly fiber: string; readonly shardId?: ShardId }) =>
@@ -441,6 +459,46 @@ const make = Effect.gen(function*() {
         yield* releaseShard(shardId)
       }
     })
+    // While draining, every remaining shard is released in one batch: its
+    // entities are interrupted, then each lock is released individually.
+    //
+    // On shutdown the entity managers close themselves, so releases still
+    // waiting on entities are interrupted and only the locks are released.
+    let drainReleaseRunning = false
+    let releasingForShutdown = false
+    const releaseDrainingShards = Effect.gen(function*() {
+      yield* releaseForcedShards
+      if (!releasingForShutdown && MutableRef.get(isShutdown)) {
+        releasingForShutdown = true
+        yield* FiberMap.clear(releaseShardsMap)
+        yield* FiberHandle.clear(releaseDrainingShardsHandle)
+      }
+      if (drainReleaseRunning) return
+      const shardIds = Arr.empty<ShardId>()
+      for (const shardId of releasingShards) {
+        if (MutableHashSet.has(forceReleasingShards, shardId)) continue
+        if (FiberMap.hasUnsafe(releaseShardsMap, shardId)) continue
+        shardIds.push(shardId)
+      }
+      if (shardIds.length === 0) return
+      drainReleaseRunning = true
+      yield* runShardRelease(
+        shardIds,
+        false,
+        Effect.forEach(shardIds, (shardId) => runnerStorage.release(selfAddress, shardId), {
+          concurrency: 10,
+          discard: true
+        }),
+        !releasingForShutdown
+      ).pipe(
+        retryShardRelease({ fiber: "releaseDrainingShards" }),
+        Effect.ensuring(Effect.sync(() => {
+          drainReleaseRunning = false
+          activeShardsLatch.openUnsafe()
+        })),
+        FiberHandle.run(releaseDrainingShardsHandle)
+      )
+    })
 
     yield* Effect.gen(function*() {
       activeShardsLatch.openUnsafe()
@@ -450,15 +508,27 @@ const make = Effect.gen(function*() {
         activeShardsLatch.closeUnsafe()
 
         // if a shard is no longer assigned to this runner, we release it
+        const draining = drainingLatch.isOpen()
         for (const shardId of acquiredShards) {
-          if (MutableHashSet.has(selfShards, shardId)) continue
+          if (!draining && MutableHashSet.has(selfShards, shardId)) continue
           MutableHashSet.remove(acquiredShards, shardId)
           MutableHashSet.add(releasingShards, shardId)
         }
 
         if (MutableHashSet.size(releasingShards) > 0 || MutableHashSet.size(forceReleasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
-          yield* releaseShards
+          yield* draining ? releaseDrainingShards : releaseShards
+        }
+
+        if (draining) {
+          if (
+            MutableHashSet.size(acquiredShards) === 0 &&
+            MutableHashSet.size(releasingShards) === 0 &&
+            !forcedShardReleasePending()
+          ) {
+            drainedLatch.openUnsafe()
+          }
+          continue
         }
 
         if (!shardLocksHealthyLatch.isOpen()) {
@@ -518,7 +588,9 @@ const make = Effect.gen(function*() {
           // update metrics
           ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
         }
-        yield* Effect.sleep(1000)
+        // stop waiting as soon as draining starts, so it releases the shards
+        // acquired here without delay
+        yield* Effect.raceFirst(Effect.sleep(1000), drainingLatch.await)
         activeShardsLatch.openUnsafe()
       }
     }).pipe(
@@ -1293,7 +1365,7 @@ const make = Effect.gen(function*() {
 
     while (true) {
       // Ensure the current runner is registered
-      if (selfRunner && !isShutdown.current && !MutableHashMap.has(allRunners, selfRunner)) {
+      if (selfRunner && !isShutdown.current && !drainingLatch.isOpen() && !MutableHashMap.has(allRunners, selfRunner)) {
         yield* Effect.logDebug("Registering runner", selfRunner)
         const machineId = yield* withTimeout(runnerStorage.register(selfRunner, true))
         yield* snowflakeGen.setMachineId(machineId)
@@ -1344,7 +1416,7 @@ const make = Effect.gen(function*() {
       healthyRunnerCount = MutableHashSet.size(healthyRunners)
 
       // Ensure the current runner is registered
-      if (selfRunner && !isShutdown.current && !MutableHashMap.has(allRunners, selfRunner)) {
+      if (selfRunner && !isShutdown.current && !drainingLatch.isOpen() && !MutableHashMap.has(allRunners, selfRunner)) {
         continue
       }
 
@@ -1379,7 +1451,7 @@ const make = Effect.gen(function*() {
         }
       }
 
-      if (selfRunner && MutableHashSet.size(healthyRunners) === 0) {
+      if (selfRunner && !drainingLatch.isOpen() && MutableHashSet.size(healthyRunners) === 0) {
         yield* Effect.logWarning("No healthy runners available")
         // to prevent a deadlock, we will mark the current node as healthy to
         // start the health check singleton again
@@ -1828,12 +1900,29 @@ const make = Effect.gen(function*() {
     if (isShutdown.current) return
     MutableRef.set(isShutdown, true)
     yield* notifyShardLockWaiters
-    if (selfRunner) {
+    if (selfRunner && !drainingLatch.isOpen()) {
       yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
     }
   })
 
-  yield* Scope.addFinalizerExit(shardingScope, shutdown)
+  // Release every shard and stop acquiring new ones
+  const startDrain = Effect.suspend(() => {
+    if (!selfRunner || !drainingLatch.openUnsafe()) return Effect.void
+    activeShardsLatch.openUnsafe()
+    return isShutdown.current ? Effect.void : Effect.ignore(runnerStorage.unregister(selfRunner.address))
+  })
+
+  const drain = selfRunner ? Effect.andThen(startDrain, drainedLatch.await) : Effect.void
+
+  // Hand the shards off one by one before the loops stop. Anything still held
+  // afterwards is dropped by the final `releaseAll`.
+  yield* Scope.addFinalizerExit(shardingScope, (exit) =>
+    Effect.andThen(
+      shutdown(exit),
+      selfRunner
+        ? Effect.andThen(startDrain, Effect.timeoutOption(drainedLatch.await, shardLockInterval))
+        : Effect.void
+    ))
 
   const activeEntityCount = Effect.gen(function*() {
     let count = 0
@@ -1859,6 +1948,7 @@ const make = Effect.gen(function*() {
     sendOutgoing: (message, discard) => sendOutgoing(message, discard),
     notify: (message, options) => notifyLocal(message, false, options),
     activeEntityCount,
+    drain,
     pollStorage: storageReadLatch.open,
     reset
   })
