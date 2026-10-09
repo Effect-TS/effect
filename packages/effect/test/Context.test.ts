@@ -160,6 +160,33 @@ describe("Context", () => {
     }
   })
 
+  it("falls back to the default depth for an invalid maxDepth", () => {
+    for (const invalid of [Number.NaN, -1, 1.5, -Infinity]) {
+      const context = Context.makeUnsafe(new Map(), { maxDepth: invalid })
+      strictEqual((context as any).maxDepthOverride, undefined)
+    }
+
+    // A NaN override must not disable rebasing: depth(n) >= NaN is always
+    // false, so an unguarded override would let the overlay chain grow
+    // without bound.
+    let context: Context.Context<never> = Context.makeUnsafe(new Map(), { maxDepth: Number.NaN })
+    for (let i = 0; i < 20; i++) {
+      context = Context.add(context, Context.Service<number>(`ContextTest/Invalid${i}`), i)
+    }
+    strictEqual((context as any).depth <= 8, true)
+  })
+
+  it("preserves the maxDepth override through merge, omit, and pick", () => {
+    const A = Context.Service<number>("ContextTest/OverrideMergeA")
+    const B = Context.Service<number>("ContextTest/OverrideMergeB")
+    const base = Context.add(Context.makeUnsafe(new Map(), { maxDepth: 2 }), A, 1)
+
+    strictEqual((Context.omit(A)(base) as any).maxDepthOverride, 2)
+    strictEqual((Context.merge(base, Context.make(B, 2)) as any).maxDepthOverride, 2)
+    strictEqual((Context.pick(A)(base) as any).maxDepthOverride, 2)
+    strictEqual((Context.addOrOmit(A, Option.none())(base) as any).maxDepthOverride, 2)
+  })
+
   it("keeps the default depth of 8 when no maxDepth override is given", () => {
     const keys = Array.from({ length: 8 }, (_, i) => Context.Service<number>(`ContextTest/Default${i}`))
     let context = Context.empty()

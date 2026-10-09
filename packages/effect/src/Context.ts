@@ -506,6 +506,13 @@ interface Overlay {
 const MaxDepth = 8
 const effectiveMaxDepth = (impl: ContextImpl<any>): number => impl.maxDepthOverride ?? MaxDepth
 
+// `depth >= maxDepth` never trips for a NaN maxDepth, so an unvalidated
+// override could silently turn off rebasing forever. Fall back to the
+// default for anything that isn't a usable depth, rather than throwing out
+// of `makeUnsafe`.
+const normalizeMaxDepth = (maxDepth: number | undefined): number | undefined =>
+  maxDepth !== undefined && Number.isInteger(maxDepth) && maxDepth >= 0 ? maxDepth : undefined
+
 // Keep small bases cheap to read; larger bases are worth copying only after
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
@@ -542,10 +549,14 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
   return self._flat = map
 }
 
+// Every Context value is a ContextImpl at runtime; this is how withFlat
+// reads maxDepthOverride off `self` without a type assertion.
+const isContextImpl = (self: Context<any>): self is ContextImpl<any> => self !== null
+
 const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
   const map = new Map(self.mapUnsafe)
   f(map)
-  return makeUnsafe(map)
+  return makeImpl(undefined, map, undefined, 0, isContextImpl(self) ? self.maxDepthOverride : undefined)
 }
 
 // A private symbol so user code cannot forge a value that reads as absent
@@ -606,7 +617,7 @@ const lookup = (self: Context<any>, key: string): unknown => {
 export const makeUnsafe = <Services = never>(
   mapUnsafe: ReadonlyMap<string, any>,
   options?: { readonly maxDepth?: number }
-): Context<Services> => makeImpl(undefined, mapUnsafe, undefined, 0, options?.maxDepth)
+): Context<Services> => makeImpl(undefined, mapUnsafe, undefined, 0, normalizeMaxDepth(options?.maxDepth))
 
 const Proto: Omit<
   ContextImpl<never>,
