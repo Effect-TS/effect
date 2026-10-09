@@ -39,6 +39,21 @@ describe("NetAddress", () => {
     void NetAddress.ipv4Loopback.bytes
   })
 
+  it("accepts the forms of the checked constructors as inputs", () => {
+    expect(NetAddress.ipFromInput([127, 0, 0, 1])).type.toBe<
+      Result.Result<NetAddress.IpAddress, NetAddress.NetAddressError>
+    >()
+    expect(NetAddress.ipFromInput).type.toBeCallableWith([0, 0, 0, 0, 0, 0, 0, 1])
+    expect(NetAddress.ipFromInput).type.toBeCallableWith(new Uint8Array(16))
+    expect(NetAddress.ipFromInput).type.not.toBeCallableWith([127, 0, 1])
+    expect(NetAddress.ipv4FromInput).type.not.toBeCallableWith([0, 0, 0, 0, 0, 0, 0, 1])
+    expect(NetAddress.ipv6FromInput).type.not.toBeCallableWith([127, 0, 0, 1])
+    expect(NetAddress.macAddressFromInput).type.toBeCallableWith([0, 0, 0, 0, 0, 0])
+    expect(NetAddress.inetAddressFromInput).type.toBeCallableWith({ address: [127, 0, 0, 1], port: 80 })
+    expect(NetAddress.inetAddressFromInput).type.toBeCallableWith({ address: "fe80::1", port: 80, scopeId: 1 })
+    expect(NetAddress.socketAddressFromInput).type.toBeCallableWith({ address: new Uint8Array(4), port: 80 })
+  })
+
   it("requires canonical socket addresses at consumer constructors", () => {
     const server = HttpServer.make({
       address: NetAddress.inetAddressUnsafe(NetAddress.ipv4Loopback, 8080),

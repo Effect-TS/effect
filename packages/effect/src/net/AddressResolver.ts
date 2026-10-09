@@ -41,7 +41,8 @@ export class AddressResolver extends Context.Service<AddressResolver, {
    * **Details**
    *
    * - Socket addresses are returned as-is.
-   * - `host:port` strings are parsed, failing with `NetAddressError` when invalid.
+   * - `host:port` strings and `{ host, port }` objects are converted like
+   *   `Host.hostPortFromInput`, failing with `NetAddressError` when invalid.
    * - A `Host.HostPort` with a numeric host is converted without a lookup.
    * - A `Host.HostPort` with a domain name is looked up with `Dns.lookup`, and
    *   the port is attached to every address.
@@ -134,14 +135,14 @@ const inFamily = (
  *
  * ```ts import.meta.vitest
  * import { Effect, Result } from "effect"
- * import { AddressResolver, Dns, Host, NetAddress } from "effect/net"
+ * import { AddressResolver, Dns, NetAddress } from "effect/net"
  *
  * const dns = Result.getOrThrow(Dns.makeStatic({
- *   hosts: { "db.internal": [NetAddress.ipFromStringUnsafe("10.0.0.5")] }
+ *   hosts: { "db.internal": ["10.0.0.5"] }
  * }))
  * const resolver = AddressResolver.make(dns)
  *
- * const program = resolver.resolve(Host.hostPortFromStringUnsafe("db.internal:5432")).pipe(
+ * const program = resolver.resolve("db.internal:5432").pipe(
  *   Effect.map((addresses) => addresses.map(NetAddress.formatInet))
  * )
  *
@@ -175,15 +176,15 @@ export const make = (dns: Dns.Dns["Service"], options?: MakeOptions): AddressRes
     target: NetAddress.SocketAddress | Host.HostPortInput,
     options?: ResolveOptions
   ): Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.SocketAddress>, Dns.DnsError | NetAddress.NetAddressError> => {
-    if (typeof target === "string") {
-      return Effect.flatMap(
-        Effect.fromResult(Host.hostPortFromString(target)),
-        (endpoint) => resolve(endpoint, options)
-      )
-    }
     const family = options?.family
     if (NetAddress.isUnixPathAddress(target)) return Effect.succeed(Arr.of(target))
     if (NetAddress.isInetAddress(target)) return inFamily(target, family)
+    if (!Host.isHostPort(target)) {
+      return Effect.flatMap(
+        Effect.fromResult(Host.hostPortFromInput(target)),
+        (endpoint) => resolve(endpoint, options)
+      )
+    }
 
     const { host, port } = target
     if (NetAddress.isIpAddress(host) || NetAddress.isScopedIpv6Literal(host)) {

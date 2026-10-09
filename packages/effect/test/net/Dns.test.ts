@@ -146,20 +146,20 @@ describe("Dns", () => {
           lookup: () => Effect.succeed([ip("10.0.0.1"), ip("::1"), ip("10.0.0.1")]),
           resolve: () => Effect.succeed([])
         })
-        const all = yield* dns.lookup(name("a.b"))
+        const all = yield* dns.lookup("a.b")
         assert.deepStrictEqual(all.map(NetAddress.formatIp), ["10.0.0.1", "::1"])
-        const v6 = yield* dns.lookup(name("a.b"), { family: "IPv6" })
+        const v6 = yield* dns.lookup("a.b", { family: "IPv6" })
         assert.deepStrictEqual(v6.map(NetAddress.formatIp), ["::1"])
-        const error = yield* Effect.flip(dns.resolve(name("a.b"), "MX"))
+        const error = yield* Effect.flip(dns.resolve("a.b", "MX"))
         assert.strictEqual(error.reason, "NotFound")
       }))
 
     it.effect("reports record queries as unsupported without a resolve operation", () =>
       Effect.gen(function*() {
         const dns = Dns.make({ lookup: () => Effect.succeed([ip("10.0.0.1")]) })
-        const addresses = yield* dns.lookup(name("a.b"))
+        const addresses = yield* dns.lookup("a.b")
         assert.deepStrictEqual(addresses.map(NetAddress.formatIp), ["10.0.0.1"])
-        const resolve = yield* Effect.flip(dns.resolve(name("a.b"), "TXT"))
+        const resolve = yield* Effect.flip(dns.resolve("a.b", "TXT"))
         assert.strictEqual(resolve.reason, "Unsupported")
         assert.strictEqual(resolve.method, "resolve")
         assert.strictEqual(resolve.hostname, "a.b")
@@ -194,18 +194,29 @@ describe("Dns", () => {
     it.effect("answers from a static zone", () =>
       Effect.gen(function*() {
         const dns = yield* Dns.Dns
-        const addresses = yield* dns.lookup(name("DB.internal."))
+        const addresses = yield* dns.lookup("DB.internal.")
         assert.deepStrictEqual(addresses.map(NetAddress.formatIp), ["10.0.0.5"])
-        const records = yield* dns.resolve(name("example.com"), "MX")
+        const records = yield* dns.resolve("example.com", "MX")
         assert.deepStrictEqual(records.map(Dns.formatRecord), ["MX 10 mail.example.com"])
         assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns.reverse(ip("10.0.0.5")), ["db.internal"])
-        const missing = yield* Effect.flip(dns.lookup(name("missing.internal")))
+        const missing = yield* Effect.flip(dns.lookup("missing.internal"))
         assert.strictEqual(missing.reason, "NotFound")
       }).pipe(Effect.provide(Dns.layerStatic({
-        hosts: { "db.internal": [ip("10.0.0.5")] },
+        hosts: { "db.internal": ["10.0.0.5"] },
         records: {
           "example.com": [Dns.makeRecordUnsafe("MX", { exchange: name("mail.example.com"), priority: 10 })]
         }
       }))))
+
+    it.effect("converts static host address inputs", () =>
+      Effect.gen(function*() {
+        const dns = yield* Effect.fromResult(Dns.makeStatic({
+          hosts: { "db.internal": ["10.0.0.5", [10, 0, 0, 6], ip("fd00::5")] }
+        }))
+        const addresses = yield* dns.lookup("db.internal")
+        assert.deepStrictEqual(addresses.map(NetAddress.formatIp), ["10.0.0.5", "10.0.0.6", "fd00::5"])
+        const invalid = Dns.makeStatic({ hosts: { "db.internal": ["not-an-ip"] } })
+        assert.isTrue(Result.isFailure(invalid) && invalid.failure.input === "not-an-ip")
+      }))
   })
 })
