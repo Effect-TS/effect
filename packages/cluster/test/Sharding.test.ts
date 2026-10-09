@@ -1225,6 +1225,71 @@ describe("Sharding graceful shutdown", () => {
       assert.strictEqual(storage.acquireCount(), acquireCount)
     }), 20_000)
 
+  it.scoped("releases locks from an acquisition in flight when shutdown starts", () => {
+    const storage = makeHandoffStorage()
+    return Effect.gen(function*() {
+      storage.acquireLatch.unsafeClose()
+      // a long lock interval, so the acquisition cannot time out, and unchanged
+      // assignments once the runner unregisters, so only the handoff releases
+      const a = yield* makeHandoffRunner(1, storage, {
+        shardLockRefreshInterval: 10_000,
+        refreshAssignmentsInterval: 60_000
+      })
+      yield* yieldUntil(() => storage.acquireCount() > 0)
+      assert.strictEqual(storage.acquireCount(), 1)
+
+      storage.releaseAllLatch.unsafeClose()
+      const closing = yield* Effect.fork(Scope.close(a.scope, Exit.void))
+      yield* yieldUntil(() => !storage.isRegistered(a.address))
+      assert.isFalse(storage.isRegistered(a.address))
+      yield* storage.acquireLatch.open
+
+      const released = () =>
+        handoffShardIds.every((shardId) => storage.shardEvents(shardId.toString()).includes("release"))
+      // without the clock, so the release cannot wait out the post-acquire sleep
+      yield* yieldUntil(released)
+      assert.isTrue(released(), "the acquired locks were not released individually")
+      assert.isNull(closing.unsafePoll())
+      assert.strictEqual(storage.acquireCount(), 1)
+
+      yield* storage.releaseAllLatch.open
+      yield* waitFor(() => closing.unsafePoll() !== null)
+      assert.isNotNull(closing.unsafePoll(), "scope close did not complete")
+    }).pipe(Effect.ensuring(Effect.andThen(storage.acquireLatch.open, storage.releaseAllLatch.open)))
+  }, 20_000)
+
+  it.scoped("waits for a shard release already running when shutdown starts", () =>
+    Effect.gen(function*() {
+      const storage = makeHandoffStorage()
+      const registrationScope = yield* makeOwnedScope
+      const a = yield* makeHandoffRunner(1, storage, { shardLockRefreshInterval: 1000 })
+      const gate = yield* makeGate
+      yield* waitFor(() => a.ownedShards() === handoffShards)
+      const shardId = yield* activateGatedEntity(a, registrationScope, gate, storage, "1")
+
+      // a peer takes the lock, so the next refresh starts an ordinary release
+      // of the shard, held open by the entity's teardown
+      storage.lockShards(RunnerAddress.make("localhost", 3), [a.sharding.getShardId(EntityId.make("1"), "default")])
+      yield* waitFor(() => a.ownedShards() === handoffShards - 1)
+      assert.strictEqual(a.ownedShards(), handoffShards - 1)
+
+      const closing = yield* Effect.fork(Scope.close(a.scope, Exit.void))
+      yield* TestClock.adjust(100)
+      assert.isNull(closing.unsafePoll())
+      assert.strictEqual(storage.releaseCalls(shardId), 0)
+      assert.strictEqual(storage.releaseAllCount(), 0)
+      for (const other of handoffShardIds) {
+        if (other.toString() === shardId) continue
+        assert.deepStrictEqual(storage.shardEvents(other.toString()), ["release"])
+      }
+
+      yield* gate.open
+      yield* waitFor(() => closing.unsafePoll() !== null)
+      assert.isNotNull(closing.unsafePoll(), "scope close did not complete")
+      assert.strictEqual(storage.releaseCalls(shardId), 1)
+      assert.deepStrictEqual(storage.shardEvents(shardId), ["teardown"])
+    }), 20_000)
+
   it.scoped("scope close finishes while lock storage is unhealthy", () => {
     const storage = makeHandoffStorage()
     return Effect.gen(function*() {
@@ -1397,6 +1462,14 @@ const GatedTeardownEntity = Entity.make("GatedTeardownEntity", [
   Rpc.make("Activate").annotate(ClusterSchema.Persisted, false)
 ])
 
+// advances without the clock, so pending timeouts cannot fire
+const yieldUntil = (predicate: () => boolean) =>
+  Effect.gen(function*() {
+    for (let i = 0; i < 100 && !predicate(); i++) {
+      yield* Effect.yieldNow()
+    }
+  })
+
 const waitFor = (predicate: () => boolean) =>
   Effect.gen(function*() {
     for (let i = 0; i < 30 && !predicate(); i++) {
@@ -1463,6 +1536,8 @@ const makeHandoffStorage = () => {
   const events: Array<readonly [event: "teardown" | "release" | "releaseAll", shardId: string]> = []
   const releaseAllLatch = Effect.unsafeMakeLatch(true)
   const refreshLatch = Effect.unsafeMakeLatch(true)
+  const acquireLatch = Effect.unsafeMakeLatch(true)
+  const releaseCalls: Array<string> = []
   let acquireCount = 0
   let releaseAllCount = 0
   let machineId = 0
@@ -1475,7 +1550,9 @@ const makeHandoffStorage = () => {
     events,
     releaseAllLatch,
     refreshLatch,
+    acquireLatch,
     acquireCount: () => acquireCount,
+    releaseCalls: (shardId: string) => releaseCalls.filter((id) => id === shardId).length,
     releaseAllCount: () => releaseAllCount,
     isRegistered: (address: RunnerAddress.RunnerAddress) => runners.has(address.port),
     lockShards: (address: RunnerAddress.RunnerAddress, shardIds: ReadonlyArray<ShardId.ShardId>) => {
@@ -1502,14 +1579,16 @@ const makeHandoffStorage = () => {
       getRunners: Effect.sync(() => globalThis.Array.from(runners.values(), (runner) => [runner, true] as const)),
       setRunnerHealth: () => Effect.void,
       acquire: (address, shardIds) =>
-        Effect.sync(() => {
+        Effect.suspend(() => {
           acquireCount++
-          return globalThis.Array.from(shardIds).filter((shardId) => {
-            const owner = locks.get(shardId.toString())
-            if (owner && !Equal.equals(owner, address)) return false
-            locks.set(shardId.toString(), address)
-            return true
-          })
+          return acquireLatch.whenOpen(Effect.sync(() =>
+            globalThis.Array.from(shardIds).filter((shardId) => {
+              const owner = locks.get(shardId.toString())
+              if (owner && !Equal.equals(owner, address)) return false
+              locks.set(shardId.toString(), address)
+              return true
+            })
+          ))
         }),
       refresh: (address, shardIds) =>
         refreshLatch.whenOpen(
@@ -1517,7 +1596,11 @@ const makeHandoffStorage = () => {
             globalThis.Array.from(shardIds).filter((shardId) => Equal.equals(locks.get(shardId.toString()), address))
           )
         ),
-      release: (address, shardId) => Effect.sync(() => releaseLock(address, shardId.toString(), "release")),
+      release: (address, shardId) =>
+        Effect.sync(() => {
+          releaseCalls.push(shardId.toString())
+          releaseLock(address, shardId.toString(), "release")
+        }),
       releaseAll: (address) =>
         releaseAllLatch.whenOpen(Effect.sync(() => {
           releaseAllCount++
