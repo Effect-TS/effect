@@ -304,6 +304,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             exit: exit as any
           })
         }
+      } else if (isResponseEncodeFailure(exit.cause)) {
+        // the defect response was sent and reported when encoding failed
+        return Scope.closeUnsafe(scope, exit) ?? Effect.void
       } else if (
         !disableFatalDefects &&
         Cause.hasDies(exit.cause) &&
@@ -475,6 +478,17 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     disconnect
   })
 })
+
+// Marks a request failure whose defect response has already been sent and
+// reported, because the response could not be encoded.
+class ResponseEncodeFailure extends Context.Service<ResponseEncodeFailure, true>()(
+  "effect/rpc/RpcServer/ResponseEncodeFailure"
+) {
+  static annotation = this.context(true)
+}
+
+const isResponseEncodeFailure = (cause: Cause.Cause<unknown>): boolean =>
+  Context.getOrUndefined(Cause.annotations(cause), ResponseEncodeFailure) === true
 
 // Merging the handler entry services with the request fiber services costs
 // O(services), so the merged context is cached per (entry, fiber context)
@@ -704,18 +718,19 @@ export const make: <Rpcs extends Rpc.Any>(
                 `Failed to encode response for RPC "${schemas.tag}": ${SchemaIssue.defaultFormatter(error.issue)}`
               )
               reportCauseUnsafe(fiber, defect)
-              return Effect.failCause(defect)
+              return Effect.failCause(Cause.annotate(defect, ResponseEncodeFailure.annotation))
             })
         ),
         (value) => send(client.id, responseEnvelope(requestId, tag, value), collector && collector.clearUnsafe())
       )
     return Effect.catchCause(write, (cause) => {
       client.schemas.delete(requestId)
-      const defect = Cause.squash(cause)
-      return Effect.andThen(
-        sendRequestDefect(client, requestId, schemas.encodeExit, defect),
-        server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
-      )
+      const respond = sendRequestDefect(client, requestId, schemas.encodeExit, Cause.squash(cause))
+      // An encode failure ends the request with the defect, so the request
+      // span records it. Other failures stop the request as a cancellation.
+      return isResponseEncodeFailure(cause)
+        ? Effect.andThen(respond, Effect.failCause(cause))
+        : Effect.andThen(respond, server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] }))
     })
   }
 
