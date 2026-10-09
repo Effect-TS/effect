@@ -769,11 +769,75 @@ const popFrame = (stack: Array<Primitive | undefined>): Primitive | undefined =>
 
 // JavaScriptCore caches `instanceof` per receiver shape, so a check that sees
 // many frame types falls back to a runtime call, which costs more than the
-// frame fast paths in `getCont` and `continueWith` save. There they are
-// replaced by the generic versions. Checking a flag in the methods instead
-// costs V8 a few percent on interpreter-bound code, and also replacing
-// `runLoop` without its inline ContImpl step was slower overall in Bun.
+// frame fast paths in `runLoop`, `getCont` and `continueWith` save. There
+// `getCont` and `continueWith` take the generic paths, and `runLoop`
+// recognizes inlinable frames by the `evaluate` method it loads anyway: every
+// primitive whose `evaluate` is `evaluateCont` is evaluated inline. Keep this
+// `runLoop` in sync with the class method. Checking a flag in the methods
+// instead costs V8 a few percent on interpreter-bound code.
 if (isJavaScriptCore) {
+  FiberImpl.prototype.runLoop = function(this: FiberImpl, effect: Primitive): Exit.Exit<any, any> | Yield {
+    const prevFiber = (globalThis as any)[currentFiberTypeId]
+    ;(globalThis as any)[currentFiberTypeId] = this
+    const prevRunning = this._running
+    this._running = true
+    let yielding = false
+    let current: Primitive | Yield = effect
+    this.currentOpCount = 0
+    try {
+      while (true) {
+        try {
+          if (this._deferredInterrupt) {
+            this._deferredInterrupt = false
+            current = failCause(this._interruptedCause!) as any
+          }
+          this.currentOpCount++
+          const cache = this.cache
+          if (
+            !yielding &&
+            !cache.preventYield &&
+            cache.scheduler.shouldYield(this as any)
+          ) {
+            yielding = true
+            const prev = current
+            current = flatMap(yieldNow, () => prev as any) as any
+          }
+          if (cache.tracerContext) {
+            current = cache.tracerContext(current as any, this)
+          } else {
+            const evaluateCurrent = (current as any)[evaluate]
+            if (evaluateCurrent === evaluateCont) {
+              this._stack.push(current as Primitive)
+              current = (current as any)[args]
+              continue
+            }
+            current = evaluateCurrent.call(current, this)
+          }
+          if (current === Yield) {
+            const yielded = this._yielded!
+            if (ExitTypeId in yielded) {
+              this._deferredInterrupt = false
+              this._yielded = undefined
+              return yielded
+            } else if (this._deferredInterrupt) {
+              this._yielded = undefined
+              yielded()
+              continue
+            }
+            return Yield
+          }
+        } catch (error) {
+          if (!hasProperty(current, evaluate)) {
+            return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
+          }
+          current = exitDie(error) as any
+        }
+      }
+    } finally {
+      this._running = prevRunning
+      ;(globalThis as any)[currentFiberTypeId] = prevFiber
+    }
+  }
   FiberImpl.prototype.getCont = function(this: FiberImpl, symbol: contA | contE) {
     if (this._deferredInterrupt) {
       this._deferredInterrupt = false
