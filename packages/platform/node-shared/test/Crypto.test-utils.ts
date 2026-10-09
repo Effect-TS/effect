@@ -152,11 +152,11 @@ export const describeCrypto = (
       Effect.gen(function*() {
         const password = view(encode("password"))
         const salt = view(encode("salt"))
-        const fiber = yield* Crypto.pbkdf2({ hash: "SHA-1", password, salt, iterations: 2, length: 20 }).pipe(
-          Effect.forkChild({ startImmediately: true })
-        )
+        const options = { hash: "SHA-1" as const, password, salt, iterations: 2, length: 20 }
+        const fiber = yield* Crypto.pbkdf2(options).pipe(Effect.forkChild({ startImmediately: true }))
         password.fill(0)
         salt.fill(0)
+        options.iterations = 1
         assert.strictEqual(hex(yield* Fiber.join(fiber)), "ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957")
       }).pipe(Effect.provide(layer)))
 
