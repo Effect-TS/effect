@@ -18,6 +18,7 @@ import {
   Result,
   Schedule,
   Schema,
+  Scope,
   Stream
 } from "effect"
 import {
@@ -3368,6 +3369,82 @@ const waitForTerminationOwnership = Effect.fnUntraced(
     assert.strictEqual(sharding.hasShardId(shardId), owned)
   }
 )
+describe("Sharding shard handoff", { concurrent: false }, () => {
+  const shardsPerGroup = 2
+  const allShards = Array.makeBy(shardsPerGroup, (i) => ShardId.make("default", i + 1))
+  const ownsAllShards = (sharding: Sharding.Sharding["Service"]) =>
+    allShards.every((shardId) => sharding.hasShardId(shardId))
+  const makeLayer = (storageState: FailoverStorageState) =>
+    TestEntityNoState.pipe(
+      Layer.provideMerge(Sharding.layer),
+      Layer.provide(Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )),
+      Layer.provide(RunnerHealth.layerNoop),
+      Layer.provideMerge(TestEntityState.layer),
+      Layer.provide(Runners.layerNoop),
+      Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+      Layer.provide(ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10
+      }))
+    )
+
+  it.effect("releases each shard before releaseAll when the scope closes", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(makeLayer(storageState), scope)
+      const sharding = Context.get(context, Sharding.Sharding)
+      while (!ownsAllShards(sharding)) {
+        yield* TestClock.adjust(10)
+      }
+
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      while (!closing.pollUnsafe()) {
+        yield* TestClock.adjust(10)
+      }
+
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [shardsPerGroup])
+    }))
+
+  it.effect("drain releases every shard and acquires none while the scope stays open", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const makeClient = yield* TestEntity.client
+        while (!ownsAllShards(sharding)) {
+          yield* TestClock.adjust(10)
+        }
+        const request = yield* makeClient("1").NeverVolatile().pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(1)
+        assert.strictEqual(yield* sharding.activeEntityCount, 1)
+
+        const draining = yield* Effect.forkChild(sharding.drain)
+        while (!draining.pollUnsafe()) {
+          yield* TestClock.adjust(10)
+        }
+
+        assert.isDefined(request.pollUnsafe())
+        assert.strictEqual(yield* sharding.activeEntityCount, 0)
+        assert.strictEqual(storageState.releaseCalls.length, shardsPerGroup)
+        assert.strictEqual(storageState.releaseAllCalls.length, 0)
+        assert.isUndefined(storageState.runner)
+
+        const acquires = storageState.acquireCalls.length
+        yield* TestClock.adjust(1000)
+        assert.isUndefined(storageState.runner)
+        assert.strictEqual(storageState.acquireCalls.length, acquires)
+      }).pipe(Effect.provide(makeLayer(storageState)), Effect.scoped)
+    }))
+})
 
 interface FailoverStorageState {
   blackholed: boolean
@@ -3389,7 +3466,7 @@ interface FailoverStorageState {
     readonly shards: Array<ShardId.ShardId>
   }>
   readonly releaseCalls: Array<ShardId.ShardId>
-  readonly releaseAllCalls: Array<{ completed: boolean }>
+  readonly releaseAllCalls: Array<{ completed: boolean; readonly releases: number }>
 }
 
 const makeFailoverStorageState = (
@@ -3421,7 +3498,10 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
         state.runner = runner
         return MachineId.make(1)
       }),
-    unregister: () => Effect.void,
+    unregister: () =>
+      Effect.sync(() => {
+        state.runner = undefined
+      }),
     setRunnerHealth: () => Effect.void,
     acquire: (_address, shardIds) =>
       Effect.sync(() => {
@@ -3449,7 +3529,7 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
       }),
     releaseAll: () =>
       Effect.suspend(() => {
-        const call = { completed: false }
+        const call = { completed: false, releases: state.releaseCalls.length }
         state.releaseAllCalls.push(call)
         return Effect.andThen(
           Effect.sleep(state.releaseAllDuration),
