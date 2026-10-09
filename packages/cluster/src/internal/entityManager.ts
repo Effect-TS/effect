@@ -367,6 +367,10 @@ export const make = Effect.fnUntraced(function*<
       keepAliveEnabled: false
     }
 
+    if (!options.sharding.hasShardId(address.shardId)) {
+      return yield* new EntityNotAssignedToRunner({ address })
+    }
+
     // During shutdown, signal that no more messages will be processed
     // and wait for the fiber to complete.
     //

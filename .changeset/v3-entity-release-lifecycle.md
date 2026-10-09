@@ -1,4 +1,5 @@
 ---
+"@effect/cluster": patch
 ---
 
-Add failing tests: Failing tests: entity built after shard release is registered, ResourceMap leaks failed lookup scopes (v3)
+Do not register an entity whose construction finishes after its shard was released, and close the scope of failed or interrupted entity lookups
