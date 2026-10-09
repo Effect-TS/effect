@@ -140,6 +140,23 @@ describe("Dns", () => {
         }))
     }
 
+    it.effect("parses reverse lookup addresses given as strings", () =>
+      Effect.gen(function*() {
+        const seen: Array<string> = []
+        const dns = Dns.make({
+          lookup: () => Effect.succeed([]),
+          reverse: (address) => {
+            seen.push(NetAddress.formatIp(address))
+            return Effect.succeed(["host.example."])
+          }
+        })
+        assert.deepStrictEqual<ReadonlyArray<string>>(yield* dns.reverse("2001:DB8::1"), ["host.example."])
+        assert.deepStrictEqual(seen, ["2001:db8::1"])
+        const error = yield* Effect.flip(dns.reverse("not an address"))
+        assert.deepStrictEqual([error.reason, error.method, error.hostname], ["BadName", "reverse", "not an address"])
+        assert.deepStrictEqual(seen, ["2001:db8::1"])
+      }))
+
     it.effect("filters and deduplicates results, and fails on empty results", () =>
       Effect.gen(function*() {
         const dns = Dns.make({
@@ -218,5 +235,54 @@ describe("Dns", () => {
         const invalid = Dns.makeStatic({ hosts: { "db.internal": ["not-an-ip"] } })
         assert.isTrue(Result.isFailure(invalid) && invalid.failure.input === "not-an-ip")
       }))
+  })
+
+  describe("nameServerFromString", () => {
+    it("parses IP addresses with and without a port", () => {
+      const format = (input: string) => Result.map(Dns.nameServerFromString(input), NetAddress.formatInet)
+      assert.deepStrictEqual(
+        ["192.0.2.53", "192.0.2.53:5353", "2001:db8::53", "[2001:db8::53]:5353", "fe80::1%2"].map(format),
+        [
+          Result.succeed("192.0.2.53:53"),
+          Result.succeed("192.0.2.53:5353"),
+          Result.succeed("[2001:db8::53]:53"),
+          Result.succeed("[2001:db8::53]:5353"),
+          Result.succeed("[fe80::1%2]:53")
+        ]
+      )
+      for (const input of ["ns.example", "ns.example:53", "192.0.2.53:", "[2001:db8::53]", "192.0.2.256", ""]) {
+        assert.isTrue(Result.isFailure(Dns.nameServerFromString(input)), input)
+      }
+    })
+  })
+
+  describe("nameServerFromInput", () => {
+    it("parses strings, converts address inputs, and uses port 53 for IP addresses", () => {
+      const inet = NetAddress.inetAddressFromStringUnsafe("192.0.2.53:5353")
+      const format = (input: NetAddress.IpAddressInput | NetAddress.InetAddressInput) =>
+        Result.map(Dns.nameServerFromInput(input), NetAddress.formatInet)
+      assert.deepStrictEqual(
+        [
+          "2001:db8::53",
+          NetAddress.ipFromStringUnsafe("192.0.2.53"),
+          [192, 0, 2, 53] as const,
+          inet,
+          { address: "2001:db8::53", port: 5353 }
+        ].map(format),
+        [
+          Result.succeed("[2001:db8::53]:53"),
+          Result.succeed("192.0.2.53:53"),
+          Result.succeed("192.0.2.53:53"),
+          Result.succeed("192.0.2.53:5353"),
+          Result.succeed("[2001:db8::53]:5353")
+        ]
+      )
+      assert.strictEqual(Result.getOrThrow(Dns.nameServerFromInput(inet)), inet)
+      for (
+        const input of ["ns.example", [192, 0, 2] as unknown as NetAddress.IpAddressInput, { address: "ns", port: 53 }]
+      ) {
+        assert.isTrue(Result.isFailure(Dns.nameServerFromInput(input)), JSON.stringify(input))
+      }
+    })
   })
 })
