@@ -304,10 +304,8 @@ const make = Effect.gen(function*() {
   // Requests wait out a shard handoff, for at most `shardLockExpiration`,
   // instead of retrying against a runner that cannot serve them yet.
   const shardsChanged = Latch.makeUnsafe(false)
-  const notifyShardWaiters = () => {
-    shardsChanged.openUnsafe()
-    shardsChanged.closeUnsafe()
-  }
+  // Wakes the current waiters while the latch stays closed, so unmet waits park again
+  const notifyShardWaiters = shardsChanged.release
   const awaitShards = (done: () => boolean): Effect.Effect<void> =>
     Effect.suspend(() =>
       done() ? Effect.void : shardsChanged.await.pipe(
@@ -373,7 +371,7 @@ const make = Effect.gen(function*() {
           interrupt: MutableRef.get(isShutdown)
         })
       }
-      notifyShardWaiters()
+      yield* notifyShardWaiters
     })
     const retryShardRelease =
       (annotations: { readonly fiber: string; readonly shardId?: ShardId }) =>
@@ -506,7 +504,7 @@ const make = Effect.gen(function*() {
           }
           MutableHashSet.add(acquiredShards, shardId)
         }
-        notifyShardWaiters()
+        yield* notifyShardWaiters
         if (acquired.length > 0) {
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
@@ -541,9 +539,9 @@ const make = Effect.gen(function*() {
         }
         ClusterMetrics.shards.updateUnsafe(BigInt(0), Context.empty())
         activeShardsLatch.openUnsafe()
-        notifyShardWaiters()
 
         return Effect.gen(function*() {
+          yield* notifyShardWaiters
           yield* Effect.logError("Shard lock storage is unhealthy", cause)
           yield* Effect.forkIn(syncSingletons, shardingScope, { startImmediately: true })
 
@@ -1374,7 +1372,7 @@ const make = Effect.gen(function*() {
         })
         yield* Effect.logDebug("New shard assignments", selfShards)
         activeShardsLatch.openUnsafe()
-        notifyShardWaiters()
+        yield* notifyShardWaiters
 
         // update metrics
         if (selfRunner) {
@@ -1833,7 +1831,7 @@ const make = Effect.gen(function*() {
 
     if (isShutdown.current) return
     MutableRef.set(isShutdown, true)
-    notifyShardWaiters()
+    yield* notifyShardWaiters
     if (selfRunner) {
       yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
     }
