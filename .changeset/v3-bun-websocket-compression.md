@@ -1,4 +1,5 @@
 ---
+"@effect/platform-bun": patch
 ---
 
-Add failing tests: Failing test: BunHttpServer drops websocket perMessageDeflate (v3)
+Fix Bun HTTP server WebSocket compression by preserving options and compressing outgoing messages.
