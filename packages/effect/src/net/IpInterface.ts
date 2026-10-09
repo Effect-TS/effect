@@ -6,7 +6,7 @@
  */
 import * as Equal from "../Equal.ts"
 import * as Hash from "../Hash.ts"
-import { NodeInspectSymbol } from "../Inspectable.ts"
+import * as Inspectable from "../Inspectable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import * as NetAddress from "./NetAddress.ts"
@@ -23,12 +23,13 @@ const TypeId = "~effect/net/IpInterface" as const
  * @category models
  * @since 4.0.0
  */
-export interface IpInterface<out A extends NetAddress.IpAddress = NetAddress.IpAddress> extends Equal.Equal, Hash.Hash {
+export interface IpInterface<out A extends NetAddress.IpAddress = NetAddress.IpAddress>
+  extends Equal.Equal, Hash.Hash, Inspectable.Inspectable
+{
   readonly _tag: "IpInterface"
   readonly address: A
   readonly prefixLength: number
   readonly [TypeId]: typeof TypeId
-  toString(): string
   toJSON(): string
 }
 
@@ -140,6 +141,7 @@ export const isIpv6Interface = (u: unknown): u is Ipv6Interface =>
 export const isIpInterface = (u: unknown): u is IpInterface => hasProperty(u, TypeId)
 
 const IpInterfaceProto = {
+  ...Inspectable.BaseProto,
   _tag: "IpInterface",
   [TypeId]: TypeId,
   [Equal.symbol](this: IpInterface, that: Equal.Equal): boolean {
@@ -155,9 +157,6 @@ const IpInterfaceProto = {
   },
   toJSON(this: IpInterface): string {
     return this.toString()
-  },
-  [NodeInspectSymbol](this: IpInterface): string {
-    return this.toJSON()
   }
 }
 

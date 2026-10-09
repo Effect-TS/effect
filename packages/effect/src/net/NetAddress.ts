@@ -9,7 +9,7 @@ import * as Data from "../Data.ts"
 import * as Equal from "../Equal.ts"
 import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
-import { NodeInspectSymbol } from "../Inspectable.ts"
+import * as Inspectable from "../Inspectable.ts"
 import * as Option from "../Option.ts"
 import { hasProperty, isTupleOf } from "../Predicate.ts"
 import * as Result from "../Result.ts"
@@ -24,10 +24,9 @@ const TypeId = "~effect/net/NetAddress" as const
  * @category models
  * @since 4.0.0
  */
-export interface Ipv4Address extends Equal.Equal, Hash.Hash {
+export interface Ipv4Address extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "Ipv4Address"
   readonly [TypeId]: typeof TypeId
-  toString(): string
   toJSON(): string
 }
 
@@ -38,10 +37,9 @@ export interface Ipv4Address extends Equal.Equal, Hash.Hash {
  * @category models
  * @since 4.0.0
  */
-export interface Ipv6Address extends Equal.Equal, Hash.Hash {
+export interface Ipv6Address extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "Ipv6Address"
   readonly [TypeId]: typeof TypeId
-  toString(): string
   toJSON(): string
 }
 
@@ -144,10 +142,9 @@ export type ScopedIpv6LiteralInput = ScopedIpv6Literal | string
  * @category models
  * @since 4.0.0
  */
-export interface MacAddress extends Equal.Equal, Hash.Hash {
+export interface MacAddress extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "MacAddress"
   readonly [TypeId]: typeof TypeId
-  toString(): string
   toJSON(): string
 }
 
@@ -321,12 +318,11 @@ const getMacBytes = (self: MacAddress): Uint8Array => (self as any).bytes
  * @category models
  * @since 4.0.0
  */
-export interface InetAddressV4 extends Equal.Equal, Hash.Hash {
+export interface InetAddressV4 extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "InetAddressV4"
   readonly address: Ipv4Address
   readonly port: number
   readonly [TypeId]: typeof TypeId
-  toString(): string
   toJSON(): string
 }
 
@@ -337,13 +333,12 @@ export interface InetAddressV4 extends Equal.Equal, Hash.Hash {
  * @category models
  * @since 4.0.0
  */
-export interface InetAddressV6 extends Equal.Equal, Hash.Hash {
+export interface InetAddressV6 extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "InetAddressV6"
   readonly address: Ipv6Address
   readonly port: number
   readonly scopeId: number
   readonly [TypeId]: typeof TypeId
-  toString(): string
   toJSON(): string
 }
 
@@ -361,7 +356,7 @@ export type InetAddress = InetAddressV4 | InetAddressV6
  *
  * **Details**
  *
- * A `scopeId` is only valid with an IPv6 address.
+ * A nonzero `scopeId` is only valid with an IPv6 address.
  *
  * @stability unstable
  * @category models
@@ -389,11 +384,10 @@ export type InetAddressInput = InetAddress | string | InetAddressParts
  * @category models
  * @since 4.0.0
  */
-export interface UnixPathAddress extends Equal.Equal, Hash.Hash {
+export interface UnixPathAddress extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "UnixPathAddress"
   readonly path: string
   readonly [TypeId]: typeof TypeId
-  toString(): string
   toJSON(): string
 }
 
@@ -691,6 +685,7 @@ export const isUnixPathAddress = (u: unknown): u is UnixPathAddress => isAddress
 export const isSocketAddress = (u: unknown): u is SocketAddress => isInetAddress(u) || isUnixPathAddress(u)
 
 const Ipv4Proto = {
+  ...Inspectable.BaseProto,
   _tag: "Ipv4Address",
   [TypeId]: TypeId,
   [Equal.symbol](this: Ipv4Address, that: Equal.Equal): boolean {
@@ -704,13 +699,11 @@ const Ipv4Proto = {
   },
   toJSON(this: Ipv4Address): string {
     return this.toString()
-  },
-  [NodeInspectSymbol](this: Ipv4Address): string {
-    return this.toJSON()
   }
 }
 
 const Ipv6Proto = {
+  ...Inspectable.BaseProto,
   _tag: "Ipv6Address",
   [TypeId]: TypeId,
   [Equal.symbol](this: Ipv6Address, that: Equal.Equal): boolean {
@@ -731,13 +724,11 @@ const Ipv6Proto = {
   },
   toJSON(this: Ipv6Address): string {
     return this.toString()
-  },
-  [NodeInspectSymbol](this: Ipv6Address): string {
-    return this.toJSON()
   }
 }
 
 const MacProto = {
+  ...Inspectable.BaseProto,
   _tag: "MacAddress",
   [TypeId]: TypeId,
   [Equal.symbol](this: MacAddress, that: Equal.Equal): boolean {
@@ -751,9 +742,6 @@ const MacProto = {
   },
   toJSON(this: MacAddress): string {
     return this.toString()
-  },
-  [NodeInspectSymbol](this: MacAddress): string {
-    return this.toJSON()
   }
 }
 
@@ -868,6 +856,15 @@ export const ipv4Broadcast: Ipv4Address = makeIpv4(0xffffffff)
 const addressError = (input: unknown, message: string): Result.Result<never, NetAddressError> =>
   Result.fail(new NetAddressError({ input, message }))
 
+// Checks by index because `every` skips holes in sparse arrays.
+const allIntegersInRange = (values: ReadonlyArray<number>, max: number): boolean => {
+  for (let i = 0; i < values.length; i++) {
+    const n = values[i]
+    if (!Number.isInteger(n) || n < 0 || n > max) return false
+  }
+  return true
+}
+
 /**
  * Creates an IPv4 address from four checked octets.
  *
@@ -878,7 +875,7 @@ const addressError = (input: unknown, message: string): Result.Result<never, Net
 export const ipv4FromOctets = (
   octets: Ipv4Octets
 ): Result.Result<Ipv4Address, NetAddressError> => {
-  if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
+  if (!allIntegersInRange(octets, 255)) {
     return addressError(octets, "octets must be integers from 0 through 255")
   }
   return Result.succeed(makeIpv4(packOctets(octets[0], octets[1], octets[2], octets[3])))
@@ -894,7 +891,7 @@ export const ipv4FromOctets = (
 export const ipv6FromSegments = (
   segments: Ipv6Segments
 ): Result.Result<Ipv6Address, NetAddressError> => {
-  if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
+  if (!allIntegersInRange(segments, 0xffff)) {
     return addressError(segments, "segments must be integers from 0 through 65535")
   }
   return Result.succeed(makeIpv6(
@@ -915,7 +912,7 @@ export const ipv6FromSegments = (
 export const macAddressFromOctets = (
   octets: MacAddressOctets
 ): Result.Result<MacAddress, NetAddressError> => {
-  if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
+  if (!allIntegersInRange(octets, 255)) {
     return addressError(octets, "octets must be integers from 0 through 255")
   }
   return Result.succeed(makeMac(new Uint8Array(octets)))
@@ -1583,6 +1580,7 @@ export function toCanonical(self: IpAddress | InetAddress): IpAddress | InetAddr
 }
 
 const InetV4Proto = {
+  ...Inspectable.BaseProto,
   _tag: "InetAddressV4",
   [TypeId]: TypeId,
   [Equal.symbol](this: InetAddressV4, that: Equal.Equal): boolean {
@@ -1596,13 +1594,11 @@ const InetV4Proto = {
   },
   toJSON(this: InetAddressV4): string {
     return this.toString()
-  },
-  [NodeInspectSymbol](this: InetAddressV4): string {
-    return this.toJSON()
   }
 }
 
 const InetV6Proto = {
+  ...Inspectable.BaseProto,
   _tag: "InetAddressV6",
   [TypeId]: TypeId,
   [Equal.symbol](this: InetAddressV6, that: Equal.Equal): boolean {
@@ -1620,9 +1616,6 @@ const InetV6Proto = {
   },
   toJSON(this: InetAddressV6): string {
     return this.toString()
-  },
-  [NodeInspectSymbol](this: InetAddressV6): string {
-    return this.toJSON()
   }
 }
 
@@ -2018,7 +2011,7 @@ export const inetAddressFromInput = (input: InetAddressInput): Result.Result<Ine
   const { port, scopeId } = input
   return Result.flatMap(ipFromInput(input.address), (address): Result.Result<InetAddress, NetAddressError> => {
     if (isIpv6Address(address)) return inetAddressV6(address, port, { scopeId })
-    return scopeId === undefined
+    return (scopeId ?? 0) === 0
       ? inetAddressV4(address, port)
       : addressError(input, "scopeId requires an IPv6 address")
   })
@@ -2217,6 +2210,7 @@ export const formatUrlHostString = (host: string): string =>
   host.includes(":") && !host.startsWith("[") ? `[${host}]` : host
 
 const UnixPathProto = {
+  ...Inspectable.BaseProto,
   _tag: "UnixPathAddress",
   [TypeId]: TypeId,
   [Equal.symbol](this: UnixPathAddress, that: Equal.Equal): boolean {
@@ -2230,9 +2224,6 @@ const UnixPathProto = {
   },
   toJSON(this: UnixPathAddress): string {
     return this.toString()
-  },
-  [NodeInspectSymbol](this: UnixPathAddress): string {
-    return this.toJSON()
   }
 }
 

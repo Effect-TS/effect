@@ -934,6 +934,10 @@ describe("fromInput", () => {
       success(NetAddress.socketAddressFromInput({ address: ipv6Bytes, port: 443 })),
       success(NetAddress.inetAddressFromString("[2001:db8::1]:443"))
     ))
+    assertTrue(Equal.equals(
+      success(NetAddress.inetAddressFromInput({ address: "192.0.2.1", port: 53, scopeId: 0 })),
+      success(NetAddress.inetAddressFromString("192.0.2.1:53"))
+    ))
 
     failure(NetAddress.ipFromInput(new Uint8Array(5)))
     failure(NetAddress.ipFromInput([1, 2, 3] as unknown as NetAddress.IpAddressInput))
@@ -942,6 +946,13 @@ describe("fromInput", () => {
     failure(NetAddress.ipv6FromInput(new Uint8Array(4)))
     failure(NetAddress.ipv6FromInput([0, 0, 0, 0, 0, 0, 0, 0x10000]))
     failure(NetAddress.macAddressFromInput([0, 0, 0, 0, 0, 256]))
+    failure(NetAddress.ipFromInput(new Array(4) as unknown as NetAddress.IpAddressInput))
+    failure(
+      NetAddress.ipv6FromInput(
+        Object.assign(new Array(8), { 0: 0x2001, 7: 1 }) as unknown as NetAddress.Ipv6AddressInput
+      )
+    )
+    failure(NetAddress.macAddressFromInput(new Array(6) as unknown as NetAddress.MacAddressInput))
     failure(NetAddress.inetAddressFromInput({ address: "192.0.2.1", port: 65536 }))
     failure(NetAddress.inetAddressFromInput({ address: "192.0.2.1", port: 53, scopeId: 1 }))
     failure(NetAddress.socketAddressFromInput({ address: null, port: 80 } as unknown as NetAddress.SocketAddress.Input))

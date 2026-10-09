@@ -109,6 +109,6 @@ describe("IpNetwork", () => {
       Result.Result<IpNetwork.Ipv4Network, NetAddress.NetAddressError>
     >()
     expect(IpNetwork.ipv4FromInput).type.not.toBeCallableWith({ address: [0, 0, 0, 0, 0, 0, 0, 0], prefixLength: 0 })
-    expect(IpInterface.ipv6FromInput).type.not.toBeCallableWith({ address: [10, 0, 0, 1], prefixLength: 8 })
+    expect(IpNetwork.ipv6FromInput).type.not.toBeCallableWith({ address: [10, 0, 0, 0], prefixLength: 8 })
   })
 })
