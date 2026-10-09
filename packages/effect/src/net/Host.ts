@@ -61,6 +61,15 @@ export type DomainNameInput = DomainName | string
 export type Host = NetAddress.IpAddress | NetAddress.ScopedIpv6Literal | DomainName
 
 /**
+ * A host or a string to parse as one.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type HostInput = Host | string
+
+/**
  * An unresolved host and port.
  *
  * @see {@link hostPortFromString} for parsing `host:port` strings
@@ -198,6 +207,31 @@ export const domainNameFromString = (input: string): Result.Result<DomainName, N
 export const domainNameFromStringUnsafe = (input: string): DomainName => Result.getOrThrow(domainNameFromString(input))
 
 /**
+ * Converts a `DomainNameInput` to a domain name, parsing and normalizing it like
+ * `domainNameFromString`.
+ *
+ * **Details**
+ *
+ * Domain names are strings, so every input is parsed.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const domainNameFromInput = (input: DomainNameInput): Result.Result<DomainName, NetAddress.NetAddressError> =>
+  domainNameFromString(input)
+
+/**
+ * Converts a trusted `DomainNameInput` to a domain name, throwing on failure.
+ *
+ * @stability experimental
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const domainNameFromInputUnsafe = (input: DomainNameInput): DomainName =>
+  Result.getOrThrow(domainNameFromInput(input))
+
+/**
  * Parses a host as a numeric IP address, a scoped IPv6 literal, or a domain
  * name, in that order.
  *
@@ -234,6 +268,26 @@ export const hostFromString = (input: string): Result.Result<Host, NetAddress.Ne
  * @since 4.0.0
  */
 export const hostFromStringUnsafe = (input: string): Host => Result.getOrThrow(hostFromString(input))
+
+/**
+ * Converts a `HostInput` to a host, parsing strings like `hostFromString` and
+ * returning IP addresses unchanged.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const hostFromInput = (input: HostInput): Result.Result<Host, NetAddress.NetAddressError> =>
+  NetAddress.isIpAddress(input) ? Result.succeed(input) : hostFromString(input)
+
+/**
+ * Converts a trusted `HostInput` to a host, throwing on failure.
+ *
+ * @stability experimental
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const hostFromInputUnsafe = (input: HostInput): Host => Result.getOrThrow(hostFromInput(input))
 
 /**
  * Formats a host without brackets.
@@ -362,6 +416,26 @@ export const hostPortFromString = (input: string): Result.Result<HostPort, NetAd
  * @since 4.0.0
  */
 export const hostPortFromStringUnsafe = (input: string): HostPort => Result.getOrThrow(hostPortFromString(input))
+
+/**
+ * Converts a `HostPortInput` to an endpoint, parsing strings like
+ * `hostPortFromString` and returning endpoints unchanged.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const hostPortFromInput = (input: HostPortInput): Result.Result<HostPort, NetAddress.NetAddressError> =>
+  isHostPort(input) ? Result.succeed(input) : hostPortFromString(input)
+
+/**
+ * Converts a trusted `HostPortInput` to an endpoint, throwing on failure.
+ *
+ * @stability experimental
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const hostPortFromInputUnsafe = (input: HostPortInput): HostPort => Result.getOrThrow(hostPortFromInput(input))
 
 /**
  * Formats a host and port, bracketing IPv6 hosts.

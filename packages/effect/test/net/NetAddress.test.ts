@@ -879,3 +879,49 @@ describe("NetAddress", () => {
     )
   })
 })
+
+describe("fromInput", () => {
+  it("parses strings and returns values unchanged", () => {
+    const ipv4 = success(NetAddress.ipv4FromString("192.0.2.1"))
+    const ipv6 = success(NetAddress.ipv6FromString("2001:db8::1"))
+    const mac = success(NetAddress.macAddressFromString("00:11:22:33:44:55"))
+    const inet = success(NetAddress.inetAddressFromString("[2001:db8::1]:443"))
+
+    assertTrue(Equal.equals(success(NetAddress.ipFromInput("192.0.2.1")), ipv4))
+    assertTrue(Equal.equals(success(NetAddress.ipv4FromInput("192.0.2.1")), ipv4))
+    assertTrue(Equal.equals(success(NetAddress.ipv6FromInput("2001:DB8::1")), ipv6))
+    assertTrue(Equal.equals(success(NetAddress.macAddressFromInput("00:11:22:33:44:55")), mac))
+    assertTrue(Equal.equals(success(NetAddress.inetAddressFromInput("[2001:db8::1]:443")), inet))
+    assert.strictEqual(success(NetAddress.scopedIpv6LiteralFromInput("FE80::1%eth0")), "fe80::1%eth0")
+
+    assert.strictEqual(success(NetAddress.ipFromInput(ipv6)), ipv6)
+    assert.strictEqual(success(NetAddress.ipv4FromInput(ipv4)), ipv4)
+    assert.strictEqual(success(NetAddress.ipv6FromInput(ipv6)), ipv6)
+    assert.strictEqual(success(NetAddress.macAddressFromInput(mac)), mac)
+    assert.strictEqual(success(NetAddress.inetAddressFromInput(inet)), inet)
+
+    failure(NetAddress.ipFromInput("example.com"))
+    failure(NetAddress.ipv4FromInput("2001:db8::1"))
+    failure(NetAddress.ipv6FromInput("192.0.2.1"))
+    failure(NetAddress.macAddressFromInput("00:11:22:33:44"))
+    failure(NetAddress.inetAddressFromInput("192.0.2.1"))
+    failure(NetAddress.scopedIpv6LiteralFromInput("fe80::1"))
+  })
+
+  it("has unsafe variants that throw on failure", () => {
+    const ip = NetAddress.ipFromStringUnsafe("192.0.2.1")
+    assert.strictEqual(NetAddress.ipFromInputUnsafe(ip), ip)
+    assertTrue(Equal.equals(NetAddress.ipFromInputUnsafe("192.0.2.1"), ip))
+    assertTrue(Equal.equals(
+      NetAddress.macAddressFromInputUnsafe("00:11:22:33:44:55"),
+      NetAddress.macAddressFromStringUnsafe("00:11:22:33:44:55")
+    ))
+    assertTrue(Equal.equals(
+      NetAddress.inetAddressFromInputUnsafe("192.0.2.1:53"),
+      NetAddress.inetAddressFromStringUnsafe("192.0.2.1:53")
+    ))
+    assert.throws(() => NetAddress.ipFromInputUnsafe("example.com"))
+    assert.throws(() => NetAddress.macAddressFromInputUnsafe("00:11"))
+    assert.throws(() => NetAddress.inetAddressFromInputUnsafe("192.0.2.1"))
+  })
+})

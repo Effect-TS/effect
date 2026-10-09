@@ -54,6 +54,33 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
 export type IpAddress = Ipv4Address | Ipv6Address
 
 /**
+ * An IPv4 address or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv4AddressInput = Ipv4Address | string
+
+/**
+ * An IPv6 address or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv6AddressInput = Ipv6Address | string
+
+/**
+ * An IP address or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type IpAddressInput = IpAddress | string
+
+/**
  * An IPv6 literal with a zone, such as `fe80::1%eth0` or `fe80::1%3`.
  *
  * **Details**
@@ -71,6 +98,15 @@ export type IpAddress = Ipv4Address | Ipv6Address
 export type ScopedIpv6Literal = Brand.Branded<string, "~effect/net/NetAddress/ScopedIpv6Literal">
 
 /**
+ * A scoped IPv6 literal or a string to parse as one.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type ScopedIpv6LiteralInput = ScopedIpv6Literal | string
+
+/**
  * An immutable 48-bit IEEE 802 MAC address.
  *
  * @stability unstable
@@ -83,6 +119,15 @@ export interface MacAddress extends Equal.Equal, Hash.Hash {
   toString(): string
   toJSON(): string
 }
+
+/**
+ * A MAC address or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type MacAddressInput = MacAddress | string
 
 const MulticastTypeId = "~effect/net/NetAddress/MulticastAddress" as const
 const UnicastTypeId = "~effect/net/NetAddress/UnicastAddress" as const
@@ -279,6 +324,15 @@ export interface InetAddressV6 extends Equal.Equal, Hash.Hash {
  * @since 4.0.0
  */
 export type InetAddress = InetAddressV4 | InetAddressV6
+
+/**
+ * An internet address and port, or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type InetAddressInput = InetAddress | string
 
 /**
  * An opaque Unix-domain filesystem socket path.
@@ -836,6 +890,27 @@ export const macAddressFromString = (input: string): Result.Result<MacAddress, N
 export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.getOrThrow(macAddressFromString(input))
 
 /**
+ * Converts a `MacAddressInput` to a MAC address, parsing strings like
+ * `macAddressFromString` and returning MAC addresses unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const macAddressFromInput = (input: MacAddressInput): Result.Result<MacAddress, NetAddressError> =>
+  isMacAddress(input) ? Result.succeed(input) : macAddressFromString(input)
+
+/**
+ * Converts a trusted `MacAddressInput` to a MAC address, throwing on failure.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const macAddressFromInputUnsafe = (input: MacAddressInput): MacAddress =>
+  Result.getOrThrow(macAddressFromInput(input))
+
+/**
  * Parses a strict dotted-decimal IPv4 address.
  *
  * **Details**
@@ -959,6 +1034,60 @@ export const ipFromString = (input: string): Result.Result<IpAddress, NetAddress
 export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThrow(ipFromString(input))
 
 /**
+ * Converts an `IpAddressInput` to an IP address, parsing strings like
+ * `ipFromString` and returning IP addresses unchanged.
+ *
+ * **Example** (Converting IP address inputs)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { NetAddress } from "effect/net"
+ *
+ * const address = Result.getOrThrow(NetAddress.ipFromInput("192.0.2.1"))
+ * NetAddress.formatIp(address) // => "192.0.2.1"
+ * Result.getOrThrow(NetAddress.ipFromInput(address)) === address // => true
+ * Result.isFailure(NetAddress.ipFromInput("example.com")) // => true
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const ipFromInput = (input: IpAddressInput): Result.Result<IpAddress, NetAddressError> =>
+  isIpAddress(input) ? Result.succeed(input) : ipFromString(input)
+
+/**
+ * Converts a trusted `IpAddressInput` to an IP address, throwing on failure.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const ipFromInputUnsafe = (input: IpAddressInput): IpAddress => Result.getOrThrow(ipFromInput(input))
+
+/**
+ * Converts an `Ipv4AddressInput` to an IPv4 address, parsing strings like
+ * `ipv4FromString` and returning IPv4 addresses unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const ipv4FromInput = (input: Ipv4AddressInput): Result.Result<Ipv4Address, NetAddressError> =>
+  isIpv4Address(input) ? Result.succeed(input) : ipv4FromString(input)
+
+/**
+ * Converts an `Ipv6AddressInput` to an IPv6 address, parsing strings like
+ * `ipv6FromString` and returning IPv6 addresses unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const ipv6FromInput = (input: Ipv6AddressInput): Result.Result<Ipv6Address, NetAddressError> =>
+  isIpv6Address(input) ? Result.succeed(input) : ipv6FromString(input)
+
+/**
  * Returns `true` when a value is a canonical scoped IPv6 literal.
  *
  * @stability experimental
@@ -997,6 +1126,22 @@ export const scopedIpv6LiteralFromString = (
     (address) => `${formatIp(address)}%${zone}` as ScopedIpv6Literal
   )
 }
+
+/**
+ * Converts a `ScopedIpv6LiteralInput` to a scoped IPv6 literal, parsing it
+ * like `scopedIpv6LiteralFromString`.
+ *
+ * **Details**
+ *
+ * Scoped IPv6 literals are strings, so every input is parsed.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const scopedIpv6LiteralFromInput = (
+  input: ScopedIpv6LiteralInput
+): Result.Result<ScopedIpv6Literal, NetAddressError> => scopedIpv6LiteralFromString(input)
 
 /**
  * Returns the four numeric octets of an IPv4 address in a fresh tuple.
@@ -1774,6 +1919,27 @@ export const inetAddressFromString = (input: string): Result.Result<InetAddress,
  */
 export const inetAddressFromStringUnsafe = (input: string): InetAddress =>
   Result.getOrThrow(inetAddressFromString(input))
+
+/**
+ * Converts an `InetAddressInput` to an internet address, parsing strings like
+ * `inetAddressFromString` and returning internet addresses unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const inetAddressFromInput = (input: InetAddressInput): Result.Result<InetAddress, NetAddressError> =>
+  isInetAddress(input) ? Result.succeed(input) : inetAddressFromString(input)
+
+/**
+ * Converts a trusted `InetAddressInput` to an internet address, throwing on failure.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const inetAddressFromInputUnsafe = (input: InetAddressInput): InetAddress =>
+  Result.getOrThrow(inetAddressFromInput(input))
 
 /**
  * Formats the numeric host of an internet address without brackets or a port,

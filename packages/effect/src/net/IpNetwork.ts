@@ -53,6 +53,33 @@ export type Ipv4Network = IpNetwork<NetAddress.Ipv4Address>
 export type Ipv6Network = IpNetwork<NetAddress.Ipv6Address>
 
 /**
+ * An IP network prefix or a CIDR string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type IpNetworkInput = IpNetwork | string
+
+/**
+ * An IPv4 network prefix or a CIDR string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv4NetworkInput = Ipv4Network | string
+
+/**
+ * An IPv6 network prefix or a CIDR string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv6NetworkInput = Ipv6Network | string
+
+/**
  * Returns `true` when a value is an IPv4 network prefix.
  *
  * @stability unstable
@@ -233,6 +260,48 @@ export const fromString = (input: string): Result.Result<IpNetwork, NetAddress.N
     (value) => make(value.address, value.prefixLength)
   )
 }
+
+/**
+ * Converts an `Ipv4NetworkInput` to an IPv4 network prefix, parsing strings
+ * like `ipv4FromString` and returning network prefixes unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const ipv4FromInput = (input: Ipv4NetworkInput): Result.Result<Ipv4Network, NetAddress.NetAddressError> =>
+  isIpv4Network(input) ? Result.succeed(input) : ipv4FromString(input)
+
+/**
+ * Converts an `Ipv6NetworkInput` to an IPv6 network prefix, parsing strings
+ * like `ipv6FromString` and returning network prefixes unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const ipv6FromInput = (input: Ipv6NetworkInput): Result.Result<Ipv6Network, NetAddress.NetAddressError> =>
+  isIpv6Network(input) ? Result.succeed(input) : ipv6FromString(input)
+
+/**
+ * Converts an `IpNetworkInput` to a network prefix, parsing strings like
+ * `fromString` and returning network prefixes unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromInput = (input: IpNetworkInput): Result.Result<IpNetwork, NetAddress.NetAddressError> =>
+  isIpNetwork(input) ? Result.succeed(input) : fromString(input)
+
+/**
+ * Converts a trusted `IpNetworkInput` to a network prefix, throwing on failure.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const fromInputUnsafe = (input: IpNetworkInput): IpNetwork => Result.getOrThrow(fromInput(input))
 
 /**
  * Creates a trusted network prefix, throwing when its address or prefix is invalid.

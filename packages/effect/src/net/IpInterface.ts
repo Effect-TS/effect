@@ -51,6 +51,33 @@ export type Ipv4Interface = IpInterface<NetAddress.Ipv4Address>
 export type Ipv6Interface = IpInterface<NetAddress.Ipv6Address>
 
 /**
+ * An interface address or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type IpInterfaceInput = IpInterface | string
+
+/**
+ * An IPv4 interface address or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv4InterfaceInput = Ipv4Interface | string
+
+/**
+ * An IPv6 interface address or a string to parse as one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv6InterfaceInput = Ipv6Interface | string
+
+/**
  * Companion types for parsing IP interface addresses.
  *
  * @stability unstable
@@ -230,6 +257,61 @@ export const fromString = (
       Result.flatMap(NetAddress.ipFromString(parts.address), (address) =>
         make(address, parts.prefixLength ?? NetAddress.width(address)))
   )
+
+/**
+ * Converts an `Ipv4InterfaceInput` to an IPv4 interface address, parsing
+ * strings like `ipv4FromString` with the given options and returning interface
+ * addresses unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const ipv4FromInput = (
+  input: Ipv4InterfaceInput,
+  options?: IpInterface.ParseOptions
+): Result.Result<Ipv4Interface, NetAddress.NetAddressError> =>
+  isIpv4Interface(input) ? Result.succeed(input) : ipv4FromString(input, options)
+
+/**
+ * Converts an `Ipv6InterfaceInput` to an IPv6 interface address, parsing
+ * strings like `ipv6FromString` with the given options and returning interface
+ * addresses unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const ipv6FromInput = (
+  input: Ipv6InterfaceInput,
+  options?: IpInterface.ParseOptions
+): Result.Result<Ipv6Interface, NetAddress.NetAddressError> =>
+  isIpv6Interface(input) ? Result.succeed(input) : ipv6FromString(input, options)
+
+/**
+ * Converts an `IpInterfaceInput` to an interface address, parsing strings like
+ * `fromString` with the given options and returning interface addresses
+ * unchanged.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromInput = (
+  input: IpInterfaceInput,
+  options?: IpInterface.ParseOptions
+): Result.Result<IpInterface, NetAddress.NetAddressError> =>
+  isIpInterface(input) ? Result.succeed(input) : fromString(input, options)
+
+/**
+ * Converts a trusted `IpInterfaceInput` to an interface address, throwing on failure.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const fromInputUnsafe = (input: IpInterfaceInput, options?: IpInterface.ParseOptions): IpInterface =>
+  Result.getOrThrow(fromInput(input, options))
 
 /**
  * Creates a trusted interface address, throwing when its prefix length is invalid.

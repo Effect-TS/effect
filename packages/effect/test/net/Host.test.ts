@@ -65,3 +65,32 @@ describe("Host", () => {
     assert.throws(() => Schema.decodeUnknownSync(Schema.Host)("DB.internal"))
   })
 })
+
+describe("fromInput", () => {
+  it("parses strings and returns values unchanged", () => {
+    const address = success(NetAddress.ipFromString("192.0.2.1"))
+    const endpoint = success(Host.hostPortFromString("Example.COM:443"))
+
+    assert.strictEqual(success(Host.domainNameFromInput("Example.COM.")), "example.com.")
+    assert.strictEqual(Host.formatHost(success(Host.hostFromInput("DB.internal"))), "db.internal")
+    assertTrue(Equal.equals(success(Host.hostFromInput("192.0.2.1")), address))
+    assertTrue(Equal.equals(success(Host.hostPortFromInput("example.com:443")), endpoint))
+
+    assert.strictEqual(success(Host.hostFromInput(address)), address)
+    assert.strictEqual(success(Host.hostPortFromInput(endpoint)), endpoint)
+
+    failure(Host.domainNameFromInput("bad name"))
+    failure(Host.hostFromInput("bad name"))
+    failure(Host.hostPortFromInput("example.com"))
+  })
+
+  it("has unsafe variants that throw on failure", () => {
+    const endpoint = Host.hostPortFromStringUnsafe("example.com:443")
+    assert.strictEqual(Host.domainNameFromInputUnsafe("Example.COM"), "example.com")
+    assert.strictEqual(Host.formatHost(Host.hostFromInputUnsafe("DB.internal")), "db.internal")
+    assert.strictEqual(Host.hostPortFromInputUnsafe(endpoint), endpoint)
+    assert.throws(() => Host.domainNameFromInputUnsafe("bad name"))
+    assert.throws(() => Host.hostFromInputUnsafe("bad name"))
+    assert.throws(() => Host.hostPortFromInputUnsafe("example.com"))
+  })
+})
