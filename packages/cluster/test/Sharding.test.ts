@@ -3,6 +3,7 @@ import {
   ClusterError,
   EntityId,
   MachineId,
+  Message,
   MessageStorage,
   Runner as RunnerModule,
   RunnerAddress,
@@ -655,6 +656,29 @@ describe.concurrent("Sharding", () => {
       assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(3))
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("restarts the entity when an interrupted stream reply fails after a defect", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+
+      yield* client.NeverFork().pipe(Effect.fork)
+      yield* TestClock.adjust(1)
+      yield* client.NeverStreamVolatile().pipe(Stream.runDrain, Effect.fork)
+      yield* TestClock.adjust(1)
+      const fiber = yield* client.NeverStreamVolatile().pipe(Stream.runDrain, Effect.fork)
+      yield* TestClock.adjust(1)
+
+      MutableRef.set(state.defectTrigger, true)
+      yield* client.GetUser({ id: 123 }).pipe(Effect.fork)
+      yield* TestClock.adjust(1000)
+
+      const exit = fiber.unsafePoll()
+      assert(exit && Exit.isInterrupted(exit))
+      assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(1))
+    }).pipe(Effect.provide(TestShardingWithFailingStreamReply)))
+
   it.effect("interrupts non-persisted streams on shutdown without waiting for entityTerminationTimeout", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
@@ -1198,6 +1222,38 @@ const TestShardingWithTerminationTimeout = TestShardingWithoutRunners.pipe(
     entityMessagePollInterval: 5000,
     sendRetryInterval: 100
   }))
+)
+
+const TestShardingWithFailingStreamReply = TestShardingWithoutRunners.pipe(
+  Layer.provide(Layer.scoped(
+    Runners.Runners,
+    Effect.gen(function*() {
+      const runners = yield* Runners.makeNoop
+      let failed = false
+      return Runners.Runners.of({
+        ...runners,
+        sendLocal(options) {
+          const message = options.message
+          if (failed || message._tag !== "OutgoingRequest" || message.envelope.tag !== "NeverStreamVolatile") {
+            return runners.sendLocal(options)
+          }
+          failed = true
+          return options.send(
+            new Message.IncomingRequestLocal({
+              envelope: message.envelope,
+              lastSentReply: Option.none(),
+              respond: (reply) =>
+                reply._tag === "WithExit"
+                  ? Effect.fail(new ClusterError.PersistenceError({ cause: "reply failed" }))
+                  : message.respond(reply)
+            })
+          )
+        }
+      })
+    })
+  )),
+  Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+  Layer.provide(TestShardingConfig)
 )
 
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
