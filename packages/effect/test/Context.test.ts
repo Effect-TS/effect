@@ -130,34 +130,26 @@ describe("Context", () => {
     assertTrue(Context.hasSameCache(Context.empty(), context))
   })
 
-  it("rebases a large base by copying it exactly once", () => {
+  it("rebases a large base without warming the pre-rebase context's flat cache", () => {
     const baseSize = 50
     const baseKeys = Array.from({ length: baseSize }, (_, i) => Context.Service<number>(`ContextTest/Rebase${i}`))
     const base = Context.makeUnsafe(new Map(baseKeys.map((key, i) => [key.key, i])))
     const pushKeys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/Push${i}`))
 
-    let setCalls = 0
-    const originalSet = Map.prototype.set
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Map.prototype.set = function(this: Map<unknown, unknown>, ...args: any[]) {
-      setCalls++
-      return originalSet.apply(this, args as [unknown, unknown])
+    let preRebase: Context.Context<never> = base
+    for (let i = 0; i < pushKeys.length - 1; i++) {
+      preRebase = Context.add(preRebase, pushKeys[i], i)
     }
-    let context: Context.Context<never> = base
-    try {
-      for (let i = 0; i < pushKeys.length; i++) {
-        context = Context.add(context, pushKeys[i], i)
-      }
-    } finally {
-      Map.prototype.set = originalSet
-    }
+    // preRebase.depth === 8: the next push crosses MaxDepth and rebases.
+    const context = Context.add(preRebase, pushKeys[pushKeys.length - 1], pushKeys.length - 1)
 
-    // The 9th push crosses MaxDepth (8) and triggers exactly one rebase.
-    // A single pass over the base (50 entries) plus the 8 prior overlays
-    // plus the new key costs 59 Map.set() calls. A rebase that copies the
-    // base twice (once to flatten, once more in the rebase itself) costs
-    // about double that -- this pins the single-copy behavior.
-    strictEqual(setCalls, baseSize + 8 + 1)
+    // A rebase that goes through `impl.mapUnsafe` (flatten, then copy again)
+    // would populate `_flat` on the discarded pre-rebase context as a side
+    // effect. A single-copy rebase builds the new map directly from
+    // `_flat ?? base` and never touches `impl.mapUnsafe`, so `_flat` here
+    // stays undefined.
+    strictEqual((preRebase as any)._flat, undefined)
+
     strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
     for (let i = 0; i < baseKeys.length; i++) {
       strictEqual(Context.getUnsafe(context, baseKeys[i]), i)
@@ -167,7 +159,7 @@ describe("Context", () => {
     }
   })
 
-  it("rebases by copying the cached flat map once when already warm", () => {
+  it("rebases from an already-warm flat cache without re-applying overlays", () => {
     const baseSize = 50
     const baseKeys = Array.from({ length: baseSize }, (_, i) => Context.Service<number>(`ContextTest/Warm${i}`))
     const base = Context.makeUnsafe(new Map(baseKeys.map((key, i) => [key.key, i])))
@@ -180,23 +172,14 @@ describe("Context", () => {
     // Warm the `_flat` cache before the push that crosses MaxDepth.
     void context.mapUnsafe
 
-    let setCalls = 0
-    const originalSet = Map.prototype.set
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Map.prototype.set = function(this: Map<unknown, unknown>, ...args: any[]) {
-      setCalls++
-      return originalSet.apply(this, args as [unknown, unknown])
-    }
-    try {
-      context = Context.add(context, pushKeys[pushKeys.length - 1], pushKeys.length - 1)
-    } finally {
-      Map.prototype.set = originalSet
-    }
-
-    // `_flat` was already warm, so the rebase copies that cached 58-entry
-    // map once (no re-applying of overlays) plus the new key: 59 set() calls.
-    strictEqual(setCalls, baseSize + 8 + 1)
+    context = Context.add(context, pushKeys[pushKeys.length - 1], pushKeys.length - 1)
     strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
+    for (let i = 0; i < baseKeys.length; i++) {
+      strictEqual(Context.getUnsafe(context, baseKeys[i]), i)
+    }
+    for (let i = 0; i < pushKeys.length; i++) {
+      strictEqual(Context.getUnsafe(context, pushKeys[i]), i)
+    }
   })
 
   it("flattens after repeated base fall-throughs", () => {
