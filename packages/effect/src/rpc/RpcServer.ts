@@ -633,6 +633,7 @@ export const make: <Rpcs extends Rpc.Any>(
   )
 
   type Schemas = {
+    readonly tag: string
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, Schema.SchemaError>
     readonly encodeChunk: (
       u: NonEmptyReadonlyArray<unknown>
@@ -649,6 +650,7 @@ export const make: <Rpcs extends Rpc.Any>(
       const entry = Context.getOrUndefinedUnsafe(services, rpc.key) as Rpc.Handler<Rpcs["_tag"]>
       const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
       schemas = {
+        tag: rpc._tag,
         decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
         encodeChunk: Schema.encodeUnknownEffect(
           codecFor(
@@ -691,9 +693,12 @@ export const make: <Rpcs extends Rpc.Any>(
     const write = Exit.isExit(effect) && Exit.isSuccess(effect)
       ? send(client.id, responseEnvelope(requestId, tag, effect.value), collector && collector.clearUnsafe())
       : Effect.flatMap(
-        Effect.provideContext(
-          collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
-          schemas.context
+        Effect.tapError(
+          Effect.provideContext(
+            collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
+            schemas.context
+          ),
+          (error) => Effect.annotateLogs(Effect.logError("Failed to encode RPC response", error), { rpc: schemas.tag })
         ),
         (value) => send(client.id, responseEnvelope(requestId, tag, value), collector && collector.clearUnsafe())
       )
